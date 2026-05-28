@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Trazabilidad</p>
+    <h1>Auditoría</h1>
+    <p class="page-lead">Historial de ejecuciones ETL y de consultas realizadas desde la web.</p>
+  </div>
+</section>
+
+<section class="insight-grid">
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Ejecuciones ETL</h2>
+        <p class="panel-note">Últimas corridas registradas en <code>etl_executions</code>.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="records-table">
+        <thead><tr><th>Execution ID</th><th>Fecha</th><th>Estado</th></tr></thead>
+        <tbody>
+          {% for item in activity.etl_executions %}
+          <tr>
+            <td>{{ item.execution_id }}</td>
+            <td>{{ item.executed_at }}</td>
+            <td>{{ item.status }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Búsquedas recientes</h2>
+        <p class="panel-note">Actividad funcional de la ruta de registros.</p>
+      </div>
+    </div>
+    {% if activity.search_logs %}
+    <div class="table-wrap">
+      <table class="records-table">
+        <thead><tr><th>Consulta</th><th>Destino</th><th>País</th><th>Fecha</th></tr></thead>
+        <tbody>
+          {% for item in activity.search_logs %}
+          <tr>
+            <td>{{ item.query or 'Sin texto' }}</td>
+            <td>{{ item.destination or 'Sin destino' }}</td>
+            <td>{{ item.country or 'Sin país' }}</td>
+            <td>{{ item.searched_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Aún no hay búsquedas registradas</h3>
+      <p>Prueba la vista de registros y esta tabla se empezará a llenar sola.</p>
+    </div>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Reservas hoteleras</p>
+    <h1>Analítica de reservas</h1>
+    <p class="page-lead">Accesos principales para consultar la tabla de hecho, administrar dimensiones, revisar auditoría ETL y validar calidad de datos.</p>
+  </div>
+</section>
+
+<section class="hero-grid">
+  <article class="hero-card">
+    <span class="stat-label">Dashboard</span>
+    <strong>Reservas</strong>
+    <p class="panel-note">Indicadores de reservas, precios, promociones y calidad.</p>
+    <p><a class="ghost-button" href="/">Abrir dashboard</a></p>
+  </article>
+  <article class="hero-card accent-card">
+    <span class="stat-label">Tabla de hecho</span>
+    <strong>Reservas</strong>
+    <p class="panel-note">CRUD paginado de <code>fact_hotel_reservations</code>.</p>
+    <p><a class="ghost-button" href="/ta02/crud/fact_hotel_reservations">Ver reservas</a></p>
+  </article>
+  <article class="hero-card">
+    <span class="stat-label">Dimensiones</span>
+    <strong>{{ collections|length - 1 }}</strong>
+    <p class="panel-note">CRUD paginado de dimensiones TA02.</p>
+    <p><a class="ghost-button" href="/ta02/crud">Ver dimensiones</a></p>
+  </article>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card">
+    <span class="stat-label">Auditoría ETL</span>
+    <strong class="metric-compact"><a href="/audit">Ejecuciones</a></strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Calidad de datos</span>
+    <strong class="metric-compact"><a href="/quality">Reportes</a></strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Colecciones</span>
+    <strong class="metric-compact"><a href="/collections">Conteos</a></strong>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>CRUD de reservas</h2>
+      <p class="panel-note">La tabla de hecho se muestra primero. Las dimensiones son colecciones analíticas cargadas desde MongoDB.</p>
+    </div>
+  </div>
+  <div class="chip-grid">
+    {% for collection in collections %}
+    <a class="chip-card {% if collection.name == 'fact_hotel_reservations' %}featured-crud{% endif %}" href="/ta02/crud/{{ collection.name }}">
+      <span>{{ collection.name }}</span>
+      <strong>{{ collection.label }}</strong>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

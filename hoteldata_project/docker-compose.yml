@@ -1,0 +1,61 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: hoteldata_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - hoteldata_mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: hoteldata_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - hoteldata_redis_data:/data
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: hoteldata_pocketbase
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - hoteldata_pocketbase_data:/pb_data
+
+  app:
+    image: python:3.12-slim
+    container_name: hoteldata_app
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      HOTELDATA_PROJECT_ROOT: /app
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: hoteldata_hub
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_COLLECTION_03: hotel_reservation_events_03
+      TASK_NUMBER: "03"
+      TARGET_RECORDS: "300000"
+      GA03_EXPECTED_RECORDS: "300000"
+      REDIS_URL: redis://redis:6379/0
+      REDIS_ENABLED: "false"
+    depends_on:
+      - mongo
+      - redis
+      - pocketbase
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+             uvicorn src.app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  hoteldata_mongo_data:
+  hoteldata_redis_data:
+  hoteldata_pocketbase_data:

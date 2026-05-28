@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Visión ejecutiva</p>
+    <h1>HotelData Dashboard</h1>
+    <p class="page-lead">Resumen operativo de la carga actual sobre <code>fact_hotel_reservations</code>, calidad del dataset y cobertura de dimensiones maestras.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/etl-status">Ir al flujo ETL</a>
+    <a class="ghost-button" href="/records">Explorar registros</a>
+  </div>
+</section>
+
+<section class="hero-grid">
+  <article class="hero-card">
+    <span class="stat-label">Eventos cargados</span>
+    <strong>{{ overview.headline.total_events }}</strong>
+    <p class="panel-note">Hoteles únicos {{ overview.headline.distinct_hotels }} · destinos {{ overview.headline.distinct_destinations }} · países {{ overview.headline.distinct_countries }}</p>
+  </article>
+  <article class="hero-card accent-card">
+    <span class="stat-label">Reservas completadas</span>
+    <strong>{{ overview.headline.bookings }}</strong>
+    <p class="panel-note">Tasa de conversión {{ overview.headline.booking_rate }}%</p>
+  </article>
+  <article class="hero-card">
+    <span class="stat-label">Precio medio</span>
+    <strong>${{ overview.headline.avg_price }}</strong>
+    <p class="panel-note">Revenue bruto ${{ overview.headline.gross_revenue }}</p>
+  </article>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card">
+    <span class="stat-label">Promociones</span>
+    <strong>{{ overview.headline.promotions }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Tasa promoción</span>
+    <strong>{{ overview.headline.promotion_rate }}%</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Completitud</span>
+    <strong>{{ overview.headline.completion_rate }}%</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Rechazados</span>
+    <strong>{{ overview.headline.rejected_records }}</strong>
+  </article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Reserva vs abandono</h2>
+        <p class="panel-note">Distribución actual de eventos transaccionales.</p>
+      </div>
+    </div>
+    <div class="bar-list">
+      {% set max_reservation = overview.charts.reservation_breakdown|map(attribute='count')|max if overview.charts.reservation_breakdown else 1 %}
+      {% for item in overview.charts.reservation_breakdown %}
+      <div class="bar-row">
+        <div class="bar-label">{{ item.label }}</div>
+        <div class="bar-track"><span class="bar-fill" style="width: {{ (item.count / max_reservation * 100) if max_reservation else 0 }}%"></span></div>
+        <div class="bar-value">{{ item.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Top países origen</h2>
+        <p class="panel-note">Cinco países con mayor volumen de eventos.</p>
+      </div>
+    </div>
+    <div class="bar-list">
+      {% set max_country = overview.charts.country_breakdown|map(attribute='count')|max if overview.charts.country_breakdown else 1 %}
+      {% for item in overview.charts.country_breakdown %}
+      <div class="bar-row">
+        <div class="bar-label">{{ item.label }}</div>
+        <div class="bar-track"><span class="bar-fill alt-fill" style="width: {{ (item.count / max_country * 100) if max_country else 0 }}%"></span></div>
+        <div class="bar-value">{{ item.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Rangos de precio</h2>
+        <p class="panel-note">Clasificación derivada desde el ETL.</p>
+      </div>
+    </div>
+    <div class="chip-grid">
+      {% for item in overview.charts.price_breakdown %}
+      <div class="chip-card">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.count }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Duración de estancia</h2>
+        <p class="panel-note">Distribución por categoría de noches.</p>
+      </div>
+    </div>
+    <div class="chip-grid">
+      {% for item in overview.charts.stay_breakdown %}
+      <div class="chip-card">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.count }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Última ejecución</h2>
+      <p class="panel-note">Estado más reciente registrado en <code>etl_executions</code>.</p>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-label">Execution ID</span>
+      <strong class="metric-compact">{{ overview.latest_execution.execution_id if overview.latest_execution else 'Sin ejecución' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Estado</span>
+      <strong>{{ overview.latest_execution.status if overview.latest_execution else 'unknown' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Fecha</span>
+      <strong class="metric-compact">{{ overview.latest_execution.executed_at if overview.latest_execution else 'N/D' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Colecciones vivas</span>
+      <strong>{{ counts.fact_hotel_reservations + counts.dim_hotels + counts.dim_destinations + counts.dim_visitor_countries }}</strong>
+    </article>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Colecciones</h2>
+      <p class="panel-note">Conteo rápido para confirmar cobertura de dimensiones, hechos e historial.</p>
+    </div>
+  </div>
+  <section class="stats-grid">
+    {% for name, count in counts.items() %}
+    <article class="stat-card">
+      <span class="stat-label">{{ name }}</span>
+      <strong>{{ count }}</strong>
+    </article>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

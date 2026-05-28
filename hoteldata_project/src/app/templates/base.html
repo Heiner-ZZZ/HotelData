@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HotelData Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">HD</div>
+          <div class="brand-copy">
+            <p class="brand-kicker">Plataforma hotelera</p>
+            <h1>HotelData Hub</h1>
+          </div>
+        </div>
+        <nav class="nav-rail" aria-label="Navegación principal">
+          <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-dashboard"></use></svg>
+            <span>Dashboard</span>
+          </a>
+          <a class="nav-link {% if request.url.path.startswith('/ta02') %}active{% endif %}" href="/ta02">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-collections"></use></svg>
+            <span>Reservas</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/records' %}active{% endif %}" href="/records">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-records"></use></svg>
+            <span>Registros</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/etl-status' %}active{% endif %}" href="/etl-status">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-etl"></use></svg>
+            <span>ETL</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/quality' %}active{% endif %}" href="/quality">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-quality"></use></svg>
+            <span>Calidad</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/collections' %}active{% endif %}" href="/collections">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-collections"></use></svg>
+            <span>Colecciones</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/problems' %}active{% endif %}" href="/problems">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+            <span>Problemas</span>
+          </a>
+          <a class="nav-link {% if request.url.path.startswith('/catalogs') %}active{% endif %}" href="/catalogs/">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-catalogs"></use></svg>
+            <span>Catálogos</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/audit' %}active{% endif %}" href="/audit">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-audit"></use></svg>
+            <span>Auditoría</span>
+          </a>
+          <a class="nav-link {% if request.url.path == '/company' %}active{% endif %}" href="/company">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-company"></use></svg>
+            <span>Empresa</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <p>FastAPI + MongoDB</p>
+          <span>ETL, consulta y seguimiento operativo</span>
+        </div>
+      </aside>
+
+      <div class="content-shell">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Operación de datos</p>
+            <h2>HotelData Hub</h2>
+          </div>
+          <div class="topbar-chip">Interfaz analítica</div>
+        </header>
+        <main class="page">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="scroll-top-button"
+      id="scrollTopButton"
+      aria-label="Volver arriba"
+      title="Volver arriba"
+      style="position: fixed; right: 24px; bottom: 24px; left: auto; top: auto; z-index: 99999; width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: #2563eb; color: #ffffff; box-shadow: 0 12px 28px rgba(37, 99, 235, .32); cursor: pointer; opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease, box-shadow 160ms ease;"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 19V5" style="fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;"></path>
+        <path d="M5 12l7-7 7 7" style="fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;"></path>
+      </svg>
+    </button>
+
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-dashboard" viewBox="0 0 24 24"><path d="M4 13h7V4H4v9zm9 7h7v-5h-7v5zM13 4v7h7V4h-7zM4 20h7v-5H4v5z"/></symbol>
+      <symbol id="icon-records" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6V3zm9 1.5V9h4.5L15 4.5zM8 12h8v1.5H8V12zm0 4h8v1.5H8V16zm0-8h5v1.5H8V8z"/></symbol>
+      <symbol id="icon-etl" viewBox="0 0 24 24"><path d="M12 3 7 8h4v5h2V8h4l-5-5zM5 14l7 7 7-7h-4v-2h-6v2H5z"/></symbol>
+      <symbol id="icon-quality" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.3 3.6 10.2 8 11.8 4.4-1.6 8-6.5 8-11.8V5l-8-3zm-1 14.2-3.2-3.2 1.4-1.4L11 13.4l4.8-4.8 1.4 1.4-6.2 6.2z"/></symbol>
+      <symbol id="icon-collections" viewBox="0 0 24 24"><path d="M4 5.5 12 2l8 3.5L12 9 4 5.5zm0 4.5L12 13l8-3v7.5l-8 3.5-8-3.5V10zm0 8 8 3.5 8-3.5V20l-8 2-8-2v-2z"/></symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 2 1.9 20h20.2L12 2zm0 5.2 1 7.3h-2l1-7.3zm0 10.2a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></symbol>
+      <symbol id="icon-catalogs" viewBox="0 0 24 24"><path d="M4 4h16v3H4V4zm0 6h16v10H4V10zm3 2v2h10v-2H7zm0 4v2h7v-2H7z"/></symbol>
+      <symbol id="icon-audit" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm9 1.5V8h4.5L15 3.5zM8 12h8v1.5H8V12zm0 4h8v1.5H8V16zm0-8h5v1.5H8V8z"/></symbol>
+      <symbol id="icon-company" viewBox="0 0 24 24"><path d="M4 21V3h12v18H4zm2-2h2v-2H6v2zm0-4h2v-2H6v2zm0-4h2V9H6v2zm0-4h2V5H6v2zm4 12h4v-2h-4v2zm0-4h4v-2h-4v2zm0-4h4V9h-4v2zm0-4h4V5h-4v2zm8-1h2v14h-2V5z"/></symbol>
+    </svg>
+    <script>
+      (function () {
+        var button = document.getElementById('scrollTopButton');
+        if (!button) {
+          return;
+        }
+        function currentScrollY() {
+          var shell = document.querySelector('.content-shell');
+          return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || (shell ? shell.scrollTop : 0) || 0;
+        }
+        function updateButton() {
+          var trigger = Math.min(180, Math.max(90, window.innerHeight * 0.16));
+          if (currentScrollY() > trigger) {
+            button.classList.add('is-visible');
+            button.style.opacity = '1';
+            button.style.visibility = 'visible';
+            button.style.transform = 'translateY(0)';
+          } else {
+            button.classList.remove('is-visible');
+            button.style.opacity = '0';
+            button.style.visibility = 'hidden';
+            button.style.transform = 'translateY(10px)';
+          }
+        }
+        button.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+          document.body.scrollTo({ top: 0, behavior: 'smooth' });
+          var page = document.querySelector('.content-shell');
+          if (page) {
+            page.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        });
+        window.addEventListener('scroll', updateButton, { passive: true });
+        document.addEventListener('scroll', updateButton, { passive: true });
+        var shell = document.querySelector('.content-shell');
+        if (shell) {
+          shell.addEventListener('scroll', updateButton, { passive: true });
+        }
+        updateButton();
+      })();
+    </script>
+  </body>
+</html>

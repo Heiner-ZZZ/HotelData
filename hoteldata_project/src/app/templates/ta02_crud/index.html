@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CRUD reservas</p>
+    <h1>Colecciones de reservas hoteleras</h1>
+    <p class="page-lead">Primero está la tabla de hecho. Después aparecen las dimensiones del modelo dimensional. Los datos se leen desde MongoDB.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/ta02">Volver a reservas</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="chip-grid">
+    {% for collection in collections %}
+    <a class="chip-card {% if collection.name == 'fact_hotel_reservations' %}featured-crud{% endif %}" href="/ta02/crud/{{ collection.name }}">
+      <span>{{ collection.name }}</span>
+      <strong>{{ collection.label }}</strong>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
