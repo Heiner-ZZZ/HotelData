@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Habitaciones</p>
+    <h1>{{ hotel.display_name }}</h1>
+    <p class="page-lead">Base funcional de tipos de habitación para el hotel actual, sin PMS ni mapa físico completo todavía.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/rooms/new', 'Nuevo tipo', 'icon-hotels', 'button-link') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/inventory', 'Inventario', 'icon-records') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id, 'Detalle', 'icon-partner') }}
+  </div>
+</section>
+
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Tipos de habitación</h2>
+      <p class="panel-note">{{ room_type_count }} tipo(s) configurado(s).</p>
+    </div>
+  </div>
+  {% if room_types %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Capacidad</th><th>Activo</th></tr>
+      </thead>
+      <tbody>
+        {% for room in room_types %}
+        <tr>
+          <td>{{ room.room_type_id }}</td>
+          <td>{{ room.name }}</td>
+          <td>{{ room.description or "Sin descripción" }}</td>
+          <td>{{ room.capacity_label }}</td>
+          <td>{{ "Sí" if room.is_active else "No" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>Sin tipos de habitación</h3>
+    <p>Comience creando el primer tipo para poder cargar inventario.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

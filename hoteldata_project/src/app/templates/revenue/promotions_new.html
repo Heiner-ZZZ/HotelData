@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Nueva promoción</p>
+    <h1>Revenue operativo</h1>
+    <p class="page-lead">Registro básico de campaña con porcentaje de descuento y cupón opcional.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/revenue/promotions">Volver a promociones</a>
+  </div>
+</section>
+
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <form method="post" class="form-grid reservation-form-grid">
+    <label class="field">
+      <span>Prop ID</span>
+      <input type="number" name="prop_id" min="1" step="1" value="{{ form_values.prop_id }}" required>
+    </label>
+    <label class="field">
+      <span>Nombre</span>
+      <input type="text" name="name" value="{{ form_values.name }}" required>
+    </label>
+    <label class="field">
+      <span>Discount percent</span>
+      <input type="number" name="discount_percent" min="0" max="100" step="1" value="{{ form_values.discount_percent }}" required>
+    </label>
+    <label class="field">
+      <span>Start date</span>
+      <input type="date" name="start_date" value="{{ form_values.start_date }}" required>
+    </label>
+    <label class="field">
+      <span>End date</span>
+      <input type="date" name="end_date" value="{{ form_values.end_date }}" required>
+    </label>
+    <label class="field">
+      <span>Coupon code</span>
+      <input type="text" name="coupon_code" value="{{ form_values.coupon_code }}">
+    </label>
+    <label class="field reservation-form-span">
+      <span>Descripción</span>
+      <textarea name="description">{{ form_values.description }}</textarea>
+    </label>
+    <div class="field inventory-checkbox">
+      <span>Estado</span>
+      <label class="inline"><input type="checkbox" name="is_active" {% if form_values.is_active %}checked{% endif %}> Activa</label>
+    </div>
+    <div class="page-actions reservation-form-span">
+      <button type="submit">Guardar promoción</button>
+      <a class="ghost-button" href="/revenue/promotions">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

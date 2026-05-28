@@ -1,0 +1,8 @@
+{
+  "specType": "feature",
+  "workflowType": "design-first",
+  "featureName": "ga03-hoteldata-reservas",
+  "createdAt": "2024-01-XX",
+  "status": "ready-for-implementation",
+  "description": "GA03 extiende HotelData Hub Analytics con análisis operativo y táctico de 300,000 registros de eventos de búsqueda y reserva desde PocketBase a MongoDB."
+}

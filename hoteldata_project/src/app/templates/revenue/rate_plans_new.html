@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Nuevo plan tarifario</p>
+    <h1>Revenue operativo</h1>
+    <p class="page-lead">Alta básica de un plan con tarifa base y regla estándar inicial.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/revenue/rate-plans">Volver a planes</a>
+  </div>
+</section>
+
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <form method="post" class="form-grid reservation-form-grid">
+    <label class="field">
+      <span>Prop ID</span>
+      <input type="number" name="prop_id" min="1" step="1" value="{{ form_values.prop_id }}" required>
+    </label>
+    <label class="field">
+      <span>Nombre</span>
+      <input type="text" name="name" value="{{ form_values.name }}" required>
+    </label>
+    <label class="field reservation-form-span">
+      <span>Descripción</span>
+      <textarea name="description">{{ form_values.description }}</textarea>
+    </label>
+    <label class="field">
+      <span>Tarifa base</span>
+      <input type="number" name="base_rate" min="0" step="0.01" value="{{ form_values.base_rate }}" required>
+    </label>
+    <label class="field">
+      <span>Moneda</span>
+      <input type="text" name="currency" value="{{ form_values.currency }}" required>
+    </label>
+    <div class="field inventory-checkbox">
+      <span>Estado</span>
+      <label class="inline"><input type="checkbox" name="is_active" {% if form_values.is_active %}checked{% endif %}> Activo</label>
+    </div>
+    <div class="page-actions reservation-form-span">
+      <button type="submit">Guardar plan</button>
+      <a class="ghost-button" href="/revenue/rate-plans">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

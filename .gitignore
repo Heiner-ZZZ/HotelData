@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+*.log
+data/
+hoteldata_project/data/
+*.csv
+*.jsonl

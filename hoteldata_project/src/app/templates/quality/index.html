@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Salud del dato</p>
+    <h1>Calidad del dataset</h1>
+    <p class="page-lead">Métricas derivadas del último reporte ETL y de los registros rechazados en MongoDB.</p>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card">
+    <span class="stat-label">Filas origen</span>
+    <strong>{{ quality.source_rows }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Válidos</span>
+    <strong>{{ quality.valid_records }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Rechazados</span>
+    <strong>{{ quality.rejected_records }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Completitud</span>
+    <strong>{{ quality.completion_rate }}%</strong>
+  </article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Balance de validación</h2>
+        <p class="panel-note">Estado consolidado del último procesamiento.</p>
+      </div>
+    </div>
+    <div class="bar-list">
+      {% set max_quality = quality.levels.values()|list|max if quality.levels else 1 %}
+      {% for level, count in quality.levels.items() %}
+      <div class="bar-row">
+        <div class="bar-label">{{ level }}</div>
+        <div class="bar-track"><span class="bar-fill" style="width: {{ (count / max_quality * 100) if max_quality else 0 }}%"></span></div>
+        <div class="bar-value">{{ count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Rechazos por etapa</h2>
+        <p class="panel-note">Útil para distinguir si el problema vino del transform o de llaves maestras.</p>
+      </div>
+    </div>
+    <div class="chip-grid">
+      <div class="chip-card">
+        <span>Transform</span>
+        <strong>{{ quality.transform_rejected_records }}</strong>
+      </div>
+      <div class="chip-card">
+        <span>Llaves maestras</span>
+        <strong>{{ quality.master_key_rejected_records }}</strong>
+      </div>
+      <div class="chip-card">
+        <span>Último execution_id</span>
+        <strong class="metric-compact">{{ quality.latest_execution.execution_id if quality.latest_execution else 'N/D' }}</strong>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Nulos por columna</h2>
+        <p class="panel-note">Vacíos detectados en la última corrida.</p>
+      </div>
+    </div>
+    {% if quality.nulls_by_column %}
+    <div class="bar-list">
+      {% set max_nulls = quality.nulls_by_column.values()|list|max %}
+      {% for column, count in quality.nulls_by_column.items() %}
+      <div class="bar-row">
+        <div class="bar-label">{{ column }}</div>
+        <div class="bar-track"><span class="bar-fill alt-fill" style="width: {{ (count / max_nulls * 100) if max_nulls else 0 }}%"></span></div>
+        <div class="bar-value">{{ count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Sin nulos reportados</h3>
+      <p>La última ejecución no registró columnas incompletas.</p>
+    </div>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Problemas recurrentes</h2>
+        <p class="panel-note">Tomados de <code>rejected_records</code>.</p>
+      </div>
+    </div>
+    {% if quality.issues %}
+    <div class="bar-list">
+      {% set max_issues = quality.issues.values()|list|max %}
+      {% for issue, count in quality.issues.items() %}
+      <div class="bar-row">
+        <div class="bar-label">{{ issue }}</div>
+        <div class="bar-track"><span class="bar-fill warning-fill" style="width: {{ (count / max_issues * 100) if max_issues else 0 }}%"></span></div>
+        <div class="bar-value">{{ count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Sin rechazos en esta corrida</h3>
+      <p>Buen síntoma: la carga actual no dejó registros inválidos.</p>
+    </div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

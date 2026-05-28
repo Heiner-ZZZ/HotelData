@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link, ui_icon %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Infraestructura</p>
+    <h1>Estado de Redis</h1>
+    <p class="page-lead">Vista operativa de la integración de caché usada por la aplicación, sin exponer salida técnica cruda por defecto.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/system/redis-status?format=json', 'Ver JSON técnico', 'icon-records') }}
+    {{ action_link('/dashboard', 'Volver al dashboard', 'icon-dashboard', 'button-link') }}
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card">
+    <span class="stat-label">{{ ui_icon('icon-quality') }} Estado</span>
+    <strong>{{ 'Conectado' if status.connected else 'Desconectado' }}</strong>
+    <p class="panel-note">Redis {{ 'habilitado' if status.enabled else 'deshabilitado' }} para esta instancia.</p>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">{{ ui_icon('icon-records') }} Host</span>
+    <strong>{{ status.host }}</strong>
+    <p class="panel-note">Puerto {{ status.port }} · DB {{ status.db }}</p>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">{{ ui_icon('icon-etl') }} Señal técnica</span>
+    <strong>{{ 'OK' if status.connected else 'Revisar' }}</strong>
+    <p class="panel-note">{{ status.error or 'Sin errores reportados.' }}</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Detalle de conexión</h2>
+      <p class="panel-note">Resumen legible para administración técnica.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        <tr><th>Enabled</th><td>{{ status.enabled }}</td></tr>
+        <tr><th>Connected</th><td>{{ status.connected }}</td></tr>
+        <tr><th>Host</th><td>{{ status.host }}</td></tr>
+        <tr><th>Port</th><td>{{ status.port }}</td></tr>
+        <tr><th>DB</th><td>{{ status.db }}</td></tr>
+        <tr><th>Error</th><td>{{ status.error or 'Ninguno' }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

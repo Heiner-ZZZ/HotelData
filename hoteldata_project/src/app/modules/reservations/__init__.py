@@ -1,0 +1,1 @@
+"""Reservations module scaffolding."""

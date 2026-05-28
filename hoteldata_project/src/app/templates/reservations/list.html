@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Core de reservas</p>
+    <h1>Solicitudes de reserva</h1>
+    <p class="page-lead">Flujo mínimo de reservas solicitado en GA03. No procesa pagos ni calcula disponibilidad real.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link" href="/reservations/new">Nueva solicitud</a>
+    <a class="ghost-button" href="/partner/manual-reservations/new">Reserva manual partner</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Reservas creadas</h2>
+      <p class="panel-note">{{ results.total }} registros · página {{ results.page }} de {{ results.total_pages or 1 }}</p>
+    </div>
+    <div class="pagination-bar compact-pagination">
+      {% if prev_url %}<a class="ghost-button" href="{{ prev_url }}">Anterior</a>{% endif %}
+      {% if next_url %}<a class="ghost-button" href="{{ next_url }}">Siguiente</a>{% endif %}
+    </div>
+  </div>
+  {% if results["items"] %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Booking ID</th><th>Hotel</th><th>Huésped</th><th>Fechas</th><th>Status</th><th>Origen</th><th>Acción</th></tr>
+      </thead>
+      <tbody>
+        {% for item in results["items"] %}
+        <tr>
+          <td><code>{{ item.booking_id }}</code></td>
+          <td>{{ item.hotel.hotel_label if item.hotel else ('Hotel ' ~ item.prop_id) }}</td>
+          <td>{{ item.guest_name }}<br><span class="muted-cell">{{ item.guest_email }}</span></td>
+          <td>{{ item.check_in_date }}<br><span class="muted-cell">{{ item.check_out_date }}</span></td>
+          <td>{{ item.status }}</td>
+          <td>{{ item.booking_source }}</td>
+          <td><a class="link-button" href="/reservations/{{ item.booking_id }}">Ver detalle</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay solicitudes todavía</h3>
+    <p>Crea la primera reserva desde un hotel o desde el formulario directo.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

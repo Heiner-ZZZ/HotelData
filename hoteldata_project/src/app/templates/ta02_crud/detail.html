@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Detalle reservas</p>
+    <h1>{{ collection_label }}</h1>
+    <p class="page-lead">Documento {{ document._id }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/ta02/crud/{{ collection_name }}">Volver</a>
+    <a class="ghost-button" href="/ta02/crud/{{ collection_name }}/{{ document._id }}/edit">Editar</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        {% for key in display_columns %}
+        {% if key in document %}
+        <tr>
+          <th>{{ key }}</th>
+          <td>{{ document.get(key, '') }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {% for key, value in document.items() %}
+        {% if key not in display_columns %}
+        <tr>
+          <th>{{ key }}</th>
+          <td>{{ value }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

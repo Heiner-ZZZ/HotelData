@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Consulta operativa</p>
+    <h1>Registros de reservas hoteleras</h1>
+    <p class="page-lead">Consulta paginada de <code>fact_hotel_reservations</code> con todas las columnas del modelo dimensional TA02.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/records">Limpiar filtros</a>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card">
+    <span class="stat-label">Resultados</span>
+    <strong>{{ results.total }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Página</span>
+    <strong>{% if results.total_pages > 0 %}{{ results.page }} / {{ results.total_pages }}{% else %}0{% endif %}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Visible</span>
+    <strong>{{ results.start_index }}-{{ results.end_index }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Precio medio</span>
+    <strong>{% if results.average_price is not none %}{{ results.average_price }}{% else %}N/D{% endif %}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Reservas visibles</span>
+    <strong>{{ results.bookings_on_page }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Promociones visibles</span>
+    <strong>{{ results.promotion_events_on_page }}</strong>
+  </article>
+</section>
+
+<section class="panel search-panel">
+  <form method="get" class="filters-grid">
+    <label class="field">
+      <span>Hotel o prop_id</span>
+      <input name="q" value="{{ query }}" placeholder="Buscar hotel o identificador">
+    </label>
+    <label class="field">
+      <span>Destino o srch_destination_id</span>
+      <input name="destination" value="{{ destination }}" placeholder="Buscar destino">
+    </label>
+    <label class="field">
+      <span>País o visitor_location_country_id</span>
+      <input name="country" value="{{ country }}" placeholder="Buscar país">
+    </label>
+    <label class="field">
+      <span>Rating mínimo</span>
+      <input name="min_rating" type="number" min="0" max="5" step="0.1" value="{{ min_rating if min_rating is not none else '' }}" placeholder="Calificación mínima">
+    </label>
+    <label class="field">
+      <span>Filas por página</span>
+      <select name="page_size">
+        {% for size in [10, 25] %}
+        <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <input type="hidden" name="page" value="1">
+    <div class="filter-actions">
+      <button type="submit">Buscar</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel results-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Listado</h2>
+      <p class="panel-note">{{ results.total }} coincidencias encontradas.</p>
+    </div>
+    {% if results.total > 0 %}
+    <p class="panel-note">Mostrando {{ results.start_index }} a {{ results.end_index }} de {{ results.total }}</p>
+    {% endif %}
+  </div>
+
+  {% if hotels %}
+  {% if results.total_pages > 1 %}
+  <div class="pagination-bar pagination-top">
+    <div class="pagination-status">Página {{ results.page }} de {{ results.total_pages }} | Mostrando {{ results.start_index }} a {{ results.end_index }} de {{ results.total }}</div>
+    <div class="page-actions">
+      {% if results.has_prev %}
+      <a class="ghost-button" href="/records?{{ {'q': query, 'destination': destination, 'country': country, 'min_rating': min_rating if min_rating is not none else '', 'page_size': results.page_size, 'page': results.prev_page}|urlencode }}">Anterior</a>
+      {% endif %}
+      {% if results.has_next %}
+      <a class="ghost-button" href="/records?{{ {'q': query, 'destination': destination, 'country': country, 'min_rating': min_rating if min_rating is not none else '', 'page_size': results.page_size, 'page': results.next_page}|urlencode }}">Siguiente</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="table-wrap data-table-wrap records-wrap">
+    <table class="data-table records-table">
+      <thead>
+        <tr>
+          {% for column in display_columns %}
+          <th>{{ column }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for hotel in hotels %}
+        <tr>
+          {% for column in display_columns %}
+          <td>
+            <span class="cell-value">{{ hotel.get(column, '') }}</span>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if results.total_pages > 1 %}
+  <div class="pagination-bar">
+    {% if results.has_prev %}
+    <a class="ghost-button" href="/records?{{ {'q': query, 'destination': destination, 'country': country, 'min_rating': min_rating if min_rating is not none else '', 'page_size': results.page_size, 'page': results.prev_page}|urlencode }}">Anterior</a>
+    {% endif %}
+    <span class="pagination-status">Página {{ results.page }} de {{ results.total_pages }}</span>
+    {% if results.has_next %}
+    <a class="ghost-button" href="/records?{{ {'q': query, 'destination': destination, 'country': country, 'min_rating': min_rating if min_rating is not none else '', 'page_size': results.page_size, 'page': results.next_page}|urlencode }}">Siguiente</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay eventos para estos filtros</h3>
+    <p>Prueba a quitar filtros o a buscar por <code>prop_id</code>, <code>srch_destination_id</code> o <code>visitor_location_country_id</code>.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

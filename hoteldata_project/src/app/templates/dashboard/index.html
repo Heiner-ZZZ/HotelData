@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link, ui_icon %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Visión ejecutiva</p>
+    <h1>HotelData Dashboard</h1>
+    <p class="page-lead">Resumen visual del comportamiento de reservas, mercados visitantes, categorías de precio y cobertura analítica actual.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/records', 'Explorar registros', 'icon-records') }}
+    {{ action_link('/etl-status', 'Ir al flujo ETL', 'icon-etl') }}
+  </div>
+</section>
+
+<section class="kpi-grid">
+  {% for kpi in overview.kpis %}
+  <article class="kpi-card">
+    <div class="kpi-head">
+      <span class="stat-label">{{ ui_icon(kpi.icon) }} {{ kpi.label }}</span>
+      <span class="kpi-trend kpi-trend-{{ kpi.direction }}">
+        <span class="kpi-arrow" aria-hidden="true">{% if kpi.direction == 'up' %}▲{% else %}▼{% endif %}</span>
+        <span>{{ kpi.trend }}</span>
+      </span>
+    </div>
+    <strong class="kpi-value">{{ kpi.value }}</strong>
+    <p class="kpi-meta">{{ kpi.detail }}</p>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="chart-grid">
+  <article class="panel chart-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Reserva vs abandono</h2>
+        <p class="panel-note">Distribución actual de eventos transaccionales.</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="reservationBreakdownChart"></canvas>
+    </div>
+  </article>
+
+  <article class="panel chart-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Top países origen</h2>
+        <p class="panel-note">Mercados visitantes con mayor volumen de eventos.</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="countryBreakdownChart"></canvas>
+    </div>
+  </article>
+</section>
+
+<section class="chart-grid">
+  <article class="panel chart-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Rangos de precio</h2>
+        <p class="panel-note">Clasificación derivada desde el ETL.</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="priceBreakdownChart"></canvas>
+    </div>
+  </article>
+
+  <article class="panel chart-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Duración de estancia</h2>
+        <p class="panel-note">Distribución por categoría de noches.</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="stayBreakdownChart"></canvas>
+    </div>
+  </article>
+</section>
+
+<section class="panel chart-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Colecciones activas</h2>
+      <p class="panel-note">Cobertura visible de hechos, dimensiones y auxiliares principales.</p>
+    </div>
+  </div>
+  <div class="chart-canvas-wrap chart-canvas-wrap-wide">
+    <canvas id="collectionCountsChart"></canvas>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Última ejecución</h2>
+      <p class="panel-note">Estado más reciente registrado en <code>etl_executions</code>.</p>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-label">Execution ID</span>
+      <strong class="metric-compact">{{ overview.latest_execution.execution_id if overview.latest_execution else 'Sin ejecución' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Estado</span>
+      <strong>{{ overview.latest_execution.status if overview.latest_execution else 'unknown' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Fecha</span>
+      <strong class="metric-compact">{{ overview.latest_execution.executed_at if overview.latest_execution else 'N/D' }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Colecciones vivas</span>
+      <strong>{{ counts.fact_hotel_reservations + counts.dim_hotels + counts.dim_destinations + counts.dim_visitor_countries }}</strong>
+    </article>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    if (typeof Chart === 'undefined') {
+      return;
+    }
+
+    var chartPalette = {
+      blue: '#2563eb',
+      blueSoft: '#93c5fd',
+      teal: '#2fa58f',
+      tealSoft: '#6ee7d2',
+      navy: '#175d7a',
+      slate: '#64748b',
+      amber: '#f59e0b',
+      sky: '#38bdf8',
+      border: '#d7e1ee'
+    };
+
+    var fontFamily = "'Trebuchet MS', 'Segoe UI', sans-serif";
+
+    Chart.defaults.font.family = fontFamily;
+    Chart.defaults.color = '#334155';
+    Chart.defaults.borderColor = chartPalette.border;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.boxWidth = 10;
+
+    var reservationBreakdown = {{ overview.charts.reservation_breakdown|tojson|safe }};
+    var countryBreakdown = {{ overview.charts.country_breakdown|tojson|safe }};
+    var priceBreakdown = {{ overview.charts.price_breakdown|tojson|safe }};
+    var stayBreakdown = {{ overview.charts.stay_breakdown|tojson|safe }};
+    var collectionCounts = [
+      {% for name, count in counts.items() %}
+      { label: "{{ name }}", value: {{ count }} }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ];
+
+    function makeChart(canvasId, config) {
+      var canvas = document.getElementById(canvasId);
+      if (!canvas) {
+        return;
+      }
+      new Chart(canvas, config);
+    }
+
+    makeChart('reservationBreakdownChart', {
+      type: 'doughnut',
+      data: {
+        labels: reservationBreakdown.map(function (item) { return item.label; }),
+        datasets: [{
+          data: reservationBreakdown.map(function (item) { return item.count; }),
+          backgroundColor: [chartPalette.teal, chartPalette.blueSoft],
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    makeChart('countryBreakdownChart', {
+      type: 'bar',
+      data: {
+        labels: countryBreakdown.map(function (item) { return item.label; }),
+        datasets: [{
+          label: 'Eventos',
+          data: countryBreakdown.map(function (item) { return item.count; }),
+          backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#38bdf8', '#7dd3fc'],
+          borderRadius: 12,
+          maxBarThickness: 28
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    makeChart('priceBreakdownChart', {
+      type: 'polarArea',
+      data: {
+        labels: priceBreakdown.map(function (item) { return item.label; }),
+        datasets: [{
+          data: priceBreakdown.map(function (item) { return item.count; }),
+          backgroundColor: ['rgba(37, 99, 235, 0.85)', 'rgba(47, 165, 143, 0.82)', 'rgba(56, 189, 248, 0.8)', 'rgba(245, 158, 11, 0.78)'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            ticks: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    makeChart('stayBreakdownChart', {
+      type: 'line',
+      data: {
+        labels: stayBreakdown.map(function (item) { return item.label; }),
+        datasets: [{
+          label: 'Eventos',
+          data: stayBreakdown.map(function (item) { return item.count; }),
+          borderColor: chartPalette.navy,
+          backgroundColor: 'rgba(23, 93, 122, 0.14)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+
+    makeChart('collectionCountsChart', {
+      type: 'bar',
+      data: {
+        labels: collectionCounts.map(function (item) { return item.label; }),
+        datasets: [{
+          label: 'Documentos',
+          data: collectionCounts.map(function (item) { return item.value; }),
+          backgroundColor: collectionCounts.map(function (_, index) {
+            var palette = [chartPalette.blue, chartPalette.teal, chartPalette.navy, chartPalette.sky, chartPalette.amber];
+            return palette[index % palette.length];
+          }),
+          borderRadius: 10
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 40,
+              minRotation: 40
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  })();
+</script>
+{% endblock %}

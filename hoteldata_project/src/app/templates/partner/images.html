@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Imágenes del hotel</p>
+    <h1>{{ hotel.display_name }}</h1>
+    <p class="page-lead">Registro mínimo por URL para que Partner o Marketing carguen referencias visuales sin subir archivos todavía.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/content">Resumen</a>
+    <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/content/edit">Contenido</a>
+    <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/policies">Políticas</a>
+  </div>
+</section>
+
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Nueva imagen</h2>
+      <p class="panel-note">Solo URL por ahora; no se suben archivos binarios.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid reservation-form-grid">
+    <label class="field reservation-form-span">
+      <span>Image URL</span>
+      <input type="url" name="image_url" placeholder="https://ejemplo.com/hotel.jpg">
+    </label>
+    <label class="field reservation-form-span">
+      <span>Título</span>
+      <input type="text" name="title" placeholder="Fachada principal, lobby, piscina...">
+    </label>
+    <div class="page-actions reservation-form-span">
+      <button type="submit">Registrar imagen</button>
+      <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/content">Volver</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>URLs registradas</h2>
+      <p class="panel-note">{{ images|length }} imagen(es) visibles en esta vista.</p>
+    </div>
+  </div>
+  {% if images %}
+  <div class="partner-image-grid">
+    {% for image in images %}
+    <article class="chip-card partner-image-card">
+      <span>{{ image.title or "Sin título" }}</span>
+      <strong><a href="{{ image.image_url }}" target="_blank" rel="noreferrer">{{ image.image_url }}</a></strong>
+      <p class="panel-note">{{ image.created_at_label }}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>Sin imágenes todavía</h3>
+    <p>Puede empezar registrando la primera URL del hotel.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

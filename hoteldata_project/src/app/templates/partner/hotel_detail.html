@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Partner detail</p>
+    <h1>{{ hotel.display_name }}</h1>
+    <p class="page-lead">ID propiedad: {{ hotel.prop_id }}. Vista base de la propiedad hotelera para consulta y administración ligera, sin PMS ni operaciones de reserva real.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/partner/hotels', 'Volver', 'icon-partner') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/performance', 'Ver rendimiento', 'icon-analytics', 'button-link') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/content', 'Contenido', 'icon-company') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/content/edit', 'Editar perfil', 'icon-auth') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/rooms', 'Habitaciones', 'icon-hotels') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/inventory', 'Inventario', 'icon-records') }}
+  </div>
+</section>
+
+<section class="hero-grid">
+  <article class="hero-card accent-card">
+    <span class="stat-label">Ingresos brutos</span>
+    <strong>${{ performance.gross_revenue_label }}</strong>
+    <p class="panel-note">Fuente: {{ performance.source_collection }}</p>
+  </article>
+  <article class="hero-card">
+    <span class="stat-label">Reservas</span>
+    <strong>{{ performance.reservations }}</strong>
+    <p class="panel-note">{{ performance.conversion_rate }}% conversión</p>
+  </article>
+  <article class="hero-card">
+    <span class="stat-label">Clicks</span>
+    <strong>{{ performance.clicks }}</strong>
+    <p class="panel-note">{{ performance.click_rate }}% click rate</p>
+  </article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <h2>Perfil de propiedad</h2>
+    <div class="chip-grid">
+      <div class="chip-card"><span>Prop ID</span><strong>{{ hotel.prop_id }}</strong></div>
+      <div class="chip-card"><span>País / mercado</span><strong>{{ hotel.country_display_name }}</strong></div>
+      <div class="chip-card"><span>Estrellas</span><strong>{{ hotel.prop_starrating or "N/D" }}</strong></div>
+      <div class="chip-card"><span>Review score</span><strong>{{ hotel.review_score_label }}</strong></div>
+      <div class="chip-card"><span>Marca</span><strong>{{ "Sí" if hotel.prop_brand_bool else "No" }}</strong></div>
+      <div class="chip-card"><span>Location score</span><strong>{{ hotel.prop_location_score1 or "N/D" }}</strong></div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Dato maestro disponible</h2>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><th>Hotel code</th><td>{{ master_hotel.hotel_code or "N/D" }}</td></tr>
+          <tr><th>Hotel name</th><td>{{ master_hotel.hotel_name or hotel.display_name }}</td></tr>
+          <tr><th>Description</th><td>{{ master_hotel.description or hotel.description or "N/D" }}</td></tr>
+          <tr><th>Rating</th><td>{{ master_hotel.rating or hotel.prop_starrating or "N/D" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

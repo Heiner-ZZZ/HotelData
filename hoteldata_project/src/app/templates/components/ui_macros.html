@@ -1,0 +1,17 @@
+{% macro ui_icon(icon, class_name="") -%}
+<svg class="icon-inline {{ class_name }}" aria-hidden="true"><use href="#{{ icon }}"></use></svg>
+{%- endmacro %}
+
+{% macro action_link(href, label, icon, kind="ghost-button") -%}
+<a class="{{ kind }}" href="{{ href }}">{{ ui_icon(icon) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+
+{% macro shortcut_card(href, title, note, icon) -%}
+<a class="shortcut-card" href="{{ href }}">
+  <span class="shortcut-card-icon">{{ ui_icon(icon) }}</span>
+  <span class="shortcut-card-copy">
+    <strong>{{ title }}</strong>
+    <small>{{ note }}</small>
+  </span>
+</a>
+{%- endmacro %}

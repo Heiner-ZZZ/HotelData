@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Administración</p>
+    <h1>Catálogos maestros</h1>
+    <p class="page-lead">Mantén códigos y etiquetas desde una vista de tabla clara, pensada para edición operativa.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/catalogs/?catalog_type={{ selected }}">Recargar</a>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  {% for item in overview %}
+  <article class="stat-card">
+    <span class="stat-label">{{ item.catalog_type }}</span>
+    <strong>{{ item.count }}</strong>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="panel search-panel">
+  <form method="get" class="filters-grid" style="grid-template-columns: 2fr 1fr;">
+    <label class="field">
+      <span>Tipo de catálogo</span>
+      <select name="catalog_type">
+        {% for catalog in catalog_types %}
+        <option value="{{ catalog }}" {% if selected == catalog %}selected{% endif %}>{{ catalog }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="filter-actions">
+      <button type="submit">Ver</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <form method="post" action="/catalogs/create" class="filters-grid" style="grid-template-columns: 1.2fr 1fr 1fr auto;">
+    <input type="hidden" name="catalog_type" value="{{ selected }}">
+    <label class="field">
+      <span>Catálogo</span>
+      <input value="{{ selected }}" disabled>
+    </label>
+    <label class="field">
+      <span>Código</span>
+      <input name="code" placeholder="Código" required>
+    </label>
+    <label class="field">
+      <span>Etiqueta</span>
+      <input name="label" placeholder="Etiqueta">
+    </label>
+    <div class="filter-actions">
+      <button type="submit">Crear</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel results-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Tabla de registros</h2>
+      <p class="panel-note">{{ items|length }} elementos en {{ selected }}.</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Etiqueta</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <div class="record-main">{{ item.code }}</div>
+            <div class="record-sub">{{ selected }}</div>
+          </td>
+          <td>
+            <form method="post" action="/catalogs/update" class="inline" style="width:100%;">
+              <input type="hidden" name="catalog_type" value="{{ selected }}">
+              <input type="hidden" name="code" value="{{ item.code }}">
+              <input name="label" value="{{ item.label }}" placeholder="Etiqueta" style="min-width: 280px; width: 100%;">
+              <button type="submit">Guardar</button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="/catalogs/delete" class="inline">
+              <input type="hidden" name="catalog_type" value="{{ selected }}">
+              <input type="hidden" name="code" value="{{ item.code }}">
+              <button type="submit">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if items|length == 0 %}
+        <tr>
+          <td colspan="3">
+            <div class="empty-state">
+              <h3>Sin elementos todavía</h3>
+              <p>Crea el primer código para este catálogo desde el formulario superior.</p>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
