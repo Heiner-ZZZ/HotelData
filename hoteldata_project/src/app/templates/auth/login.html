@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <p class="eyebrow">Seguridad</p>
+  <h1>Iniciar sesión</h1>
+  <p class="page-lead">Acceso básico para administración y futuras integraciones de HotelData Hub.</p>
+</section>
+
+<section class="card file-details" style="max-width: 520px;">
+  {% if current_user %}
+  <p class="success">Sesión activa como {{ current_user.username }}.</p>
+  <div class="action-bar">
+    <a class="button-link" href="/auth/me">Ver mi sesión</a>
+    <a class="button-link" href="/auth/logout">Cerrar sesión</a>
+  </div>
+  {% else %}
+  {% if error %}
+  <p class="notice">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="/auth/login" class="form-grid">
+    <label>
+      Usuario o correo
+      <input name="identifier" value="{{ identifier }}" placeholder="superadmin o admin@hoteldata.local" required autocomplete="username">
+    </label>
+    <label>
+      Contraseña
+      <input name="password" type="password" required autocomplete="current-password">
+    </label>
+    <button type="submit">Entrar</button>
+  </form>
+  <p class="metric-small">El login es funcional, pero todavía no bloquea `/ta02`, `/ta02/crud` ni `/etl-status`.</p>
+  {% endif %}
+</section>
+{% endblock %}

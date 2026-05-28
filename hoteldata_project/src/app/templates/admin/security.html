@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <p class="eyebrow">Administración</p>
+  <h1>Seguridad y accesos</h1>
+  <p class="page-lead">Vista de solo lectura para usuarios, roles, permisos, sesiones y actividad reciente.</p>
+</section>
+
+<section class="metric-grid">
+  <article class="metric-card"><p>Usuarios</p><strong>{{ overview.counts.users }}</strong></article>
+  <article class="metric-card"><p>Roles</p><strong>{{ overview.counts.roles }}</strong></article>
+  <article class="metric-card"><p>Permisos</p><strong>{{ overview.counts.permissions }}</strong></article>
+  <article class="metric-card"><p>Sesiones</p><strong>{{ overview.counts.sessions }}</strong></article>
+  <article class="metric-card"><p>Actividad</p><strong>{{ overview.counts.activity }}</strong></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Roles</h2><p class="panel-note">Roles base del modelo de seguridad.</p></div></div>
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead><tr><th>Rol</th><th>Descripción</th></tr></thead>
+      <tbody>
+        {% for role in overview.roles %}
+        <tr><td>{{ role.role_name }}</td><td>{{ role.description }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Permisos</h2><p class="panel-note">Permisos disponibles para proteger rutas nuevas.</p></div></div>
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead><tr><th>Permiso</th><th>Descripción</th></tr></thead>
+      <tbody>
+        {% for permission in overview.permissions %}
+        <tr><td>{{ permission.permission_code }}</td><td>{{ permission.description }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Sesiones recientes</h2><p class="panel-note">Últimas sesiones creadas desde el login básico.</p></div></div>
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead><tr><th>Usuario</th><th>Activa</th><th>Creada</th><th>Expira</th></tr></thead>
+      <tbody>
+        {% for session in overview.sessions %}
+        <tr><td>{{ session.username }}</td><td>{{ session.is_active }}</td><td>{{ session.created_at }}</td><td>{{ session.expires_at }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Actividad reciente</h2><p class="panel-note">Eventos registrados en user_activity_logs.</p></div></div>
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead><tr><th>Acción</th><th>Usuario</th><th>Fecha</th></tr></thead>
+      <tbody>
+        {% for item in overview.activity %}
+        <tr><td>{{ item.action }}</td><td>{{ item.username or item.email or 'N/D' }}</td><td>{{ item.created_at }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

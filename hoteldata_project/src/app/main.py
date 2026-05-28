@@ -17,6 +17,16 @@ from src.app.features.quality.routes import router as quality_router
 from src.app.features.records.routes import router as records_router
 from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.features.ta02_crud.routes import web_router as ta02_web_router
+from src.app.modules.audit.routes import router as modular_audit_router
+from src.app.modules.admin.routes import router as admin_router
+from src.app.modules.auth.routes import router as auth_module_router
+from src.app.modules.auth.routes import web_router as auth_web_router
+from src.app.modules.hotels.routes import router as hotels_module_router
+from src.app.modules.partner.routes import router as partner_module_router
+from src.app.modules.reservations.routes import router as reservations_module_router
+from src.app.modules.revenue.routes import router as revenue_module_router
+from src.app.modules.users.routes import router as users_module_router
+from src.app.routes.system import router as system_router
 
 
 def create_app() -> FastAPI:
@@ -33,6 +43,16 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(ta02_web_router)
     app.include_router(crud_router)
+    app.include_router(auth_web_router)
+    app.include_router(admin_router)
+    app.include_router(auth_module_router)
+    app.include_router(users_module_router)
+    app.include_router(hotels_module_router)
+    app.include_router(reservations_module_router)
+    app.include_router(partner_module_router)
+    app.include_router(revenue_module_router)
+    app.include_router(modular_audit_router)
+    app.include_router(system_router)
     @app.on_event("startup")
     def _seed_default_catalogs() -> None:
         ensure_default_catalogs()

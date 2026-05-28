@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <p class="eyebrow">Administración</p>
+  <h1>Usuarios</h1>
+  <p class="page-lead">Consulta de usuarios y roles. Edición queda para una fase posterior.</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Usuarios registrados</h2>
+      <p class="panel-note">{{ overview.counts.users }} usuarios y {{ overview.counts.roles }} roles disponibles.</p>
+    </div>
+    <a class="button-link" href="/admin/security">Ver seguridad</a>
+  </div>
+  <div class="table-wrap">
+    <table class="records-table">
+      <thead>
+        <tr><th>Usuario</th><th>Email</th><th>Rol principal</th><th>Roles</th><th>Activo</th><th>Creado</th></tr>
+      </thead>
+      <tbody>
+        {% for user in overview.users %}
+        <tr>
+          <td>{{ user.username }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.primary_role }}</td>
+          <td>{{ user.role_names | join(', ') }}</td>
+          <td>{{ user.is_active }}</td>
+          <td>{{ user.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

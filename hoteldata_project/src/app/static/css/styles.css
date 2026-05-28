@@ -367,7 +367,8 @@ textarea {
 
 button,
 .ghost-button,
-.link-button {
+.link-button,
+.button-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -386,6 +387,24 @@ button {
 
 button:hover {
   background: var(--button-blue-dark);
+}
+
+.button-link {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--button-blue);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.16);
+}
+
+.button-link:hover {
+  background: var(--button-blue-dark);
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
 }
 
 .ghost-button {
