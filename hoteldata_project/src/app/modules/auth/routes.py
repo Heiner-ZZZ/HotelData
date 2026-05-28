@@ -18,6 +18,8 @@ from src.app.security.session import (
     verify_password,
 )
 from src.app.security.dependencies import require_login
+from src.app.security.navigation import get_default_redirect_for_role
+from src.app.security.route_permissions import is_safe_internal_next
 from src.database.connection import get_database
 
 
@@ -42,6 +44,7 @@ def login_form(request: Request):
             "current_user": user,
             "error": "",
             "identifier": "",
+            "next_url": request.query_params.get("next", ""),
         },
     )
 
@@ -51,6 +54,7 @@ def login_submit(
     request: Request,
     identifier: str = Form(...),
     password: str = Form(...),
+    next: str = Form(default=""),
 ):
     db = get_database()
     user = find_user_by_identifier(db, identifier)
@@ -68,13 +72,15 @@ def login_submit(
                 "current_user": None,
                 "error": "Credenciales inválidas. Revise usuario, correo o contraseña.",
                 "identifier": identifier,
+                "next_url": next,
             },
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     token = create_user_session(db, user, request)
     log_user_activity(db, action="auth.login_success", request=request, user=user)
-    response = RedirectResponse("/ta02", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_url = next if is_safe_internal_next(next) else get_default_redirect_for_role(user.get("primary_role"))
+    response = RedirectResponse(redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         token,
@@ -102,6 +108,7 @@ def logout(request: Request):
 def me(request: Request, current_user: dict = Depends(require_login)):
     db = get_database()
     _, session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
+    home_href = get_default_redirect_for_role(current_user.get("primary_role"))
     return templates.TemplateResponse(
         request,
         "auth/me.html",
@@ -109,5 +116,6 @@ def me(request: Request, current_user: dict = Depends(require_login)):
             "current_user": current_user,
             "session": session,
             "authenticated": True,
+            "home_href": home_href,
         },
     )

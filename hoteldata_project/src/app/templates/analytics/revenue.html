@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Revenue manager</p>
+    <h1>Ingresos y precio promedio</h1>
+    <p class="page-lead">Lectura agregada por hotel y destino sobre {{ overview.source_collection }}.</p>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card"><span class="stat-label">Eventos</span><strong>{{ overview.summary.total_events }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Reservas</span><strong>{{ overview.summary.reservations }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Precio promedio</span><strong>${{ overview.summary.avg_price_label }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Ingresos brutos</span><strong>${{ overview.summary.gross_revenue_label }}</strong></article>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head"><div><h2>Top hoteles por ingresos</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Hotel</th><th>Ingresos</th><th>Reservas</th><th>Precio promedio</th></tr></thead>
+        <tbody>
+          {% for item in overview.hotels %}
+          <tr><td>{{ item.label }}</td><td>${{ item.gross_revenue_label }}</td><td>{{ item.reservations }}</td><td>${{ item.avg_price_label }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+  <article class="panel">
+    <div class="panel-head"><div><h2>Top destinos por ingresos</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Destino</th><th>Ingresos</th><th>Reservas</th><th>Precio promedio</th></tr></thead>
+        <tbody>
+          {% for item in overview.destinations %}
+          <tr><td>{{ item.label }}</td><td>${{ item.gross_revenue_label }}</td><td>{{ item.reservations }}</td><td>${{ item.avg_price_label }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

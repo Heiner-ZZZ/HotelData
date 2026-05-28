@@ -4,9 +4,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 
 ## Resumen por estado
 
-- Implementado: CU25, CU29, CU30, CU32.
-- Parcial: CU01, CU02, CU03, CU04, CU12, CU24, CU26, CU27, CU28.
-- Planificado: CU05, CU06, CU07, CU08, CU09, CU10, CU11, CU13, CU14, CU15, CU16, CU17, CU18, CU19, CU20, CU21, CU22, CU23, CU31.
+- Implementado: CU25, CU27, CU28, CU29, CU30, CU32.
+- Parcial: CU01, CU02, CU03, CU04, CU09, CU10, CU11, CU12, CU13, CU14, CU15, CU16, CU17, CU18, CU19, CU21, CU22, CU23, CU24, CU26.
+- Planificado: CU05, CU06, CU07, CU08, CU20, CU31.
 
 ## Paquete 1: Experiencia del cliente y búsqueda hotelera
 
@@ -19,15 +19,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 9
 - Tipo: Operativo
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Permitir consultas exploratorias sobre hoteles y reservas con filtros básicos.
-- Descripción: En GA03 existe búsqueda analítica sobre registros y dimensiones, pero no un motor transaccional completo de disponibilidad hotelera.
+- Descripción: En GA03 existe una pantalla real en `/hotels/search` para buscar hoteles con filtros sobre `dim_hotels`, `dim_destinations` y hechos analíticos. Permanece parcial porque no hay motor transaccional completo de disponibilidad hotelera.
 - Historias de usuario:
   - Como usuario operativo, quiero buscar hoteles por destino, para revisar demanda asociada.
   - Como usuario operativo, quiero filtrar por fechas, para analizar periodos específicos.
   - Como usuario operativo, quiero considerar ocupación, para interpretar patrones de viaje.
   - Como usuario operativo, quiero ver resultados ordenados, para comparar opciones rápidamente.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: captura de `/hotels/search`]
 
 ### CU02 Filtrar hoteles por precio, estrellas, promoción y servicios
 
@@ -38,15 +38,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Segmentar hoteles y reservas por atributos comerciales.
-- Descripción: GA03 cuenta con dimensiones y métricas de precio, estrellas y promoción; los servicios hoteleros existen como colección documental, pero no hay experiencia final de comprador.
+- Descripción: GA03 cuenta con filtros reales en `/hotels/search` para precio, estrellas, promoción y ocupación usando MongoDB. Permanece parcial porque los servicios hoteleros no forman todavía parte de un flujo final de comprador.
 - Historias de usuario:
   - Como usuario operativo, quiero filtrar por precio, para encontrar rangos relevantes.
   - Como usuario operativo, quiero filtrar por estrellas, para comparar categorías hoteleras.
   - Como usuario operativo, quiero filtrar promociones, para revisar impacto comercial.
   - Como usuario operativo, quiero consultar servicios, para contextualizar la oferta.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: filtros de `/hotels/search`]
 
 ### CU03 Consultar detalle de hotel
 
@@ -57,15 +57,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Ver información de una propiedad hotelera.
-- Descripción: El sistema expone datos documentales y dimensionales de hoteles, pero no una ficha pública completa de venta.
+- Descripción: El sistema expone `/hotels/{prop_id}` con datos básicos, review score, país y métricas analíticas si existen. Permanece parcial porque no es una ficha pública completa con habitaciones, políticas y reserva.
 - Historias de usuario:
   - Como usuario operativo, quiero abrir el detalle de un hotel, para revisar sus atributos.
   - Como usuario operativo, quiero consultar ubicación, para entender su contexto geográfico.
   - Como usuario operativo, quiero revisar calidad del dato, para confiar en el análisis.
   - Como usuario operativo, quiero relacionar hotel con reservas, para evaluar desempeño.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: detalle `/hotels/{prop_id}`]
 
 ### CU04 Comparar hoteles disponibles
 
@@ -78,13 +78,13 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Tipo: Táctico
 - Estado: Parcial
 - Propósito: Comparar hoteles con base en atributos analíticos.
-- Descripción: GA03 permite comparación indirecta mediante filtros, dimensiones y dashboard; la comparación tipo marketplace queda planificada.
+- Descripción: GA03 incluye `/hotels/compare` para comparar hasta 3 hoteles por `prop_id` con precio promedio, reservas, clicks y review score. Permanece parcial porque no compara disponibilidad transaccional ni tarifas reales por habitación.
 - Historias de usuario:
   - Como usuario operativo, quiero comparar hoteles por destino, para detectar mejores opciones.
   - Como usuario operativo, quiero comparar precios, para revisar competitividad.
   - Como usuario operativo, quiero comparar conversión, para evaluar desempeño.
   - Como usuario operativo, quiero comparar promociones, para decidir acciones comerciales.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: comparación `/hotels/compare`]
 
 ## Paquete 2: Cuenta, sesión y perfil de usuario
 
@@ -97,7 +97,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 6
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Crear cuentas de usuario para operación personalizada.
 - Descripción: GA03 no implementa registro real; se documenta como capacidad futura.
 - Historias de usuario:
@@ -116,7 +116,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Administrador
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Controlar acceso según rol.
 - Descripción: No existe login real ni control de roles implementado; el modelo futuro lo contempla.
 - Historias de usuario:
@@ -135,7 +135,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 5
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Mantener preferencias y datos de viajero.
 - Descripción: GA03 no implementa perfiles de viajero; queda en modelo futuro.
 - Historias de usuario:
@@ -154,7 +154,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Administrador
 - Prioridad: 5
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Revisar acciones realizadas por usuario.
 - Descripción: La auditoría técnica existe para ETL, pero el historial personal de usuario queda planificado.
 - Historias de usuario:
@@ -175,15 +175,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 10
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Iniciar una reserva hotelera.
-- Descripción: GA03 analiza eventos de reserva, pero no crea reservas transaccionales reales.
+- Descripción: GA03 incorpora `/reservations/new` para crear solicitudes básicas de reserva en MongoDB con estado `requested`. Permanece parcial porque no hay disponibilidad real ni pago.
 - Historias de usuario:
   - Como usuario operativo, quiero crear una solicitud, para iniciar una reserva.
   - Como usuario operativo, quiero seleccionar fechas, para definir mi estancia.
   - Como usuario operativo, quiero indicar huéspedes, para calcular ocupación.
   - Como usuario operativo, quiero confirmar la solicitud, para continuar el proceso.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: `/reservations/new`]
 
 ### CU10 Consultar estado de reserva
 
@@ -194,15 +194,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Revisar el ciclo de vida de una reserva.
-- Descripción: No existe gestión transaccional de estados de reserva; el hecho analítico registra eventos históricos.
+- Descripción: GA03 incorpora `/reservations/{booking_id}` para consultar detalle, huésped e historial de estado de una solicitud. Permanece parcial porque no existe ciclo de vida completo de operación hotelera.
 - Historias de usuario:
   - Como usuario operativo, quiero ver el estado de mi reserva, para saber si está confirmada.
   - Como usuario operativo, quiero consultar cambios de estado, para entender su evolución.
   - Como usuario operativo, quiero recibir alertas, para reaccionar a cambios.
   - Como administrador, quiero auditar estados, para controlar calidad operativa.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: `/reservations/{booking_id}`]
 
 ### CU11 Cancelar reserva según política
 
@@ -213,15 +213,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Administrador
 - Prioridad: 7
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Cancelar reservas respetando reglas comerciales.
-- Descripción: GA03 no implementa cancelaciones ni políticas aplicadas a reservas reales.
+- Descripción: GA03 permite cancelar solicitudes en estado `requested` mediante `/reservations/{booking_id}/cancel`. Permanece parcial porque no existen políticas comerciales completas ni cobros asociados.
 - Historias de usuario:
   - Como usuario operativo, quiero cancelar una reserva, para modificar mis planes.
   - Como usuario operativo, quiero ver la política, para conocer cargos.
   - Como administrador, quiero registrar cancelaciones, para auditar operación.
   - Como administrador, quiero analizar cancelaciones, para mejorar políticas.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: cancelación de solicitud]
 
 ### CU12 Registrar reserva manual
 
@@ -234,7 +234,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Tipo: Operativo
 - Estado: Parcial
 - Propósito: Permitir mantenimiento controlado de datos analíticos.
-- Descripción: La app ofrece CRUD sobre `fact_hotel_reservations`, pero no una operación transaccional hotelera completa.
+- Descripción: La app incorpora `/partner/manual-reservations/new` para registrar solicitudes manuales controladas, además del CRUD analítico previo. Permanece parcial porque aún no existe flujo operativo completo con confirmación, disponibilidad y contratos.
 - Historias de usuario:
   - Como administrador, quiero crear registros analíticos, para corregir datos puntuales.
   - Como administrador, quiero editar registros, para mantener calidad.
@@ -253,15 +253,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 7
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Gestionar información comercial de una propiedad.
-- Descripción: GA03 conserva datos hoteleros, pero no implementa portal partner central.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}` para consultar el perfil del hotel y `/partner/hotels/{prop_id}/content/edit` para mantener descripción, highlights y amenities text en MongoDB. Permanece parcial porque no existe ownership real ni administración completa de partner.
 - Historias de usuario:
   - Como administrador, quiero editar el perfil del hotel, para actualizar información pública.
   - Como administrador, quiero revisar datos de contacto, para mantener comunicación.
   - Como administrador, quiero validar ubicación, para mejorar búsquedas.
   - Como administrador, quiero auditar cambios, para controlar calidad.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: detalle partner `/partner/hotels/{prop_id}`]
 
 ### CU14 Administrar imágenes y contenido del hotel
 
@@ -272,15 +272,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 6
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Mantener contenido visual y descriptivo del hotel.
-- Descripción: Las colecciones futuras contemplan imágenes, páginas y cambios de contenido.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}/content`, `/partner/hotels/{prop_id}/content/edit` y `/partner/hotels/{prop_id}/images` para administrar contenido descriptivo e imágenes por URL con trazabilidad en `hotel_content_changes`. Permanece parcial porque no hay carga binaria real ni CMS completo.
 - Historias de usuario:
   - Como administrador, quiero subir imágenes, para mejorar presentación del hotel.
   - Como administrador, quiero editar descripciones, para mantener contenido vigente.
   - Como administrador, quiero revisar cambios, para aprobar publicaciones.
   - Como usuario operativo, quiero consultar contenido, para evaluar la oferta.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: contenido partner `/partner/hotels/{prop_id}/content`]
 
 ### CU15 Administrar políticas del hotel
 
@@ -291,9 +291,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 7
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Gestionar reglas de cancelación, estancia y operación.
-- Descripción: GA03 no aplica políticas reales; se documentan como modelo futuro.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}/policies` para administrar check-in, check-out, cancelación, mascotas y niños, registrando cambios en MongoDB. Permanece parcial porque no gobierna todavía un motor real de reservas o disponibilidad.
 - Historias de usuario:
   - Como administrador, quiero crear políticas, para regular reservas.
   - Como administrador, quiero actualizar políticas, para responder al negocio.
@@ -310,15 +310,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Usuario operativo
 - Prioridad: 8
 - Tipo: Táctico
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Evaluar resultados comerciales por propiedad desde una vista partner.
-- Descripción: La analítica por hotel existe parcialmente en dashboard, pero la vista partner queda fuera de GA03.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}/performance` para consultar búsquedas, clicks, reservas, conversión e ingresos brutos por propiedad. Permanece parcial porque aún no existe tablero partner completo con metas, contratos ni revenue management.
 - Historias de usuario:
   - Como administrador, quiero ver rendimiento por hotel, para priorizar acciones.
   - Como administrador, quiero revisar reservas por propiedad, para medir demanda.
   - Como usuario operativo, quiero consultar métricas, para apoyar decisiones.
   - Como administrador, quiero comparar objetivos, para evaluar cumplimiento.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: rendimiento partner `/partner/hotels/{prop_id}/performance`]
 
 ## Paquete 5: Habitaciones, inventario y disponibilidad
 
@@ -331,9 +331,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Definir habitaciones comercializables.
-- Descripción: GA03 no maneja inventario de habitaciones real.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}/rooms` y `/partner/hotels/{prop_id}/rooms/new` para mantener tipos de habitación básicos en MongoDB. Permanece parcial porque no existe mapa físico completo ni sincronización con PMS.
 - Historias de usuario:
   - Como administrador, quiero crear tipos de habitación, para organizar inventario.
   - Como administrador, quiero asociar amenidades, para describir cada tipo.
@@ -350,9 +350,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 9
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Controlar disponibilidad por fecha.
-- Descripción: El modelo futuro incluye calendario de inventario, sin implementación en GA03.
+- Descripción: GA03 incorpora `/partner/hotels/{prop_id}/inventory` para registrar inventario por fecha y tipo de habitación en `room_inventory_calendar`. Permanece parcial porque no existe automatización externa ni cálculo integral de ocupación.
 - Historias de usuario:
   - Como administrador, quiero cargar inventario por fecha, para controlar disponibilidad.
   - Como administrador, quiero ver ocupación por calendario, para planificar ventas.
@@ -369,9 +369,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 7
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Evitar venta en fechas restringidas.
-- Descripción: GA03 no gestiona bloqueos de disponibilidad.
+- Descripción: GA03 incorpora bloqueo manual de fechas desde `/partner/hotels/{prop_id}/inventory`, persistiendo eventos en `blackout_dates` y `room_availability_blocks`. Permanece parcial porque no gobierna todavía reglas avanzadas ni cierres automáticos.
 - Historias de usuario:
   - Como administrador, quiero bloquear fechas, para evitar reservas no válidas.
   - Como administrador, quiero indicar motivo, para dejar trazabilidad.
@@ -409,9 +409,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Definir estructuras tarifarias por hotel.
-- Descripción: GA03 analiza precios históricos, pero no administra planes tarifarios.
+- Descripción: GA03 incorpora `/revenue/rate-plans` y `/revenue/rate-plans/new` para crear planes tarifarios básicos con tarifa base y regla estándar inicial. Permanece parcial porque no existe todavía motor completo de yield o reglas avanzadas.
 - Historias de usuario:
   - Como administrador, quiero crear planes tarifarios, para comercializar habitaciones.
   - Como administrador, quiero editar reglas de tarifa, para adaptar precios.
@@ -428,9 +428,9 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Ninguno
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Mantener calendario de precios.
-- Descripción: El modelo futuro incluye `hotel_rate_calendar`; no está implementado en GA03.
+- Descripción: GA03 incorpora `/revenue/hotel/{prop_id}/rates` para registrar tarifas por fecha, estadía mínima y cierre manual básico en `hotel_rate_calendar`. Permanece parcial porque no existe automatización externa ni reglas complejas de pricing.
 - Historias de usuario:
   - Como administrador, quiero fijar tarifas por fecha, para responder a temporada.
   - Como administrador, quiero aplicar reglas, para automatizar precios.
@@ -447,15 +447,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Usuario operativo
 - Prioridad: 7
 - Tipo: Táctico
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Configurar promociones comerciales.
-- Descripción: GA03 registra `promotion_flag` en datos analíticos, pero no crea campañas reales.
+- Descripción: GA03 incorpora `/revenue/promotions` y `/revenue/promotions/new` para registrar campañas promocionales básicas con porcentaje de descuento y cupón opcional, manteniendo además la evaluación analítica en `/analytics/promotions`.
 - Historias de usuario:
   - Como administrador, quiero crear campañas, para impulsar demanda.
   - Como administrador, quiero asociar cupones, para medir conversión.
   - Como usuario operativo, quiero consultar campañas, para analizar resultados.
   - Como administrador, quiero pausar campañas, para controlar presupuesto.
-- Imagen del caso de uso implementado: [No aplica en GA03]
+- Imagen del caso de uso implementado: [Pendiente: `/analytics/promotions`]
 
 ### CU24 Evaluar impacto de promociones
 
@@ -468,7 +468,7 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Tipo: Táctico
 - Estado: Parcial
 - Propósito: Analizar relación entre promoción, clic y reserva.
-- Descripción: El modelo dimensional incluye promoción y reservas; las visualizaciones avanzadas quedan en evolución.
+- Descripción: GA03 mantiene `/analytics/promotions` para evaluar impacto en eventos, clicks, reservas e ingresos, y ahora suma `/revenue/promotions` como contexto operativo de campañas configuradas. Permanece parcial porque el impacto no se vincula aún campaña por campaña a una reserva real.
 - Historias de usuario:
   - Como administrador, quiero medir reservas con promoción, para evaluar efectividad.
   - Como usuario operativo, quiero comparar eventos promovidos, para detectar patrones.
@@ -508,13 +508,13 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Tipo: Estratégico
 - Estado: Parcial
 - Propósito: Medir embudo desde búsqueda hasta reserva.
-- Descripción: Existen campos `click_bool` y `reserva_bool`; la analítica visual avanzada es parcial.
+- Descripción: GA03 expone `/analytics/conversion` con tasa de click, tasa de reserva, abandono y conversión posterior al click sobre los hechos analíticos actuales.
 - Historias de usuario:
   - Como usuario operativo, quiero medir clics, para evaluar interés.
   - Como usuario operativo, quiero medir reservas, para conocer conversión.
   - Como administrador, quiero cruzar conversión por destino, para priorizar mercados.
   - Como administrador, quiero comparar canales, para optimizar inversión.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: `/analytics/conversion`]
 
 ### CU27 Analizar ingresos brutos por hotel y destino
 
@@ -525,15 +525,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Administrador
 - Prioridad: 8
 - Tipo: Estratégico
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Evaluar ingresos calculados por reservas.
-- Descripción: `fact_hotel_reservations` incluye `reservas_brutas_usd`; los tableros avanzados quedan parciales.
+- Descripción: `fact_hotel_reservations` incluye `reservas_brutas_usd` y GA03 expone `/analytics/revenue` con ingresos por hotel, ingresos por destino y precio promedio.
 - Historias de usuario:
   - Como usuario operativo, quiero sumar ingresos por hotel, para identificar propiedades clave.
   - Como usuario operativo, quiero sumar ingresos por destino, para analizar mercado.
   - Como administrador, quiero revisar precios, para validar coherencia.
   - Como administrador, quiero exportar evidencia, para presentaciones.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: `/analytics/revenue`]
 
 ### CU28 Analizar comportamiento por país visitante y canal
 
@@ -544,15 +544,15 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - Actores secundarios: Administrador
 - Prioridad: 8
 - Tipo: Estratégico
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Segmentar demanda por origen y canal.
-- Descripción: Las dimensiones `dim_visitor_countries` y `dim_sites` existen; el análisis visual dedicado es parcial.
+- Descripción: Las dimensiones `dim_visitor_countries` y `dim_sites` existen y ahora se usan en `/analytics/visitor-markets` para analizar comportamiento por país visitante y canal.
 - Historias de usuario:
   - Como usuario operativo, quiero analizar país visitante, para entender origen de demanda.
   - Como usuario operativo, quiero analizar sitio/canal, para evaluar desempeño.
   - Como administrador, quiero cruzar país con reservas, para detectar mercados fuertes.
   - Como administrador, quiero cruzar canal con promoción, para mejorar estrategia.
-- Imagen del caso de uso implementado: [Pendiente]
+- Imagen del caso de uso implementado: [Pendiente: `/analytics/visitor-markets`]
 
 ## Paquete 8: Administración, datos, ETL y gobierno
 

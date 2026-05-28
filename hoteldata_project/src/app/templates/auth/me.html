@@ -1,9 +1,18 @@
 {% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link %}
 {% block content %}
 <section class="page-header">
-  <p class="eyebrow">Seguridad</p>
-  <h1>Mi sesión</h1>
-  <p class="page-lead">Estado actual de autenticación web.</p>
+  <div>
+    <p class="eyebrow">Seguridad</p>
+    <h1>Mi sesión</h1>
+    <p class="page-lead">Resumen del acceso actual y ruta principal asignada según el rol autenticado.</p>
+  </div>
+  {% if authenticated %}
+  <div class="page-actions">
+    {{ action_link(home_href, 'Ir a mi inicio', 'icon-dashboard', 'button-link') }}
+    {{ action_link('/auth/logout', 'Cerrar sesión', 'icon-auth') }}
+  </div>
+  {% endif %}
 </section>
 
 <section class="card file-details" style="max-width: 720px;">
@@ -14,17 +23,18 @@
       <tr><th>Usuario</th><td>{{ current_user.username }}</td></tr>
       <tr><th>Email</th><td>{{ current_user.email }}</td></tr>
       <tr><th>Rol principal</th><td>{{ current_user.primary_role }}</td></tr>
+      <tr><th>Inicio sugerido</th><td>{{ home_href }}</td></tr>
       <tr><th>Sesión activa</th><td>{{ session.is_active }}</td></tr>
       <tr><th>Expira</th><td>{{ session.expires_at }}</td></tr>
     </tbody>
   </table>
   <div class="action-bar">
-    <a class="button-link" href="/ta02">Ir a reservas</a>
-    <a class="button-link" href="/auth/logout">Cerrar sesión</a>
+    {{ action_link(home_href, 'Ir a mi panel', 'icon-dashboard', 'button-link') }}
+    {{ action_link('/auth/logout', 'Cerrar sesión', 'icon-auth') }}
   </div>
   {% else %}
   <p class="notice">No hay sesión activa.</p>
-  <a class="button-link" href="/auth/login">Iniciar sesión</a>
+  {{ action_link('/auth/login', 'Iniciar sesión', 'icon-auth', 'button-link') }}
   {% endif %}
 </section>
 {% endblock %}

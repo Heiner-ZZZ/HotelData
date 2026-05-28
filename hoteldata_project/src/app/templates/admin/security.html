@@ -1,35 +1,86 @@
 {% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link, shortcut_card, ui_icon %}
 {% block content %}
 <section class="page-header">
-  <p class="eyebrow">Administración</p>
-  <h1>Seguridad y accesos</h1>
-  <p class="page-lead">Vista de solo lectura para usuarios, roles, permisos, sesiones y actividad reciente.</p>
+  <div>
+    <p class="eyebrow">Administración</p>
+    <h1>Seguridad y accesos</h1>
+    <p class="page-lead">Centro de control del super administrador para usuarios, permisos, sesiones activas y trazabilidad reciente.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/admin/users', 'Usuarios', 'icon-auth', 'button-link') }}
+    {{ action_link('/dashboard', 'Dashboard', 'icon-dashboard') }}
+    {{ action_link('/etl-status', 'ETL', 'icon-etl') }}
+  </div>
 </section>
 
 <section class="metric-grid">
-  <article class="metric-card"><p>Usuarios</p><strong>{{ overview.counts.users }}</strong></article>
-  <article class="metric-card"><p>Roles</p><strong>{{ overview.counts.roles }}</strong></article>
-  <article class="metric-card"><p>Permisos</p><strong>{{ overview.counts.permissions }}</strong></article>
-  <article class="metric-card"><p>Sesiones</p><strong>{{ overview.counts.sessions }}</strong></article>
-  <article class="metric-card"><p>Actividad</p><strong>{{ overview.counts.activity }}</strong></article>
+  <article class="metric-card"><p>{{ ui_icon('icon-auth') }}<span>Usuarios</span></p><strong>{{ overview.counts.users }}</strong></article>
+  <article class="metric-card"><p>{{ ui_icon('icon-admin') }}<span>Roles</span></p><strong>{{ overview.counts.roles }}</strong></article>
+  <article class="metric-card"><p>{{ ui_icon('icon-quality') }}<span>Permisos</span></p><strong>{{ overview.counts.permissions }}</strong></article>
+  <article class="metric-card"><p>{{ ui_icon('icon-audit') }}<span>Sesiones</span></p><strong>{{ overview.counts.sessions }}</strong></article>
+  <article class="metric-card"><p>{{ ui_icon('icon-records') }}<span>Actividad</span></p><strong>{{ overview.counts.activity }}</strong></article>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><div><h2>Roles</h2><p class="panel-note">Roles base del modelo de seguridad.</p></div></div>
+  <div class="panel-head">
+    <div>
+      <h2>Flujo operativo del super admin</h2>
+      <p class="panel-note">Accesos más usados del recorrido administrativo, enlazados a módulos reales.</p>
+    </div>
+  </div>
+  <div class="shortcut-grid">
+    {{ shortcut_card('/admin/users', 'Administrar usuarios', 'Ver cuentas, roles principales y estado activo.', 'icon-auth') }}
+    {{ shortcut_card('/dashboard', 'Revisar dashboard', 'Abrir la lectura ejecutiva con gráficas actuales.', 'icon-dashboard') }}
+    {{ shortcut_card('/ta02/crud', 'Explorar CRUD analítico', 'Entrar a la tabla de hechos y dimensiones activas.', 'icon-collections') }}
+    {{ shortcut_card('/etl-status', 'Control ETL', 'Monitorear preparación, validación y ejecución de GA03.', 'icon-etl') }}
+    {{ shortcut_card('/analytics/reservations', 'Analítica de reservas', 'Consultar reservas, conversión y revenue.', 'icon-analytics') }}
+    {{ shortcut_card('/system/redis-status', 'Estado Redis', 'Verificar caché e integración técnica.', 'icon-records') }}
+  </div>
+</section>
+
+<details class="collapsible-panel">
+  <summary>
+    <div>
+      <h2>Roles</h2>
+      <p class="panel-note">Roles base del modelo de seguridad.</p>
+    </div>
+    <div class="collapsible-actions">
+      {{ action_link('/admin/reports/roles.pdf', 'PDF', 'icon-records') }}
+      <span class="collapsible-caret">{{ ui_icon('icon-dashboard') }}</span>
+    </div>
+  </summary>
+  <div class="collapsible-panel-body">
   <div class="table-wrap">
     <table class="records-table">
-      <thead><tr><th>Rol</th><th>Descripción</th></tr></thead>
+      <thead><tr><th>Rol</th><th>Descripción</th><th>Accesos visibles</th><th>Acción</th></tr></thead>
       <tbody>
         {% for role in overview.roles %}
-        <tr><td>{{ role.role_name }}</td><td>{{ role.description }}</td></tr>
+        <tr>
+          <td>{{ role.role_name }}</td>
+          <td>{{ role.description }}</td>
+          <td>{{ role.access_buttons | map(attribute='label') | join(', ') if role.access_buttons else 'Sin accesos visibles' }}</td>
+          <td>{{ action_link('/admin/roles/' ~ role.role_name, 'Editar', 'icon-auth') }}</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</section>
+  </div>
+</details>
 
-<section class="panel">
-  <div class="panel-head"><div><h2>Permisos</h2><p class="panel-note">Permisos disponibles para proteger rutas nuevas.</p></div></div>
+<details class="collapsible-panel">
+  <summary>
+    <div>
+      <h2>Permisos</h2>
+      <p class="panel-note">Permisos disponibles para proteger rutas nuevas.</p>
+    </div>
+    <div class="collapsible-actions">
+      {{ action_link('/admin/reports/permissions.pdf', 'PDF', 'icon-records') }}
+      <span class="collapsible-caret">{{ ui_icon('icon-dashboard') }}</span>
+    </div>
+  </summary>
+  <div class="collapsible-panel-body">
   <div class="table-wrap">
     <table class="records-table">
       <thead><tr><th>Permiso</th><th>Descripción</th></tr></thead>
@@ -40,10 +91,21 @@
       </tbody>
     </table>
   </div>
-</section>
+  </div>
+</details>
 
-<section class="panel">
-  <div class="panel-head"><div><h2>Sesiones recientes</h2><p class="panel-note">Últimas sesiones creadas desde el login básico.</p></div></div>
+<details class="collapsible-panel">
+  <summary>
+    <div>
+      <h2>Sesiones recientes</h2>
+      <p class="panel-note">Últimas sesiones creadas desde el login básico.</p>
+    </div>
+    <div class="collapsible-actions">
+      {{ action_link('/admin/reports/sessions.pdf', 'PDF', 'icon-records') }}
+      <span class="collapsible-caret">{{ ui_icon('icon-dashboard') }}</span>
+    </div>
+  </summary>
+  <div class="collapsible-panel-body">
   <div class="table-wrap">
     <table class="records-table">
       <thead><tr><th>Usuario</th><th>Activa</th><th>Creada</th><th>Expira</th></tr></thead>
@@ -54,10 +116,21 @@
       </tbody>
     </table>
   </div>
-</section>
+  </div>
+</details>
 
-<section class="panel">
-  <div class="panel-head"><div><h2>Actividad reciente</h2><p class="panel-note">Eventos registrados en user_activity_logs.</p></div></div>
+<details class="collapsible-panel">
+  <summary>
+    <div>
+      <h2>Actividad reciente</h2>
+      <p class="panel-note">Eventos registrados en user_activity_logs.</p>
+    </div>
+    <div class="collapsible-actions">
+      {{ action_link('/admin/reports/activity.pdf', 'PDF', 'icon-records') }}
+      <span class="collapsible-caret">{{ ui_icon('icon-dashboard') }}</span>
+    </div>
+  </summary>
+  <div class="collapsible-panel-body">
   <div class="table-wrap">
     <table class="records-table">
       <thead><tr><th>Acción</th><th>Usuario</th><th>Fecha</th></tr></thead>
@@ -68,5 +141,6 @@
       </tbody>
     </table>
   </div>
-</section>
+  </div>
+</details>
 {% endblock %}

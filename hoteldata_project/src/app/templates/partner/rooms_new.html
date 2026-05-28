@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Nuevo tipo de habitación</p>
+    <h1>{{ hotel.display_name }}</h1>
+    <p class="page-lead">Alta mínima del catálogo de habitaciones del hotel actual.</p>
+  </div>
+  <div class="page-actions">
+    <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/rooms">Volver a habitaciones</a>
+    <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/inventory">Inventario</a>
+  </div>
+</section>
+
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice">{{ error }}</div>{% endif %}
+
+<section class="panel">
+  <form method="post" class="form-grid reservation-form-grid">
+    <label class="field">
+      <span>Nombre</span>
+      <input type="text" name="name" value="{{ form_values.name }}" required>
+    </label>
+    <label class="field reservation-form-span">
+      <span>Descripción</span>
+      <textarea name="description">{{ form_values.description }}</textarea>
+    </label>
+    <label class="field">
+      <span>Max adults</span>
+      <input type="number" name="max_adults" min="1" step="1" value="{{ form_values.max_adults }}" required>
+    </label>
+    <label class="field">
+      <span>Max children</span>
+      <input type="number" name="max_children" min="0" step="1" value="{{ form_values.max_children }}" required>
+    </label>
+    <label class="field">
+      <span>Base capacity</span>
+      <input type="number" name="base_capacity" min="1" step="1" value="{{ form_values.base_capacity }}" required>
+    </label>
+    <div class="field inventory-checkbox">
+      <span>Estado</span>
+      <label class="inline"><input type="checkbox" name="is_active" {% if form_values.is_active %}checked{% endif %}> Activo</label>
+    </div>
+    <div class="page-actions reservation-form-span">
+      <button type="submit">Guardar tipo</button>
+      <a class="ghost-button" href="/partner/hotels/{{ hotel.prop_id }}/rooms">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

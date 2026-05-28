@@ -15,7 +15,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / 
 templates.env.cache = None
 
 
-@router.get("/")
+@router.get("/dashboard")
 def dashboard(request: Request):
     return templates.TemplateResponse(
         request,

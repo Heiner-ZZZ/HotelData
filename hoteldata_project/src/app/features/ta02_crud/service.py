@@ -84,18 +84,34 @@ SEARCH_FIELDS = {
 
 COLLECTION_LABELS = {
     "fact_hotel_reservations": "Tabla de hecho: reservas hoteleras",
-    "dim_hotels": "Dimension hoteles",
-    "dim_destinations": "Dimension destinos",
-    "dim_visitor_countries": "Dimension paises visitantes",
-    "dim_sites": "Dimension sitios",
-    "dim_dates": "Dimension fechas",
-    "dim_promotions": "Dimension promociones",
-    "dim_click_status": "Dimension estado de click",
-    "dim_reservation_status": "Dimension estado de reserva",
-    "dim_occupancy_profile": "Dimension perfil de ocupacion",
-    "dim_stay_length_category": "Dimension categoria de estancia",
-    "dim_booking_window_category": "Dimension categoria de anticipacion",
-    "dim_price_category": "Dimension categoria de precio",
+    "dim_hotels": "Hoteles",
+    "dim_destinations": "Destinos",
+    "dim_visitor_countries": "Paises visitantes",
+    "dim_sites": "Sitios",
+    "dim_dates": "Fechas",
+    "dim_promotions": "Promociones",
+    "dim_click_status": "Estado de click",
+    "dim_reservation_status": "Estado de reserva",
+    "dim_occupancy_profile": "Perfil de ocupacion",
+    "dim_stay_length_category": "Categoria de estancia",
+    "dim_booking_window_category": "Categoria de anticipacion",
+    "dim_price_category": "Categoria de precio",
+}
+
+COLLECTION_SHORT_LABELS = {
+    "fact_hotel_reservations": "Reservas hoteleras",
+    "dim_hotels": "Hoteles",
+    "dim_destinations": "Destinos",
+    "dim_visitor_countries": "Paises visitantes",
+    "dim_sites": "Sitios",
+    "dim_dates": "Fechas",
+    "dim_promotions": "Promociones",
+    "dim_click_status": "Estado de click",
+    "dim_reservation_status": "Estado de reserva",
+    "dim_stay_length_category": "Categoria de estancia",
+    "dim_booking_window_category": "Categoria de anticipacion",
+    "dim_price_category": "Categoria de precio",
+    "dim_occupancy_profile": "Perfil de ocupacion",
 }
 
 DISPLAY_COLUMNS = {
@@ -241,6 +257,7 @@ def collection_metadata() -> list[dict[str, Any]]:
         {
             "name": name,
             "label": COLLECTION_LABELS.get(name, name),
+            "short_label": COLLECTION_SHORT_LABELS.get(name, name),
             "search_fields": SEARCH_FIELDS.get(name, []),
         }
         for name in ordered

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link, shortcut_card %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Hotel Partner</p>
+    <h1>Propiedades del partner</h1>
+    <p class="page-lead">Consulta inicial para dueños o socios hoteleros con catálogo real desde <code>dim_hotels</code> y métricas analíticas desde MongoDB.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/partner/manual-reservations/new', 'Reserva manual', 'icon-booking', 'button-link') }}
+    {{ action_link('/analytics/revenue', 'Analytics', 'icon-analytics') }}
+    {{ action_link('/auth/me', 'Mi sesión', 'icon-auth') }}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Flujo del gerente hotelero</h2>
+      <p class="panel-note">Accesos principales del rol gerente sobre propiedades, reservas manuales y desempeño.</p>
+    </div>
+  </div>
+  <div class="shortcut-grid">
+    {{ shortcut_card('/partner/manual-reservations/new', 'Crear reserva manual', 'Registrar una solicitud operativa sin salir del entorno partner.', 'icon-booking') }}
+    {{ shortcut_card('/analytics/revenue', 'Revisar revenue', 'Consultar ingresos, conversión y señales comerciales.', 'icon-revenue') }}
+    {{ shortcut_card('/reservations', 'Consultar solicitudes', 'Ver solicitudes creadas y revisar sus estados.', 'icon-dashboard') }}
+    {{ shortcut_card('/auth/me', 'Ver sesión', 'Confirmar usuario activo y rol de acceso actual.', 'icon-auth') }}
+  </div>
+</section>
+
+<section class="panel search-panel">
+  <form method="get" action="/partner/hotels" class="hotel-filter-grid">
+    <label class="field">
+      <span>Buscar hotel o prop_id</span>
+      <input name="q" value="{{ results.query }}" placeholder="Hotel 1 o 123">
+    </label>
+    <div class="filter-actions">
+      <button type="submit">Consultar</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Hoteles disponibles</h2>
+      <p class="panel-note">{{ results.start_index }}-{{ results.end_index }} de {{ results.total }} propiedades.</p>
+    </div>
+    <div class="pagination-bar compact-pagination">
+      {% if prev_url %}<a class="ghost-button" href="{{ prev_url }}">Anterior</a>{% endif %}
+      <span class="pagination-status">Página {{ results.page }} de {{ results.total_pages or 1 }}</span>
+      {% if next_url %}<a class="ghost-button" href="{{ next_url }}">Siguiente</a>{% endif %}
+    </div>
+  </div>
+
+  {% if results["items"] %}
+  <div class="hotel-card-grid">
+    {% for item in results["items"] %}
+    <article class="hotel-result-card">
+      <div>
+        <p class="eyebrow">ID propiedad {{ item.prop_id }}</p>
+        <h3>{{ item.display_name }}</h3>
+        <p class="panel-note">{{ item.country_display_name }} · {{ item.prop_starrating or "N/D" }} estrellas · Review {{ item.review_score_label }}</p>
+      </div>
+      <div class="hotel-metrics">
+        <span><strong>{{ item.performance.searches }}</strong>búsquedas</span>
+        <span><strong>{{ item.performance.clicks }}</strong>clicks</span>
+        <span><strong>{{ item.performance.reservations }}</strong>reservas</span>
+        <span><strong>${{ item.performance.gross_revenue_label }}</strong>ingresos</span>
+      </div>
+      <div class="action-bar">
+        {{ action_link('/partner/hotels/' ~ item.prop_id, 'Detalle', 'icon-partner', 'button-link') }}
+        {{ action_link('/partner/hotels/' ~ item.prop_id ~ '/performance', 'Rendimiento', 'icon-analytics') }}
+        {{ action_link('/partner/hotels/' ~ item.prop_id ~ '/content', 'Contenido', 'icon-company') }}
+        {{ action_link('/partner/hotels/' ~ item.prop_id ~ '/content/edit', 'Editar', 'icon-auth') }}
+        {{ action_link('/partner/hotels/' ~ item.prop_id ~ '/rooms', 'Habitaciones', 'icon-hotels') }}
+        {{ action_link('/partner/hotels/' ~ item.prop_id ~ '/inventory', 'Inventario', 'icon-records') }}
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay propiedades para ese filtro</h3>
+    <p>Prueba con otro nombre o directamente con un <code>prop_id</code>.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

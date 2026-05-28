@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Revenue & analytics</p>
+    <h1>Reservas y eventos</h1>
+    <p class="page-lead">Resumen analítico de volumen, reservas, clicks e ingresos brutos sobre <code>{{ overview.source_collection }}</code>.</p>
+  </div>
+</section>
+
+<section class="stats-grid compact-grid analytics-summary-grid">
+  <article class="stat-card"><span class="stat-label">Total eventos</span><strong>{{ overview.total_events }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Reservas</span><strong>{{ overview.reservations }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Clicks</span><strong>{{ overview.clicks }}</strong></article>
+</section>
+
+<section class="stats-grid compact-grid">
+  <article class="stat-card"><span class="stat-label">Ingresos brutos</span><strong>${{ overview.gross_revenue_label }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Precio promedio</span><strong>${{ overview.avg_price_label }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Fuente</span><strong class="metric-compact">{{ overview.source_collection }}</strong></article>
+</section>
+{% endblock %}

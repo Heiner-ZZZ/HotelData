@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "components/ui_macros.html" import action_link %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Contenido hotelero</p>
+    <h1>{{ hotel.display_name }}</h1>
+    <p class="page-lead">Resumen operativo del perfil comercial del hotel. Desde aquí puede revisar contenido base, políticas, imágenes e historial reciente.</p>
+  </div>
+  <div class="page-actions">
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id, 'Detalle', 'icon-partner') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/performance', 'Rendimiento', 'icon-analytics', 'button-link') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/content/edit', 'Editar contenido', 'icon-auth') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/policies', 'Políticas', 'icon-quality') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/images', 'Imágenes', 'icon-company') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/rooms', 'Habitaciones', 'icon-hotels') }}
+    {{ action_link('/partner/hotels/' ~ hotel.prop_id ~ '/inventory', 'Inventario', 'icon-records') }}
+  </div>
+</section>
+
+<section class="grid compact-grid">
+  <article class="panel">
+    <div class="panel-head"><div><h2>Contenido visible</h2><p class="panel-note">Perfil descriptivo mínimo del hotel.</p></div></div>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><th>Descripción</th><td>{{ content_page.description or "Sin descripción todavía." }}</td></tr>
+          <tr><th>Highlights</th><td>{{ content_page.highlights or "Sin highlights todavía." }}</td></tr>
+          <tr><th>Amenities text</th><td>{{ content_page.amenities_text or "Sin amenities text todavía." }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><h2>Políticas actuales</h2><p class="panel-note">Control básico de operación comercial.</p></div></div>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><th>Check-in</th><td>{{ policies.check_in_time or "Pendiente" }}</td></tr>
+          <tr><th>Check-out</th><td>{{ policies.check_out_time or "Pendiente" }}</td></tr>
+          <tr><th>Cancelación</th><td>{{ policies.cancellation_policy or "Pendiente" }}</td></tr>
+          <tr><th>Mascotas</th><td>{{ policies.pet_policy or "Pendiente" }}</td></tr>
+          <tr><th>Niños</th><td>{{ policies.children_policy or "Pendiente" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><h2>Imágenes registradas</h2><p class="panel-note">{{ images_count }} URL(s) guardadas.</p></div></div>
+    {% if images %}
+      <div class="partner-image-grid">
+        {% for image in images %}
+        <div class="chip-card partner-image-card">
+          <span>{{ image.title or "Imagen sin título" }}</span>
+          <strong><a href="{{ image.image_url }}" target="_blank" rel="noreferrer">{{ image.image_url }}</a></strong>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h3>Sin imágenes registradas</h3>
+        <p>Puede comenzar agregando URLs de imagen desde la vista de imágenes.</p>
+      </div>
+    {% endif %}
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><h2>Historial reciente</h2><p class="panel-note">Cambios trazados en <code>hotel_content_changes</code>.</p></div></div>
+    {% if recent_changes %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Entidad</th><th>Acción</th><th>Fecha</th><th>Origen</th></tr>
+          </thead>
+          <tbody>
+            {% for change in recent_changes %}
+            <tr>
+              <td>{{ change.entity_type }}</td>
+              <td>{{ change.action }}</td>
+              <td>{{ change.changed_at_label }}</td>
+              <td>{{ change.changed_by }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h3>Sin cambios todavía</h3>
+        <p>Cuando guarde contenido, políticas o imágenes, aquí quedará la trazabilidad.</p>
+      </div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

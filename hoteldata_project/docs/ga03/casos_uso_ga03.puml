@@ -1,0 +1,290 @@
+@startuml
+left to right direction
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam backgroundColor #FFFFFF
+skinparam nodesep 50
+skinparam ranksep 140
+skinparam linetype ortho
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #2F6F9F
+  RoundCorner 20
+}
+
+skinparam package {
+  BackgroundColor #F8FCFF
+  BorderColor #2F6F9F
+  FontColor #0B2F4A
+  RoundCorner 18
+}
+
+skinparam usecase {
+  BackgroundColor #EAF6FF
+  BorderColor #2F6F9F
+  FontColor #0B2F4A
+  ArrowColor #2F6F9F
+}
+
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #2F6F9F
+  FontColor #0B2F4A
+}
+
+skinparam ArrowColor #2F6F9F
+skinparam ArrowThickness 1.2
+skinparam defaultFontName "Times New Roman"
+skinparam titleFontSize 20
+skinparam titleFontColor #0B2F4A
+
+title Diagrama UML de Casos de Uso\nHotelData - GA03
+
+' =========================
+' ACTORES HUMANOS
+' =========================
+
+actor "Cliente /\nViajero" as Cliente
+actor "Usuario\nregistrado" as Usuario
+actor "Hotel Partner /\nDueño de hotel" as Partner
+actor "Gerente general\ndel hotel" as Gerente
+actor "Revenue\nManager" as Revenue
+actor "Marketing\nhotelero" as Marketing
+actor "Administrador\ndel sistema" as Admin
+actor "Operador\nde datos" as Operador
+actor "Auditor\nde datos" as Auditor
+
+' =========================
+' SISTEMAS EXTERNOS
+' =========================
+
+actor "PocketBase\nFuente operacional" as PocketBase
+actor "Airflow\nOrquestador ETL" as Airflow
+actor "MongoDB\nBase analítica" as MongoDB
+actor "PMS /\nChannel Manager" as PMS
+actor "Pasarela\nde pago" as Pago
+actor "Servicio correo /\nnotificaciones" as Notificaciones
+actor "Redis\nCache" as Redis
+
+rectangle "HotelData\nPlataforma web/responsiva de reservas hoteleras" {
+
+  ' =========================
+  ' PAQUETE 1
+  ' =========================
+
+  package "Paquete 1: Experiencia del cliente y búsqueda hotelera" {
+    usecase "CU01\nBuscar hoteles por\ndestino, fecha y ocupación" as CU01
+    usecase "CU02\nFiltrar hoteles por\nprecio, estrellas,\npromoción y servicios" as CU02
+    usecase "CU03\nConsultar detalle\nde hotel" as CU03
+    usecase "CU04\nComparar hoteles\ndisponibles" as CU04
+  }
+
+  ' =========================
+  ' PAQUETE 2
+  ' =========================
+
+  package "Paquete 2: Cuenta, sesión y perfil de usuario" {
+    usecase "CU05\nRegistrarse como\nusuario" as CU05
+    usecase "CU06\nIniciar sesión y\nvalidar rol" as CU06
+    usecase "CU07\nGestionar perfil\nde viajero" as CU07
+    usecase "CU08\nConsultar historial\nde actividad" as CU08
+  }
+
+  ' =========================
+  ' PAQUETE 3
+  ' =========================
+
+  package "Paquete 3: Core de reservas hoteleras" {
+    usecase "CU09\nCrear solicitud\nde reserva" as CU09
+    usecase "CU10\nConsultar estado\nde reserva" as CU10
+    usecase "CU11\nCancelar reserva\nsegún política" as CU11
+    usecase "CU12\nRegistrar reserva\nmanual" as CU12
+  }
+
+  ' =========================
+  ' PAQUETE 4
+  ' =========================
+
+  package "Paquete 4: Gestión hotelera / Partner Central" {
+    usecase "CU13\nAdministrar perfil\ndel hotel" as CU13
+    usecase "CU14\nAdministrar imágenes\ny contenido del hotel" as CU14
+    usecase "CU15\nAdministrar políticas\ndel hotel" as CU15
+    usecase "CU16\nConsultar rendimiento\nde propiedades" as CU16
+  }
+
+  ' =========================
+  ' PAQUETE 5
+  ' =========================
+
+  package "Paquete 5: Habitaciones, inventario y disponibilidad" {
+    usecase "CU17\nAdministrar tipos\nde habitación" as CU17
+    usecase "CU18\nAdministrar inventario\npor calendario" as CU18
+    usecase "CU19\nBloquear fechas\nno disponibles" as CU19
+    usecase "CU20\nSincronizar disponibilidad\ncon PMS / Channel Manager" as CU20
+  }
+
+  ' =========================
+  ' PAQUETE 6
+  ' =========================
+
+  package "Paquete 6: Tarifas, promociones y revenue" {
+    usecase "CU21\nAdministrar planes\ntarifarios" as CU21
+    usecase "CU22\nConfigurar tarifas\npor fecha" as CU22
+    usecase "CU23\nCrear campañas\npromocionales" as CU23
+    usecase "CU24\nEvaluar impacto\nde promociones" as CU24
+  }
+
+  ' =========================
+  ' PAQUETE 7
+  ' =========================
+
+  package "Paquete 7: Analytics, BI y toma de decisiones" {
+    usecase "CU25\nConsultar dashboard\nde reservas" as CU25
+    usecase "CU26\nAnalizar conversión\nbúsqueda-click-reserva" as CU26
+    usecase "CU27\nAnalizar ingresos brutos\npor hotel y destino" as CU27
+    usecase "CU28\nAnalizar comportamiento\npor país visitante y canal" as CU28
+  }
+
+  ' =========================
+  ' PAQUETE 8
+  ' =========================
+
+  package "Paquete 8: Administración, datos, ETL y gobierno" {
+    usecase "CU29\nEjecutar pipeline ETL\nde reservas" as CU29
+    usecase "CU30\nValidar Parquet,\ncalidad y rechazados" as CU30
+    usecase "CU31\nAdministrar usuarios,\nroles y permisos" as CU31
+    usecase "CU32\nConsultar auditoría\ny trazabilidad" as CU32
+  }
+}
+
+' =========================
+' RELACIONES ACTORES -> CU
+' =========================
+
+Cliente --> CU01
+Cliente --> CU02
+Cliente --> CU03
+Cliente --> CU04
+Cliente --> CU05
+
+Usuario --> CU06
+Usuario --> CU07
+Usuario --> CU08
+Usuario --> CU09
+Usuario --> CU10
+Usuario --> CU11
+
+Partner --> CU13
+Partner --> CU16
+
+Gerente --> CU12
+Gerente --> CU15
+Gerente --> CU17
+Gerente --> CU18
+Gerente --> CU19
+
+Marketing --> CU14
+Marketing --> CU23
+
+Revenue --> CU21
+Revenue --> CU22
+Revenue --> CU24
+Revenue --> CU25
+Revenue --> CU26
+Revenue --> CU27
+Revenue --> CU28
+
+Admin --> CU31
+Admin --> CU25
+Admin --> CU32
+
+Operador --> CU29
+Operador --> CU30
+Operador --> CU32
+
+Auditor --> CU25
+Auditor --> CU30
+Auditor --> CU32
+
+' =========================
+' SISTEMAS EXTERNOS -> CU
+' =========================
+
+PocketBase --> CU29
+Airflow --> CU29
+CU29 --> MongoDB
+CU30 --> MongoDB
+CU32 --> MongoDB
+
+PMS --> CU20
+CU20 --> MongoDB
+
+CU09 --> Pago
+CU09 --> Notificaciones
+CU10 --> Notificaciones
+CU11 --> Notificaciones
+CU12 --> Notificaciones
+
+Redis --> CU25
+Redis --> CU26
+Redis --> CU27
+Redis --> CU28
+
+' =========================
+' INCLUDE
+' =========================
+
+CU01 .> CU02 : <<include>>
+
+CU07 .> CU06 : <<include>>
+CU08 .> CU06 : <<include>>
+
+CU09 .> CU06 : <<include>>
+CU09 .> CU03 : <<include>>
+CU10 .> CU06 : <<include>>
+CU12 .> CU06 : <<include>>
+
+CU13 .> CU06 : <<include>>
+CU16 .> CU25 : <<include>>
+
+CU17 .> CU13 : <<include>>
+CU18 .> CU17 : <<include>>
+
+CU21 .> CU06 : <<include>>
+CU22 .> CU21 : <<include>>
+CU23 .> CU21 : <<include>>
+CU24 .> CU23 : <<include>>
+CU24 .> CU26 : <<include>>
+
+CU25 .> CU26 : <<include>>
+CU25 .> CU27 : <<include>>
+CU25 .> CU28 : <<include>>
+
+CU29 .> CU30 : <<include>>
+CU30 .> CU32 : <<include>>
+CU31 .> CU06 : <<include>>
+
+' =========================
+' EXTEND
+' =========================
+
+CU03 .> CU01 : <<extend>>
+CU04 .> CU01 : <<extend>>
+
+CU05 .> CU06 : <<extend>>
+
+CU11 .> CU10 : <<extend>>
+CU11 .> CU15 : <<include>>
+
+CU14 .> CU13 : <<extend>>
+CU15 .> CU13 : <<extend>>
+
+CU19 .> CU18 : <<extend>>
+CU20 .> CU18 : <<extend>>
+
+CU32 .> CU29 : <<extend>>
+
+@enduml

@@ -19,18 +19,26 @@ from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.features.ta02_crud.routes import web_router as ta02_web_router
 from src.app.modules.audit.routes import router as modular_audit_router
 from src.app.modules.admin.routes import router as admin_router
+from src.app.modules.admin.service import ensure_user_status_field
 from src.app.modules.auth.routes import router as auth_module_router
 from src.app.modules.auth.routes import web_router as auth_web_router
 from src.app.modules.hotels.routes import router as hotels_module_router
+from src.app.modules.hotels.routes import web_router as hotels_web_router
 from src.app.modules.partner.routes import router as partner_module_router
+from src.app.modules.partner.routes import web_router as partner_web_router
 from src.app.modules.reservations.routes import router as reservations_module_router
+from src.app.modules.reservations.routes import web_router as reservations_web_router
 from src.app.modules.revenue.routes import router as revenue_module_router
+from src.app.modules.revenue.routes import ops_router as revenue_ops_router
+from src.app.modules.revenue.routes import web_router as revenue_web_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
+from src.app.security.middleware import role_access_middleware
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="HotelData Hub", version="1.0.0")
+    app.middleware("http")(role_access_middleware)
     app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
     app.include_router(dashboard_router)
     app.include_router(records_router)
@@ -47,7 +55,12 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(auth_module_router)
     app.include_router(users_module_router)
+    app.include_router(hotels_web_router)
     app.include_router(hotels_module_router)
+    app.include_router(partner_web_router)
+    app.include_router(revenue_web_router)
+    app.include_router(revenue_ops_router)
+    app.include_router(reservations_web_router)
     app.include_router(reservations_module_router)
     app.include_router(partner_module_router)
     app.include_router(revenue_module_router)
@@ -56,6 +69,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def _seed_default_catalogs() -> None:
         ensure_default_catalogs()
+        ensure_user_status_field()
     return app
 
 

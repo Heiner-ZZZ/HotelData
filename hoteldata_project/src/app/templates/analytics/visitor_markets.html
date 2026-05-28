@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Visitor markets</p>
+    <h1>Países visitantes y canales</h1>
+    <p class="page-lead">Lectura por nombres amigables demo para país visitante y canal, manteniendo IDs técnicos en segundo plano.</p>
+  </div>
+</section>
+
+<section class="insight-grid">
+  <article class="panel">
+    <div class="panel-head"><div><h2>Top países</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>País visitante</th><th>Eventos</th><th>Reservas</th></tr></thead>
+        <tbody>
+          {% for item in overview.countries %}
+          <tr><td>{{ item.label }}<div class="record-sub">ID técnico: {{ item.technical_id }}</div></td><td>{{ item.events }}</td><td>{{ item.reservations }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+  <article class="panel">
+    <div class="panel-head"><div><h2>Top sitios</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Canal</th><th>Eventos</th><th>Clicks</th><th>Reservas</th></tr></thead>
+        <tbody>
+          {% for item in overview.sites %}
+          <tr><td>{{ item.label }}<div class="record-sub">ID técnico: {{ item.technical_id }}</div></td><td>{{ item.events }}</td><td>{{ item.clicks }}</td><td>{{ item.reservations }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

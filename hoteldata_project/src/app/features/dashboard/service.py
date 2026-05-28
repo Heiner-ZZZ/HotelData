@@ -62,12 +62,14 @@ def _country_breakdown() -> list[dict[str, Any]]:
         item["visitor_location_country_id"]: item
         for item in db.dim_visitor_countries.find(
             {"visitor_location_country_id": {"$in": ids}},
-            {"_id": 0, "visitor_location_country_id": 1, "country_name": 1},
+            {"_id": 0, "visitor_location_country_id": 1, "country_name": 1, "country_display_name": 1},
         )
     }
     return [
         {
-            "label": lookup.get(item["key"], {}).get("country_name") or f"País {item['key']}",
+            "label": lookup.get(item["key"], {}).get("country_display_name")
+            or lookup.get(item["key"], {}).get("country_name")
+            or f"Mercado visitante {item['key']}",
             "count": item["count"],
         }
         for item in grouped
@@ -113,22 +115,79 @@ def dashboard_overview() -> dict[str, Any]:
     bookings = int(totals.get("bookings", 0) or 0)
     promotions = int(totals.get("promotions", 0) or 0)
     rejected = int((latest_quality or {}).get("rejected_records", 0) or 0)
+    booking_rate = round((bookings / total_events) * 100, 2) if total_events else 0
+    promotion_rate = round((promotions / total_events) * 100, 2) if total_events else 0
+    completion_rate = round(float((latest_quality or {}).get("completeness_score", 0) or 0) * 100, 2)
+    avg_price = round(float(totals.get("avg_price", 0) or 0), 2)
+    gross_revenue = round(float(totals.get("gross_revenue", 0) or 0), 2)
+
+    kpis = [
+        {
+            "label": "Eventos cargados",
+            "value": f"{total_events}",
+            "detail": f"Hoteles {len(distinct_hotels)} · destinos {len(distinct_destinations)} · países {len(distinct_countries)}",
+            "trend": "Cobertura completa",
+            "direction": "up",
+            "icon": "icon-records",
+        },
+        {
+            "label": "Reservas completadas",
+            "value": f"{bookings}",
+            "detail": f"Conversión {booking_rate}%",
+            "trend": "Reserva sobre eventos",
+            "direction": "up" if bookings > 0 else "down",
+            "icon": "icon-booking",
+        },
+        {
+            "label": "Precio medio",
+            "value": f"${avg_price}",
+            "detail": f"Revenue bruto ${gross_revenue}",
+            "trend": "Ingreso estimado",
+            "direction": "up" if avg_price > 0 else "down",
+            "icon": "icon-revenue",
+        },
+        {
+            "label": "Promociones",
+            "value": f"{promotions}",
+            "detail": f"Tasa promoción {promotion_rate}%",
+            "trend": "Campañas detectadas",
+            "direction": "up" if promotions > 0 else "down",
+            "icon": "icon-revenue",
+        },
+        {
+            "label": "Completitud",
+            "value": f"{completion_rate}%",
+            "detail": "Calidad estructural",
+            "trend": "Dataset validado",
+            "direction": "up" if completion_rate >= 95 else "down",
+            "icon": "icon-quality",
+        },
+        {
+            "label": "Rechazados",
+            "value": f"{rejected}",
+            "detail": "Incidencias de calidad",
+            "trend": "Sin rechazos" if rejected == 0 else "Revisar registros",
+            "direction": "up" if rejected == 0 else "down",
+            "icon": "icon-alert",
+        },
+    ]
 
     return {
         "headline": {
             "total_events": total_events,
             "bookings": bookings,
-            "booking_rate": round((bookings / total_events) * 100, 2) if total_events else 0,
+            "booking_rate": booking_rate,
             "promotions": promotions,
-            "promotion_rate": round((promotions / total_events) * 100, 2) if total_events else 0,
-            "avg_price": round(float(totals.get("avg_price", 0) or 0), 2),
-            "gross_revenue": round(float(totals.get("gross_revenue", 0) or 0), 2),
+            "promotion_rate": promotion_rate,
+            "avg_price": avg_price,
+            "gross_revenue": gross_revenue,
             "distinct_hotels": len(distinct_hotels),
             "distinct_destinations": len(distinct_destinations),
             "distinct_countries": len(distinct_countries),
             "rejected_records": rejected,
-            "completion_rate": round(float((latest_quality or {}).get("completeness_score", 0) or 0) * 100, 2),
+            "completion_rate": completion_rate,
         },
+        "kpis": kpis,
         "latest_execution": latest_execution,
         "latest_quality": latest_quality,
         "charts": {
