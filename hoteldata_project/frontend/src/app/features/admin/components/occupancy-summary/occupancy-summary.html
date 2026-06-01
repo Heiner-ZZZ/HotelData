@@ -1,0 +1,11 @@
+<section class="surface-card summary-card">
+  <h2>Resumen operativo</h2>
+  <div class="summary-grid">
+    @for (item of items(); track item.label) {
+      <article>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+      </article>
+    }
+  </div>
+</section>

@@ -1,0 +1,18 @@
+<div class="hotel-search-page">
+  <app-page-header
+    eyebrow="Cliente / viajero"
+    title="Buscar hoteles"
+    description="Estructura inicial del flujo traveler. La migracion completa del buscador dependera de un endpoint JSON dedicado."
+  />
+
+  <div class="page-grid">
+    <app-filter-sidebar />
+    <section class="results-column">
+      <app-sort-control />
+      <app-empty-state
+        title="Migracion del buscador en progreso"
+        description="La vista Angular ya tiene el espacio y las responsabilidades separadas para filtros, resultados y ordenacion."
+      />
+    </section>
+  </div>
+</div>

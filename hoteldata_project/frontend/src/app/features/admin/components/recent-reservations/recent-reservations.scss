@@ -1,0 +1,37 @@
+.latest-card {
+  padding: 1rem;
+}
+
+.card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h2,
+p,
+dd,
+dt {
+  margin: 0;
+}
+
+p,
+dt {
+  color: var(--muted-text);
+}
+
+dl {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.empty-copy {
+  margin-top: 1rem;
+}

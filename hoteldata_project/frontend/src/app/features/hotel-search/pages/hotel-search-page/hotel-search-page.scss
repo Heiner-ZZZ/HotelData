@@ -1,0 +1,21 @@
+.hotel-search-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.results-column {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 920px) {
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Request
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -26,6 +27,7 @@ def _login_redirect(request: Request) -> RedirectResponse:
 
 async def role_access_middleware(request: Request, call_next):
     path = request.url.path
+    is_api_request = path.startswith("/api/")
     if is_public_path(path):
         request.state.current_user = None
         request.state.navigation = get_navigation_for_user(None)
@@ -44,6 +46,15 @@ async def role_access_middleware(request: Request, call_next):
         return RedirectResponse(get_default_redirect_for_role(user.get("primary_role")), status_code=303)
 
     if not user:
+        if is_api_request:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "authenticated": False,
+                    "detail": "Authentication required",
+                    "login_url": f"/auth/login?next={quote(path, safe='/?=&')}",
+                },
+            )
         return _login_redirect(request)
 
     if path.startswith("/auth/"):
@@ -59,6 +70,16 @@ async def role_access_middleware(request: Request, call_next):
             allowed = True
 
     if not allowed:
+        if is_api_request:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "authenticated": True,
+                    "detail": "Forbidden",
+                    "required_permission": rule.permission if rule else None,
+                    "allowed_roles": list(rule.roles) if rule else [],
+                },
+            )
         return templates.TemplateResponse(
             request,
             "errors/403.html",

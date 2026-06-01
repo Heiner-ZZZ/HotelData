@@ -11,6 +11,7 @@ from src.app.features.quality.service import quality_summary
 
 
 router = APIRouter()
+api_router = APIRouter(prefix="/api/dashboard", tags=["dashboard-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 templates.env.cache = None
 
@@ -26,3 +27,8 @@ def dashboard(request: Request):
             "overview": dashboard_overview(),
         },
     )
+
+
+@api_router.get("/overview")
+def dashboard_overview_api():
+    return dashboard_overview()

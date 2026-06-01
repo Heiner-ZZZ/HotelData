@@ -1,0 +1,14 @@
+<div class="public-shell">
+  <header class="public-header">
+    <a class="brand" routerLink="/search">HotelData</a>
+    <nav aria-label="Navegacion principal">
+      @for (item of navigation; track item.href) {
+        <a routerLinkActive="is-active" [routerLink]="item.href">{{ item.label }}</a>
+      }
+    </nav>
+  </header>
+
+  <main class="public-main">
+    <router-outlet />
+  </main>
+</div>

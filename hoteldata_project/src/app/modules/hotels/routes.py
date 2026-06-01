@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -13,6 +13,7 @@ from src.app.modules.hotels.service import compare_hotel_options, compare_hotels
 
 router = APIRouter(prefix="/modules/hotels", tags=["modules-hotels"])
 web_router = APIRouter(tags=["hotels"])
+api_router = APIRouter(prefix="/api/hotels", tags=["hotels-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -88,3 +89,36 @@ def detail(request: Request, prop_id: int):
     if hotel is None:
         return RedirectResponse(url="/hotels/search", status_code=303)
     return templates.TemplateResponse(request, "hotels/detail.html", {"hotel": hotel})
+
+
+@api_router.get("/search")
+def search_api(
+    destination: str = "",
+    min_price: str = "",
+    max_price: str = "",
+    min_stars: str = "",
+    promotion: str = "",
+    adults: str = "",
+    children: str = "",
+    rooms: str = "",
+    page: int = Query(default=1, ge=1),
+):
+    filters = {
+        "destination": destination,
+        "min_price": min_price,
+        "max_price": max_price,
+        "min_stars": min_stars,
+        "promotion": promotion,
+        "adults": adults,
+        "children": children,
+        "rooms": rooms,
+    }
+    return search_hotels(filters, page=page, page_size=10)
+
+
+@api_router.get("/{prop_id}")
+def detail_api(prop_id: int):
+    hotel = hotel_detail(prop_id)
+    if hotel is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hotel not found")
+    return hotel

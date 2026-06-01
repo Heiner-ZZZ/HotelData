@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -25,6 +25,7 @@ from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/auth", tags=["modules-auth"])
 web_router = APIRouter(prefix="/auth", tags=["auth"])
+api_router = APIRouter(prefix="/api/auth", tags=["auth-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -119,3 +120,36 @@ def me(request: Request, current_user: dict = Depends(require_login)):
             "home_href": home_href,
         },
     )
+
+
+@api_router.get("/me")
+def me_api(request: Request):
+    db = get_database()
+    user, session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
+    if not user or not session:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "authenticated": False,
+                "login_url": "/auth/login",
+            },
+        )
+
+    home_href = get_default_redirect_for_role(user.get("primary_role"))
+    return {
+        "authenticated": True,
+        "user": {
+            "user_id": str(user.get("_id") or user.get("user_id") or ""),
+            "username": user.get("username") or "",
+            "email": user.get("email") or "",
+            "display_name": user.get("display_name") or user.get("full_name") or user.get("username") or "",
+            "primary_role": user.get("primary_role") or "",
+        },
+        "session": {
+            "session_token": session.get("session_token") or "",
+            "expires_at": session.get("expires_at").isoformat() if hasattr(session.get("expires_at"), "isoformat") else session.get("expires_at"),
+            "created_at": session.get("created_at").isoformat() if hasattr(session.get("created_at"), "isoformat") else session.get("created_at"),
+        },
+        "home_href": home_href,
+        "login_url": "/auth/login",
+    }

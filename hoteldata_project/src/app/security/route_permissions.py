@@ -12,14 +12,20 @@ class AccessRule:
     roles: tuple[str, ...] = ()
 
 
-PUBLIC_PREFIXES = ("/static",)
-PUBLIC_PATHS = ("/auth/login",)
+PUBLIC_PREFIXES = ("/static", "/api/hotels")
+PUBLIC_PATHS = ("/auth/login", "/api/auth/me")
 
 
 ROUTE_RULES = [
     AccessRule("/admin/security", permission="users.manage"),
     AccessRule("/admin/users", permission="users.manage"),
     AccessRule("/dashboard", permission="dashboard.read"),
+    AccessRule("/api/dashboard", permission="dashboard.read"),
+    AccessRule("/api/reservations", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel")),
+    AccessRule(
+        "/api/management",
+        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero"),
+    ),
     AccessRule("/ta02/crud", methods=("GET",), permission="crud.read"),
     AccessRule("/ta02/crud", methods=("POST", "PUT", "PATCH", "DELETE"), permission="crud.write"),
     AccessRule("/api", methods=("GET",), permission="crud.read"),

@@ -37,6 +37,9 @@ services:
       - "8090:8090"
     volumes:
       - pocketbase_data:/pb_data
+      # Mount host PocketBase migrations so they are applied on startup
+      # Adjust the host path if your migrations are stored elsewhere.
+      - C:/pocketbase/pb_migrations:/pb_migrations:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
       interval: 20s
@@ -46,7 +49,7 @@ services:
 
   app:
     build:
-      context: .
+      context: .1
     container_name: hoteldata_app
     restart: unless-stopped
     ports:

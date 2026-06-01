@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Form, Query, Request, status
+from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -22,6 +22,7 @@ from src.app.modules.reservations.service import (
 
 router = APIRouter(prefix="/modules/reservations", tags=["modules-reservations"])
 web_router = APIRouter(tags=["reservations"])
+api_router = APIRouter(prefix="/api/reservations", tags=["reservations-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -194,3 +195,42 @@ def manual_reservation_submit(
             {"error": str(exc), "hotel": hotel, "hotel_options": reservation_hotel_options(), "form_values": form_data},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
+
+
+@api_router.get("")
+def reservations_list_api(page: int = Query(default=1, ge=1)):
+    return list_bookings(page=page, page_size=20)
+
+
+@api_router.get("/options")
+def reservations_options_api():
+    return {"hotel_options": reservation_hotel_options()}
+
+
+@api_router.post("", status_code=status.HTTP_201_CREATED)
+def reservations_create_api(payload: dict = Body(...)):
+    try:
+        reservation_input = build_reservation_input(payload, source="angular_api")
+        return create_booking(reservation_input)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.get("/{booking_id}")
+def reservation_detail_api(booking_id: str):
+    detail = get_booking_detail(booking_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+    return detail
+
+
+@api_router.post("/{booking_id}/cancel")
+def reservation_cancel_api(booking_id: str, payload: dict = Body(default={})):
+    try:
+        return cancel_booking(
+            booking_id,
+            reason=str(payload.get("reason") or "cancelled_by_user"),
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

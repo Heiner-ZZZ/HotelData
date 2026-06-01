@@ -1,0 +1,41 @@
+.public-shell {
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.public-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--surface);
+}
+
+.brand {
+  color: var(--app-text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+nav a {
+  color: var(--muted-text);
+  text-decoration: none;
+}
+
+nav a.is-active {
+  color: var(--accent);
+}
+
+.public-main {
+  padding: 1.5rem;
+}

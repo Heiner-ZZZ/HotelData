@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -27,6 +27,7 @@ from src.app.modules.revenue.service import (
 router = APIRouter(prefix="/modules/revenue", tags=["modules-revenue"])
 web_router = APIRouter(prefix="/analytics", tags=["analytics"])
 ops_router = APIRouter(prefix="/revenue", tags=["revenue"])
+api_router = APIRouter(prefix="/api/management", tags=["management-revenue-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -210,3 +211,38 @@ def promotions_new_submit(
             status_code=303,
         )
     return RedirectResponse(url="/revenue/promotions?message=Promocion+registrada", status_code=303)
+
+
+@api_router.get("/rates")
+def rates_api(prop_id: int = Query(..., ge=1)):
+    return hotel_rates_overview(prop_id)
+
+
+@api_router.post("/rates/plans", status_code=status.HTTP_201_CREATED)
+def create_rate_plan_api(payload: dict = Body(...)):
+    try:
+        return create_rate_plan(
+            prop_id=payload.get("prop_id"),
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            base_rate=payload.get("base_rate"),
+            currency=str(payload.get("currency") or "USD"),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.post("/rates/calendar")
+def save_rate_calendar_api(payload: dict = Body(...)):
+    try:
+        return save_hotel_rate(
+            prop_id=int(payload.get("prop_id") or 0),
+            rate_plan_id=str(payload.get("rate_plan_id") or ""),
+            date=str(payload.get("date") or ""),
+            rate_amount=payload.get("rate_amount"),
+            min_stay_nights=payload.get("min_stay_nights"),
+            is_closed=payload.get("is_closed", False),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

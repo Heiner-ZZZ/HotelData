@@ -1,0 +1,23 @@
+<article class="hotel-card surface-card">
+  <div class="card-head">
+    <div>
+      <p class="eyebrow">Propiedad {{ hotel().id }}</p>
+      <h2>{{ hotel().name }}</h2>
+      <p>{{ hotel().location }} · Review {{ hotel().reviewLabel }}</p>
+    </div>
+    @if (hotel().hasPromotion) {
+      <app-status-badge tone="success" label="Con promocion" />
+    }
+  </div>
+
+  <dl>
+    <div>
+      <dt>Precio promedio</dt>
+      <dd>${{ hotel().avgPriceLabel }}</dd>
+    </div>
+    <div>
+      <dt>Conversion</dt>
+      <dd>{{ hotel().conversionRate }}%</dd>
+    </div>
+  </dl>
+</article>

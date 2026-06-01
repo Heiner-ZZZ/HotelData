@@ -1,0 +1,16 @@
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <a class="brand" routerLink="/admin">HotelData Hub</a>
+    <nav aria-label="Navegacion administrativa">
+      @for (item of navigation; track item.href) {
+        <a routerLinkActive="is-active" [routerLink]="item.href" [routerLinkActiveOptions]="{ exact: item.href === '/admin' }">
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="admin-content">
+    <router-outlet />
+  </div>
+</div>

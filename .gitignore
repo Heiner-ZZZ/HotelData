@@ -8,3 +8,233 @@ data/
 hoteldata_project/data/
 *.csv
 *.jsonl
+# ==========================================================
+# HotelData - Git Ignore
+# Backend FastAPI + Mongo/PocketBase + Angular frontend
+# ==========================================================
+
+# --------------------------
+# Python / Backend
+# --------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+hoteldata_airflow/venv/
+*.egg-info/
+dist/
+build/
+
+# Python local env/config
+.env
+.env.*
+!.env.example
+*.local
+local_settings.py
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# --------------------------
+# FastAPI / Uvicorn
+# --------------------------
+*.pid
+gunicorn.pid
+uvicorn.pid
+
+# --------------------------
+# Airflow local/runtime
+# --------------------------
+airflow/
+airflow_home/
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+webserver_config.py
+dags/__pycache__/
+*/__pycache__/
+
+# --------------------------
+# Data / ETL generated files
+# --------------------------
+hoteldata_project/data/raw/*
+hoteldata_project/data/staging/*
+hoteldata_project/data/processed/*
+hoteldata_project/data/reports/*
+hoteldata_project/data/backups/*
+hoteldata_project/data/tmp/*
+hoteldata_project/data/temp/*
+
+# keep folder placeholders if you use them
+!hoteldata_project/data/raw/.gitkeep
+!hoteldata_project/data/staging/.gitkeep
+!hoteldata_project/data/processed/.gitkeep
+!hoteldata_project/data/reports/.gitkeep
+!hoteldata_project/data/backups/.gitkeep
+
+# Heavy data formats
+*.csv
+*.parquet
+*.jsonl
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+
+# But allow documentation examples if needed
+!docs/**/*.csv
+!docs/**/*.json
+!docs/**/*.md
+
+# --------------------------
+# Mongo / backups / dumps
+# --------------------------
+dump/
+mongodb_backup/
+mongo_backup/
+*.bson
+*.metadata.json
+
+# --------------------------
+# PocketBase runtime
+# --------------------------
+hoteldata_project/pb_data/
+hoteldata_project/pb_migrations/
+hoteldata_project/pb_hooks/
+hoteldata_project/pb_public/
+hoteldata_project/pb_*.db
+hoteldata_project/pocketbase
+hoteldata_project/pocketbase.exe
+hoteldata_project/pb_data*.db
+hoteldata_project/pb_data_types_.d.ts
+
+# If you intentionally want to version PB migrations/hooks later,
+# remove pb_migrations/ and pb_hooks/ from this ignore.
+
+# --------------------------
+# Docker
+# --------------------------
+.docker/
+docker-data/
+docker-volumes/
+mongo_data/
+redis_data/
+pocketbase_data/
+*.tar
+
+# Do NOT ignore these:
+!Dockerfile
+!docker-compose.yml
+!docker-compose.*.yml
+!docker/README.md
+!docker/.env.example
+
+# --------------------------
+# Node / Angular frontend
+# --------------------------
+hoteldata_project/frontend/node_modules/
+hoteldata_project/frontend/dist/
+hoteldata_project/frontend/.angular/
+hoteldata_project/frontend/.cache/
+hoteldata_project/frontend/coverage/
+hoteldata_project/frontend/.nyc_output/
+hoteldata_project/frontend/npm-debug.log*
+hoteldata_project/frontend/yarn-debug.log*
+hoteldata_project/frontend/yarn-error.log*
+hoteldata_project/frontend/pnpm-debug.log*
+hoteldata_project/frontend/.npm/
+hoteldata_project/frontend/.eslintcache
+hoteldata_project/frontend/.vite/
+hoteldata_project/frontend/.turbo/
+
+# Angular generated
+.angular/
+node_modules/
+dist/
+coverage/
+
+# Keep frontend source/config
+!hoteldata_project/frontend/package.json
+!hoteldata_project/frontend/package-lock.json
+!hoteldata_project/frontend/angular.json
+!hoteldata_project/frontend/tsconfig*.json
+!hoteldata_project/frontend/proxy.conf.json
+!hoteldata_project/frontend/src/
+
+# --------------------------
+# IDE / Editor
+# --------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+*.code-workspace
+
+# --------------------------
+# OS files
+# --------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --------------------------
+# Temporary / rescue / generated
+# --------------------------
+*.tmp
+*.temp
+tmp/
+temp/
+backup/
+backups/
+recovered_frontend/
+vscode_history_rescue/
+hoteldata_project_backup_*/
+hoteldata_project/frontend_before_recovery/
+hoteldata_project/frontend_backup*/
+backup_*.patch
+*_backup.patch
+backup_status_actual.txt
+deep_frontend_search_results.txt
+
+# --------------------------
+# Documents generated for delivery
+# --------------------------
+# Usually keep docs source files, ignore office/pdf outputs if regenerated.
+*.docx
+*.pdf
+~$*.docx
+
+# If final deliverables must be versioned, remove these two:
+# *.docx
+# *.pdf
+
+# --------------------------
+# Secrets / certificates
+# --------------------------
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+service-account*.json
