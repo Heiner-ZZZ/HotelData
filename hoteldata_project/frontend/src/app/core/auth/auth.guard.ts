@@ -4,7 +4,7 @@ import { catchError, map, of } from 'rxjs';
 
 import { AuthService } from './auth.service';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
@@ -13,7 +13,11 @@ export const authGuard: CanActivateFn = () => {
   }
 
   return authService.loadSession().pipe(
-    map((state) => (state.authenticated ? true : router.createUrlTree(['/search']))),
-    catchError(() => of(router.createUrlTree(['/search'])))
+    map((sessionState) =>
+      sessionState.authenticated
+        ? true
+        : router.createUrlTree(['/login'], { queryParams: { next: state.url } })
+    ),
+    catchError(() => of(router.createUrlTree(['/login'], { queryParams: { next: state.url } })))
   );
 };

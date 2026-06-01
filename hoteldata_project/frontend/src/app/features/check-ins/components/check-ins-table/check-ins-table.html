@@ -1,0 +1,21 @@
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Reserva</th><th>Huesped</th><th>Hotel</th><th>Estado</th><th>Habitaciones</th><th>Hora</th><th>Notas</th><th></th></tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.bookingId) {
+        <tr>
+          <td>{{ item.bookingId }}</td>
+          <td><strong>{{ item.guestName }}</strong><div>{{ item.guestEmail }}</div></td>
+          <td>{{ item.hotelLabel }}</td>
+          <td><div>{{ item.reservationStatusLabel }}</div><strong>{{ item.stayStatusLabel }}</strong></td>
+          <td>{{ item.roomsLabel }}</td>
+          <td>{{ item.estimatedTime }}</td>
+          <td>{{ item.notes }}</td>
+          <td><button type="button" [disabled]="!item.canComplete" (click)="complete.emit(item.bookingId)">Marcar</button></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

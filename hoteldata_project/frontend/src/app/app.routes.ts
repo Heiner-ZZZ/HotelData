@@ -25,7 +25,13 @@ export const routes: Routes = [
       },
       {
         path: 'login',
-        redirectTo: 'search'
+        loadComponent: () =>
+          import('./core/auth/login-redirect-page').then((m) => m.LoginRedirectPageComponent)
+      },
+      {
+        path: 'reservations',
+        loadChildren: () =>
+          import('./features/reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
       }
     ]
   },
@@ -83,8 +89,17 @@ export const routes: Routes = [
     redirectTo: 'management'
   },
   {
-    path: 'admin/:section',
-    redirectTo: 'management/:section'
+    // Legacy compatibility aliases preserved while /management is the primary experience.
+    path: 'admin/properties',
+    redirectTo: 'management/properties'
+  },
+  {
+    path: 'admin/availability',
+    redirectTo: 'management/availability'
+  },
+  {
+    path: 'admin/reservations',
+    redirectTo: 'management/reservations'
   },
   {
     path: '**',

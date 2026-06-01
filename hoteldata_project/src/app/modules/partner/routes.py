@@ -15,6 +15,7 @@ from src.app.modules.partner.service import (
     ensure_hotel_content_collections,
     ensure_inventory_collections,
     list_partner_hotels,
+    management_property_options,
     module_status,
     partner_hotel_content,
     partner_hotel_content_editor,
@@ -26,6 +27,7 @@ from src.app.modules.partner.service import (
     partner_hotel_rooms,
     save_inventory_entry,
     save_partner_hotel_content,
+    save_partner_hotel_amenities,
     save_partner_hotel_policies,
 )
 
@@ -33,6 +35,7 @@ from src.app.modules.partner.service import (
 router = APIRouter(prefix="/modules/partner", tags=["modules-partner"])
 web_router = APIRouter(prefix="/partner", tags=["partner"])
 api_router = APIRouter(prefix="/api/management", tags=["management-api"])
+legacy_admin_api_router = APIRouter(prefix="/api/admin", tags=["admin-legacy-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -342,12 +345,56 @@ def property_detail_api(prop_id: int):
     return detail
 
 
+@legacy_admin_api_router.get("/properties")
+def legacy_properties_api(q: str = "", page: int = Query(default=1, ge=1)):
+    return properties_api(q=q, page=page)
+
+
+@legacy_admin_api_router.get("/properties/{prop_id}")
+def legacy_property_detail_api(prop_id: int):
+    return property_detail_api(prop_id)
+
+
 @api_router.get("/rooms")
 def rooms_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_rooms(_require_prop_id(prop_id))
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
+
+
+@api_router.get("/rooms/options")
+def rooms_options_api():
+    properties = list_partner_hotels("", page=1, page_size=100)
+    return {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or item.get("hotel_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in properties["items"]
+        ]
+    }
+
+
+@api_router.post("/rooms", status_code=status.HTTP_201_CREATED)
+def rooms_create_api(payload: dict = Body(...)):
+    prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_room_type(
+            prop_id,
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            max_adults=payload.get("max_adults"),
+            max_children=payload.get("max_children"),
+            base_capacity=payload.get("base_capacity"),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
 
 
 @api_router.get("/availability")
@@ -358,8 +405,20 @@ def availability_api(prop_id: int = Query(..., ge=1)):
     return detail
 
 
-@api_router.post("/availability")
-def availability_update_api(payload: dict = Body(...)):
+@api_router.get("/availability/options")
+def availability_options_api(prop_id: int | None = Query(default=None, ge=1)):
+    response: dict[str, object] = {
+        "properties": management_property_options()
+    }
+    if prop_id:
+        rooms_detail = partner_hotel_rooms(_require_prop_id(prop_id))
+        if rooms_detail is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        response["room_types"] = rooms_detail.get("room_types", [])
+    return response
+
+
+def _availability_update(payload: dict):
     prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = save_inventory_entry(
@@ -375,6 +434,16 @@ def availability_update_api(payload: dict = Body(...)):
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
+
+
+@api_router.post("/availability")
+def availability_update_api(payload: dict = Body(...)):
+    return _availability_update(payload)
+
+
+@api_router.patch("/availability")
+def availability_patch_api(payload: dict = Body(...)):
+    return _availability_update(payload)
 
 
 @api_router.post("/availability/blackouts")
@@ -404,6 +473,11 @@ def policies_api(prop_id: int = Query(..., ge=1)):
     return detail
 
 
+@api_router.get("/policies/options")
+def policies_options_api():
+    return {"properties": management_property_options()}
+
+
 @api_router.put("/policies")
 def policies_update_api(payload: dict = Body(...)):
     prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
@@ -414,6 +488,9 @@ def policies_update_api(payload: dict = Body(...)):
         cancellation_policy=str(payload.get("cancellation_policy") or ""),
         pet_policy=str(payload.get("pet_policy") or ""),
         children_policy=str(payload.get("children_policy") or ""),
+        extra_bed_policy=str(payload.get("extra_bed_policy") or ""),
+        payment_policy=str(payload.get("payment_policy") or ""),
+        house_rules=str(payload.get("house_rules") or ""),
         changed_by="angular_api",
     )
     if saved is None:
@@ -429,13 +506,27 @@ def amenities_api(prop_id: int = Query(..., ge=1)):
     return detail
 
 
+@api_router.get("/amenities/options")
+def amenities_options_api(prop_id: int | None = Query(default=None, ge=1)):
+    response: dict[str, object] = {"properties": management_property_options()}
+    if prop_id:
+        detail = partner_hotel_content(_require_prop_id(prop_id))
+        if detail is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        response["catalog"] = detail.get("amenities", {}).get("catalog", [])
+        response["active_amenities"] = detail.get("amenities", {}).get("active_amenities", [])
+    return response
+
+
 @api_router.put("/amenities")
 def amenities_update_api(payload: dict = Body(...)):
     prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
-    saved = save_partner_hotel_content(
+    active_amenities = payload.get("active_amenities") or []
+    if not isinstance(active_amenities, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="active_amenities must be a list")
+    saved = save_partner_hotel_amenities(
         prop_id,
-        description=str(payload.get("description") or ""),
-        highlights=str(payload.get("highlights") or ""),
+        active_amenities=[str(item) for item in active_amenities],
         amenities_text=str(payload.get("amenities_text") or ""),
         changed_by="angular_api",
     )

@@ -146,6 +146,21 @@ def _clean_text(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _normalize_label(value: Any) -> str:
+    return " ".join(str(value or "").strip().split())
+
+
+def _split_multiline_tokens(value: Any) -> list[str]:
+    text = str(value or "")
+    normalized = text.replace("\r", "\n").replace(";", "\n").replace(",", "\n")
+    items: list[str] = []
+    for chunk in normalized.split("\n"):
+        clean = _normalize_label(chunk.lstrip("-* ").strip())
+        if clean:
+            items.append(clean)
+    return items
+
+
 def _safe_positive_int(value: Any, default: int = 0) -> int:
     parsed = _safe_int(value)
     if parsed is None:
@@ -206,9 +221,22 @@ def _policy_defaults(prop_id: int) -> dict[str, Any]:
         "cancellation_policy": "",
         "pet_policy": "",
         "children_policy": "",
+        "extra_bed_policy": "",
+        "payment_policy": "",
+        "house_rules": "",
         "source": "partner_manual",
         "updated_at": None,
     }
+
+
+DEFAULT_AMENITIES_CATALOG: dict[str, list[str]] = {
+    "General": ["Wi-Fi", "Recepcion 24 horas", "Aire acondicionado", "Parking", "Piscina", "Gimnasio"],
+    "Habitacion": ["TV", "Minibar", "Caja fuerte", "Balcon", "Servicio a la habitacion"],
+    "Gastronomia": ["Desayuno incluido", "Restaurante", "Bar", "Cafe"],
+    "Negocios": ["Centro de negocios", "Salas de reuniones"],
+    "Familia": ["Habitaciones familiares", "Cunas", "Camas extra"],
+    "Bienestar": ["Spa", "Sauna", "Masajes"],
+}
 
 
 def _recent_content_changes(prop_id: int, limit: int = 8) -> list[dict[str, Any]]:
@@ -228,6 +256,60 @@ def _content_page_for_prop(prop_id: int) -> dict[str, Any]:
     db = get_database()
     page = db.hotel_content_pages.find_one({"prop_id": prop_id}, {"_id": 0})
     return page or _content_page_defaults(prop_id)
+
+
+def _amenity_category(label: str) -> str:
+    normalized = label.lower()
+    checks = [
+        ("Habitacion", {"tv", "minibar", "caja fuerte", "balcon", "habitacion", "servicio a la habitacion"}),
+        ("Gastronomia", {"desayuno", "restaurante", "bar", "cafe"}),
+        ("Negocios", {"negocios", "reuniones", "business", "meeting"}),
+        ("Familia", {"familia", "cuna", "camas extra", "ninos", "niños"}),
+        ("Bienestar", {"spa", "sauna", "masajes", "wellness", "gimnasio"}),
+        ("General", {"wifi", "wi-fi", "parking", "recepcion", "aire acondicionado", "pool", "piscina"}),
+    ]
+    for category, keywords in checks:
+        if any(keyword in normalized for keyword in keywords):
+            return category
+    return "General"
+
+
+def _amenities_payload_for_prop(prop_id: int) -> dict[str, Any]:
+    page = _content_page_for_prop(prop_id)
+    stored_active = [_normalize_label(item) for item in page.get("active_amenities", []) if _normalize_label(item)]
+    parsed_active = _split_multiline_tokens(page.get("amenities_text"))
+    active_items = stored_active or parsed_active
+
+    catalog_items: list[dict[str, str]] = []
+    for category, labels in DEFAULT_AMENITIES_CATALOG.items():
+        for label in labels:
+            catalog_items.append({"category": category, "label": label})
+    for item in page.get("amenities_catalog", []):
+        label = _normalize_label(item.get("label"))
+        if label:
+            catalog_items.append({"category": _normalize_label(item.get("category")) or _amenity_category(label), "label": label})
+    for label in active_items:
+        catalog_items.append({"category": _amenity_category(label), "label": label})
+
+    seen: set[tuple[str, str]] = set()
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    active_lookup = {item.lower() for item in active_items}
+    for item in catalog_items:
+        category = _normalize_label(item.get("category")) or "General"
+        label = _normalize_label(item.get("label"))
+        key = (category.lower(), label.lower())
+        if not label or key in seen:
+            continue
+        seen.add(key)
+        grouped.setdefault(category, []).append({"label": label, "active": label.lower() in active_lookup})
+
+    return {
+        "active_amenities": active_items,
+        "catalog": [
+            {"category": category, "items": sorted(items, key=lambda entry: entry["label"].lower())}
+            for category, items in grouped.items()
+        ],
+    }
 
 
 def _policies_for_prop(prop_id: int) -> dict[str, Any]:
@@ -482,6 +564,7 @@ def partner_hotel_content(prop_id: int) -> dict[str, Any] | None:
     detail["images"] = images[:4]
     detail["images_count"] = len(images)
     detail["recent_changes"] = _recent_content_changes(prop_id)
+    detail["amenities"] = _amenities_payload_for_prop(prop_id)
     return detail
 
 
@@ -501,6 +584,17 @@ def partner_hotel_policies(prop_id: int) -> dict[str, Any] | None:
     detail["policies"] = _policies_for_prop(prop_id)
     detail["recent_changes"] = _recent_content_changes(prop_id)
     return detail
+
+
+def management_property_options(limit: int = 100) -> list[dict[str, Any]]:
+    results = list_partner_hotels("", page=1, page_size=min(max(limit, 1), 100))
+    return [
+        {
+            "prop_id": item["prop_id"],
+            "display_name": item.get("display_name") or f"Hotel {item['prop_id']}",
+        }
+        for item in results["items"]
+    ]
 
 
 def partner_hotel_images(prop_id: int) -> dict[str, Any] | None:
@@ -567,6 +661,49 @@ def save_partner_hotel_content(
     return document
 
 
+def save_partner_hotel_amenities(
+    prop_id: int,
+    *,
+    active_amenities: list[str],
+    amenities_text: str | None = None,
+    changed_by: str = "angular_api",
+) -> dict[str, Any] | None:
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+    ensure_hotel_content_collections()
+    db = get_database()
+    current = _content_page_for_prop(prop_id)
+    clean_active: list[str] = []
+    seen: set[str] = set()
+    for item in active_amenities:
+        label = _normalize_label(item)
+        key = label.lower()
+        if not label or key in seen:
+            continue
+        seen.add(key)
+        clean_active.append(label)
+    payload = {
+        "prop_id": prop_id,
+        "description": current.get("description") or "",
+        "highlights": current.get("highlights") or "",
+        "amenities_text": _clean_text(amenities_text) or ", ".join(clean_active),
+        "active_amenities": clean_active,
+        "amenities_catalog": [{"category": _amenity_category(label), "label": label} for label in clean_active],
+        "source": current.get("source") or "partner_manual",
+        "updated_at": _now(),
+    }
+    document = db.hotel_content_pages.find_one_and_update(
+        {"prop_id": prop_id},
+        {"$set": payload, "$setOnInsert": {"created_at": _now()}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+    )
+    _register_content_change(prop_id, "hotel_content_pages", "upsert_amenities", payload, changed_by=changed_by)
+    return document
+
+
 def save_partner_hotel_policies(
     prop_id: int,
     *,
@@ -575,6 +712,9 @@ def save_partner_hotel_policies(
     cancellation_policy: str,
     pet_policy: str,
     children_policy: str,
+    extra_bed_policy: str = "",
+    payment_policy: str = "",
+    house_rules: str = "",
     changed_by: str = "partner_web",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -589,6 +729,9 @@ def save_partner_hotel_policies(
         "cancellation_policy": _clean_text(cancellation_policy),
         "pet_policy": _clean_text(pet_policy),
         "children_policy": _clean_text(children_policy),
+        "extra_bed_policy": _clean_text(extra_bed_policy),
+        "payment_policy": _clean_text(payment_policy),
+        "house_rules": _clean_text(house_rules),
         "source": "partner_manual",
         "updated_at": _now(),
     }

@@ -10,10 +10,13 @@ from pymongo import ASCENDING, DESCENDING
 from src.database.connection import get_database
 from src.app.modules.hotels.service import hotel_detail
 from src.app.modules.partner.service import partner_hotel_detail
+from src.app.modules.partner.service import partner_hotel_policies
 from src.app.modules.reservations.schemas import ModuleStatus
 
 
 ALLOWED_STATUSES = {"requested", "confirmed", "cancelled", "rejected"}
+CHECKIN_COMPLETED_STATUSES = {"checked_in", "checked_out"}
+CHECKOUT_COMPLETED_STATUSES = {"checked_out"}
 
 
 @dataclass
@@ -348,3 +351,199 @@ def cleanup_test_booking(booking_id: str) -> dict[str, Any]:
         "manual_reservations": db.manual_reservations.delete_many({"booking_id": booking_id}).deleted_count,
     }
     return {"booking_id": booking_id, "deleted": True, "counts": deleted}
+
+
+def _booking_history_lookup(booking_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    if not booking_ids:
+        return {}
+    db = get_database()
+    items = list(
+        db.booking_status_history.find({"booking_id": {"$in": booking_ids}}, {"_id": 0})
+        .sort([("changed_at", ASCENDING)])
+    )
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in items:
+        grouped.setdefault(item["booking_id"], []).append(item)
+    return grouped
+
+
+def _guest_lookup(booking_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not booking_ids:
+        return {}
+    db = get_database()
+    guests = list(
+        db.booking_guests.find(
+            {"booking_id": {"$in": booking_ids}, "is_primary": True},
+            {"_id": 0},
+        )
+    )
+    return {item["booking_id"]: item for item in guests}
+
+
+def _derived_stay_status(booking: dict[str, Any], history: list[dict[str, Any]], *, flow: str) -> str:
+    explicit = str(booking.get("stay_status") or "").strip().lower()
+    if explicit:
+        return explicit
+    statuses = [str(item.get("status") or "").strip().lower() for item in history]
+    if "checked_out" in statuses:
+        return "checked_out"
+    if "checked_in" in statuses:
+        return "checked_in"
+    if booking.get("status") == "cancelled":
+        return "cancelled"
+    if booking.get("status") == "rejected":
+        return "no_show" if flow == "check_in" else "cancelled"
+    return "pending"
+
+
+def _reservation_status_label(status: str) -> str:
+    mapping = {
+        "requested": "Pendiente",
+        "confirmed": "Confirmada",
+        "cancelled": "Cancelada",
+        "rejected": "Rechazada",
+        "checked_in": "Check-in completado",
+        "checked_out": "Check-out completado",
+        "pending": "Pendiente",
+        "no_show": "No-show",
+    }
+    return mapping.get(status, status or "Pendiente")
+
+
+def _operational_item(
+    booking: dict[str, Any],
+    guest: dict[str, Any] | None,
+    history: list[dict[str, Any]],
+    *,
+    flow: str,
+) -> dict[str, Any]:
+    hotel = hotel_booking_context(int(booking["prop_id"]))
+    policies = partner_hotel_policies(int(booking["prop_id"])) or {}
+    policy_data = policies.get("policies", {})
+    stay_status = _derived_stay_status(booking, history, flow=flow)
+    reference_time = (
+        policy_data.get("check_in_time")
+        if flow == "check_in"
+        else policy_data.get("check_out_time")
+    ) or "N/D"
+    rooms = _safe_int(booking.get("rooms"), 1)
+    room_label = f"{rooms} habitacion(es)" if rooms > 0 else "Sin asignar"
+    comment = _clean_text(booking.get("comment"))
+    return {
+        "booking_id": booking["booking_id"],
+        "prop_id": int(booking["prop_id"]),
+        "hotel_label": hotel.get("hotel_label") or f"Hotel {booking['prop_id']}",
+        "guest_name": (guest or {}).get("guest_name") or booking.get("guest_name") or "Huesped principal",
+        "guest_email": (guest or {}).get("guest_email") or booking.get("guest_email") or "",
+        "date": booking.get("check_in_date") if flow == "check_in" else booking.get("check_out_date"),
+        "reservation_status": str(booking.get("status") or "requested"),
+        "reservation_status_label": _reservation_status_label(str(booking.get("status") or "requested")),
+        "stay_status": stay_status,
+        "stay_status_label": _reservation_status_label(stay_status),
+        "rooms_label": room_label,
+        "estimated_time": reference_time,
+        "notes": comment or "Sin notas",
+        "balance_label": "N/D",
+        "can_complete": stay_status not in (CHECKIN_COMPLETED_STATUSES if flow == "check_in" else CHECKOUT_COMPLETED_STATUSES)
+        and booking.get("status") not in {"cancelled", "rejected"},
+        "history_count": len(history),
+    }
+
+
+def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
+    db = get_database()
+    field = "check_in_date" if flow == "check_in" else "check_out_date"
+    filters: dict[str, Any] = {field: operation_date}
+    if prop_id:
+        filters["prop_id"] = prop_id
+    items = list(
+        db.booking_orders.find(filters, {"_id": 0}).sort([(field, ASCENDING), ("created_at", ASCENDING)])
+    )
+    booking_ids = [item["booking_id"] for item in items]
+    guest_lookup = _guest_lookup(booking_ids)
+    history_lookup = _booking_history_lookup(booking_ids)
+    view_items = [
+        _operational_item(item, guest_lookup.get(item["booking_id"]), history_lookup.get(item["booking_id"], []), flow=flow)
+        for item in items
+    ]
+    total = len(view_items)
+    completed_key = "checked_in" if flow == "check_in" else "checked_out"
+    summary = {
+        "arrivals_today" if flow == "check_in" else "departures_today": total,
+        "pending": sum(1 for item in view_items if item["stay_status"] == "pending"),
+        "completed": sum(1 for item in view_items if item["stay_status"] == completed_key),
+        "cancelled_or_no_show": sum(1 for item in view_items if item["stay_status"] in {"cancelled", "no_show"}),
+    }
+    return {
+        "operation_date": operation_date,
+        "prop_id": prop_id,
+        "property_options": reservation_hotel_options(limit=100),
+        "summary": summary,
+        "items": view_items,
+    }
+
+
+def list_check_ins(*, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
+    return _list_operational_bookings(flow="check_in", operation_date=operation_date, prop_id=prop_id)
+
+
+def list_check_outs(*, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
+    return _list_operational_bookings(flow="check_out", operation_date=operation_date, prop_id=prop_id)
+
+
+def complete_check_in(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:
+    db = get_database()
+    booking = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0})
+    if booking is None:
+        raise ValueError("booking not found")
+    history = _booking_history_lookup([booking_id]).get(booking_id, [])
+    stay_status = _derived_stay_status(booking, history, flow="check_in")
+    if stay_status in CHECKIN_COMPLETED_STATUSES:
+        raise ValueError("booking already checked in")
+    if booking.get("status") in {"cancelled", "rejected"}:
+        raise ValueError("booking cannot be checked in from current reservation status")
+    changed_at = utc_now()
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {"$set": {"stay_status": "checked_in", "updated_at": changed_at}},
+    )
+    db.booking_status_history.insert_one(
+        {
+            "booking_id": booking_id,
+            "status": "checked_in",
+            "changed_at": changed_at,
+            "reason": "front_desk_check_in",
+            "changed_by": changed_by,
+            "is_test": bool(booking.get("is_test")),
+        }
+    )
+    return {"booking_id": booking_id, "stay_status": "checked_in"}
+
+
+def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:
+    db = get_database()
+    booking = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0})
+    if booking is None:
+        raise ValueError("booking not found")
+    history = _booking_history_lookup([booking_id]).get(booking_id, [])
+    stay_status = _derived_stay_status(booking, history, flow="check_out")
+    if stay_status in CHECKOUT_COMPLETED_STATUSES:
+        raise ValueError("booking already checked out")
+    if booking.get("status") in {"cancelled", "rejected"}:
+        raise ValueError("booking cannot be checked out from current reservation status")
+    changed_at = utc_now()
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {"$set": {"stay_status": "checked_out", "updated_at": changed_at}},
+    )
+    db.booking_status_history.insert_one(
+        {
+            "booking_id": booking_id,
+            "status": "checked_out",
+            "changed_at": changed_at,
+            "reason": "front_desk_check_out",
+            "changed_by": changed_by,
+            "is_test": bool(booking.get("is_test")),
+        }
+    )
+    return {"booking_id": booking_id, "stay_status": "checked_out"}

@@ -1,0 +1,17 @@
+<section class="surface-card summary-card">
+  <div class="panel-head">
+    <div>
+      <h2>Servicios activos</h2>
+      <p>{{ items().length }} seleccionados actualmente.</p>
+    </div>
+  </div>
+  @if (items().length) {
+    <div class="pill-wrap">
+      @for (item of items(); track item) {
+        <span class="pill">{{ item }}</span>
+      }
+    </div>
+  } @else {
+    <p class="empty-copy">Aun no hay servicios activos para esta propiedad.</p>
+  }
+</section>

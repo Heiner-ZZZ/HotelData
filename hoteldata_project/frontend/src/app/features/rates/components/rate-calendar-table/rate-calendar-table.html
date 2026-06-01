@@ -1,0 +1,18 @@
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Plan</th><th>Tarifa</th><th>Min stay</th><th>Cerrado</th></tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.date + item.planName) {
+        <tr>
+          <td>{{ item.date }}</td>
+          <td>{{ item.planName }}</td>
+          <td>${{ item.rateAmountLabel }}</td>
+          <td>{{ item.minStayNights }}</td>
+          <td>{{ item.closedLabel }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

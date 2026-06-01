@@ -1,0 +1,21 @@
+<div class="check-outs-page">
+  <app-page-header eyebrow="Operacion diaria" title="Check-outs" description="Recepcion operativa para salidas del dia y cierres pendientes." />
+  <section class="surface-card filters-panel">
+    <form [formGroup]="filtersForm" (ngSubmit)="applyFilters()" class="filters-grid">
+      <label class="field"><span>Propiedad</span><select formControlName="propId"><option [ngValue]="0">Todas</option>@for (option of viewModel()?.propertyOptions ?? []; track option.propId) {<option [ngValue]="option.propId">{{ option.label }}</option>}</select></label>
+      <label class="field"><span>Fecha operativa</span><input type="date" formControlName="operationDate"></label>
+      <button type="submit">Aplicar</button>
+    </form>
+  </section>
+  @if (message()) { <section class="surface-card message success">{{ message() }}</section> }
+  @if (errorMessage()) { <section class="surface-card message error">{{ errorMessage() }}</section> }
+  @switch (viewState()) {
+    @case ('loading') { <app-loading-state label="Cargando check-outs..." /> }
+    @case ('error') { <app-error-state title="No fue posible cargar check-outs" /> }
+    @case ('empty') { <app-empty-state title="Sin salidas para este filtro" description="No hay reservas operativas para esa fecha o propiedad." /> }
+    @default { @if (viewModel(); as vm) {
+      <app-check-outs-summary-cards [departuresToday]="vm.departuresToday" [pendingCount]="vm.pendingCount" [completedCount]="vm.completedCount" [cancelledOrNoShowCount]="vm.cancelledOrNoShowCount" />
+      <section class="surface-card table-panel"><div class="panel-head"><h2>Salidas operativas</h2><p>{{ vm.items.length }} reserva(s) visibles.</p></div><app-check-outs-table [items]="vm.items" (complete)="completeCheckOut($event)" /></section>
+    } }
+  }
+</div>

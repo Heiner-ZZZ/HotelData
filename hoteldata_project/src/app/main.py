@@ -29,9 +29,11 @@ from src.app.modules.hotels.routes import api_router as hotels_api_router
 from src.app.modules.hotels.routes import router as hotels_module_router
 from src.app.modules.hotels.routes import web_router as hotels_web_router
 from src.app.modules.partner.routes import api_router as partner_api_router
+from src.app.modules.partner.routes import legacy_admin_api_router as partner_legacy_admin_api_router
 from src.app.modules.partner.routes import router as partner_module_router
 from src.app.modules.partner.routes import web_router as partner_web_router
 from src.app.modules.reservations.routes import api_router as reservations_api_router
+from src.app.modules.reservations.routes import management_api_router as reservations_management_api_router
 from src.app.modules.reservations.routes import router as reservations_module_router
 from src.app.modules.reservations.routes import web_router as reservations_web_router
 from src.app.modules.revenue.routes import api_router as revenue_api_router
@@ -79,11 +81,13 @@ def create_app() -> FastAPI:
     app.include_router(hotels_module_router)
     app.include_router(partner_web_router)
     app.include_router(partner_api_router)
+    app.include_router(partner_legacy_admin_api_router)
     app.include_router(revenue_web_router)
     app.include_router(revenue_ops_router)
     app.include_router(revenue_api_router)
     app.include_router(reservations_web_router)
     app.include_router(reservations_api_router)
+    app.include_router(reservations_management_api_router)
     app.include_router(reservations_module_router)
     app.include_router(partner_module_router)
     app.include_router(revenue_module_router)

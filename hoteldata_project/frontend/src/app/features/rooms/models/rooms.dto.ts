@@ -1,0 +1,38 @@
+export interface RoomsDto {
+  hotel: {
+    prop_id: number;
+    display_name: string;
+    country_display_name: string;
+    review_score_label: string;
+  };
+  performance: {
+    avg_price_label: string;
+    source_collection: string;
+  };
+  room_types: Array<{
+    room_type_id: string;
+    name: string;
+    description: string;
+    capacity_label: string;
+    is_active: boolean;
+  }>;
+  room_type_count: number;
+}
+
+export interface RoomsOptionsDto {
+  properties: Array<{
+    prop_id: number;
+    display_name: string;
+  }>;
+}
+
+export interface RoomCreateDto {
+  room_type_id?: string;
+  prop_id: number;
+  name: string;
+  description: string;
+  max_adults: number;
+  max_children: number;
+  base_capacity: number;
+  is_active: boolean;
+}

@@ -1,0 +1,69 @@
+.policies-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.selector-panel,
+.form-panel,
+.hero-card,
+.message {
+  padding: 1rem;
+}
+
+.selector-form,
+.hero-grid,
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.selector-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field-span {
+  grid-column: 1 / -1;
+}
+
+.label,
+.field span,
+.panel-head p {
+  color: var(--muted-text);
+}
+
+.panel-head {
+  margin-bottom: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .selector-form,
+  .hero-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

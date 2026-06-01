@@ -1,0 +1,177 @@
+<div class="rates-page">
+  <app-page-header
+    eyebrow="Gestion comercial"
+    title="Tarifas"
+    description="Calendario operativo de tarifas por fecha para la propiedad seleccionada."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span>Propiedad</span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando tarifas..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar tarifas"
+        description="Revisa la API o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="El módulo de tarifas necesita un hotel activo para cargar planes y calendario."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Hotel</span>
+            <strong>{{ vm.hotelLabel }}</strong>
+            <p>Operación comercial de tarifas</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Planes</span>
+            <strong>{{ vm.ratePlans.length }}</strong>
+            <p>Planes tarifarios configurados</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Calendario</span>
+            <strong>{{ vm.calendar.length }}</strong>
+            <p>Filas recientes de tarifa por fecha</p>
+          </article>
+        </section>
+
+        <section class="form-grid">
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Nuevo plan</h2>
+                <p>Configura un plan tarifario base para la propiedad.</p>
+              </div>
+            </div>
+            <form [formGroup]="planForm" (ngSubmit)="createRatePlan()" class="panel-form">
+              <label class="field">
+                <span>Nombre</span>
+                <input formControlName="name">
+              </label>
+              <label class="field">
+                <span>Descripción</span>
+                <input formControlName="description">
+              </label>
+              <label class="field">
+                <span>Tarifa base</span>
+                <input type="number" min="0" step="0.01" formControlName="baseRate">
+              </label>
+              <label class="field">
+                <span>Moneda</span>
+                <input formControlName="currency">
+              </label>
+              <label class="field checkbox-field">
+                <span>Activo</span>
+                <input type="checkbox" formControlName="isActive">
+              </label>
+              <div class="form-actions">
+                <button type="submit">Crear plan</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Actualizar tarifa</h2>
+                <p>Upsert por plan y fecha.</p>
+              </div>
+            </div>
+            <form [formGroup]="calendarForm" (ngSubmit)="saveRate()" class="panel-form">
+              <label class="field">
+                <span>Plan tarifario</span>
+                <select formControlName="ratePlanId">
+                  <option value="">Seleccione</option>
+                  @for (plan of ratePlanOptions(); track plan.id) {
+                    <option [value]="plan.id">{{ plan.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span>Fecha</span>
+                <input type="date" formControlName="date">
+              </label>
+              <label class="field">
+                <span>Tarifa</span>
+                <input type="number" min="0" step="0.01" formControlName="rateAmount">
+              </label>
+              <label class="field">
+                <span>Min stay nights</span>
+                <input type="number" min="1" formControlName="minStayNights">
+              </label>
+              <label class="field checkbox-field">
+                <span>Cerrado</span>
+                <input type="checkbox" formControlName="isClosed">
+              </label>
+              <div class="form-actions">
+                <button type="submit">Guardar tarifa</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Planes tarifarios</h2>
+              <p>{{ vm.ratePlans.length }} plan(es) configurado(s).</p>
+            </div>
+          </div>
+          @if (vm.ratePlans.length) {
+            <app-rate-plan-table [items]="vm.ratePlans" />
+          } @else {
+            <app-empty-state
+              title="Sin planes todavía"
+              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Calendario reciente</h2>
+              <p>{{ vm.calendar.length }} fila(s) visibles.</p>
+            </div>
+          </div>
+          @if (vm.calendar.length) {
+            <app-rate-calendar-table [items]="vm.calendar" />
+          } @else {
+            <app-empty-state
+              title="Sin tarifas todavía"
+              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

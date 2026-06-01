@@ -1,0 +1,77 @@
+.amenities-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.selector-panel,
+.utility-panel,
+.hero-card,
+.message {
+  padding: 1rem;
+}
+
+.selector-form,
+.utility-grid,
+.hero-grid,
+.category-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.selector-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.utility-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.category-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.inline-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+}
+
+.label,
+.field span,
+.hero-card p {
+  color: var(--muted-text);
+}
+
+.hero-card p {
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 960px) {
+  .utility-grid,
+  .hero-grid,
+  .category-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .selector-form,
+  .inline-entry {
+    grid-template-columns: 1fr;
+  }
+}

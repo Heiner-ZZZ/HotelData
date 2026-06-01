@@ -47,13 +47,14 @@ export class AuthService {
         ? {
             username: dto.user.username,
             email: dto.user.email,
+            displayName: dto.user.display_name || dto.user.username,
             primaryRole: dto.user.primary_role,
-            isActive: dto.user.is_active
+            isActive: dto.user.is_active ?? true
           }
         : null,
       session: dto.session
         ? {
-            token: dto.session.token,
+            token: dto.session.token ?? dto.session.session_token ?? null,
             expiresAt: dto.session.expires_at,
             createdAt: dto.session.created_at
           }

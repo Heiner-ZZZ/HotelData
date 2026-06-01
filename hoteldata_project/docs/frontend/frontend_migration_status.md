@@ -2,66 +2,59 @@
 
 ## Current State
 
-HotelData is in a hybrid state:
+HotelData is in a hybrid but working migration state:
 
-- FastAPI is still the backend source of truth for data, auth, session and legacy HTML.
-- Angular is the target frontend architecture under `frontend/`.
-- Legacy Jinja routes remain active while the JSON contract is expanded for Angular.
+- FastAPI remains the backend source of truth for data, auth, session and legacy HTML.
+- Angular is active under `frontend/` with `core`, `shared` and `features`.
+- Legacy Jinja routes remain active while Angular consumes JSON contracts incrementally.
 
-## What Is Ready in Backend
+## Migrated Angular Areas
 
-### Session / auth
+### Public
 
-- `GET /auth/login` and `POST /auth/login` remain the legacy cookie login flow.
-- `GET /api/auth/me` now exists as the Angular session probe.
-- Unauthenticated API calls now return JSON `401` instead of HTML redirect.
+- `/search`
+- `/hotels/:hotelId`
 
-### Public traveler JSON
+### Account
 
-- `GET /api/hotels/search`
-- `GET /api/hotels/{prop_id}`
+- `/account/bookings/new`
+- `/account/bookings/:bookingId`
 
-### Reservations / account JSON
+### Management
 
-- `GET /api/reservations`
-- `GET /api/reservations/options`
-- `POST /api/reservations`
-- `GET /api/reservations/{booking_id}`
-- `POST /api/reservations/{booking_id}/cancel`
+- `/management`
+- `/management/reservations`
+- `/management/check-ins`
+- `/management/check-outs`
+- `/management/properties`
+- `/management/properties/:propertyId`
+- `/management/availability`
+- `/management/rooms`
+- `/management/rates`
+- `/management/policies`
+- `/management/amenities`
 
-### Management JSON
+### System
 
-- `GET /api/dashboard/overview`
-- `GET /api/management/properties`
-- `GET /api/management/properties/{prop_id}`
-- `GET /api/management/rooms?prop_id=...`
-- `GET /api/management/availability?prop_id=...`
-- `GET /api/management/rates?prop_id=...`
-- `POST /api/management/rates/plans`
-- `POST /api/management/rates/calendar`
-- `GET /api/management/policies?prop_id=...`
-- `PUT /api/management/policies`
-- `GET /api/management/amenities?prop_id=...`
-- `PUT /api/management/amenities`
+- `/system` shell exists
+- detailed system JSON contracts are still incomplete
 
-## What Still Remains in Jinja
+## What Still Remains Primarily in Jinja
 
-These flows still have their primary UI in legacy HTML:
-
-- `/hotels/search`
-- `/hotels/{prop_id}`
-- `/reservations*`
-- `/partner/hotels*`
-- `/revenue/*`
+- legacy `/auth/*` screens
 - `/dashboard`
+- `/partner/*`
+- `/revenue/*`
+- legacy reservation HTML routes
 
-## What Is Still Missing for Angular
+These remain intentionally active as compatibility surfaces during migration.
 
-- Check-ins JSON contract
-- Check-outs JSON contract
-- Availability write endpoint
-- Rooms write endpoint
-- System/backoffice JSON contract
+## Session / Auth Integration
+
+- Angular uses `/api/auth/me` as the session probe.
+- Protected Angular routes use `auth.guard.ts`.
+- Angular now has a login wrapper at `/login` that redirects to legacy `/auth/login`.
+- `auth.interceptor.ts` applies `withCredentials` on `/api`, `/auth` and `/system` calls and redirects to `/login` on private `401/403`.
 
 ## Local Development Flow
 
@@ -78,45 +71,26 @@ cd frontend
 npm start
 ```
 
-## Proxy / CORS Baseline
+`npm start` now uses:
 
-- `frontend/proxy.conf.json` routes:
-  - `/api` -> `http://127.0.0.1:8000`
-  - `/auth` -> `http://127.0.0.1:8000`
-  - `/system` -> `http://127.0.0.1:8000`
-- FastAPI allows credentialed CORS from:
-  - `http://127.0.0.1:4200`
-  - `http://localhost:4200`
+```text
+ng serve --proxy-config proxy.conf.json
+```
 
-## Current Risk
+## Current Risks
 
-The Angular source tree is still missing from this checkout.
+1. If a stale FastAPI process is still running, `/api/*` may keep returning old HTML redirect behavior until the backend is restarted.
+2. The `system` experience still needs a cleaner JSON contract map.
+3. Some operational fields such as exact room assignment, ETA or guest balance still depend on data actually existing in Mongo; where absent, Angular uses honest fallbacks.
 
-Missing source artifacts include:
+## Next Steps
 
-- `frontend/src/`
-- `frontend/package.json`
-- `frontend/angular.json`
-
-Only cache/build/dependency artifacts are present:
-
-- `frontend/.angular`
-- `frontend/dist`
-- `frontend/node_modules`
-
-Because of that, these frontend tasks are still blocked in source code:
-
-- adding `withCredentials` to real Angular services
-- wiring `ng serve --proxy-config proxy.conf.json` in package scripts
-- registering an auth interceptor
-- creating a real auth guard
-- updating Angular route definitions
-
-There is also an operational caveat:
-
-- the backend currently responding on `http://127.0.0.1:8000` may still be an older running process
-- after pulling these code changes, the backend stack must be restarted before `/api/*` begins returning the new JSON auth behavior
-
-## Recommended Next Step
-
-Restore the Angular source tree into `frontend/`, then wire the new backend contracts into real services, guards, interceptors and route modules.
+1. Restart backend stack so runtime matches current code.
+2. Run `scripts/validate_frontend_backend_contract.py`.
+3. Validate authenticated navigation for:
+   - `/management`
+   - `/management/check-ins`
+   - `/management/check-outs`
+   - `/management/properties`
+   - `/management/rates`
+4. Continue with `system` or guest-facing operational views on top of the now-stable contracts.

@@ -1,0 +1,6 @@
+.check-ins-page { display: grid; gap: 1.5rem; }
+.filters-panel, .table-panel, .message { padding: 1rem; }
+.filters-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 1rem; align-items: end; }
+.field { display: grid; gap: 0.45rem; }
+.field span, .panel-head p { color: var(--muted-text); }
+@media (max-width: 720px) { .filters-grid { grid-template-columns: 1fr; } }

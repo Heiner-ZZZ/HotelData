@@ -30,14 +30,14 @@ export class AvailabilityApiService {
 
   getPropertyOptions() {
     return this.http
-      .get<ManagementPropertiesDto>(`${this.apiConfig.baseUrl}/management/properties`, {
+      .get<ManagementPropertiesDto>(`${this.apiConfig.baseUrl}/management/availability/options`, {
         withCredentials: true
       })
       .pipe(map((dto) => mapAvailabilityPropertyOptions(dto)));
   }
 
   saveInventory(payload: AvailabilitySaveInventoryDto) {
-    return this.http.post(`${this.apiConfig.baseUrl}/management/availability`, payload, {
+    return this.http.patch(`${this.apiConfig.baseUrl}/management/availability`, payload, {
       withCredentials: true
     });
   }

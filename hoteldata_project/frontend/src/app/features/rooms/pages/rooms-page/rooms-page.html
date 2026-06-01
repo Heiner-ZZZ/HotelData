@@ -1,0 +1,123 @@
+<div class="rooms-page">
+  <app-page-header
+    eyebrow="Habitaciones"
+    title="Rooms"
+    description="Base funcional de tipos de habitación para el hotel actual, sin PMS ni mapa físico completo todavía."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span>Propiedad</span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando habitaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar rooms"
+        description="Revisa la API o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="El módulo de habitaciones necesita un hotel activo para cargar sus tipos."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Hotel</span>
+            <strong>{{ vm.hotelName }}</strong>
+            <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Precio promedio</span>
+            <strong>${{ vm.avgPriceLabel }}</strong>
+            <p>Fuente {{ vm.sourceCollection }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Tipos configurados</span>
+            <strong>{{ vm.totalRoomTypes }}</strong>
+            <p>Capacidad operativa del hotel</p>
+          </article>
+        </section>
+
+        <section class="surface-card form-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Nuevo tipo</h2>
+              <p>Crea un tipo de habitación operativo para inventario y disponibilidad.</p>
+            </div>
+          </div>
+          <form [formGroup]="createForm" (ngSubmit)="createRoomType()" class="form-grid">
+            <label class="field">
+              <span>Nombre</span>
+              <input formControlName="name">
+            </label>
+            <label class="field">
+              <span>Descripción</span>
+              <input formControlName="description">
+            </label>
+            <label class="field">
+              <span>Adultos</span>
+              <input type="number" min="1" formControlName="maxAdults">
+            </label>
+            <label class="field">
+              <span>Niños</span>
+              <input type="number" min="0" formControlName="maxChildren">
+            </label>
+            <label class="field">
+              <span>Capacidad base</span>
+              <input type="number" min="1" formControlName="baseCapacity">
+            </label>
+            <label class="field checkbox-field">
+              <span>Activo</span>
+              <input type="checkbox" formControlName="isActive">
+            </label>
+            <div class="form-actions">
+              <button type="submit">Crear tipo</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Tipos de habitación</h2>
+              <p>{{ vm.totalRoomTypes }} tipo(s) configurado(s).</p>
+            </div>
+          </div>
+          @if (vm.roomTypes.length) {
+            <app-room-type-table [items]="vm.roomTypes" />
+          } @else {
+            <app-empty-state
+              title="Sin tipos de habitación"
+              description="Comience creando el primero para poder cargar inventario."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

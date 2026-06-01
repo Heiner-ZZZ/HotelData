@@ -5,6 +5,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
+from datetime import date
 from typing import Any
 
 
@@ -47,27 +48,29 @@ def fetch(url: str) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate core frontend/backend JSON contracts.")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000", help="FastAPI base URL")
+    parser.add_argument("--prop-id", default="1", help="Sample property id for management endpoints")
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
+    prop_id = str(args.prop_id)
+    today = date.today().isoformat()
     endpoints = [
-        {"route": "/auth/login", "kind": "legacy_html", "required_json": False},
-        {"route": "/auth/me", "kind": "legacy_html_or_redirect", "required_json": False},
-        {"route": "/api/auth/me", "kind": "json_auth_probe", "required_json": True},
-        {"route": "/api/reservations", "kind": "json_private", "required_json": True},
-        {"route": "/api/reservations/options", "kind": "json_private", "required_json": True},
-        {"route": "/api/hotels/search", "kind": "json_public", "required_json": True},
-        {"route": "/api/hotels/1", "kind": "json_public", "required_json": True},
-        {"route": "/api/dashboard/overview", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/properties", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/properties/1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/rooms?prop_id=1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/availability?prop_id=1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/rates?prop_id=1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/policies?prop_id=1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/amenities?prop_id=1", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/check-ins", "kind": "json_private", "required_json": True},
-        {"route": "/api/management/check-outs", "kind": "json_private", "required_json": True},
+      {"route": "/auth/login", "kind": "legacy_html", "required_json": False},
+      {"route": "/api/auth/me", "kind": "json_auth_probe", "required_json": True},
+      {"route": "/api/hotels/search", "kind": "json_public", "required_json": True},
+      {"route": f"/api/hotels/{prop_id}", "kind": "json_public", "required_json": True},
+      {"route": "/api/dashboard/overview", "kind": "json_private", "required_json": True},
+      {"route": "/api/reservations", "kind": "json_private", "required_json": True},
+      {"route": "/api/reservations/options", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/properties/{prop_id}", "kind": "json_private", "required_json": True},
+      {"route": "/api/management/properties", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/rooms?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/availability?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/rates?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/policies?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/amenities?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/check-ins?date={today}&prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": f"/api/management/check-outs?date={today}&prop_id={prop_id}", "kind": "json_private", "required_json": True},
     ]
 
     results: list[dict[str, Any]] = []
@@ -84,6 +87,8 @@ def main() -> int:
 
     summary = {
         "base_url": base_url,
+        "prop_id": prop_id,
+        "operation_date": today,
         "results": results,
         "ok_count": sum(1 for item in results if item["contract_ok"]),
         "error_count": sum(1 for item in results if not item["contract_ok"]),

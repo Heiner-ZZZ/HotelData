@@ -1,0 +1,104 @@
+<div class="amenities-page">
+  <app-page-header
+    eyebrow="Gestion comercial"
+    title="Amenities y servicios"
+    description="Catalogo operativo de servicios activos para la propiedad seleccionada."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span>Propiedad</span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando servicios..." />
+    }
+    @case ('error') {
+      <app-error-state title="No fue posible cargar amenities" description="Revisa la API o prueba con otra propiedad." />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="El catalogo de servicios necesita un hotel activo para cargar sus amenities."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Hotel</span>
+            <strong>{{ vm.hotelName }}</strong>
+            <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Precio promedio</span>
+            <strong>${{ vm.avgPriceLabel }}</strong>
+            <p>Fuente {{ vm.sourceCollection }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Servicios activos</span>
+            <strong>{{ selectedAmenities().length }}</strong>
+            <p>Configurados en esta propiedad</p>
+          </article>
+        </section>
+
+        <app-active-amenities-summary [items]="selectedAmenities()" />
+
+        <section class="surface-card utility-panel">
+          <form [formGroup]="utilityForm" class="utility-grid">
+            <label class="field">
+              <span>Buscar</span>
+              <input formControlName="search" placeholder="Wi-Fi, piscina, spa..." />
+            </label>
+            <label class="field">
+              <span>Agregar servicio manual</span>
+              <div class="inline-entry">
+                <input formControlName="manualAmenity" placeholder="Late checkout, shuttle..." />
+                <button type="button" (click)="addManualAmenity()">Agregar</button>
+              </div>
+            </label>
+          </form>
+        </section>
+
+        @if (filteredCategories().length) {
+          <section class="category-grid">
+            @for (category of filteredCategories(); track category.category) {
+              <app-amenity-category-panel
+                [category]="category"
+                [selectedLabels]="selectedLookup()"
+                (toggleAmenity)="toggleAmenity($event)"
+              />
+            }
+          </section>
+        } @else {
+          <app-empty-state
+            title="Sin resultados para ese filtro"
+            description="Prueba con otro término o agrega un servicio manualmente."
+          />
+        }
+
+        <section class="form-actions">
+          <button type="button" (click)="saveAmenities()">Guardar servicios</button>
+        </section>
+      }
+    }
+  }
+</div>

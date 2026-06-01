@@ -1,0 +1,109 @@
+<div class="policies-page">
+  <app-page-header
+    eyebrow="Gestion hotelera"
+    title="Politicas"
+    description="Operacion y reglas comerciales de la propiedad seleccionada."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span>Propiedad</span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando politicas..." />
+    }
+    @case ('error') {
+      <app-error-state title="No fue posible cargar politicas" description="Revisa la API o intenta con otra propiedad." />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="El módulo de políticas necesita un hotel activo para editar sus reglas operativas."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <app-policy-summary-cards [items]="vm.summary" />
+
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Hotel</span>
+            <strong>{{ vm.hotelName }}</strong>
+            <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Precio promedio</span>
+            <strong>${{ vm.avgPriceLabel }}</strong>
+            <p>Fuente {{ vm.sourceCollection }}</p>
+          </article>
+        </section>
+
+        <section class="surface-card form-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Politicas operativas</h2>
+              <p>Check-in, cancelacion, pagos y reglas de la propiedad.</p>
+            </div>
+          </div>
+
+          <form [formGroup]="policyForm" (ngSubmit)="savePolicies()" class="form-grid">
+            <label class="field">
+              <span>Check-in</span>
+              <input formControlName="checkInTime">
+            </label>
+            <label class="field">
+              <span>Check-out</span>
+              <input formControlName="checkOutTime">
+            </label>
+            <label class="field field-span">
+              <span>Cancelacion</span>
+              <textarea rows="4" formControlName="cancellationPolicy"></textarea>
+            </label>
+            <label class="field field-span">
+              <span>Ninos y estancia familiar</span>
+              <textarea rows="4" formControlName="childrenPolicy"></textarea>
+            </label>
+            <label class="field field-span">
+              <span>Camas extra</span>
+              <textarea rows="4" formControlName="extraBedPolicy"></textarea>
+            </label>
+            <label class="field field-span">
+              <span>Pagos y garantias</span>
+              <textarea rows="4" formControlName="paymentPolicy"></textarea>
+            </label>
+            <label class="field field-span">
+              <span>Mascotas</span>
+              <textarea rows="4" formControlName="petPolicy"></textarea>
+            </label>
+            <label class="field field-span">
+              <span>Reglas de la propiedad</span>
+              <textarea rows="5" formControlName="houseRules"></textarea>
+            </label>
+            <div class="form-actions field-span">
+              <button type="submit">Guardar cambios</button>
+            </div>
+          </form>
+        </section>
+      }
+    }
+  }
+</div>

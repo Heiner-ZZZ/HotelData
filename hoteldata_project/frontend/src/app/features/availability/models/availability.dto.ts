@@ -53,8 +53,14 @@ export interface AvailabilitySaveBlackoutDto {
 }
 
 export interface ManagementPropertiesDto {
-  items: Array<{
+  properties: Array<{
     prop_id: number;
     display_name: string;
+  }>;
+  room_types?: Array<{
+    room_type_id: string;
+    name: string;
+    capacity_label: string;
+    is_active: boolean;
   }>;
 }

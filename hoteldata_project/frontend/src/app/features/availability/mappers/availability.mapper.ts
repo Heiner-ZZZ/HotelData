@@ -22,7 +22,7 @@ export function mapAvailability(dto: AvailabilityDto): AvailabilityViewModel {
 }
 
 export function mapAvailabilityPropertyOptions(dto: ManagementPropertiesDto): AvailabilityPropertyOption[] {
-  return dto.items.map((item) => ({
+  return dto.properties.map((item) => ({
     propId: item.prop_id,
     label: item.display_name || `Hotel ${item.prop_id}`
   }));

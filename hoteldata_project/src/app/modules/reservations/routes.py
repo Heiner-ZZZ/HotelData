@@ -11,9 +11,13 @@ from src.app.modules.reservations.schemas import ModuleStatus
 from src.app.modules.reservations.service import (
     build_reservation_input,
     cancel_booking,
+    complete_check_in,
+    complete_check_out,
     create_booking,
     get_booking_detail,
     hotel_booking_context,
+    list_check_ins,
+    list_check_outs,
     list_bookings,
     module_status,
     reservation_hotel_options,
@@ -23,6 +27,7 @@ from src.app.modules.reservations.service import (
 router = APIRouter(prefix="/modules/reservations", tags=["modules-reservations"])
 web_router = APIRouter(tags=["reservations"])
 api_router = APIRouter(prefix="/api/reservations", tags=["reservations-api"])
+management_api_router = APIRouter(prefix="/api/management", tags=["management-operations-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
@@ -230,6 +235,44 @@ def reservation_cancel_api(booking_id: str, payload: dict = Body(default={})):
         return cancel_booking(
             booking_id,
             reason=str(payload.get("reason") or "cancelled_by_user"),
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@management_api_router.get("/check-ins")
+def check_ins_api(
+    operation_date: str = Query(..., alias="date"),
+    prop_id: int | None = Query(default=None, ge=1),
+):
+    return list_check_ins(operation_date=operation_date, prop_id=prop_id)
+
+
+@management_api_router.post("/check-ins/{booking_id}/complete")
+def check_in_complete_api(booking_id: str, payload: dict = Body(default={})):
+    try:
+        return complete_check_in(
+            booking_id,
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@management_api_router.get("/check-outs")
+def check_outs_api(
+    operation_date: str = Query(..., alias="date"),
+    prop_id: int | None = Query(default=None, ge=1),
+):
+    return list_check_outs(operation_date=operation_date, prop_id=prop_id)
+
+
+@management_api_router.post("/check-outs/{booking_id}/complete")
+def check_out_complete_api(booking_id: str, payload: dict = Body(default={})):
+    try:
+        return complete_check_out(
+            booking_id,
             changed_by=str(payload.get("changed_by") or "angular_api"),
         )
     except ValueError as exc:

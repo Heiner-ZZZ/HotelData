@@ -25,51 +25,33 @@ export const MANAGEMENT_ROUTES: Routes = [
   },
   {
     path: 'rooms',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Habitaciones',
-      description: 'Ruta preparada para el siguiente modulo de tipos de habitacion y capacidad operativa.'
-    }
+    loadChildren: () =>
+      import('../rooms/rooms.routes').then((m) => m.ROOMS_ROUTES)
   },
   {
     path: 'rates',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Tarifas',
-      description: 'Ruta preparada para la siguiente ola de migracion de tarifas y calendarios.'
-    }
+    loadChildren: () =>
+      import('../rates/rates.routes').then((m) => m.RATES_ROUTES)
   },
   {
     path: 'policies',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Politicas',
-      description: 'Ruta preparada para politicas operativas, comerciales y de propiedad.'
-    }
+    loadChildren: () =>
+      import('../policies/policies.routes').then((m) => m.POLICIES_ROUTES)
   },
   {
     path: 'amenities',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Amenities',
-      description: 'Ruta preparada para servicios, facilidades y catalogo comercial de la propiedad.'
-    }
+    loadChildren: () =>
+      import('../amenities/amenities.routes').then((m) => m.AMENITIES_ROUTES)
   },
   {
     path: 'check-ins',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Check-ins',
-      description: 'Ruta preparada para operacion diaria de recepcion y llegadas.'
-    }
+    loadChildren: () =>
+      import('../check-ins/check-ins.routes').then((m) => m.CHECK_INS_ROUTES)
   },
   {
     path: 'check-outs',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Check-outs',
-      description: 'Ruta preparada para operacion diaria de salidas y cierre de estancia.'
-    }
+    loadChildren: () =>
+      import('../check-outs/check-outs.routes').then((m) => m.CHECK_OUTS_ROUTES)
   },
   {
     path: 'reports',

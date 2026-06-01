@@ -218,6 +218,26 @@ def rates_api(prop_id: int = Query(..., ge=1)):
     return hotel_rates_overview(prop_id)
 
 
+@api_router.get("/rates/options")
+def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
+    from src.app.modules.partner.service import list_partner_hotels
+
+    properties = list_partner_hotels("", page=1, page_size=100)
+    response: dict[str, object] = {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or item.get("hotel_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in properties["items"]
+        ]
+    }
+    if prop_id:
+        overview = hotel_rates_overview(prop_id)
+        response["rate_plans"] = overview.get("rate_plans", [])
+    return response
+
+
 @api_router.post("/rates/plans", status_code=status.HTTP_201_CREATED)
 def create_rate_plan_api(payload: dict = Body(...)):
     try:

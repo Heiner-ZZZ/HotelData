@@ -1,6 +1,7 @@
 export interface AuthUser {
   username: string;
   email: string;
+  displayName: string;
   primaryRole: string;
   isActive: boolean;
 }
@@ -20,14 +21,19 @@ export interface AuthState {
 export interface AuthMeDto {
   authenticated: boolean;
   user: {
+    user_id?: string;
     username: string;
     email: string;
+    display_name?: string;
     primary_role: string;
-    is_active: boolean;
+    is_active?: boolean;
   } | null;
   session: {
-    token: string | null;
+    token?: string | null;
+    session_token?: string | null;
     expires_at: string | null;
     created_at: string | null;
   } | null;
+  home_href?: string;
+  login_url?: string;
 }

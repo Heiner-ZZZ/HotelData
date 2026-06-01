@@ -1,0 +1,22 @@
+.summary-card {
+  padding: 1rem;
+}
+
+.panel-head p,
+.empty-copy {
+  color: var(--muted-text);
+}
+
+.pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(20, 99, 255, 0.12);
+  color: var(--text-color, inherit);
+  font-size: 0.9rem;
+}

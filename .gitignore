@@ -210,6 +210,7 @@ vscode_history_rescue/
 hoteldata_project_backup_*/
 hoteldata_project/frontend_before_recovery/
 hoteldata_project/frontend_backup*/
+RESTORE_FRONTEND_SHADOW/
 backup_*.patch
 *_backup.patch
 backup_status_actual.txt

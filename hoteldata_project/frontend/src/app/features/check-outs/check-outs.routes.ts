@@ -1,0 +1,8 @@
+import { Routes } from '@angular/router';
+
+export const CHECK_OUTS_ROUTES: Routes = [
+  {
+    path: '',
+    loadComponent: () => import('./pages/check-outs-page/check-outs-page').then((m) => m.CheckOutsPageComponent)
+  }
+];
