@@ -1,0 +1,56 @@
+<aside class="surface-card filter-sidebar">
+  <form [formGroup]="form()" (ngSubmit)="submitSearch.emit()">
+    <div class="section-head">
+      <h2>Filtros</h2>
+      <button type="button" class="ghost-button" (click)="resetSearch.emit()">Limpiar</button>
+    </div>
+
+    <label class="field">
+      <span>Destino</span>
+      <input type="text" formControlName="destination" placeholder="Destino o id" />
+    </label>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Precio minimo</span>
+        <input type="text" inputmode="decimal" formControlName="minPrice" placeholder="0" />
+      </label>
+      <label class="field">
+        <span>Precio maximo</span>
+        <input type="text" inputmode="decimal" formControlName="maxPrice" placeholder="250" />
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Estrellas minimas</span>
+      <input type="text" inputmode="decimal" formControlName="minStars" placeholder="3" />
+    </label>
+
+    <label class="field">
+      <span>Promocion</span>
+      <select formControlName="promotion">
+        <option value="">Todas</option>
+        <option value="yes">Con promocion</option>
+        <option value="no">Sin promocion</option>
+      </select>
+    </label>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Adultos</span>
+        <input type="text" inputmode="numeric" formControlName="adults" placeholder="2" />
+      </label>
+      <label class="field">
+        <span>Ninos</span>
+        <input type="text" inputmode="numeric" formControlName="children" placeholder="0" />
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Habitaciones</span>
+      <input type="text" inputmode="numeric" formControlName="rooms" placeholder="1" />
+    </label>
+
+    <button type="submit" class="primary-button">Buscar hoteles</button>
+  </form>
+</aside>

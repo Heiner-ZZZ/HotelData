@@ -1,0 +1,32 @@
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Plan</th>
+        <th>Tarifa</th>
+        <th>Min stay</th>
+        <th>Cierre</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.date + item.ratePlanId) {
+        <tr>
+          <td>{{ item.date }}</td>
+          <td>
+            <strong>{{ item.planName }}</strong>
+            <div class="sub">{{ item.ratePlanId }}</div>
+          </td>
+          <td>${{ item.rateAmountLabel }}</td>
+          <td>{{ item.minStayNights ?? 'N/D' }}</td>
+          <td>
+            <app-status-badge
+              [tone]="item.isClosed ? 'warning' : 'success'"
+              [label]="item.isClosed ? 'Cerrado' : 'Abierto'"
+            />
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

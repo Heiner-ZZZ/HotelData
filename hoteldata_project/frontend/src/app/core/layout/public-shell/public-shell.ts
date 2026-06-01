@@ -10,7 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 export class PublicShellComponent {
   readonly navigation = [
     { label: 'Buscar hoteles', href: '/search' },
-    { label: 'Reservas', href: '/reservations' },
-    { label: 'Panel admin', href: '/admin' }
+    { label: 'Mis viajes', href: '/account/bookings' },
+    { label: 'Gestion hotelera', href: '/management' }
   ];
 }

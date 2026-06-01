@@ -1,0 +1,50 @@
+<section class="surface-card bulk-card">
+  <div class="bulk-head">
+    <div>
+      <h2>Edicion masiva</h2>
+      <p>Aplica cambios sobre un tramo de fechas dentro del calendario cargado.</p>
+    </div>
+  </div>
+
+  <form class="bulk-grid" [formGroup]="form" (ngSubmit)="submit()">
+    <label>
+      <span>Desde</span>
+      <input type="date" formControlName="startDate" />
+    </label>
+    <label>
+      <span>Hasta</span>
+      <input type="date" formControlName="endDate" />
+    </label>
+    <label>
+      <span>Total</span>
+      <input type="number" min="0" formControlName="totalRooms" />
+    </label>
+    <label>
+      <span>Disponibles</span>
+      <input type="number" min="0" formControlName="availableRooms" />
+    </label>
+    <label>
+      <span>Bloqueadas</span>
+      <input type="number" min="0" formControlName="blockedRooms" />
+    </label>
+    <label>
+      <span>Tarifa</span>
+      <input type="number" min="0" step="0.01" formControlName="rateAmount" />
+    </label>
+    <label>
+      <span>Min stay</span>
+      <input type="number" min="1" formControlName="minStayNights" />
+    </label>
+    <label>
+      <span>Apertura</span>
+      <select formControlName="closedMode">
+        <option value="keep">Mantener</option>
+        <option value="open">Abrir</option>
+        <option value="closed">Cerrar</option>
+      </select>
+    </label>
+    <div class="bulk-actions">
+      <button type="submit">Aplicar al rango</button>
+    </div>
+  </form>
+</section>

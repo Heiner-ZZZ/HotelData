@@ -2,17 +2,51 @@
   <app-page-header
     eyebrow="Cliente / viajero"
     title="Buscar hoteles"
-    description="Estructura inicial del flujo traveler. La migracion completa del buscador dependera de un endpoint JSON dedicado."
+    description="Exploración tipo marketplace sobre datos analíticos reales. No crea reservas ni procesa pagos."
   />
 
   <div class="page-grid">
-    <app-filter-sidebar />
+    <app-filter-sidebar [filters]="currentFilters()" (submitted)="updateFilters($event)" />
     <section class="results-column">
-      <app-sort-control />
-      <app-empty-state
-        title="Migracion del buscador en progreso"
-        description="La vista Angular ya tiene el espacio y las responsabilidades separadas para filtros, resultados y ordenacion."
-      />
+      @switch (viewState()) {
+        @case ('loading') {
+          <app-loading-state label="Buscando hoteles..." />
+        }
+        @case ('error') {
+          <app-error-state
+            title="No fue posible cargar el buscador"
+            description="Revisa la conectividad con la API o vuelve a intentar con otros filtros."
+          />
+        }
+        @case ('empty') {
+          <app-empty-state
+            title="No hay hoteles para esos filtros"
+            description="Prueba con otro destino, rango de precio o estrellas mínimas."
+          />
+        }
+        @default {
+          @if (pageData(); as data) {
+            <app-sort-control
+              [total]="data.total"
+              [startIndex]="data.startIndex"
+              [endIndex]="data.endIndex"
+              [sourceCollection]="data.sourceCollection"
+              [page]="data.page"
+              [totalPages]="data.totalPages"
+              [hasPrev]="data.hasPrev"
+              [hasNext]="data.hasNext"
+              (previous)="goToPage(data.page - 1)"
+              (next)="goToPage(data.page + 1)"
+            />
+
+            <section class="results-grid">
+              @for (hotel of data.items; track hotel.id) {
+                <app-hotel-card [hotel]="hotel" />
+              }
+            </section>
+          }
+        }
+      }
     </section>
   </div>
 </div>

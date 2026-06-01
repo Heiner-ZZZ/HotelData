@@ -1,0 +1,64 @@
+<div class="reservations-page">
+  <app-page-header
+    eyebrow="Core de reservas"
+    title="Solicitudes de reserva"
+    description="Flujo minimo de reservas sin pagos reales, ahora migrado a Angular con datos reales del backend."
+  />
+
+  <div class="page-actions">
+    <a routerLink="/management/reservations/new">Nueva solicitud</a>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando solicitudes..." />
+    }
+    @case ('error') {
+      <app-error-state title="No se pudieron cargar las reservas" />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay solicitudes todavia"
+        description="Crea la primera reserva desde un hotel o desde el formulario directo."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="surface-card table-card">
+          <div class="table-head">
+            <div>
+              <h2>Reservas creadas</h2>
+              <p>{{ vm.total }} registros · pagina {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Booking ID</th><th>Hotel</th><th>Huesped</th><th>Fechas</th><th>Status</th><th>Origen</th><th>Accion</th></tr>
+              </thead>
+              <tbody>
+                @for (item of vm.items; track item.bookingId) {
+                  <tr>
+                    <td><code>{{ item.bookingId }}</code></td>
+                    <td>{{ item.hotelLabel }}</td>
+                    <td>{{ item.guestName }}<div class="muted-cell">{{ item.guestEmail }}</div></td>
+                    <td>{{ item.checkInDate }}<div class="muted-cell">{{ item.checkOutDate }}</div></td>
+                    <td>{{ item.status }}</td>
+                    <td>{{ item.bookingSource }}</td>
+                    <td><a [routerLink]="['/management/reservations', item.bookingId]">Ver detalle</a></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination-bar">
+            <button type="button" [disabled]="!vm.hasPrev" (click)="goToPage(vm.page - 1)">Anterior</button>
+            <button type="button" [disabled]="!vm.hasNext" (click)="goToPage(vm.page + 1)">Siguiente</button>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

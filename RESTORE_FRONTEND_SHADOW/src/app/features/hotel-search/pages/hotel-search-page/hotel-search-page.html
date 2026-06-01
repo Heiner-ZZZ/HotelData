@@ -1,0 +1,55 @@
+<div class="hotel-search-page">
+  <app-page-header
+    eyebrow="Cliente / viajero"
+    title="Buscar hoteles"
+    description="Exploracion tipo marketplace sobre datos hoteleros reales, ahora migrada a Angular con filtros enlazados a la URL."
+  />
+
+  <div class="page-grid">
+    <app-filter-sidebar
+      [form]="filtersForm"
+      (submitSearch)="onSubmit()"
+      (resetSearch)="onReset()"
+    />
+    <section class="results-column">
+      <app-sort-control [summary]="resultsSummary()" />
+
+      @switch (viewState()) {
+        @case ('loading') {
+          <app-loading-state label="Buscando hoteles..." />
+        }
+        @case ('error') {
+          <app-error-state
+            title="No se pudo cargar la busqueda"
+            description="Revisa la API del backend o intenta nuevamente con otros filtros."
+          />
+        }
+        @case ('empty') {
+          <app-empty-state
+            title="No hay hoteles para esos filtros"
+            description="Prueba con otro destino, rango de precio o estrellas minimas."
+          />
+        }
+        @default {
+          @if (viewModel(); as vm) {
+            <div class="results-grid">
+              @for (hotel of vm.items; track trackByHotelId($index, hotel)) {
+                <app-hotel-card [hotel]="hotel" />
+              }
+            </div>
+
+            <div class="pagination-bar surface-card">
+              <button type="button" [disabled]="!vm.hasPrev" (click)="goToPage(vm.page - 1)">
+                Anterior
+              </button>
+              <span>Pagina {{ vm.page }} de {{ vm.totalPages || 1 }}</span>
+              <button type="button" [disabled]="!vm.hasNext" (click)="goToPage(vm.page + 1)">
+                Siguiente
+              </button>
+            </div>
+          }
+        }
+      }
+    </section>
+  </div>
+</div>

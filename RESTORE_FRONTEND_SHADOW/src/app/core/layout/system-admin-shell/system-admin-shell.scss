@@ -1,0 +1,58 @@
+.system-shell {
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.system-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--app-border);
+  background: #111827;
+  color: #f8fafc;
+}
+
+.brand {
+  display: inline-block;
+  margin-bottom: 0.3rem;
+  color: inherit;
+  font-size: 1.125rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.system-header p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+nav a {
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  color: rgba(248, 250, 252, 0.76);
+  text-decoration: none;
+}
+
+nav a.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.system-main {
+  padding: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .system-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

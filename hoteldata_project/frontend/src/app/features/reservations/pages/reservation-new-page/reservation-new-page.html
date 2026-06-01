@@ -1,0 +1,75 @@
+<div class="reservation-new-page">
+  <app-page-header
+    eyebrow="Nueva solicitud"
+    title="Solicitar reserva hotelera"
+    description="Crea una reserva en estado requested. No confirma pago ni disponibilidad real."
+  />
+
+  <div class="action-row">
+    <a routerLink="/reservations" class="secondary-link">Volver a solicitudes</a>
+  </div>
+
+  @if (loading()) {
+    <app-loading-state label="Cargando formulario..." />
+  } @else {
+    @if (errorMessage()) {
+      <app-error-state [title]="errorMessage()" description="Revisa los datos e intenta nuevamente." />
+    }
+
+    @if (selectedHotel(); as hotel) {
+      <section class="surface-card panel selected-hotel">
+        <h2>Hotel seleccionado</h2>
+        <p>{{ hotel.label }}</p>
+      </section>
+    }
+
+    <section class="surface-card panel">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+        <label class="field">
+          <span>Hotel</span>
+          <select formControlName="propId">
+            <option [ngValue]="0">Seleccionar hotel</option>
+            @for (option of hotelOptions(); track option.propId) {
+              <option [ngValue]="option.propId">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span>Nombre del huésped</span>
+          <input formControlName="guestName">
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input formControlName="guestEmail" type="email">
+        </label>
+        <label class="field">
+          <span>Fecha entrada</span>
+          <input formControlName="checkInDate" type="date">
+        </label>
+        <label class="field">
+          <span>Fecha salida</span>
+          <input formControlName="checkOutDate" type="date">
+        </label>
+        <label class="field">
+          <span>Adultos</span>
+          <input formControlName="adults" type="number" min="1">
+        </label>
+        <label class="field">
+          <span>Niños</span>
+          <input formControlName="children" type="number" min="0">
+        </label>
+        <label class="field">
+          <span>Habitaciones</span>
+          <input formControlName="rooms" type="number" min="1">
+        </label>
+        <label class="field field-span">
+          <span>Comentario</span>
+          <textarea formControlName="comment" rows="6"></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="submit" [disabled]="submitting()">Crear solicitud</button>
+        </div>
+      </form>
+    </section>
+  }
+</div>

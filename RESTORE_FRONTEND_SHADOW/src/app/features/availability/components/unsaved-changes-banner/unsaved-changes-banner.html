@@ -1,0 +1,17 @@
+<section class="surface-card changes-banner">
+  <div>
+    <strong>{{ count() }} cambio(s) pendientes</strong>
+    <p>
+      @if (hasErrors()) {
+        Corrige los valores invalidos antes de guardar.
+      } @else {
+        Los cambios aun no se han persistido en inventario y calendario tarifario.
+      }
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="ghost" (click)="discard.emit()">Descartar</button>
+    <button type="button" [disabled]="hasErrors() || saving()" (click)="save.emit()">Guardar cambios</button>
+  </div>
+</section>

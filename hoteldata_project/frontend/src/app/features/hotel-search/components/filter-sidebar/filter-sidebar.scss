@@ -2,13 +2,83 @@
   padding: 1rem;
 }
 
+.sidebar-head,
+.filter-form,
+.field-grid {
+  display: grid;
+}
+
+.sidebar-head,
+.filter-form {
+  gap: 1rem;
+}
+
+.field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
 h2,
-p {
+p,
+span {
   margin: 0;
 }
 
 p {
-  margin-top: 0.5rem;
   color: var(--muted-text);
   line-height: 1.6;
+}
+
+span {
+  font-size: 0.875rem;
+  color: var(--muted-text);
+}
+
+input,
+select,
+button {
+  width: 100%;
+}
+
+input,
+select {
+  min-height: 2.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0 0.875rem;
+  background: #fff;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.primary-action,
+.secondary-action {
+  min-height: 2.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  cursor: pointer;
+}
+
+.primary-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.secondary-action {
+  background: #fff;
+}
+
+@media (max-width: 920px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
 }

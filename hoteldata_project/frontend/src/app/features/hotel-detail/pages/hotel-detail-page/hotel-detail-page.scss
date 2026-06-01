@@ -1,0 +1,142 @@
+.hotel-detail-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.action-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.primary-link,
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.primary-link {
+  background: var(--accent);
+  color: #fff;
+}
+
+.secondary-link {
+  border: 1px solid var(--app-border);
+  background: #fff;
+}
+
+.hero-grid,
+.insight-grid,
+.chip-grid {
+  display: grid;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.insight-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.panel,
+.hero-card {
+  padding: 1rem;
+}
+
+.accent-card {
+  background: #132033;
+  color: #f8fbff;
+}
+
+.accent-card p {
+  color: rgba(248, 251, 255, 0.78);
+}
+
+.stat-label,
+.chip-card span,
+.record-sub,
+.cancellation-note,
+p {
+  color: var(--muted-text);
+}
+
+.stat-label,
+.record-sub {
+  font-size: 0.875rem;
+}
+
+strong,
+h2,
+p {
+  margin: 0;
+}
+
+.hero-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.hero-card strong {
+  font-size: 1.8rem;
+}
+
+.chip-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.chip-card {
+  display: grid;
+  gap: 0.375rem;
+  padding: 0.875rem;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: top;
+}
+
+.room-table {
+  margin-bottom: 1rem;
+}
+
+.cancellation-note {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 1080px) {
+  .hero-grid,
+  .insight-grid,
+  .chip-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-grid,
+  .insight-grid,
+  .chip-grid {
+    grid-template-columns: 1fr;
+  }
+}

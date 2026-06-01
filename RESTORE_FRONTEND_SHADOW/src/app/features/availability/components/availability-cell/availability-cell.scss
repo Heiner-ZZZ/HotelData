@@ -1,0 +1,20 @@
+.number-cell {
+  width: 100%;
+  min-width: 5.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.number-cell.is-invalid {
+  border-color: var(--danger);
+  background: #fff5f4;
+}
+
+.checkbox-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--app-text);
+}

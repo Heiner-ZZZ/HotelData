@@ -1,0 +1,104 @@
+<div class="reservation-detail-page">
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando detalle de la reserva..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar la reserva"
+        description="Intenta nuevamente o vuelve al listado."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No encontramos esa reserva"
+        description="La reserva solicitada no existe o ya no está disponible."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <app-page-header
+          eyebrow="Detalle de reserva"
+          [title]="vm.bookingId"
+          [description]="'Seguimiento de una solicitud de reserva básica. Estado actual: ' + vm.status + '.'"
+        />
+
+        <div class="action-row">
+          <a routerLink="/reservations" class="secondary-link">Volver</a>
+          @if (vm.canCancel) {
+            <button type="button" (click)="cancelReservation()" [disabled]="cancelPending()">
+              Cancelar solicitud
+            </button>
+          }
+        </div>
+
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="stat-label">Hotel</span>
+            <strong>{{ vm.hotelLabel }}</strong>
+          </article>
+          <article class="surface-card hero-card accent-card">
+            <span class="stat-label">Status</span>
+            <strong>{{ vm.status }}</strong>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="stat-label">Origen</span>
+            <strong>{{ vm.bookingSource }}</strong>
+          </article>
+        </section>
+
+        <section class="insight-grid">
+          <article class="surface-card panel">
+            <h2>Solicitud</h2>
+            <div class="table-wrap">
+              <table>
+                <tbody>
+                  <tr><th>Prop ID</th><td>{{ vm.propId }}</td></tr>
+                  <tr><th>Fechas</th><td>{{ vm.checkInDate }} a {{ vm.checkOutDate }}</td></tr>
+                  <tr><th>Ocupación</th><td>{{ vm.occupancyLabel }}</td></tr>
+                  <tr><th>Comentario</th><td>{{ vm.comment }}</td></tr>
+                  <tr><th>Creada</th><td>{{ vm.createdAt }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="surface-card panel">
+            <h2>Huésped principal</h2>
+            <div class="table-wrap">
+              <table>
+                <tbody>
+                  <tr><th>Nombre</th><td>{{ vm.guestName }}</td></tr>
+                  <tr><th>Email</th><td>{{ vm.guestEmail }}</td></tr>
+                  <tr><th>Reserva manual</th><td>{{ vm.isManual ? 'Sí' : 'No' }}</td></tr>
+                  @if (vm.manualReservationId) {
+                    <tr><th>Manual ID</th><td>{{ vm.manualReservationId }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="surface-card panel">
+          <h2>Historial de estado</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Status</th><th>Fecha</th><th>Motivo</th><th>Cambiado por</th></tr></thead>
+              <tbody>
+                @for (item of vm.history; track item.status + item.changedAt + item.reason) {
+                  <tr>
+                    <td>{{ item.status }}</td>
+                    <td>{{ item.changedAt }}</td>
+                    <td>{{ item.reason }}</td>
+                    <td>{{ item.changedBy }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

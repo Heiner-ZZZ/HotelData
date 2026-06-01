@@ -1,0 +1,44 @@
+<div class="management-shell">
+  <aside class="management-sidebar">
+    <div class="sidebar-head">
+      <a class="brand" routerLink="/management">HotelData</a>
+      <p>Gestion hotelera</p>
+      <strong>Operacion, comercial y reportes</strong>
+    </div>
+
+    <nav aria-label="Navegacion de gestion hotelera">
+      @for (group of navigation; track group.label) {
+        <section class="nav-group">
+          <p>{{ group.label }}</p>
+          @for (item of group.items; track item.href) {
+            <a
+              routerLinkActive="is-active"
+              [routerLink]="item.href"
+              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            >
+              {{ item.label }}
+            </a>
+          }
+        </section>
+      }
+    </nav>
+  </aside>
+
+  <div class="management-stage">
+    <header class="management-topbar">
+      <div>
+        <p class="eyebrow">Hotel management experience</p>
+        <strong>Centro operativo de propiedades, reservas, tarifas e ingresos</strong>
+      </div>
+      <div class="topbar-links">
+        <a routerLink="/search">Vista publica</a>
+        <a routerLink="/account/bookings">Cuenta viajero</a>
+        <a routerLink="/system">System admin</a>
+      </div>
+    </header>
+
+    <main class="management-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

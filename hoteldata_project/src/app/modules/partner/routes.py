@@ -358,6 +358,44 @@ def availability_api(prop_id: int = Query(..., ge=1)):
     return detail
 
 
+@api_router.post("/availability")
+def availability_update_api(payload: dict = Body(...)):
+    prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = save_inventory_entry(
+            prop_id,
+            room_type_id=str(payload.get("room_type_id") or ""),
+            date=str(payload.get("date") or ""),
+            total_rooms=payload.get("total_rooms"),
+            available_rooms=payload.get("available_rooms"),
+            blocked_rooms=payload.get("blocked_rooms"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.post("/availability/blackouts")
+def availability_blackout_api(payload: dict = Body(...)):
+    prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_blackout_block(
+            prop_id,
+            room_type_id=str(payload.get("room_type_id") or ""),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            reason=str(payload.get("reason") or ""),
+            blocked_rooms=payload.get("blocked_rooms"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
 @api_router.get("/policies")
 def policies_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_policies(_require_prop_id(prop_id))

@@ -1,0 +1,67 @@
+<div class="reservations-page">
+  <app-page-header
+    eyebrow="Core de reservas"
+    title="Solicitudes de reserva"
+    description="Flujo mínimo de reservas solicitado en GA03. No procesa pagos ni calcula disponibilidad real."
+  />
+
+  <div class="action-row">
+    <a routerLink="/reservations/new" class="primary-link">Nueva solicitud</a>
+    <a href="/partner/manual-reservations/new" class="secondary-link">Reserva manual partner</a>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando solicitudes..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las reservas"
+        description="Intenta nuevamente o revisa la conectividad con la API."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay solicitudes todavía"
+        description="Crea la primera reserva desde un hotel o desde el formulario directo."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <section class="surface-card panel">
+          <div class="panel-head">
+            <div>
+              <h2>Reservas creadas</h2>
+              <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">Anterior</button>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">Siguiente</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Booking ID</th><th>Hotel</th><th>Huésped</th><th>Fechas</th><th>Status</th><th>Origen</th><th>Acción</th></tr>
+              </thead>
+              <tbody>
+                @for (item of vm.items; track item.bookingId) {
+                  <tr>
+                    <td><code>{{ item.bookingId }}</code></td>
+                    <td>{{ item.hotelLabel }}</td>
+                    <td>{{ item.guestName }}<div class="muted-cell">{{ item.guestEmail }}</div></td>
+                    <td>{{ item.checkInDate }}<div class="muted-cell">{{ item.checkOutDate }}</div></td>
+                    <td>{{ item.status }}</td>
+                    <td>{{ item.bookingSource }}</td>
+                    <td><a [routerLink]="['/reservations', item.bookingId]" class="inline-link">Ver detalle</a></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

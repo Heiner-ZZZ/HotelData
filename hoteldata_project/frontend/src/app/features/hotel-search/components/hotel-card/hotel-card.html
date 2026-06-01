@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Propiedad {{ hotel().id }}</p>
       <h2>{{ hotel().name }}</h2>
-      <p>{{ hotel().location }} · Review {{ hotel().reviewLabel }}</p>
+      <p>{{ hotel().location }} · {{ hotel().stars ?? 'N/D' }} estrellas · Review {{ hotel().reviewLabel }}</p>
     </div>
     @if (hotel().hasPromotion) {
       <app-status-badge tone="success" label="Con promocion" />
@@ -16,8 +16,25 @@
       <dd>${{ hotel().avgPriceLabel }}</dd>
     </div>
     <div>
+      <dt>Reservas</dt>
+      <dd>{{ hotel().reservations }}</dd>
+    </div>
+    <div>
+      <dt>Clicks</dt>
+      <dd>{{ hotel().clicks }}</dd>
+    </div>
+    <div>
       <dt>Conversion</dt>
       <dd>{{ hotel().conversionRate }}%</dd>
     </div>
   </dl>
+
+  <p class="destinations">
+    Destinos: {{ hotel().destinationLabels.length ? hotel().destinationLabels.join(', ') : 'N/D' }}
+  </p>
+
+  <div class="action-row">
+    <a [routerLink]="['/hotels', hotel().id]" class="primary-link">Ver detalle</a>
+    <a [href]="'/hotels/compare?prop_id=' + hotel().id" class="secondary-link">Comparar</a>
+  </div>
 </article>

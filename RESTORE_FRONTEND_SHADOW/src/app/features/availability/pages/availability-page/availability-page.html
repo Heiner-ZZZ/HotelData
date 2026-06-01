@@ -1,0 +1,85 @@
+<div class="availability-page">
+  <app-page-header
+    eyebrow="Gestion hotelera"
+    title="Calendario de disponibilidad"
+    description="Operacion diaria de inventario, tarifas base, cierres y restricciones sobre una propiedad real."
+  />
+
+  @if (saveError()) {
+    <section class="surface-card error-banner">{{ saveError() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando disponibilidad operativa..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar la disponibilidad"
+        description="Revisa la propiedad seleccionada o vuelve a intentar con otro rango de fechas."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin configuracion operativa todavia"
+        description="Primero crea tipos de habitacion en /management/rooms y planes tarifarios en /management/rates para poder editar disponibilidad aqui."
+      />
+    }
+    @default {
+      @if (snapshot(); as vm) {
+        <app-availability-toolbar
+          [form]="filtersForm"
+          [options]="vm.options"
+          [loading]="viewState() === 'loading'"
+          (apply)="reloadAvailability()"
+        />
+
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span>Propiedad</span>
+            <strong>{{ vm.property.displayName }}</strong>
+            <p>{{ vm.property.countryDisplayName }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span>Dias visibles</span>
+            <strong>{{ vm.summary.days }}</strong>
+            <p>Rango {{ vm.filters.startDate }} a {{ vm.filters.endDate }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span>Fechas cerradas</span>
+            <strong>{{ vm.summary.closedDates }}</strong>
+            <p>Cierres operativos del plan tarifario</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span>Tarifa promedio</span>
+            <strong>${{ vm.summary.avgRateLabel }}</strong>
+            <p>{{ vm.summary.blackoutDates }} fechas con blackout detectado</p>
+          </article>
+        </section>
+
+        @if (dirtyRows().length) {
+          <app-unsaved-changes-banner
+            [count]="dirtyRows().length"
+            [hasErrors]="hasValidationErrors()"
+            [saving]="saveState() === 'saving'"
+            (discard)="discardChanges()"
+            (save)="saveChanges()"
+          />
+        }
+
+        <app-bulk-edit-panel
+          [startDate]="vm.filters.startDate"
+          [endDate]="vm.filters.endDate"
+          (applyBulk)="onBulkApply($event)"
+        />
+
+        <app-availability-calendar
+          [rows]="rows()"
+          [dirtyDates]="dirtyDates()"
+          [rowErrors]="rowErrors()"
+          (cellChanged)="onCellChanged($event)"
+        />
+      }
+    }
+  }
+</div>

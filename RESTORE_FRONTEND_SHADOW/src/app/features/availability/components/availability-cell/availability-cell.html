@@ -1,0 +1,17 @@
+@if (type() === 'checkbox') {
+  <label class="checkbox-cell">
+    <input type="checkbox" [checked]="value() === true" (change)="onCheckboxChange($event)" />
+    <span>{{ label() }}</span>
+  </label>
+} @else {
+  <input
+    class="number-cell"
+    type="number"
+    [class.is-invalid]="invalid()"
+    [value]="value() ?? ''"
+    [min]="min() ?? undefined"
+    [step]="step() ?? undefined"
+    [attr.aria-label]="label()"
+    (input)="onNumericInput($event)"
+  />
+}

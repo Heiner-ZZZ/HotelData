@@ -1,0 +1,108 @@
+.reservation-detail-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.action-row,
+.hero-grid,
+.insight-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.action-row {
+  grid-auto-flow: column;
+  justify-content: start;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.insight-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.panel,
+.hero-card {
+  padding: 1rem;
+}
+
+.hero-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.accent-card {
+  background: #132033;
+  color: #f8fbff;
+}
+
+.stat-label {
+  color: var(--muted-text);
+  font-size: 0.875rem;
+}
+
+.accent-card .stat-label {
+  color: rgba(248, 251, 255, 0.78);
+}
+
+h2,
+strong {
+  margin: 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: top;
+}
+
+button,
+.secondary-link {
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 8px;
+}
+
+button {
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--app-border);
+  background: #fff;
+  text-decoration: none;
+}
+
+@media (max-width: 920px) {
+  .hero-grid,
+  .insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-row {
+    grid-auto-flow: row;
+  }
+}

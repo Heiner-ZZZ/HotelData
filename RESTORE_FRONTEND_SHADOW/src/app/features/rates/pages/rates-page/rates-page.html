@@ -1,0 +1,154 @@
+<app-page-header
+  eyebrow="Tarifas"
+  title="Tarifas e ingresos por propiedad"
+  description="Administra planes tarifarios y calendario minimo por fecha para sostener tarifas, cierres y disponibilidad."
+/>
+
+@if (feedback()) {
+  <div class="feedback success">{{ feedback() }}</div>
+}
+
+@if (errorMessage()) {
+  <div class="feedback error">{{ errorMessage() }}</div>
+}
+
+@switch (viewState()) {
+  @case ('loading') {
+    <app-loading-state />
+  }
+  @case ('error') {
+    <app-error-state />
+  }
+  @default {
+    @if (viewModel(); as vm) {
+      <section class="toolbar">
+        <label>
+          <span>Propiedad</span>
+          <select [formControl]="filterForm.controls.propId" (change)="selectProperty()">
+            @for (item of vm.options.properties; track item.propId) {
+              <option [value]="item.propId">{{ item.label }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="summary">
+          <div><strong>{{ vm.property.hotelLabel }}</strong></div>
+          <div>{{ vm.summary.totalRatePlans }} planes / {{ vm.summary.calendarRows }} filas de calendario</div>
+        </div>
+      </section>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+            <h2>Nuevo plan tarifario</h2>
+              <p>Alta base para tarifas operativas de la propiedad seleccionada.</p>
+            </div>
+          </div>
+
+          <form [formGroup]="createPlanForm" class="form-grid" (ngSubmit)="submitPlan()">
+            <label>
+              <span>Nombre</span>
+              <input type="text" formControlName="name" />
+            </label>
+            <label>
+              <span>Tarifa base</span>
+              <input type="number" min="0" step="0.01" formControlName="baseRate" />
+            </label>
+            <label>
+              <span>Moneda</span>
+              <input type="text" formControlName="currency" />
+            </label>
+            <label class="wide">
+              <span>Descripcion</span>
+              <textarea rows="3" formControlName="description"></textarea>
+            </label>
+            <label class="checkbox">
+              <input type="checkbox" formControlName="isActive" />
+              <span>Activo</span>
+            </label>
+            <div class="actions wide">
+              <button type="submit">Guardar plan</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Actualizar tarifa por fecha</h2>
+              <p>Upsert real sobre calendario tarifario por plan y fecha.</p>
+            </div>
+          </div>
+
+          <form [formGroup]="createCalendarForm" class="form-grid" (ngSubmit)="submitCalendar()">
+            <label>
+              <span>Plan tarifario</span>
+              <select formControlName="ratePlanId">
+                <option value="">Seleccione</option>
+                @for (item of vm.options.ratePlans; track item.ratePlanId) {
+                  <option [value]="item.ratePlanId">{{ item.name }} · {{ item.ratePlanId }}</option>
+                }
+              </select>
+            </label>
+            <label>
+              <span>Fecha</span>
+              <input type="date" formControlName="date" />
+            </label>
+            <label>
+              <span>Tarifa</span>
+              <input type="number" min="0" step="0.01" formControlName="rateAmount" />
+            </label>
+            <label>
+              <span>Min stay nights</span>
+              <input type="number" min="1" formControlName="minStayNights" />
+            </label>
+            <label class="checkbox">
+              <input type="checkbox" formControlName="isClosed" />
+              <span>Cerrado</span>
+            </label>
+            <div class="actions wide">
+              <button type="submit">Guardar tarifa</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Planes configurados</h2>
+            <p>{{ vm.summary.totalRatePlans }} plan(es), {{ vm.summary.activeRatePlans }} activo(s).</p>
+          </div>
+        </div>
+
+        @if (vm.ratePlans.length) {
+          <app-rate-plan-table [items]="vm.ratePlans" />
+        } @else {
+          <app-empty-state
+            title="Sin planes tarifarios"
+            description="Crea el primer plan para poder alimentar calendario, availability y visibilidad comercial."
+          />
+        }
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Calendario reciente</h2>
+            <p>{{ vm.summary.calendarRows }} fila(s) visibles, {{ vm.summary.closedDates }} cierre(s).</p>
+          </div>
+        </div>
+
+        @if (vm.calendar.length) {
+          <app-rate-calendar-table [items]="vm.calendar" />
+        } @else {
+          <app-empty-state
+            title="Sin tarifas por fecha"
+            description="Una vez creado un plan, registra tarifas por fecha para operar ingresos, cierres y disponibilidad."
+          />
+        }
+      </section>
+    }
+  }
+}

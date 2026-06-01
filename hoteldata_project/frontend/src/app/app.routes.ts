@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { authGuard } from './core/auth/auth.guard';
+
 export const routes: Routes = [
   {
     path: '',
@@ -22,32 +24,67 @@ export const routes: Routes = [
           import('./features/hotel-detail/hotel-detail.routes').then((m) => m.HOTEL_DETAIL_ROUTES)
       },
       {
-        path: 'reservations',
-        loadChildren: () =>
-          import('./features/reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
+        path: 'login',
+        redirectTo: 'search'
       }
     ]
   },
   {
-    path: 'admin',
+    path: 'account',
     loadComponent: () =>
-      import('./core/layout/admin-shell/admin-shell').then((m) => m.AdminShellComponent),
+      import('./core/layout/account-shell/account-shell').then((m) => m.AccountShellComponent),
+    canActivate: [authGuard],
     children: [
       {
         path: '',
-        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES)
-      },
-      {
-        path: 'properties',
-        loadChildren: () =>
-          import('./features/properties/properties.routes').then((m) => m.PROPERTIES_ROUTES)
-      },
-      {
-        path: 'availability',
-        loadChildren: () =>
-          import('./features/availability/availability.routes').then((m) => m.AVAILABILITY_ROUTES)
+        loadChildren: () => import('./features/account/account.routes').then((m) => m.ACCOUNT_ROUTES)
       }
     ]
+  },
+  {
+    path: 'management',
+    loadComponent: () =>
+      import('./core/layout/management-shell/management-shell').then((m) => m.ManagementShellComponent),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/management/management.routes').then((m) => m.MANAGEMENT_ROUTES)
+      },
+    ]
+  },
+  {
+    path: 'system',
+    loadComponent: () =>
+      import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/system-admin/system-admin.routes').then((m) => m.SYSTEM_ADMIN_ROUTES)
+      }
+    ]
+  },
+  {
+    path: 'reservations',
+    pathMatch: 'full',
+    redirectTo: 'account/bookings'
+  },
+  {
+    path: 'reservations/new',
+    pathMatch: 'full',
+    redirectTo: 'account/bookings/new'
+  },
+  {
+    path: 'admin',
+    pathMatch: 'full',
+    redirectTo: 'management'
+  },
+  {
+    path: 'admin/:section',
+    redirectTo: 'management/:section'
   },
   {
     path: '**',

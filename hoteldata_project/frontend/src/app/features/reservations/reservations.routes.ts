@@ -1,14 +1,19 @@
 import { Routes } from '@angular/router';
 
-import { PlaceholderFeaturePageComponent } from '../shared-placeholder/placeholder-feature-page.component';
-
 export const RESERVATIONS_ROUTES: Routes = [
   {
     path: '',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Reservas',
-      description: 'La migracion del modulo de reservas se hara sobre endpoints JSON dedicados.'
-    }
+    loadComponent: () =>
+      import('./pages/reservations-list-page/reservations-list-page').then((m) => m.ReservationsListPageComponent)
+  },
+  {
+    path: 'new',
+    loadComponent: () =>
+      import('./pages/reservation-new-page/reservation-new-page').then((m) => m.ReservationNewPageComponent)
+  },
+  {
+    path: ':bookingId',
+    loadComponent: () =>
+      import('./pages/reservation-detail-page/reservation-detail-page').then((m) => m.ReservationDetailPageComponent)
   }
 ];

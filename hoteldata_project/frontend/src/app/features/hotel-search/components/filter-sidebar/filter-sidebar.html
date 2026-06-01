@@ -1,4 +1,61 @@
 <aside class="surface-card filter-sidebar">
-  <h2>Filtros</h2>
-  <p>La migracion del formulario de busqueda se conectara cuando exista el endpoint JSON del buscador.</p>
+  <div class="sidebar-head">
+    <h2>Filtros</h2>
+    <p>Explora hoteles sobre datos reales del backend analítico.</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="applyFilters()" class="filter-form">
+    <label class="field">
+      <span>Destino</span>
+      <input formControlName="destination" placeholder="Destino 123 o Quito">
+    </label>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Precio mínimo</span>
+        <input formControlName="minPrice" inputmode="decimal" placeholder="0">
+      </label>
+
+      <label class="field">
+        <span>Precio máximo</span>
+        <input formControlName="maxPrice" inputmode="decimal" placeholder="250">
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Estrellas mínimas</span>
+      <input formControlName="minStars" inputmode="decimal" placeholder="3">
+    </label>
+
+    <label class="field">
+      <span>Promoción</span>
+      <select formControlName="promotion">
+        <option value="">Todas</option>
+        <option value="yes">Con promoción</option>
+        <option value="no">Sin promoción</option>
+      </select>
+    </label>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Adultos</span>
+        <input formControlName="adults" inputmode="numeric" placeholder="2">
+      </label>
+
+      <label class="field">
+        <span>Niños</span>
+        <input formControlName="children" inputmode="numeric" placeholder="0">
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Habitaciones</span>
+      <input formControlName="rooms" inputmode="numeric" placeholder="1">
+    </label>
+
+    <div class="form-actions">
+      <button class="primary-action" type="submit">Buscar</button>
+      <button class="secondary-action" type="button" (click)="resetFilters()">Limpiar</button>
+    </div>
+  </form>
 </aside>
