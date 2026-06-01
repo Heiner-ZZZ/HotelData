@@ -9,6 +9,9 @@ from datetime import date
 from typing import Any
 
 
+CRUD_COLLISION_TEXT = "Collection is not available in TA 02 CRUD"
+
+
 def fetch(url: str) -> dict[str, Any]:
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     try:
@@ -34,6 +37,16 @@ def fetch(url: str) -> dict[str, Any]:
             "json": "application/json" in content_type.lower(),
             "body_preview": body[:240],
         }
+    except urllib.error.URLError as exc:
+        return {
+            "url": url,
+            "ok": False,
+            "status": None,
+            "content_type": "",
+            "json": False,
+            "error": str(exc),
+            "error_type": "url_error",
+        }
     except Exception as exc:  # pragma: no cover - operational script
         return {
             "url": url,
@@ -42,6 +55,7 @@ def fetch(url: str) -> dict[str, Any]:
             "content_type": "",
             "json": False,
             "error": str(exc),
+            "error_type": "unknown_error",
         }
 
 
@@ -79,11 +93,30 @@ def main() -> int:
         result["route"] = endpoint["route"]
         result["kind"] = endpoint["kind"]
         result["required_json"] = endpoint["required_json"]
-        result["contract_ok"] = bool(
+        contract_ok = bool(
             result.get("status") in {200, 201, 400, 401, 403, 404, 405}
             and (not endpoint["required_json"] or result.get("json"))
         )
+        if endpoint["route"].startswith("/api/hotels"):
+            body_preview = result.get("body_preview") or ""
+            if CRUD_COLLISION_TEXT in body_preview:
+                contract_ok = False
+                result["crud_collision"] = True
+        result["contract_ok"] = contract_ok
         results.append(result)
+
+    backend_unreachable = all(item.get("status") is None for item in results)
+    is_local_backend = base_url.startswith("http://127.0.0.1:8000") or base_url.startswith(
+        "http://localhost:8000"
+    )
+    startup_hint = None
+    if backend_unreachable and is_local_backend:
+        startup_hint = {
+            "message": "Backend no esta levantado.",
+            "action": "Inicie Docker Desktop.",
+            "command": "docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d redis app",
+            "note": "Verifique que MongoDB local de Windows este activo en localhost:27017.",
+        }
 
     summary = {
         "base_url": base_url,
@@ -92,6 +125,7 @@ def main() -> int:
         "results": results,
         "ok_count": sum(1 for item in results if item["contract_ok"]),
         "error_count": sum(1 for item in results if not item["contract_ok"]),
+        "startup_hint": startup_hint,
     }
     json.dump(summary, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")

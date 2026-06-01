@@ -70,7 +70,6 @@ def create_app() -> FastAPI:
     app.include_router(catalogs_router, prefix="/catalogs")
     app.include_router(audit_router)
     app.include_router(ta02_web_router)
-    app.include_router(crud_router)
     app.include_router(auth_web_router)
     app.include_router(admin_router)
     app.include_router(auth_module_router)
@@ -93,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(revenue_module_router)
     app.include_router(modular_audit_router)
     app.include_router(system_router)
+    app.include_router(crud_router)
     @app.on_event("startup")
     def _seed_default_catalogs() -> None:
         ensure_default_catalogs()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status as http_status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -32,7 +32,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / 
 
 
 @router.get("/status", response_model=ModuleStatus)
-def status() -> ModuleStatus:
+def revenue_status() -> ModuleStatus:
     ensure_revenue_collections()
     return module_status()
 
@@ -238,7 +238,7 @@ def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
     return response
 
 
-@api_router.post("/rates/plans", status_code=status.HTTP_201_CREATED)
+@api_router.post("/rates/plans", status_code=http_status.HTTP_201_CREATED)
 def create_rate_plan_api(payload: dict = Body(...)):
     try:
         return create_rate_plan(
@@ -250,7 +250,7 @@ def create_rate_plan_api(payload: dict = Body(...)):
             is_active=payload.get("is_active", True),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @api_router.post("/rates/calendar")
@@ -265,4 +265,4 @@ def save_rate_calendar_api(payload: dict = Body(...)):
             is_closed=payload.get("is_closed", False),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

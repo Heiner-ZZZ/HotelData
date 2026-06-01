@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status as http_status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / 
 
 
 @router.get("/status", response_model=ModuleStatus)
-def status() -> ModuleStatus:
+def hotels_status() -> ModuleStatus:
     return module_status()
 
 
@@ -120,5 +120,5 @@ def search_api(
 def detail_api(prop_id: int):
     hotel = hotel_detail(prop_id)
     if hotel is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hotel not found")
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Hotel not found")
     return hotel

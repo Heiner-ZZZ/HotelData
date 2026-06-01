@@ -13,7 +13,10 @@ RUN apt-get update && \
     pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
-COPY . /app
+COPY src /app/src
+COPY config /app/config
+COPY scripts /app/scripts
+COPY docs /app/docs
 
 EXPOSE 8000
 
