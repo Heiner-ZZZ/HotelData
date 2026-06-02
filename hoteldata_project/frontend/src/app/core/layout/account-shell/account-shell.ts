@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
+
 @Component({
   selector: 'app-account-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [AccessNavComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './account-shell.html',
   styleUrl: './account-shell.scss'
 })

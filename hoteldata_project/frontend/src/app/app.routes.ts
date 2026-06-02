@@ -1,12 +1,17 @@
 import { Routes } from '@angular/router';
 
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, roleGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'search'
+    redirectTo: 'login'
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./core/auth/login-page').then((m) => m.LoginPageComponent)
   },
   {
     path: '',
@@ -24,11 +29,6 @@ export const routes: Routes = [
           import('./features/hotel-detail/hotel-detail.routes').then((m) => m.HOTEL_DETAIL_ROUTES)
       },
       {
-        path: 'login',
-        loadComponent: () =>
-          import('./core/auth/login-redirect-page').then((m) => m.LoginRedirectPageComponent)
-      },
-      {
         path: 'reservations',
         loadChildren: () =>
           import('./features/reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
@@ -39,7 +39,10 @@ export const routes: Routes = [
     path: 'account',
     loadComponent: () =>
       import('./core/layout/account-shell/account-shell').then((m) => m.AccountShellComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: {
+      allowedRoles: ['cliente']
+    },
     children: [
       {
         path: '',
@@ -51,7 +54,10 @@ export const routes: Routes = [
     path: 'management',
     loadComponent: () =>
       import('./core/layout/management-shell/management-shell').then((m) => m.ManagementShellComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: {
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero']
+    },
     children: [
       {
         path: '',
@@ -64,7 +70,10 @@ export const routes: Routes = [
     path: 'system',
     loadComponent: () =>
       import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: {
+      allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos']
+    },
     children: [
       {
         path: '',
@@ -103,6 +112,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'search'
+    redirectTo: 'login'
   }
 ];

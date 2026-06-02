@@ -16,6 +16,7 @@ export interface AuthState {
   authenticated: boolean;
   user: AuthUser | null;
   session: AuthSession | null;
+  homeHref: string | null;
 }
 
 export interface AuthMeDto {

@@ -1,14 +1,24 @@
 <div class="public-shell">
+  <app-access-nav />
+
   <header class="public-header">
-    <div class="brand-block">
-      <a class="brand" routerLink="/search">HotelData</a>
-      <p>Busqueda, comparacion y reservas para viajeros</p>
+    <div class="public-copy">
+      <p class="eyebrow">Cliente / Viajero</p>
+      <h1>Encuentra estadías que se ven tan bien como se reservan.</h1>
+      <p class="lede">
+        Explora hoteles, compara ubicaciones, revisa valoraciones y deja listo el espacio
+        para una experiencia visual rica cuando conectemos imágenes reales de propiedades y destinos.
+      </p>
     </div>
-    <nav aria-label="Navegacion principal">
-      @for (item of navigation; track item.href) {
-        <a routerLinkActive="is-active" [routerLink]="item.href">{{ item.label }}</a>
-      }
-    </nav>
+
+    <div class="public-hero-card surface-card" aria-hidden="true">
+      <div class="hero-media"></div>
+      <div class="hero-glow"></div>
+      <div class="hero-caption">
+        <strong>Marketplace hotelero</strong>
+        <span>Layout listo para media, reviews, precio y disponibilidad.</span>
+      </div>
+    </div>
   </header>
 
   <main class="public-main">

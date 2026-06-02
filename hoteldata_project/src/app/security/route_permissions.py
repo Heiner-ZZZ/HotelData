@@ -13,7 +13,7 @@ class AccessRule:
 
 
 PUBLIC_PREFIXES = ("/static", "/api/hotels")
-PUBLIC_PATHS = ("/auth/login", "/api/auth/me")
+PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/me")
 
 
 ROUTE_RULES = [

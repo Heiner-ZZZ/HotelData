@@ -9,6 +9,21 @@ Este entorno permite levantar `HotelData Hub Analytics` desde Docker Desktop en 
 - `redis`: cache opcional pero habilitado en Docker
 - `pocketbase`: fuente operacional para pruebas y preparacion de GA03
 
+## Compose con Mongo local (Windows)
+
+Si usas `docker-compose.local-mongo.yml`, ese compose **no** define servicio `mongo`.
+La app se conecta al MongoDB local de Windows via `host.docker.internal:27017`.
+
+```powershell
+docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d redis app
+```
+
+No usar:
+
+```powershell
+docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d mongo redis app
+```
+
 ## Archivos usados
 
 - `../docker-compose.yml`

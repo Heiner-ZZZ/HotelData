@@ -1,15 +1,20 @@
 <div class="management-shell">
-  <aside class="management-sidebar">
-    <div class="sidebar-head">
+  <app-access-nav />
+  <header class="management-header">
+    <div class="management-branding">
       <a class="brand" routerLink="/management">HotelData</a>
-      <p>Gestion hotelera</p>
-      <strong>Operacion, comercial y reportes</strong>
+      <div>
+        <p class="eyebrow">Gestión hotelera</p>
+        <strong>Operación, comercial y reportes</strong>
+      </div>
     </div>
+  </header>
 
-    <nav aria-label="Navegacion de gestion hotelera">
-      @for (group of navigation; track group.label) {
-        <section class="nav-group">
-          <p>{{ group.label }}</p>
+  <section class="management-subnav" aria-label="Navegación de gestión hotelera">
+    @for (group of navigation; track group.label) {
+      <div class="subnav-group">
+        <p>{{ group.label }}</p>
+        <div class="subnav-items">
           @for (item of group.items; track item.href) {
             <a
               routerLinkActive="is-active"
@@ -19,26 +24,12 @@
               {{ item.label }}
             </a>
           }
-        </section>
-      }
-    </nav>
-  </aside>
-
-  <div class="management-stage">
-    <header class="management-topbar">
-      <div>
-        <p class="eyebrow">Hotel management workspace</p>
-        <strong>Centro operativo de propiedades, reservas, disponibilidad y tarifas</strong>
+        </div>
       </div>
-      <div class="topbar-links">
-        <a routerLink="/search">Vista publica</a>
-        <a routerLink="/account/bookings">Cuenta viajero</a>
-        <a routerLink="/system">System admin</a>
-      </div>
-    </header>
+    }
+  </section>
 
-    <main class="management-content">
-      <router-outlet />
-    </main>
-  </div>
+  <main class="management-content">
+    <router-outlet />
+  </main>
 </div>

@@ -61,8 +61,11 @@ These remain intentionally active as compatibility surfaces during migration.
 ### Backend
 
 ```powershell
-docker compose -f docker-compose.local-mongo.yml up -d mongo redis app
+docker compose -f docker-compose.local-mongo.yml up -d redis app
 ```
+
+Este compose no define servicio `mongo` y espera MongoDB local en Windows (localhost:27017),
+que dentro del contenedor se resuelve como `host.docker.internal:27017`.
 
 ### Frontend
 

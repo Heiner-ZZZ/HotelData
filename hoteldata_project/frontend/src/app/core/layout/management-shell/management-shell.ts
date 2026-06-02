@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
+
 interface ManagementNavGroup {
   label: string;
   items: Array<{ label: string; href: string; exact?: boolean }>;
@@ -8,7 +10,7 @@ interface ManagementNavGroup {
 
 @Component({
   selector: 'app-management-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [AccessNavComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './management-shell.html',
   styleUrl: './management-shell.scss'
 })

@@ -1,40 +1,52 @@
 <article class="hotel-card surface-card">
-  <div class="card-head">
-    <div>
-      <p class="eyebrow">Propiedad {{ hotel().id }}</p>
-      <h2>{{ hotel().name }}</h2>
-      <p>{{ hotel().location }} · {{ hotel().stars ?? 'N/D' }} estrellas · Review {{ hotel().reviewLabel }}</p>
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" aria-label="Abrir detalle del hotel">
+    <div class="media-overlay">
+      <span class="media-chip">Hotel {{ hotel().id }}</span>
+      @if (hotel().hasPromotion) {
+        <span class="media-chip media-chip-accent">Promo</span>
+      }
     </div>
-    @if (hotel().hasPromotion) {
-      <app-status-badge tone="success" label="Con promocion" />
-    }
-  </div>
+  </a>
 
-  <dl>
-    <div>
-      <dt>Precio promedio</dt>
-      <dd>${{ hotel().avgPriceLabel }}</dd>
-    </div>
-    <div>
-      <dt>Reservas</dt>
-      <dd>{{ hotel().reservations }}</dd>
-    </div>
-    <div>
-      <dt>Clicks</dt>
-      <dd>{{ hotel().clicks }}</dd>
-    </div>
-    <div>
-      <dt>Conversion</dt>
-      <dd>{{ hotel().conversionRate }}%</dd>
-    </div>
-  </dl>
+  <div class="content-column">
+    <div class="content-main">
+      <div class="copy-column">
+        <h2>
+          <a [routerLink]="['/hotels', hotel().id]">{{ hotel().name }}</a>
+        </h2>
+        <p class="meta-line">{{ headlineMeta }}</p>
+        <p class="summary">{{ summaryText }}</p>
 
-  <p class="destinations">
-    Destinos: {{ hotel().destinationLabels.length ? hotel().destinationLabels.join(', ') : 'N/D' }}
-  </p>
+        <div class="tag-row">
+          @for (destination of hotel().destinationLabels.slice(0, 3); track destination) {
+            <span class="tag">{{ destination }}</span>
+          }
+          <span class="tag">Conversión {{ hotel().conversionRate }}%</span>
+        </div>
 
-  <div class="action-row">
-    <a [routerLink]="['/hotels', hotel().id]" class="primary-link">Ver detalle</a>
-    <a [href]="'/hotels/compare?prop_id=' + hotel().id" class="secondary-link">Comparar</a>
+        <div class="inline-links">
+          <a [routerLink]="['/hotels', hotel().id]">Ver más</a>
+          <a [href]="'/hotels/compare?prop_id=' + hotel().id">Comparar</a>
+        </div>
+      </div>
+
+      <div class="score-column">
+        <div class="score-head">
+          <div>
+            <p class="score-title">{{ scoreTitle }}</p>
+            <p class="score-meta">{{ reviewSummary }}</p>
+          </div>
+          <span class="score-badge">{{ scoreLabel }}</span>
+        </div>
+
+        <div class="price-box">
+          <p class="price-label">Precio desde</p>
+          <strong>US${{ hotel().avgPriceLabel }}</strong>
+          <p class="price-meta">1 noche · 2 adultos</p>
+        </div>
+
+        <a [routerLink]="['/hotels', hotel().id]" class="primary-link">Ver disponibilidad</a>
+      </div>
+    </div>
   </div>
 </article>

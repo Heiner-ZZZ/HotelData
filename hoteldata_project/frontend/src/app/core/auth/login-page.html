@@ -1,0 +1,112 @@
+<main class="login-page">
+  <section class="login-hero">
+    <p class="login-kicker">Control de acceso</p>
+    <div class="brand-lockup">
+      <img
+        class="brand-logo"
+        src="assets/logo-hoteldata.png"
+        alt="HotelData"
+      >
+      <div>
+        <h1>HotelData</h1>
+        <p>La operación hotelera y comercial en una sola app web.</p>
+      </div>
+    </div>
+    <div class="hero-copy">
+      <h2>Ingresa a tu espacio de trabajo</h2>
+      <p>
+        Accede con tu usuario para abrir el panel que corresponde a tu rol:
+        gestión hotelera, revenue, cuenta de cliente o administración del sistema.
+      </p>
+    </div>
+  </section>
+
+  <section class="login-card surface-card">
+    <div class="card-head">
+      <p class="eyebrow">Acceso seguro</p>
+      <h2>Iniciar sesión</h2>
+      <p>Tu sesión te llevará directo a la página principal asignada.</p>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="notice notice-error">{{ errorMessage() }}</div>
+    }
+
+    <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
+      <label>
+        Usuario o correo
+        <input
+          type="text"
+          formControlName="identifier"
+          placeholder="superadmin o admin@hoteldata.local"
+          autocomplete="username"
+        >
+      </label>
+
+      <label>
+        Contraseña
+        <div class="password-field">
+          <input
+            [type]="passwordVisible() ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Tu contraseña"
+            autocomplete="current-password"
+          >
+          <button
+            type="button"
+            class="password-toggle"
+            [attr.aria-label]="passwordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            [attr.aria-pressed]="passwordVisible()"
+            (click)="togglePasswordVisibility()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="password-toggle-icon">
+              @if (passwordVisible()) {
+                <path
+                  d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 5.1A10.9 10.9 0 0 1 12 5c5.5 0 9.5 4.1 10.8 7-0.5 1.1-1.4 2.4-2.6 3.6M6.7 6.8C4.6 8 3.2 10.1 2.2 12 3.5 14.9 7.5 19 13 19c1 0 2-.1 2.9-.4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              } @else {
+                <path
+                  d="M2.2 12C3.5 9.1 7.5 5 13 5s9.5 4.1 10.8 7c-1.3 2.9-5.3 7-10.8 7S3.5 14.9 2.2 12Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+              }
+            </svg>
+            @if (passwordVisible()) {
+              <span class="sr-only">Ocultar</span>
+            } @else {
+              <span class="sr-only">Ver</span>
+            }
+          </button>
+        </div>
+      </label>
+
+      <button type="submit" [disabled]="submitting()">
+        @if (submitting()) {
+          Entrando...
+        } @else {
+          Entrar
+        }
+      </button>
+    </form>
+
+    <p class="card-footnote">
+      Si tu sesión sigue activa, te redirigiremos automáticamente a tu inicio.
+    </p>
+  </section>
+</main>

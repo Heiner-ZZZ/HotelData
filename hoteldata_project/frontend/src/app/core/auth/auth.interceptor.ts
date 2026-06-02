@@ -12,7 +12,7 @@ function isPublicJsonUrl(url: string): boolean {
 }
 
 function isAuthProbe(url: string): boolean {
-  return url.startsWith('/api/auth/me');
+  return url.startsWith('/api/auth/me') || url.startsWith('/api/auth/login');
 }
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {

@@ -22,7 +22,7 @@ def _login_redirect(request: Request) -> RedirectResponse:
     next_path = request.url.path
     if request.url.query:
         next_path = f"{next_path}?{request.url.query}"
-    return RedirectResponse(f"/auth/login?next={quote(next_path, safe='/?=&')}", status_code=303)
+    return RedirectResponse(f"/login?next={quote(next_path, safe='/?=&')}", status_code=303)
 
 
 async def role_access_middleware(request: Request, call_next):
@@ -42,7 +42,7 @@ async def role_access_middleware(request: Request, call_next):
 
     if path == "/":
         if not user:
-            return RedirectResponse("/auth/login", status_code=303)
+            return RedirectResponse("/login", status_code=303)
         return RedirectResponse(get_default_redirect_for_role(user.get("primary_role")), status_code=303)
 
     if not user:
@@ -52,7 +52,7 @@ async def role_access_middleware(request: Request, call_next):
                 content={
                     "authenticated": False,
                     "detail": "Authentication required",
-                    "login_url": f"/auth/login?next={quote(path, safe='/?=&')}",
+                    "login_url": f"/login?next={quote(path, safe='/?=&')}",
                 },
             )
         return _login_redirect(request)

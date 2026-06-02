@@ -4,86 +4,76 @@ from typing import Any
 
 
 ROLE_DEFAULT_REDIRECTS = {
-    "super_admin": "/admin/security",
-    "admin_sistema": "/admin/security",
-    "operador_datos": "/etl-status",
-    "auditor_datos": "/analytics/reservations",
-    "hotel_partner": "/partner/hotels",
-    "gerente_hotel": "/partner/hotels",
-    "revenue_manager": "/analytics/reservations",
-    "marketing_hotelero": "/partner/hotels",
-    "cliente": "/hotels/search",
+    "super_admin": "/system/users",
+    "admin_sistema": "/system/users",
+    "operador_datos": "/system/monitoring",
+    "auditor_datos": "/system/audit",
+    "hotel_partner": "/management",
+    "gerente_hotel": "/management",
+    "revenue_manager": "/management/rates",
+    "marketing_hotelero": "/management/amenities",
+    "cliente": "/search",
 }
 
 
 NAVIGATION_BY_ROLE = {
     "super_admin": [
-        {"label": "Seguridad", "href": "/admin/security", "icon": "icon-admin", "permission": "users.manage"},
-        {"label": "Usuarios", "href": "/admin/users", "icon": "icon-auth", "permission": "users.manage"},
-        {"label": "Dashboard", "href": "/dashboard", "icon": "icon-dashboard", "permission": "dashboard.read"},
-        {"label": "CRUD", "href": "/ta02/crud", "icon": "icon-collections", "permission": "crud.read"},
-        {"label": "ETL", "href": "/etl-status", "icon": "icon-etl", "permission": "etl.read"},
-        {"label": "Cliente", "href": "/hotels/search", "icon": "icon-hotels"},
-        {"label": "Reservas", "href": "/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
-        {"label": "Partner", "href": "/partner/hotels", "icon": "icon-partner", "permission": "hotels.manage"},
-        {"label": "Analytics", "href": "/analytics/reservations", "icon": "icon-analytics", "permission": "dashboard.read"},
-        {"label": "Revenue", "href": "/revenue/rate-plans", "icon": "icon-revenue", "permission": "revenue.read"},
-        {"label": "Redis", "href": "/system/redis-status", "icon": "icon-records", "permission": "etl.read"},
+        {"label": "Sistema", "href": "/system/users", "icon": "icon-admin", "permission": "users.manage"},
+        {"label": "Permisos", "href": "/system/permissions", "icon": "icon-auth", "permission": "users.manage"},
+        {"label": "Gestion", "href": "/management", "icon": "icon-dashboard", "permission": "dashboard.read"},
+        {"label": "Operaciones", "href": "/management/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
+        {"label": "Catalogo", "href": "/management/properties", "icon": "icon-partner", "permission": "hotels.manage"},
+        {"label": "Cliente", "href": "/search", "icon": "icon-hotels"},
+        {"label": "Monitoreo", "href": "/system/monitoring", "icon": "icon-records", "permission": "etl.read"},
     ],
     "admin_sistema": [
-        {"label": "Seguridad", "href": "/admin/security", "icon": "icon-admin", "permission": "users.manage"},
-        {"label": "Usuarios", "href": "/admin/users", "icon": "icon-auth", "permission": "users.manage"},
-        {"label": "Dashboard", "href": "/dashboard", "icon": "icon-dashboard", "permission": "dashboard.read"},
-        {"label": "CRUD", "href": "/ta02/crud", "icon": "icon-collections", "permission": "crud.read"},
-        {"label": "ETL", "href": "/etl-status", "icon": "icon-etl", "permission": "etl.read"},
-        {"label": "Redis", "href": "/system/redis-status", "icon": "icon-records", "permission": "etl.read"},
+        {"label": "Sistema", "href": "/system/users", "icon": "icon-admin", "permission": "users.manage"},
+        {"label": "Permisos", "href": "/system/permissions", "icon": "icon-auth", "permission": "users.manage"},
+        {"label": "Auditoria", "href": "/system/audit", "icon": "icon-analytics", "permission": "dashboard.read"},
+        {"label": "Monitoreo", "href": "/system/monitoring", "icon": "icon-records", "permission": "etl.read"},
     ],
     "operador_datos": [
-        {"label": "ETL", "href": "/etl-status", "icon": "icon-etl", "permission": "etl.read"},
-        {"label": "Dashboard", "href": "/dashboard", "icon": "icon-dashboard", "permission": "dashboard.read"},
-        {"label": "Auditoría", "href": "/analytics/reservations", "icon": "icon-analytics", "permission": "audit.read"},
-        {"label": "Redis", "href": "/system/redis-status", "icon": "icon-records", "permission": "etl.read"},
+        {"label": "Monitoreo", "href": "/system/monitoring", "icon": "icon-records", "permission": "etl.read"},
+        {"label": "Gestion", "href": "/management", "icon": "icon-dashboard", "permission": "dashboard.read"},
+        {"label": "Reportes", "href": "/management/reports", "icon": "icon-analytics", "permission": "audit.read"},
     ],
     "auditor_datos": [
-        {"label": "Reservas", "href": "/analytics/reservations", "icon": "icon-analytics", "permission": "audit.read"},
-        {"label": "Conversión", "href": "/analytics/conversion", "icon": "icon-analytics", "permission": "audit.read"},
-        {"label": "Revenue", "href": "/analytics/revenue", "icon": "icon-revenue", "permission": "audit.read"},
-        {"label": "ETL lectura", "href": "/etl-status", "icon": "icon-etl", "permission": "etl.read"},
+        {"label": "Auditoria", "href": "/system/audit", "icon": "icon-analytics", "permission": "audit.read"},
+        {"label": "Reportes", "href": "/management/reports", "icon": "icon-revenue", "permission": "audit.read"},
+        {"label": "Monitoreo", "href": "/system/monitoring", "icon": "icon-records", "permission": "etl.read"},
     ],
     "hotel_partner": [
-        {"label": "Partner", "href": "/partner/hotels", "icon": "icon-partner", "permission": "hotels.manage"},
-        {"label": "Reserva manual", "href": "/partner/manual-reservations/new", "icon": "icon-booking", "permission": "reservations.manage"},
-        {"label": "Mi sesión", "href": "/auth/me", "icon": "icon-auth"},
+        {"label": "Panel", "href": "/management", "icon": "icon-dashboard", "permission": "hotels.manage"},
+        {"label": "Propiedades", "href": "/management/properties", "icon": "icon-partner", "permission": "hotels.manage"},
+        {"label": "Reservas", "href": "/management/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
     ],
     "gerente_hotel": [
-        {"label": "Partner", "href": "/partner/hotels", "icon": "icon-partner", "permission": "hotels.manage"},
-        {"label": "Solicitudes", "href": "/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
-        {"label": "Reserva manual", "href": "/partner/manual-reservations/new", "icon": "icon-booking", "permission": "reservations.manage"},
-        {"label": "Analytics", "href": "/analytics/revenue", "icon": "icon-analytics", "permission": "revenue.read"},
-        {"label": "Mi sesión", "href": "/auth/me", "icon": "icon-auth"},
+        {"label": "Panel", "href": "/management", "icon": "icon-dashboard", "permission": "hotels.manage"},
+        {"label": "Reservas", "href": "/management/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
+        {"label": "Disponibilidad", "href": "/management/availability", "icon": "icon-partner", "permission": "hotels.manage"},
+        {"label": "Tarifas", "href": "/management/rates", "icon": "icon-analytics", "permission": "revenue.read"},
     ],
     "revenue_manager": [
-        {"label": "Revenue", "href": "/revenue/rate-plans", "icon": "icon-revenue", "permission": "revenue.read"},
-        {"label": "Promociones", "href": "/revenue/promotions", "icon": "icon-revenue", "permission": "revenue.read"},
-        {"label": "Analytics", "href": "/analytics/reservations", "icon": "icon-analytics", "permission": "revenue.read"},
-        {"label": "Conversión", "href": "/analytics/conversion", "icon": "icon-analytics", "permission": "revenue.read"},
-        {"label": "Mercados", "href": "/analytics/visitor-markets", "icon": "icon-analytics", "permission": "revenue.read"},
+        {"label": "Tarifas", "href": "/management/rates", "icon": "icon-revenue", "permission": "revenue.read"},
+        {"label": "Inventario", "href": "/management/availability", "icon": "icon-partner", "permission": "revenue.read"},
+        {"label": "Reservas", "href": "/management/reservations", "icon": "icon-booking", "permission": "revenue.read"},
+        {"label": "Reportes", "href": "/management/reports", "icon": "icon-analytics", "permission": "revenue.read"},
     ],
     "marketing_hotelero": [
-        {"label": "Partner contenido", "href": "/partner/hotels", "icon": "icon-partner", "roles": ("marketing_hotelero",)},
-        {"label": "Promociones", "href": "/revenue/promotions", "icon": "icon-revenue", "permission": "revenue.read"},
-        {"label": "Analytics promo", "href": "/analytics/promotions", "icon": "icon-analytics", "permission": "revenue.read"},
+        {"label": "Contenido", "href": "/management/properties", "icon": "icon-partner", "roles": ("marketing_hotelero",)},
+        {"label": "Amenities", "href": "/management/amenities", "icon": "icon-revenue", "permission": "revenue.read"},
+        {"label": "Reportes", "href": "/management/reports", "icon": "icon-analytics", "permission": "revenue.read"},
     ],
     "cliente": [
-        {"label": "Hoteles", "href": "/hotels/search", "icon": "icon-hotels"},
-        {"label": "Reservas", "href": "/reservations", "icon": "icon-booking", "roles": ("cliente",)},
-        {"label": "Mi sesión", "href": "/auth/me", "icon": "icon-auth"},
+        {"label": "Hoteles", "href": "/search", "icon": "icon-hotels"},
+        {"label": "Reservas", "href": "/account/bookings", "icon": "icon-booking", "roles": ("cliente",)},
+        {"label": "Perfil", "href": "/account/profile", "icon": "icon-auth"},
     ],
 }
 
 
 def get_default_redirect_for_role(role_name: str | None) -> str:
-    return ROLE_DEFAULT_REDIRECTS.get(role_name or "", "/hotels/search")
+    return ROLE_DEFAULT_REDIRECTS.get(role_name or "", "/search")
 
 
 def get_navigation_for_role(role_name: str | None, permission_codes: set[str] | None = None) -> list[dict[str, str]]:

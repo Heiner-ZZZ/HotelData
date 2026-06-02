@@ -15,29 +15,64 @@ export class AuthService {
   private readonly authStateSignal = signal<AuthState>({
     authenticated: false,
     user: null,
-    session: null
+    session: null,
+    homeHref: null
   });
+  private readonly sessionLoadedSignal = signal(false);
 
   readonly authState = this.authStateSignal.asReadonly();
   readonly currentUser = computed(() => this.authStateSignal().user);
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);
+  readonly sessionLoaded = this.sessionLoadedSignal.asReadonly();
 
   loadSession() {
     return this.http
       .get<AuthMeDto>(`${this.apiConfig.baseUrl}/auth/me`, { withCredentials: true })
       .pipe(
         map((dto) => this.mapAuthState(dto)),
-        tap((state) => this.authStateSignal.set(state)),
+        tap((state) => {
+          this.authStateSignal.set(state);
+          this.sessionLoadedSignal.set(true);
+        }),
         catchError(() => {
           const anonymousState: AuthState = {
             authenticated: false,
             user: null,
-            session: null
+            session: null,
+            homeHref: null
           };
           this.authStateSignal.set(anonymousState);
+          this.sessionLoadedSignal.set(true);
           return of(anonymousState);
         })
       );
+  }
+
+  login(identifier: string, password: string, nextUrl: string | null = null) {
+    return this.http
+      .post<AuthMeDto>(
+        `${this.apiConfig.baseUrl}/auth/login`,
+        {
+          identifier,
+          password,
+          next: nextUrl ?? ''
+        },
+        { withCredentials: true }
+      )
+      .pipe(
+        map((dto) => this.mapAuthState(dto)),
+        tap((state) => {
+          this.authStateSignal.set(state);
+          this.sessionLoadedSignal.set(true);
+        })
+      );
+  }
+
+  ensureSessionLoaded() {
+    if (this.sessionLoadedSignal()) {
+      return of(this.authStateSignal());
+    }
+    return this.loadSession();
   }
 
   private mapAuthState(dto: AuthMeDto): AuthState {
@@ -58,7 +93,8 @@ export class AuthService {
             expiresAt: dto.session.expires_at,
             createdAt: dto.session.created_at
           }
-        : null
+        : null,
+      homeHref: dto.home_href ?? null
     };
   }
 }

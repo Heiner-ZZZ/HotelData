@@ -1,0 +1,120 @@
+<div class="access-nav">
+  <svg class="liquid-filter-defs" aria-hidden="true" focusable="false">
+    <filter id="liquidGlassDistortion" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.012 0.035"
+        numOctaves="2"
+        seed="7"
+        result="noise"
+      />
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="noise"
+        scale="6"
+        xChannelSelector="R"
+        yChannelSelector="G"
+      />
+    </filter>
+  </svg>
+
+  <div class="liquid-outline" aria-hidden="true"></div>
+  <div class="liquid-caustic" aria-hidden="true"></div>
+
+  <div class="nav-leading">
+    <button type="button" class="back-button" (click)="navigateBack()" aria-label="Volver atrás">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <div class="brand-block">
+      <img
+        class="brand-logo"
+        src="assets/logo-hoteldata.png"
+        alt="HotelData"
+      >
+      <div>
+        <p class="brand-eyebrow">HotelData</p>
+        <strong class="brand-title">
+          <span>App web hotelera</span>
+          <span aria-hidden="true">App web hotelera</span>
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  <nav class="primary-nav" aria-label="Navegación principal">
+    @for (menu of visibleNavigationMenus(); track menu.id) {
+      <div class="menu-shell">
+        <button
+          type="button"
+          class="glass-trigger nav-trigger"
+          [class.is-open]="activeMenu() === menu.id"
+          (click)="toggleMenu(menu.id, $event)"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="activeMenu() === menu.id"
+        >
+          <span class="trigger-label">
+            <span>{{ menu.label }}</span>
+            <span aria-hidden="true">{{ menu.label }}</span>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        @if (activeMenu() === menu.id) {
+          <div class="glass-menu" (click)="$event.stopPropagation()">
+            @for (item of menu.items; track item.href) {
+              <a routerLinkActive="is-active" [routerLink]="item.href" (click)="closeMenus()">
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        }
+      </div>
+    }
+  </nav>
+
+  <div class="nav-actions">
+    <div class="menu-shell">
+      @if (authState().authenticated && currentUser(); as user) {
+        <button
+          type="button"
+          class="glass-trigger session-trigger"
+          [class.is-open]="activeMenu() === 'session'"
+          (click)="toggleMenu('session', $event)"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="activeMenu() === 'session'"
+        >
+          <span class="session-copy">
+            <strong class="session-title">
+              <span>{{ user.displayName }}</span>
+              <span aria-hidden="true">{{ user.displayName }}</span>
+            </strong>
+            <small>{{ user.primaryRole }}</small>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        @if (activeMenu() === 'session') {
+          <div class="glass-menu" (click)="$event.stopPropagation()">
+            <a routerLink="/search" (click)="closeMenus()">Inicio público</a>
+            <a routerLink="/account/bookings" (click)="closeMenus()">Mi cuenta</a>
+            <a href="/auth/logout">Cerrar sesión</a>
+          </div>
+        }
+      } @else {
+        <a class="glass-trigger login-trigger" routerLink="/login">
+          <span class="trigger-label">
+            <span>Entrar</span>
+            <span aria-hidden="true">Entrar</span>
+          </span>
+        </a>
+      }
+    </div>
+  </div>
+</div>
