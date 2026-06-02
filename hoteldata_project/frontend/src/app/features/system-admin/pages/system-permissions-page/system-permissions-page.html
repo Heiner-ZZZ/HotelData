@@ -1,0 +1,105 @@
+<div class="system-permissions-page">
+  <app-page-header
+    eyebrow="Administración"
+    title="Permisos"
+    description="Gestión global de roles, permisos y accesos visibles dentro del sistema."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando permisos..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar permisos"
+        description="Revisa la API de administración o vuelve a intentar en unos segundos."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin permisos configurados"
+        description="Cuando existan permisos y roles cargados aparecerán aquí para administración global."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Roles</span>
+            <strong>{{ vm.totals.roles }}</strong>
+            <p>Roles base del modelo de seguridad.</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Permisos</span>
+            <strong>{{ vm.totals.permissions }}</strong>
+            <p>Permisos disponibles para proteger rutas y acciones.</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Usuarios</span>
+            <strong>{{ vm.totals.users }}</strong>
+            <p>Cuentas impactadas por el modelo actual.</p>
+          </article>
+        </section>
+
+        <section class="surface-card roles-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Roles y accesos visibles</h2>
+              <p>{{ vm.roles.length }} rol(es) visibles con sus permisos y botones asociados.</p>
+            </div>
+          </div>
+
+          <div class="roles-grid">
+            @for (role of vm.roles; track role.roleName) {
+              <article class="role-card">
+                <div class="role-card-head">
+                  <h3>{{ role.roleName }}</h3>
+                  <span>{{ role.permissionCount }} permisos</span>
+                </div>
+                <p>{{ role.description }}</p>
+                <dl>
+                  <div>
+                    <dt>Permisos</dt>
+                    <dd>{{ role.permissionCodesLabel }}</dd>
+                  </div>
+                  <div>
+                    <dt>Accesos visibles</dt>
+                    <dd>{{ role.accessLabelsLabel }}</dd>
+                  </div>
+                </dl>
+              </article>
+            }
+          </div>
+        </section>
+
+        <section class="surface-card permissions-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Catálogo de permisos</h2>
+              <p>{{ vm.permissions.length }} permiso(s) registrados.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Permiso</th>
+                  <th>Descripción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (permission of vm.permissions; track permission.permissionCode) {
+                  <tr>
+                    <td><strong>{{ permission.permissionCode }}</strong></td>
+                    <td>{{ permission.description }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

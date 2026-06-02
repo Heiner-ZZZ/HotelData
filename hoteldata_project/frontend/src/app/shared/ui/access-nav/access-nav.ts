@@ -30,6 +30,11 @@ interface NavMenuGroup {
   items: NavMenuItem[];
 }
 
+interface SessionMenuItem {
+  label: string;
+  href: string;
+}
+
 @Component({
   selector: 'app-access-nav',
   imports: [RouterLink, RouterLinkActive],
@@ -50,6 +55,37 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
+  readonly sessionMenuItems = computed<SessionMenuItem[]>(() => {
+    const role = this.currentUser()?.primaryRole;
+    const homeHref = this.authState().homeHref || '/search';
+
+    if (!role) {
+      return [];
+    }
+
+    const items: SessionMenuItem[] = [{ label: 'Mi inicio', href: homeHref }];
+
+    if (role === 'cliente') {
+      items.push(
+        { label: 'Mis reservas', href: '/account/bookings' },
+        { label: 'Perfil', href: '/account/profile' }
+      );
+    }
+
+    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'].includes(role)) {
+      items.push({ label: 'Gestión hotelera', href: '/management' });
+    }
+
+    if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
+      items.push({ label: 'Sistema', href: '/system/users' });
+    }
+
+    if (role !== 'cliente') {
+      items.push({ label: 'Vista pública', href: '/search' });
+    }
+
+    return items;
+  });
 
   readonly navigationMenus: NavMenuGroup[] = [
     {

@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from src.app.modules.admin.service import (
@@ -20,7 +20,76 @@ from src.app.security.dependencies import require_permission
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
+
+
+def _serialize_users_overview(current_user: dict) -> dict:
+    overview = users_overview()
+    current_user_id = str(current_user.get("_id") or "")
+    current_username = current_user.get("username") or ""
+
+    users = []
+    for user in overview["users"]:
+        user_id = str(user.get("_id") or "")
+        is_current_user = user.get("username") == current_username or user_id == current_user_id
+        is_protected = user.get("primary_role") == "super_admin"
+        can_toggle = not is_current_user and not is_protected
+
+        users.append(
+            {
+                "user_id": user_id,
+                "username": user.get("username") or "",
+                "email": user.get("email") or "",
+                "primary_role": user.get("primary_role") or "",
+                "role_names": user.get("role_names", []),
+                "is_active": bool(user.get("is_active", True)),
+                "created_at": user.get("created_at"),
+                "display_name": user.get("display_name") or user.get("username") or "",
+                "is_current_user": is_current_user,
+                "is_protected": is_protected,
+                "can_toggle": can_toggle,
+                "toggle_label": "Desactivar" if user.get("is_active", True) else "Activar",
+                "action_hint": "Sesión actual" if is_current_user else ("Protegido" if is_protected else ""),
+            }
+        )
+
+    return {
+        "counts": overview["counts"],
+        "users": users,
+        "current_user": {
+            "username": current_username,
+            "primary_role": current_user.get("primary_role") or "",
+        },
+    }
+
+
+def _serialize_permissions_overview() -> dict:
+    overview = security_overview()
+    roles = []
+    for role in overview["roles"]:
+        roles.append(
+            {
+                "role_name": role.get("role_name") or "",
+                "description": role.get("description") or "Sin descripción",
+                "permission_codes": role.get("permission_codes", []),
+                "access_labels": [item.get("label") or "" for item in role.get("access_buttons", [])],
+            }
+        )
+
+    permissions = [
+        {
+            "permission_code": permission.get("permission_code") or "",
+            "description": permission.get("description") or "Sin descripción",
+        }
+        for permission in overview["permissions"]
+    ]
+
+    return {
+        "counts": overview["counts"],
+        "roles": roles,
+        "permissions": permissions,
+    }
 
 
 @router.get("/security")
@@ -48,6 +117,18 @@ def users_dashboard(request: Request, current_user: dict = Depends(require_permi
             "error": request.query_params.get("error", ""),
         },
     )
+
+
+@api_router.get("/users")
+def users_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
+    ensure_user_status_field()
+    return _serialize_users_overview(current_user)
+
+
+@api_router.get("/permissions")
+def permissions_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
+    ensure_user_status_field()
+    return _serialize_permissions_overview()
 
 
 @router.get("/roles/{role_name}")
@@ -108,3 +189,10 @@ def users_toggle_active_post(user_id: str, request: Request, current_user: dict 
 @router.get("/users/{user_id}/toggle-active")
 def users_toggle_active_get(user_id: str, request: Request, current_user: dict = Depends(require_permission("users.manage"))):
     return _toggle_user_active_redirect(user_id, current_user)
+
+
+@api_router.post("/users/{user_id}/toggle-active")
+def users_toggle_active_api(user_id: str, current_user: dict = Depends(require_permission("users.manage"))):
+    result = toggle_user_active(user_id, current_user)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)

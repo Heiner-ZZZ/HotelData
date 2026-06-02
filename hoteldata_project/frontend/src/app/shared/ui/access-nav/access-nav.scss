@@ -182,20 +182,17 @@
   z-index: 1;
 }
 
-.brand-title,
 .trigger-label,
 .session-title {
   position: relative;
   display: inline-grid;
 }
 
-.brand-title > span,
 .trigger-label > span,
 .session-title > span {
   grid-area: 1 / 1;
 }
 
-.brand-title > span:first-child,
 .trigger-label > span:first-child,
 .session-title > span:first-child {
   color: #21314d;
@@ -204,12 +201,18 @@
     0 6px 16px rgba(122, 143, 173, 0.18);
 }
 
-.brand-title > span:last-child,
 .trigger-label > span:last-child,
 .session-title > span:last-child {
   color: rgba(212, 175, 55, 0.82);
   transform: translateY(1px);
   opacity: 0.3;
+}
+
+.brand-title {
+  color: #21314d;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65),
+    0 6px 16px rgba(122, 143, 173, 0.18);
 }
 
 .menu-shell {

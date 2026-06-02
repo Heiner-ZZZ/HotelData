@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
 import { PlaceholderFeaturePageComponent } from '../shared-placeholder/placeholder-feature-page.component';
+import { SystemPermissionsPageComponent } from './pages/system-permissions-page/system-permissions-page';
+import { SystemUsersPageComponent } from './pages/system-users-page/system-users-page';
 
 export const SYSTEM_ADMIN_ROUTES: Routes = [
   {
@@ -10,19 +12,11 @@ export const SYSTEM_ADMIN_ROUTES: Routes = [
   },
   {
     path: 'users',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Usuarios globales',
-      description: 'Ruta preparada para administracion global de usuarios del sistema.'
-    }
+    component: SystemUsersPageComponent
   },
   {
     path: 'permissions',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Permisos',
-      description: 'Ruta preparada para gestion global de roles, permisos y matrices de acceso.'
-    }
+    component: SystemPermissionsPageComponent
   },
   {
     path: 'audit',

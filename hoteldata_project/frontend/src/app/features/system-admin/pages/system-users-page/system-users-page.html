@@ -1,0 +1,112 @@
+<div class="system-users-page">
+  <app-page-header
+    eyebrow="Administración"
+    title="Usuarios"
+    description="Consulta centralizada de usuarios, correos, roles y estado de activación para el flujo administrativo."
+  />
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando usuarios..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar los usuarios"
+        description="Revisa la API de administración o vuelve a intentar en unos segundos."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin usuarios registrados"
+        description="Cuando existan cuentas del sistema aparecerán aquí con su rol y estado activo."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Usuarios</span>
+            <strong>{{ vm.totalUsers }}</strong>
+            <p>Cuentas visibles en esta vista administrativa.</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Roles</span>
+            <strong>{{ vm.totalRoles }}</strong>
+            <p>Roles base disponibles en el modelo de seguridad.</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Sesión actual</span>
+            <strong>{{ vm.currentUsername }}</strong>
+            <p>Tu cuenta queda protegida contra cambios desde esta pantalla.</p>
+          </article>
+        </section>
+
+        <section class="surface-card users-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Usuarios registrados</h2>
+              <p>{{ vm.totalUsers }} usuarios y {{ vm.totalRoles }} roles disponibles.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Rol principal</th>
+                  <th>Roles</th>
+                  <th>Activo</th>
+                  <th>Creado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of vm.items; track user.userId) {
+                  <tr>
+                    <td>
+                      <strong>{{ user.username }}</strong>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.primaryRole }}</td>
+                    <td>{{ user.roleNamesLabel }}</td>
+                    <td>
+                      <app-status-badge
+                        [tone]="user.isActive ? 'success' : 'warning'"
+                        [label]="user.isActive ? 'Activo' : 'Desactivado'"
+                      />
+                    </td>
+                    <td>{{ user.createdAtLabel }}</td>
+                    <td>
+                      @if (user.canToggle) {
+                        <button
+                          type="button"
+                          class="row-action"
+                          [disabled]="pendingUserId() === user.userId"
+                          (click)="toggleUser(user.userId)"
+                        >
+                          {{ pendingUserId() === user.userId ? 'Actualizando...' : user.toggleLabel }}
+                        </button>
+                      } @else {
+                        <span class="action-hint">{{ user.actionHint }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

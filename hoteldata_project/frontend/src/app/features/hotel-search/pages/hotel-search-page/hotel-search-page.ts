@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -32,6 +33,7 @@ import { HotelSearchApiService } from '../../services/hotel-search-api.service';
 })
 export class HotelSearchPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly hotelSearchApi = inject(HotelSearchApiService);
   private readonly router = inject(Router);
@@ -39,6 +41,23 @@ export class HotelSearchPageComponent {
   readonly viewState = signal<ViewState>('loading');
   readonly pageData = signal<HotelSearchPageData | null>(null);
   readonly currentFilters = computed(() => this.pageData()?.filters ?? createHotelSearchFilters());
+  readonly pageHeader = computed(() => {
+    const role = this.authService.currentUser()?.primaryRole;
+
+    if (!role || role === 'cliente') {
+      return {
+        eyebrow: 'Cliente / viajero',
+        title: 'Buscar hoteles',
+        description: 'Exploración tipo marketplace sobre datos analíticos reales. No crea reservas ni procesa pagos.'
+      };
+    }
+
+    return {
+      eyebrow: 'Exploración / referencia',
+      title: 'Buscar hoteles',
+      description: 'Vista pública de referencia para validar contenido, fichas, precios y experiencia comercial sin salir del panel operativo.'
+    };
+  });
 
   constructor() {
     this.activatedRoute.queryParamMap

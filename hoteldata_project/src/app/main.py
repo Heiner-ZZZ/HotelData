@@ -21,6 +21,7 @@ from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.features.ta02_crud.routes import web_router as ta02_web_router
 from src.app.modules.audit.routes import router as modular_audit_router
 from src.app.modules.admin.routes import router as admin_router
+from src.app.modules.admin.routes import api_router as admin_api_router
 from src.app.modules.admin.service import ensure_user_status_field
 from src.app.modules.auth.routes import api_router as auth_api_router
 from src.app.modules.auth.routes import router as auth_module_router
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(ta02_web_router)
     app.include_router(auth_web_router)
     app.include_router(admin_router)
+    app.include_router(admin_api_router)
     app.include_router(auth_module_router)
     app.include_router(auth_api_router)
     app.include_router(users_module_router)

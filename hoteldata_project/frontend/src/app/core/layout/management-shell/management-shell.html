@@ -11,7 +11,7 @@
   </header>
 
   <section class="management-subnav" aria-label="Navegación de gestión hotelera">
-    @for (group of navigation; track group.label) {
+    @for (group of visibleNavigation(); track group.label) {
       <div class="subnav-group">
         <p>{{ group.label }}</p>
         <div class="subnav-items">

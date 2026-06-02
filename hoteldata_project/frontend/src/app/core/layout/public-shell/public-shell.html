@@ -3,11 +3,10 @@
 
   <header class="public-header">
     <div class="public-copy">
-      <p class="eyebrow">Cliente / Viajero</p>
-      <h1>Encuentra estadías que se ven tan bien como se reservan.</h1>
+      <p class="eyebrow">{{ heroContent().eyebrow }}</p>
+      <h1>{{ heroContent().title }}</h1>
       <p class="lede">
-        Explora hoteles, compara ubicaciones, revisa valoraciones y deja listo el espacio
-        para una experiencia visual rica cuando conectemos imágenes reales de propiedades y destinos.
+        {{ heroContent().lede }}
       </p>
     </div>
 
@@ -15,8 +14,8 @@
       <div class="hero-media"></div>
       <div class="hero-glow"></div>
       <div class="hero-caption">
-        <strong>Marketplace hotelero</strong>
-        <span>Layout listo para media, reviews, precio y disponibilidad.</span>
+        <strong>{{ heroContent().cardTitle }}</strong>
+        <span>{{ heroContent().cardCopy }}</span>
       </div>
     </div>
   </header>
