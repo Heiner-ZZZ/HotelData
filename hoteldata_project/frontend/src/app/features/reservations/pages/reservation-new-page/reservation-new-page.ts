@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -12,7 +13,7 @@ import { ReservationsApiService } from '../../services/reservations-api.service'
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
+  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,10 +29,32 @@ export class ReservationNewPageComponent {
   readonly submitting = signal(false);
   readonly errorMessage = signal('');
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
+  readonly step = signal<'details' | 'review'>('details');
+
   readonly selectedHotel = computed(() => {
     const selectedId = this.form.controls.propId.value;
     return this.hotelOptions().find((item) => item.propId === selectedId) || null;
   });
+
+  readonly computedNights = computed(() => {
+    const checkIn = this.form.controls.checkInDate.value;
+    const checkOut = this.form.controls.checkOutDate.value;
+    if (!checkIn || !checkOut) return 0;
+    const inDate = new Date(checkIn);
+    const outDate = new Date(checkOut);
+    const diff = (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24);
+    return diff > 0 ? diff : 0;
+  });
+
+  readonly roomSummary = computed(() => {
+    const adults = this.form.controls.adults.value;
+    const children = this.form.controls.children.value;
+    const rooms = this.form.controls.rooms.value;
+    const nights = this.computedNights();
+    return { adults, children, rooms, nights };
+  });
+
+  readonly today = new Date().toISOString().split('T')[0];
 
   readonly form = this.formBuilder.nonNullable.group({
     propId: [0, [Validators.required, Validators.min(1)]],
@@ -39,9 +62,9 @@ export class ReservationNewPageComponent {
     guestEmail: ['', [Validators.required, Validators.email]],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
-    adults: [2, [Validators.required, Validators.min(1)]],
-    children: [0, [Validators.required, Validators.min(0)]],
-    rooms: [1, [Validators.required, Validators.min(1)]],
+    adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
+    children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
+    rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
     comment: ['']
   });
 
@@ -63,6 +86,18 @@ export class ReservationNewPageComponent {
           this.loading.set(false);
         }
       });
+  }
+
+  goToReview() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.step.set('review');
+  }
+
+  backToDetails() {
+    this.step.set('details');
   }
 
   submit() {
@@ -99,5 +134,16 @@ export class ReservationNewPageComponent {
           this.submitting.set(false);
         }
       });
+  }
+
+  adjustValue(field: 'adults' | 'children' | 'rooms', delta: number) {
+    const control = this.form.controls[field];
+    const newValue = control.value + delta;
+    control.setValue(newValue);
+    control.markAsDirty();
+  }
+
+  trackByPropId(_index: number, item: ReservationHotelOption): number {
+    return item.propId;
   }
 }

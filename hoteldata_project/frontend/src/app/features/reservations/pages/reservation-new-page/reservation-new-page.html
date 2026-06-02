@@ -1,75 +1,307 @@
-<div class="reservation-new-page">
-  <app-page-header
-    eyebrow="Nueva solicitud"
-    title="Solicitar reserva hotelera"
-    description="Crea una reserva en estado requested. No confirma pago ni disponibilidad real."
-  />
+<div class="booking-page">
+  <div class="booking-header">
+    <a routerLink="/reservations" class="back-link">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Volver a solicitudes
+    </a>
 
-  <div class="action-row">
-    <a routerLink="/reservations" class="secondary-link">Volver a solicitudes</a>
+    <div class="step-indicator">
+      <div class="step-dot" [class.is-active]="step() === 'details'" [class.is-done]="step() === 'review'">
+        <span class="step-number">
+          @if (step() === 'review') {
+            <span class="material-symbols-outlined">check</span>
+          } @else {
+            1
+          }
+        </span>
+        <span class="step-label">Detalles</span>
+      </div>
+      <div class="step-line" [class.is-done]="step() === 'review'"></div>
+      <div class="step-dot" [class.is-active]="step() === 'review'">
+        <span class="step-number">2</span>
+        <span class="step-label">Revisar</span>
+      </div>
+    </div>
   </div>
 
   @if (loading()) {
-    <app-loading-state label="Cargando formulario..." />
+    <div class="loading-shade">
+      <div class="loading-card surface-card">
+        <span class="material-symbols-outlined loading-spin">sync</span>
+        <p>Cargando opciones de reserva...</p>
+      </div>
+    </div>
   } @else {
     @if (errorMessage()) {
-      <app-error-state [title]="errorMessage()" description="Revisa los datos e intenta nuevamente." />
+      <div class="surface-card error-banner">
+        <span class="material-symbols-outlined">error</span>
+        <p>{{ errorMessage() }}</p>
+      </div>
     }
 
-    @if (selectedHotel(); as hotel) {
-      <section class="surface-card panel selected-hotel">
-        <h2>Hotel seleccionado</h2>
-        <p>{{ hotel.label }}</p>
-      </section>
-    }
+    @if (step() === 'details') {
+      <form [formGroup]="form" (ngSubmit)="goToReview()" class="booking-form" novalidate>
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">hotel</span>
+            <div>
+              <h2>Seleccionar hotel</h2>
+              <p>Elige el destino de tu viaje</p>
+            </div>
+          </div>
 
-    <section class="surface-card panel">
-      <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
-        <label class="field">
-          <span>Hotel</span>
-          <select formControlName="propId">
-            <option [ngValue]="0">Seleccionar hotel</option>
-            @for (option of hotelOptions(); track option.propId) {
-              <option [ngValue]="option.propId">{{ option.label }}</option>
-            }
-          </select>
-        </label>
-        <label class="field">
-          <span>Nombre del huésped</span>
-          <input formControlName="guestName">
-        </label>
-        <label class="field">
-          <span>Email</span>
-          <input formControlName="guestEmail" type="email">
-        </label>
-        <label class="field">
-          <span>Fecha entrada</span>
-          <input formControlName="checkInDate" type="date">
-        </label>
-        <label class="field">
-          <span>Fecha salida</span>
-          <input formControlName="checkOutDate" type="date">
-        </label>
-        <label class="field">
-          <span>Adultos</span>
-          <input formControlName="adults" type="number" min="1">
-        </label>
-        <label class="field">
-          <span>Niños</span>
-          <input formControlName="children" type="number" min="0">
-        </label>
-        <label class="field">
-          <span>Habitaciones</span>
-          <input formControlName="rooms" type="number" min="1">
-        </label>
-        <label class="field field-span">
-          <span>Comentario</span>
-          <textarea formControlName="comment" rows="6"></textarea>
-        </label>
-        <div class="form-actions">
-          <button type="submit" [disabled]="submitting()">Crear solicitud</button>
+          <div class="field-group">
+            <label class="field" [class.field-error]="form.controls.propId.invalid && form.controls.propId.touched">
+              <span class="field-label">Hotel</span>
+              <div class="select-wrap">
+                <select formControlName="propId">
+                  <option [ngValue]="0">— Seleccionar hotel —</option>
+                  @for (option of hotelOptions(); track option.propId) {
+                    <option [ngValue]="option.propId">{{ option.label }}</option>
+                  }
+                </select>
+                <span class="material-symbols-outlined select-arrow">expand_more</span>
+              </div>
+              @if (form.controls.propId.invalid && form.controls.propId.touched) {
+                <span class="field-error-msg">Selecciona un hotel</span>
+              }
+            </label>
+          </div>
+
+          @if (selectedHotel(); as hotel) {
+            <div class="hotel-chip">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>{{ hotel.label }}</span>
+            </div>
+          }
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">person</span>
+            <div>
+              <h2>Datos del huésped</h2>
+              <p>Información de contacto del viajero principal</p>
+            </div>
+          </div>
+
+          <div class="field-group two-col">
+            <label class="field" [class.field-error]="form.controls.guestName.invalid && form.controls.guestName.touched">
+              <span class="field-label">Nombre completo</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">badge</span>
+                <input formControlName="guestName" placeholder="Ej: Juan Pérez" autocomplete="name" />
+              </div>
+              @if (form.controls.guestName.invalid && form.controls.guestName.touched) {
+                <span class="field-error-msg">El nombre es obligatorio</span>
+              }
+            </label>
+
+            <label class="field" [class.field-error]="form.controls.guestEmail.invalid && form.controls.guestEmail.touched">
+              <span class="field-label">Correo electrónico</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">mail</span>
+                <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email" />
+              </div>
+              @if (form.controls.guestEmail.invalid && form.controls.guestEmail.touched) {
+                <span class="field-error-msg">Ingresa un correo válido</span>
+              }
+            </label>
+          </div>
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">calendar_month</span>
+            <div>
+              <h2>Fechas del viaje</h2>
+              <p>Selecciona entrada y salida</p>
+            </div>
+          </div>
+
+          <div class="field-group two-col">
+            <label class="field" [class.field-error]="form.controls.checkInDate.invalid && form.controls.checkInDate.touched">
+              <span class="field-label">Fecha de entrada</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">event</span>
+                <input formControlName="checkInDate" type="date" [attr.min]="today" />
+              </div>
+              @if (form.controls.checkInDate.invalid && form.controls.checkInDate.touched) {
+                <span class="field-error-msg">Selecciona la fecha de entrada</span>
+              }
+            </label>
+
+            <label class="field" [class.field-error]="form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched">
+              <span class="field-label">Fecha de salida</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">event_upcoming</span>
+                <input formControlName="checkOutDate" type="date" [attr.min]="form.controls.checkInDate.value || today" />
+              </div>
+              @if (form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched) {
+                <span class="field-error-msg">Selecciona la fecha de salida</span>
+              }
+            </label>
+          </div>
+
+          @if (computedNights() > 0) {
+            <div class="nights-badge">
+              <span class="material-symbols-outlined">nightstay</span>
+              <span><strong>{{ computedNights() }}</strong> {{ computedNights() === 1 ? 'noche' : 'noches' }}</span>
+            </div>
+          }
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">group</span>
+            <div>
+              <h2>Ocupación</h2>
+              <p>Número de huéspedes y habitaciones</p>
+            </div>
+          </div>
+
+          <div class="occupancy-grid">
+            <div class="stepper-field">
+              <span class="field-label">Adultos</span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('adults', -1)" [disabled]="form.controls.adults.value <= 1">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.adults.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('adults', 1)" [disabled]="form.controls.adults.value >= 20">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="stepper-field">
+              <span class="field-label">Niños</span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('children', -1)" [disabled]="form.controls.children.value <= 0">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.children.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('children', 1)" [disabled]="form.controls.children.value >= 10">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="stepper-field">
+              <span class="field-label">Habitaciones</span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', -1)" [disabled]="form.controls.rooms.value <= 1">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.rooms.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', 1)" [disabled]="form.controls.rooms.value >= 10">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">notes</span>
+            <div>
+              <h2>Comentario</h2>
+              <p>Requerimientos especiales (opcional)</p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <div class="input-wrap">
+                <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <div class="form-footer">
+          <button type="button" class="btn-secondary" routerLink="/reservations">
+            <span class="material-symbols-outlined">close</span>
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="form.invalid">
+            <span class="material-symbols-outlined">chevron_right</span>
+            Revisar solicitud
+          </button>
         </div>
       </form>
-    </section>
+    }
+
+    @if (step() === 'review') {
+      <div class="review-container">
+        <section class="surface-card review-card">
+          <div class="review-card-head">
+            <span class="material-symbols-outlined review-icon">description</span>
+            <h2>Resumen de solicitud</h2>
+          </div>
+
+          <div class="review-grid">
+            <div class="review-item">
+              <span class="review-label">Hotel</span>
+              <strong>{{ selectedHotel()?.label || '—' }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Huésped</span>
+              <strong>{{ form.controls.guestName.value }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Email</span>
+              <strong>{{ form.controls.guestEmail.value }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Entrada</span>
+              <strong>{{ form.controls.checkInDate.value | date:'dd/MM/yyyy' }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Salida</span>
+              <strong>{{ form.controls.checkOutDate.value | date:'dd/MM/yyyy' }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Estancia</span>
+              <strong>{{ roomSummary().nights }} {{ roomSummary().nights === 1 ? 'noche' : 'noches' }}</strong>
+            </div>
+            <div class="review-item">
+              <span class="review-label">Ocupación</span>
+              <strong>{{ roomSummary().adults }} adulto(s) · {{ roomSummary().children }} niño(s) · {{ roomSummary().rooms }} habitación(es)</strong>
+            </div>
+            @if (form.controls.comment.value) {
+              <div class="review-item review-item-span">
+                <span class="review-label">Comentario</span>
+                <strong>{{ form.controls.comment.value }}</strong>
+              </div>
+            }
+          </div>
+
+          @if (computedNights() > 0) {
+            <div class="review-total">
+              <span>Total de la estancia</span>
+              <strong>{{ computedNights() }} {{ computedNights() === 1 ? 'noche' : 'noches' }}</strong>
+            </div>
+          }
+        </section>
+
+        <div class="form-footer">
+          <button type="button" class="btn-secondary" (click)="backToDetails()">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Editar datos
+          </button>
+          <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting()">
+            @if (submitting()) {
+              <span class="material-symbols-outlined loading-spin">sync</span>
+              Enviando...
+            } @else {
+              <span class="material-symbols-outlined">send</span>
+              Confirmar y enviar
+            }
+          </button>
+        </div>
+      </div>
+    }
   }
 </div>

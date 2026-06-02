@@ -1,35 +1,81 @@
 <div class="management-shell">
   <app-access-nav />
-  <header class="management-header">
-    <div class="management-branding">
-      <a class="brand" routerLink="/management">HotelData</a>
-      <div>
-        <p class="eyebrow">Gestión hotelera</p>
-        <strong>Operación, comercial y reportes</strong>
-      </div>
-    </div>
-  </header>
 
-  <section class="management-subnav" aria-label="Navegación de gestión hotelera">
-    @for (group of visibleNavigation(); track group.label) {
-      <div class="subnav-group">
-        <p>{{ group.label }}</p>
-        <div class="subnav-items">
-          @for (item of group.items; track item.href) {
-            <a
-              routerLinkActive="is-active"
-              [routerLink]="item.href"
-              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-            >
-              {{ item.label }}
-            </a>
-          }
+  <div class="management-layout">
+    <aside class="management-sidebar" aria-label="Navegación de gestión hotelera">
+      <svg class="sidebar-filter-defs" aria-hidden="true" focusable="false">
+        <filter id="sidebarLiquidDistortion" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.015 0.04"
+            numOctaves="2"
+            seed="12"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="4"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
+
+      <div class="sidebar-liquid-outline" aria-hidden="true"></div>
+      <div class="sidebar-liquid-caustic" aria-hidden="true"></div>
+
+      <div class="sidebar-header">
+        <span class="material-symbols-outlined sidebar-header-icon">hotel</span>
+        <div>
+          <strong class="sidebar-brand">HotelData</strong>
+          <span class="sidebar-eyebrow">Gestión hotelera</span>
         </div>
       </div>
-    }
-  </section>
 
-  <main class="management-content">
-    <router-outlet />
-  </main>
+      <nav class="sidebar-nav">
+        @for (group of visibleNavigation(); track group.label) {
+          <div
+            class="sidebar-category"
+            (mouseenter)="onCategoryHover(group.label)"
+            (mouseleave)="onCategoryLeave(group.label)"
+          >
+            <div
+              class="category-header"
+              (click)="toggleCategory(group.label)"
+              role="button"
+              tabindex="0"
+              [class.is-expanded]="clickOpened() === group.label || hoveredCategory() === group.label"
+              [attr.aria-expanded]="clickOpened() === group.label || hoveredCategory() === group.label"
+            >
+              <span class="material-symbols-outlined category-icon">{{ group.icon }}</span>
+              <span class="category-label">{{ group.label }}</span>
+              <span class="category-chevron material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </div>
+
+            @if (clickOpened() === group.label || hoveredCategory() === group.label) {
+              <div class="category-items">
+                @for (item of group.items; track item.href) {
+                  <a
+                    class="sidebar-item"
+                    routerLinkActive="is-active"
+                    [routerLink]="item.href"
+                    [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+                  >
+                    <span class="material-symbols-outlined sidebar-item-icon">{{ item.icon }}</span>
+                    <span class="sidebar-item-label">{{ item.label }}</span>
+                    <span class="sidebar-item-shine" aria-hidden="true"></span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        }
+      </nav>
+    </aside>
+
+    <main class="management-content">
+      <router-outlet />
+    </main>
+  </div>
 </div>

@@ -12,7 +12,7 @@
     @case ('error') {
       <app-error-state
         title="No fue posible cargar permisos"
-        description="Revisa la API de administración o vuelve a intentar en unos segundos."
+        [description]="loadErrorMessage() || 'Revisa la API de administración o vuelve a intentar en unos segundos.'"
       />
     }
     @case ('empty') {
@@ -25,79 +25,90 @@
       @if (viewModel(); as vm) {
         <section class="hero-grid">
           <article class="surface-card hero-card">
+            <span class="hero-icon material-symbols-outlined">vpn_key</span>
             <span class="label">Roles</span>
             <strong>{{ vm.totals.roles }}</strong>
             <p>Roles base del modelo de seguridad.</p>
           </article>
           <article class="surface-card hero-card">
+            <span class="hero-icon material-symbols-outlined">security</span>
             <span class="label">Permisos</span>
             <strong>{{ vm.totals.permissions }}</strong>
             <p>Permisos disponibles para proteger rutas y acciones.</p>
           </article>
           <article class="surface-card hero-card">
+            <span class="hero-icon material-symbols-outlined">person</span>
             <span class="label">Usuarios</span>
             <strong>{{ vm.totals.users }}</strong>
             <p>Cuentas impactadas por el modelo actual.</p>
           </article>
         </section>
 
-        <section class="surface-card roles-panel">
-          <div class="panel-head">
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('roles')">
             <div>
               <h2>Roles y accesos visibles</h2>
               <p>{{ vm.roles.length }} rol(es) visibles con sus permisos y botones asociados.</p>
             </div>
+            <span class="accordion-chevron">{{ openSection() === 'roles' ? '▼' : '▶' }}</span>
           </div>
-
-          <div class="roles-grid">
-            @for (role of vm.roles; track role.roleName) {
-              <article class="role-card">
-                <div class="role-card-head">
-                  <h3>{{ role.roleName }}</h3>
-                  <span>{{ role.permissionCount }} permisos</span>
-                </div>
-                <p>{{ role.description }}</p>
-                <dl>
-                  <div>
-                    <dt>Permisos</dt>
-                    <dd>{{ role.permissionCodesLabel }}</dd>
-                  </div>
-                  <div>
-                    <dt>Accesos visibles</dt>
-                    <dd>{{ role.accessLabelsLabel }}</dd>
-                  </div>
-                </dl>
-              </article>
-            }
-          </div>
+          @if (openSection() === 'roles') {
+            <div class="accordion-body">
+              <div class="roles-grid">
+                @for (role of vm.roles; track role.roleName) {
+                  <article class="role-card">
+                    <div class="role-card-head">
+                      <h3>{{ role.roleName }}</h3>
+                      <span>{{ role.permissionCount }} permisos</span>
+                    </div>
+                    <p>{{ role.description }}</p>
+                    <dl>
+                      <div>
+                        <dt>Permisos</dt>
+                        <dd>{{ role.permissionCodesLabel }}</dd>
+                      </div>
+                      <div>
+                        <dt>Accesos visibles</dt>
+                        <dd>{{ role.accessLabelsLabel }}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                }
+              </div>
+            </div>
+          }
         </section>
 
-        <section class="surface-card permissions-panel">
-          <div class="panel-head">
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('catalog')">
             <div>
               <h2>Catálogo de permisos</h2>
               <p>{{ vm.permissions.length }} permiso(s) registrados.</p>
             </div>
+            <span class="accordion-chevron">{{ openSection() === 'catalog' ? '▼' : '▶' }}</span>
           </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Permiso</th>
-                  <th>Descripción</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (permission of vm.permissions; track permission.permissionCode) {
-                  <tr>
-                    <td><strong>{{ permission.permissionCode }}</strong></td>
-                    <td>{{ permission.description }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+          @if (openSection() === 'catalog') {
+            <div class="accordion-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Permiso</th>
+                      <th>Descripción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (permission of vm.permissions; track permission.permissionCode) {
+                      <tr>
+                        <td><strong>{{ permission.permissionCode }}</strong></td>
+                        <td>{{ permission.description }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
         </section>
       }
     }

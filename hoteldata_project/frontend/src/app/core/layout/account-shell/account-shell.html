@@ -11,7 +11,10 @@
 
     <nav aria-label="Navegacion de cuenta">
       @for (item of navigation; track item.href) {
-        <a routerLinkActive="is-active" [routerLink]="item.href">{{ item.label }}</a>
+        <a routerLinkActive="is-active" [routerLink]="item.href">
+          <span class="material-symbols-outlined nav-icon">{{ item.icon }}</span>
+          {{ item.label }}
+        </a>
       }
     </nav>
   </header>

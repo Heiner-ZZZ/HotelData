@@ -6,5 +6,5 @@ import { Component, input } from '@angular/core';
   styleUrl: './occupancy-summary.scss'
 })
 export class OccupancySummaryComponent {
-  readonly items = input<Array<{ label: string; value: string }>>([]);
+  readonly items = input<Array<{ label: string; value: string; icon?: string }>>([]);
 }

@@ -31,4 +31,8 @@ def dashboard(request: Request):
 
 @api_router.get("/overview")
 def dashboard_overview_api():
-    return dashboard_overview()
+    return {
+        "counts": collection_counts(),
+        "quality": quality_summary(),
+        "overview": dashboard_overview(),
+    }

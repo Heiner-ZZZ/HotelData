@@ -11,7 +11,10 @@
         <span>Buscar hotel o prop_id</span>
         <input type="text" formControlName="q" placeholder="Hotel 1 o 123" />
       </label>
-      <button type="submit">Consultar</button>
+      <button type="submit">
+        <span class="material-symbols-outlined btn-icon">search</span>
+        Consultar
+      </button>
     </form>
   </section>
 
@@ -42,8 +45,14 @@
         </section>
 
         <div class="pagination-bar">
-          <button type="button" [disabled]="!vm.hasPrev" (click)="goToPage(vm.page - 1)">Anterior</button>
-          <button type="button" [disabled]="!vm.hasNext" (click)="goToPage(vm.page + 1)">Siguiente</button>
+          <button type="button" [disabled]="!vm.hasPrev" (click)="goToPage(vm.page - 1)">
+            <span class="material-symbols-outlined btn-icon">chevron_left</span>
+            Anterior
+          </button>
+          <button type="button" [disabled]="!vm.hasNext" (click)="goToPage(vm.page + 1)">
+            Siguiente
+            <span class="material-symbols-outlined btn-icon">chevron_right</span>
+          </button>
         </div>
       }
     }

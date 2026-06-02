@@ -7,7 +7,10 @@
     </div>
     <nav class="system-tabs" aria-label="Navegacion de administracion global">
       @for (item of navigation; track item.href) {
-        <a routerLinkActive="is-active" [routerLink]="item.href">{{ item.label }}</a>
+        <a routerLinkActive="is-active" [routerLink]="item.href">
+          <span class="material-symbols-outlined tab-icon">{{ item.icon }}</span>
+          {{ item.label }}
+        </a>
       }
     </nav>
   </header>

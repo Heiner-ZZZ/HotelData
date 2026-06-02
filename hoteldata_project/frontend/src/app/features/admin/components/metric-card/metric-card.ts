@@ -11,4 +11,5 @@ export class MetricCardComponent {
   readonly detail = input('');
   readonly trend = input('');
   readonly direction = input<'up' | 'down'>('up');
+  readonly icon = input('');
 }

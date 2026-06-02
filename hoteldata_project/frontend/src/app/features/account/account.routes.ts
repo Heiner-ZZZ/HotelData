@@ -1,7 +1,5 @@
 import { Routes } from '@angular/router';
 
-import { PlaceholderFeaturePageComponent } from '../shared-placeholder/placeholder-feature-page.component';
-
 export const ACCOUNT_ROUTES: Routes = [
   {
     path: '',
@@ -15,10 +13,7 @@ export const ACCOUNT_ROUTES: Routes = [
   },
   {
     path: 'profile',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Perfil del viajero',
-      description: 'Ruta preparada para preferencias, datos de contacto y documentos del viajero.'
-    }
+    loadComponent: () =>
+      import('./pages/profile-page/profile-page').then((m) => m.ProfilePageComponent)
   }
 ];

@@ -1,8 +1,11 @@
 <section class="surface-card latest-card">
   <div class="card-head">
-    <div>
-      <h2>Ultima ejecucion</h2>
-      <p>Estado mas reciente reportado por el backend.</p>
+    <div class="card-head-left">
+      <span class="material-symbols-outlined latest-icon" aria-hidden="true">history</span>
+      <div>
+        <h2>Ultima ejecucion</h2>
+        <p>Estado mas reciente reportado por el backend.</p>
+      </div>
     </div>
     @if (execution()) {
       <app-status-badge

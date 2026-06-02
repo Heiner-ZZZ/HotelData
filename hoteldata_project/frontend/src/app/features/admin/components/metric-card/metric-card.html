@@ -1,6 +1,11 @@
 <article class="metric-card surface-card">
   <div class="metric-head">
-    <span>{{ label() }}</span>
+    <span class="metric-label">
+      @if (icon()) {
+        <span class="material-symbols-outlined metric-icon" aria-hidden="true">{{ icon() }}</span>
+      }
+      {{ label() }}
+    </span>
     <span class="trend" [class.is-down]="direction() === 'down'">{{ trend() }}</span>
   </div>
   <strong>{{ value() }}</strong>

@@ -10,7 +10,10 @@
       <app-loading-state label="Cargando resumen de gestion..." />
     }
     @case ('error') {
-      <app-error-state />
+      <app-error-state
+        [description]="errorMessage()"
+        (retry)="onRetry()"
+      />
     }
     @case ('empty') {
       <app-empty-state
@@ -30,13 +33,17 @@
               [detail]="kpi.detail"
               [trend]="kpi.trend"
               [direction]="kpi.direction"
+              [icon]="kpi.icon"
             />
           }
         </section>
 
         <section class="content-grid">
           <section class="surface-card list-card">
-            <h2>Colecciones activas</h2>
+            <div class="list-card-head">
+              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">storage</span>
+              <h2>Colecciones activas</h2>
+            </div>
             <ul>
               @for (item of vm.collectionCounts; track item.label) {
                 <li>
@@ -48,7 +55,10 @@
           </section>
 
           <section class="surface-card list-card">
-            <h2>Calidad de datos</h2>
+            <div class="list-card-head">
+              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">checklist</span>
+              <h2>Calidad de datos</h2>
+            </div>
             <ul>
               @for (item of vm.qualitySummary; track item.label) {
                 <li>

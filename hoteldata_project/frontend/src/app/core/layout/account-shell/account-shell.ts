@@ -11,8 +11,8 @@ import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
 })
 export class AccountShellComponent {
   readonly navigation = [
-    { label: 'Mis reservas', href: '/account/bookings' },
-    { label: 'Nuevo viaje', href: '/account/bookings/new' },
-    { label: 'Perfil', href: '/account/profile' }
+    { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+    { label: 'Nuevo viaje', href: '/account/bookings/new', icon: 'travel_explore' },
+    { label: 'Perfil', href: '/account/profile', icon: 'person' }
   ];
 }

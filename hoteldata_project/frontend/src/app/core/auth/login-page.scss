@@ -25,24 +25,6 @@
   color: var(--accent);
 }
 
-.brand-lockup {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-
-  h1 {
-    margin: 0 0 6px;
-    font-size: clamp(2.4rem, 5vw, 4rem);
-    line-height: 1;
-  }
-
-  p {
-    margin: 0;
-    color: var(--muted-text);
-    font-size: 1rem;
-  }
-}
-
 .brand-logo {
   width: clamp(180px, 26vw, 360px);
   height: auto;
@@ -95,13 +77,28 @@
   display: grid;
   gap: 16px;
 
-  label {
+  .input-field {
     display: grid;
-    gap: 8px;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 6px 10px;
     font-weight: 600;
   }
 
+  .input-icon {
+    grid-row: 1 / -1;
+    align-self: center;
+    font-size: 1.35rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    color: var(--muted-text);
+  }
+
+  .input-label {
+    grid-column: 2;
+  }
+
   input {
+    grid-column: 1 / -1;
     width: 100%;
     min-height: 48px;
     border: 1px solid var(--app-border);
@@ -119,6 +116,7 @@
 
   .password-field {
     position: relative;
+    grid-column: 1 / -1;
   }
 
   .password-field input {
@@ -147,6 +145,10 @@
   }
 
   button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     min-height: 48px;
     border: 0;
     border-radius: 8px;
@@ -159,6 +161,31 @@
   button[disabled] {
     cursor: wait;
     opacity: 0.78;
+  }
+}
+
+.card-head .card-head-icon {
+  font-size: 0.85rem;
+  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20;
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.btn-icon {
+  font-size: 1.15rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.card-footnote {
+  margin: 16px 0 0;
+  color: var(--muted-text);
+  line-height: 1.6;
+
+  .footnote-icon {
+    font-size: 0.95rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    vertical-align: middle;
+    margin-right: 0.25rem;
   }
 }
 
@@ -185,12 +212,6 @@
   background: #fff2f1;
   border: 1px solid #f5c8c3;
   color: #a13022;
-}
-
-.card-footnote {
-  margin: 16px 0 0;
-  color: var(--muted-text);
-  line-height: 1.6;
 }
 
 @media (max-width: 960px) {

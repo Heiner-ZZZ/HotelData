@@ -130,16 +130,18 @@ def save_ga03_source_csv(filename: str, content: bytes) -> dict:
     }
 
 
-def _run_script(script_name: str) -> dict:
+def _run_script(script_name: str, env: dict[str, str] | None = None) -> dict:
     settings = get_settings()
     script_path = settings.project_root / "scripts" / script_name
     command = [sys.executable, str(script_path)]
+    proc_env = {**os.environ, **(env or {})}
     result = subprocess.run(
         command,
         cwd=settings.project_root,
         capture_output=True,
         text=True,
         timeout=3600,
+        env=proc_env,
     )
     return {
         "command": " ".join(command),
@@ -168,17 +170,18 @@ def _is_stale_timestamp(value: str | None, *, minutes: int) -> bool:
     return datetime.now(timezone.utc) - parsed > timedelta(minutes=minutes)
 
 
-def _write_ga03_progress_seed(message: str) -> None:
+def _write_ga03_progress_seed(message: str, target_records: int = 0) -> None:
     settings = get_settings()
     progress_path = settings.reports_dir / "progreso_preparacion_reservas_03.json"
     progress_path.parent.mkdir(parents=True, exist_ok=True)
+    target = target_records if target_records > 0 else settings.target_records
     payload = {
         "task_number": "03",
         "collection": settings.pocketbase_collection_03,
         "status": "running",
         "loaded_records": 0,
-        "target_records": settings.target_records,
-        "remaining_records": settings.target_records,
+        "target_records": target,
+        "remaining_records": target,
         "percent": 0,
         "last_batch_number": 0,
         "last_batch_records": 0,
@@ -189,13 +192,14 @@ def _write_ga03_progress_seed(message: str) -> None:
     progress_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def _start_script(script_name: str, args: list[str] | None = None, log_name: str = "preparacion_reservas_03.log") -> dict:
+def _start_script(script_name: str, args: list[str] | None = None, log_name: str = "preparacion_reservas_03.log", env: dict[str, str] | None = None) -> dict:
     settings = get_settings()
     script_path = settings.project_root / "scripts" / script_name
     logs_dir = settings.reports_dir
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_path = logs_dir / log_name
     command = [sys.executable, str(script_path), *(args or [])]
+    proc_env = {**os.environ, **(env or {})}
     log_handle = log_path.open("ab")
     try:
         process = subprocess.Popen(
@@ -203,6 +207,7 @@ def _start_script(script_name: str, args: list[str] | None = None, log_name: str
             cwd=settings.project_root,
             stdout=log_handle,
             stderr=subprocess.STDOUT,
+            env=proc_env,
         )
     finally:
         log_handle.close()
@@ -590,19 +595,21 @@ def clear_ga03_local_evidence() -> dict:
     }
 
 
-def run_ga03_dataset_validation() -> dict:
-    return _run_script("validar_dataset_reservas_03.py")
+def run_ga03_dataset_validation(target_records: int = 0) -> dict:
+    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    return _run_script("validar_dataset_reservas_03.py", env=extra_env)
 
 
-def run_ga03_pipeline() -> dict:
-    return _run_script("run_reservas_03_pipeline.py")
+def run_ga03_pipeline(target_records: int = 0) -> dict:
+    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    return _run_script("run_reservas_03_pipeline.py", env=extra_env)
 
 
 def prepare_ga03_seed_source() -> dict:
     return _run_script("cargar_reservas_hoteleras_03.py")
 
 
-def start_ga03_seed_source() -> dict:
+def start_ga03_seed_source(target_records: int = 0) -> dict:
     settings = get_settings()
     progress = ga03_preparation_progress()
     if progress.get("is_running"):
@@ -616,7 +623,8 @@ def start_ga03_seed_source() -> dict:
     _write_ga03_progress_seed("Preparación GA03 solicitada desde /etl-status.")
     uploaded_csv = settings.project_root / "data" / "uploads" / "ga03_source.csv"
     args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else None
-    return _start_script("cargar_reservas_hoteleras_03.py", args=args)
+    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    return _start_script("cargar_reservas_hoteleras_03.py", args=args, env=extra_env)
 
 
 def start_ga03_pipeline() -> dict:

@@ -20,3 +20,8 @@ def audit(request: Request):
         "audit/index.html",
         {"activity": recent_activity()},
     )
+
+
+@router.get("/api/audit/activity")
+def api_audit_activity():
+    return recent_activity()

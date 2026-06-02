@@ -1,4 +1,4 @@
-<div class="access-nav">
+<div class="access-nav" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
   <svg class="liquid-filter-defs" aria-hidden="true" focusable="false">
     <filter id="liquidGlassDistortion" x="-10%" y="-10%" width="120%" height="120%">
       <feTurbulence
@@ -28,22 +28,20 @@
       </svg>
     </button>
 
-    <div class="brand-block">
-      <img
-        class="brand-logo"
-        src="/assets/logo-hoteldata.png?v=2026060202"
-        alt="HotelData"
-      >
-      <div>
-        <p class="brand-eyebrow">HotelData</p>
-        <strong class="brand-title">App web hotelera</strong>
-      </div>
-    </div>
+    <img
+      class="brand-logo"
+      src="/assets/logo-hoteldata.png?v=2026060202"
+      alt="HotelData"
+    >
   </div>
 
   <nav class="primary-nav" aria-label="Navegación principal">
     @for (menu of visibleNavigationMenus(); track menu.id) {
-      <div class="menu-shell">
+      <div
+        class="menu-shell"
+        (mouseenter)="onMenuEnter(menu.id)"
+        (mouseleave)="onMenuLeave(menu.id)"
+      >
         <button
           type="button"
           class="glass-trigger nav-trigger"
@@ -52,6 +50,7 @@
           aria-haspopup="menu"
           [attr.aria-expanded]="activeMenu() === menu.id"
         >
+          <span class="material-symbols-outlined nav-icon">{{ menu.icon }}</span>
           <span class="trigger-label">
             <span>{{ menu.label }}</span>
             <span aria-hidden="true">{{ menu.label }}</span>
@@ -65,6 +64,7 @@
           <div class="glass-menu" (click)="$event.stopPropagation()">
             @for (item of menu.items; track item.href) {
               <a routerLinkActive="is-active" [routerLink]="item.href" (click)="closeMenus()">
+                <span class="material-symbols-outlined menu-item-icon">{{ item.icon }}</span>
                 <span>{{ item.label }}</span>
               </a>
             }
@@ -75,7 +75,11 @@
   </nav>
 
   <div class="nav-actions">
-    <div class="menu-shell">
+    <div
+      class="menu-shell"
+      (mouseenter)="onMenuEnter('session')"
+      (mouseleave)="onMenuLeave('session')"
+    >
       @if (authState().authenticated && currentUser(); as user) {
         <button
           type="button"
@@ -85,6 +89,7 @@
           aria-haspopup="menu"
           [attr.aria-expanded]="activeMenu() === 'session'"
         >
+          <span class="material-symbols-outlined session-icon">account_circle</span>
           <span class="session-copy">
             <strong class="session-title">
               <span>{{ user.displayName }}</span>
@@ -100,9 +105,15 @@
         @if (activeMenu() === 'session') {
           <div class="glass-menu" (click)="$event.stopPropagation()">
             @for (item of sessionMenuItems(); track item.href) {
-              <a [routerLink]="item.href" (click)="closeMenus()">{{ item.label }}</a>
+              <a [routerLink]="item.href" (click)="closeMenus()">
+                <span class="material-symbols-outlined menu-item-icon">{{ item.icon }}</span>
+                {{ item.label }}
+              </a>
             }
-            <a href="/auth/logout">Cerrar sesión</a>
+            <a href="/auth/logout">
+              <span class="material-symbols-outlined menu-item-icon">logout</span>
+              Cerrar sesión
+            </a>
           </div>
         }
       } @else {

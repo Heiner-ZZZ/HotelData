@@ -1,17 +1,11 @@
 <main class="login-page">
   <section class="login-hero">
     <p class="login-kicker">Control de acceso</p>
-    <div class="brand-lockup">
-      <img
-        class="brand-logo"
-        src="/assets/logo-hoteldata.png?v=2026060202"
-        alt="HotelData"
-      >
-      <div>
-        <h1>HotelData</h1>
-        <p>La operación hotelera y comercial en una sola app web.</p>
-      </div>
-    </div>
+    <img
+      class="brand-logo"
+      src="/assets/logo-hoteldata.png?v=2026060202"
+      alt="HotelData"
+    >
     <div class="hero-copy">
       <h2>Ingresa a tu espacio de trabajo</h2>
       <p>
@@ -23,7 +17,10 @@
 
   <section class="login-card surface-card">
     <div class="card-head">
-      <p class="eyebrow">Acceso seguro</p>
+      <p class="eyebrow">
+        <span class="material-symbols-outlined card-head-icon">lock</span>
+        Acceso seguro
+      </p>
       <h2>Iniciar sesión</h2>
       <p>Tu sesión te llevará directo a la página principal asignada.</p>
     </div>
@@ -33,8 +30,9 @@
     }
 
     <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
-      <label>
-        Usuario o correo
+      <label class="input-field">
+        <span class="material-symbols-outlined input-icon">person</span>
+        <span class="input-label">Usuario o correo</span>
         <input
           type="text"
           formControlName="identifier"
@@ -43,8 +41,9 @@
         >
       </label>
 
-      <label>
-        Contraseña
+      <label class="input-field">
+        <span class="material-symbols-outlined input-icon">lock</span>
+        <span class="input-label">Contraseña</span>
         <div class="password-field">
           <input
             [type]="passwordVisible() ? 'text' : 'password'"
@@ -98,14 +97,17 @@
 
       <button type="submit" [disabled]="submitting()">
         @if (submitting()) {
+          <span class="material-symbols-outlined btn-icon">sync</span>
           Entrando...
         } @else {
+          <span class="material-symbols-outlined btn-icon">login</span>
           Entrar
         }
       </button>
     </form>
 
     <p class="card-footnote">
+      <span class="material-symbols-outlined footnote-icon">security</span>
       Si tu sesión sigue activa, te redirigiremos automáticamente a tu inicio.
     </p>
   </section>

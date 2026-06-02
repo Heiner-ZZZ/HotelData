@@ -1,0 +1,94 @@
+.audit-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.hero-card,
+.audit-panel {
+  padding: 1.125rem;
+}
+
+.hero-card {
+  display: grid;
+  gap: 0.45rem;
+  min-height: 116px;
+}
+
+.label,
+.panel-head p,
+.hero-card p {
+  color: var(--muted-text);
+}
+
+.label,
+.panel-head p,
+.hero-card p,
+.hero-card strong,
+.panel-head h2 {
+  margin: 0;
+}
+
+.panel-head {
+  margin-bottom: 1rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.85rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+code {
+  font-size: 0.9em;
+  background: rgba(20, 99, 255, 0.08);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+
+.empty-inline {
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--muted-text);
+}
+
+.empty-inline h3 {
+  margin: 0 0 0.5rem;
+  color: var(--app-text);
+}
+
+.empty-inline p {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}

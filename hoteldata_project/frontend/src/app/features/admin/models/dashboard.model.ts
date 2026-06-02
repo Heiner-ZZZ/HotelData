@@ -7,7 +7,7 @@ export interface DashboardViewModel {
   } | null;
   collectionCounts: Array<{ label: string; value: number }>;
   qualitySummary: Array<{ label: string; value: string }>;
-  occupancySummary: Array<{ label: string; value: string }>;
+  occupancySummary: Array<{ label: string; value: string; icon?: string }>;
 }
 
 export interface DashboardKpi {
@@ -16,4 +16,5 @@ export interface DashboardKpi {
   detail: string;
   trend: string;
   direction: 'up' | 'down';
+  icon: string;
 }

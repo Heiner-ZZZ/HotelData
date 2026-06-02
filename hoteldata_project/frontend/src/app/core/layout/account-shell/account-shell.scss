@@ -45,16 +45,30 @@ nav {
 }
 
 nav a {
-  padding: 0.7rem 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.85rem;
   border-radius: 999px;
   color: var(--muted-text);
   text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+nav a:hover {
+  background: rgba(20, 99, 255, 0.08);
+  color: #244274;
 }
 
 nav a.is-active {
   background: #e8f0ff;
   color: var(--accent);
   font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.15rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
 }
 
 .account-main {

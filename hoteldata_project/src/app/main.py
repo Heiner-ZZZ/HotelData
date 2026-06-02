@@ -13,12 +13,14 @@ from src.app.features.dashboard.routes import api_router as dashboard_api_router
 from src.app.features.collections.routes import router as collections_router
 from src.app.features.company.routes import router as company_router
 from src.app.features.dashboard.routes import router as dashboard_router
+from src.app.features.etl_status.routes import JSON_API as etl_status_json_router
 from src.app.features.etl_status.routes import router as etl_status_router
 from src.app.features.problems.routes import router as problems_router
 from src.app.features.quality.routes import router as quality_router
 from src.app.features.records.routes import router as records_router
 from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.features.ta02_crud.routes import web_router as ta02_web_router
+from src.app.modules.account.routes import api_router as account_api_router
 from src.app.modules.audit.routes import router as modular_audit_router
 from src.app.modules.admin.routes import router as admin_router
 from src.app.modules.admin.routes import api_router as admin_api_router
@@ -53,6 +55,8 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://127.0.0.1:4200",
             "http://localhost:4200",
+            "http://localhost:80",
+            "http://localhost",
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -64,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_api_router)
     app.include_router(records_router)
     app.include_router(etl_status_router)
+    app.include_router(etl_status_json_router)
     app.include_router(quality_router)
     app.include_router(collections_router)
     app.include_router(company_router)
@@ -92,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(reservations_module_router)
     app.include_router(partner_module_router)
     app.include_router(revenue_module_router)
+    app.include_router(account_api_router)
     app.include_router(modular_audit_router)
     app.include_router(system_router)
     app.include_router(crud_router)

@@ -66,6 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--csv", default=os.getenv("GA03_SOURCE_CSV", str(DEFAULT_CSV)), help="CSV limpio de reservas.")
     parser.add_argument("--reload", action="store_true", help="Borra y recarga solo hotel_reservation_events_03.")
     parser.add_argument("--confirm-reload", default="", help="Debe ser hotel_reservation_events_03 para permitir --reload.")
+    parser.add_argument("--target", type=int, default=0, help="Registros a cargar (0 = usa TARGET_RECORDS).")
     return parser.parse_args()
 
 
@@ -164,8 +165,8 @@ def field_schema(name: str) -> dict[str, Any]:
     if name in TEXT_FIELDS:
         return {"name": name, "type": "text", "required": name not in OPTIONAL_FIELDS, "options": {"max": 0}}
     if name in BOOL_FIELDS:
-        return {"name": name, "type": "bool", "required": name not in OPTIONAL_FIELDS, "options": {}}
-    return {"name": name, "type": "number", "required": name not in OPTIONAL_FIELDS, "options": {"min": None, "max": None, "noDecimal": False}}
+        return {"name": name, "type": "bool", "required": False, "options": {}}
+    return {"name": name, "type": "number", "required": False, "options": {"min": None, "max": None, "noDecimal": False}}
 
 
 def get_collection(base_url: str, headers: dict[str, str], collection_name: str) -> dict[str, Any] | None:
@@ -265,7 +266,7 @@ def batch_create(base_url: str, headers: dict[str, str], rows: list[dict[str, An
 
 def main() -> None:
     settings = get_settings()
-    expected = settings.target_records
+    expected = args.target if args.target > 0 else settings.target_records
     csv_path: Path | None = None
     loaded = 0
     batch_number = 0

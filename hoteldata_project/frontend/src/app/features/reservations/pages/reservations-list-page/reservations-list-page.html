@@ -6,8 +6,14 @@
   />
 
   <div class="action-row">
-    <a routerLink="/reservations/new" class="primary-link">Nueva solicitud</a>
-    <a href="/partner/manual-reservations/new" class="secondary-link">Reserva manual partner</a>
+    <a routerLink="/reservations/new" class="primary-link">
+      <span class="material-symbols-outlined btn-icon">add_circle</span>
+      Nueva solicitud
+    </a>
+    <a href="/partner/manual-reservations/new" class="secondary-link">
+      <span class="material-symbols-outlined btn-icon">edit_note</span>
+      Reserva manual partner
+    </a>
   </div>
 
   @switch (viewState()) {
@@ -35,8 +41,14 @@
               <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
             </div>
             <div class="pagination-bar">
-              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">Anterior</button>
-              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">Siguiente</button>
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+                <span class="material-symbols-outlined btn-icon">chevron_left</span>
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+                Siguiente
+                <span class="material-symbols-outlined btn-icon">chevron_right</span>
+              </button>
             </div>
           </div>
 
@@ -54,7 +66,10 @@
                     <td>{{ item.checkInDate }}<div class="muted-cell">{{ item.checkOutDate }}</div></td>
                     <td>{{ item.status }}</td>
                     <td>{{ item.bookingSource }}</td>
-                    <td><a [routerLink]="['/reservations', item.bookingId]" class="inline-link">Ver detalle</a></td>
+                    <td><a [routerLink]="['/reservations', item.bookingId]" class="inline-link">
+                      <span class="material-symbols-outlined btn-icon">visibility</span>
+                      Ver detalle
+                    </a></td>
                   </tr>
                 }
               </tbody>

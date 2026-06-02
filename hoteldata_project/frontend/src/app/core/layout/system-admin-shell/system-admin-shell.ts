@@ -11,9 +11,9 @@ import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
 })
 export class SystemAdminShellComponent {
   readonly navigation = [
-    { label: 'Usuarios', href: '/system/users' },
-    { label: 'Permisos', href: '/system/permissions' },
-    { label: 'Auditoria', href: '/system/audit' },
-    { label: 'Monitoreo', href: '/system/monitoring' }
+    { label: 'Usuarios', href: '/system/users', icon: 'people' },
+    { label: 'Permisos', href: '/system/permissions', icon: 'verified_user' },
+    { label: 'Auditoria', href: '/system/audit', icon: 'history' },
+    { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' }
   ];
 }

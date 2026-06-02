@@ -1,0 +1,303 @@
+<div class="monitoring-page">
+  <app-page-header
+    eyebrow="Observabilidad"
+    title="Monitoreo"
+    description="Salud de servicios, estado del pipeline ETL y reportes de calidad."
+  />
+
+  <div class="actions-bar">
+    @if (actionMessage()) {
+      <section class="surface-card message success">{{ actionMessage() }}</section>
+    }
+    @if (actionError()) {
+      <section class="surface-card message error">{{ actionError() }}</section>
+    }
+    <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="viewState() === 'loading'">
+      Actualizar
+    </button>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando estado de monitoreo..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar el monitoreo"
+        [description]="loadErrorMessage() || 'Revisa la conexión con la API o vuelve a intentar en unos segundos.'"
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- Service health cards -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('services')">
+            <div>
+              <h2>Estado de servicios</h2>
+              <p>GA{{ vm.services.configInfo.taskNumber }} — {{ vm.services.configInfo.pbCollection }}</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'services' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'services') {
+            <div class="accordion-body">
+              <div class="service-grid">
+                @for (card of vm.services.services; track card.label) {
+                  <article class="service-card">
+                    <div class="service-card-head">
+                      <span class="label">{{ card.label }}</span>
+                      <app-status-badge
+                        [tone]="serviceTone(card.tone)"
+                        [label]="serviceLabel(card.tone)"
+                      />
+                    </div>
+                    <p class="service-value">{{ card.value }}</p>
+                    <p class="service-desc">{{ card.description }}</p>
+                  </article>
+                }
+              </div>
+              <div class="config-row">
+                <span>CSV fuente: <code>{{ vm.services.configInfo.sourceCsv }}</code></span>
+                <app-status-badge
+                  [tone]="vm.services.configInfo.sourceCsvExists ? 'success' : 'warning'"
+                  [label]="vm.services.configInfo.sourceCsvExists ? 'Localizado' : 'No encontrado'"
+                />
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- CSV Upload section -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('upload')">
+            <div>
+              <h2>Subir CSV fuente</h2>
+              <p>Selecciona un archivo CSV con datos de reservas hoteleras para usar como fuente del ETL GA03.</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'upload' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'upload') {
+            <div class="accordion-body">
+              <div class="upload-row">
+                <div class="file-picker">
+                  <input
+                    #fileInput
+                    type="file"
+                    accept=".csv"
+                    class="file-input"
+                    (change)="onFileSelected($event)"
+                    [disabled]="uploadBusy()"
+                    id="csvFile"
+                  />
+                  <label for="csvFile" class="file-label">
+                    <span>{{ selectedFile()?.name || 'Seleccionar archivo CSV' }}</span>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  class="action-btn"
+                  (click)="uploadCsv()"
+                  [disabled]="!selectedFile() || uploadBusy()"
+                >
+                  {{ uploadBusy() ? 'Subiendo...' : 'Subir CSV' }}
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Pipeline & preparation progress -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('progress')">
+            <div>
+              <h2>Progreso ETL</h2>
+              <p>Preparación: {{ vm.progress.preparationPercent }}% | Pipeline: {{ vm.progress.pipelinePercent }}%</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'progress' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'progress') {
+            <div class="accordion-body">
+
+              <div class="progress-columns">
+                <article class="progress-card">
+                  <h3>Preparación</h3>
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="vm.progress.preparationPercent"></div>
+                  </div>
+                  <div class="progress-meta">
+                    <span>{{ vm.progress.preparationLoaded }} / {{ vm.progress.preparationTarget }} registros</span>
+                    <app-status-badge
+                      [tone]="vm.progress.preparationStatus === 'completed' ? 'success' : vm.progress.preparationStatus === 'failed' ? 'danger' : 'warning'"
+                      [label]="vm.progress.preparationStatus"
+                    />
+                  </div>
+                  <p class="progress-msg">{{ vm.progress.preparationMessage }}</p>
+                </article>
+
+                <article class="progress-card">
+                  <h3>Pipeline</h3>
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="vm.progress.pipelinePercent"></div>
+                  </div>
+                  <div class="progress-meta">
+                    <span>{{ vm.progress.pipelinePercent }}% — {{ vm.progress.pipelineElapsedMs }} ms</span>
+                    <app-status-badge
+                      [tone]="vm.progress.pipelineStatus === 'completed' ? 'success' : vm.progress.pipelineStatus === 'failed' ? 'danger' : 'warning'"
+                      [label]="vm.progress.pipelineStatus"
+                    />
+                  </div>
+                  <p class="progress-msg">{{ vm.progress.pipelineMessage }}</p>
+
+                  <div class="step-list">
+                    @for (section of vm.progress.pipelineSections; track section.key) {
+                      <div class="step-item">
+                        @if (section.complete) {
+                          <span class="material-symbols-outlined step-done">check_circle</span>
+                        } @else {
+                          <span class="material-symbols-outlined step-pending">radio_button_unchecked</span>
+                        }
+                        <span>{{ section.label }}</span>
+                        <small>{{ section.complete ? 'completado' : 'pendiente' }}</small>
+                      </div>
+                    }
+                  </div>
+                </article>
+              </div>
+
+              <!-- Target selector -->
+              <div class="target-row">
+                <label for="targetSelect">Registros objetivo:</label>
+                <select
+                  id="targetSelect"
+                  class="target-select"
+                  [value]="targetRecords()"
+                  (change)="targetRecords.set(+$any($event.target).value)"
+                  [disabled]="vm.progress.isRunning"
+                >
+                  @for (opt of targetOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="action-row">
+                <button type="button" class="action-btn" (click)="triggerSeed()" [disabled]="actionBusy() || vm.progress.isRunning">
+                  Preparar fuente desde CSV
+                </button>
+                <button type="button" class="action-btn" (click)="triggerValidate()" [disabled]="actionBusy() || vm.progress.isRunning">
+                  Validar dataset
+                </button>
+                <button type="button" class="action-btn" (click)="triggerRunPipeline()" [disabled]="actionBusy() || vm.progress.isRunning">
+                  Ejecutar pipeline
+                </button>
+                <button type="button" class="action-btn danger-btn" (click)="triggerClearEvidence()" [disabled]="actionBusy()">
+                  Limpiar evidencia
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Reports -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('reports')">
+            <div>
+              <h2>Reportes</h2>
+              <p>Evidencia local del proceso ETL GA03.</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'reports' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'reports') {
+            <div class="accordion-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Reporte</th>
+                      <th>Estado</th>
+                      <th>Ruta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (report of vm.reports; track report.name) {
+                      <tr>
+                        <td><strong>{{ report.label }}</strong></td>
+                        <td>
+                          <app-status-badge
+                            [tone]="report.exists ? 'success' : 'warning'"
+                            [label]="report.exists ? 'Disponible' : 'Pendiente'"
+                          />
+                        </td>
+                        <td><code>{{ report.path }}</code></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Execution summary -->
+        @if (vm.execution; as exec) {
+          <section class="surface-card accordion-section">
+            <div class="accordion-header" (click)="toggleSection('execution')">
+              <div>
+                <h2>Última ejecución</h2>
+                <p>Resumen de la corrida ETL más reciente.</p>
+              </div>
+              <span class="accordion-chevron">{{ openSection() === 'execution' ? '▼' : '▶' }}</span>
+            </div>
+            @if (openSection() === 'execution') {
+              <div class="accordion-body">
+                <div class="exec-grid">
+                  <div class="exec-item">
+                    <span class="label">ID</span>
+                    <strong>{{ exec.executionId }}</strong>
+                  </div>
+                  <div class="exec-item">
+                    <span class="label">Estado</span>
+                    <app-status-badge
+                      [tone]="exec.status === 'success' ? 'success' : exec.status === 'running' ? 'warning' : 'danger'"
+                      [label]="exec.status"
+                    />
+                  </div>
+                  <div class="exec-item">
+                    <span class="label">Ejecutado</span>
+                    <strong>{{ exec.executedAt }}</strong>
+                  </div>
+                  <div class="exec-item">
+                    <span class="label">Registros válidos</span>
+                    <strong>{{ exec.validRecords }}</strong>
+                  </div>
+                  <div class="exec-item">
+                    <span class="label">Rechazados</span>
+                    <strong>{{ exec.rejectedRecords }}</strong>
+                  </div>
+                  <div class="exec-item">
+                    <span class="label">Filas fuente</span>
+                    <strong>{{ exec.sourceRows }}</strong>
+                  </div>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      }
+    }
+  }
+
+  <!-- Confirmation Modal -->
+  @if (confirmAction(); as confirm) {
+    <div class="modal-backdrop" (click)="confirmCancel()">
+      <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>{{ confirm.title }}</h2>
+        <p>{{ confirm.message }}</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+        </div>
+      </article>
+    </div>
+  }
+</div>

@@ -1,0 +1,125 @@
+<div class="audit-page">
+  <app-page-header
+    eyebrow="Trazabilidad"
+    title="Auditoría"
+    description="Historial de ejecuciones ETL y de consultas realizadas desde el sistema."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando actividad de auditoría..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar la auditoría"
+        [description]="loadErrorMessage() || 'Revisa la conexión con la API o vuelve a intentar en unos segundos.'"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin actividad registrada"
+        description="Cuando existan ejecuciones ETL o búsquedas aparecerán aquí."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="hero-icon material-symbols-outlined">settings</span>
+            <span class="label">Ejecuciones ETL</span>
+            <strong>{{ vm.totalExecutions }}</strong>
+            <p>Corridas registradas en la base de datos.</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="hero-icon material-symbols-outlined">search</span>
+            <span class="label">Búsquedas</span>
+            <strong>{{ vm.totalSearches }}</strong>
+            <p>Consultas funcionales realizadas por usuarios.</p>
+          </article>
+        </section>
+
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('etl')">
+            <div>
+              <h2>Ejecuciones ETL</h2>
+              <p>Últimas corridas registradas en <code>etl_executions</code>.</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'etl' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'etl') {
+            <div class="accordion-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Execution ID</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of vm.etlExecutions; track item.executionId) {
+                      <tr>
+                        <td><strong>{{ item.executionId }}</strong></td>
+                        <td>{{ item.executedAtLabel }}</td>
+                        <td>
+                          <app-status-badge
+                            [tone]="item.status === 'success' ? 'success' : item.status === 'running' ? 'warning' : 'danger'"
+                            [label]="item.status"
+                          />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('searches')">
+            <div>
+              <h2>Búsquedas recientes</h2>
+              <p>Actividad funcional de la ruta de registros.</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'searches' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'searches') {
+            <div class="accordion-body">
+              @if (vm.searchLogs.length) {
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Consulta</th>
+                        <th>Destino</th>
+                        <th>País</th>
+                        <th>Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of vm.searchLogs; track $index) {
+                        <tr>
+                          <td>{{ item.query }}</td>
+                          <td>{{ item.destination }}</td>
+                          <td>{{ item.country }}</td>
+                          <td>{{ item.searchedAtLabel }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-inline">
+                  <h3>Aún no hay búsquedas registradas</h3>
+                  <p>Prueba la vista de registros y esta tabla se empezará a llenar sola.</p>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>

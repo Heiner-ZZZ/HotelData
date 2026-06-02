@@ -6,6 +6,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
+import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { SystemUsersViewModel } from '../../models/system-users.model';
 import { SystemUsersApiService } from '../../services/system-users-api.service';
@@ -29,12 +30,18 @@ export class SystemUsersPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<SystemUsersViewModel | null>(null);
+  readonly loadErrorMessage = signal('');
   readonly message = signal('');
   readonly errorMessage = signal('');
   readonly pendingUserId = signal<string | null>(null);
+  readonly openSection = signal<string | null>(null);
 
   constructor() {
     this.loadUsers();
+  }
+
+  toggleSection(key: string) {
+    this.openSection.update(v => v === key ? null : key);
   }
 
   toggleUser(userId: string) {
@@ -60,6 +67,7 @@ export class SystemUsersPageComponent {
 
   private loadUsers() {
     this.viewState.set('loading');
+    this.loadErrorMessage.set('');
     this.api
       .getUsers()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -68,7 +76,8 @@ export class SystemUsersPageComponent {
           this.viewModel.set(vm);
           this.viewState.set(vm.items.length ? 'success' : 'empty');
         },
-        error: () => {
+        error: (error: ApiError) => {
+          this.loadErrorMessage.set(error.message || 'No fue posible cargar los usuarios.');
           this.viewState.set('error');
         }
       });

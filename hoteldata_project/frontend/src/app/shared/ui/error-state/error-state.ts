@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-error-state',
@@ -8,4 +8,7 @@ import { Component, input } from '@angular/core';
 export class ErrorStateComponent {
   readonly title = input('No fue posible cargar esta seccion');
   readonly description = input('Intenta nuevamente o revisa la conectividad con la API.');
+  readonly icon = input('error');
+  readonly retryLabel = input('Reintentar');
+  readonly retry = output<void>();
 }

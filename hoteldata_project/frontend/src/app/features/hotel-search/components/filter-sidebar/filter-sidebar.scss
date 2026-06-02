@@ -61,6 +61,10 @@ select {
 
 .primary-action,
 .secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   min-height: 2.75rem;
   border-radius: 8px;
   border: 1px solid var(--app-border);

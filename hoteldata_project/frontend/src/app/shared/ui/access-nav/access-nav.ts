@@ -20,12 +20,14 @@ import { AuthService } from '../../../core/auth/auth.service';
 interface NavMenuItem {
   label: string;
   href: string;
+  icon: string;
   allowedRoles?: string[];
 }
 
 interface NavMenuGroup {
   id: string;
   label: string;
+  icon: string;
   allowedRoles?: string[];
   items: NavMenuItem[];
 }
@@ -33,6 +35,7 @@ interface NavMenuGroup {
 interface SessionMenuItem {
   label: string;
   href: string;
+  icon: string;
 }
 
 @Component({
@@ -55,6 +58,11 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
+  readonly navTransform = signal('translateY(0%)');
+  readonly navOpacity = signal(1);
+  private readonly SCROLL_HIDE_RANGE = 120;
+  private hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
   readonly sessionMenuItems = computed<SessionMenuItem[]>(() => {
     const role = this.currentUser()?.primaryRole;
     const homeHref = this.authState().homeHref || '/search';
@@ -63,25 +71,25 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       return [];
     }
 
-    const items: SessionMenuItem[] = [{ label: 'Mi inicio', href: homeHref }];
+    const items: SessionMenuItem[] = [{ label: 'Mi inicio', href: homeHref, icon: 'home' }];
 
     if (role === 'cliente') {
       items.push(
-        { label: 'Mis reservas', href: '/account/bookings' },
-        { label: 'Perfil', href: '/account/profile' }
+        { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+        { label: 'Perfil', href: '/account/profile', icon: 'person' }
       );
     }
 
     if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'].includes(role)) {
-      items.push({ label: 'Gestión hotelera', href: '/management' });
+      items.push({ label: 'Gestión hotelera', href: '/management', icon: 'dashboard' });
     }
 
     if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
-      items.push({ label: 'Sistema', href: '/system/users' });
+      items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
 
     if (role !== 'cliente') {
-      items.push({ label: 'Vista pública', href: '/search' });
+      items.push({ label: 'Vista pública', href: '/search', icon: 'public' });
     }
 
     return items;
@@ -91,42 +99,46 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
     {
       id: 'explorar',
       label: 'Explorar',
+      icon: 'explore',
       items: [
-        { label: 'Buscar hoteles', href: '/search' },
-        { label: 'Hotel destacado', href: '/hotels/partner-1' },
-        { label: 'Reservas del viajero', href: '/account/bookings', allowedRoles: ['cliente'] }
+        { label: 'Buscar hoteles', href: '/search', icon: 'search' },
+        { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
+        { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online', allowedRoles: ['cliente'] }
       ]
     },
     {
       id: 'cuenta',
       label: 'Cuenta',
+      icon: 'account_circle',
       allowedRoles: ['cliente'],
       items: [
-        { label: 'Mis reservas', href: '/account/bookings' },
-        { label: 'Nuevo viaje', href: '/account/bookings/new' },
-        { label: 'Perfil', href: '/account/profile' }
+        { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+        { label: 'Nuevo viaje', href: '/account/bookings/new', icon: 'add_circle' },
+        { label: 'Perfil', href: '/account/profile', icon: 'person' }
       ]
     },
     {
       id: 'gestion',
       label: 'Gestión',
+      icon: 'dashboard',
       allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'],
       items: [
-        { label: 'Panel hotelero', href: '/management' },
-        { label: 'Reservas', href: '/management/reservations' },
-        { label: 'Propiedades', href: '/management/properties' },
-        { label: 'Tarifas', href: '/management/rates' }
+        { label: 'Panel hotelero', href: '/management', icon: 'dashboard' },
+        { label: 'Reservas', href: '/management/reservations', icon: 'calendar_month' },
+        { label: 'Propiedades', href: '/management/properties', icon: 'business' },
+        { label: 'Tarifas', href: '/management/rates', icon: 'attach_money' }
       ]
     },
     {
       id: 'sistema',
       label: 'Sistema',
+      icon: 'admin_panel_settings',
       allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'],
       items: [
-        { label: 'Usuarios', href: '/system/users' },
-        { label: 'Permisos', href: '/system/permissions' },
-        { label: 'Auditoría', href: '/system/audit' },
-        { label: 'Monitoreo', href: '/system/monitoring' }
+        { label: 'Usuarios', href: '/system/users', icon: 'people' },
+        { label: 'Permisos', href: '/system/permissions', icon: 'verified_user' },
+        { label: 'Auditoría', href: '/system/audit', icon: 'history' },
+        { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' }
       ]
     }
   ];
@@ -150,6 +162,12 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
+    // Init nav position based on current scroll position
+    const scrollY = window.scrollY;
+    const initProgress = Math.min(scrollY / this.SCROLL_HIDE_RANGE, 1);
+    this.navTransform.set(`translateY(${(initProgress * -120).toFixed(1)}%)`);
+    this.navOpacity.set(1 - initProgress);
+
     const element = this.hostElement.nativeElement;
 
     this.zone.runOutsideAngular(() => {
@@ -177,14 +195,47 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.removePointerListener?.();
     this.removePointerLeaveListener?.();
+    if (this.hoverCloseTimer) {
+      clearTimeout(this.hoverCloseTimer);
+      this.hoverCloseTimer = null;
+    }
+  }
+
+  onMenuEnter(menuId: string) {
+    if (this.hoverCloseTimer) {
+      clearTimeout(this.hoverCloseTimer);
+      this.hoverCloseTimer = null;
+    }
+    this.activeMenu.set(menuId);
+  }
+
+  onMenuLeave(menuId: string) {
+    if (this.hoverCloseTimer) {
+      clearTimeout(this.hoverCloseTimer);
+    }
+    this.hoverCloseTimer = setTimeout(() => {
+      this.zone.run(() => {
+        if (this.activeMenu() === menuId) {
+          this.activeMenu.set(null);
+        }
+      });
+    }, 200);
   }
 
   toggleMenu(menuId: string, event: MouseEvent) {
     event.stopPropagation();
+    if (this.hoverCloseTimer) {
+      clearTimeout(this.hoverCloseTimer);
+      this.hoverCloseTimer = null;
+    }
     this.activeMenu.update((value) => (value === menuId ? null : menuId));
   }
 
   closeMenus() {
+    if (this.hoverCloseTimer) {
+      clearTimeout(this.hoverCloseTimer);
+      this.hoverCloseTimer = null;
+    }
     this.activeMenu.set(null);
   }
 
@@ -194,6 +245,19 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       return;
     }
     void this.router.navigateByUrl(this.authState().homeHref || '/search');
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll() {
+    const scrollY = window.scrollY;
+    const progress = Math.min(scrollY / this.SCROLL_HIDE_RANGE, 1);
+    const translateY = progress * -120;
+    const opacity = 1 - progress;
+
+    this.zone.run(() => {
+      this.navTransform.set(`translateY(${translateY.toFixed(1)}%)`);
+      this.navOpacity.set(opacity);
+    });
   }
 
   @HostListener('document:click')

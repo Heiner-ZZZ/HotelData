@@ -24,9 +24,10 @@ ROUTE_RULES = [
     AccessRule("/api/admin/permissions", permission="users.manage"),
     AccessRule("/dashboard", permission="dashboard.read"),
     AccessRule("/api/dashboard", permission="dashboard.read"),
-    AccessRule("/api/reservations", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel")),
-    AccessRule(
-        "/api/management",
+    AccessRule("/api/reservations", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel")),    AccessRule("/api/account",
+        roles=("cliente", "super_admin", "admin_sistema"),
+    ),
+    AccessRule("/api/management",
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero"),
     ),
     AccessRule("/ta02/crud", methods=("GET",), permission="crud.read"),

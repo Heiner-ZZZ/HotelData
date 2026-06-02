@@ -19,8 +19,21 @@
   padding: 1rem;
 }
 
+.list-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.list-card-icon {
+  font-size: 1.15rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  color: var(--accent);
+}
+
 h2 {
-  margin: 0 0 1rem;
+  margin: 0;
   font-size: 1rem;
 }
 

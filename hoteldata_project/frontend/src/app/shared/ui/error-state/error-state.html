@@ -1,4 +1,13 @@
-<section class="state-card surface-card" aria-live="assertive">
+<section class="error-state" aria-live="assertive">
+  <span class="material-symbols-outlined error-icon" aria-hidden="true">{{ icon() }}</span>
   <h2>{{ title() }}</h2>
-  <p>{{ description() }}</p>
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+  @if (retryLabel()) {
+    <button class="retry-btn" type="button" (click)="retry.emit()">
+      <span class="material-symbols-outlined retry-icon" aria-hidden="true">refresh</span>
+      {{ retryLabel() }}
+    </button>
+  }
 </section>

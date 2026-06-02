@@ -1,9 +1,17 @@
 <section class="surface-card summary-card">
-  <h2>Resumen operativo</h2>
+  <div class="summary-head">
+    <span class="material-symbols-outlined summary-head-icon" aria-hidden="true">monitoring</span>
+    <h2>Resumen operativo</h2>
+  </div>
   <div class="summary-grid">
     @for (item of items(); track item.label) {
       <article>
-        <span>{{ item.label }}</span>
+        <span class="summary-item-label">
+          @if (item.icon) {
+            <span class="material-symbols-outlined summary-item-icon" aria-hidden="true">{{ item.icon }}</span>
+          }
+          {{ item.label }}
+        </span>
         <strong>{{ item.value }}</strong>
       </article>
     }

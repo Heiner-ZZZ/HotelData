@@ -54,8 +54,14 @@
     </label>
 
     <div class="form-actions">
-      <button class="primary-action" type="submit">Buscar</button>
-      <button class="secondary-action" type="button" (click)="resetFilters()">Limpiar</button>
+      <button class="primary-action" type="submit">
+        <span class="material-symbols-outlined btn-icon">search</span>
+        Buscar
+      </button>
+      <button class="secondary-action" type="button" (click)="resetFilters()">
+        <span class="material-symbols-outlined btn-icon">filter_alt_off</span>
+        Limpiar
+      </button>
     </div>
   </form>
 </aside>

@@ -48,6 +48,9 @@ input {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0 1rem;
   border: 1px solid var(--accent);
   border-radius: 8px;
@@ -70,6 +73,12 @@ button {
   max-width: 1080px;
   margin: 0 auto;
   width: 100%;
+}
+
+.pagination-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .pagination-bar button[disabled] {
