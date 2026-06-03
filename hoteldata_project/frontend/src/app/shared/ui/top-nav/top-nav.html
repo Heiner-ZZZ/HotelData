@@ -1,0 +1,106 @@
+<div class="top-nav" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
+  <div class="nav-leading">
+    <button type="button" class="back-btn" (click)="navigateBack()" aria-label="Volver atrás">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" />
+  </div>
+
+  <nav class="primary-nav" aria-label="Navegación principal">
+    @for (group of visibleGroups(); track group.id) {
+      <div
+        class="menu-shell"
+        (mouseenter)="onMenuEnter(group.id)"
+        (mouseleave)="onMenuLeave(group.id)"
+      >
+        <button
+          type="button"
+          class="nav-btn"
+          [class.is-open]="activeMenu() === group.id"
+          (click)="toggleMenu(group.id, $event)"
+          aria-haspopup="true"
+          [attr.aria-expanded]="activeMenu() === group.id"
+        >
+          <span class="material-symbols-outlined nav-icon">{{ group.icon }}</span>
+          <span class="btn-label">{{ group.label }}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        @if (activeMenu() === group.id) {
+          <div class="dropdown" (click)="$event.stopPropagation()">
+            @for (item of group.items; track item.href) {
+              <a
+                class="dropdown-item"
+                routerLinkActive="is-active"
+                [routerLink]="item.href"
+                (click)="closeMenus()"
+              >
+                <span class="material-symbols-outlined dropdown-icon">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        }
+      </div>
+    }
+  </nav>
+
+  <div class="nav-actions">
+    <button
+      class="icon-btn"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
+    >
+      <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+
+    <div
+      class="menu-shell"
+      (mouseenter)="onMenuEnter('session')"
+      (mouseleave)="onMenuLeave('session')"
+    >
+      @if (authState().authenticated && currentUser(); as user) {
+        <button
+          type="button"
+          class="nav-btn session-btn"
+          [class.is-open]="activeMenu() === 'session'"
+          (click)="toggleMenu('session', $event)"
+          aria-haspopup="true"
+          [attr.aria-expanded]="activeMenu() === 'session'"
+        >
+          <span class="material-symbols-outlined nav-icon">account_circle</span>
+          <span class="session-info">
+            <strong class="session-name">{{ user.displayName }}</strong>
+            <small class="session-role">{{ user.primaryRole }}</small>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+            <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        @if (activeMenu() === 'session') {
+          <div class="dropdown dropdown-right" (click)="$event.stopPropagation()">
+            @for (item of sessionMenuItems(); track item.href) {
+              <a class="dropdown-item" [routerLink]="item.href" (click)="closeMenus()">
+                <span class="material-symbols-outlined dropdown-icon">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </a>
+            }
+            <a class="dropdown-item" href="/auth/logout">
+              <span class="material-symbols-outlined dropdown-icon">logout</span>
+              <span>Cerrar sesión</span>
+            </a>
+          </div>
+        }
+      } @else {
+        <a class="nav-btn login-btn" routerLink="/login">
+          <span class="btn-label">Entrar</span>
+        </a>
+      }
+    </div>
+  </div>
+</div>

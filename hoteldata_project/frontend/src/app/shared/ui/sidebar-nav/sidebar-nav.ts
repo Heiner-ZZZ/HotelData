@@ -1,0 +1,164 @@
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+
+import { AuthService } from '../../../core/auth/auth.service';
+import { ThemeService } from '../../../core/theme/theme.service';
+
+interface SidebarItem {
+  label: string;
+  href: string;
+  icon: string;
+  allowedRoles?: string[];
+}
+
+interface SidebarSection {
+  id: string;
+  label: string;
+  icon: string;
+  allowedRoles?: string[];
+  items: SidebarItem[];
+}
+
+@Component({
+  selector: 'app-sidebar-nav',
+  imports: [RouterLink, RouterLinkActive],
+  templateUrl: './sidebar-nav.html',
+  styleUrl: './sidebar-nav.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class SidebarNavComponent {
+  private readonly authService = inject(AuthService);
+  private readonly themeService = inject(ThemeService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly theme = this.themeService;
+  readonly authState = this.authService.authState;
+  readonly currentUser = this.authService.currentUser;
+  readonly sidebarCollapsed = signal(false);
+  readonly openSection = signal<string | null>(null);
+
+  readonly sections: SidebarSection[] = [
+    {
+      id: 'gestion',
+      label: 'Gestión',
+      icon: 'dashboard',
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'],
+      items: [
+        { label: 'Panel hotelero', href: '/management', icon: 'dashboard' },
+        {
+          label: 'Reservas',
+          href: '/management/reservations',
+          icon: 'calendar_month',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager']
+        },
+        {
+          label: 'Disponibilidad',
+          href: '/management/availability',
+          icon: 'event_available',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager']
+        },
+        {
+          label: 'Check-ins',
+          href: '/management/check-ins',
+          icon: 'login',
+          allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel']
+        },
+        {
+          label: 'Check-outs',
+          href: '/management/check-outs',
+          icon: 'logout',
+          allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel']
+        },
+        {
+          label: 'Propiedades',
+          href: '/management/properties',
+          icon: 'business',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'revenue_manager', 'marketing_hotelero']
+        },
+        {
+          label: 'Habitaciones',
+          href: '/management/rooms',
+          icon: 'meeting_room',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel']
+        },
+        {
+          label: 'Tarifas',
+          href: '/management/rates',
+          icon: 'attach_money',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'revenue_manager']
+        },
+        {
+          label: 'Políticas',
+          href: '/management/policies',
+          icon: 'policy',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'marketing_hotelero']
+        },
+        {
+          label: 'Amenities',
+          href: '/management/amenities',
+          icon: 'spa',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'marketing_hotelero']
+        },
+        {
+          label: 'Reportes',
+          href: '/management/reports',
+          icon: 'bar_chart',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos']
+        },
+        {
+          label: 'Configuración',
+          href: '/management/settings',
+          icon: 'tune',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner']
+        }
+      ]
+    },
+    {
+      id: 'sistema',
+      label: 'Sistema',
+      icon: 'admin_panel_settings',
+      allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'],
+      items: [
+        { label: 'Usuarios', href: '/system/users', icon: 'people', allowedRoles: ['super_admin', 'admin_sistema'] },
+        { label: 'Permisos', href: '/system/permissions', icon: 'verified_user', allowedRoles: ['super_admin', 'admin_sistema'] },
+        { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
+        { label: 'Auditoría', href: '/system/audit', icon: 'history' }
+      ]
+    }
+  ];
+
+  readonly visibleSections = computed(() => {
+    const role = this.currentUser()?.primaryRole;
+    return this.sections
+      .map(s => ({
+        ...s,
+        items: s.items.filter(i => !i.allowedRoles?.length || (!!role && i.allowedRoles.includes(role)))
+      }))
+      .filter(s => s.items.length > 0);
+  });
+
+  readonly userHomeHref = computed(() => {
+    const role = this.currentUser()?.primaryRole;
+    if (!role) return this.authState().homeHref || '/management';
+    if (['super_admin', 'admin_sistema'].includes(role)) return '/system/users';
+    if (role === 'operador_datos') return '/system/monitoring';
+    if (role === 'auditor_datos') return '/system/audit';
+    if (role === 'cliente') return '/search';
+    return '/management';
+  });
+
+  constructor() {
+    this.authService.ensureSessionLoaded()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+  }
+
+  toggleSection(id: string) {
+    this.openSection.update(v => v === id ? null : id);
+  }
+
+  trackByHref(_index: number, item: SidebarItem): string {
+    return item.href;
+  }
+}

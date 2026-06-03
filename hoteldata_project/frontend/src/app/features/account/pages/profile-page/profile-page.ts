@@ -113,9 +113,9 @@ export class ProfilePageComponent {
   });
 
   readonly activeDropdown = signal<string | null>(null);
-  private readonly dropdownElements = new Map<string, ElementRef<HTMLElement>>();
+  private readonly dropdownElements = new Map<string, HTMLElement>();
 
-  registerDropdown(key: string, el: ElementRef<HTMLElement>): void {
+  registerDropdown(key: string, el: HTMLElement): void {
     this.dropdownElements.set(key, el);
   }
 
@@ -125,7 +125,7 @@ export class ProfilePageComponent {
     if (!activeKey) return;
 
     const el = this.dropdownElements.get(activeKey);
-    if (el && !el.nativeElement.contains(event.target as Node)) {
+    if (el && !el.contains(event.target as Node)) {
       this.activeDropdown.set(null);
     }
   }

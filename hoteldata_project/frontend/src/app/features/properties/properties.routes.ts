@@ -7,6 +7,11 @@ export const PROPERTIES_ROUTES: Routes = [
       import('./pages/properties-list-page/properties-list-page').then((m) => m.PropertiesListPageComponent)
   },
   {
+    path: ':propertyId/edit',
+    loadComponent: () =>
+      import('./pages/property-edit-page/property-edit-page').then((m) => m.PropertyEditPageComponent)
+  },
+  {
     path: ':propertyId',
     loadComponent: () =>
       import('./pages/property-detail-page/property-detail-page').then((m) => m.PropertyDetailPageComponent)

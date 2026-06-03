@@ -7,6 +7,9 @@
 
   <div class="page-actions">
     <a routerLink="/management/properties">Volver</a>
+    @if (viewModel(); as vm) {
+      <a [routerLink]="['/management/properties', vm.propId, 'edit']">Editar perfil</a>
+    }
   </div>
 
   @switch (viewState()) {
@@ -18,6 +21,13 @@
     }
     @default {
       @if (viewModel(); as vm) {
+        <section class="profile-summary surface-card">
+          <div>
+            <strong>{{ vm.displayName }}</strong>
+            <p>{{ vm.countryDisplayName }} · ID técnico {{ vm.propId }}</p>
+          </div>
+          <span class="name-badge" [class.manual]="vm.manualOverride">{{ vm.profileBadge }}</span>
+        </section>
         <section class="hero-grid">
           @for (metric of vm.heroMetrics; track metric.label) {
             <article class="surface-card hero-card">

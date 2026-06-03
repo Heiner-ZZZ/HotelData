@@ -1,20 +1,8 @@
 <div class="access-nav" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
   <svg class="liquid-filter-defs" aria-hidden="true" focusable="false">
     <filter id="liquidGlassDistortion" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence
-        type="fractalNoise"
-        baseFrequency="0.012 0.035"
-        numOctaves="2"
-        seed="7"
-        result="noise"
-      />
-      <feDisplacementMap
-        in="SourceGraphic"
-        in2="noise"
-        scale="6"
-        xChannelSelector="R"
-        yChannelSelector="G"
-      />
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.035" numOctaves="2" seed="7" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
     </filter>
   </svg>
 
@@ -27,21 +15,12 @@
         <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </button>
-
-    <img
-      class="brand-logo"
-      src="/assets/logo-hoteldata.png?v=2026060202"
-      alt="HotelData"
-    >
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" />
   </div>
 
   <nav class="primary-nav" aria-label="Navegación principal">
     @for (menu of visibleNavigationMenus(); track menu.id) {
-      <div
-        class="menu-shell"
-        (mouseenter)="onMenuEnter(menu.id)"
-        (mouseleave)="onMenuLeave(menu.id)"
-      >
+      <div class="menu-shell" (mouseenter)="onMenuEnter(menu.id)" (mouseleave)="onMenuLeave(menu.id)">
         <button
           type="button"
           class="glass-trigger nav-trigger"
@@ -61,12 +40,40 @@
         </button>
 
         @if (activeMenu() === menu.id) {
-          <div class="glass-menu" (click)="$event.stopPropagation()">
-            @for (item of menu.items; track item.href) {
-              <a routerLinkActive="is-active" [routerLink]="item.href" (click)="closeMenus()">
-                <span class="material-symbols-outlined menu-item-icon">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
-              </a>
+          <div
+            class="glass-menu"
+            (click)="$event.stopPropagation()"
+            (mouseenter)="closeSubMenu()"
+          >
+            @for (item of menu.items; track $index) {
+              @if (isSubGroup(item)) {
+                <div
+                  class="menu-subgroup"
+                  (mouseenter)="openSubMenu(item.label)"
+                  (mouseleave)="closeSubMenu()"
+                >
+                  <span class="subgroup-trigger" [class.is-open]="activeSubMenu() === item.label">
+                    <span class="material-symbols-outlined menu-item-icon">{{ item.icon }}</span>
+                    <span>{{ item.label }}</span>
+                    <span class="subgroup-arrow material-symbols-outlined">chevron_right</span>
+                  </span>
+                  @if (activeSubMenu() === item.label) {
+                    <div class="flyout-menu">
+                      @for (sub of item.items; track sub.href) {
+                        <a routerLinkActive="is-active" [routerLink]="sub.href" (click)="closeMenus()">
+                          <span class="material-symbols-outlined menu-item-icon">{{ sub.icon }}</span>
+                          <span>{{ sub.label }}</span>
+                        </a>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <a routerLinkActive="is-active" [routerLink]="itemHref(item)" (click)="closeMenus()">
+                  <span class="material-symbols-outlined menu-item-icon">{{ itemIcon(item) }}</span>
+                  <span>{{ itemLabel(item) }}</span>
+                </a>
+              }
             }
           </div>
         }
@@ -75,6 +82,14 @@
   </nav>
 
   <div class="nav-actions">
+    <button
+      class="theme-toggle"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
+    >
+      <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+
     <div
       class="menu-shell"
       (mouseenter)="onMenuEnter('session')"

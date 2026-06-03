@@ -1,0 +1,70 @@
+<header class="mgmt-topbar">
+  <div class="topbar-left">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      @for (crumb of breadcrumbs(); track crumb.path; let last = $last) {
+        @if (!last) {
+          <a [routerLink]="crumb.path" class="crumb-link">{{ crumb.label }}</a>
+          <span class="crumb-sep material-symbols-outlined">chevron_right</span>
+        } @else {
+          <span class="crumb-current">{{ crumb.label }}</span>
+        }
+      }
+    </nav>
+  </div>
+
+  <div class="topbar-right">
+    <!-- Notifications -->
+    <div class="notif-wrapper" (click)="toggleNotifications()" (keydown.escape)="closeNotifications()">
+      <button class="notif-btn" [class.has-unread]="unreadCount() > 0" aria-label="Notificaciones">
+        <span class="material-symbols-outlined notif-icon">notifications</span>
+        @if (unreadCount() > 0) {
+          <span class="notif-badge">{{ unreadCount() }}</span>
+        }
+      </button>
+
+      @if (showNotifications()) {
+        <div class="notif-dropdown" (click)="$event.stopPropagation()">
+          <div class="notif-header">
+            <strong>Notificaciones</strong>
+            @if (unreadCount() > 0) {
+              <button class="notif-mark-read" (click)="markAllRead()">Marcar todo como leído</button>
+            }
+          </div>
+          <div class="notif-list">
+            @for (n of notifications(); track n.id) {
+              <div class="notif-item" [class.unread]="n.unread">
+                <div class="notif-dot" [class.active]="n.unread"></div>
+                <div class="notif-body">
+                  <p class="notif-title">{{ n.title }}</p>
+                  <p class="notif-desc">{{ n.description }}</p>
+                  <span class="notif-time">{{ n.time }}</span>
+                </div>
+              </div>
+            } @empty {
+              <div class="notif-empty">
+                <span class="material-symbols-outlined">notifications_off</span>
+                <p>No hay notificaciones</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- User Profile -->
+    <div class="user-profile">
+      <div class="user-avatar">{{ initials() }}</div>
+      <div class="user-info">
+        <span class="user-name">{{ firstName() }}</span>
+        @if (surname()) {
+          <span class="user-surname">{{ surname() }}</span>
+        }
+        <span class="user-role">{{ roleLabel() }}</span>
+      </div>
+    </div>
+  </div>
+
+  @if (showNotifications()) {
+    <div class="notif-overlay" (click)="closeNotifications()"></div>
+  }
+</header>

@@ -44,72 +44,147 @@
           </article>
         </section>
 
-        <section class="surface-card accordion-section">
-          <div class="accordion-header" (click)="toggleSection('roles')">
-            <div>
-              <h2>Roles y accesos visibles</h2>
-              <p>{{ vm.roles.length }} rol(es) visibles con sus permisos y botones asociados.</p>
-            </div>
-            <span class="accordion-chevron">{{ openSection() === 'roles' ? '▼' : '▶' }}</span>
-          </div>
-          @if (openSection() === 'roles') {
-            <div class="accordion-body">
-              <div class="roles-grid">
-                @for (role of vm.roles; track role.roleName) {
-                  <article class="role-card">
-                    <div class="role-card-head">
-                      <h3>{{ role.roleName }}</h3>
-                      <span>{{ role.permissionCount }} permisos</span>
-                    </div>
-                    <p>{{ role.description }}</p>
-                    <dl>
-                      <div>
-                        <dt>Permisos</dt>
-                        <dd>{{ role.permissionCodesLabel }}</dd>
+        @if (editRoleName(); as editing) {
+          @if (roleDetail(); as detail) {
+            <section class="surface-card role-editor">
+              <div class="editor-head">
+                <div>
+                  <h2>Editando: {{ detail.role.roleName }}</h2>
+                  <p>Selecciona los permisos y modifica la descripción del rol.</p>
+                </div>
+                <button class="btn-ghost" (click)="closeRoleEditor()">Cerrar editor</button>
+              </div>
+
+              @if (saveMessage()) {
+                <div class="save-feedback" [class.success]="saveMessage().includes('actualizado')">
+                  {{ saveMessage() }}
+                </div>
+              }
+
+              <div class="editor-body">
+                <div class="editor-form">
+                  <label class="field">
+                    <span>Descripción</span>
+                    <textarea [value]="detail.role.description" (input)="detail.role.description = $any($event.target).value" rows="2"></textarea>
+                  </label>
+
+                  <div class="permissions-grid">
+                    @for (perm of detail.permissions; track perm.permissionCode) {
+                      <label class="perm-chip" [class.selected]="detail.role.permissionCodes.includes(perm.permissionCode)">
+                        <input
+                          type="checkbox"
+                          [checked]="detail.role.permissionCodes.includes(perm.permissionCode)"
+                          (change)="togglePermission(perm.permissionCode)"
+                        />
+                        <span class="perm-code">{{ perm.permissionCode }}</span>
+                        <span class="perm-desc">{{ perm.description }}</span>
+                      </label>
+                    }
+                  </div>
+
+                  <div class="editor-actions">
+                    <button class="btn-primary" [disabled]="saving()" (click)="saveRole()">
+                      @if (saving()) { Guardando... } @else { Guardar cambios }
+                    </button>
+                  </div>
+                </div>
+
+                <div class="editor-preview">
+                  <h3>Accesos visibles</h3>
+                  <p>Vista previa del menú que verá este rol según los permisos seleccionados.</p>
+                  <div class="nav-preview-list">
+                    @for (item of detail.role.navigationCatalog; track item.href) {
+                      <div class="nav-preview-item" [class.visible]="item.visible" [class.hidden]="!item.visible">
+                        <span class="nav-preview-icon material-symbols-outlined">{{ item.icon }}</span>
+                        <span class="nav-preview-label">{{ item.label }}</span>
+                        <span class="nav-preview-badge" [class.visible-badge]="item.visible" [class.hidden-badge]="!item.visible">
+                          {{ item.visible ? 'Visible' : 'Oculto' }}
+                        </span>
                       </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </section>
+          } @else {
+            <app-loading-state label="Cargando detalle del rol..." />
+          }
+        }
+
+        @if (!editRoleName()) {
+          <section class="surface-card accordion-section">
+            <div class="accordion-header" (click)="toggleSection('roles')">
+              <div>
+                <h2>Roles y accesos visibles</h2>
+                <p>{{ vm.roles.length }} rol(es) visibles con sus permisos y botones asociados.</p>
+              </div>
+              <span class="accordion-chevron">{{ openSection() === 'roles' ? '▼' : '▶' }}</span>
+            </div>
+            @if (openSection() === 'roles') {
+              <div class="accordion-body">
+                <div class="roles-grid">
+                  @for (role of vm.roles; track role.roleName) {
+                      <article class="role-card" [class.highlight]="role.roleName === 'admin_sistema' || role.roleName === 'auditor_datos'">
+                      <div class="role-card-head">
+                        <h3>{{ role.roleName }}</h3>
+                        <span>{{ role.permissionCount }} permisos</span>
+                      </div>
+                      <p>{{ role.description }}</p>
                       <div>
                         <dt>Accesos visibles</dt>
-                        <dd>{{ role.accessLabelsLabel }}</dd>
+                        <dd class="access-chips">
+                          @for (btn of role.accessButtons; track btn.href) {
+                            <span class="access-chip">
+                              <span class="material-symbols-outlined access-chip-icon">{{ btn.icon }}</span>
+                              {{ btn.label }}
+                            </span>
+                          }
+                        </dd>
                       </div>
-                    </dl>
-                  </article>
-                }
+                      <button class="btn-edit-role" (click)="openRoleEditor(role.roleName)">
+                        <span class="material-symbols-outlined">edit</span> Editar permisos
+                      </button>
+                    </article>
+                  }
+                </div>
               </div>
-            </div>
-          }
-        </section>
+            }
+          </section>
+        }
 
-        <section class="surface-card accordion-section">
-          <div class="accordion-header" (click)="toggleSection('catalog')">
-            <div>
-              <h2>Catálogo de permisos</h2>
-              <p>{{ vm.permissions.length }} permiso(s) registrados.</p>
-            </div>
-            <span class="accordion-chevron">{{ openSection() === 'catalog' ? '▼' : '▶' }}</span>
-          </div>
-          @if (openSection() === 'catalog') {
-            <div class="accordion-body">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Permiso</th>
-                      <th>Descripción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (permission of vm.permissions; track permission.permissionCode) {
-                      <tr>
-                        <td><strong>{{ permission.permissionCode }}</strong></td>
-                        <td>{{ permission.description }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+        @if (!editRoleName()) {
+          <section class="surface-card accordion-section">
+            <div class="accordion-header" (click)="toggleSection('catalog')">
+              <div>
+                <h2>Catálogo de permisos</h2>
+                <p>{{ vm.permissions.length }} permiso(s) registrados.</p>
               </div>
+              <span class="accordion-chevron">{{ openSection() === 'catalog' ? '▼' : '▶' }}</span>
             </div>
-          }
-        </section>
+            @if (openSection() === 'catalog') {
+              <div class="accordion-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Permiso</th>
+                        <th>Descripción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (permission of vm.permissions; track permission.permissionCode) {
+                        <tr>
+                          <td><strong>{{ permission.permissionCode }}</strong></td>
+                          <td>{{ permission.description }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </section>
+        }
       }
     }
   }

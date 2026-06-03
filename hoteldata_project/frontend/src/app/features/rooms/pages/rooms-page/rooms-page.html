@@ -50,6 +50,10 @@
             <span class="label">Hotel</span>
             <strong>{{ vm.hotelName }}</strong>
             <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+            <a [routerLink]="['/management/properties', vm.propId, 'edit']" class="edit-content-btn">
+              <span class="material-symbols-outlined">edit</span>
+              Editar Contenido
+            </a>
           </article>
           <article class="surface-card hero-card">
             <span class="label">Precio promedio</span>

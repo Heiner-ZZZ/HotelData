@@ -41,42 +41,110 @@
 
     @if (step() === 'details') {
       <form [formGroup]="form" (ngSubmit)="goToReview()" class="booking-form" novalidate>
-        <section class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">hotel</span>
-            <div>
-              <h2>Seleccionar hotel</h2>
-              <p>Elige el destino de tu viaje</p>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label class="field" [class.field-error]="form.controls.propId.invalid && form.controls.propId.touched">
-              <span class="field-label">Hotel</span>
-              <div class="select-wrap">
-                <select formControlName="propId">
-                  <option [ngValue]="0">— Seleccionar hotel —</option>
-                  @for (option of hotelOptions(); track option.propId) {
-                    <option [ngValue]="option.propId">{{ option.label }}</option>
-                  }
-                </select>
-                <span class="material-symbols-outlined select-arrow">expand_more</span>
+        <section class="surface-card planner-section">
+          <div class="planner-grid">
+            <label class="planner-field" [class.field-error]="form.controls.propId.invalid && form.controls.propId.touched">
+              <span class="material-symbols-outlined planner-icon">location_on</span>
+              <div class="planner-copy">
+                <span class="planner-label">Hotel</span>
+                <div class="select-wrap planner-select-wrap">
+                  <select formControlName="propId" aria-label="Hotel">
+                    <option [ngValue]="0">¿A dónde quieres ir?</option>
+                    @for (option of hotelOptions(); track option.propId) {
+                      <option [ngValue]="option.propId">{{ option.label }}</option>
+                    }
+                  </select>
+                  <span class="material-symbols-outlined select-arrow">expand_more</span>
+                </div>
               </div>
-              @if (form.controls.propId.invalid && form.controls.propId.touched) {
-                <span class="field-error-msg">Selecciona un hotel</span>
-              }
             </label>
+
+            <div class="planner-field planner-field--dates">
+              <span class="material-symbols-outlined planner-icon">calendar_month</span>
+              <div class="planner-copy">
+                <span class="planner-label">Fechas</span>
+                <div class="planner-dates">
+                  <input formControlName="checkInDate" type="date" [attr.min]="today" aria-label="Fecha de entrada" />
+                  <span class="planner-separator">-</span>
+                  <input formControlName="checkOutDate" type="date" [attr.min]="form.controls.checkInDate.value || today" aria-label="Fecha de salida" />
+                </div>
+              </div>
+            </div>
+
+            <div class="planner-field planner-field--occupancy">
+              <span class="material-symbols-outlined planner-icon">person</span>
+              <div class="planner-copy">
+                <span class="planner-label">Huéspedes</span>
+                <strong class="planner-value">
+                  {{ form.controls.adults.value + form.controls.children.value }} persona{{ form.controls.adults.value + form.controls.children.value === 1 ? '' : 's' }},
+                  {{ form.controls.rooms.value }} habitaci{{ form.controls.rooms.value === 1 ? 'ón' : 'ones' }}
+                </strong>
+                <div class="planner-steppers">
+                  <div class="mini-stepper">
+                    <span class="mini-stepper-label">Adultos</span>
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn" (click)="adjustValue('adults', -1)" [disabled]="form.controls.adults.value <= 1">
+                        <span class="material-symbols-outlined">remove</span>
+                      </button>
+                      <span class="stepper-value">{{ form.controls.adults.value }}</span>
+                      <button type="button" class="stepper-btn" (click)="adjustValue('adults', 1)" [disabled]="form.controls.adults.value >= 20">
+                        <span class="material-symbols-outlined">add</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="mini-stepper">
+                    <span class="mini-stepper-label">Niños</span>
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn" (click)="adjustValue('children', -1)" [disabled]="form.controls.children.value <= 0">
+                        <span class="material-symbols-outlined">remove</span>
+                      </button>
+                      <span class="stepper-value">{{ form.controls.children.value }}</span>
+                      <button type="button" class="stepper-btn" (click)="adjustValue('children', 1)" [disabled]="form.controls.children.value >= 10">
+                        <span class="material-symbols-outlined">add</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="mini-stepper">
+                    <span class="mini-stepper-label">Habitaciones</span>
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn" (click)="adjustValue('rooms', -1)" [disabled]="form.controls.rooms.value <= 1">
+                        <span class="material-symbols-outlined">remove</span>
+                      </button>
+                      <span class="stepper-value">{{ form.controls.rooms.value }}</span>
+                      <button type="button" class="stepper-btn" (click)="adjustValue('rooms', 1)" [disabled]="form.controls.rooms.value >= 10">
+                        <span class="material-symbols-outlined">add</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="planner-cta" #guestCta (click)="guestSection.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+              Continuar
+            </button>
           </div>
 
           @if (selectedHotel(); as hotel) {
-            <div class="hotel-chip">
-              <span class="material-symbols-outlined">check_circle</span>
-              <span>{{ hotel.label }}</span>
+            <div class="planner-meta">
+              <div class="hotel-chip">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>{{ hotel.label }}</span>
+              </div>
+
+              @if (computedNights() > 0) {
+                <div class="nights-badge">
+                  <span class="material-symbols-outlined">nightstay</span>
+                  <span><strong>{{ computedNights() }}</strong> {{ computedNights() === 1 ? 'noche' : 'noches' }}</span>
+                </div>
+              }
             </div>
           }
         </section>
 
-        <section class="surface-card form-section">
+        <section #guestSection class="surface-card form-section">
           <div class="section-head">
             <span class="material-symbols-outlined section-icon">person</span>
             <div>
@@ -107,98 +175,6 @@
                 <span class="field-error-msg">Ingresa un correo válido</span>
               }
             </label>
-          </div>
-        </section>
-
-        <section class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">calendar_month</span>
-            <div>
-              <h2>Fechas del viaje</h2>
-              <p>Selecciona entrada y salida</p>
-            </div>
-          </div>
-
-          <div class="field-group two-col">
-            <label class="field" [class.field-error]="form.controls.checkInDate.invalid && form.controls.checkInDate.touched">
-              <span class="field-label">Fecha de entrada</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">event</span>
-                <input formControlName="checkInDate" type="date" [attr.min]="today" />
-              </div>
-              @if (form.controls.checkInDate.invalid && form.controls.checkInDate.touched) {
-                <span class="field-error-msg">Selecciona la fecha de entrada</span>
-              }
-            </label>
-
-            <label class="field" [class.field-error]="form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched">
-              <span class="field-label">Fecha de salida</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">event_upcoming</span>
-                <input formControlName="checkOutDate" type="date" [attr.min]="form.controls.checkInDate.value || today" />
-              </div>
-              @if (form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched) {
-                <span class="field-error-msg">Selecciona la fecha de salida</span>
-              }
-            </label>
-          </div>
-
-          @if (computedNights() > 0) {
-            <div class="nights-badge">
-              <span class="material-symbols-outlined">nightstay</span>
-              <span><strong>{{ computedNights() }}</strong> {{ computedNights() === 1 ? 'noche' : 'noches' }}</span>
-            </div>
-          }
-        </section>
-
-        <section class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">group</span>
-            <div>
-              <h2>Ocupación</h2>
-              <p>Número de huéspedes y habitaciones</p>
-            </div>
-          </div>
-
-          <div class="occupancy-grid">
-            <div class="stepper-field">
-              <span class="field-label">Adultos</span>
-              <div class="stepper">
-                <button type="button" class="stepper-btn" (click)="adjustValue('adults', -1)" [disabled]="form.controls.adults.value <= 1">
-                  <span class="material-symbols-outlined">remove</span>
-                </button>
-                <span class="stepper-value">{{ form.controls.adults.value }}</span>
-                <button type="button" class="stepper-btn" (click)="adjustValue('adults', 1)" [disabled]="form.controls.adults.value >= 20">
-                  <span class="material-symbols-outlined">add</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="stepper-field">
-              <span class="field-label">Niños</span>
-              <div class="stepper">
-                <button type="button" class="stepper-btn" (click)="adjustValue('children', -1)" [disabled]="form.controls.children.value <= 0">
-                  <span class="material-symbols-outlined">remove</span>
-                </button>
-                <span class="stepper-value">{{ form.controls.children.value }}</span>
-                <button type="button" class="stepper-btn" (click)="adjustValue('children', 1)" [disabled]="form.controls.children.value >= 10">
-                  <span class="material-symbols-outlined">add</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="stepper-field">
-              <span class="field-label">Habitaciones</span>
-              <div class="stepper">
-                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', -1)" [disabled]="form.controls.rooms.value <= 1">
-                  <span class="material-symbols-outlined">remove</span>
-                </button>
-                <span class="stepper-value">{{ form.controls.rooms.value }}</span>
-                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', 1)" [disabled]="form.controls.rooms.value >= 10">
-                  <span class="material-symbols-outlined">add</span>
-                </button>
-              </div>
-            </div>
           </div>
         </section>
 

@@ -1,0 +1,64 @@
+<aside class="sidebar" [class.is-collapsed]="sidebarCollapsed()">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <img src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" class="sidebar-logo" />
+    </div>
+  </div>
+
+  <nav class="sidebar-body" aria-label="Navegación lateral">
+    @for (section of visibleSections(); track section.id) {
+      <div class="sidebar-section">
+        <button
+          type="button"
+          class="section-header"
+          [class.is-open]="openSection() === section.id"
+          (click)="toggleSection(section.id)"
+          aria-expanded="openSection() === section.id"
+        >
+          <span class="material-symbols-outlined section-icon">{{ section.icon }}</span>
+          <span class="section-label">{{ section.label }}</span>
+          <span class="material-symbols-outlined section-chevron">chevron_left</span>
+        </button>
+
+        @if (openSection() === section.id) {
+          <div class="section-items">
+            @for (item of section.items; track item.href) {
+              <a
+                class="section-link"
+                routerLinkActive="is-active"
+                [routerLink]="item.href"
+              >
+                <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
+                <span class="link-label">{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        }
+      </div>
+    }
+  </nav>
+
+  <div class="sidebar-footer">
+    @if (currentUser(); as user) {
+      <a class="sidebar-user" [routerLink]="userHomeHref()">
+        <span class="material-symbols-outlined user-avatar">account_circle</span>
+        <div class="user-info">
+          <strong class="user-name">{{ user.displayName }}</strong>
+          <small class="user-role">{{ user.primaryRole }}</small>
+        </div>
+      </a>
+    }
+    <div class="sidebar-actions">
+      <button
+        class="sidebar-icon-btn"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
+      >
+        <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+      </button>
+      <a class="sidebar-icon-btn" href="/auth/logout" aria-label="Cerrar sesión">
+        <span class="material-symbols-outlined">logout</span>
+      </a>
+    </div>
+  </div>
+</aside>

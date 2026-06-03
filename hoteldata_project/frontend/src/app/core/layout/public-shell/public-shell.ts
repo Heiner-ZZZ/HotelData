@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
-import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
+import { TopNavComponent } from '../../../shared/ui/top-nav/top-nav';
 
 @Component({
   selector: 'app-public-shell',
-  imports: [AccessNavComponent, RouterOutlet],
+  imports: [TopNavComponent, RouterOutlet],
   templateUrl: './public-shell.html',
   styleUrl: './public-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

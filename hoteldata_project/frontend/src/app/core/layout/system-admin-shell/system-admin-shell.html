@@ -1,21 +1,9 @@
 <div class="system-shell">
-  <app-access-nav />
-  <header class="system-header">
-    <div class="system-branding">
-      <a class="brand" routerLink="/system">HotelData</a>
-      <p>System administration</p>
-    </div>
-    <nav class="system-tabs" aria-label="Navegacion de administracion global">
-      @for (item of navigation; track item.href) {
-        <a routerLinkActive="is-active" [routerLink]="item.href">
-          <span class="material-symbols-outlined tab-icon">{{ item.icon }}</span>
-          {{ item.label }}
-        </a>
-      }
-    </nav>
-  </header>
-
-  <main class="system-main">
-    <router-outlet />
-  </main>
+  <app-sidebar-nav />
+  <div class="system-right">
+    <app-management-top-nav />
+    <main class="system-main">
+      <router-outlet />
+    </main>
+  </div>
 </div>

@@ -59,9 +59,14 @@
   border: 1px solid var(--app-border);
   border-radius: 16px;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.68);
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
   display: grid;
   gap: 0.85rem;
+}
+
+.role-card.highlight {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .role-card-head {
@@ -91,6 +96,56 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.access-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.access-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  background: var(--surface);
+}
+
+.access-chip-icon {
+  font-size: 0.95rem;
+}
+
+.btn-edit-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--accent);
+  transition: all 0.15s;
+  justify-self: start;
+}
+
+.btn-edit-role:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-edit-role .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .table-wrap {
@@ -117,9 +172,237 @@ th {
   letter-spacing: 0.04em;
 }
 
+.role-editor {
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.editor-head h2 {
+  margin: 0 0 0.25rem;
+}
+
+.editor-head p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  background: var(--surface-hover, #f0f0f0);
+}
+
+.save-feedback {
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+.save-feedback.success {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+}
+
+.editor-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+}
+
+.editor-form {
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field span {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.field textarea {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.permissions-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.perm-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.12s;
+  background: var(--surface);
+}
+
+.perm-chip:hover {
+  border-color: var(--accent);
+}
+
+.perm-chip.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.perm-chip input {
+  accent-color: var(--accent);
+}
+
+.perm-code {
+  font-weight: 600;
+  font-size: 0.88rem;
+  font-family: monospace;
+  color: var(--text);
+}
+
+.perm-desc {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.editor-actions {
+  padding-top: 0.5rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.editor-preview {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  align-content: start;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.editor-preview h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.editor-preview p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.nav-preview-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.nav-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.nav-preview-item.visible {
+  background: rgba(0, 128, 0, 0.06);
+}
+
+.nav-preview-item.hidden {
+  opacity: 0.45;
+}
+
+.nav-preview-icon {
+  font-size: 1.1rem;
+}
+
+.nav-preview-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.nav-preview-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.visible-badge {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+}
+
+.hidden-badge {
+  background: color-mix(in srgb, var(--app-border) 40%, transparent);
+  color: var(--muted-text);
+}
+
 @media (max-width: 980px) {
   .hero-grid,
   .roles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-body {
     grid-template-columns: 1fr;
   }
 }

@@ -170,6 +170,9 @@ export class MonitoringPageComponent implements OnInit {
         next: (vm) => {
           this.viewModel.set(vm);
           this.viewState.set('success');
+          if (vm.progress.preparationTarget > 0) {
+            this.targetRecords.set(vm.progress.preparationTarget);
+          }
           if (vm.progress.isRunning) {
             this.startPolling();
           } else {

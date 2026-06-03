@@ -25,7 +25,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     catchError((error: unknown) => {
       if (
         error instanceof HttpErrorResponse &&
-        (error.status === 401 || error.status === 403) &&
+        error.status === 401 &&
         isCredentialedUrl(request.url) &&
         !isPublicJsonUrl(request.url) &&
         !isAuthProbe(request.url)

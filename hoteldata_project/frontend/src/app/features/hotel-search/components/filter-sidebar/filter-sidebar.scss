@@ -51,7 +51,8 @@ select {
   border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 0 0.875rem;
-  background: #fff;
+  background: var(--surface);
+  color: var(--app-text);
 }
 
 .form-actions {
@@ -78,7 +79,7 @@ select {
 }
 
 .secondary-action {
-  background: #fff;
+  background: var(--surface);
 }
 
 @media (max-width: 920px) {

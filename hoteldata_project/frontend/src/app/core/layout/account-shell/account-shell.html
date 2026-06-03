@@ -1,24 +1,5 @@
 <div class="account-shell">
-  <app-access-nav />
-  <header class="account-header">
-    <div class="account-branding">
-      <a class="brand" routerLink="/search">HotelData</a>
-      <div>
-        <p class="eyebrow">Cuenta del viajero</p>
-        <strong>Gestiona reservas, viajes y preferencias</strong>
-      </div>
-    </div>
-
-    <nav aria-label="Navegacion de cuenta">
-      @for (item of navigation; track item.href) {
-        <a routerLinkActive="is-active" [routerLink]="item.href">
-          <span class="material-symbols-outlined nav-icon">{{ item.icon }}</span>
-          {{ item.label }}
-        </a>
-      }
-    </nav>
-  </header>
-
+  <app-top-nav />
   <main class="account-main">
     <router-outlet />
   </main>

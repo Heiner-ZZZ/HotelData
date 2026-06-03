@@ -1,0 +1,206 @@
+<div class="edit-property">
+  @if (viewState() === 'loading') {
+    <app-loading-state label="Cargando perfil de propiedad..." />
+  } @else if (viewState() === 'error') {
+    <app-error-state title="No se pudo cargar la propiedad" />
+  } @else if (vm(); as vm) {
+    <!-- Header -->
+    <header class="edit-header">
+      <div class="edit-header-left">
+        <a [routerLink]="['/management/properties']" class="back-btn">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div>
+          <h2>{{ vm.displayName }}</h2>
+          <p class="edit-location">
+            <span class="material-symbols-outlined">location_on</span>
+            {{ vm.countryDisplayName }} &middot; Property ID: {{ vm.propId }}
+          </p>
+          <div class="profile-badges">
+            <span class="name-badge" [class.manual]="vm.manualOverride">{{ vm.profileBadge }}</span>
+            @if (vm.originalGeneratedName && vm.originalGeneratedName !== vm.displayName) {
+              <span class="hint-badge">Base: {{ vm.originalGeneratedName }}</span>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="edit-header-right">
+        <span class="live-badge">Editar perfil</span>
+        <button class="icon-btn">
+          <span class="material-symbols-outlined">more_vert</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Canvas -->
+    <div class="edit-canvas">
+      <!-- Core Information -->
+      <section class="edit-section">
+        <div class="section-header">
+          <span class="material-symbols-outlined">info</span>
+          <h3>Informaci&oacute;n Principal</h3>
+        </div>
+        <div class="section-body">
+          <div class="field">
+            <label>ID T&eacute;cnico</label>
+            <input type="text" [value]="vm.propId" class="edit-input" disabled />
+          </div>
+          <div class="field">
+            <label>Nombre comercial</label>
+            <input type="text" [formControl]="form.controls.displayName" class="edit-input" />
+          </div>
+          <div class="field">
+            <label>Nombre base / oficial</label>
+            <input type="text" [formControl]="form.controls.hotelName" class="edit-input" />
+          </div>
+          <div class="field">
+            <label>Pa&iacute;s / mercado visible</label>
+            <input type="text" [formControl]="form.controls.displayCountryLabel" class="edit-input" />
+          </div>
+          <div class="field">
+            <label>Descripci&oacute;n de Marketing</label>
+            <textarea [formControl]="form.controls.description" rows="5" placeholder="Describe tu propiedad..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Gallery -->
+      <section class="edit-section">
+        <div class="section-header">
+          <span class="material-symbols-outlined">image</span>
+          <h3>Galer&iacute;a de Im&aacute;genes</h3>
+          <div class="section-actions">
+            <button class="section-action" (click)="addImage()">Subir Im&aacute;genes</button>
+            <button class="section-action outline">Bulk Upload</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="gallery-grid">
+            @for (img of vm.images; track img.imageUrl) {
+              <div class="gallery-item">
+                <div class="gallery-img" [style.background]="'var(--surface-soft)'">
+                  <span class="material-symbols-outlined">image</span>
+                </div>
+                @if ($index === 0) {
+                  <span class="hero-badge">Hero</span>
+                }
+                <div class="gallery-overlay">
+                  <button class="gallery-btn" (click)="removeImage(img.imageUrl)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </div>
+            }
+            <div class="gallery-add" (click)="focusImageInput()">
+              <span class="material-symbols-outlined">add_a_photo</span>
+              <span>Agregar m&aacute;s</span>
+              <div class="gallery-add-form" (click)="$event.stopPropagation()">
+                <input id="imageUrlInput" type="text" placeholder="URL de imagen..." [value]="newImageUrl()" (input)="onImageUrlInput($event)" />
+                <input type="text" placeholder="T&iacute;tulo..." [value]="newImageTitle()" (input)="onImageTitleInput($event)" />
+                <button (click)="addImage()">Agregar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Policies + Amenities Grid -->
+      <div class="edit-grid-2">
+        <!-- Policies -->
+        <section class="edit-section">
+          <div class="section-header">
+            <span class="material-symbols-outlined">policy</span>
+            <h3>Pol&iacute;ticas</h3>
+          </div>
+          <div class="section-body">
+            <div class="field">
+              <label>Hora de Check-in</label>
+              <select [formControl]="form.controls.checkInTime">
+                <option value="14:00">14:00 (2:00 PM)</option>
+                <option value="15:00">15:00 (3:00 PM)</option>
+                <option value="16:00">16:00 (4:00 PM)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Pol&iacute;tica de Cancelaci&oacute;n</label>
+              <select [formControl]="form.controls.cancellationPolicy">
+                <option value="Flexible - 24h">Flexible - 24h</option>
+                <option value="Moderate - 5 days">Moderate - 5 d&iacute;as</option>
+                <option value="Strict - Non-refundable">Estricta - No reembolsable</option>
+              </select>
+            </div>
+            <div class="toggle-field">
+              <span>Permitir Mascotas</span>
+              <button class="toggle-switch" [class.active]="form.controls.petPolicy.value" (click)="form.controls.petPolicy.setValue(!form.controls.petPolicy.value)" role="switch" [attr.aria-checked]="form.controls.petPolicy.value">
+                <div class="toggle-knob"></div>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Amenities -->
+        <section class="edit-section">
+          <div class="section-header">
+            <span class="material-symbols-outlined">star</span>
+            <h3>Amenidades Destacadas</h3>
+          </div>
+          <div class="section-body">
+            <div class="amenities-wrap">
+              @for (amenity of vm.amenities; track amenity) {
+                <span class="amenity-chip">
+                  <span class="material-symbols-outlined">check</span>
+                  {{ amenity }}
+                  <button class="chip-remove" (click)="removeAmenity(amenity)">&times;</button>
+                </span>
+              }
+              <button class="amenity-add">+ Agregar Amenidad</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Data Health Score -->
+      <section class="health-section">
+        <div>
+          <h3>Puntuaci&oacute;n de Integridad de Contenido</h3>
+          <p>Puntuaciones altas de contenido suelen aumentar la conversi&oacute;n de reservas en un 18%.</p>
+        </div>
+        <div class="health-score">
+          <div class="score-value">94%</div>
+          <div class="score-label">Excelente</div>
+          <div class="score-icon">
+            <span class="material-symbols-outlined">check_circle</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Floating Save Bar -->
+    @if (unsavedCount() > 0) {
+      <div class="save-bar">
+        <div class="save-bar-inner">
+          <div class="save-info">
+            <span class="material-symbols-outlined">sync</span>
+            <span>Tienes {{ unsavedCount() }} cambio{{ unsavedCount() !== 1 ? 's' : '' }} sin guardar en el perfil y configuraci&oacute;n visible</span>
+          </div>
+          <div class="save-actions">
+            <button class="btn-outline" (click)="discard()">Descartar</button>
+            <button class="btn-primary" [disabled]="saving() === 'saving'" (click)="saveAll()">
+              @if (saving() === 'saving') {
+                <span class="material-symbols-outlined spin">sync</span>
+              }
+              {{ saving() === 'saving' ? 'Guardando...' : saving() === 'done' ? 'Guardado!' : 'Guardar Cambios' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (saveError()) {
+      <div class="save-error">
+        <span class="material-symbols-outlined">error</span>
+        {{ saveError() }}
+      </div>
+    }
+  }
+</div>

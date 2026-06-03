@@ -16,6 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { ThemeService } from '../../../core/theme/theme.service';
 
 interface NavMenuItem {
   label: string;
@@ -24,18 +25,29 @@ interface NavMenuItem {
   allowedRoles?: string[];
 }
 
-interface NavMenuGroup {
-  id: string;
+interface NavSubGroup {
   label: string;
   icon: string;
   allowedRoles?: string[];
   items: NavMenuItem[];
 }
 
+interface NavMenuGroup {
+  id: string;
+  label: string;
+  icon: string;
+  allowedRoles?: string[];
+  items: (NavMenuItem | NavSubGroup)[];
+}
+
 interface SessionMenuItem {
   label: string;
   href: string;
   icon: string;
+}
+
+function isSubGroup(item: NavMenuItem | NavSubGroup): item is NavSubGroup {
+  return 'items' in item;
 }
 
 @Component({
@@ -47,6 +59,7 @@ interface SessionMenuItem {
 })
 export class AccessNavComponent implements AfterViewInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
@@ -55,13 +68,29 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   private removePointerListener: (() => void) | null = null;
   private removePointerLeaveListener: (() => void) | null = null;
 
+  readonly theme = this.themeService;
   readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
+  readonly activeSubMenu = signal<string | null>(null);
   readonly navTransform = signal('translateY(0%)');
   readonly navOpacity = signal(1);
   private readonly SCROLL_HIDE_RANGE = 120;
   private hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly isSubGroup = isSubGroup;
+
+  itemHref(item: NavMenuItem | NavSubGroup): string {
+    return isSubGroup(item) ? '' : item.href;
+  }
+
+  itemIcon(item: NavMenuItem | NavSubGroup): string {
+    return isSubGroup(item) ? item.icon : item.icon;
+  }
+
+  itemLabel(item: NavMenuItem | NavSubGroup): string {
+    return isSubGroup(item) ? item.label : item.label;
+  }
 
   readonly sessionMenuItems = computed<SessionMenuItem[]>(() => {
     const role = this.currentUser()?.primaryRole;
@@ -73,19 +102,19 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
 
     const items: SessionMenuItem[] = [{ label: 'Mi inicio', href: homeHref, icon: 'home' }];
 
+    if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
+      items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
+    }
+
+    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'].includes(role)) {
+      items.push({ label: 'Gestión', href: '/management', icon: 'dashboard' });
+    }
+
     if (role === 'cliente') {
       items.push(
         { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
         { label: 'Perfil', href: '/account/profile', icon: 'person' }
       );
-    }
-
-    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'].includes(role)) {
-      items.push({ label: 'Gestión hotelera', href: '/management', icon: 'dashboard' });
-    }
-
-    if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
-      items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
 
     if (role !== 'cliente') {
@@ -107,26 +136,37 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       ]
     },
     {
-      id: 'cuenta',
-      label: 'Cuenta',
-      icon: 'account_circle',
-      allowedRoles: ['cliente'],
-      items: [
-        { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
-        { label: 'Nuevo viaje', href: '/account/bookings/new', icon: 'add_circle' },
-        { label: 'Perfil', href: '/account/profile', icon: 'person' }
-      ]
-    },
-    {
       id: 'gestion',
       label: 'Gestión',
       icon: 'dashboard',
-      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'],
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'],
       items: [
-        { label: 'Panel hotelero', href: '/management', icon: 'dashboard' },
-        { label: 'Reservas', href: '/management/reservations', icon: 'calendar_month' },
-        { label: 'Propiedades', href: '/management/properties', icon: 'business' },
-        { label: 'Tarifas', href: '/management/rates', icon: 'attach_money' }
+        { label: 'Panel hotelero', href: '/management', icon: 'dashboard', exact: true } as NavMenuItem,
+        {
+          label: 'Operación',
+          icon: 'assignment',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'],
+          items: [
+            { label: 'Reservas', href: '/management/reservations', icon: 'calendar_month' },
+            { label: 'Disponibilidad', href: '/management/availability', icon: 'event_available', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'] },
+            { label: 'Check-ins', href: '/management/check-ins', icon: 'login', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] },
+            { label: 'Check-outs', href: '/management/check-outs', icon: 'logout', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] }
+          ]
+        } as NavSubGroup,
+        {
+          label: 'Propiedad',
+          icon: 'domain',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero'],
+          items: [
+            { label: 'Propiedades', href: '/management/properties', icon: 'business', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'revenue_manager', 'marketing_hotelero'] },
+            { label: 'Habitaciones', href: '/management/rooms', icon: 'meeting_room', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'] },
+            { label: 'Tarifas', href: '/management/rates', icon: 'attach_money', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'revenue_manager'] },
+            { label: 'Políticas', href: '/management/policies', icon: 'policy', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'marketing_hotelero'] },
+            { label: 'Amenities', href: '/management/amenities', icon: 'spa', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'marketing_hotelero'] }
+          ]
+        } as NavSubGroup,
+        { label: 'Reportes', href: '/management/reports', icon: 'bar_chart', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos'] } as NavMenuItem,
+        { label: 'Configuración', href: '/management/settings', icon: 'tune', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner'] } as NavMenuItem
       ]
     },
     {
@@ -135,8 +175,8 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       icon: 'admin_panel_settings',
       allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'],
       items: [
-        { label: 'Usuarios', href: '/system/users', icon: 'people' },
-        { label: 'Permisos', href: '/system/permissions', icon: 'verified_user' },
+        { label: 'Usuarios', href: '/system/users', icon: 'people', allowedRoles: ['super_admin', 'admin_sistema'] },
+        { label: 'Permisos', href: '/system/permissions', icon: 'verified_user', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' }
       ]
@@ -149,7 +189,20 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       .filter((menu) => !menu.allowedRoles?.length || (!!role && menu.allowedRoles.includes(role)))
       .map((menu) => ({
         ...menu,
-        items: menu.items.filter((item) => !item.allowedRoles?.length || (!!role && item.allowedRoles.includes(role)))
+        items: menu.items
+          .map((item) => {
+            if (isSubGroup(item)) {
+              return {
+                ...item,
+                items: item.items.filter((sub) => !sub.allowedRoles?.length || (!!role && sub.allowedRoles.includes(role)))
+              };
+            }
+            return item as NavMenuItem;
+          })
+          .filter((item) => {
+            if (isSubGroup(item)) return item.items.length > 0;
+            return !(item as NavMenuItem).allowedRoles?.length || (!!role && (item as NavMenuItem).allowedRoles!.includes(role));
+          })
       }))
       .filter((menu) => menu.items.length > 0);
   });
@@ -162,7 +215,6 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    // Init nav position based on current scroll position
     const scrollY = window.scrollY;
     const initProgress = Math.min(scrollY / this.SCROLL_HIDE_RANGE, 1);
     this.navTransform.set(`translateY(${(initProgress * -120).toFixed(1)}%)`);
@@ -217,6 +269,7 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       this.zone.run(() => {
         if (this.activeMenu() === menuId) {
           this.activeMenu.set(null);
+          this.activeSubMenu.set(null);
         }
       });
     }, 200);
@@ -229,6 +282,17 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       this.hoverCloseTimer = null;
     }
     this.activeMenu.update((value) => (value === menuId ? null : menuId));
+    if (this.activeMenu() !== menuId) {
+      this.activeSubMenu.set(null);
+    }
+  }
+
+  openSubMenu(label: string) {
+    this.activeSubMenu.set(label);
+  }
+
+  closeSubMenu() {
+    this.activeSubMenu.set(null);
   }
 
   closeMenus() {
@@ -237,6 +301,7 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       this.hoverCloseTimer = null;
     }
     this.activeMenu.set(null);
+    this.activeSubMenu.set(null);
   }
 
   navigateBack() {

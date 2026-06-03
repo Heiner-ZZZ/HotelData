@@ -1,87 +1,11 @@
 .account-shell {
   min-height: 100vh;
   padding: 0 1rem 1.25rem;
-  background: linear-gradient(180deg, #f7fbff 0%, var(--app-bg) 28%);
-}
-
-.account-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--app-border);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px) saturate(1.15);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-}
-
-.account-branding {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted-text);
-}
-
-.brand {
-  color: var(--app-text);
-  font-size: 1.2rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-nav {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-nav a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.85rem;
-  border-radius: 999px;
-  color: var(--muted-text);
-  text-decoration: none;
-  transition: background 160ms ease, color 160ms ease;
-}
-
-nav a:hover {
-  background: rgba(20, 99, 255, 0.08);
-  color: #244274;
-}
-
-nav a.is-active {
-  background: #e8f0ff;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.nav-icon {
-  font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  background: linear-gradient(180deg, var(--surface-soft) 0%, var(--app-bg) 28%);
 }
 
 .account-main {
+  max-width: 1280px;
+  margin: 0 auto;
   padding: 1.25rem 0.5rem 0;
-}
-
-@media (max-width: 960px) {
-  .account-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .account-shell {
-    padding: 0 0.75rem 1rem;
-  }
 }

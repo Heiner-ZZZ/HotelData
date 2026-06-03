@@ -56,9 +56,17 @@
           <div class="accordion-header" (click)="toggleSection('users')">
             <div>
               <h2>Usuarios registrados</h2>
-              <p>{{ vm.totalUsers }} usuarios y {{ vm.totalRoles }} roles disponibles.</p>
+              <p>{{ filterableItems().length }} de {{ vm.totalUsers }} usuarios y {{ vm.totalRoles }} roles disponibles.</p>
             </div>
-            <span class="accordion-chevron">{{ openSection() === 'users' ? '▼' : '▶' }}</span>
+            <div class="accordion-actions">
+              @if (activeFilterCount) {
+                <button class="clear-filters-btn" (click)="clearFilters(); $event.stopPropagation()">
+                  <span class="material-symbols-outlined">filter_alt_off</span>
+                  Limpiar filtros ({{ activeFilterCount }})
+                </button>
+              }
+              <span class="accordion-chevron">{{ openSection() === 'users' ? '▼' : '▶' }}</span>
+            </div>
           </div>
           @if (openSection() === 'users') {
             <div class="accordion-body">
@@ -66,17 +74,38 @@
                 <table>
                   <thead>
                     <tr>
-                      <th>Usuario</th>
-                      <th>Email</th>
-                      <th>Rol principal</th>
-                      <th>Roles</th>
-                      <th>Activo</th>
+                      @for (col of columnFilters(); track col.column) {
+                        <th class="filterable-th" (click)="toggleFilter(col.column)">
+                          <div class="th-content">
+                            <span>{{ col.label }}</span>
+                            <span class="filter-icon" [class.active]="isFiltered(col.column)">
+                              <span class="material-symbols-outlined">unfold_more</span>
+                            </span>
+                          </div>
+                          @if (openFilter() === col.column) {
+                            <div class="filter-dropdown" (click)="$event.stopPropagation()">
+                              <button
+                                class="filter-option"
+                                [class.selected]="col.selected === ''"
+                                (click)="setFilter(col.column, '')"
+                              >Todos</button>
+                              @for (opt of col.options; track opt) {
+                                <button
+                                  class="filter-option"
+                                  [class.selected]="col.selected === opt"
+                                  (click)="setFilter(col.column, opt)"
+                                >{{ opt }}</button>
+                              }
+                            </div>
+                          }
+                        </th>
+                      }
                       <th>Creado</th>
                       <th>Acción</th>
                     </tr>
                   </thead>
                   <tbody>
-                    @for (user of vm.items; track user.userId) {
+                    @for (user of filterableItems(); track user.userId) {
                       <tr>
                         <td>
                           <strong>{{ user.username }}</strong>
@@ -105,6 +134,10 @@
                             <span class="action-hint">{{ user.actionHint }}</span>
                           }
                         </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="empty-filter">Ningún usuario coincide con los filtros aplicados.</td>
                       </tr>
                     }
                   </tbody>

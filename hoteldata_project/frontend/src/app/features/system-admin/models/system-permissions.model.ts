@@ -8,7 +8,7 @@ export interface SystemRolePermissionItem {
   description: string;
   permissionCount: number;
   permissionCodesLabel: string;
-  accessLabelsLabel: string;
+  accessButtons: Array<{ label: string; href: string; icon: string }>;
 }
 
 export interface SystemPermissionsViewModel {
@@ -18,5 +18,16 @@ export interface SystemPermissionsViewModel {
     users: number;
   };
   roles: SystemRolePermissionItem[];
+  permissions: SystemPermissionItem[];
+}
+
+export interface RoleDetailModel {
+  role: {
+    roleName: string;
+    description: string;
+    permissionCodes: string[];
+    accessButtons: Array<{ label: string; href: string; icon: string }>;
+    navigationCatalog: Array<{ label: string; href: string; icon: string; visible: boolean }>;
+  };
   permissions: SystemPermissionItem[];
 }

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -22,7 +22,8 @@ import { RoomTypeTableComponent } from '../../components/room-type-table/room-ty
     LoadingStateComponent,
     PageHeaderComponent,
     ReactiveFormsModule,
-    RoomTypeTableComponent
+    RoomTypeTableComponent,
+    RouterLink
   ],
   templateUrl: './rooms-page.html',
   styleUrl: './rooms-page.scss',

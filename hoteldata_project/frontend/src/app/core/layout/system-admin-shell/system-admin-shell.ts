@@ -1,19 +1,13 @@
 import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 
-import { AccessNavComponent } from '../../../shared/ui/access-nav/access-nav';
+import { ManagementTopNavComponent } from '../../../shared/ui/management-top-nav/management-top-nav';
+import { SidebarNavComponent } from '../../../shared/ui/sidebar-nav/sidebar-nav';
 
 @Component({
   selector: 'app-system-admin-shell',
-  imports: [AccessNavComponent, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [ManagementTopNavComponent, SidebarNavComponent, RouterOutlet],
   templateUrl: './system-admin-shell.html',
   styleUrl: './system-admin-shell.scss'
 })
-export class SystemAdminShellComponent {
-  readonly navigation = [
-    { label: 'Usuarios', href: '/system/users', icon: 'people' },
-    { label: 'Permisos', href: '/system/permissions', icon: 'verified_user' },
-    { label: 'Auditoria', href: '/system/audit', icon: 'history' },
-    { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' }
-  ];
-}
+export class SystemAdminShellComponent {}
