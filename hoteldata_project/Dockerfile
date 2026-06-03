@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt /app/requirements.txt
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends curl docker.io && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
