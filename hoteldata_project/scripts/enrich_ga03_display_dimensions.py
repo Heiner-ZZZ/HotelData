@@ -69,6 +69,7 @@ def site_display_name(doc: dict) -> tuple[str, str]:
 
 def ensure_indexes(db) -> None:
     db.dim_hotels.create_index("display_name")
+    db.dim_hotels.create_index("manual_override")
     db.dim_destinations.create_index("destination_display_name")
     db.dim_visitor_countries.create_index("country_display_name")
     db.dim_sites.create_index("site_display_name")
@@ -76,8 +77,23 @@ def ensure_indexes(db) -> None:
 
 def enrich_hotels(db) -> int:
     count = 0
-    for doc in db.dim_hotels.find({}, {"_id": 1, "prop_id": 1, "hotel_name": 1, "hotel_label": 1, "prop_starrating": 1, "prop_country_id": 1}):
+    for doc in db.dim_hotels.find({}, {"_id": 1, "prop_id": 1, "hotel_name": 1, "hotel_label": 1, "prop_starrating": 1, "prop_country_id": 1, "display_name": 1, "manual_override": 1, "original_generated_name": 1}):
         display_name, display_label, display_country_label = hotel_display_name(doc)
+        if doc.get("manual_override") is True:
+            db.dim_hotels.update_one(
+                {"_id": doc["_id"]},
+                {
+                    "$set": {
+                        "display_label": display_label,
+                        "display_country_label": display_country_label,
+                        "demo_enriched": True,
+                        "updated_at": utc_now(),
+                        "original_generated_name": clean_text(doc.get("original_generated_name")) or clean_text(doc.get("display_name")) or display_name,
+                    }
+                },
+            )
+            count += 1
+            continue
         db.dim_hotels.update_one(
             {"_id": doc["_id"]},
             {
@@ -86,6 +102,9 @@ def enrich_hotels(db) -> int:
                     "display_label": display_label,
                     "display_country_label": display_country_label,
                     "demo_enriched": True,
+                    "manual_override": False,
+                    "name_source": "generated_from_id",
+                    "original_generated_name": clean_text(doc.get("original_generated_name")) or display_name,
                     "updated_at": utc_now(),
                 }
             },

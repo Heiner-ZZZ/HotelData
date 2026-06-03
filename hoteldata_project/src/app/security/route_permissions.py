@@ -17,18 +17,18 @@ PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/me")
 
 
 ROUTE_RULES = [
-    AccessRule("/admin/security", permission="users.manage"),
-    AccessRule("/admin/users", permission="users.manage"),
-    AccessRule("/api/admin/security", permission="users.manage"),
-    AccessRule("/api/admin/users", permission="users.manage"),
-    AccessRule("/api/admin/permissions", permission="users.manage"),
+    AccessRule("/admin/security", permission="users.manage", roles=("super_admin", "admin_sistema")),
+    AccessRule("/admin/users", permission="users.manage", roles=("super_admin", "admin_sistema")),
+    AccessRule("/api/admin/security", permission="users.manage", roles=("super_admin", "admin_sistema")),
+    AccessRule("/api/admin/users", permission="users.manage", roles=("super_admin", "admin_sistema")),
+    AccessRule("/api/admin/permissions", permission="users.manage", roles=("super_admin", "admin_sistema")),
     AccessRule("/dashboard", permission="dashboard.read"),
     AccessRule("/api/dashboard", permission="dashboard.read"),
     AccessRule("/api/reservations", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel")),    AccessRule("/api/account",
         roles=("cliente", "super_admin", "admin_sistema"),
     ),
     AccessRule("/api/management",
-        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero"),
+        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
     ),
     AccessRule("/ta02/crud", methods=("GET",), permission="crud.read"),
     AccessRule("/ta02/crud", methods=("POST", "PUT", "PATCH", "DELETE"), permission="crud.write"),
@@ -55,7 +55,8 @@ ROUTE_RULES = [
     AccessRule("/collections", permission="crud.read"),
     AccessRule("/problems", permission="audit.read"),
     AccessRule("/catalogs", permission="crud.read"),
-    AccessRule("/audit", permission="audit.read"),
+    AccessRule("/api/audit", permission="audit.read", roles=("auditor_datos", "super_admin", "admin_sistema", "operador_datos")),
+    AccessRule("/audit", permission="audit.read", roles=("auditor_datos", "super_admin", "admin_sistema", "operador_datos")),
     AccessRule("/company", permission="dashboard.read"),
 ]
 

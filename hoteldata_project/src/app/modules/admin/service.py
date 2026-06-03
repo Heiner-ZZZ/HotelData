@@ -183,6 +183,35 @@ def toggle_user_active(target_user_id: str, acting_user: dict[str, Any]) -> dict
     }
 
 
+def role_editor_payload_api(role_name: str) -> dict[str, Any] | None:
+    db = get_database()
+    role = db.roles.find_one({"role_name": role_name})
+    if not role:
+        return None
+    role_clean = _clean(role)
+    permissions = [
+        {"permission_code": p["permission_code"], "description": p.get("description", "")}
+        for p in db.permissions.find({}).sort("permission_code", 1)
+    ]
+    permission_map = role_permission_map()
+    selected_codes = permission_map.get(role_name, [])
+    role_clean["permission_codes"] = selected_codes
+    role_clean["access_buttons"] = get_navigation_for_role(role_name, set(selected_codes))
+    role_clean["navigation_catalog"] = [
+        {
+            "label": item["label"],
+            "href": item["href"],
+            "icon": item["icon"],
+            "visible": any(nav["href"] == item["href"] for nav in role_clean["access_buttons"]),
+        }
+        for item in NAVIGATION_BY_ROLE.get(role_name, [])
+    ]
+    return {
+        "role": role_clean,
+        "permissions": permissions,
+    }
+
+
 def update_role_definition(
     role_name: str,
     description: str,

@@ -73,7 +73,14 @@ def _serialize_permissions_overview() -> dict:
                 "role_name": role.get("role_name") or "",
                 "description": role.get("description") or "Sin descripción",
                 "permission_codes": role.get("permission_codes", []),
-                "access_labels": [item.get("label") or "" for item in role.get("access_buttons", [])],
+                "access_buttons": [
+                    {
+                        "label": item.get("label") or "",
+                        "href": item.get("href") or "",
+                        "icon": item.get("icon") or "",
+                    }
+                    for item in role.get("access_buttons", [])
+                ],
             }
         )
 
@@ -129,6 +136,31 @@ def users_dashboard_api(current_user: dict = Depends(require_permission("users.m
 def permissions_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
     ensure_user_status_field()
     return _serialize_permissions_overview()
+
+
+@api_router.get("/permissions/roles/{role_name}")
+def permissions_role_detail_api(role_name: str, current_user: dict = Depends(require_permission("users.manage"))):
+    from src.app.modules.admin.service import role_editor_payload_api
+
+    payload = role_editor_payload_api(role_name)
+    if payload is None:
+        return JSONResponse({"ok": False, "message": "Rol no encontrado."}, status_code=404)
+    return payload
+
+
+@api_router.put("/permissions/roles/{role_name}")
+def permissions_role_update_api(
+    role_name: str,
+    body: dict,
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    from src.app.modules.admin.service import update_role_definition
+
+    description = body.get("description", "")
+    permission_codes = body.get("permission_codes", [])
+    result = update_role_definition(role_name, description, permission_codes, current_user)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)
 
 
 @router.get("/roles/{role_name}")

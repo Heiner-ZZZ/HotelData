@@ -141,7 +141,9 @@ def write_progress(
         "message": message,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    PROGRESS_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp = PROGRESS_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.rename(PROGRESS_PATH)
 
 
 def authenticate(base_url: str) -> dict[str, str]:
@@ -163,7 +165,7 @@ def authenticate(base_url: str) -> dict[str, str]:
 
 def field_schema(name: str) -> dict[str, Any]:
     if name in TEXT_FIELDS:
-        return {"name": name, "type": "text", "required": name not in OPTIONAL_FIELDS, "options": {"max": 0}}
+        return {"name": name, "type": "text", "required": name not in OPTIONAL_FIELDS, "options": {"max": 5000}}
     if name in BOOL_FIELDS:
         return {"name": name, "type": "bool", "required": False, "options": {}}
     return {"name": name, "type": "number", "required": False, "options": {"min": None, "max": None, "noDecimal": False}}
@@ -265,13 +267,13 @@ def batch_create(base_url: str, headers: dict[str, str], rows: list[dict[str, An
 
 
 def main() -> None:
+    args = parse_args()
     settings = get_settings()
     expected = args.target if args.target > 0 else settings.target_records
     csv_path: Path | None = None
     loaded = 0
     batch_number = 0
     try:
-        args = parse_args()
         base_url = settings.pocketbase_url.rstrip("/")
         csv_path = resolve_available_path(args.csv)
         write_progress(

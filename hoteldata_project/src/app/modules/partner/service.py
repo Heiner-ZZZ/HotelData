@@ -57,6 +57,30 @@ def ensure_hotel_content_collections() -> dict[str, list[str]]:
     return {"collections": created_collections, "indexes": created_indexes}
 
 
+def ensure_hotel_profile_collections() -> dict[str, list[str]]:
+    db = get_database()
+    created_collections: list[str] = []
+    created_indexes: list[str] = []
+    if "hotel_profile_changes" not in db.list_collection_names():
+        try:
+            db.create_collection("hotel_profile_changes")
+            created_collections.append("hotel_profile_changes")
+        except CollectionInvalid:
+            pass
+
+    index_specs = [
+        ("hotel_profile_changes.prop_id_1", db.hotel_profile_changes.create_index("prop_id")),
+        ("hotel_profile_changes.changed_at_-1", db.hotel_profile_changes.create_index([("changed_at", -1)])),
+        ("hotel_profile_changes.prop_field_changed_at", db.hotel_profile_changes.create_index([("prop_id", 1), ("field", 1), ("changed_at", -1)])),
+        ("dim_hotels.prop_id_1", db.dim_hotels.create_index([("prop_id", 1)], unique=True)),
+        ("dim_hotels.display_name_1", db.dim_hotels.create_index("display_name")),
+        ("dim_hotels.manual_override_1", db.dim_hotels.create_index("manual_override")),
+    ]
+    for label, name in index_specs:
+        created_indexes.append(f"{label}:{name}")
+    return {"collections": created_collections, "indexes": created_indexes}
+
+
 def ensure_inventory_collections() -> dict[str, list[str]]:
     db = get_database()
     created_collections: list[str] = []
@@ -198,6 +222,77 @@ def _register_content_change(
             "changed_at": _now(),
         }
     )
+
+
+def _hotel_generated_name(hotel: dict[str, Any], prop_id: int) -> str:
+    return _clean_text(hotel.get("original_generated_name")) or _hotel_display_name(hotel, prop_id)
+
+
+def _ensure_hotel_profile_metadata(prop_id: int | None = None) -> int:
+    ensure_hotel_profile_collections()
+    db = get_database()
+    filter_doc: dict[str, Any] = {"manual_override": {"$exists": False}}
+    if prop_id is not None:
+        filter_doc["prop_id"] = prop_id
+    modified = 0
+    for hotel in db.dim_hotels.find(
+        filter_doc,
+        {
+            "_id": 1,
+            "prop_id": 1,
+            "display_name": 1,
+            "hotel_name": 1,
+            "hotel_label": 1,
+            "demo_enriched": 1,
+            "manual_override": 1,
+            "name_source": 1,
+            "updated_by": 1,
+            "updated_at": 1,
+            "original_generated_name": 1,
+        },
+    ):
+        prop_id_value = int(hotel.get("prop_id") or 0)
+        generated_name = _clean_text(hotel.get("display_name"))
+        if not generated_name:
+            generated_name = _hotel_display_name(hotel, prop_id_value)
+        update_payload: dict[str, Any] = {
+            "manual_override": bool(hotel.get("manual_override", False)),
+            "name_source": hotel.get("name_source") or "generated_from_id",
+        }
+        if hotel.get("demo_enriched") and not _clean_text(hotel.get("original_generated_name")):
+            update_payload["original_generated_name"] = generated_name
+        elif not _clean_text(hotel.get("original_generated_name")):
+            update_payload["original_generated_name"] = generated_name
+        if update_payload:
+            result = db.dim_hotels.update_one({"_id": hotel["_id"]}, {"$set": update_payload})
+            modified += int(result.modified_count)
+    return modified
+
+
+def _profile_badge(hotel: dict[str, Any]) -> str:
+    return "Nombre editado manualmente" if bool(hotel.get("manual_override")) else "Nombre generado"
+
+
+def _profile_description(prop_id: int, hotel: dict[str, Any]) -> str:
+    content_page = _content_page_for_prop(prop_id)
+    return _clean_text(hotel.get("description")) or _clean_text(content_page.get("description")) or ""
+
+
+def _profile_payload(hotel: dict[str, Any]) -> dict[str, Any]:
+    prop_id = int(hotel.get("prop_id") or 0)
+    return {
+        "prop_id": prop_id,
+        "hotel_name": _clean_text(hotel.get("hotel_name")) or _hotel_display_name(hotel, prop_id),
+        "display_name": _hotel_display_name(hotel, prop_id),
+        "display_country_label": hotel.get("display_country_label")
+        or (f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else ""),
+        "original_generated_name": _hotel_generated_name(hotel, prop_id),
+        "manual_override": bool(hotel.get("manual_override", False)),
+        "name_source": hotel.get("name_source") or "generated_from_id",
+        "profile_badge": _profile_badge(hotel),
+        "updated_by": hotel.get("updated_by"),
+        "updated_at": hotel.get("updated_at").isoformat() if hasattr(hotel.get("updated_at"), "isoformat") else hotel.get("updated_at"),
+    }
 
 
 def _content_page_defaults(prop_id: int) -> dict[str, Any]:
@@ -430,13 +525,63 @@ def _performance_for_prop(prop_id: int) -> dict[str, Any]:
     }
 
 
+def _synthetic_hotel(prop_id: int) -> dict[str, Any]:
+    db = get_database()
+    perf = _performance_for_prop(prop_id)
+    country = "N/D"
+    sample = db.fact_hotel_reservations.find_one({"prop_id": prop_id}, {"_id": 0, "prop_country_id": 1})
+    if sample and sample.get("prop_country_id") is not None:
+        country = f"Mercado hotelero {sample['prop_country_id']}"
+    yield_score = _property_yield_score(perf)
+    return {
+        "prop_id": prop_id,
+        "display_name": f"Hotel {prop_id}",
+        "country_display_name": country,
+        "location": country,
+        "review_score_label": None,
+        "prop_starrating": None,
+        "status": "Operational" if yield_score >= 70 else ("Under Review" if yield_score >= 40 else "Maintenance"),
+        "sync_status": "SYNC_ACTIVE",
+        "sync_latency_ms": max(round(100 - yield_score * 0.8), 5),
+        "yield_score": yield_score,
+        "unit_count": 0,
+        "performance": perf,
+    }
+
+
 def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> dict[str, Any]:
     db = get_database()
     page = max(page, 1)
-    page_size = min(max(page_size, 1), 20)
-    filters: dict[str, Any] = {}
+    page_size = min(max(page_size, 1), 200)
     query = query.strip()
     query_as_id = _safe_int(query)
+
+    has_dim = db.dim_hotels.estimated_document_count() > 0
+    if not has_dim:
+        all_ids = db.fact_hotel_reservations.distinct("prop_id")
+        all_ids.sort()
+        if query_as_id is not None:
+            all_ids = [pid for pid in all_ids if pid == query_as_id]
+        total = len(all_ids)
+        total_pages = (total + page_size - 1) // page_size if total else 0
+        if total_pages and page > total_pages:
+            page = total_pages
+        page_ids = all_ids[(page - 1) * page_size: page * page_size]
+        enriched = [_synthetic_hotel(pid) for pid in page_ids]
+        return {
+            "items": enriched,
+            "query": query,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "start_index": (page - 1) * page_size + 1 if total else 0,
+            "end_index": min(page * page_size, total),
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        }
+
+    filters: dict[str, Any] = {}
     if query:
         filters["$or"] = [
             {"hotel_label": {"$regex": query, "$options": "i"}},
@@ -461,13 +606,25 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> 
     for item in items:
         prop_id = int(item["prop_id"])
         performance = _performance_for_prop(prop_id)
+        country = item.get("display_country_label") or (f"Mercado hotelero {item.get('prop_country_id')}" if item.get("prop_country_id") is not None else "N/D")
+        yield_score = _property_yield_score(performance)
+        status = "Operational" if yield_score >= 70 else ("Under Review" if yield_score >= 40 else "Maintenance")
+        sync_status = "SYNC_ACTIVE"
+        sync_latency = max(round(100 - yield_score * 0.8), 5)
         enriched.append(
             {
                 **item,
                 "prop_id": prop_id,
                 "display_name": _hotel_display_name(item, prop_id),
-                "country_display_name": item.get("display_country_label") or (f"Mercado hotelero {item.get('prop_country_id')}" if item.get("prop_country_id") is not None else "N/D"),
+                "country_display_name": country,
+                "location": country,
                 "review_score_label": _number(item.get("prop_review_score")),
+                "prop_starrating": item.get("prop_starrating"),
+                "status": status,
+                "sync_status": sync_status,
+                "sync_latency_ms": sync_latency,
+                "yield_score": yield_score,
+                "unit_count": 0,
                 "performance": performance,
             }
         )
@@ -486,6 +643,7 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> 
 
 
 def partner_hotel_detail(prop_id: int) -> dict[str, Any] | None:
+    _ensure_hotel_profile_metadata(prop_id)
     db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0})
     if hotel is None:
@@ -499,6 +657,10 @@ def partner_hotel_detail(prop_id: int) -> dict[str, Any] | None:
             "display_name": _hotel_display_name(hotel, prop_id),
             "country_display_name": hotel.get("display_country_label") or (f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else "N/D"),
             "review_score_label": _number(hotel.get("prop_review_score")),
+            "manual_override": bool(hotel.get("manual_override", False)),
+            "name_source": hotel.get("name_source") or "generated_from_id",
+            "original_generated_name": _hotel_generated_name(hotel, prop_id),
+            "profile_badge": _profile_badge(hotel),
         },
         "performance": performance,
         "master_hotel": master_hotel,
@@ -780,6 +942,156 @@ def add_partner_hotel_image(
     return document
 
 
+def delete_partner_hotel_image(
+    prop_id: int,
+    *,
+    image_url: str,
+    changed_by: str = "angular_api",
+) -> bool:
+    db = get_database()
+    result = db.hotel_images.delete_one({"prop_id": prop_id, "image_url": image_url})
+    if result.deleted_count:
+        _register_content_change(prop_id, "hotel_images", "delete", {"image_url": image_url}, changed_by=changed_by)
+    return result.deleted_count > 0
+
+
+def partner_hotel_edit_profile(prop_id: int) -> dict[str, Any] | None:
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+    hotel = detail["hotel"]
+    content_page = _content_page_for_prop(prop_id)
+    policies = _policies_for_prop(prop_id)
+    images = _images_for_prop(prop_id)
+    amenities = _amenities_payload_for_prop(prop_id)
+    return {
+        "hotel": hotel,
+        "profile": {
+            **_profile_payload(hotel),
+            "description": _clean_text(hotel.get("description")) or _clean_text(content_page.get("description")) or "",
+        },
+        "content_page": content_page,
+        "policies": policies,
+        "images": images[:20],
+        "images_count": len(images),
+        "amenities": amenities,
+    }
+
+
+def partner_hotel_profile(prop_id: int) -> dict[str, Any] | None:
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+    hotel = detail["hotel"]
+    return {
+        "hotel": hotel,
+        "profile": {
+            **_profile_payload(hotel),
+            "description": _profile_description(prop_id, hotel),
+        },
+    }
+
+
+def save_partner_hotel_profile(
+    prop_id: int,
+    *,
+    hotel_name: str,
+    display_name: str,
+    description: str,
+    display_country_label: str,
+    changed_by: str = "angular_api",
+    reason: str = "Actualización manual de perfil hotelero",
+) -> dict[str, Any] | None:
+    _ensure_hotel_profile_metadata(prop_id)
+    db = get_database()
+    hotel = db.dim_hotels.find_one({"prop_id": prop_id})
+    if hotel is None:
+        return None
+
+    clean_hotel_name = _clean_text(hotel_name) or _hotel_display_name(hotel, prop_id)
+    clean_display_name = _clean_text(display_name) or clean_hotel_name or f"Hotel Partner {prop_id}"
+    clean_description = _clean_text(description)
+    clean_country_label = _clean_text(display_country_label) or (
+        f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else ""
+    )
+
+    previous_values = {
+        "hotel_name": _clean_text(hotel.get("hotel_name")),
+        "display_name": _clean_text(hotel.get("display_name")) or _hotel_display_name(hotel, prop_id),
+        "description": _clean_text(hotel.get("description")),
+        "display_country_label": _clean_text(hotel.get("display_country_label")),
+    }
+    new_values = {
+        "hotel_name": clean_hotel_name,
+        "display_name": clean_display_name,
+        "description": clean_description,
+        "display_country_label": clean_country_label,
+    }
+
+    generated_name = _clean_text(hotel.get("original_generated_name"))
+    if not generated_name:
+        generated_name = _clean_text(hotel.get("display_name")) if hotel.get("demo_enriched") else ""
+    if not generated_name:
+        generated_name = _hotel_display_name(hotel, prop_id)
+
+    db.dim_hotels.update_one(
+        {"_id": hotel["_id"]},
+        {
+            "$set": {
+                **new_values,
+                "manual_override": True,
+                "name_source": "manual",
+                "updated_by": changed_by,
+                "updated_at": _now(),
+                "original_generated_name": generated_name,
+            }
+        },
+    )
+
+    ensure_hotel_content_collections()
+    current_content = _content_page_for_prop(prop_id)
+    db.hotel_content_pages.find_one_and_update(
+        {"prop_id": prop_id},
+        {
+            "$set": {
+                "prop_id": prop_id,
+                "description": clean_description,
+                "highlights": current_content.get("highlights") or "",
+                "amenities_text": current_content.get("amenities_text") or "",
+                "active_amenities": current_content.get("active_amenities", []),
+                "amenities_catalog": current_content.get("amenities_catalog", []),
+                "source": current_content.get("source") or "partner_manual",
+                "updated_at": _now(),
+            },
+            "$setOnInsert": {"created_at": _now()},
+        },
+        upsert=True,
+    )
+
+    changes = []
+    changed_at = _now()
+    for field, old_value in previous_values.items():
+        new_value = new_values[field]
+        if old_value == new_value:
+            continue
+        changes.append(
+            {
+                "prop_id": prop_id,
+                "field": field,
+                "old_value": old_value,
+                "new_value": new_value,
+                "changed_by": changed_by,
+                "changed_at": changed_at,
+                "reason": reason,
+                "source": "manual_profile_edit",
+            }
+        )
+    if changes:
+        db.hotel_profile_changes.insert_many(changes)
+
+    return partner_hotel_profile(prop_id)
+
+
 def create_room_type(
     prop_id: int,
     *,
@@ -952,3 +1264,127 @@ def create_blackout_block(
         return_document=ReturnDocument.AFTER,
     )
     return blackout_doc
+
+
+def _dashboard_quick_stats(db) -> dict[str, Any]:
+    collection, _ = _active_fact_collection()
+    now = _now()
+    booked = {"$or": [{"$eq": ["$reserva_bool", 1]}, {"$eq": ["$reserva_bool", True]}]}
+    clicked = {"$or": [{"$eq": ["$click_bool", 1]}, {"$eq": ["$click_bool", True]}]}
+    pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "total_searches": {"$sum": 1},
+                "total_reservations": {"$sum": {"$cond": [booked, 1, 0]}},
+                "total_revenue": {"$sum": "$reservas_brutas_usd"},
+            }
+        },
+    ]
+    stats = next(collection.aggregate(pipeline, allowDiskUse=True), None)
+    total_searches = int(stats["total_searches"]) if stats else 0
+    total_reservations = int(stats["total_reservations"]) if stats else 0
+    occupancy_rate = round((total_reservations / total_searches) * 100, 1) if total_searches else 0.0
+    year, month = now.year, now.month
+    date_key_start = int(f"{year}{month:02d}01")
+    next_m = month + 1
+    next_y = year
+    if next_m > 12:
+        next_m = 1
+        next_y += 1
+    date_key_end = int(f"{next_y}{next_m:02d}01")
+    mtd = next(collection.aggregate([
+        {"$match": {"date_key": {"$gte": date_key_start, "$lt": date_key_end}}},
+        {"$group": {"_id": None, "revenue": {"$sum": "$reservas_brutas_usd"}}},
+    ], allowDiskUse=True), None)
+    revenue_mtd = float(mtd["revenue"]) if mtd else 0.0
+    prev_m = month - 1
+    prev_y = year
+    if prev_m < 1:
+        prev_m = 12
+        prev_y -= 1
+    prev_start = int(f"{prev_y}{prev_m:02d}01")
+    prev = next(collection.aggregate([
+        {"$match": {"date_key": {"$gte": prev_start, "$lt": date_key_start}}},
+        {"$group": {"_id": None, "revenue": {"$sum": "$reservas_brutas_usd"}}},
+    ], allowDiskUse=True), None)
+    revenue_prev = float(prev["revenue"]) if prev else 0.0
+    revenue_trend = round(((revenue_mtd - revenue_prev) / revenue_prev * 100), 1) if revenue_prev else 0.0
+    pending = 0
+    try:
+        pending = db.booking_orders.count_documents({
+            "check_in_date": now.strftime("%Y-%m-%d"),
+            "status": {"$in": ["confirmed", "pending"]},
+        })
+    except Exception:
+        pass
+    health = 95
+    try:
+        last = db.data_quality_reports.find_one(sort=[("executed_at", -1)], projection={"overall_score": 1, "_id": 0})
+        if last and "overall_score" in last:
+            health = int(last["overall_score"])
+    except Exception:
+        pass
+    return {
+        "occupancy_rate": occupancy_rate,
+        "occupancy_trend": round(occupancy_rate * 0.048, 1),
+        "total_revenue_mtd": round(revenue_mtd, 2),
+        "revenue_trend": revenue_trend,
+        "pending_checkins": pending,
+        "data_health_score": health,
+    }
+
+
+def _dashboard_revenue_chart(db) -> list[dict[str, Any]]:
+    collection, _ = _active_fact_collection()
+    results = list(collection.aggregate([
+        {"$match": {"reserva_bool": True}},
+        {"$group": {"_id": {"$floor": {"$divide": ["$date_key", 100]}}, "revenue": {"$sum": "$reservas_brutas_usd"}}},
+        {"$sort": {"_id": 1}},
+        {"$limit": 8},
+    ], allowDiskUse=True))
+    return [{"period": str(r["_id"]), "revenue": round(float(r["revenue"]), 2)} for r in results]
+
+
+def _dashboard_arrivals_today(db) -> list[dict[str, Any]]:
+    try:
+        today = _now().strftime("%Y-%m-%d")
+        rows = list(db.booking_orders.find({"check_in_date": today, "status": {"$in": ["confirmed", "pending"]}}, {"_id": 0}).limit(20))
+        out = []
+        for r in rows:
+            name = r.get("guest_name", "Invitado")
+            parts = name.strip().split()
+            initials = "".join(p[0].upper() for p in parts[:2] if p) or "??"
+            out.append({
+                "guest_name": name,
+                "initials": initials,
+                "room_type": r.get("room_type", "Standard"),
+                "nights": int(r.get("nights", 1) or 1),
+                "arrival_time": r.get("arrival_time", "15:00"),
+                "status_tag": r.get("booking_source", "standard"),
+            })
+        return out
+    except Exception:
+        return []
+
+
+def _property_yield_score(performance: dict[str, Any]) -> int:
+    searches = int(performance.get("searches", 0))
+    reservations = int(performance.get("reservations", 0))
+    conv = (reservations / searches * 100) if searches else 0
+    review = float(performance.get("review_score") or 0)
+    return min(round(60 + conv * 3.5 + review * 0.2), 100)
+
+
+def properties_dashboard(query: str = "", page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    db = get_database()
+    quick_stats = _dashboard_quick_stats(db)
+    revenue_chart = _dashboard_revenue_chart(db)
+    arrivals = _dashboard_arrivals_today(db)
+    props_list = list_partner_hotels(query, page=page, page_size=page_size)
+    return {
+        "quick_stats": quick_stats,
+        "revenue_chart": revenue_chart,
+        "arrivals_today": arrivals,
+        "properties": props_list,
+    }

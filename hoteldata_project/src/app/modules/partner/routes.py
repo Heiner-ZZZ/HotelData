@@ -12,6 +12,7 @@ from src.app.modules.partner.service import (
     add_partner_hotel_image,
     create_blackout_block,
     create_room_type,
+    delete_partner_hotel_image,
     ensure_hotel_content_collections,
     ensure_inventory_collections,
     list_partner_hotels,
@@ -20,12 +21,16 @@ from src.app.modules.partner.service import (
     partner_hotel_content,
     partner_hotel_content_editor,
     partner_hotel_detail,
+    partner_hotel_profile,
+    partner_hotel_edit_profile,
     partner_hotel_inventory,
     partner_hotel_images,
     partner_hotel_policies,
     partner_hotel_performance,
     partner_hotel_rooms,
+    properties_dashboard,
     save_inventory_entry,
+    save_partner_hotel_profile,
     save_partner_hotel_content,
     save_partner_hotel_amenities,
     save_partner_hotel_policies,
@@ -337,6 +342,76 @@ def properties_api(q: str = "", page: int = Query(default=1, ge=1)):
     return list_partner_hotels(q, page=page, page_size=20)
 
 
+@api_router.get("/properties/dashboard")
+def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1)):
+    return properties_dashboard(q, page=page, page_size=20)
+
+
+@api_router.get("/properties/{prop_id}/edit")
+def property_edit_api(prop_id: int):
+    detail = partner_hotel_edit_profile(prop_id)
+    if detail is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return detail
+
+
+@api_router.get("/properties/{prop_id}/profile")
+def property_profile_api(prop_id: int):
+    detail = partner_hotel_profile(prop_id)
+    if detail is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return detail
+
+
+@api_router.put("/properties/{prop_id}/profile")
+def property_profile_update_api(prop_id: int, payload: dict = Body(...)):
+    saved = save_partner_hotel_profile(
+        prop_id,
+        hotel_name=str(payload.get("hotel_name") or ""),
+        display_name=str(payload.get("display_name") or ""),
+        description=str(payload.get("description") or ""),
+        display_country_label=str(payload.get("display_country_label") or ""),
+        changed_by=str(payload.get("changed_by") or "angular_api"),
+        reason=str(payload.get("reason") or "Actualización manual de perfil hotelero"),
+    )
+    if saved is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.put("/properties/{prop_id}/content")
+def property_content_update_api(prop_id: int, payload: dict = Body(...)):
+    saved = save_partner_hotel_content(
+        prop_id,
+        description=str(payload.get("description") or ""),
+        highlights=str(payload.get("highlights") or ""),
+        amenities_text=str(payload.get("amenities_text") or ""),
+        changed_by="angular_api",
+    )
+    if saved is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.post("/properties/{prop_id}/images")
+def property_image_add_api(prop_id: int, payload: dict = Body(...)):
+    image_url = str(payload.get("image_url") or "")
+    title = str(payload.get("title") or "")
+    try:
+        saved = add_partner_hotel_image(prop_id, image_url=image_url, title=title, changed_by="angular_api")
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.delete("/properties/{prop_id}/images")
+def property_image_delete_api(prop_id: int, image_url: str = Query(...)):
+    deleted = delete_partner_hotel_image(prop_id, image_url=image_url, changed_by="angular_api")
+    return {"deleted": deleted}
+
+
 @api_router.get("/properties/{prop_id}")
 def property_detail_api(prop_id: int):
     detail = partner_hotel_detail(prop_id)
@@ -365,7 +440,7 @@ def rooms_api(prop_id: int = Query(..., ge=1)):
 
 @api_router.get("/rooms/options")
 def rooms_options_api():
-    properties = list_partner_hotels("", page=1, page_size=100)
+    properties = list_partner_hotels("", page=1, page_size=200)
     return {
         "properties": [
             {

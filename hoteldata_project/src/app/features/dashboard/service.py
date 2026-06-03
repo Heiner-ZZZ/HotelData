@@ -7,6 +7,10 @@ from src.app.features.quality.service import quality_summary
 from src.database.connection import get_database
 
 
+def _bool_true_condition(field_name: str) -> dict[str, Any]:
+    return {"$or": [{"$eq": [f"${field_name}", 1]}, {"$eq": [f"${field_name}", True]}]}
+
+
 def _fact_collection(db):
     collection = db.fact_hotel_reservations
     if collection.estimated_document_count() == 0:
@@ -17,13 +21,17 @@ def _fact_collection(db):
 def _fact_totals() -> dict[str, Any]:
     db = get_database()
     fact_collection = _fact_collection(db)
+    booked = _bool_true_condition("reserva_bool")
+    clicked = _bool_true_condition("click_bool")
+    promoted = _bool_true_condition("promotion_flag")
     pipeline = [
         {
             "$group": {
                 "_id": None,
                 "total_events": {"$sum": 1},
-                "bookings": {"$sum": {"$cond": [{"$eq": ["$reserva_bool", 1]}, 1, 0]}},
-                "promotions": {"$sum": {"$cond": [{"$eq": ["$promotion_flag", 1]}, 1, 0]}},
+                "total_reservations": {"$sum": {"$cond": [booked, 1, 0]}},
+                "total_clicks": {"$sum": {"$cond": [clicked, 1, 0]}},
+                "promotions": {"$sum": {"$cond": [promoted, 1, 0]}},
                 "avg_price": {"$avg": "$price_usd"},
                 "gross_revenue": {"$sum": "$reservas_brutas_usd"},
             }
@@ -33,13 +41,15 @@ def _fact_totals() -> dict[str, Any]:
     if not result:
         return {
             "total_events": 0,
-            "bookings": 0,
+            "total_reservations": 0,
+            "total_clicks": 0,
             "promotions": 0,
             "avg_price": 0,
             "gross_revenue": 0,
         }
     summary = result[0]
     summary.pop("_id", None)
+    summary["bookings"] = int(summary.get("total_reservations", 0) or 0)
     return summary
 
 
@@ -112,10 +122,12 @@ def dashboard_overview() -> dict[str, Any]:
     distinct_countries = fact_collection.distinct("visitor_location_country_id")
 
     total_events = int(totals.get("total_events", 0) or 0)
-    bookings = int(totals.get("bookings", 0) or 0)
+    total_reservations = int(totals.get("total_reservations", 0) or 0)
+    total_clicks = int(totals.get("total_clicks", 0) or 0)
     promotions = int(totals.get("promotions", 0) or 0)
-    rejected = int((latest_quality or {}).get("rejected_records", 0) or 0)
-    booking_rate = round((bookings / total_events) * 100, 2) if total_events else 0
+    rejected = int(db.rejected_records.count_documents({}))
+    booking_rate = round((total_reservations / total_events) * 100, 2) if total_events else 0
+    click_rate = round((total_clicks / total_events) * 100, 2) if total_events else 0
     promotion_rate = round((promotions / total_events) * 100, 2) if total_events else 0
     completion_rate = round(float((latest_quality or {}).get("completeness_score", 0) or 0) * 100, 2)
     avg_price = round(float(totals.get("avg_price", 0) or 0), 2)
@@ -132,11 +144,19 @@ def dashboard_overview() -> dict[str, Any]:
         },
         {
             "label": "Reservas completadas",
-            "value": f"{bookings}",
+            "value": f"{total_reservations}",
             "detail": f"Conversión {booking_rate}%",
             "trend": "Reserva sobre eventos",
-            "direction": "up" if bookings > 0 else "down",
+            "direction": "up" if total_reservations > 0 else "down",
             "icon": "icon-booking",
+        },
+        {
+            "label": "Clicks",
+            "value": f"{total_clicks}",
+            "detail": f"Click rate {click_rate}%",
+            "trend": "Interacción sobre eventos",
+            "direction": "up" if total_clicks > 0 else "down",
+            "icon": "icon-records",
         },
         {
             "label": "Precio medio",
@@ -175,8 +195,12 @@ def dashboard_overview() -> dict[str, Any]:
     return {
         "headline": {
             "total_events": total_events,
-            "bookings": bookings,
+            "bookings": total_reservations,
+            "total_reservations": total_reservations,
+            "total_clicks": total_clicks,
             "booking_rate": booking_rate,
+            "conversion_rate": booking_rate,
+            "click_rate": click_rate,
             "promotions": promotions,
             "promotion_rate": promotion_rate,
             "avg_price": avg_price,

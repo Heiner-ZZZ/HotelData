@@ -149,7 +149,7 @@ def hotel_booking_context(prop_id: int) -> dict[str, Any]:
         hotel = partner["hotel"]
         return {
             "prop_id": prop_id,
-            "hotel_label": hotel.get("display_name") or f"Hotel {prop_id}",
+            "hotel_label": hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {prop_id}",
             "country": hotel.get("prop_country_id"),
             "review_label": hotel.get("review_score_label"),
             "avg_price_label": partner["performance"].get("avg_price_label"),

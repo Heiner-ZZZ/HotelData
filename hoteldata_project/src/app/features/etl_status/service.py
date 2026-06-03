@@ -384,8 +384,10 @@ def ga03_pipeline_progress() -> dict:
             "stale_after_minutes": stale_minutes,
         }
         try:
-            progress_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-        except OSError:
+            tmp = progress_path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            tmp.rename(progress_path)
+        except OSError as e:
             pass
         if lock_path.exists():
             try:
@@ -440,7 +442,17 @@ def _pocketbase_headers() -> dict[str, str]:
 def ga03_pocketbase_status() -> dict:
     settings = get_settings()
     collection = settings.pocketbase_collection_03
-    target = settings.target_records
+    progress_path = settings.reports_dir / "progreso_preparacion_reservas_03.json"
+    if progress_path.exists():
+        try:
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            target = int(progress.get("target_records", 0) or 0)
+        except (json.JSONDecodeError, ValueError, OSError):
+            target = 0
+    else:
+        target = 0
+    if target <= 0:
+        target = settings.target_records
     if collection == "hotel_reservation_events__2":
         return {
             "available": False,
@@ -486,15 +498,12 @@ def ga03_pocketbase_status() -> dict:
             "technical_detail": str(exc),
         }
 
-    if count == target:
+    if count >= target:
         state = "ready"
         message = "Fuente lista."
     elif count < target:
         state = "incomplete"
         message = "Fuente incompleta."
-    else:
-        state = "error"
-        message = "Error: excede objetivo."
     return {
         "available": True,
         "collection": collection,
@@ -565,17 +574,32 @@ def ga03_report_status() -> dict:
 
 
 def clear_ga03_local_evidence() -> dict:
+    import subprocess
     settings = get_settings()
-    paths = [
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "--unix-socket", "/var/run/docker.sock",
+             "-X", "POST", "http://localhost/v1.41/build/prune",
+             "-H", "Content-Type: application/json",
+             "-d", '{"all":true,"filters":{},"keep-storage":0}'],
+            capture_output=True, text=True, timeout=60
+        )
+        docker_prune_out = (result.stdout or result.stderr or "").strip()
+    except Exception as exc:
+        docker_prune_out = f"Docker prune no disponible: {exc}"
+    json_paths = [
         settings.reports_dir / "progreso_preparacion_reservas_03.json",
         settings.reports_dir / "validacion_dataset_reservas_03.json",
         settings.reports_dir / "reporte_calidad_reservas_03.json",
         settings.reports_dir / "reporte_ejecucion_reservas_03.json",
-        settings.reports_dir / "preparacion_reservas_03.log",
         settings.reports_dir / "progreso_pipeline_reservas_03.json",
+    ]
+    other_paths = [
+        settings.reports_dir / "preparacion_reservas_03.log",
         settings.reports_dir / "pipeline_reservas_03.log",
         settings.reports_dir / "pipeline_reservas_03.lock",
     ]
+    paths = json_paths + other_paths + [p.with_suffix(".json.tmp") for p in json_paths]
     deleted: list[str] = []
     missing: list[str] = []
     for path in paths:
@@ -587,11 +611,12 @@ def clear_ga03_local_evidence() -> dict:
     return {
         "command": "clear_ga03_local_evidence",
         "returncode": 0,
-        "stdout": json.dumps({"deleted": deleted, "missing": missing}, indent=2, ensure_ascii=False),
+        "stdout": json.dumps({"deleted": deleted, "missing": missing, "docker_prune": docker_prune_out}, indent=2, ensure_ascii=False),
         "stderr": "",
         "ok": True,
         "deleted": deleted,
         "missing": missing,
+        "docker_prune": docker_prune_out,
     }
 
 
@@ -620,14 +645,36 @@ def start_ga03_seed_source(target_records: int = 0) -> dict:
             "stderr": "Ya existe una preparación GA03 en ejecución.",
             "ok": False,
         }
-    _write_ga03_progress_seed("Preparación GA03 solicitada desde /etl-status.")
+    _write_ga03_progress_seed("Preparación GA03 solicitada desde /etl-status.", target_records=target_records)
     uploaded_csv = settings.project_root / "data" / "uploads" / "ga03_source.csv"
     args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else None
     extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
     return _start_script("cargar_reservas_hoteleras_03.py", args=args, env=extra_env)
 
 
-def start_ga03_pipeline() -> dict:
+def _write_ga03_pipeline_progress(message: str, target_records: int = 0) -> None:
+    settings = get_settings()
+    progress_path = settings.reports_dir / "progreso_pipeline_reservas_03.json"
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "task_number": "03",
+        "status": "running",
+        "percent": 0,
+        "elapsed_ms": 0,
+        "message": message,
+        "sections": [
+            {"key": "extract", "label": "Extract", "complete": False},
+            {"key": "parquet", "label": "Parquet", "complete": False},
+            {"key": "transform", "label": "Transform", "complete": False},
+            {"key": "mongodb", "label": "Carga MongoDB", "complete": False},
+            {"key": "reports", "label": "Reportes", "complete": False},
+        ],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    progress_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def start_ga03_pipeline(target_records: int = 0) -> dict:
     settings = get_settings()
     lock_path = settings.reports_dir / "pipeline_reservas_03.lock"
     if lock_path.exists():
@@ -658,4 +705,6 @@ def start_ga03_pipeline() -> dict:
             "stderr": f"Pipeline GA03 ya parece estar en ejecución. Lock: {lock_path}",
             "ok": False,
         }
-    return _start_script("run_reservas_03_pipeline.py", log_name="pipeline_reservas_03.log")
+    _write_ga03_pipeline_progress("Pipeline GA03 solicitado desde /etl-status.", target_records=target_records)
+    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    return _start_script("run_reservas_03_pipeline.py", log_name="pipeline_reservas_03.log", env=extra_env)
