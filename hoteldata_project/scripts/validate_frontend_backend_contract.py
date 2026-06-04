@@ -83,6 +83,7 @@ def main() -> int:
       {"route": f"/api/management/rates?prop_id={prop_id}", "kind": "json_private", "required_json": True},
       {"route": f"/api/management/policies?prop_id={prop_id}", "kind": "json_private", "required_json": True},
       {"route": f"/api/management/amenities?prop_id={prop_id}", "kind": "json_private", "required_json": True},
+      {"route": "/api/management/reports", "kind": "json_private", "required_json": True},
       {"route": f"/api/management/check-ins?date={today}&prop_id={prop_id}", "kind": "json_private", "required_json": True},
       {"route": f"/api/management/check-outs?date={today}&prop_id={prop_id}", "kind": "json_private", "required_json": True},
     ]

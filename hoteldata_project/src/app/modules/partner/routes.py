@@ -11,11 +11,13 @@ from src.app.modules.partner.schemas import ModuleStatus
 from src.app.modules.partner.service import (
     add_partner_hotel_image,
     create_blackout_block,
+    create_rate_plan,
     create_room_type,
     delete_partner_hotel_image,
     ensure_hotel_content_collections,
     ensure_inventory_collections,
     list_partner_hotels,
+    management_reports_summary,
     management_property_options,
     module_status,
     partner_hotel_content,
@@ -27,9 +29,11 @@ from src.app.modules.partner.service import (
     partner_hotel_images,
     partner_hotel_policies,
     partner_hotel_performance,
+    partner_hotel_rates,
     partner_hotel_rooms,
     properties_dashboard,
     save_inventory_entry,
+    save_rate_calendar_entry,
     save_partner_hotel_profile,
     save_partner_hotel_content,
     save_partner_hotel_amenities,
@@ -540,6 +544,79 @@ def availability_blackout_api(payload: dict = Body(...)):
     return saved
 
 
+@api_router.get("/rates")
+def rates_api(prop_id: int = Query(..., ge=1)):
+    detail = partner_hotel_rates(_require_prop_id(prop_id))
+    if detail is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return {
+        "prop_id": detail["hotel"]["prop_id"],
+        "hotel_label": detail["hotel"]["display_name"],
+        "manual_override": detail["hotel"].get("manual_override", False),
+        "profile_badge": detail["hotel"].get("profile_badge"),
+        "rate_plans": detail.get("rate_plans", []),
+        "calendar": detail.get("calendar", []),
+        "rate_rules": detail.get("rate_rules", []),
+        "promotions": detail.get("promotions", []),
+        "coupon_codes": detail.get("coupon_codes", []),
+    }
+
+
+@api_router.get("/rates/options")
+def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
+    response: dict[str, object] = {"properties": management_property_options()}
+    if prop_id:
+        detail = partner_hotel_rates(_require_prop_id(prop_id))
+        if detail is None:
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+        response["rate_plans"] = [
+            {
+                "rate_plan_id": item["rate_plan_id"],
+                "name": item.get("name") or item["rate_plan_id"],
+            }
+            for item in detail.get("rate_plans", [])
+        ]
+    return response
+
+
+@api_router.post("/rates/plans", status_code=http_status.HTTP_201_CREATED)
+def rates_plan_create_api(payload: dict = Body(...)):
+    prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_rate_plan(
+            prop_id,
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            base_rate=payload.get("base_rate"),
+            currency=str(payload.get("currency") or "USD"),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.post("/rates/calendar")
+def rates_calendar_update_api(payload: dict = Body(...)):
+    prop_id = _require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = save_rate_calendar_entry(
+            prop_id,
+            rate_plan_id=str(payload.get("rate_plan_id") or ""),
+            date=str(payload.get("date") or ""),
+            rate_amount=payload.get("rate_amount"),
+            min_stay_nights=payload.get("min_stay_nights"),
+            is_closed=payload.get("is_closed", False),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
 @api_router.get("/policies")
 def policies_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_policies(_require_prop_id(prop_id))
@@ -608,3 +685,8 @@ def amenities_update_api(payload: dict = Body(...)):
     if saved is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
+
+
+@api_router.get("/reports")
+def reports_api():
+    return management_reports_summary()

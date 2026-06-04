@@ -126,6 +126,18 @@ def dashboard_overview() -> dict[str, Any]:
     total_clicks = int(totals.get("total_clicks", 0) or 0)
     promotions = int(totals.get("promotions", 0) or 0)
     rejected = int(db.rejected_records.count_documents({}))
+    operational_metrics = {
+        "configured_room_types": int(db.room_types.count_documents({})),
+        "physical_rooms": int(db.hotel_rooms.count_documents({})),
+        "inventory_days": int(db.room_inventory_calendar.count_documents({})),
+        "rate_plans": int(db.rate_plans.count_documents({})),
+        "rate_calendar": int(db.hotel_rate_calendar.count_documents({})),
+        "configured_policies": int(db.hotel_policies.count_documents({})),
+        "content_pages": int(db.hotel_content_pages.count_documents({})),
+        "images": int(db.hotel_images.count_documents({})),
+        "campaigns": int(db.promotion_campaigns.count_documents({})),
+        "coupons": int(db.coupon_codes.count_documents({})),
+    }
     booking_rate = round((total_reservations / total_events) * 100, 2) if total_events else 0
     click_rate = round((total_clicks / total_events) * 100, 2) if total_events else 0
     promotion_rate = round((promotions / total_events) * 100, 2) if total_events else 0
@@ -190,6 +202,30 @@ def dashboard_overview() -> dict[str, Any]:
             "direction": "up" if rejected == 0 else "down",
             "icon": "icon-alert",
         },
+        {
+            "label": "Habitaciones configuradas",
+            "value": f"{operational_metrics['configured_room_types']}",
+            "detail": f"Físicas {operational_metrics['physical_rooms']} · inventario {operational_metrics['inventory_days']}",
+            "trend": "Base operativa de alojamiento",
+            "direction": "up" if operational_metrics["configured_room_types"] > 0 else "down",
+            "icon": "icon-records",
+        },
+        {
+            "label": "Tarifas y contenido",
+            "value": f"{operational_metrics['rate_plans']}",
+            "detail": f"Calendario {operational_metrics['rate_calendar']} · políticas {operational_metrics['configured_policies']}",
+            "trend": "Preparación comercial",
+            "direction": "up" if operational_metrics["rate_plans"] > 0 else "down",
+            "icon": "icon-revenue",
+        },
+        {
+            "label": "Contenido visual",
+            "value": f"{operational_metrics['images']}",
+            "detail": f"Páginas {operational_metrics['content_pages']} · campañas {operational_metrics['campaigns']}",
+            "trend": f"Cupones {operational_metrics['coupons']}",
+            "direction": "up" if operational_metrics["images"] > 0 else "down",
+            "icon": "icon-quality",
+        },
     ]
 
     return {
@@ -210,6 +246,7 @@ def dashboard_overview() -> dict[str, Any]:
             "distinct_countries": len(distinct_countries),
             "rejected_records": rejected,
             "completion_rate": completion_rate,
+            **operational_metrics,
         },
         "kpis": kpis,
         "latest_execution": latest_execution,

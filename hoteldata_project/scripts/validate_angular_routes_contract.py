@@ -239,6 +239,7 @@ def main() -> int:
         "rates-api.service.ts": frontend_root / "src" / "app" / "features" / "rates" / "services" / "rates-api.service.ts",
         "policies-api.service.ts": frontend_root / "src" / "app" / "features" / "policies" / "services" / "policies-api.service.ts",
         "amenities-api.service.ts": frontend_root / "src" / "app" / "features" / "amenities" / "services" / "amenities-api.service.ts",
+        "management-reports-api.service.ts": frontend_root / "src" / "app" / "features" / "management" / "services" / "management-reports-api.service.ts",
         "check-ins-api.service.ts": frontend_root / "src" / "app" / "features" / "check-ins" / "services" / "check-ins-api.service.ts",
         "check-outs-api.service.ts": frontend_root / "src" / "app" / "features" / "check-outs" / "services" / "check-outs-api.service.ts",
     }

@@ -20,6 +20,7 @@ from src.database.connection import get_database
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validate_manual_hotel_profile_enrichment.json"
+ENRICH_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "enrich_ga03_display_dimensions.py"
 
 
 def utc_now_iso() -> str:
@@ -113,6 +114,28 @@ def login_api(opener: urllib.request.OpenerDirector, base_url: str) -> tuple[boo
         return False, {"status": exc.code, "body": body}
 
 
+def run_enrichment_script() -> dict[str, Any]:
+    result = subprocess.run(
+        [sys.executable, str(ENRICH_SCRIPT_PATH)],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    parsed_stdout: dict[str, Any] | None = None
+    if result.stdout.strip():
+        try:
+            parsed_stdout = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            parsed_stdout = None
+    return {
+        "ok": result.returncode == 0,
+        "returncode": result.returncode,
+        "stdout": parsed_stdout if parsed_stdout is not None else result.stdout.strip(),
+        "stderr": result.stderr.strip(),
+    }
+
+
 def choose_demo_prop_id(db, opener: urllib.request.OpenerDirector, base_url: str) -> tuple[int, dict[str, Any]]:
     status, search_payload = json_request(opener, f"{base_url}/api/hotels/search")
     items = search_payload.get("items", [])
@@ -132,6 +155,7 @@ def main() -> int:
     db = get_database()
     checks: list[dict[str, Any]] = []
     errors: list[str] = []
+    fact_count_before = int(db.fact_hotel_reservations.count_documents({}))
 
     port = find_free_port()
     base_url = f"http://127.0.0.1:{port}"
@@ -229,6 +253,67 @@ def main() -> int:
         if change_doc is None:
             errors.append("hotel_profile_changes no registró el cambio esperado.")
 
+        original_generated_name_before_enrich = str(updated_doc.get("original_generated_name") or "") if updated_doc else ""
+        checks.append(
+            {
+                "name": "original_generated_name_preserved_before_enrich",
+                "ok": bool(original_generated_name_before_enrich),
+                "details": {"original_generated_name": original_generated_name_before_enrich},
+            }
+        )
+        if not original_generated_name_before_enrich:
+            errors.append("original_generated_name no quedó preservado antes de ejecutar el enrich automático.")
+
+        enrich_result = run_enrichment_script()
+        checks.append({"name": "run_enrich_ga03_display_dimensions", "ok": enrich_result["ok"], "details": enrich_result})
+        if not enrich_result["ok"]:
+            raise RuntimeError("Falló enrich_ga03_display_dimensions.py durante la validación de preservación manual.")
+
+        after_enrich_doc = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0})
+        checks.append(
+            {
+                "name": "dim_hotels_prop_id_stable_after_enrich",
+                "ok": after_enrich_doc is not None and int(after_enrich_doc.get("prop_id") or 0) == prop_id,
+                "details": {"prop_id": after_enrich_doc.get("prop_id") if after_enrich_doc else None},
+            }
+        )
+        if not after_enrich_doc or int(after_enrich_doc.get("prop_id") or 0) != prop_id:
+            errors.append("prop_id cambió después de ejecutar enrich_ga03_display_dimensions.py.")
+
+        checks.append(
+            {
+                "name": "display_name_manual_preserved_after_enrich",
+                "ok": after_enrich_doc is not None and str(after_enrich_doc.get("display_name") or "") == new_display_name,
+                "details": {"display_name": after_enrich_doc.get("display_name") if after_enrich_doc else None},
+            }
+        )
+        if not after_enrich_doc or str(after_enrich_doc.get("display_name") or "") != new_display_name:
+            errors.append("display_name manual fue sobrescrito por enrich_ga03_display_dimensions.py.")
+
+        checks.append(
+            {
+                "name": "manual_override_protected_after_enrich",
+                "ok": after_enrich_doc is not None and bool(after_enrich_doc.get("manual_override")) is True,
+                "details": {"manual_override": after_enrich_doc.get("manual_override") if after_enrich_doc else None},
+            }
+        )
+        if not after_enrich_doc or bool(after_enrich_doc.get("manual_override")) is not True:
+            errors.append("manual_override dejó de estar protegido tras el enrich automático.")
+
+        checks.append(
+            {
+                "name": "original_generated_name_preserved_after_enrich",
+                "ok": after_enrich_doc is not None
+                and str(after_enrich_doc.get("original_generated_name") or "") == original_generated_name_before_enrich,
+                "details": {
+                    "before": original_generated_name_before_enrich,
+                    "after": after_enrich_doc.get("original_generated_name") if after_enrich_doc else None,
+                },
+            }
+        )
+        if not after_enrich_doc or str(after_enrich_doc.get("original_generated_name") or "") != original_generated_name_before_enrich:
+            errors.append("original_generated_name no se preservó después del enrich automático.")
+
         status, search_after = json_request(opener, f"{base_url}/api/hotels/search")
         visible_in_search = any(
             int(item.get("prop_id") or 0) == prop_id and str(item.get("hotel_label") or "") == new_display_name
@@ -256,6 +341,17 @@ def main() -> int:
                 errors.append("No fue posible restaurar el perfil original tras la validación.")
     finally:
         stop_server(process)
+
+    fact_count_after = int(db.fact_hotel_reservations.count_documents({}))
+    checks.append(
+        {
+            "name": "fact_hotel_reservations_not_modified",
+            "ok": fact_count_before == fact_count_after,
+            "details": {"before": fact_count_before, "after": fact_count_after},
+        }
+    )
+    if fact_count_before != fact_count_after:
+        errors.append("fact_hotel_reservations fue modificado durante la validación y no debía ocurrir.")
 
     report = {
         "generated_at": utc_now_iso(),
