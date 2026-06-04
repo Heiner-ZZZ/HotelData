@@ -50,6 +50,7 @@
             <span class="label">Hotel</span>
             <strong>{{ vm.hotelName }}</strong>
             <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+            <p>{{ vm.profileBadge }}</p>
             <a [routerLink]="['/management/properties', vm.propId, 'edit']" class="edit-content-btn">
               <span class="material-symbols-outlined">edit</span>
               Editar Contenido
@@ -64,6 +65,11 @@
             <span class="label">Tipos configurados</span>
             <strong>{{ vm.totalRoomTypes }}</strong>
             <p>Capacidad operativa del hotel</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Habitaciones físicas</span>
+            <strong>{{ vm.totalHotelRooms }}</strong>
+            <p>Registros en hotel_rooms</p>
           </article>
         </section>
 
@@ -118,6 +124,39 @@
             <app-empty-state
               title="Sin tipos de habitación"
               description="Comience creando el primero para poder cargar inventario."
+            />
+          }
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Habitaciones físicas</h2>
+              <p>{{ vm.totalHotelRooms }} registro(s) asociados.</p>
+            </div>
+          </div>
+          @if (vm.hotelRooms.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Etiqueta</th><th>Tipo</th><th>Activa</th></tr>
+                </thead>
+                <tbody>
+                  @for (room of vm.hotelRooms; track room.id) {
+                    <tr>
+                      <td>{{ room.id }}</td>
+                      <td>{{ room.roomLabel }}</td>
+                      <td>{{ room.roomTypeName }}</td>
+                      <td>{{ room.activeLabel }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin habitaciones físicas"
+              description="Todavía no hay registros en hotel_rooms para esta propiedad."
             />
           }
         </section>

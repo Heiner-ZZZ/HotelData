@@ -1,0 +1,94 @@
+.reports-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero-grid,
+.content-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.content-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-card,
+.data-card {
+  padding: 1rem 1.1rem;
+}
+
+.hero-card {
+  display: grid;
+  gap: 0.35rem;
+
+  .label,
+  p {
+    color: var(--muted-text);
+    margin: 0;
+  }
+
+  strong {
+    font-size: 1.4rem;
+    margin: 0;
+  }
+}
+
+.section-head h2 {
+  margin: 0 0 0.9rem;
+}
+
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.rank-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
+  padding-bottom: 0.85rem;
+}
+
+.rank-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.rank-list a,
+.rank-list span,
+.rank-list strong,
+.rank-list small {
+  display: block;
+}
+
+.rank-list a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.rank-list small {
+  color: var(--muted-text);
+  margin-top: 0.2rem;
+}
+
+.rank-list.compact li {
+  padding-bottom: 0.6rem;
+}
+
+@media (max-width: 960px) {
+  .hero-grid,
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}

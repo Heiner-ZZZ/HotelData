@@ -7,6 +7,7 @@ export interface AvailabilityViewModel {
   sourceCollection: string;
   roomTypes: AvailabilityRoomType[];
   inventoryItems: AvailabilityInventoryItem[];
+  availabilityBlocks: AvailabilityBlackoutItem[];
   blackoutItems: AvailabilityBlackoutItem[];
 }
 

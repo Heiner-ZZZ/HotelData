@@ -23,6 +23,19 @@ export interface PropertyListItemDto {
   sync_status: string;
   sync_latency_ms: number;
   unit_count: number;
+  manual_override?: boolean;
+  profile_badge?: string;
+  operational?: {
+    policies_configured: boolean;
+    rooms_configured: boolean;
+    rates_configured: boolean;
+    inventory_configured: boolean;
+    content_configured: boolean;
+    images_configured: boolean;
+    promotions_active: boolean;
+    operational_score: number;
+    counts: Record<string, number>;
+  };
 }
 
 export interface PropertiesListResponseDto {
@@ -53,6 +66,17 @@ export interface PropertyDetailResponseDto {
     name_source?: string;
     original_generated_name?: string | null;
     profile_badge?: string;
+    operational?: {
+      policies_configured: boolean;
+      rooms_configured: boolean;
+      rates_configured: boolean;
+      inventory_configured: boolean;
+      content_configured: boolean;
+      images_configured: boolean;
+      promotions_active: boolean;
+      operational_score: number;
+      counts: Record<string, number>;
+    };
   };
   performance: PropertyPerformanceDto;
   master_hotel: {

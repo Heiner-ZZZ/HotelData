@@ -25,6 +25,18 @@ export function mapDashboardResponse(dto: DashboardApiResponseDto): DashboardVie
     { label: 'Paises distintos', value: headline.distinct_countries },
     { label: 'Eventos totales', value: headline.total_events },
   ];
+  const operationalCounts: Array<{ label: string; value: number }> = [
+    { label: 'Habitaciones configuradas', value: headline.configured_room_types ?? 0 },
+    { label: 'Habitaciones físicas', value: headline.physical_rooms ?? 0 },
+    { label: 'Días de inventario', value: headline.inventory_days ?? 0 },
+    { label: 'Planes tarifarios', value: headline.rate_plans ?? 0 },
+    { label: 'Tarifas calendario', value: headline.rate_calendar ?? 0 },
+    { label: 'Políticas configuradas', value: headline.configured_policies ?? 0 },
+    { label: 'Contenido hotelero', value: headline.content_pages ?? 0 },
+    { label: 'Imágenes', value: headline.images ?? 0 },
+    { label: 'Campañas', value: headline.campaigns ?? 0 },
+    { label: 'Cupones', value: headline.coupons ?? 0 }
+  ];
 
   return {
     kpis: overview.kpis.map((kpi) => ({
@@ -43,6 +55,7 @@ export function mapDashboardResponse(dto: DashboardApiResponseDto): DashboardVie
         }
       : null,
     collectionCounts,
+    operationalCounts,
     qualitySummary: [
       { label: 'Total registros', value: String(quality?.source_rows ?? headline.total_events) },
       { label: 'Aceptados', value: String(quality?.valid_records ?? 0) },
@@ -54,8 +67,9 @@ export function mapDashboardResponse(dto: DashboardApiResponseDto): DashboardVie
     ],
     occupancySummary: [
       { label: 'Eventos', value: String(headline.total_events), icon: 'bar_chart' },
-      { label: 'Reservas', value: String(headline.bookings), icon: 'calendar_month' },
-      { label: 'Conversion', value: `${headline.booking_rate}%`, icon: 'trending_up' },
+      { label: 'Reservas', value: String(headline.total_reservations ?? headline.bookings), icon: 'calendar_month' },
+      { label: 'Clicks', value: String(headline.total_clicks ?? 0), icon: 'ads_click' },
+      { label: 'Conversion', value: `${headline.conversion_rate ?? headline.booking_rate}%`, icon: 'trending_up' },
       {
         label: 'Precio medio',
         value: formatCurrency(headline.avg_price || 0),

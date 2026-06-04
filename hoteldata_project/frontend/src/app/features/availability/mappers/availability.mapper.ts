@@ -17,6 +17,7 @@ export function mapAvailability(dto: AvailabilityDto): AvailabilityViewModel {
     sourceCollection: dto.performance.source_collection,
     roomTypes: dto.room_types.map(mapRoomType),
     inventoryItems: dto.inventory_items.map(mapInventoryItem),
+    availabilityBlocks: (dto.availability_blocks ?? []).map(mapBlackoutItem),
     blackoutItems: dto.blackout_items.map(mapBlackoutItem)
   };
 }

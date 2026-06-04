@@ -49,7 +49,7 @@
           <article class="surface-card hero-card">
             <span class="label">Hotel</span>
             <strong>{{ vm.hotelLabel }}</strong>
-            <p>Operación comercial de tarifas</p>
+            <p>Operación comercial de tarifas · {{ vm.profileBadge }}</p>
           </article>
           <article class="surface-card hero-card">
             <span class="label">Planes</span>
@@ -60,6 +60,11 @@
             <span class="label">Calendario</span>
             <strong>{{ vm.calendar.length }}</strong>
             <p>Filas recientes de tarifa por fecha</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Promociones y cupones</span>
+            <strong>{{ vm.promotions.length + vm.coupons.length }}</strong>
+            <p>{{ vm.promotions.length }} campañas · {{ vm.coupons.length }} cupones</p>
           </article>
         </section>
 
@@ -168,6 +173,37 @@
             <app-empty-state
               title="Sin tarifas todavía"
               description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Promociones y cupones</h2>
+              <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es) activos/demo.</p>
+            </div>
+          </div>
+          @if (vm.promotions.length || vm.coupons.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Tipo</th><th>Nombre / código</th><th>Activo</th></tr>
+                </thead>
+                <tbody>
+                  @for (promo of vm.promotions; track promo.name) {
+                    <tr><td>Campaña</td><td>{{ promo.name }}</td><td>{{ promo.activeLabel }}</td></tr>
+                  }
+                  @for (coupon of vm.coupons; track coupon.code) {
+                    <tr><td>Cupón</td><td>{{ coupon.code }}</td><td>{{ coupon.activeLabel }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin promociones todavía"
+              description="No hay campañas ni cupones conectados para esta propiedad."
             />
           }
         </section>

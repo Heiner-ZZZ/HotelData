@@ -56,6 +56,21 @@
 
           <section class="surface-card list-card">
             <div class="list-card-head">
+              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">home_work</span>
+              <h2>Operación conectada</h2>
+            </div>
+            <ul>
+              @for (item of vm.operationalCounts; track item.label) {
+                <li>
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="surface-card list-card">
+            <div class="list-card-head">
               <span class="material-symbols-outlined list-card-icon" aria-hidden="true">checklist</span>
               <h2>Calidad de datos</h2>
             </div>

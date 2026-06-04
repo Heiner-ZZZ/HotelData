@@ -10,6 +10,10 @@ export interface PropertyListItem {
   syncStatus: string;
   syncLatencyMs: number;
   unitCount: number;
+  manualOverride: boolean;
+  profileBadge: string;
+  operationalScore: number;
+  operationalChecks: Array<{ label: string; ready: boolean }>;
   performance: {
     searches: number;
     clicks: number;
@@ -38,6 +42,8 @@ export interface PropertyDetailViewModel {
   manualOverride: boolean;
   profileBadge: string;
   originalGeneratedName: string;
+  operationalScore: number;
+  operationalChecks: Array<{ label: string; ready: boolean }>;
   heroMetrics: Array<{ label: string; value: string; detail: string }>;
   profileFacts: Array<{ label: string; value: string }>;
   masterFacts: Array<{ label: string; value: string }>;

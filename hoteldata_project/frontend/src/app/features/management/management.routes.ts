@@ -55,11 +55,8 @@ export const MANAGEMENT_ROUTES: Routes = [
   },
   {
     path: 'reports',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Reportes',
-      description: 'Ruta preparada para ocupacion, ingresos, reservas y mercados/canales.'
-    }
+    loadComponent: () =>
+      import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)
   },
   {
     path: 'settings',

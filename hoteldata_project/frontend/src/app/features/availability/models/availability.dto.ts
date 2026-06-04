@@ -32,6 +32,14 @@ export interface AvailabilityDto {
     blocked_rooms: number;
     reason: string;
   }>;
+  availability_blocks?: Array<{
+    room_type_id: string;
+    start_date: string;
+    end_date: string;
+    range_label: string;
+    blocked_rooms: number;
+    reason: string;
+  }>;
 }
 
 export interface AvailabilitySaveInventoryDto {

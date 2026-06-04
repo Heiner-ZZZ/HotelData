@@ -19,6 +19,15 @@ export interface AmenitiesDto {
       }>;
     }>;
   };
+  content_page?: {
+    description?: string;
+    highlights?: string;
+  };
+  images?: Array<{
+    image_url: string;
+    title: string;
+  }>;
+  facilities?: string[];
 }
 
 export interface AmenitiesOptionsDto {

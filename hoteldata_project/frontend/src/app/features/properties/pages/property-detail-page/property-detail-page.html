@@ -26,7 +26,19 @@
             <strong>{{ vm.displayName }}</strong>
             <p>{{ vm.countryDisplayName }} · ID técnico {{ vm.propId }}</p>
           </div>
-          <span class="name-badge" [class.manual]="vm.manualOverride">{{ vm.profileBadge }}</span>
+          <div class="summary-badges">
+            <span class="name-badge" [class.manual]="vm.manualOverride">{{ vm.profileBadge }}</span>
+            <span class="name-badge score-badge" [class.manual]="vm.operationalScore >= 80">{{ vm.operationalScore }}/100 operativo</span>
+          </div>
+        </section>
+
+        <section class="operational-grid">
+          @for (check of vm.operationalChecks; track check.label) {
+            <article class="surface-card operational-card" [class.ready]="check.ready">
+              <span>{{ check.label }}</span>
+              <strong>{{ check.ready ? 'Sí' : 'No' }}</strong>
+            </article>
+          }
         </section>
         <section class="hero-grid">
           @for (metric of vm.heroMetrics; track metric.label) {

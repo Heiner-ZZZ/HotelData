@@ -1,6 +1,8 @@
 export interface RatesDto {
   prop_id: number;
   hotel_label: string;
+  manual_override?: boolean;
+  profile_badge?: string;
   rate_plans: Array<{
     rate_plan_id: string;
     prop_id: number;
@@ -20,6 +22,21 @@ export interface RatesDto {
     rate_amount_label: string;
     min_stay_nights: number;
     is_closed: boolean;
+  }>;
+  rate_rules?: Array<{
+    rate_plan_id?: string;
+    rule_name?: string;
+    description?: string;
+  }>;
+  promotions?: Array<{
+    campaign_id: string;
+    name: string;
+    is_active: boolean;
+  }>;
+  coupon_codes?: Array<{
+    coupon_code: string;
+    campaign_id: string;
+    is_active: boolean;
   }>;
 }
 

@@ -4,6 +4,8 @@ export interface RoomsDto {
     display_name: string;
     country_display_name: string;
     review_score_label: string;
+    manual_override?: boolean;
+    profile_badge?: string;
   };
   performance: {
     avg_price_label: string;
@@ -16,7 +18,15 @@ export interface RoomsDto {
     capacity_label: string;
     is_active: boolean;
   }>;
+  hotel_rooms?: Array<{
+    hotel_room_id: string;
+    room_type_id: string;
+    room_type_name?: string;
+    room_label: string;
+    is_active: boolean;
+  }>;
   room_type_count: number;
+  hotel_room_count?: number;
 }
 
 export interface RoomsOptionsDto {

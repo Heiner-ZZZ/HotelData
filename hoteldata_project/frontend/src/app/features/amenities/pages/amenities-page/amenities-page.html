@@ -58,6 +58,11 @@
             <strong>{{ selectedAmenities().length }}</strong>
             <p>Configurados en esta propiedad</p>
           </article>
+          <article class="surface-card hero-card">
+            <span class="label">Contenido e imágenes</span>
+            <strong>{{ vm.imageCount }}</strong>
+            <p>{{ vm.contentDescription }}</p>
+          </article>
         </section>
 
         <app-active-amenities-summary [items]="selectedAmenities()" />

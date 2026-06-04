@@ -21,5 +21,8 @@ export interface AmenitiesViewModel {
   avgPriceLabel: string;
   sourceCollection: string;
   activeAmenities: string[];
+  contentDescription: string;
+  imageCount: number;
+  facilityCount: number;
   categories: AmenityCategoryViewModel[];
 }

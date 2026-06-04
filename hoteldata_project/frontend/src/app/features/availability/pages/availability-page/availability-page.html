@@ -61,6 +61,11 @@
             <strong>{{ vm.roomTypes.length }}</strong>
             <p>Inventario operativo cargado</p>
           </article>
+          <article class="surface-card hero-card">
+            <span class="label">Bloqueos operativos</span>
+            <strong>{{ vm.availabilityBlocks.length }}</strong>
+            <p>room_availability_blocks conectados</p>
+          </article>
         </section>
 
         <section class="form-grid">
@@ -161,6 +166,39 @@
             <app-empty-state
               title="Sin inventario todavía"
               description="Primero configura habitaciones en /management/rooms y luego carga una fila de calendario para esta propiedad."
+            />
+          }
+        </section>
+
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Bloqueos operativos</h2>
+              <p>{{ vm.availabilityBlocks.length }} fila(s) desde room_availability_blocks.</p>
+            </div>
+          </div>
+          @if (vm.availabilityBlocks.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Tipo</th><th>Rango</th><th>Bloqueadas</th><th>Razón</th></tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.availabilityBlocks; track item.roomTypeId + item.rangeLabel + '-ops') {
+                    <tr>
+                      <td>{{ item.roomTypeId }}</td>
+                      <td>{{ item.rangeLabel }}</td>
+                      <td>{{ item.blockedRooms }}</td>
+                      <td>{{ item.reason }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin bloqueos operativos"
+              description="Aún no hay registros activos en room_availability_blocks para esta propiedad."
             />
           }
         </section>

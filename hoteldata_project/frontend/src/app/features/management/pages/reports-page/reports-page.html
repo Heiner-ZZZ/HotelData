@@ -1,0 +1,112 @@
+<div class="reports-page">
+  <app-page-header
+    eyebrow="Management analytics"
+    title="Reportes operativos"
+    description="Resumen ejecutivo del hecho principal GA03 y de las colecciones operativas demo conectadas al management."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando reportes..." />
+    }
+    @case ('error') {
+      <app-error-state [description]="errorMessage()" (retry)="retry()" />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay reportes disponibles"
+        description="La API todavía no devolvió suficiente información para esta vista."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <section class="hero-grid">
+          <article class="surface-card hero-card">
+            <span class="label">Eventos totales</span>
+            <strong>{{ vm.totalEvents }}</strong>
+            <p>Fuente {{ vm.sourceCollection }}</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Reservas detectadas</span>
+            <strong>{{ vm.reservationsDetected }}</strong>
+            <p>Reservas sobre el hecho principal</p>
+          </article>
+          <article class="surface-card hero-card">
+            <span class="label">Revenue bruto</span>
+            <strong>{{ vm.grossRevenueLabel }}</strong>
+            <p>Agregado desde fact_hotel_reservations</p>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <section class="surface-card data-card">
+            <div class="section-head">
+              <h2>Top hoteles por revenue</h2>
+            </div>
+            <ul class="rank-list">
+              @for (hotel of vm.topHotels; track hotel.propId) {
+                <li>
+                  <div>
+                    <a [routerLink]="['/management/properties', hotel.propId]">{{ hotel.displayName }}</a>
+                    <small>{{ hotel.profileBadge }} · {{ hotel.events }} eventos</small>
+                  </div>
+                  <strong>{{ hotel.grossRevenueLabel }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="surface-card data-card">
+            <div class="section-head">
+              <h2>Top destinos</h2>
+            </div>
+            <ul class="rank-list">
+              @for (destination of vm.topDestinations; track destination.label) {
+                <li>
+                  <div>
+                    <span>{{ destination.label }}</span>
+                    <small>{{ destination.events }} eventos</small>
+                  </div>
+                  <strong>{{ destination.grossRevenueLabel }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+        </section>
+
+        <section class="content-grid">
+          <section class="surface-card data-card">
+            <div class="section-head">
+              <h2>Top países visitantes</h2>
+            </div>
+            <ul class="rank-list">
+              @for (country of vm.topVisitorCountries; track country.label) {
+                <li>
+                  <div>
+                    <span>{{ country.label }}</span>
+                    <small>{{ country.reservations }} reservas</small>
+                  </div>
+                  <strong>{{ country.events }} eventos</strong>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="surface-card data-card">
+            <div class="section-head">
+              <h2>Colecciones operativas configuradas</h2>
+            </div>
+            <ul class="rank-list compact">
+              @for (item of vm.operationalCounts; track item.label) {
+                <li>
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+        </section>
+      }
+    }
+  }
+</div>

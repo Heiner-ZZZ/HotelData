@@ -10,6 +10,9 @@ export function mapAmenities(dto: AmenitiesDto): AmenitiesViewModel {
     avgPriceLabel: dto.performance.avg_price_label,
     sourceCollection: dto.performance.source_collection,
     activeAmenities: dto.amenities.active_amenities ?? [],
+    contentDescription: dto.content_page?.description || 'Sin descripción cargada',
+    imageCount: dto.images?.length ?? 0,
+    facilityCount: dto.facilities?.length ?? 0,
     categories: dto.amenities.catalog.map(mapAmenityCategory)
   };
 }

@@ -6,6 +6,7 @@ export interface DashboardViewModel {
     executedAt: string;
   } | null;
   collectionCounts: Array<{ label: string; value: number }>;
+  operationalCounts: Array<{ label: string; value: number }>;
   qualitySummary: Array<{ label: string; value: string }>;
   occupancySummary: Array<{ label: string; value: string; icon?: string }>;
 }

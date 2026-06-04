@@ -1,8 +1,13 @@
 export interface RatesViewModel {
   propId: number;
   hotelLabel: string;
+  manualOverride: boolean;
+  profileBadge: string;
   ratePlans: RatePlanItem[];
   calendar: RateCalendarItem[];
+  rateRules: Array<{ label: string; detail: string }>;
+  promotions: Array<{ name: string; activeLabel: string }>;
+  coupons: Array<{ code: string; activeLabel: string }>;
 }
 
 export interface RatePlanItem {

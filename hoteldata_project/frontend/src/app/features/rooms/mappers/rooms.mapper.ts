@@ -7,14 +7,23 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
     hotelName: dto.hotel.display_name,
     countryLabel: dto.hotel.country_display_name,
     reviewLabel: dto.hotel.review_score_label,
+    manualOverride: dto.hotel.manual_override ?? false,
+    profileBadge: dto.hotel.profile_badge || (dto.hotel.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
     avgPriceLabel: dto.performance.avg_price_label,
     sourceCollection: dto.performance.source_collection,
     totalRoomTypes: dto.room_type_count,
+    totalHotelRooms: dto.hotel_room_count ?? dto.hotel_rooms?.length ?? 0,
     roomTypes: dto.room_types.map((room) => ({
       id: room.room_type_id,
       name: room.name,
       description: room.description || 'Sin descripción',
       capacityLabel: room.capacity_label,
+      activeLabel: room.is_active ? 'Sí' : 'No'
+    })),
+    hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
+      id: room.hotel_room_id,
+      roomTypeName: room.room_type_name || room.room_type_id,
+      roomLabel: room.room_label,
       activeLabel: room.is_active ? 'Sí' : 'No'
     }))
   };

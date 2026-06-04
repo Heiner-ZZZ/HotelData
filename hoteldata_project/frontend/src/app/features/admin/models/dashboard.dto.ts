@@ -29,7 +29,11 @@ export interface DashboardApiResponseDto {
 export interface DashboardHeadlineDto {
   total_events: number;
   bookings: number;
+  total_reservations?: number;
+  total_clicks?: number;
   booking_rate: number;
+  conversion_rate?: number;
+  click_rate?: number;
   promotions: number;
   promotion_rate: number;
   avg_price: number;
@@ -39,6 +43,16 @@ export interface DashboardHeadlineDto {
   distinct_countries: number;
   rejected_records: number;
   completion_rate: number;
+  configured_room_types?: number;
+  physical_rooms?: number;
+  inventory_days?: number;
+  rate_plans?: number;
+  rate_calendar?: number;
+  configured_policies?: number;
+  content_pages?: number;
+  images?: number;
+  campaigns?: number;
+  coupons?: number;
 }
 
 export interface DashboardKpiDto {

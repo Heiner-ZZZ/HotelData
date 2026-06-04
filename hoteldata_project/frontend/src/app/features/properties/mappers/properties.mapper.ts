@@ -18,6 +18,25 @@ import type {
   PropertiesListViewModel
 } from '../models/properties.model';
 
+function mapOperationalChecks(operational?: {
+  policies_configured?: boolean;
+  rooms_configured?: boolean;
+  rates_configured?: boolean;
+  inventory_configured?: boolean;
+  content_configured?: boolean;
+  images_configured?: boolean;
+  promotions_active?: boolean;
+}) {
+  return [
+    { label: 'Políticas', ready: operational?.policies_configured ?? false },
+    { label: 'Habitaciones', ready: operational?.rooms_configured ?? false },
+    { label: 'Tarifas', ready: operational?.rates_configured ?? false },
+    { label: 'Inventario', ready: operational?.inventory_configured ?? false },
+    { label: 'Contenido/Imágenes', ready: (operational?.content_configured ?? false) || (operational?.images_configured ?? false) },
+    { label: 'Promociones', ready: operational?.promotions_active ?? false }
+  ];
+}
+
 function mapPropertyListItem(item: PropertiesListResponseDto['items'][number]): PropertyListItem {
   return {
     propId: item.prop_id,
@@ -31,6 +50,10 @@ function mapPropertyListItem(item: PropertiesListResponseDto['items'][number]): 
     syncStatus: item.sync_status ?? 'SYNC_ACTIVE',
     syncLatencyMs: item.sync_latency_ms ?? 0,
     unitCount: item.unit_count ?? 0,
+    manualOverride: item.manual_override ?? false,
+    profileBadge: item.profile_badge || (item.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
+    operationalScore: item.operational?.operational_score ?? 0,
+    operationalChecks: mapOperationalChecks(item.operational),
     performance: {
       searches: item.performance.searches,
       clicks: item.performance.clicks,
@@ -63,6 +86,8 @@ export function mapPropertyDetailResponse(dto: PropertyDetailResponseDto): Prope
     manualOverride: dto.hotel.manual_override ?? false,
     profileBadge: dto.hotel.profile_badge || (dto.hotel.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
     originalGeneratedName: dto.hotel.original_generated_name || dto.hotel.display_name || `Hotel Partner ${dto.hotel.prop_id}`,
+    operationalScore: dto.hotel.operational?.operational_score ?? 0,
+    operationalChecks: mapOperationalChecks(dto.hotel.operational),
     heroMetrics: [
       {
         label: 'Ingresos brutos',
