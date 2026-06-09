@@ -1,0 +1,244 @@
+<div class="rooms-page">
+  <app-page-header
+    eyebrow="Habitaciones"
+    title="Tipos de Habitación"
+    description="Administra los tipos de habitación, capacidades y habitaciones físicas de cada propiedad."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span class="field-label">
+          <span class="material-symbols-outlined field-icon">business</span>
+          Propiedad
+        </span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit" class="btn-primary">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="notification success">
+      <span class="material-symbols-outlined notif-icon">check_circle</span>
+      <span>{{ message() }}</span>
+    </section>
+  }
+  @if (errorMessage()) {
+    <section class="notification error">
+      <span class="material-symbols-outlined notif-icon">error</span>
+      <span>{{ errorMessage() }}</span>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando habitaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las habitaciones"
+        description="Revisa la API o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        icon="search"
+        title="Selecciona una propiedad"
+        description="El módulo de habitaciones necesita un hotel activo para cargar sus tipos."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- KPI Grid -->
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
+              <span class="material-symbols-outlined kpi-icon">business</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Hotel</p>
+              <h3 class="kpi-value">{{ vm.hotelName }}</h3>
+              <p class="kpi-desc">{{ vm.countryLabel }} &middot; {{ vm.reviewLabel }}</p>
+              @if (vm.profileBadge) {
+                <p class="kpi-badge-text">{{ vm.profileBadge }}</p>
+              }
+              <a [routerLink]="['/management/properties', vm.propId, 'edit']" class="kpi-action">
+                <span class="material-symbols-outlined">edit</span>
+                Editar Contenido
+              </a>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--success)">
+              <span class="material-symbols-outlined kpi-icon">payments</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Precio Promedio</p>
+              <h3 class="kpi-value">${{ vm.avgPriceLabel }}</h3>
+              <p class="kpi-desc">Fuente: {{ vm.sourceCollection }}</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--warning)">
+              <span class="material-symbols-outlined kpi-icon">meeting_room</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Tipos Configurados</p>
+              <h3 class="kpi-value">{{ vm.totalRoomTypes }}</h3>
+              <p class="kpi-desc">Capacidad operativa del hotel</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
+              <span class="material-symbols-outlined kpi-icon">door_front</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Habitaciones Físicas</p>
+              <h3 class="kpi-value">{{ vm.totalHotelRooms }}</h3>
+              <p class="kpi-desc">Registros en hotel_rooms</p>
+            </div>
+          </article>
+        </section>
+
+        <!-- Create Form -->
+        <section class="surface-card form-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">add_room</span>
+            <div>
+              <h2>Nuevo tipo de habitación</h2>
+              <p>Crea un tipo de habitación operativo para inventario y disponibilidad.</p>
+            </div>
+          </div>
+          <form [formGroup]="createForm" (ngSubmit)="createRoomType()" class="form-grid">
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">badge</span>
+                Nombre
+              </span>
+              <input formControlName="name" placeholder="Ej: Suite Premium">
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">description</span>
+                Descripción
+              </span>
+              <input formControlName="description" placeholder="Opcional">
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">group</span>
+                Adultos máx.
+              </span>
+              <input type="number" min="1" formControlName="maxAdults">
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">child_care</span>
+                Niños máx.
+              </span>
+              <input type="number" min="0" formControlName="maxChildren">
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">people</span>
+                Capacidad base
+              </span>
+              <input type="number" min="1" formControlName="baseCapacity">
+            </label>
+            <label class="field checkbox-field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">toggle_on</span>
+                Activo
+              </span>
+              <input type="checkbox" formControlName="isActive">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">
+                <span class="material-symbols-outlined btn-icon">add</span>
+                Crear tipo
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Room Types Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">table</span>
+            <div>
+              <h2>Tipos de habitación</h2>
+              <p>{{ vm.totalRoomTypes }} tipo(s) configurado(s).</p>
+            </div>
+          </div>
+          @if (vm.roomTypes.length) {
+            <app-room-type-table [items]="vm.roomTypes" />
+          } @else {
+            <app-empty-state
+              icon="meeting_room"
+              title="Sin tipos de habitación"
+              description="Comience creando el primero para poder cargar inventario."
+            />
+          }
+        </section>
+
+        <!-- Physical Rooms Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">door_sliding</span>
+            <div>
+              <h2>Habitaciones físicas</h2>
+              <p>{{ vm.totalHotelRooms }} registro(s) asociados.</p>
+            </div>
+          </div>
+          @if (vm.hotelRooms.length) {
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Etiqueta</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (room of vm.hotelRooms; track room.id) {
+                    <tr>
+                      <td><code>{{ room.id }}</code></td>
+                      <td>
+                        <span class="material-symbols-outlined table-icon">door_front</span>
+                        {{ room.roomLabel }}
+                      </td>
+                      <td>{{ room.roomTypeName }}</td>
+                      <td>
+                        <span class="status-badge" [class.active]="room.activeLabel === 'Sí'" [class.inactive]="room.activeLabel !== 'Sí'">
+                          <span class="material-symbols-outlined badge-icon">{{ room.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+                          {{ room.activeLabel === 'Sí' ? 'Activa' : 'Inactiva' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              icon="door_sliding"
+              title="Sin habitaciones físicas"
+              description="Todavía no hay registros en hotel_rooms para esta propiedad."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

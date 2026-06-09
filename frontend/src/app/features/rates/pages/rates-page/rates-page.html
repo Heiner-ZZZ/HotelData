@@ -1,0 +1,326 @@
+<div class="rates-page">
+  <app-page-header
+    eyebrow="Gestión comercial"
+    title="Tarifas"
+    description="Calendario operativo de tarifas por fecha para la propiedad seleccionada."
+  />
+
+  <section class="surface-card selector-panel">
+    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
+      <label class="field">
+        <span class="field-label">
+          <span class="material-symbols-outlined field-icon">business</span>
+          Propiedad
+        </span>
+        <select formControlName="propId">
+          <option [ngValue]="0">Seleccionar propiedad</option>
+          @for (option of propertyOptions(); track option.propId) {
+            <option [ngValue]="option.propId">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit" class="btn-primary">Cargar</button>
+    </form>
+  </section>
+
+  @if (message()) {
+    <section class="notification success">
+      <span class="material-symbols-outlined notif-icon">check_circle</span>
+      <span>{{ message() }}</span>
+    </section>
+  }
+  @if (errorMessage()) {
+    <section class="notification error">
+      <span class="material-symbols-outlined notif-icon">error</span>
+      <span>{{ errorMessage() }}</span>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando tarifas..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar tarifas"
+        description="Revisa la API o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        icon="search"
+        title="Selecciona una propiedad"
+        description="El módulo de tarifas necesita un hotel activo para cargar planes y calendario."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- KPI Grid -->
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
+              <span class="material-symbols-outlined kpi-icon">business</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Hotel</p>
+              <h3 class="kpi-value">{{ vm.hotelLabel }}</h3>
+              <p class="kpi-desc">Operación comercial de tarifas</p>
+              @if (vm.profileBadge) {
+                <p class="kpi-badge-text">{{ vm.profileBadge }}</p>
+              }
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--success)">
+              <span class="material-symbols-outlined kpi-icon">attach_money</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Planes Tarifarios</p>
+              <h3 class="kpi-value">{{ vm.ratePlans.length }}</h3>
+              <p class="kpi-desc">Planes configurados</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--warning)">
+              <span class="material-symbols-outlined kpi-icon">calendar_month</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Calendario</p>
+              <h3 class="kpi-value">{{ vm.calendar.length }}</h3>
+              <p class="kpi-desc">Filas recientes de tarifa por fecha</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
+              <span class="material-symbols-outlined kpi-icon">campaign</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Promociones y Cupones</p>
+              <h3 class="kpi-value">{{ vm.promotions.length + vm.coupons.length }}</h3>
+              <p class="kpi-desc">{{ vm.promotions.length }} campañas &middot; {{ vm.coupons.length }} cupones</p>
+            </div>
+          </article>
+        </section>
+
+        <!-- Forms -->
+        <section class="form-grid">
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon">add_card</span>
+              <div>
+                <h2>Nuevo plan tarifario</h2>
+                <p>Configura un plan tarifario base para la propiedad.</p>
+              </div>
+            </div>
+            <form [formGroup]="planForm" (ngSubmit)="createRatePlan()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">badge</span>
+                  Nombre
+                </span>
+                <input formControlName="name" placeholder="Ej: Tarifa estándar">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">description</span>
+                  Descripción
+                </span>
+                <input formControlName="description" placeholder="Opcional">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">payments</span>
+                  Tarifa base
+                </span>
+                <input type="number" min="0" step="0.01" formControlName="baseRate" placeholder="0.00">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">currency_exchange</span>
+                  Moneda
+                </span>
+                <input formControlName="currency" placeholder="USD">
+              </label>
+              <label class="field checkbox-field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">toggle_on</span>
+                  Activo
+                </span>
+                <input type="checkbox" formControlName="isActive">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined btn-icon">add</span>
+                  Crear plan
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon">edit_calendar</span>
+              <div>
+                <h2>Actualizar tarifa</h2>
+                <p>Upsert por plan y fecha.</p>
+              </div>
+            </div>
+            <form [formGroup]="calendarForm" (ngSubmit)="saveRate()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">table_rows</span>
+                  Plan tarifario
+                </span>
+                <select formControlName="ratePlanId">
+                  <option value="">Seleccione</option>
+                  @for (plan of ratePlanOptions(); track plan.id) {
+                    <option [value]="plan.id">{{ plan.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">calendar_today</span>
+                  Fecha
+                </span>
+                <input type="date" formControlName="date">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">payments</span>
+                  Tarifa
+                </span>
+                <input type="number" min="0" step="0.01" formControlName="rateAmount" placeholder="0.00">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">night_stay</span>
+                  Min stay nights
+                </span>
+                <input type="number" min="1" formControlName="minStayNights">
+              </label>
+              <label class="field checkbox-field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">lock</span>
+                  Cerrado
+                </span>
+                <input type="checkbox" formControlName="isClosed">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined btn-icon">save</span>
+                  Guardar tarifa
+                </button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <!-- Rate Plans Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">table</span>
+            <div>
+              <h2>Planes tarifarios</h2>
+              <p>{{ vm.ratePlans.length }} plan(es) configurado(s).</p>
+            </div>
+          </div>
+          @if (vm.ratePlans.length) {
+            <app-rate-plan-table [items]="vm.ratePlans" />
+          } @else {
+            <app-empty-state
+              icon="attach_money"
+              title="Sin planes todavía"
+              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+
+        <!-- Calendar Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">calendar_view_month</span>
+            <div>
+              <h2>Calendario reciente</h2>
+              <p>{{ vm.calendar.length }} fila(s) visibles.</p>
+            </div>
+          </div>
+          @if (vm.calendar.length) {
+            <app-rate-calendar-table [items]="vm.calendar" />
+          } @else {
+            <app-empty-state
+              icon="calendar_month"
+              title="Sin tarifas todavía"
+              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+
+        <!-- Promotions Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon">campaign</span>
+            <div>
+              <h2>Promociones y cupones</h2>
+              <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es) activos/demo.</p>
+            </div>
+          </div>
+          @if (vm.promotions.length || vm.coupons.length) {
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Nombre / código</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (promo of vm.promotions; track promo.name) {
+                    <tr>
+                      <td>
+                        <span class="material-symbols-outlined table-icon">campaign</span>
+                        Campaña
+                      </td>
+                      <td>{{ promo.name }}</td>
+                      <td>
+                        <span class="status-badge" [class.active]="promo.activeLabel === 'Sí'" [class.inactive]="promo.activeLabel !== 'Sí'">
+                          <span class="material-symbols-outlined badge-icon">{{ promo.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+                          {{ promo.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                  @for (coupon of vm.coupons; track coupon.code) {
+                    <tr>
+                      <td>
+                        <span class="material-symbols-outlined table-icon">confirmation_number</span>
+                        Cupón
+                      </td>
+                      <td><code>{{ coupon.code }}</code></td>
+                      <td>
+                        <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
+                          <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+                          {{ coupon.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              icon="campaign"
+              title="Sin promociones todavía"
+              description="No hay campañas ni cupones conectados para esta propiedad."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

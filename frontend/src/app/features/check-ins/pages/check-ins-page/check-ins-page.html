@@ -1,0 +1,207 @@
+<div class="check-page">
+  <app-page-header
+    eyebrow="Recepción"
+    title="Check-ins"
+    description="Gestiona las llegadas del día y registra entradas de huéspedes."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- ═══ Date navigator ═══ -->
+  <section class="nav-bar">
+    <button type="button" class="nav-arrow" (click)="navigateDate(-1)" aria-label="Día anterior">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+
+    <form [formGroup]="dateForm" (ngSubmit)="applyFilters()" class="date-field">
+      <span class="material-symbols-outlined date-icon">calendar_today</span>
+      <input type="date" formControlName="operationDate" (change)="applyFilters()" />
+    </form>
+
+    <button type="button" class="nav-arrow" (click)="navigateDate(1)" aria-label="Día siguiente">
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+
+    <div class="nav-quick">
+      <button type="button" class="quick-btn" (click)="goToday()">Hoy</button>
+      <button type="button" class="quick-btn" (click)="navigateDate(-7)">-7</button>
+      <button type="button" class="quick-btn" (click)="navigateDate(7)">+7</button>
+    </div>
+
+    <!-- Property filter -->
+    <div class="prop-filter">
+      @if (selectedPropId()) {
+        <div class="prop-chip-sm">
+          <span class="material-symbols-outlined prop-chip-icon">business</span>
+          <span class="prop-chip-label">{{ selectedPropName() }}</span>
+          <button type="button" class="prop-chip-close" (click)="clearProperty()" aria-label="Todas las propiedades">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      } @else {
+        <div class="prop-autocomplete">
+          <div class="prop-autocomplete-input-wrap">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              type="text"
+              placeholder="Filtrar propiedad..."
+              [value]="filter()"
+              (input)="filter.set($any($event).target.value); dropdownOpen.set(true)"
+              (focus)="dropdownOpen.set(true)"
+              (blur)="closeDropdown()"
+            />
+          </div>
+          @if (dropdownOpen()) {
+            <ul class="prop-autocomplete-dropdown">
+              <li class="prop-autocomplete-option" (mousedown)="selectProperty(0, '')">
+                <span class="material-symbols-outlined">all_inclusive</span>
+                <span>Todas las propiedades</span>
+              </li>
+              @for (opt of filteredOptions(); track opt.propId) {
+                <li class="prop-autocomplete-option" (mousedown)="selectProperty(opt.propId, opt.label)">
+                  <span class="material-symbols-outlined">hotel</span>
+                  <span>{{ opt.label }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando check-ins..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar"
+        description="No se pudieron obtener las llegadas. Verifica la conexión."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin llegadas"
+        description="No hay reservas con check-in para esta fecha o propiedad."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- ═══ Summary bar ═══ -->
+        <div class="summary-bar">
+          <div class="summary-item">
+            <span class="material-symbols-outlined summary-icon">login</span>
+            <div>
+              <span class="summary-value">{{ vm.arrivalsToday }}</span>
+              <span class="summary-label">Llegadas</span>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-item">
+            <span class="material-symbols-outlined summary-icon" style="color: var(--warning)">hourglass_empty</span>
+            <div>
+              <span class="summary-value">{{ vm.pendingCount }}</span>
+              <span class="summary-label">Pendientes</span>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-item">
+            <span class="material-symbols-outlined summary-icon" style="color: var(--success)">check_circle</span>
+            <div>
+              <span class="summary-value">{{ vm.completedCount }}</span>
+              <span class="summary-label">Completados</span>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-item">
+            <span class="material-symbols-outlined summary-icon" style="color: var(--muted-text)">cancel</span>
+            <div>
+              <span class="summary-value">{{ vm.cancelledOrNoShowCount }}</span>
+              <span class="summary-label">Cancelados</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Table ═══ -->
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">meeting_room</span>
+              <div>
+                <h2>Llegadas del día</h2>
+                <p>{{ vm.items.length }} registro(s)</p>
+              </div>
+            </div>
+          </div>
+          @if (vm.items.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Huésped</th>
+                    <th>Reserva</th>
+                    <th>Habitación</th>
+                    <th>Estado</th>
+                    <th>Hora</th>
+                    <th>Notas</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.items; track item.bookingId) {
+                    <tr [class.row-success]="item.canComplete === false && item.stayStatusLabel === 'checked_in'">
+                      <td class="cell-guest">
+                        <strong>{{ item.guestName }}</strong>
+                        <span class="cell-muted">{{ item.guestEmail }}</span>
+                      </td>
+                      <td>
+                        <span class="cell-code">{{ item.bookingId }}</span>
+                        <span class="cell-muted">{{ item.hotelLabel }}</span>
+                      </td>
+                      <td>{{ item.roomsLabel }}</td>
+                      <td>
+                        @if (item.stayStatusLabel === 'checked_in') {
+                          <span class="badge badge-success">Completado</span>
+                        } @else if (item.stayStatusLabel === 'cancelled' || item.stayStatusLabel === 'no_show') {
+                          <span class="badge badge-muted">{{ item.stayStatusLabel }}</span>
+                        } @else {
+                          <span class="badge badge-warning">{{ item.reservationStatusLabel }}</span>
+                        }
+                      </td>
+                      <td class="cell-time">{{ item.estimatedTime || '--' }}</td>
+                      <td class="cell-notes">{{ item.notes || '--' }}</td>
+                      <td class="cell-action">
+                        @if (item.canComplete) {
+                          <button type="button" class="btn-icon-only" (click)="completeCheckIn(item.bookingId)" aria-label="Completar check-in">
+                            <span class="material-symbols-outlined">login</span>
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin llegadas"
+              description="No hay check-ins pendientes para esta fecha y propiedad."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

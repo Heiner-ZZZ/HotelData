@@ -1,0 +1,39 @@
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th>Tarifa base</th>
+        <th>Moneda</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.id) {
+        <tr>
+          <td><code>{{ item.id }}</code></td>
+          <td>
+            <span class="material-symbols-outlined table-icon">attach_money</span>
+            {{ item.name }}
+          </td>
+          <td class="desc-cell">{{ item.description }}</td>
+          <td><strong>${{ item.baseRateLabel }}</strong></td>
+          <td>
+            <span class="currency-pill">
+              <span class="material-symbols-outlined curr-icon">currency_exchange</span>
+              {{ item.currency }}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge" [class.active]="item.activeLabel === 'Sí'" [class.inactive]="item.activeLabel !== 'Sí'">
+              <span class="material-symbols-outlined badge-icon">{{ item.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+              {{ item.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

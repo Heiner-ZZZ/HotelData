@@ -1,0 +1,260 @@
+<div class="props-dashboard">
+  <app-page-header
+    eyebrow="Panel del Partner"
+    title="Panel de Propiedades"
+    description="Visi&oacute;n ejecutiva del rendimiento operativo y financiero de tu hotel."
+  />
+
+  @if (viewState() === 'loading') {
+    <app-loading-state label="Cargando dashboard..." />
+  } @else if (viewState() === 'error') {
+    <app-error-state title="No se pudo cargar el panel de propiedades" />
+  } @else if (vm(); as d) {
+    <!-- Quick Stats -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="material-symbols-outlined kpi-icon">bed</span>
+          @if (d.quickStats.occupancyTrend != null) {
+            <span class="kpi-trend up">
+              <span class="material-symbols-outlined">trending_up</span>
+              {{ d.quickStats.occupancyTrend }}%
+            </span>
+          } @else {
+            <span class="kpi-trend na">—</span>
+          }
+        </div>
+        <p class="kpi-label">Tasa de Ocupaci&oacute;n</p>
+        <h3 class="kpi-value">{{ d.quickStats.occupancyRate }}%</h3>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 100 40">
+            <path d="M0,35 Q20,30 40,25 T80,10 T100,5" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="material-symbols-outlined kpi-icon">payments</span>
+          <span class="kpi-trend up">
+            <span class="material-symbols-outlined">trending_up</span>
+            {{ d.quickStats.revenueTrend }}%
+          </span>
+        </div>
+        <p class="kpi-label">Ingresos Totales (MTD)</p>
+        <h3 class="kpi-value">${{ d.quickStats.totalRevenueMtd | number:'1.0-0' }}</h3>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 100 40">
+            <path d="M0,38 Q25,35 50,20 T100,2" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="material-symbols-outlined kpi-icon">person_check</span>
+          <span class="kpi-badge priority">Prioridad</span>
+        </div>
+        <p class="kpi-label">Check-ins Pendientes</p>
+        <h3 class="kpi-value">{{ d.quickStats.pendingCheckins }} <small>hu&eacute;spedes</small></h3>
+        <p class="kpi-footnote">Pr&oacute;ximo check-in: 14:00</p>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="material-symbols-outlined kpi-icon">monitoring</span>
+          <span class="kpi-trend stable">Estable</span>
+        </div>
+        <p class="kpi-label">Puntuaci&oacute;n de Salud de Datos</p>
+        <h3 class="kpi-value">{{ d.quickStats.dataHealthScore != null ? d.quickStats.dataHealthScore : 'N/D' }}@if (d.quickStats.dataHealthScore != null) {<small>/100</small>}</h3>
+        <div class="health-bar">
+          <div class="health-fill" [style.width.%]="d.quickStats.dataHealthScore ?? 0"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento Grid: Chart + Arrivals -->
+    <section class="bento-grid">
+      <div class="bento-card chart-card">
+        <div class="bento-header">
+          <div>
+            <h4>Rendimiento de Ingresos</h4>
+            <p>An&aacute;lisis comparativo vs Mes Anterior</p>
+          </div>
+          <div class="chart-toggles">
+            <button class="toggle-btn" [class.active]="chartView() === 'daily'" (click)="chartView.set('daily')">Diario</button>
+            <button class="toggle-btn active" [class.active]="chartView() === 'weekly'" (click)="chartView.set('weekly')">Semanal</button>
+          </div>
+        </div>
+        <div class="chart-area">
+          <div class="chart-grid">
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+          </div>
+          @if (d.revenueChart.length > 0) {
+            <svg class="chart-svg" viewBox="0 0 800 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3" />
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path [attr.d]="chartAreaPath()" fill="url(#chartFill)" />
+              <path [attr.d]="chartPath()" fill="none" stroke="var(--accent)" stroke-width="3" />
+            </svg>
+          } @else {
+            <p class="chart-empty">Sin datos de ingresos</p>
+          }
+          <div class="chart-labels">
+            <span>Lun</span><span>Mar</span><span>Mi&eacute;</span><span>Jue</span><span>Vie</span><span>S&aacute;b</span><span>Dom</span>
+          </div>
+        </div>
+        <div class="chart-footer">
+          <div class="metric-sm">
+            <p>RevPAR</p>
+            <strong>${{ d.quickStats.occupancyRate > 0 ? ((d.quickStats.totalRevenueMtd / (d.properties.total || 1)) / 30 | number:'1.2-2') : '0.00' }}</strong>
+          </div>
+          <div class="metric-sm">
+            <p>ADR</p>
+            <strong>$212.50</strong>
+          </div>
+          <div class="metric-sm">
+            <p>Market Rank</p>
+            <strong>#4 / 152</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card arrivals-card">
+        <div class="bento-header">
+          <h4>Llegadas de Hoy</h4>
+          <p>Programadas para {{ todayStr }}</p>
+        </div>
+        <div class="arrivals-list">
+          @for (arrival of d.arrivalsToday; track arrival.guestName) {
+            <div class="arrival-row">
+              <div class="arrival-avatar">{{ arrival.initials }}</div>
+              <div class="arrival-info">
+                <p class="arrival-name">{{ arrival.guestName }}</p>
+                <p class="arrival-detail">{{ arrival.roomType }} &middot; {{ arrival.nights }} Noches</p>
+              </div>
+              <div class="arrival-meta">
+                <p class="arrival-time">{{ arrival.arrivalTime }}</p>
+                <span class="status-tag" [class]="statusBadgeClass(arrival.statusTag)">{{ arrival.statusTag }}</span>
+              </div>
+            </div>
+          } @empty {
+            <p class="arrivals-empty">No hay llegadas programadas para hoy</p>
+          }
+        </div>
+        @if (d.quickStats.pendingCheckins > 0) {
+          <div class="arrivals-footer">
+            <a [routerLink]="['/management/check-ins']" class="view-all">Ver Todos los {{ d.quickStats.pendingCheckins }} Check-ins</a>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Properties Table -->
+    <section class="bento-card table-card">
+      <div class="bento-header">
+        <h4>Propiedades Gestionadas</h4>
+        <div class="table-actions">
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <div class="search-field">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" formControlName="q" placeholder="Buscar propiedades..." />
+            </div>
+          </form>
+          <button class="filter-btn">
+            <span class="material-symbols-outlined">filter_list</span>
+            Filtros
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Propiedad</th>
+              <th class="col-center">Estado</th>
+              <th>Pipeline</th>
+              <th class="col-right">Yield Score</th>
+              <th class="col-right"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of d.properties.items; track item.propId) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/management/properties', item.propId]" class="prop-link">
+                    <div class="prop-thumb">
+                      <span class="material-symbols-outlined">hotel</span>
+                    </div>
+                    <div class="prop-info">
+                      <strong>{{ item.displayName }}</strong>
+                      <div class="prop-badges">
+                        <span class="status-badge-pill" [class.success]="item.manualOverride" [class.info]="!item.manualOverride">
+                          {{ item.profileBadge }}
+                        </span>
+                        <span class="status-badge-pill" [class.success]="item.operationalScore >= 80" [class.warning]="item.operationalScore >= 40 && item.operationalScore < 80" [class.danger]="item.operationalScore < 40">
+                          Score operativo {{ item.operationalScore }}
+                        </span>
+                      </div>
+                      <span class="prop-sub">{{ item.unitCount ? item.unitCount + ' Unidades' : '' }}{{ item.location ? ' &middot; ' + item.location : '' }}</span>
+                      <span class="prop-sub">Políticas {{ item.operationalChecks[0].ready ? 'Sí' : 'No' }} · Habitaciones {{ item.operationalChecks[1].ready ? 'Sí' : 'No' }} · Tarifas {{ item.operationalChecks[2].ready ? 'Sí' : 'No' }} · Imágenes {{ item.operationalChecks[4].ready ? 'Sí' : 'No' }} · Promociones {{ item.operationalChecks[5].ready ? 'Sí' : 'No' }}</span>
+                    </div>
+                  </a>
+                </td>
+                <td class="col-center">
+                  <span class="status-badge-pill" [class]="statusBadgeClass(item.status)">{{ item.status }}</span>
+                </td>
+                <td>
+                  <div class="pipeline-cell">
+                    <span class="pulse-dot" [class]="item.syncStatus === 'SYNC_ACTIVE' ? 'green' : 'yellow'"></span>
+                    <span class="pipeline-text">{{ item.syncStatus }}: {{ item.syncLatencyMs }}ms</span>
+                  </div>
+                </td>
+                <td class="col-right">
+                  <span class="yield-score" [class.high]="item.yieldScore >= 80" [class.med]="item.yieldScore >= 50 && item.yieldScore < 80">{{ item.yieldScore }}%</span>
+                </td>
+                <td class="col-right">
+                  <div class="row-actions">
+                    <a [routerLink]="['/management/properties', item.propId, 'edit']" class="btn-icon-only" aria-label="Editar contenido">
+                      <span class="material-symbols-outlined">edit</span>
+                    </a>
+                    <a [routerLink]="['/management/properties', item.propId]" class="btn-icon-only" aria-label="Ver propiedad">
+                      <span class="material-symbols-outlined">open_in_new</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="empty-row">No se encontraron propiedades</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (d.properties.totalPages > 1) {
+        <div class="pagination">
+          <button type="button" [disabled]="!d.properties.hasPrev" (click)="goToPage(d.properties.page - 1)">
+            <span class="material-symbols-outlined">chevron_left</span>
+            Anterior
+          </button>
+          <span class="page-info">{{ d.properties.startIndex }}-{{ d.properties.endIndex }} de {{ d.properties.total }}</span>
+          <button type="button" [disabled]="!d.properties.hasNext" (click)="goToPage(d.properties.page + 1)">
+            Siguiente
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      }
+    </section>
+  }
+</div>

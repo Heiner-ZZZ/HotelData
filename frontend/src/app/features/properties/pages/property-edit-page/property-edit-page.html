@@ -1,0 +1,295 @@
+<div class="edit-page">
+  <app-page-header
+    eyebrow="Propiedades"
+    title="Editar propiedad"
+    description="Actualiza el perfil, políticas, amenidades e imágenes del hotel."
+  />
+
+  @if (saveError()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      {{ saveError() }}
+    </div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando perfil..." />
+    }
+    @case ('error') {
+      <app-error-state title="No se pudo cargar la propiedad" description="Verifica que el ID sea correcto o intenta de nuevo." />
+    }
+    @default {
+      @if (vm(); as vm) {
+        <!-- ═══ Info bar ═══ -->
+        <div class="info-bar">
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">business</span>
+            <div>
+              <span class="info-value">{{ vm.displayName }}</span>
+              <span class="info-label">{{ vm.countryDisplayName }}</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">tag</span>
+            <div>
+              <span class="info-value">ID {{ vm.propId }}</span>
+              <span class="info-label">Propiedad</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">badge</span>
+            <div>
+              <span class="info-value">{{ vm.nameSource }}</span>
+              <span class="info-label">Fuente del nombre</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon" [style.color]="vm.manualOverride ? 'var(--success)' : 'var(--muted-text)'">fact_check</span>
+            <div>
+              <span class="info-value">{{ vm.profileBadge }}</span>
+              <span class="info-label">Estado del perfil</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Profile section ═══ -->
+        <section class="surface-card edit-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">info</span>
+            <div>
+              <h2>Perfil de propiedad</h2>
+              <p>Información básica y nombre comercial del hotel</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label for="hotelName">Nombre oficial</label>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-icon">badge</span>
+                <input id="hotelName" type="text" formControlName="hotelName" placeholder="Nombre registrado" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="displayName">Nombre comercial</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">store</span>
+                  <input id="displayName" type="text" formControlName="displayName" placeholder="Nombre visible" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="displayCountryLabel">País / mercado</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">public</span>
+                  <input id="displayCountryLabel" type="text" formControlName="displayCountryLabel" placeholder="Ej: España" />
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="description">Descripción de marketing</label>
+              <div class="input-wrap input-wrap--area">
+                <span class="material-symbols-outlined input-icon">description</span>
+                <textarea id="description" formControlName="description" rows="4" placeholder="Describe la propiedad..."></textarea>
+              </div>
+            </div>
+            @if (vm.originalGeneratedName && vm.originalGeneratedName !== vm.displayName) {
+              <div class="field-hint">
+                <span class="material-symbols-outlined">info</span>
+                <span>Nombre base generado: {{ vm.originalGeneratedName }}</span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- ═══ Policies section ═══ -->
+        <section class="surface-card edit-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">policy</span>
+            <div>
+              <h2>Políticas</h2>
+              <p>Horarios de recepción y reglas de la propiedad</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="field-row">
+              <div class="field">
+                <label for="checkInTime">Hora de check-in</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">login</span>
+                  <select id="checkInTime" formControlName="checkInTime">
+                    <option value="">Seleccionar</option>
+                    <option value="12:00">12:00</option>
+                    <option value="13:00">13:00</option>
+                    <option value="14:00">14:00</option>
+                    <option value="15:00">15:00</option>
+                    <option value="16:00">16:00</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="checkOutTime">Hora de check-out</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">logout</span>
+                  <select id="checkOutTime" formControlName="checkOutTime">
+                    <option value="">Seleccionar</option>
+                    <option value="10:00">10:00</option>
+                    <option value="11:00">11:00</option>
+                    <option value="12:00">12:00</option>
+                    <option value="13:00">13:00</option>
+                    <option value="14:00">14:00</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="cancellationPolicy">Política de cancelación</label>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-icon">cancel</span>
+                <select id="cancellationPolicy" formControlName="cancellationPolicy">
+                  <option value="">Seleccionar</option>
+                  <option value="Flexible - 24h">Flexible - 24h</option>
+                  <option value="Moderate - 5 days">Moderada - 5 días</option>
+                  <option value="Strict - Non-refundable">Estricta - No reembolsable</option>
+                </select>
+              </div>
+            </div>
+            <div class="toggle-field">
+              <div class="toggle-field-left">
+                <span class="material-symbols-outlined toggle-icon">pets</span>
+                <span>Permitir mascotas</span>
+              </div>
+              <button
+                type="button"
+                class="toggle-switch"
+                [class.is-active]="form.controls.petPolicy.value"
+                (click)="form.controls.petPolicy.setValue(!form.controls.petPolicy.value)"
+                role="switch"
+                [attr.aria-checked]="form.controls.petPolicy.value"
+              >
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Amenities section ═══ -->
+        <section class="surface-card edit-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">star</span>
+            <div>
+              <h2>Amenidades</h2>
+              <p>Servicios destacados de la propiedad</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (vm.amenities.length) {
+              <div class="amenities-wrap">
+                @for (amenity of vm.amenities; track amenity) {
+                  <span class="amenity-chip">
+                    <span class="material-symbols-outlined">check</span>
+                    {{ amenity }}
+                    <button type="button" class="chip-remove" (click)="removeAmenity(amenity)" aria-label="Eliminar {{ amenity }}">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </span>
+                }
+              </div>
+            } @else {
+              <p class="empty-hint">No hay amenidades configuradas para esta propiedad.</p>
+            }
+          </div>
+        </section>
+
+        <!-- ═══ Images section ═══ -->
+        <section class="surface-card edit-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">photo_library</span>
+            <div>
+              <h2>Galería de imágenes</h2>
+              <p>{{ vm.images.length }} imagen(es) registrada(s)</p>
+            </div>
+          </div>
+          <div class="card-body">
+            @if (vm.images.length) {
+              <div class="gallery-grid">
+                @for (img of vm.images; track img.imageUrl) {
+                  <div class="gallery-item" [class.gallery-item--hero]="$index === 0">
+                    <img [src]="img.imageUrl" [alt]="img.title || 'Imagen de propiedad'" class="gallery-img" loading="lazy" />
+                    @if ($index === 0) {
+                      <span class="gallery-hero-badge">Principal</span>
+                    }
+                    <div class="gallery-overlay">
+                      <button type="button" class="gallery-del-btn" (click)="removeImage(img.imageUrl)" aria-label="Eliminar imagen">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-gallery">
+                <span class="material-symbols-outlined">add_photo_alternate</span>
+                <p>Sin imágenes aún</p>
+              </div>
+            }
+            <div class="gallery-add-form">
+              <div class="field-row">
+                <div class="field">
+                  <label for="imageUrlInput">URL de imagen</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">link</span>
+                    <input id="imageUrlInput" type="text" placeholder="https://..." [value]="newImageUrl()" (input)="onImageUrlInput($event)" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="imageTitleInput">Título</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">label</span>
+                    <input id="imageTitleInput" type="text" placeholder="Ej: Fachada" [value]="newImageTitle()" (input)="onImageTitleInput($event)" />
+                  </div>
+                </div>
+              </div>
+              <div class="add-img-actions">
+                <button type="button" class="btn-primary" (click)="addImage()">
+                  <span class="material-symbols-outlined">add_photo_alternate</span>
+                  Agregar imagen
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+    }
+  }
+
+  <!-- ═══ Floating save bar ═══ -->
+  @if (vm() && unsavedCount() > 0) {
+    <div class="save-bar">
+      <div class="save-bar-inner">
+        <div class="save-info">
+          <span class="material-symbols-outlined" style="color: var(--warning)">sync</span>
+          <span>{{ unsavedCount() }} cambio{{ unsavedCount() !== 1 ? 's' : '' }} sin guardar</span>
+        </div>
+        <div class="save-actions">
+          <button type="button" class="btn-outline" (click)="discard()">Descartar</button>
+          <button type="button" class="btn-primary" [disabled]="saving() === 'saving'" (click)="saveAll()">
+            @if (saving() === 'saving') {
+              <span class="material-symbols-outlined spin">sync</span>
+              Guardando...
+            } @else if (saving() === 'done') {
+              <span class="material-symbols-outlined">check</span>
+              Guardado
+            } @else {
+              <span class="material-symbols-outlined">save</span>
+              Guardar cambios
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

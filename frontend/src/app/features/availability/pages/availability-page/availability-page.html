@@ -1,0 +1,411 @@
+<div class="availability-page">
+  <app-page-header
+    eyebrow="Disponibilidad"
+    title="Control de inventario"
+    description="Administra la disponibilidad de habitaciones, actualiza inventario y gestiona bloqueos operativos."
+  />
+
+  @if (submitMessage()) {
+    <div class="toast toast-success">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ submitMessage() }}
+    </div>
+  }
+  @if (errorMessage() && !submitMessage()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- ═══ Property selector ═══ -->
+  <div class="prop-selector">
+    @if (selectedPropId()) {
+      <div class="prop-chip">
+        <span class="material-symbols-outlined prop-chip-icon">business</span>
+        <span class="prop-chip-label">{{ selectedPropName() }}</span>
+        <button type="button" class="prop-chip-close" (click)="clearProperty()" aria-label="Cambiar propiedad">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    } @else {
+      <div class="autocomplete" (keydown)="closeDropdown()">
+        <div class="autocomplete-input-wrap">
+          <span class="material-symbols-outlined autocomplete-icon">search</span>
+          <input
+            type="text"
+            class="autocomplete-input"
+            placeholder="Buscar propiedad..."
+            [value]="filter()"
+            (input)="onFilterChange($any($event.target).value); dropdownOpen.set(true)"
+            (focus)="dropdownOpen.set(true)"
+            (blur)="closeDropdown()"
+          />
+          <span class="material-symbols-outlined autocomplete-caret">unfold_more</span>
+        </div>
+        @if (dropdownOpen() && filteredOptions().length) {
+          <ul class="autocomplete-dropdown" (scroll)="onScroll()" #dropdownList>
+            @for (opt of filteredOptions(); track opt.propId) {
+              <li
+                class="autocomplete-option"
+                [class.is-highlighted]="opt.propId === selectedPropId()"
+                (mousedown)="selectProperty(opt.propId)"
+              >
+                <span class="material-symbols-outlined option-icon">hotel</span>
+                <span>{{ opt.label }}</span>
+              </li>
+            }
+            @if (loadingOptions()) {
+              <li class="autocomplete-loader">
+                <span class="material-symbols-outlined spin">sync</span>
+                Cargando...
+              </li>
+            }
+            @if (!hasMore() && propertyOptions().length > 0) {
+              <li class="autocomplete-end">Mostrando {{ propertyOptions().length }} de {{ filteredOptions().length > propertyOptions().length ? 'muchos' : 'disponibles' }}</li>
+            }
+          </ul>
+        }
+        @if (dropdownOpen() && !filteredOptions().length && !loadingOptions()) {
+          <div class="autocomplete-empty">Sin resultados</div>
+        }
+        @if (loadingOptions() && !filteredOptions().length) {
+          <div class="autocomplete-empty">
+            <span class="material-symbols-outlined spin autocomplete-loader-icon">sync</span>
+            Buscando...
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando inventario..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar"
+        description="No se pudo obtener la información de disponibilidad. Verifica la conexión o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="Escribe el nombre del hotel en el buscador para ver su inventario y disponibilidad."
+      />
+    }
+    @default {
+      @if (pageData(); as vm) {
+        <!-- ═══ Info bar ═══ -->
+        <div class="info-bar">
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">hotel</span>
+            <div>
+              <span class="info-value">{{ vm.hotelName }}</span>
+              <span class="info-label">{{ vm.countryLabel }}</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">meeting_room</span>
+            <div>
+              <span class="info-value">{{ vm.roomTypes.length }}</span>
+              <span class="info-label">Tipos de habitación</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">sell</span>
+            <div>
+              <span class="info-value">${{ vm.avgPriceLabel }}</span>
+              <span class="info-label">Precio promedio</span>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-item">
+            <span class="material-symbols-outlined info-icon">block</span>
+            <div>
+              <span class="info-value">{{ vm.availabilityBlocks.length + vm.blackoutItems.length }}</span>
+              <span class="info-label">Bloqueos activos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Forms grid ═══ -->
+        <div class="forms-grid">
+          <!-- Inventory form -->
+          <section class="surface-card form-card">
+            <div class="form-card-head">
+              <span class="material-symbols-outlined form-card-icon">edit_note</span>
+              <div>
+                <h2>Actualizar inventario</h2>
+                <p>Registra la disponibilidad por tipo de habitación y fecha</p>
+              </div>
+            </div>
+            <form [formGroup]="inventoryForm" (ngSubmit)="saveInventory()" class="form-body">
+              <div class="field">
+                <label for="inv-roomType">Tipo de habitación</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">bed</span>
+                  <select id="inv-roomType" formControlName="roomTypeId">
+                    <option value="">Seleccionar</option>
+                    @for (room of vm.roomTypes; track room.id) {
+                      <option [value]="room.id">{{ room.name }}</option>
+                    }
+                  </select>
+                </div>
+                @if (inventoryForm.controls.roomTypeId.invalid && inventoryForm.controls.roomTypeId.touched) {
+                  <span class="field-error">Campo obligatorio</span>
+                }
+              </div>
+              <div class="field">
+                <label for="inv-date">Fecha</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">calendar_today</span>
+                  <input id="inv-date" type="date" formControlName="date" />
+                </div>
+                @if (inventoryForm.controls.date.invalid && inventoryForm.controls.date.touched) {
+                  <span class="field-error">Campo obligatorio</span>
+                }
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="inv-total">Total habitaciones</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">door_front</span>
+                    <input id="inv-total" type="number" min="0" formControlName="totalRooms" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="inv-available">Disponibles</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">check_circle</span>
+                    <input id="inv-available" type="number" min="0" formControlName="availableRooms" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="inv-blocked">Bloqueadas</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">block</span>
+                    <input id="inv-blocked" type="number" min="0" formControlName="blockedRooms" />
+                  </div>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined">save</span>
+                  Guardar inventario
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Blackout form -->
+          <section class="surface-card form-card">
+            <div class="form-card-head">
+              <span class="material-symbols-outlined form-card-icon">event_busy</span>
+              <div>
+                <h2>Bloquear fechas</h2>
+                <p>Registra bloqueos operativos por mantenimiento o eventos</p>
+              </div>
+            </div>
+            <form [formGroup]="blackoutForm" (ngSubmit)="saveBlackout()" class="form-body">
+              <div class="field">
+                <label for="blk-roomType">Tipo de habitación</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">bed</span>
+                  <select id="blk-roomType" formControlName="roomTypeId">
+                    <option value="">Seleccionar</option>
+                    @for (room of vm.roomTypes; track room.id) {
+                      <option [value]="room.id">{{ room.name }}</option>
+                    }
+                  </select>
+                </div>
+                @if (blackoutForm.controls.roomTypeId.invalid && blackoutForm.controls.roomTypeId.touched) {
+                  <span class="field-error">Campo obligatorio</span>
+                }
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="blk-start">Fecha inicio</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">calendar_today</span>
+                    <input id="blk-start" type="date" formControlName="startDate" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="blk-end">Fecha fin</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">calendar_today</span>
+                    <input id="blk-end" type="date" formControlName="endDate" />
+                  </div>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="blk-blocked">Habitaciones a bloquear</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">block</span>
+                    <input id="blk-blocked" type="number" min="0" formControlName="blockedRooms" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="blk-reason">Motivo</label>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-icon">description</span>
+                    <input id="blk-reason" type="text" formControlName="reason" placeholder="Ej: Mantenimiento" />
+                  </div>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined">event_busy</span>
+                  Registrar bloqueo
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <!-- ═══ Inventory table ═══ -->
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">inventory_2</span>
+              <div>
+                <h2>Inventario registrado</h2>
+                <p>{{ vm.inventoryItems.length }} registro(s)</p>
+              </div>
+            </div>
+          </div>
+          @if (vm.inventoryItems.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Total</th>
+                    <th>Disponibles</th>
+                    <th>Bloqueadas</th>
+                    <th>Ocupación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.inventoryItems; track item.date + item.roomTypeName) {
+                    <tr>
+                      <td>{{ item.date }}</td>
+                      <td>{{ item.roomTypeName }}</td>
+                      <td>{{ item.totalRooms }}</td>
+                      <td>{{ item.availableRooms }}</td>
+                      <td>{{ item.blockedRooms }}</td>
+                      <td>
+                        @if (item.occupancyLabel) {
+                          <span class="badge" [class.badge-success]="+item.occupancyLabel.replace('%','') < 80" [class.badge-warning]="+item.occupancyLabel.replace('%','') >= 80 && +item.occupancyLabel.replace('%','') < 95" [class.badge-danger]="+item.occupancyLabel.replace('%','') >= 95">
+                            {{ item.occupancyLabel }}
+                          </span>
+                        } @else {
+                          <span class="badge">--</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin inventario"
+              description="Aún no hay registros de inventario para esta propiedad."
+            />
+          }
+        </section>
+
+        <!-- ═══ Operational blocks table ═══ -->
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">block</span>
+              <div>
+                <h2>Bloqueos operativos</h2>
+                <p>{{ vm.availabilityBlocks.length }} bloqueo(s)</p>
+              </div>
+            </div>
+          </div>
+          @if (vm.availabilityBlocks.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Rango</th>
+                    <th>Bloqueadas</th>
+                    <th>Razón</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.availabilityBlocks; track item.roomTypeId + item.rangeLabel) {
+                    <tr>
+                      <td>{{ item.roomTypeId }}</td>
+                      <td>{{ item.rangeLabel }}</td>
+                      <td>{{ item.blockedRooms }}</td>
+                      <td>{{ item.reason }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin bloqueos"
+              description="No hay bloqueos operativos activos para esta propiedad."
+            />
+          }
+        </section>
+
+        <!-- ═══ Blackout items table ═══ -->
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">event_busy</span>
+              <div>
+                <h2>Bloqueos recientes</h2>
+                <p>{{ vm.blackoutItems.length }} bloqueo(s)</p>
+              </div>
+            </div>
+          </div>
+          @if (vm.blackoutItems.length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Rango</th>
+                    <th>Bloqueadas</th>
+                    <th>Razón</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.blackoutItems; track item.roomTypeId + item.rangeLabel) {
+                    <tr>
+                      <td>{{ item.roomTypeId }}</td>
+                      <td>{{ item.rangeLabel }}</td>
+                      <td>{{ item.blockedRooms }}</td>
+                      <td>{{ item.reason }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              title="Sin bloqueos recientes"
+              description="Los bloqueos registrados aparecerán aquí."
+            />
+          }
+        </section>
+      }
+    }
+  }
+</div>

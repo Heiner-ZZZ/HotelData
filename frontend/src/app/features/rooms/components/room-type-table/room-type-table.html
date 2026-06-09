@@ -1,0 +1,37 @@
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th>Capacidad</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (room of items(); track room.id) {
+        <tr>
+          <td><code>{{ room.id }}</code></td>
+          <td>
+            <span class="material-symbols-outlined table-icon">meeting_room</span>
+            {{ room.name }}
+          </td>
+          <td class="desc-cell">{{ room.description }}</td>
+          <td>
+            <span class="capacity-pill">
+              <span class="material-symbols-outlined cap-icon">group</span>
+              {{ room.capacityLabel }}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge" [class.active]="room.activeLabel === 'Sí'" [class.inactive]="room.activeLabel !== 'Sí'">
+              <span class="material-symbols-outlined badge-icon">{{ room.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+              {{ room.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

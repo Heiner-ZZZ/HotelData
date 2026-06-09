@@ -1,0 +1,37 @@
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Plan</th>
+        <th>Tarifa</th>
+        <th>Min stay</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.date + item.planName) {
+        <tr>
+          <td>
+            <span class="material-symbols-outlined table-icon">calendar_today</span>
+            {{ item.date }}
+          </td>
+          <td>{{ item.planName }}</td>
+          <td><strong>${{ item.rateAmountLabel }}</strong></td>
+          <td>
+            <span class="stay-pill">
+              <span class="material-symbols-outlined stay-icon">night_stay</span>
+              {{ item.minStayNights }}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge" [class.active]="item.closedLabel !== 'Sí'" [class.inactive]="item.closedLabel === 'Sí'">
+              <span class="material-symbols-outlined badge-icon">{{ item.closedLabel === 'Sí' ? 'lock' : 'lock_open' }}</span>
+              {{ item.closedLabel === 'Sí' ? 'Cerrado' : 'Abierto' }}
+            </span>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
