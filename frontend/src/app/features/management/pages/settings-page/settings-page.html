@@ -1,0 +1,211 @@
+<div class="settings-page">
+  <app-page-header
+    eyebrow="Configuración"
+    title="Preferencias de cuenta"
+    description="Ajusta tu contraseña, tiempo de sesión, dashboard por defecto y tema visual."
+  />
+
+  <nav class="tab-bar">
+    @for (tab of tabs; track tab.key) {
+      <button
+        type="button"
+        class="tab-btn"
+        [class.is-active]="activeTab() === tab.key"
+        (click)="setTab(tab.key)"
+      >
+        <span class="material-symbols-outlined tab-icon">{{ tab.icon }}</span>
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  @if (successMessage()) {
+    <div class="toast toast-success">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ successMessage() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <span class="material-symbols-outlined spin">sync</span>
+      <p>Cargando configuración...</p>
+    </div>
+  } @else {
+    <!-- ════════════════ SEGURIDAD ════════════════ -->
+    @if (activeTab() === 'security') {
+      <section class="surface-card settings-card">
+        <div class="card-head">
+          <span class="material-symbols-outlined card-icon">password</span>
+          <div>
+            <h2>Cambiar contraseña</h2>
+            <p>Actualiza tu contraseña de acceso al sistema</p>
+          </div>
+        </div>
+
+        <form [formGroup]="passwordForm">
+          <div class="field">
+            <label for="currentPassword">Contraseña actual</label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-icon">lock</span>
+              <input id="currentPassword" type="password" formControlName="currentPassword" placeholder="••••••••" />
+            </div>
+            @if (passwordForm.controls.currentPassword.invalid && passwordForm.controls.currentPassword.touched) {
+              <span class="field-error">La contraseña actual es obligatoria</span>
+            }
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="newPassword">Nueva contraseña</label>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-icon">enhanced_encryption</span>
+                <input id="newPassword" type="password" formControlName="newPassword" placeholder="Mínimo 8 caracteres" />
+              </div>
+              @if (passwordForm.controls.newPassword.invalid && passwordForm.controls.newPassword.touched) {
+                <span class="field-error">Debe tener al menos 8 caracteres</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="confirmPassword">Confirmar contraseña</label>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-icon">check_circle</span>
+                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repite la nueva" />
+              </div>
+              @if (passwordForm.controls.confirmPassword.invalid && passwordForm.controls.confirmPassword.touched) {
+                <span class="field-error">Debes confirmar la contraseña</span>
+              }
+            </div>
+          </div>
+
+          @if (passwordError()) {
+            <div class="toast toast-error compact">
+              <span class="material-symbols-outlined">error</span>
+              {{ passwordError() }}
+            </div>
+          }
+          @if (passwordSuccess()) {
+            <div class="toast toast-success compact">
+              <span class="material-symbols-outlined">check_circle</span>
+              {{ passwordSuccess() }}
+            </div>
+          }
+
+          <div class="card-actions">
+            <button type="button" class="btn-primary" (click)="changePassword()" [disabled]="changingPassword()">
+              @if (changingPassword()) {
+                <span class="material-symbols-outlined spin">sync</span>
+                Cambiando...
+              } @else {
+                <span class="material-symbols-outlined">key</span>
+                Cambiar contraseña
+              }
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="surface-card settings-card">
+        <div class="card-head">
+          <span class="material-symbols-outlined card-icon">timer</span>
+          <div>
+            <h2>Tiempo de sesión</h2>
+            <p>La sesión expirará automáticamente tras este período de inactividad</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="sessionTimeoutMinutes">Tiempo de inactividad máximo</label>
+          <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">hourglass_empty</span>
+            <select id="sessionTimeoutMinutes" formControlName="sessionTimeoutMinutes">
+              @for (opt of timeoutOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button type="button" class="btn-primary" (click)="save()" [disabled]="saving()">
+            @if (saving()) {
+              <span class="material-symbols-outlined spin">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined">save</span>
+              Guardar cambios
+            }
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- ════════════════ PREFERENCIAS ════════════════ -->
+    @if (activeTab() === 'preferences') {
+      <form [formGroup]="form" class="settings-form">
+        <section class="surface-card settings-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">space_dashboard</span>
+            <div>
+              <h2>Dashboard por defecto</h2>
+              <p>Pantalla que verás al iniciar sesión</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="defaultDashboard">Dashboard</label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-icon">dashboard</span>
+              <select id="defaultDashboard" formControlName="defaultDashboard">
+                @for (opt of dashboardOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface-card settings-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon">palette</span>
+            <div>
+              <h2>Apariencia</h2>
+              <p>Tema visual de la aplicación</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="theme">Tema</label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined input-icon">{{ form.controls.theme.value === 'dark' ? 'dark_mode' : form.controls.theme.value === 'light' ? 'light_mode' : 'contrast' }}</span>
+              <select id="theme" formControlName="theme">
+                @for (opt of themeOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <div class="card-actions card-actions--form">
+          <button type="button" class="btn-primary" (click)="save()" [disabled]="saving()">
+            @if (saving()) {
+              <span class="material-symbols-outlined spin">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined">save</span>
+              Guardar cambios
+            }
+          </button>
+        </div>
+      </form>
+    }
+  }
+</div>

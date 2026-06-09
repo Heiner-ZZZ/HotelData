@@ -1,7 +1,5 @@
 import { Routes } from '@angular/router';
 
-import { PlaceholderFeaturePageComponent } from '../shared-placeholder/placeholder-feature-page.component';
-
 export const MANAGEMENT_ROUTES: Routes = [
   {
     path: '',
@@ -60,10 +58,7 @@ export const MANAGEMENT_ROUTES: Routes = [
   },
   {
     path: 'settings',
-    component: PlaceholderFeaturePageComponent,
-    data: {
-      title: 'Configuracion',
-      description: 'Ruta preparada para perfil del hotel, usuarios, roles e integraciones.'
-    }
+    loadComponent: () =>
+      import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)
   }
 ];

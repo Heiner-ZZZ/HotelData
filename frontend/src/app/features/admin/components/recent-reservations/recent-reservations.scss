@@ -1,0 +1,67 @@
+.latest-card {
+  padding: 1.1rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--surface-soft) 8%), var(--surface));
+}
+
+.card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card-head-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.latest-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 12px;
+  font-size: 1.12rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+h2,
+p,
+dd,
+dt {
+  margin: 0;
+}
+
+p,
+dt {
+  color: var(--muted-text);
+}
+
+dl {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+dl > div {
+  padding: 0.8rem 0.85rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-border) 70%, transparent);
+}
+
+.empty-copy {
+  margin-top: 1rem;
+}
