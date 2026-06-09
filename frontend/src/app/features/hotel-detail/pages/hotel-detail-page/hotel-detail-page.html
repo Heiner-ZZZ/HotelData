@@ -1,0 +1,319 @@
+<div class="hotel-detail-page">
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando detalle del hotel..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar el detalle"
+        description="Intenta nuevamente o regresa a la búsqueda para abrir otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No encontramos esa propiedad"
+        description="El hotel solicitado no existe o ya no tiene datos asociados."
+      />
+    }
+    @default {
+      @if (hotel(); as vm) {
+        <!-- Breadcrumbs -->
+        <nav class="breadcrumbs">
+          <a routerLink="/search" class="crumb">Inicio</a>
+          <span class="crumb-sep">/</span>
+          <a routerLink="/search" class="crumb">Resultados</a>
+          <span class="crumb-sep">/</span>
+          <span class="crumb crumb-current">{{ vm.name }}</span>
+        </nav>
+
+        <!-- Hero -->
+        <section class="hero-section">
+          <div class="hero-main">
+            <div class="hero-top">
+              <div class="hero-stars">
+                @for (i of [1,2,3,4,5]; track i) {
+                  <span class="material-symbols-outlined star-icon" [class.star-filled]="i <= stars()" [class.star-empty]="i > stars()">star</span>
+                }
+              </div>
+            </div>
+            <h1 class="hero-title">{{ vm.name }}</h1>
+            <p class="hero-location">
+              <span class="material-symbols-outlined loc-icon">public</span>
+              {{ vm.location }}
+            </p>
+          </div>
+          <div class="hero-side">
+            <div class="review-card">
+              <div class="review-score-badge">{{ vm.reviewLabel }}</div>
+              <div class="review-text">
+                <span class="review-rating">Score general</span>
+                <span class="review-source">{{ vm.sourceCollection }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Action Row -->
+        <div class="action-row">
+          <a routerLink="/search" class="secondary-link">
+            <span class="material-symbols-outlined act-icon">arrow_back</span>
+            Volver a búsqueda
+          </a>
+          <a [href]="'/reservations/new?prop_id=' + vm.id" class="primary-link">
+            <span class="material-symbols-outlined act-icon">calendar_add_on</span>
+            Solicitar reserva
+          </a>
+        </div>
+
+        <!-- Sticky Tabs -->
+        <nav class="sticky-tabs">
+          <button class="tab-btn" [class.tab-active]="activeTab() === 'overview'" (click)="scrollTo('overview')">Resumen</button>
+          <button class="tab-btn" [class.tab-active]="activeTab() === 'rooms'" (click)="scrollTo('rooms')">Habitaciones</button>
+          <button class="tab-btn" [class.tab-active]="activeTab() === 'rates'" (click)="scrollTo('rates')">Tarifas</button>
+          <button class="tab-btn" [class.tab-active]="activeTab() === 'policies'" (click)="scrollTo('policies')">Políticas</button>
+        </nav>
+
+        <!-- Overview -->
+        <section id="overview" class="detail-section">
+          <h2 class="section-title">Resumen de la Propiedad</h2>
+
+          <div class="kpi-grid">
+            <article class="kpi-card kpi-accent">
+              <span class="material-symbols-outlined kpi-icon">payments</span>
+              <div class="kpi-body">
+                <span class="kpi-label">Precio promedio</span>
+                <strong class="kpi-value">${{ vm.averagePrice }}</strong>
+              </div>
+            </article>
+            <article class="kpi-card">
+              <span class="material-symbols-outlined kpi-icon">meeting_room</span>
+              <div class="kpi-body">
+                <span class="kpi-label">Reservas</span>
+                <strong class="kpi-value">{{ vm.reservations }}</strong>
+                <span class="kpi-sub">{{ vm.conversionRate }}% de conversión</span>
+              </div>
+            </article>
+            <article class="kpi-card">
+              <span class="material-symbols-outlined kpi-icon">ads_click</span>
+              <div class="kpi-body">
+                <span class="kpi-label">Clicks</span>
+                <strong class="kpi-value">{{ vm.clicks }}</strong>
+                <span class="kpi-sub">{{ vm.clickRate }}% click rate</span>
+              </div>
+            </article>
+            <article class="kpi-card">
+              <span class="material-symbols-outlined kpi-icon">trending_up</span>
+              <div class="kpi-body">
+                <span class="kpi-label">Eventos totales</span>
+                <strong class="kpi-value">{{ vm.events }}</strong>
+                <span class="kpi-sub">{{ vm.promotions }} con promoción</span>
+              </div>
+            </article>
+          </div>
+
+          <!-- Basic Facts -->
+          <div class="facts-grid">
+            @for (fact of vm.basicFacts; track fact.label) {
+              <div class="fact-chip">
+                <span class="fact-chip-label">{{ fact.label }}</span>
+                <strong class="fact-chip-value">{{ fact.value }}</strong>
+              </div>
+            }
+          </div>
+
+          <!-- Data Tables Grid -->
+          <div class="data-grid">
+            <!-- Destinations -->
+            <article class="data-panel">
+              <div class="panel-head">
+                <span class="material-symbols-outlined panel-head-icon">map</span>
+                <h3>Destinos asociados</h3>
+              </div>
+              @if (vm.topDestinations.length) {
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Destino</th><th>Eventos</th><th>Precio promedio</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (item of vm.topDestinations; track item.label) {
+                        <tr>
+                          <td>{{ item.label }}</td>
+                          <td>{{ item.events }}</td>
+                          <td>${{ item.avgPriceLabel }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <app-empty-state icon="map" title="Sin destinos" description="No hay destinos asociados para este hotel." />
+              }
+            </article>
+
+            <!-- Visitor Countries -->
+            <article class="data-panel">
+              <div class="panel-head">
+                <span class="material-symbols-outlined panel-head-icon">globe</span>
+                <h3>Países visitantes</h3>
+              </div>
+              @if (vm.topVisitorCountries.length) {
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Mercado</th><th>Eventos</th><th>Reservas</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (item of vm.topVisitorCountries; track item.id) {
+                        <tr>
+                          <td>
+                            {{ item.label }}
+                            <div class="record-sub">ID {{ item.id }}</div>
+                          </td>
+                          <td>{{ item.events }}</td>
+                          <td>{{ item.reservations }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <app-empty-state icon="globe" title="Sin mercados" description="No hay países visitantes asociados." />
+              }
+            </article>
+
+            <!-- Channels -->
+            <article class="data-panel">
+              <div class="panel-head">
+                <span class="material-symbols-outlined panel-head-icon">devices</span>
+                <h3>Canales principales</h3>
+              </div>
+              @if (vm.topSites.length) {
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Canal</th><th>Eventos</th><th>Clicks</th><th>Reservas</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (item of vm.topSites; track item.id) {
+                        <tr>
+                          <td>
+                            {{ item.label }}
+                            <div class="record-sub">ID {{ item.id }}</div>
+                          </td>
+                          <td>{{ item.events }}</td>
+                          <td>{{ item.clicks }}</td>
+                          <td>{{ item.reservations }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <app-empty-state icon="devices" title="Sin canales" description="No hay canales asociados." />
+              }
+            </article>
+
+            <!-- Rates -->
+            <article class="data-panel">
+              <div class="panel-head">
+                <span class="material-symbols-outlined panel-head-icon">attach_money</span>
+                <h3>Tarifas configuradas</h3>
+              </div>
+              @if (vm.hotelRates.length) {
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Fecha</th><th>Plan</th><th>Tarifa</th><th>Min stay</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (item of vm.hotelRates; track item.date + item.plan) {
+                        <tr>
+                          <td>{{ item.date }}</td>
+                          <td>{{ item.plan }}</td>
+                          <td>${{ item.amountLabel }}</td>
+                          <td>{{ item.minStayLabel }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <app-empty-state icon="attach_money" title="Sin tarifas" description="No hay tarifas configuradas." />
+              }
+            </article>
+          </div>
+        </section>
+
+        <!-- Rooms -->
+        <section id="rooms" class="detail-section">
+          <h2 class="section-title">Habitaciones Disponibles</h2>
+          @if (vm.roomTypes.length) {
+            <div class="table-wrap">
+              <table class="data-table rooms-table">
+                <thead>
+                  <tr><th>Habitación</th><th>Capacidad</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                  @for (item of vm.roomTypes; track item.id) {
+                    <tr>
+                      <td>
+                        <span class="material-symbols-outlined table-icon">meeting_room</span>
+                        <strong>{{ item.name }}</strong>
+                        <div class="record-sub">{{ item.id }}</div>
+                      </td>
+                      <td>{{ item.capacityLabel }}</td>
+                      <td>
+                        <span class="status-badge" [class.active]="item.statusLabel === 'Activa'" [class.inactive]="item.statusLabel !== 'Activa'">
+                          <span class="material-symbols-outlined badge-icon">{{ item.statusLabel === 'Activa' ? 'check_circle' : 'cancel' }}</span>
+                          {{ item.statusLabel }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state icon="meeting_room" title="Sin habitaciones" description="No hay habitaciones configuradas para esta propiedad." />
+          }
+        </section>
+
+        <!-- Policies -->
+        <section id="policies" class="detail-section">
+          <h2 class="section-title">Políticas de la Propiedad</h2>
+          @if (vm.policies.length) {
+            <div class="policies-grid">
+              @for (policy of vm.policies; track policy.label) {
+                <div class="policy-card">
+                  <span class="material-symbols-outlined policy-icon">
+                    @switch (policy.label) {
+                      @case ('Check-in') { login }
+                      @case ('Check-out') { logout }
+                      @case ('Mascotas') { pets }
+                      @case ('Niños') { child_care }
+                      @default { info }
+                    }
+                  </span>
+                  <div class="policy-body">
+                    <span class="policy-label">{{ policy.label }}</span>
+                    <strong class="policy-value">{{ policy.value }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="cancellation-card">
+              <span class="material-symbols-outlined canc-icon">undo</span>
+              <div class="canc-body">
+                <span class="canc-label">Política de cancelación</span>
+                <p class="canc-value">{{ vm.cancellationPolicy }}</p>
+              </div>
+            </div>
+          } @else {
+            <app-empty-state icon="policy" title="Sin políticas" description="No hay políticas configuradas para esta propiedad." />
+          }
+        </section>
+      }
+    }
+  }
+</div>

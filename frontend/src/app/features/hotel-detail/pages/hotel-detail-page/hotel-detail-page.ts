@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
@@ -26,6 +26,14 @@ export class HotelDetailPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly hotel = signal<HotelDetailViewModel | null>(null);
+  readonly activeTab = signal<string>('overview');
+
+  readonly stars = computed(() => {
+    const h = this.hotel();
+    if (!h) return 0;
+    const v = parseInt(h.starsLabel, 10);
+    return isNaN(v) ? 0 : v;
+  });
 
   constructor() {
     this.activatedRoute.paramMap
@@ -47,5 +55,11 @@ export class HotelDetailPageComponent {
           this.viewState.set(error.status === 404 ? 'empty' : 'error');
         }
       });
+  }
+
+  scrollTo(sectionId: string): void {
+    this.activeTab.set(sectionId);
+    const el = document.getElementById(sectionId);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }

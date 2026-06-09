@@ -291,8 +291,10 @@
 }
 
 .planner-cta {
-  align-self: stretch;
+  align-self: center;
+  justify-self: start;
   min-width: 120px;
+  min-height: 48px;
   border: none;
   border-radius: 999px;
   background: var(--accent);

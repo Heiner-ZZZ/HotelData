@@ -127,7 +127,7 @@ export class ReservationNewPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
-          void this.router.navigate(['/reservations', result.bookingId]);
+          void this.router.navigate(['..', result.bookingId], { relativeTo: this.activatedRoute });
         },
         error: (error: ApiError) => {
           this.errorMessage.set(error.message || 'No fue posible crear la reserva.');

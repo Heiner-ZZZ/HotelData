@@ -61,7 +61,8 @@ button,
 
 button {
   border: 1px solid var(--app-border);
-  background: #fff;
+  background: var(--surface);
+  color: var(--app-text);
   cursor: pointer;
 }
 
@@ -85,7 +86,8 @@ button:disabled {
 
 .secondary-link {
   border: 1px solid var(--app-border);
-  background: #fff;
+  background: var(--surface);
+  color: var(--app-text);
 }
 
 .inline-link {
