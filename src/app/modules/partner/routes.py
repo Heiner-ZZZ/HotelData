@@ -8,14 +8,12 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.app.modules.partner.schemas import ModuleStatus
-from src.app.modules.partner.service import (
+from src.app.modules.partner.services import (
     add_partner_hotel_image,
     create_blackout_block,
     create_rate_plan,
     create_room_type,
     delete_partner_hotel_image,
-    ensure_hotel_content_collections,
-    ensure_inventory_collections,
     list_partner_hotels,
     management_reports_summary,
     management_property_options,
@@ -23,21 +21,21 @@ from src.app.modules.partner.service import (
     partner_hotel_content,
     partner_hotel_content_editor,
     partner_hotel_detail,
-    partner_hotel_profile,
     partner_hotel_edit_profile,
     partner_hotel_inventory,
     partner_hotel_images,
     partner_hotel_policies,
     partner_hotel_performance,
+    partner_hotel_profile,
     partner_hotel_rates,
     partner_hotel_rooms,
     properties_dashboard,
     save_inventory_entry,
-    save_rate_calendar_entry,
-    save_partner_hotel_profile,
-    save_partner_hotel_content,
     save_partner_hotel_amenities,
+    save_partner_hotel_content,
     save_partner_hotel_policies,
+    save_partner_hotel_profile,
+    save_rate_calendar_entry,
 )
 
 
@@ -50,8 +48,6 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / 
 
 @router.get("/status", response_model=ModuleStatus)
 def partner_status() -> ModuleStatus:
-    ensure_hotel_content_collections()
-    ensure_inventory_collections()
     return module_status()
 
 
@@ -485,9 +481,25 @@ def availability_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/availability/options")
-def availability_options_api(prop_id: int | None = Query(default=None, ge=1)):
+def availability_options_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+):
+    results = list_partner_hotels(q, page=page, page_size=page_size)
     response: dict[str, object] = {
-        "properties": management_property_options()
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in results["items"]
+        ],
+        "total": results["total"],
+        "page": results["page"],
+        "page_size": results["page_size"],
+        "has_next": results["has_next"],
     }
     if prop_id:
         rooms_detail = partner_hotel_rooms(_require_prop_id(prop_id))

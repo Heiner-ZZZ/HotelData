@@ -11,7 +11,6 @@ from src.app.modules.revenue.service import (
     conversion_overview,
     create_promotion_campaign,
     create_rate_plan,
-    ensure_revenue_collections,
     hotel_rates_overview,
     module_status,
     promotions_management_overview,
@@ -33,7 +32,6 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / 
 
 @router.get("/status", response_model=ModuleStatus)
 def revenue_status() -> ModuleStatus:
-    ensure_revenue_collections()
     return module_status()
 
 
@@ -220,7 +218,7 @@ def rates_api(prop_id: int = Query(..., ge=1)):
 
 @api_router.get("/rates/options")
 def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
-    from src.app.modules.partner.service import list_partner_hotels
+    from src.app.modules.partner.services import list_partner_hotels
 
     properties = list_partner_hotels("", page=1, page_size=100)
     response: dict[str, object] = {

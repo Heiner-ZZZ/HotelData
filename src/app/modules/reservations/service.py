@@ -9,8 +9,7 @@ from pymongo import ASCENDING, DESCENDING
 
 from src.database.connection import get_database
 from src.app.modules.hotels.service import hotel_detail
-from src.app.modules.partner.service import partner_hotel_detail
-from src.app.modules.partner.service import partner_hotel_policies
+from src.app.modules.partner.services import partner_hotel_detail, partner_hotel_policies
 from src.app.modules.reservations.schemas import ModuleStatus
 
 

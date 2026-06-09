@@ -20,6 +20,23 @@ def module_status() -> ModuleStatus:
 
 
 def ensure_revenue_collections() -> dict[str, list[str]]:
+    """Idempotent bootstrap for revenue-domain collections + indexes.
+
+    Called once at FastAPI `lifespan` startup (`src/app/main.py`) and
+    re-exported publicly so the standalone scripts
+    `scripts/init_revenue_ga03.py` and `scripts/validate_ga03_revenue.py`
+    can invoke it outside a running app process. Service write paths
+    in this module no longer call it; they assume lifespan ran it
+    at startup.
+
+    Note on overlap with `partner.services.bootstrap.ensure_rate_collections`:
+    the 5 collections covered here (`rate_plans`, `hotel_rate_calendar`,
+    `rate_rules`, `promotion_campaigns`, `coupon_codes`) are also
+    indexed by the partner module's rate bootstrap. Most of those
+    indexes are idempotent (same name + same spec) and `create_index`
+    is a no-op when an index with the same name already exists. The
+    one genuinely new index is `rate_rules.rule_id_1` (unique).
+    """
     db = get_database()
     created_collections: list[str] = []
     created_indexes: list[str] = []
@@ -326,7 +343,6 @@ def promotions_overview() -> dict[str, Any]:
 
 
 def rate_plans_overview(limit: int = 60) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     items = list(db.rate_plans.find({}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit))
     for item in items:
@@ -346,7 +362,6 @@ def create_rate_plan(
     currency: str,
     is_active: Any = True,
 ) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     prop_id_value = _safe_int(prop_id, 0)
     if prop_id_value <= 0:
@@ -393,7 +408,6 @@ def create_rate_plan(
 
 
 def hotel_rates_overview(prop_id: int, limit: int = 90) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     rate_plans = list(db.rate_plans.find({"prop_id": prop_id}, {"_id": 0}).sort([("name", 1)]).limit(50))
     calendar = list(
@@ -424,7 +438,6 @@ def save_hotel_rate(
     min_stay_nights: Any,
     is_closed: Any = False,
 ) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     clean_rate_plan_id = _clean_text(rate_plan_id)
     clean_date = _clean_text(date)
@@ -451,7 +464,6 @@ def save_hotel_rate(
 
 
 def promotions_management_overview(limit: int = 60) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     campaigns = list(db.promotion_campaigns.find({}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit))
     coupons = list(db.coupon_codes.find({}, {"_id": 0}).sort([("updated_at", -1)]).limit(limit))
@@ -480,7 +492,6 @@ def create_promotion_campaign(
     coupon_code: str = "",
     is_active: Any = True,
 ) -> dict[str, Any]:
-    ensure_revenue_collections()
     db = get_database()
     prop_id_value = _safe_int(prop_id, 0)
     if prop_id_value <= 0:
