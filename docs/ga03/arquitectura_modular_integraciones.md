@@ -62,7 +62,23 @@ src/app/modules/
 
 ## Módulos activos
 
-Los módulos actuales activos siguen estando en `src/app/features`:
+> **Nota de estado (2026-06-06)**: este documento fue escrito cuando
+> `src/app/modules/` era andamio futuro. Desde entonces varios módulos
+> ya están **activos y enrutados** desde `src/app/main.py`:
+
+- `auth` — login, logout, me (rutas `/auth/*` y `/api/auth/*`). Activo.
+- `users` — preparación. Activo en router pero la mayoría de rutas son status.
+- `hotels` — preparación. Activo.
+- `reservations` — preparación. Activo.
+- `partner` — **activo, contiene la mayor parte de la lógica
+  de Partner Central**. Se seccionó en Phase 1 del refactor
+  (`docs/refactor-checklist.md`) en `src/app/modules/partner/services/`
+  con 7 archivos por sub-dominio (`properties`, `content`, `rooms`,
+  `rates`, `dashboard`, `bootstrap`, `_common`).
+- `revenue` — activo. Rutas web + API management.
+- `audit` — activo (convive con `src/app/features/audit` aún).
+
+Los módulos en `src/app/features` que siguen siendo código vivo:
 
 - Dashboard y consulta de datos.
 - Registros.
@@ -78,6 +94,7 @@ Rutas actuales conservadas:
 - `/ta02`
 - `/ta02/crud`
 - `/etl-status`
+- `/partner/*`, `/api/management/*`, `/api/admin/*` (vía partner module)
 
 ## Módulos en preparación
 

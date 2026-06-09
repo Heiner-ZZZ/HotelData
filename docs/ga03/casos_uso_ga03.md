@@ -1,12 +1,29 @@
 # Casos de uso GA03 - Plataforma HotelData Hub Analytics
 
-GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en Expedia/Trivago. El avance real de GA03 se concentra en analítica, administración de datos y gobierno ETL. Las funciones de cuenta, pagos, partner central, inventario transaccional y reservas completas quedan planificadas.
+GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en Expedia/Trivago. El avance real ya no se limita solo a analítica y ETL: hoy incluye autenticación por rol, vistas operativas de management, edición segura de perfil hotelero y navegación segmentada por tipo de usuario. Los flujos de pago, PMS/channel manager y una operación hotelera completamente transaccional todavía permanecen parciales o planificados.
+
+## Roles vigentes en la aplicación
+
+- `super_admin` (`superadmin` en la UI): control transversal, seguridad, gobierno y acceso completo.
+- `admin_sistema`: administración técnica y soporte del sistema.
+- `auditor_datos` (`auditor`): auditoría, trazabilidad y validación de calidad.
+- `operador_datos`: operación de carga, revisión y gobierno de datos.
+- `cliente`: búsqueda, cuenta y flujo de reserva del lado viajero.
+- `gerente_hotel` (`gerente`): operación y seguimiento de propiedades.
+- `marketing_hotelero` (`marketing`): contenido, campañas y visibilidad comercial.
+- `hotel_partner` (`partner`): gestión de inventario, perfil y operación hotelera.
+- `revenue_manager` (`revenue`): tarifas, promociones y análisis de revenue.
+
+## Normalización de actores
+
+- Donde versiones anteriores hablaban de `Usuario operativo`, ahora debe leerse como un rol operativo concreto según el caso: `cliente`, `auditor_datos`, `operador_datos`, `gerente_hotel`, `marketing_hotelero`, `hotel_partner` o `revenue_manager`.
+- Donde versiones anteriores hablaban de `Administrador`, ahora debe leerse como una combinación de `super_admin`, `admin_sistema` y, según el módulo, responsables funcionales como `gerente_hotel`, `marketing_hotelero`, `hotel_partner` o `revenue_manager`.
 
 ## Resumen por estado
 
-- Implementado: CU25, CU27, CU28, CU29, CU30, CU32.
-- Parcial: CU01, CU02, CU03, CU04, CU09, CU10, CU11, CU12, CU13, CU14, CU15, CU16, CU17, CU18, CU19, CU21, CU22, CU23, CU24, CU26.
-- Planificado: CU05, CU06, CU07, CU08, CU20, CU31.
+- Implementado: CU06, CU25, CU27, CU28, CU29, CU30, CU32.
+- Parcial: CU01, CU02, CU03, CU04, CU05, CU07, CU08, CU09, CU10, CU11, CU12, CU13, CU14, CU15, CU16, CU17, CU18, CU19, CU21, CU22, CU23, CU24, CU26, CU31.
+- Planificado: CU20.
 
 ## Paquete 1: Experiencia del cliente y búsqueda hotelera
 
@@ -112,18 +129,18 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - ID: CU06
 - Paquete: Cuenta, sesión y perfil de usuario
 - Nombre: Iniciar sesión y validar rol
-- Actor principal: Usuario operativo
-- Actores secundarios: Administrador
+- Actor principal: Cliente
+- Actores secundarios: Superadmin, Admin sistema
 - Prioridad: 8
 - Tipo: Operativo
-- Estado: Parcial
+- Estado: Implementado
 - Propósito: Controlar acceso según rol.
-- Descripción: No existe login real ni control de roles implementado; el modelo futuro lo contempla.
+- Descripción: GA03 ya incorpora login real, sesión activa, consulta de identidad y navegación por rol. La validación de acceso se apoya en reglas backend y segmentación frontend para `super_admin`, `admin_sistema`, `auditor_datos`, `operador_datos`, `cliente`, `gerente_hotel`, `marketing_hotelero`, `hotel_partner` y `revenue_manager`.
 - Historias de usuario:
-  - Como usuario operativo, quiero iniciar sesión, para entrar de forma segura.
-  - Como administrador, quiero validar roles, para limitar acciones sensibles.
-  - Como usuario operativo, quiero cerrar sesión, para proteger mi acceso.
-  - Como administrador, quiero auditar inicios de sesión, para detectar uso indebido.
+  - Como cliente, quiero iniciar sesión, para entrar de forma segura.
+  - Como superadmin o admin del sistema, quiero validar roles, para limitar acciones sensibles.
+  - Como usuario autenticado, quiero cerrar sesión, para proteger mi acceso.
+  - Como responsable de seguridad, quiero auditar accesos, para detectar uso indebido.
 - Imagen del caso de uso implementado: [No aplica en GA03]
 
 ### CU07 Gestionar perfil de viajero
@@ -599,18 +616,18 @@ GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en 
 - ID: CU31
 - Paquete: Administración, datos, ETL y gobierno
 - Nombre: Administrar usuarios, roles y permisos
-- Actor principal: Administrador
+- Actor principal: Superadmin
 - Actores secundarios: Ninguno
 - Prioridad: 9
 - Tipo: Operativo
-- Estado: Planificado
+- Estado: Parcial
 - Propósito: Gobernar acceso a la plataforma.
-- Descripción: No hay login ni roles reales en GA03; las colecciones futuras documentan esta capacidad.
+- Descripción: GA03 ya tiene autenticación, segmentación por rol y reglas de acceso a rutas/API. La administración avanzada de ciclo de vida de usuarios y permisos finos sigue parcial, pero la matriz base ya existe para `super_admin`, `admin_sistema`, `auditor_datos`, `operador_datos`, `cliente`, `gerente_hotel`, `marketing_hotelero`, `hotel_partner` y `revenue_manager`.
 - Historias de usuario:
-  - Como administrador, quiero crear usuarios, para habilitar acceso controlado.
-  - Como administrador, quiero asignar roles, para limitar permisos.
-  - Como administrador, quiero revocar accesos, para proteger información.
-  - Como administrador, quiero auditar cambios, para cumplir gobierno.
+  - Como superadmin, quiero crear usuarios, para habilitar acceso controlado.
+  - Como superadmin o admin del sistema, quiero asignar roles, para limitar permisos.
+  - Como superadmin, quiero revocar accesos, para proteger información.
+  - Como auditor o responsable de seguridad, quiero auditar cambios, para cumplir gobierno.
 - Imagen del caso de uso implementado: [No aplica en GA03]
 
 ### CU32 Consultar auditoría y trazabilidad de ejecuciones

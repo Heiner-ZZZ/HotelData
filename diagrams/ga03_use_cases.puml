@@ -4,8 +4,15 @@ skinparam packageStyle rectangle
 skinparam actorStyle awesome
 skinparam shadowing false
 
-actor "Usuario operativo" as Usuario
-actor "Administrador" as Admin
+actor "Cliente" as Cliente
+actor "Superadmin" as SuperAdmin
+actor "Admin sistema" as AdminSistema
+actor "Auditor" as Auditor
+actor "Operador datos" as OperadorDatos
+actor "Gerente" as Gerente
+actor "Marketing" as Marketing
+actor "Partner" as Partner
+actor "Revenue" as Revenue
 rectangle "PocketBase\nSistema tecnico externo" as PB
 rectangle "MongoDB\nSistema tecnico externo" as MDB
 
@@ -60,42 +67,113 @@ rectangle "HotelData Hub Analytics - GA03" {
   }
 }
 
-Usuario --> CU01
-Usuario --> CU02
-Usuario --> CU03
-Usuario --> CU04
-Usuario --> CU05
-Usuario --> CU06
-Usuario --> CU07
-Usuario --> CU08
-Usuario --> CU09
-Usuario --> CU10
-Usuario --> CU11
-Usuario --> CU25
-Usuario --> CU26
-Usuario --> CU27
-Usuario --> CU28
+Cliente --> CU01
+Cliente --> CU02
+Cliente --> CU03
+Cliente --> CU04
+Cliente --> CU05
+Cliente --> CU06
+Cliente --> CU07
+Cliente --> CU08
+Cliente --> CU09
+Cliente --> CU10
+Cliente --> CU11
 
-Admin --> CU12
-Admin --> CU13
-Admin --> CU14
-Admin --> CU15
-Admin --> CU16
-Admin --> CU17
-Admin --> CU18
-Admin --> CU19
-Admin --> CU20
-Admin --> CU21
-Admin --> CU22
-Admin --> CU23
-Admin --> CU24
-Admin --> CU29
-Admin --> CU30
-Admin --> CU31
-Admin --> CU32
+Partner --> CU12
+Partner --> CU13
+Partner --> CU14
+Partner --> CU15
+Partner --> CU16
+Partner --> CU17
+Partner --> CU18
+Partner --> CU19
+
+Gerente --> CU10
+Gerente --> CU11
+Gerente --> CU13
+Gerente --> CU15
+Gerente --> CU16
+Gerente --> CU17
+Gerente --> CU18
+Gerente --> CU19
+Gerente --> CU25
+Gerente --> CU26
+Gerente --> CU27
+Gerente --> CU28
+
+Marketing --> CU13
+Marketing --> CU14
+Marketing --> CU16
+Marketing --> CU23
+Marketing --> CU24
+Marketing --> CU25
+Marketing --> CU27
+Marketing --> CU28
+
+Revenue --> CU16
+Revenue --> CU21
+Revenue --> CU22
+Revenue --> CU23
+Revenue --> CU24
+Revenue --> CU25
+Revenue --> CU26
+Revenue --> CU27
+Revenue --> CU28
+
+Auditor --> CU25
+Auditor --> CU26
+Auditor --> CU27
+Auditor --> CU28
+Auditor --> CU30
+Auditor --> CU32
+
+OperadorDatos --> CU25
+OperadorDatos --> CU26
+OperadorDatos --> CU27
+OperadorDatos --> CU28
+OperadorDatos --> CU29
+OperadorDatos --> CU30
+OperadorDatos --> CU32
+
+AdminSistema --> CU06
+AdminSistema --> CU25
+AdminSistema --> CU29
+AdminSistema --> CU30
+AdminSistema --> CU31
+AdminSistema --> CU32
+
+SuperAdmin --> CU06
+SuperAdmin --> CU12
+SuperAdmin --> CU13
+SuperAdmin --> CU14
+SuperAdmin --> CU15
+SuperAdmin --> CU16
+SuperAdmin --> CU17
+SuperAdmin --> CU18
+SuperAdmin --> CU19
+SuperAdmin --> CU20
+SuperAdmin --> CU21
+SuperAdmin --> CU22
+SuperAdmin --> CU23
+SuperAdmin --> CU24
+SuperAdmin --> CU25
+SuperAdmin --> CU26
+SuperAdmin --> CU27
+SuperAdmin --> CU28
+SuperAdmin --> CU29
+SuperAdmin --> CU30
+SuperAdmin --> CU31
+SuperAdmin --> CU32
 
 CU29 .. PB
 CU29 .. MDB
 CU30 .. MDB
 CU32 .. MDB
+
+note bottom
+Roles canónicos actuales:
+super_admin, admin_sistema, auditor_datos, operador_datos,
+cliente, gerente_hotel, marketing_hotelero, hotel_partner,
+revenue_manager.
+end note
 @enduml
