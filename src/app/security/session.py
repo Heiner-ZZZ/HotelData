@@ -51,7 +51,6 @@ def create_user_session(db: Database, user: dict[str, Any], request: Request) ->
     token_hash = hash_session_token(token)
     now = utc_now()
     expires_at = now + timedelta(hours=SESSION_TTL_HOURS)
-    db.user_sessions.create_index("session_token_hash", unique=True, sparse=True)
     db.user_sessions.insert_one(
         {
             "session_token_hash": token_hash,
@@ -66,6 +65,16 @@ def create_user_session(db: Database, user: dict[str, Any], request: Request) ->
         }
     )
     return token
+
+
+def ensure_user_sessions_indexes(db: Database) -> None:
+    """Create the indexes required by the session store. Idempotent.
+
+    Called from the FastAPI `lifespan` so we don't pay the cost of
+    `create_index` on every login (was previously inside
+    `create_user_session`).
+    """
+    db.user_sessions.create_index("session_token_hash", unique=True, sparse=True)
 
 
 def get_session(db: Database, token: str | None) -> dict[str, Any] | None:
