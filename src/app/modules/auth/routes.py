@@ -41,7 +41,7 @@ def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:
             "is_active": bool(user.get("is_active", True)),
         },
         "session": {
-            "session_token": session.get("session_token") if session else "",
+            "session_token": session.get("session_token_hash", "") if session else "",
             "expires_at": session.get("expires_at").isoformat() if session and hasattr(session.get("expires_at"), "isoformat") else (session.get("expires_at") if session else None),
             "created_at": session.get("created_at").isoformat() if session and hasattr(session.get("created_at"), "isoformat") else (session.get("created_at") if session else None),
         },
