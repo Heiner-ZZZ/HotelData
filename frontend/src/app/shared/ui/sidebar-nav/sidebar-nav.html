@@ -3,6 +3,9 @@
     <div class="sidebar-brand">
       <img src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData" class="sidebar-logo" />
     </div>
+    <button type="button" class="collapse-btn" (click)="sidebarCollapsed.set(!sidebarCollapsed())" aria-label="Colapsar menú">
+      <span class="material-symbols-outlined">menu_open</span>
+    </button>
   </div>
 
   <nav class="sidebar-body" aria-label="Navegación lateral">
@@ -38,27 +41,27 @@
     }
   </nav>
 
-  <div class="sidebar-footer">
-    @if (currentUser(); as user) {
-      <a class="sidebar-user" [routerLink]="userHomeHref()">
-        <span class="material-symbols-outlined user-avatar">account_circle</span>
-        <div class="user-info">
-          <strong class="user-name">{{ user.displayName }}</strong>
-          <small class="user-role">{{ user.primaryRole }}</small>
-        </div>
-      </a>
-    }
-    <div class="sidebar-actions">
-      <button
-        class="sidebar-icon-btn"
-        (click)="theme.toggle()"
-        [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
-      >
-        <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
-      </button>
-      <a class="sidebar-icon-btn" href="/auth/logout" aria-label="Cerrar sesión">
-        <span class="material-symbols-outlined">logout</span>
-      </a>
-    </div>
+  <div class="sidebar-divider"></div>
+
+  <a
+    class="sidebar-bottom-link"
+    routerLinkActive="is-active"
+    routerLink="/management/settings"
+  >
+    <span class="material-symbols-outlined link-icon">tune</span>
+    <span class="link-label">Configuración</span>
+  </a>
+
+  <div class="sidebar-actions">
+    <button
+      class="sidebar-icon-btn"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'"
+    >
+      <span class="material-symbols-outlined">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+    <a class="sidebar-icon-btn" href="/auth/logout" aria-label="Cerrar sesión">
+      <span class="material-symbols-outlined">logout</span>
+    </a>
   </div>
 </aside>

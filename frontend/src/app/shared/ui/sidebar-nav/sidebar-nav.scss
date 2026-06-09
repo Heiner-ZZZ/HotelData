@@ -4,12 +4,13 @@
   height: 100vh;
   position: sticky;
   top: 0;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--app-border);
   background: var(--surface);
-  overflow: hidden;
   transition: width 0.2s ease, min-width 0.2s ease;
+  overflow: visible;
 }
 
 .sidebar.is-collapsed {
@@ -19,11 +20,57 @@
 
 /* Header */
 .sidebar-header {
-  padding: 0.85rem 1rem;
+  position: relative;
+  padding: 0.85rem 2.6rem 0.85rem 1rem;
   border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+}
+
+.sidebar-brand {
+  display: flex;
+  justify-content: center;
+}
+
+/* Collapse button on the right border, centered on header height */
+.collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  translate: 0 -50%;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  line-height: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+}
+
+.collapse-btn:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.collapse-btn .material-symbols-outlined {
+  font-size: 1.1rem;
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  transition: transform 0.2s;
+}
+
+.is-collapsed .collapse-btn .material-symbols-outlined {
+  transform: rotate(180deg);
 }
 
 .sidebar-logo {
@@ -138,63 +185,67 @@
   flex: 1;
 }
 
-/* Footer */
-.sidebar-footer {
-  border-top: 1px solid var(--app-border);
-  padding: 0.65rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+/* Divider */
+.sidebar-divider {
+  height: 1px;
+  background: var(--app-border);
+  margin: 0.25rem 0.75rem;
 }
 
-.sidebar-user {
+/* Bottom standalone link */
+.sidebar-bottom-link {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 0.4rem;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0.25rem 0.5rem 0;
   border-radius: 8px;
   color: var(--app-text);
   text-decoration: none;
-  transition: background 0.12s;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+  }
+
+  &.is-active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .link-icon {
+    font-size: 1.15rem;
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+    flex-shrink: 0;
+    width: 1.4rem;
+    text-align: center;
+  }
+
+  .link-label {
+    flex: 1;
+  }
 }
 
-.sidebar-user:hover {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+.is-collapsed .sidebar-bottom-link {
+  justify-content: center;
+  padding: 0.55rem 0.5rem;
+
+  .link-label {
+    display: none;
+  }
 }
 
-.user-avatar {
-  font-size: 1.6rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-  flex-shrink: 0;
-  color: var(--muted-text);
-}
-
-.user-info {
-  display: grid;
-  line-height: 1.2;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-role {
-  font-size: 0.72rem;
-  color: var(--muted-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* Footer actions */
 .sidebar-actions {
   display: flex;
   gap: 0.35rem;
-  padding: 0 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid var(--app-border);
+  justify-content: center;
 }
 
 .sidebar-icon-btn {
@@ -224,14 +275,22 @@
 /* Collapsed state overrides */
 .is-collapsed .section-label,
 .is-collapsed .section-chevron,
-.is-collapsed .link-label,
-.is-collapsed .user-info,
-.is-collapsed .sidebar-actions {
+.is-collapsed .link-label {
   display: none;
 }
 
 .is-collapsed .sidebar-header {
-  padding: 0.85rem 0.5rem;
+  min-height: 80px;
+  padding: 0.5rem 2.4rem 0.5rem 0.5rem;
+  justify-content: center;
+}
+
+.is-collapsed .collapse-btn {
+  right: 0.35rem;
+}
+
+.is-collapsed .sidebar-brand {
+  display: none;
 }
 
 .is-collapsed .section-header {
@@ -243,7 +302,9 @@
   display: none;
 }
 
-.is-collapsed .sidebar-footer {
+.is-collapsed .sidebar-actions {
+  flex-direction: column;
   align-items: center;
   padding: 0.5rem 0.25rem;
+  gap: 0.5rem;
 }

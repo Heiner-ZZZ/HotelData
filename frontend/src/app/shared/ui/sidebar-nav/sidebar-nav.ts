@@ -33,7 +33,6 @@ export class SidebarNavComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly theme = this.themeService;
-  readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
   readonly sidebarCollapsed = signal(false);
   readonly openSection = signal<string | null>(null);
@@ -105,12 +104,6 @@ export class SidebarNavComponent {
           href: '/management/reports',
           icon: 'bar_chart',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos']
-        },
-        {
-          label: 'Configuración',
-          href: '/management/settings',
-          icon: 'tune',
-          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner']
         }
       ]
     },
@@ -136,16 +129,6 @@ export class SidebarNavComponent {
         items: s.items.filter(i => !i.allowedRoles?.length || (!!role && i.allowedRoles.includes(role)))
       }))
       .filter(s => s.items.length > 0);
-  });
-
-  readonly userHomeHref = computed(() => {
-    const role = this.currentUser()?.primaryRole;
-    if (!role) return this.authState().homeHref || '/management';
-    if (['super_admin', 'admin_sistema'].includes(role)) return '/system/users';
-    if (role === 'operador_datos') return '/system/monitoring';
-    if (role === 'auditor_datos') return '/system/audit';
-    if (role === 'cliente') return '/search';
-    return '/management';
   });
 
   constructor() {

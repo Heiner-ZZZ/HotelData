@@ -1,0 +1,11 @@
+<section class="state-card surface-card" aria-live="polite">
+  @if (icon(); as iconName) {
+    <div class="state-icon-wrap">
+      <span class="material-symbols-outlined state-icon">{{ iconName }}</span>
+    </div>
+  }
+  <h2>{{ title() }}</h2>
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+</section>
