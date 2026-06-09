@@ -33,6 +33,14 @@ class Settings:
     ga03_expected_records: int
     task_number: str
     target_records: int
+    cors_allowed_origins: tuple[str, ...]
+    cors_allowed_methods: tuple[str, ...]
+    cors_allowed_headers: tuple[str, ...]
+
+
+def _csv_env(name: str, default: str) -> tuple[str, ...]:
+    raw = os.getenv(name, default)
+    return tuple(item.strip() for item in raw.split(",") if item.strip())
 
 
 def get_settings() -> Settings:
@@ -71,4 +79,16 @@ def get_settings() -> Settings:
         ga03_expected_records=int(os.getenv("GA03_EXPECTED_RECORDS", os.getenv("TARGET_RECORDS", "300000"))),
         task_number=task_number,
         target_records=int(os.getenv("TARGET_RECORDS", os.getenv("GA03_EXPECTED_RECORDS", "300000"))),
+        cors_allowed_origins=_csv_env(
+            "CORS_ALLOWED_ORIGINS",
+            "http://127.0.0.1:4200,http://localhost:4200,http://localhost:80,http://localhost",
+        ),
+        cors_allowed_methods=_csv_env(
+            "CORS_ALLOWED_METHODS",
+            "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        ),
+        cors_allowed_headers=_csv_env(
+            "CORS_ALLOWED_HEADERS",
+            "Authorization,Content-Type,X-Requested-With,Cookie",
+        ),
     )
