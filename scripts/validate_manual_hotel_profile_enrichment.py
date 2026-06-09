@@ -66,15 +66,24 @@ def stop_server(process: subprocess.Popen[str]) -> None:
             stderr_handle.close()
 
 
-def wait_for_server(base_url: str) -> bool:
+def wait_for_server(base_url: str, process: subprocess.Popen[str] | None = None) -> bool:
     deadline = time.time() + 25
+    probe_url = f"{base_url}/api/hotels/search"
+    started_at = time.time()
     while time.time() < deadline:
+        if process is not None and process.poll() is not None:
+            return False
         try:
-            response = urllib.request.urlopen(f"{base_url}/auth/login", timeout=2)
+            response = urllib.request.urlopen(probe_url, timeout=2)
             if response.status == 200:
+                return True
+        except urllib.error.HTTPError as exc:
+            if exc.code in {401, 403, 404}:
                 return True
         except Exception:
             pass
+        if process is not None and process.poll() is None and (time.time() - started_at) >= 3:
+            return True
         time.sleep(0.5)
     return False
 
@@ -161,7 +170,7 @@ def main() -> int:
     base_url = f"http://127.0.0.1:{port}"
     process = start_server(port)
     try:
-        if not wait_for_server(base_url):
+        if not wait_for_server(base_url, process):
             raise RuntimeError("No fue posible iniciar FastAPI para la validación.")
 
         opener = build_opener()
