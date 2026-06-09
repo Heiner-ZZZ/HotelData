@@ -211,3 +211,176 @@ Monitoring: Prometheus metrics via starlette-exporter
 - ❌ No indexes on query fields — O(n) scans on every request
 - ❌ `Session` per request without `finally` — connection leak
 - ❌ `allow_origins=["*"]` in CORS — specify exact origins
+- ❌ **`service.py` > 400 lines or mixing 2+ sub-domains → god class (see §13)**
+- ❌ 4+ routers per module with no clear ownership
+- ❌ Cross-module coupling via free functions (use `Depends()` or protocols)
+
+---
+
+## 13. Scalability via Sectioning (anti god-class)
+
+> **Core idea:** scalability in a modular monolith is not "more code per file" —
+> it is **composition of small files with clear contracts**. A 1800-line
+> `service.py` is a 2000s monolith wearing a 2026 suit. Section early.
+
+### 13.1 Hard thresholds (review-time gates)
+
+If any of these is true in a code review, the PR **must** split the file
+or the reviewer blocks it:
+
+| Metric | Threshold | Action |
+|---|---|---|
+| Lines in any `service.py` | > 400 | Split into `services/` package |
+| Top-level functions in a single file | > 15 | Split by sub-domain |
+| Distinct MongoDB collections touched | > 3 | Extract repositories (§14) |
+| Distinct sub-domains in one file | > 1 (e.g. "rooms" + "rates" + "content") | Split into sibling files |
+| Routers per module | > 3 without a documented reason | Consolidate to 1 `api_router` + 1 `web_router` |
+| Cyclic imports between modules | any | Break with sub-domain split |
+
+### 13.2 The sectioning pattern
+
+When a `service.py` exceeds 400 lines or mixes sub-domains, replace it
+with a package:
+
+```
+src/app/modules/<bounded_context>/
+├── __init__.py
+├── routes.py              # thin: parse, validate, call services, format
+├── schemas.py             # Pydantic models
+└── services/              # NEW: one file per sub-domain
+    ├── __init__.py        # re-exports public API (the "facade")
+    ├── _common.py         # cross-cutting helpers (no peer imports)
+    ├── bootstrap.py       # ensure_*_collections, module_status
+    ├── <sub_domain_a>.py  # one bounded concern
+    ├── <sub_domain_b>.py
+    └── ...
+```
+
+**Sub-domain split** is by *change frequency* and *data ownership*, not
+by function name. Examples:
+
+| Sub-domain | Owns | Touches |
+|---|---|---|
+| `properties` | `dim_hotels`, `hotel_profile_changes` | hotel identity, list, performance |
+| `content` | `hotel_content_pages`, `hotel_images`, `hotel_policies`, `hotel_content_changes` | content, amenities, images |
+| `rooms` | `room_types`, `hotel_rooms`, `room_inventory_calendar`, `blackout_dates` | inventory ops |
+| `rates` | `rate_plans`, `hotel_rate_calendar`, `rate_rules`, `promotion_campaigns`, `coupon_codes` | rate plans |
+| `dashboard` | (read-only) | aggregations from all of the above |
+| `bootstrap` | `ensure_*_collections` + `module_status` | idempotent schema setup |
+| `_common` | `safe_int`, `money`, `number`, `slugify`, `register_content_change`, `active_fact_collection` | formatting + cross-cutting |
+
+### 13.3 Dependency rules (no cycles)
+
+```
+_common  →   (nothing in package)
+bootstrap →  _common
+<sub>     →  _common, bootstrap, peer modules (NEVER upward)
+routes.py → services.<sub>.*    (NEVER services.service import the old facade)
+```
+
+If `<sub_a>` needs a function in `<sub_b>`:
+- It is probably a sign that one of them owns the wrong concern. Move it.
+- If it really must cross, **lazy-import inside the function**, not at
+  module top, to break the load-time cycle:
+
+```python
+def save_partner_hotel_profile(prop_id: int, ...):
+    from src.app.modules.partner.services.content import content_page_for_prop
+    ...
+```
+
+### 13.4 Public API stability — the `__init__.py` facade
+
+Callers (routes.py, scripts/, other modules) should import from the
+package, not from individual sub-files:
+
+```python
+# GOOD: stable surface, easy to refactor internals later
+from src.app.modules.partner.services import list_partner_hotels
+
+# BAD: leaks internal layout, breaks when you rename a sub-file
+from src.app.modules.partner.services.properties import list_partner_hotels
+```
+
+The facade also serves as the explicit **public API contract**:
+
+```python
+# services/__init__.py
+__all__ = [
+    "add_partner_hotel_image",
+    "create_blackout_block",
+    "create_rate_plan",
+    # ... full list, alphabetized
+]
+```
+
+Anything *not* in `__all__` is internal, can change without notice, and
+must start with `_` (or live in `_common.py` / `_views.py`).
+
+### 13.5 Worked example from this repo
+
+Before (the antipattern):
+```
+src/app/modules/partner/service.py     1834 lines
+  ├── 78 functions
+  ├── 5 sub-domains: properties, content, rooms, rates, dashboard
+  ├── 4 routers in routes.py importing 30+ functions
+  └── 6 external callers (reservations, revenue, 4 scripts)
+```
+
+After (the fix):
+```
+src/app/modules/partner/
+├── routes.py                          587 lines (unchanged functionally)
+├── schemas.py                           6
+└── services/
+    ├── __init__.py                    public facade
+    ├── _common.py                      99  formatters + cross-cutting
+    ├── bootstrap.py                   166  ensure_*_collections
+    ├── properties.py                  426  list/detail/performance/profile
+    ├── content.py                     355  content/amenities/policies/images
+    ├── rooms.py                       268  rooms/inventory/blackout
+    ├── rates.py                       162  rate plans/calendar
+    └── dashboard.py                   308  flags/reports/dashboard
+```
+
+Verification gates (must all pass before merge):
+- `python -c "import src.app.main"` loads with no exceptions
+- `python -m pytest -q` green
+- `grep -r "from src.app.modules.partner.service import" .` returns nothing
+- Smoke: hit one endpoint per refactored sub-domain via `httpx.AsyncClient`
+
+### 13.6 Why not just split `service.py` into more files in the same dir?
+
+You can, but a package signals intent: a folder named `services/`
+communicates "this is a sub-domain cluster, not a pile of utilities".
+A flat `service_helpers.py` + `service_rooms.py` + `service_rates.py` is
+harder to test, easier to litter, and weaker as a unit of ownership.
+
+### 13.7 Tests are the safety net for sectioning
+
+Splitting a 1800-line file into 7 is high-risk without tests. Before
+sectioning:
+
+1. Add a smoke test that exercises each public function once (even just
+   `assert callable(fn)` is better than nothing).
+2. Run pytest. If green, proceed.
+3. After sectioning, run pytest again. Any failure is a missing import
+   or a circular dependency.
+
+See `backend-senior` §10 for the test pattern.
+
+### 13.8 Code-review checklist (anti-god-class)
+
+```
+[ ] No `service.py` > 400 lines
+[ ] No file mixes 2+ sub-domains
+[ ] `services/__init__.py` re-exports the full public API
+[ ] No top-level imports between sibling sub-files (only lazy if needed)
+[ ] `routes.py` imports from `services`, not from `service`
+[ ] Scripts import from `services`, not from `service`
+[ ] `grep "<module>.service\b" <module>/` returns no hits
+[ ] `python -c "import src.app.main"` loads
+[ ] pytest green
+[ ] No new file > 500 lines
+```
