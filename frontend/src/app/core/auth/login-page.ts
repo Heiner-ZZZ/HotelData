@@ -30,12 +30,20 @@ export class LoginPageComponent {
   });
 
   constructor() {
+    const previousTheme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.removeAttribute('data-theme');
+    this.destroyRef.onDestroy(() => {
+      if (previousTheme) {
+        document.documentElement.setAttribute('data-theme', previousTheme);
+      }
+    });
+
     this.authService
       .ensureSessionLoaded()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((state) => {
         if (state.authenticated) {
-          void this.router.navigateByUrl(state.homeHref || '/search');
+          void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
         }
       });
   }
@@ -58,7 +66,7 @@ export class LoginPageComponent {
       .subscribe({
         next: (state) => {
           this.submitting.set(false);
-          void this.router.navigateByUrl(state.homeHref || '/search');
+          void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
         },
         error: (error: unknown) => {
           this.submitting.set(false);
@@ -69,6 +77,11 @@ export class LoginPageComponent {
 
   togglePasswordVisibility() {
     this.passwordVisible.update((value) => !value);
+  }
+
+  private resolveHomeHref(defaultHref: string | null): string {
+    const saved = localStorage.getItem('hoteldata-default-dashboard');
+    return saved || defaultHref || '/search';
   }
 
   private resolveErrorMessage(error: unknown): string {
