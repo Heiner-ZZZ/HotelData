@@ -22,6 +22,7 @@ export interface Ga03ProgressInfo {
   pipelineElapsedMs: number;
   pipelineMessage: string;
   pipelineSections: PipelineSection[];
+  pipelineTarget: number;
   isRunning: boolean;
 }
 
@@ -30,6 +31,8 @@ export interface MonitoringServicesViewModel {
   configInfo: {
     taskNumber: string;
     targetRecords: number;
+    targetRecordsPb: number;
+    targetRecordsMongo: number;
     pbCollection: string;
     sourceCsvExists: boolean;
     sourceCsv: string;

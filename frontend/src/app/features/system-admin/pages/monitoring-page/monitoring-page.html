@@ -163,20 +163,36 @@
                 </article>
               </div>
 
-              <!-- Target selector -->
-              <div class="target-row">
-                <label for="targetSelect">Registros objetivo:</label>
-                <select
-                  id="targetSelect"
-                  class="target-select"
-                  [value]="targetRecords()"
-                  (change)="targetRecords.set(+$any($event.target).value)"
-                  [disabled]="vm.progress.isRunning"
-                >
-                  @for (opt of targetOptions; track opt.value) {
-                    <option [value]="opt.value">{{ opt.label }}</option>
-                  }
-                </select>
+              <!-- Target selectors -->
+              <div class="targets-row">
+                <div class="target-field">
+                  <label for="targetPbSelect">Registros a PocketBase:</label>
+                  <select
+                    id="targetPbSelect"
+                    class="target-select"
+                    [value]="targetPocketbase()"
+                    (change)="targetPocketbase.set(+$any($event.target).value)"
+                    [disabled]="vm.progress.isRunning"
+                  >
+                    @for (opt of targetOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="target-field">
+                  <label for="targetMongoSelect">Registros a MongoDB:</label>
+                  <select
+                    id="targetMongoSelect"
+                    class="target-select"
+                    [value]="targetMongodb()"
+                    (change)="targetMongodb.set(+$any($event.target).value)"
+                    [disabled]="vm.progress.isRunning"
+                  >
+                    @for (opt of targetOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                </div>
               </div>
 
               <!-- Action buttons -->

@@ -1,6 +1,8 @@
 export interface Ga03ConfigDto {
   task_number: string;
   target_records: number;
+  target_records_pb: number;
+  target_records_mongo: number;
   pocketbase_collection: string;
   source_csv_exists: boolean;
   source_csv: string;
@@ -61,6 +63,7 @@ export interface PipelineProgressDto {
   message: string;
   sections: Record<string, { label: string; complete: boolean }>;
   is_running: boolean;
+  target_records: number;
 }
 
 export interface PreparationProgressDto {

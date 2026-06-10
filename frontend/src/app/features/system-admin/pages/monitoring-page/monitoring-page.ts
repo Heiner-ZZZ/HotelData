@@ -39,7 +39,8 @@ export class MonitoringPageComponent implements OnInit {
 
   readonly selectedFile = signal<File | null>(null);
   readonly uploadBusy = signal(false);
-  readonly targetRecords = signal(300000);
+  readonly targetPocketbase = signal(300000);
+  readonly targetMongodb = signal(300000);
   readonly openSection = signal<string | null>(null);
   readonly confirmAction = signal<{ title: string; message: string; handler: () => void } | null>(null);
   readonly targetOptions = Array.from({ length: 16 }, (_, i) => {
@@ -99,7 +100,7 @@ export class MonitoringPageComponent implements OnInit {
     this.confirmAction.set({
       title: 'Validar dataset GA03',
       message: 'Esta acción verificará que PocketBase tenga los registros objetivo y que MongoDB esté disponible. No modifica datos. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerValidate(this.targetRecords())),
+      handler: () => this.execAction(this.api.triggerValidate(this.targetPocketbase())),
     });
   }
 
@@ -107,7 +108,7 @@ export class MonitoringPageComponent implements OnInit {
     this.confirmAction.set({
       title: 'Ejecutar pipeline GA03',
       message: 'Esta acción ejecutará el ETL principal PocketBase → JSONL → Parquet → MongoDB. Puede reemplazar la carga vigente en fact_hotel_reservations. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerRunPipeline(this.targetRecords())),
+      handler: () => this.execAction(this.api.triggerRunPipeline(this.targetMongodb())),
     });
   }
 
@@ -115,7 +116,7 @@ export class MonitoringPageComponent implements OnInit {
     this.confirmAction.set({
       title: 'Preparar fuente GA03',
       message: 'Esta acción cargará registros desde CSV hacia PocketBase hotel_reservation_events_03. No carga directo a MongoDB. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerSeed(this.targetRecords())),
+      handler: () => this.execAction(this.api.triggerSeed(this.targetPocketbase())),
     });
   }
 
@@ -171,7 +172,10 @@ export class MonitoringPageComponent implements OnInit {
           this.viewModel.set(vm);
           this.viewState.set('success');
           if (vm.progress.preparationTarget > 0) {
-            this.targetRecords.set(vm.progress.preparationTarget);
+            this.targetPocketbase.set(vm.progress.preparationTarget);
+          }
+          if (vm.progress.pipelineTarget > 0) {
+            this.targetMongodb.set(vm.progress.pipelineTarget);
           }
           if (vm.progress.isRunning) {
             this.startPolling();

@@ -26,11 +26,12 @@ function serviceTone(
 }
 
 function buildServiceCards(config: Ga03ConfigDto, pb: PocketbaseStatusDto, mongo: MongodbStatusDto, artifacts: ServicesResponseDto['artifacts']): ServiceStatusCard[] {
+  const pbTarget = config.target_records_pb || config.target_records;
   return [
     {
       label: 'PocketBase',
       value: pb.message,
-      description: `Colección: ${pb.collection} | Conteo: ${pb.count ?? 'N/D'} / ${config.target_records}`,
+      description: `Colección: ${pb.collection} | Conteo: ${pb.count ?? 'N/D'} / ${pbTarget}`,
       tone: serviceTone(pb, mongo),
     },
     {
@@ -60,6 +61,8 @@ function buildServicesViewModel(dto: ServicesResponseDto): MonitoringServicesVie
     configInfo: {
       taskNumber: dto.config.task_number,
       targetRecords: dto.config.target_records,
+      targetRecordsPb: dto.config.target_records_pb,
+      targetRecordsMongo: dto.config.target_records_mongo,
       pbCollection: dto.config.pocketbase_collection,
       sourceCsvExists: dto.config.source_csv_exists,
       sourceCsv: dto.config.source_csv_resolved,
@@ -85,6 +88,7 @@ function buildProgressInfo(prep: PreparationProgressDto, pipe: PipelineProgressD
     pipelineElapsedMs: pipe.elapsed_ms,
     pipelineMessage: pipe.message,
     pipelineSections: sections,
+    pipelineTarget: pipe.target_records,
     isRunning: prep.is_running || pipe.is_running,
   };
 }
