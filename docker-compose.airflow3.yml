@@ -1,12 +1,12 @@
 services:
-  airflow3:
+  airflow:
     build:
       context: .
       dockerfile: docker/airflow3.Dockerfile
-    container_name: hoteldata_airflow3
+    container_name: hoteldata_airflow
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "8080:8080"
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
