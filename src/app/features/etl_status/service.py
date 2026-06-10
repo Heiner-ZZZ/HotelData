@@ -279,9 +279,17 @@ def ga03_config_status() -> dict:
     upload_path = settings.project_root / "data" / "uploads" / "ga03_source.csv"
     source_csv = str(upload_path) if upload_path.exists() else configured_source_csv
     resolved_source_csv, source_csv_candidates = _resolve_available_path(source_csv)
+
+    prep_progress = ga03_preparation_progress()
+    pipeline_progress_data = ga03_pipeline_progress()
+    target_pb = prep_progress.get("target_records", settings.target_records)
+    target_mongo = pipeline_progress_data.get("target_records", settings.target_records)
+
     return {
         "task_number": settings.task_number,
         "target_records": settings.target_records,
+        "target_records_pb": target_pb,
+        "target_records_mongo": target_mongo,
         "pocketbase_collection": settings.pocketbase_collection_03,
         "source_csv": source_csv,
         "source_csv_configured": configured_source_csv,
@@ -357,6 +365,7 @@ def ga03_pipeline_progress() -> dict:
         "updated_at": "",
         "sections": default_sections,
         "is_running": False,
+        "target_records": settings.target_records,
     }
     if not progress_path.exists():
         return default_progress
@@ -621,7 +630,7 @@ def clear_ga03_local_evidence() -> dict:
 
 
 def run_ga03_dataset_validation(target_records: int = 0) -> dict:
-    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    extra_env = {"META_PB": str(target_records)} if target_records > 0 else None
     return _run_script("validar_dataset_reservas_03.py", env=extra_env)
 
 
@@ -648,7 +657,7 @@ def start_ga03_seed_source(target_records: int = 0) -> dict:
     _write_ga03_progress_seed("Preparación GA03 solicitada desde /etl-status.", target_records=target_records)
     uploaded_csv = settings.project_root / "data" / "uploads" / "ga03_source.csv"
     args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else None
-    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    extra_env = {"META_PB": str(target_records)} if target_records > 0 else None
     return _start_script("cargar_reservas_hoteleras_03.py", args=args, env=extra_env)
 
 
@@ -656,6 +665,7 @@ def _write_ga03_pipeline_progress(message: str, target_records: int = 0) -> None
     settings = get_settings()
     progress_path = settings.reports_dir / "progreso_pipeline_reservas_03.json"
     progress_path.parent.mkdir(parents=True, exist_ok=True)
+    target = target_records if target_records > 0 else settings.target_records
     payload = {
         "task_number": "03",
         "status": "running",
@@ -669,6 +679,7 @@ def _write_ga03_pipeline_progress(message: str, target_records: int = 0) -> None
             {"key": "mongodb", "label": "Carga MongoDB", "complete": False},
             {"key": "reports", "label": "Reportes", "complete": False},
         ],
+        "target_records": target,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     progress_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -706,5 +717,5 @@ def start_ga03_pipeline(target_records: int = 0) -> dict:
             "ok": False,
         }
     _write_ga03_pipeline_progress("Pipeline GA03 solicitado desde /etl-status.", target_records=target_records)
-    extra_env = {"TARGET_RECORDS": str(target_records)} if target_records > 0 else None
+    extra_env = {"META_MONGO": str(target_records)} if target_records > 0 else None
     return _start_script("run_reservas_03_pipeline.py", log_name="pipeline_reservas_03.log", env=extra_env)

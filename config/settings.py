@@ -33,6 +33,8 @@ class Settings:
     ga03_expected_records: int
     task_number: str
     target_records: int
+    meta_pb: int
+    meta_mongo: int
     cors_allowed_origins: tuple[str, ...]
     cors_allowed_methods: tuple[str, ...]
     cors_allowed_headers: tuple[str, ...]
@@ -79,6 +81,8 @@ def get_settings() -> Settings:
         ga03_expected_records=int(os.getenv("GA03_EXPECTED_RECORDS", os.getenv("TARGET_RECORDS", "300000"))),
         task_number=task_number,
         target_records=int(os.getenv("TARGET_RECORDS", os.getenv("GA03_EXPECTED_RECORDS", "300000"))),
+        meta_pb=int(os.getenv("META_PB", os.getenv("TARGET_RECORDS", "300000"))),
+        meta_mongo=int(os.getenv("META_MONGO", os.getenv("TARGET_RECORDS", "300000"))),
         cors_allowed_origins=_csv_env(
             "CORS_ALLOWED_ORIGINS",
             "http://127.0.0.1:4200,http://localhost:4200,http://localhost:80,http://localhost",

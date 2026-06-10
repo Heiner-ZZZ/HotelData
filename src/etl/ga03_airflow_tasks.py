@@ -114,6 +114,8 @@ def _read_state() -> dict[str, Any]:
 
 def _pocketbase_config() -> dict[str, str | int | None]:
     settings = get_settings()
+    meta_pb = int(os.getenv("META_PB", os.getenv("TARGET_RECORDS", str(settings.target_records))))
+    meta_mongo = int(os.getenv("META_MONGO", os.getenv("TARGET_RECORDS", str(settings.target_records))))
     return {
         "base_url": os.getenv("POCKETBASE_URL", settings.pocketbase_url).rstrip("/"),
         "collection": os.getenv("POCKETBASE_COLLECTION_03", settings.pocketbase_collection_03),
@@ -122,7 +124,9 @@ def _pocketbase_config() -> dict[str, str | int | None]:
         "admin_email": os.getenv("POCKETBASE_ADMIN_EMAIL"),
         "admin_password": os.getenv("POCKETBASE_ADMIN_PASSWORD"),
         "task_number": os.getenv("TASK_NUMBER", settings.task_number),
-        "expected_records": int(os.getenv("TARGET_RECORDS", os.getenv("GA03_EXPECTED_RECORDS", str(settings.target_records)))),
+        "expected_records": meta_mongo,
+        "meta_pb": meta_pb,
+        "meta_mongo": meta_mongo,
     }
 
 
@@ -284,6 +288,7 @@ def validate_environment_03() -> dict[str, Any]:
     for dimension_file in all_paths["dimension_dir"].glob("*.jsonl"):
         dimension_file.unlink()
     started_at = utc_now_iso()
+    meta_mongo = int(config.get("meta_mongo", 0) or config["expected_records"] or 0)
     state = {
         "execution_id": f"ga03_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
         "phase": PHASE,
@@ -291,7 +296,9 @@ def validate_environment_03() -> dict[str, Any]:
         "started_at": started_at,
         "loaded_at": started_at,
         "database": settings.mongo_database,
-        "expected_records": config["expected_records"],
+        "expected_records": meta_mongo,
+        "meta_pb": config.get("meta_pb", 0),
+        "meta_mongo": meta_mongo,
         "paths": {name: str(path) for name, path in all_paths.items()},
     }
     _write_pipeline_progress(
@@ -299,7 +306,7 @@ def validate_environment_03() -> dict[str, Any]:
         section="environment",
         percent=PIPELINE_PROGRESS_STEPS["environment"],
         message="Entorno GA03 validado.",
-        detail={"database": settings.mongo_database, "expected_records": config["expected_records"]},
+        detail={"database": settings.mongo_database, "meta_mongo": meta_mongo},
     )
     return _write_state(state)
 
@@ -317,15 +324,20 @@ def extract_from_pocketbase_03() -> dict[str, Any]:
         )
         payload = response.json()
     total_items = int(payload.get("totalItems", 0) or 0)
-    expected = int(config["expected_records"] or 0)
-    if total_items != expected:
-        raise ValueError(f"GA03 espera {expected} registros en PocketBase, actual={total_items}")
+    meta_pb = int(config.get("meta_pb", 0) or 0)
+    meta_mongo = int(config.get("meta_mongo", 0) or 0)
+    if meta_pb > 0 and total_items != meta_pb:
+        raise ValueError(f"GA03 espera {meta_pb} registros en PocketBase (META_PB), actual={total_items}")
+    if meta_mongo > total_items:
+        raise ValueError(
+            f"GA03: META_MONGO ({meta_mongo}) no puede exceder registros en PocketBase ({total_items})"
+        )
     _write_pipeline_progress(
         status="running",
         section="extract",
         percent=10,
         message="Fuente PocketBase validada.",
-        detail={"total_items": total_items, "expected_records": expected},
+        detail={"total_items": total_items, "expected_records": meta_pb},
     )
     report = {
         "pocketbase_url": config["base_url"],
@@ -346,18 +358,18 @@ def save_extract_jsonl_03() -> dict[str, Any]:
     columns: set[str] = set()
     digest = hashlib.sha256()
     temp_path = all_paths["extract_jsonl"].with_suffix(".jsonl.tmp")
-    expected = int(config["expected_records"] or 0)
+    meta_mongo = int(config.get("meta_mongo", 0) or config["expected_records"] or 0)
     if all_paths["extract_jsonl"].exists():
         all_paths["extract_jsonl"].unlink()
     if temp_path.exists():
         temp_path.unlink()
     with requests.Session() as session:
         headers = _auth_headers(session, config)
-        while True:
+        while records < meta_mongo:
             response = _request_with_retries(
                 "GET",
                 f"{config['base_url']}/api/collections/{config['collection']}/records",
-                params={"page": page, "perPage": config["page_size"]},
+                params={"page": page, "perPage": min(config["page_size"], meta_mongo - records)},
                 headers=headers,
                 timeout=60,
             )
@@ -367,13 +379,15 @@ def save_extract_jsonl_03() -> dict[str, Any]:
                 break
             with temp_path.open("a", encoding="utf-8") as target:
                 for item in items:
+                    if records >= meta_mongo:
+                        break
                     columns.update(item.keys())
                     line = json.dumps(item, ensure_ascii=False, default=json_default) + "\n"
                     target.write(line)
                     digest.update(line.encode("utf-8"))
                     records += 1
-            print(f"GA03 PocketBase page {page}/{payload.get('totalPages')} - registros extraidos: {records}")
-            total_pages = int(payload.get("totalPages") or page)
+            print(f"GA03 PocketBase page {page} - registros extraidos: {records}/{meta_mongo}")
+            total_pages = max(int(payload.get("totalPages") or page), 1)
             extract_percent = 10 + ((page / total_pages) * 20 if total_pages else 0)
             _write_pipeline_progress(
                 status="running",
@@ -384,15 +398,13 @@ def save_extract_jsonl_03() -> dict[str, Any]:
                     "page": page,
                     "total_pages": total_pages,
                     "records": records,
-                    "expected_records": expected,
+                    "meta_mongo": meta_mongo,
                     "elapsed_ms": _elapsed_ms(),
                 },
             )
-            if page >= int(payload.get("totalPages") or page):
-                break
             page += 1
-    if records != expected:
-        raise ValueError(f"Extraccion GA03 incompleta: esperado={expected}, actual={records}")
+    if records != meta_mongo:
+        raise ValueError(f"Extraccion GA03 incompleta: esperado={meta_mongo}, actual={records}")
     temp_path.replace(all_paths["extract_jsonl"])
     _write_pipeline_progress(
         status="running",
@@ -408,7 +420,7 @@ def save_extract_jsonl_03() -> dict[str, Any]:
         "jsonl_sha256": digest.hexdigest(),
         "jsonl_bytes": all_paths["extract_jsonl"].stat().st_size,
         "collection": config["collection"],
-        "expected_records": expected,
+        "expected_records": meta_mongo,
     }
     _write_state({"extract_report": report})
     return report

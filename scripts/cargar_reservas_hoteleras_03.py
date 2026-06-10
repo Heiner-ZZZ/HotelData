@@ -269,7 +269,8 @@ def batch_create(base_url: str, headers: dict[str, str], rows: list[dict[str, An
 def main() -> None:
     args = parse_args()
     settings = get_settings()
-    expected = args.target if args.target > 0 else settings.target_records
+    meta_pb = int(os.getenv("META_PB", "0"))
+    expected = args.target if args.target > 0 else (meta_pb if meta_pb > 0 else settings.target_records)
     csv_path: Path | None = None
     loaded = 0
     batch_number = 0

@@ -60,15 +60,16 @@ def main() -> None:
     db = get_database()
     db.command("ping")
     collections = db.list_collection_names()
+    meta_pb = int(os.getenv("META_PB", os.getenv("TARGET_RECORDS", str(settings.target_records))))
     report = {
         "validated_at": datetime.now(timezone.utc).isoformat(),
         "pocketbase_url": base_url,
         "pocketbase_collection": collection_name,
         "pocketbase_total_items": total_items,
         "task_number": settings.task_number,
-        "target_records": settings.target_records,
-        "expected_records": settings.target_records,
-        "pocketbase_valid": total_items == settings.target_records,
+        "target_records": meta_pb,
+        "expected_records": meta_pb,
+        "pocketbase_valid": total_items == meta_pb,
         "mongo_database": settings.mongo_database,
         "mongo_connected": True,
         "fact_hotel_reservations_exists": "fact_hotel_reservations" in collections,
