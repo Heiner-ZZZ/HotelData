@@ -81,41 +81,41 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
 
-  airflow:
-    build:
-      context: .
-      dockerfile: docker/airflow.Dockerfile
-    container_name: hoteldata_airflow
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-      _AIRFLOW_WWW_USER_USERNAME: admin
-      _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
-      _AIRFLOW_WWW_USER_EMAIL: admin@hoteldata.local
-      HOTELDATA_PROJECT_ROOT: /opt/hoteldata
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DATABASE: hoteldata_hub
-      POCKETBASE_URL: http://pocketbase:8090
-      POCKETBASE_COLLECTION_03: hotel_reservation_events_03
-      TASK_NUMBER: "03"
-      TARGET_RECORDS: "300000"
-      GA03_EXPECTED_RECORDS: "300000"
-      META_PB: "300000"
-      META_MONGO: "300000"
-    volumes:
-      - .:/opt/hoteldata
-      - ./dags:/opt/airflow/dags
-      - ./docker/airflow-entrypoint.sh:/entrypoint.sh
-    depends_on:
-      pocketbase:
-        condition: service_started
-      mongo:
-        condition: service_started
-    command: bash /entrypoint.sh
+  # airflow:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/airflow.Dockerfile
+  #   container_name: hoteldata_airflow
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+  #     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+  #     _AIRFLOW_WWW_USER_USERNAME: admin
+  #     _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
+  #     _AIRFLOW_WWW_USER_EMAIL: admin@hoteldata.local
+  #     HOTELDATA_PROJECT_ROOT: /opt/hoteldata
+  #     MONGO_URI: mongodb://mongo:27017
+  #     MONGO_DATABASE: hoteldata_hub
+  #     POCKETBASE_URL: http://pocketbase:8090
+  #     POCKETBASE_COLLECTION_03: hotel_reservation_events_03
+  #     TASK_NUMBER: "03"
+  #     TARGET_RECORDS: "300000"
+  #     GA03_EXPECTED_RECORDS: "300000"
+  #     META_PB: "300000"
+  #     META_MONGO: "300000"
+  #   volumes:
+  #     - .:/opt/hoteldata
+  #     - ./dags:/opt/airflow/dags
+  #     - ./docker/airflow-entrypoint.sh:/entrypoint.sh
+  #   depends_on:
+  #     pocketbase:
+  #       condition: service_started
+  #     mongo:
+  #       condition: service_started
+  #   command: bash /entrypoint.sh
 
   frontend:
     build:
