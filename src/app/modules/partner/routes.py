@@ -342,6 +342,28 @@ def properties_api(q: str = "", page: int = Query(default=1, ge=1)):
     return list_partner_hotels(q, page=page, page_size=20)
 
 
+@api_router.get("/properties/options")
+def properties_options_api(
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+):
+    results = list_partner_hotels(q, page=page, page_size=page_size)
+    return {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in results["items"]
+        ],
+        "total": results["total"],
+        "page": results["page"],
+        "page_size": results["page_size"],
+        "has_next": results["has_next"],
+    }
+
+
 @api_router.get("/properties/dashboard")
 def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1)):
     return properties_dashboard(q, page=page, page_size=20)
@@ -575,8 +597,26 @@ def rates_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/rates/options")
-def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
-    response: dict[str, object] = {"properties": management_property_options()}
+def rates_options_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+):
+    results = list_partner_hotels(q, page=page, page_size=page_size)
+    response: dict[str, object] = {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in results["items"]
+        ],
+        "total": results["total"],
+        "page": results["page"],
+        "page_size": results["page_size"],
+        "has_next": results["has_next"],
+    }
     if prop_id:
         detail = partner_hotel_rates(_require_prop_id(prop_id))
         if detail is None:
@@ -638,8 +678,25 @@ def policies_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/policies/options")
-def policies_options_api():
-    return {"properties": management_property_options()}
+def policies_options_api(
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+):
+    results = list_partner_hotels(q, page=page, page_size=page_size)
+    return {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in results["items"]
+        ],
+        "total": results["total"],
+        "page": results["page"],
+        "page_size": results["page_size"],
+        "has_next": results["has_next"],
+    }
 
 
 @api_router.put("/policies")

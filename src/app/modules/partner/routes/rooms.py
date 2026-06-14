@@ -1,0 +1,120 @@
+from __future__ import annotations
+
+from fastapi import Body, Form, Query, Request
+from fastapi.responses import RedirectResponse
+
+from src.app.modules.partner.routes import api_router, templates, web_router
+from src.app.modules.partner.routes._common import require_prop_id
+from src.app.modules.partner.services import (
+    create_room_type,
+    list_partner_hotels,
+    partner_hotel_detail,
+    partner_hotel_rooms,
+)
+
+
+@web_router.get("/hotels/{prop_id}/rooms")
+def rooms(request: Request, prop_id: int):
+    detail = partner_hotel_rooms(prop_id)
+    if detail is None:
+        return RedirectResponse(url="/partner/hotels", status_code=303)
+    detail["message"] = request.query_params.get("message")
+    detail["error"] = request.query_params.get("error")
+    return templates.TemplateResponse(request, "partner/rooms.html", detail)
+
+
+@web_router.get("/hotels/{prop_id}/rooms/new")
+def rooms_new(request: Request, prop_id: int):
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return RedirectResponse(url="/partner/hotels", status_code=303)
+    detail["message"] = request.query_params.get("message")
+    detail["error"] = request.query_params.get("error")
+    detail["form_values"] = {
+        "name": "",
+        "description": "",
+        "max_adults": 2,
+        "max_children": 0,
+        "base_capacity": 2,
+        "is_active": True,
+    }
+    return templates.TemplateResponse(request, "partner/rooms_new.html", detail)
+
+
+@web_router.post("/hotels/{prop_id}/rooms/new")
+def rooms_new_submit(
+    request: Request,
+    prop_id: int,
+    name: str = Form(default=""),
+    description: str = Form(default=""),
+    max_adults: int = Form(default=2),
+    max_children: int = Form(default=0),
+    base_capacity: int = Form(default=2),
+    is_active: str = Form(default="on"),
+):
+    try:
+        saved = create_room_type(
+            prop_id,
+            name=name,
+            description=description,
+            max_adults=max_adults,
+            max_children=max_children,
+            base_capacity=base_capacity,
+            is_active=is_active,
+        )
+    except ValueError as exc:
+        return RedirectResponse(
+            url=f"/partner/hotels/{prop_id}/rooms/new?error={str(exc).replace(' ', '+')}",
+            status_code=303,
+        )
+    if saved is None:
+        return RedirectResponse(url="/partner/hotels", status_code=303)
+    return RedirectResponse(
+        url=f"/partner/hotels/{prop_id}/rooms?message=Tipo+de+habitacion+registrado",
+        status_code=303,
+    )
+
+
+@api_router.get("/rooms")
+def rooms_api(prop_id: int = Query(..., ge=1)):
+    detail = partner_hotel_rooms(require_prop_id(prop_id))
+    if detail is None:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return detail
+
+
+@api_router.get("/rooms/options")
+def rooms_options_api():
+    properties = list_partner_hotels("", page=1, page_size=200)
+    return {
+        "properties": [
+            {
+                "prop_id": item["prop_id"],
+                "display_name": item.get("display_name") or item.get("hotel_name") or f"Hotel {item['prop_id']}",
+            }
+            for item in properties["items"]
+        ]
+    }
+
+
+@api_router.post("/rooms", status_code=201)
+def rooms_create_api(payload: dict = Body(...)):
+    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_room_type(
+            prop_id,
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            max_adults=payload.get("max_adults"),
+            max_children=payload.get("max_children"),
+            base_capacity=payload.get("base_capacity"),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
