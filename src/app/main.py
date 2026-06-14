@@ -39,7 +39,7 @@ from src.app.modules.partner.services.bootstrap import (
     ensure_inventory_collections,
     ensure_rate_collections,
 )
-from src.app.modules.revenue.service import ensure_revenue_collections
+from src.app.modules.revenue.services import ensure_revenue_collections
 from config.settings import get_settings
 from src.database.connection import get_database
 

@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.app.modules.revenue.schemas import ModuleStatus
-from src.app.modules.revenue.service import (
+from src.app.modules.revenue.services import (
     conversion_overview,
     create_promotion_campaign,
     create_rate_plan,
@@ -217,18 +217,27 @@ def rates_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/rates/options")
-def rates_options_api(prop_id: int | None = Query(default=None, ge=1)):
+def rates_options_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+):
     from src.app.modules.partner.services import list_partner_hotels
 
-    properties = list_partner_hotels("", page=1, page_size=100)
+    results = list_partner_hotels(q, page=page, page_size=page_size)
     response: dict[str, object] = {
         "properties": [
             {
                 "prop_id": item["prop_id"],
                 "display_name": item.get("display_name") or item.get("hotel_name") or f"Hotel {item['prop_id']}",
             }
-            for item in properties["items"]
-        ]
+            for item in results["items"]
+        ],
+        "total": results["total"],
+        "page": results["page"],
+        "page_size": results["page_size"],
+        "has_next": results["has_next"],
     }
     if prop_id:
         overview = hotel_rates_overview(prop_id)
