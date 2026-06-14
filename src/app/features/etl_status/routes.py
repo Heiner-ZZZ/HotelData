@@ -5,25 +5,25 @@ from pathlib import Path
 from fastapi import APIRouter, File, Query, Request, UploadFile
 from fastapi.templating import Jinja2Templates
 
-from src.app.features.etl_status.service import (
-    clear_ga03_local_evidence,
+from src.app.features.etl_status.services import (
+    artifact_status,
+    clear_local_evidence,
+    config_status,
     execution_status,
-    ga03_artifact_status,
-    ga03_config_status,
-    ga03_mongodb_status,
-    ga03_pocketbase_status,
-    ga03_pipeline_progress,
-    ga03_preparation_progress,
-    ga03_report_status,
+    mongodb_status,
+    pipeline_progress,
+    pocketbase_status,
+    preparation_progress,
     raw_file_status,
-    run_ga03_dataset_validation,
-    run_ga03_pipeline,
+    report_status,
+    run_dataset_validation,
     run_local_etl,
+    run_pipeline,
     run_seed_master_collections,
     save_ga03_source_csv,
     save_uploaded_raw_csv,
-    start_ga03_pipeline,
-    start_ga03_seed_source,
+    start_pipeline,
+    start_seed_source,
 )
 
 JSON_API = APIRouter(prefix="/api")
@@ -44,7 +44,7 @@ def _summarize_output(result: dict) -> str:
     return output
 
 
-def _ga03_action_result(result: dict, *, success_message: str, failure_message: str) -> dict:
+def _action_result(result: dict, *, success_message: str, failure_message: str) -> dict:
     result["display_message"] = success_message if result.get("ok") else failure_message
     result["summary_output"] = _summarize_output(result)
     return result
@@ -56,13 +56,13 @@ def _etl_context(request: Request, *, upload_message: str = "", action_result: d
         "raw_file": raw_file_status(),
         "upload_message": upload_message,
         "action_result": action_result,
-        "ga03_config": ga03_config_status(),
-        "ga03_pocketbase": ga03_pocketbase_status(),
-        "ga03_mongodb": ga03_mongodb_status(),
-        "ga03_progress": ga03_preparation_progress(),
-        "ga03_pipeline_progress": ga03_pipeline_progress(),
-        "ga03_artifacts": ga03_artifact_status(),
-        "ga03_reports": ga03_report_status(),
+        "ga03_config": config_status(),
+        "ga03_pocketbase": pocketbase_status(),
+        "ga03_mongodb": mongodb_status(),
+        "ga03_progress": preparation_progress(),
+        "ga03_pipeline_progress": pipeline_progress(),
+        "ga03_artifacts": artifact_status(),
+        "ga03_reports": report_status(),
         "ga03_seed_confirm_token": "PREPARAR_GA03",
     }
 
@@ -110,8 +110,8 @@ def trigger_etl(request: Request):
 
 @router.post("/etl-status/ga03/validate")
 def trigger_ga03_validation(request: Request):
-    pocketbase_status = ga03_pocketbase_status()
-    if pocketbase_status.get("state") != "ready":
+    pb_status = pocketbase_status()
+    if pb_status.get("state") != "ready":
         result = {
             "command": "scripts/validar_dataset_reservas_03.py",
             "returncode": 1,
@@ -122,8 +122,8 @@ def trigger_ga03_validation(request: Request):
             "summary_output": "No se ejecutó la validación: la fuente GA03 debe estar lista en PocketBase.",
         }
     else:
-        result = _ga03_action_result(
-            run_ga03_dataset_validation(),
+        result = _action_result(
+            run_dataset_validation(),
             success_message="Validación GA03 ejecutada.",
             failure_message="Validación GA03 fallida.",
         )
@@ -136,8 +136,8 @@ def trigger_ga03_validation(request: Request):
 
 @router.post("/etl-status/ga03/run")
 def trigger_ga03_pipeline(request: Request):
-    pocketbase_status = ga03_pocketbase_status()
-    if pocketbase_status.get("state") != "ready":
+    pb_status = pocketbase_status()
+    if pb_status.get("state") != "ready":
         result = {
             "command": "scripts/run_reservas_03_pipeline.py",
             "returncode": 1,
@@ -148,8 +148,8 @@ def trigger_ga03_pipeline(request: Request):
             "summary_output": "No se ejecutó el pipeline: la fuente GA03 debe estar lista en PocketBase.",
         }
     else:
-        result = _ga03_action_result(
-            start_ga03_pipeline(),
+        result = _action_result(
+            start_pipeline(),
             success_message="Pipeline GA03 iniciado.",
             failure_message="Pipeline GA03 fallido.",
         )
@@ -163,8 +163,8 @@ def trigger_ga03_pipeline(request: Request):
 
 @router.post("/etl-status/ga03/seed")
 def trigger_ga03_seed(request: Request):
-    result = _ga03_action_result(
-        start_ga03_seed_source(),
+    result = _action_result(
+        start_seed_source(),
         success_message="Preparación GA03 iniciada.",
         failure_message="Preparación GA03 fallida.",
     )
@@ -189,9 +189,9 @@ async def upload_ga03_source_csv(request: Request, ga03_source_file: UploadFile 
 
 @router.post("/etl-status/ga03/clear-evidence")
 def clear_ga03_evidence(request: Request):
-    result = clear_ga03_local_evidence()
+    result = clear_local_evidence()
     deleted_count = len(result.get("deleted", []))
-    result = _ga03_action_result(
+    result = _action_result(
         result,
         success_message="Evidencia local GA03 limpiada.",
         failure_message="No se pudo limpiar la evidencia local GA03.",
@@ -208,19 +208,20 @@ def clear_ga03_evidence(request: Request):
 # JSON API endpoints for the Angular frontend
 # ---------------------------------------------------------------------------
 
+
 @JSON_API.get("/etl-status/services")
 def api_etl_status_services():
     return {
-        "config": ga03_config_status(),
-        "pocketbase": ga03_pocketbase_status(),
-        "mongodb": ga03_mongodb_status(),
-        "artifacts": ga03_artifact_status(),
+        "config": config_status(),
+        "pocketbase": pocketbase_status(),
+        "mongodb": mongodb_status(),
+        "artifacts": artifact_status(),
     }
 
 
 @JSON_API.get("/etl-status/reports")
 def api_etl_status_reports():
-    return ga03_report_status()
+    return report_status()
 
 
 @JSON_API.get("/etl-status/execution")
@@ -231,8 +232,8 @@ def api_etl_status_execution():
 @JSON_API.get("/etl-status/ga03/progress")
 def api_etl_status_ga03_progress():
     return {
-        "preparation": ga03_preparation_progress(),
-        "pipeline": ga03_pipeline_progress(),
+        "preparation": preparation_progress(),
+        "pipeline": pipeline_progress(),
     }
 
 
@@ -242,21 +243,21 @@ async def api_etl_status_ga03_upload_csv(ga03_source_file: UploadFile = File(...
     uploaded = save_ga03_source_csv(ga03_source_file.filename or "ga03_source.csv", content)
     return {
         "ok": True,
-        "uploaded_filename": uploaded.get("uploaded_filename", uploaded.get("uploaded_filename", "")),
+        "uploaded_filename": uploaded.get("uploaded_filename", ""),
         "display_message": f"CSV fuente GA03 cargado: {uploaded.get('uploaded_filename', '')}",
     }
 
 
 @JSON_API.post("/etl-status/ga03/validate")
 def api_etl_status_ga03_validate(target: int = Query(0, ge=0)):
-    pocketbase_status = ga03_pocketbase_status()
-    if pocketbase_status.get("state") != "ready":
+    pb_status = pocketbase_status()
+    if pb_status.get("state") != "ready":
         return {
             "ok": False,
             "display_message": "Validación GA03 fallida.",
             "summary_output": "La fuente GA03 debe estar lista en PocketBase.",
         }
-    result = run_ga03_dataset_validation(target_records=target)
+    result = run_dataset_validation(target_records=target)
     return {
         "ok": result.get("ok", False),
         "target_records": target,
@@ -267,14 +268,14 @@ def api_etl_status_ga03_validate(target: int = Query(0, ge=0)):
 
 @JSON_API.post("/etl-status/ga03/run")
 def api_etl_status_ga03_run(target: int = Query(0, ge=0)):
-    pocketbase_status = ga03_pocketbase_status()
-    if pocketbase_status.get("state") != "ready":
+    pb_status = pocketbase_status()
+    if pb_status.get("state") != "ready":
         return {
             "ok": False,
             "display_message": "Pipeline GA03 fallido.",
             "summary_output": "La fuente GA03 debe estar lista en PocketBase.",
         }
-    result = start_ga03_pipeline(target_records=target)
+    result = start_pipeline(target_records=target)
     return {
         "ok": result.get("ok", False),
         "target_records": target,
@@ -286,7 +287,7 @@ def api_etl_status_ga03_run(target: int = Query(0, ge=0)):
 
 @JSON_API.post("/etl-status/ga03/seed")
 def api_etl_status_ga03_seed(target: int = Query(0, ge=0)):
-    result = start_ga03_seed_source(target_records=target)
+    result = start_seed_source(target_records=target)
     return {
         "ok": result.get("ok", False),
         "target_records": target,
@@ -297,7 +298,7 @@ def api_etl_status_ga03_seed(target: int = Query(0, ge=0)):
 
 @JSON_API.post("/etl-status/ga03/clear-evidence")
 def api_etl_status_ga03_clear_evidence():
-    result = clear_ga03_local_evidence()
+    result = clear_local_evidence()
     return {
         "ok": result.get("ok", False),
         "deleted_count": len(result.get("deleted", [])),
