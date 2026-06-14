@@ -187,6 +187,24 @@
   }
 }
 
+.bento-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.section-icon {
+  font-size: 1.35rem;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  flex-shrink: 0;
+}
+
+.icon-occupancy { color: #0891b2; }
+.icon-revenue { color: var(--success); }
+.icon-checkins { color: var(--warning); }
+.icon-health { color: #7c3aed; }
+.icon-hotel-warm { color: #d97706; }
+
 /* ── Chart ── */
 .chart-toggles {
   display: flex;

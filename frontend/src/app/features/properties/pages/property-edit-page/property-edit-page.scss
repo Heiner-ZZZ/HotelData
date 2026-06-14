@@ -605,3 +605,11 @@ select option {
     justify-content: center;
   }
 }
+
+/* Semantic icon color overrides */
+.icon-hotel-warm { color: #d97706; }
+.icon-badge-purple { color: #7c3aed; }
+.icon-info-blue { color: var(--accent); }
+.icon-policy-amber { color: var(--warning); }
+.icon-star-gold { color: #eab308; }
+.icon-gallery-purple { color: #7c3aed; }

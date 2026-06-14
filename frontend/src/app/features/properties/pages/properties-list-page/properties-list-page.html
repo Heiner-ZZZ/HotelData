@@ -14,7 +14,7 @@
     <section class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-top">
-          <span class="material-symbols-outlined kpi-icon">bed</span>
+          <span class="material-symbols-outlined kpi-icon icon-occupancy">bed</span>
           @if (d.quickStats.occupancyTrend != null) {
             <span class="kpi-trend up">
               <span class="material-symbols-outlined">trending_up</span>
@@ -35,7 +35,7 @@
 
       <div class="kpi-card">
         <div class="kpi-top">
-          <span class="material-symbols-outlined kpi-icon">payments</span>
+          <span class="material-symbols-outlined kpi-icon icon-revenue">payments</span>
           <span class="kpi-trend up">
             <span class="material-symbols-outlined">trending_up</span>
             {{ d.quickStats.revenueTrend }}%
@@ -52,7 +52,7 @@
 
       <div class="kpi-card">
         <div class="kpi-top">
-          <span class="material-symbols-outlined kpi-icon">person_check</span>
+          <span class="material-symbols-outlined kpi-icon icon-checkins">person_check</span>
           <span class="kpi-badge priority">Prioridad</span>
         </div>
         <p class="kpi-label">Check-ins Pendientes</p>
@@ -62,7 +62,7 @@
 
       <div class="kpi-card">
         <div class="kpi-top">
-          <span class="material-symbols-outlined kpi-icon">monitoring</span>
+          <span class="material-symbols-outlined kpi-icon icon-health">monitoring</span>
           <span class="kpi-trend stable">Estable</span>
         </div>
         <p class="kpi-label">Puntuaci&oacute;n de Salud de Datos</p>
@@ -77,9 +77,12 @@
     <section class="bento-grid">
       <div class="bento-card chart-card">
         <div class="bento-header">
-          <div>
-            <h4>Rendimiento de Ingresos</h4>
+          <div class="bento-header-left">
+            <span class="material-symbols-outlined section-icon icon-revenue">bar_chart</span>
+            <div>
+              <h4>Rendimiento de Ingresos</h4>
             <p>An&aacute;lisis comparativo vs Mes Anterior</p>
+          </div>
           </div>
           <div class="chart-toggles">
             <button class="toggle-btn" [class.active]="chartView() === 'daily'" (click)="chartView.set('daily')">Diario</button>
@@ -130,8 +133,13 @@
 
       <div class="bento-card arrivals-card">
         <div class="bento-header">
-          <h4>Llegadas de Hoy</h4>
-          <p>Programadas para {{ todayStr }}</p>
+          <div class="bento-header-left">
+            <span class="material-symbols-outlined section-icon icon-checkins">today</span>
+            <div>
+              <h4>Llegadas de Hoy</h4>
+              <p>Programadas para {{ todayStr }}</p>
+            </div>
+          </div>
         </div>
         <div class="arrivals-list">
           @for (arrival of d.arrivalsToday; track arrival.guestName) {
@@ -161,7 +169,12 @@
     <!-- Properties Table -->
     <section class="bento-card table-card">
       <div class="bento-header">
-        <h4>Propiedades Gestionadas</h4>
+        <div class="bento-header-left">
+          <span class="material-symbols-outlined section-icon icon-hotel-warm">domain</span>
+          <div>
+            <h4>Propiedades Gestionadas</h4>
+          </div>
+        </div>
         <div class="table-actions">
           <form [formGroup]="form" (ngSubmit)="submit()">
             <div class="search-field">
@@ -193,7 +206,7 @@
                 <td>
                   <a [routerLink]="['/management/properties', item.propId]" class="prop-link">
                     <div class="prop-thumb">
-                      <span class="material-symbols-outlined">hotel</span>
+                      <span class="material-symbols-outlined icon-hotel-warm">hotel</span>
                     </div>
                     <div class="prop-info">
                       <strong>{{ item.displayName }}</strong>
