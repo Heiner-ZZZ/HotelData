@@ -3,6 +3,14 @@ export interface PolicyPropertyOption {
   label: string;
 }
 
+export interface PropertyOptionsPage {
+  items: PolicyPropertyOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}
+
 export interface PolicySummaryItem {
   label: string;
   value: string;

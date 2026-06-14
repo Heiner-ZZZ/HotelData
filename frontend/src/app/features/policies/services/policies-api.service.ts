@@ -13,9 +13,14 @@ export class PoliciesApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getOptions() {
+  getOptions(q?: string, page?: number, pageSize?: number) {
+    let params = new HttpParams();
+    if (q != null) params = params.set('q', q);
+    if (page != null) params = params.set('page', String(page));
+    if (pageSize != null) params = params.set('page_size', String(pageSize));
     return this.http
       .get<PoliciesOptionsDto>(`${this.apiConfig.baseUrl}/management/policies/options`, {
+        params,
         withCredentials: true
       })
       .pipe(map((dto) => mapPoliciesOptions(dto)));

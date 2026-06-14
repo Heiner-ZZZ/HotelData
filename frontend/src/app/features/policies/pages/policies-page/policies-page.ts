@@ -2,16 +2,17 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapPoliciesPayload } from '../../mappers/policies.mapper';
-import type { PoliciesViewModel, PolicyPropertyOption } from '../../models/policies.model';
+import type { PoliciesViewModel } from '../../models/policies.model';
 import { PoliciesApiService } from '../../services/policies-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 
@@ -23,11 +24,12 @@ import { PolicySummaryCardsComponent } from '../../components/policy-summary-car
     LoadingStateComponent,
     PageHeaderComponent,
     PolicySummaryCardsComponent,
-    ReactiveFormsModule
+    PropertySelectorComponent,
+    ReactiveFormsModule,
   ],
   templateUrl: './policies-page.html',
   styleUrl: './policies-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PoliciesPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -38,13 +40,11 @@ export class PoliciesPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<PoliciesViewModel | null>(null);
-  readonly propertyOptions = signal<PolicyPropertyOption[]>([]);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectorForm = this.formBuilder.nonNullable.group({
-    propId: [0, [Validators.required, Validators.min(1)]]
-  });
+  readonly selectedPropId = signal(0);
+  readonly selectedLabel = signal('');
 
   readonly policyForm = this.formBuilder.nonNullable.group({
     checkInTime: ['', [Validators.required]],
@@ -54,7 +54,7 @@ export class PoliciesPageComponent {
     extraBedPolicy: [''],
     paymentPolicy: [''],
     petPolicy: [''],
-    houseRules: ['']
+    houseRules: [''],
   });
 
   constructor() {
@@ -66,22 +66,16 @@ export class PoliciesPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
-          return forkJoin({
-            options: this.api.getOptions(),
-            policies: propId > 0 ? this.api.getPolicies(propId) : of(null)
-          });
+          return propId > 0 ? this.api.getPolicies(propId) : of(null);
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ options, policies }) => {
-          this.propertyOptions.set(options);
-          if (!this.selectorForm.controls.propId.value && options.length) {
-            this.selectorForm.controls.propId.setValue(options[0].propId);
-          }
+        next: (policies) => {
           if (policies) {
             this.viewModel.set(policies);
-            this.selectorForm.controls.propId.setValue(policies.propId, { emitEvent: false });
+            this.selectedPropId.set(policies.propId);
+            this.selectedLabel.set(policies.hotelName);
             this.policyForm.setValue({
               checkInTime: policies.checkInTime,
               checkOutTime: policies.checkOutTime,
@@ -90,22 +84,22 @@ export class PoliciesPageComponent {
               extraBedPolicy: policies.extraBedPolicy,
               paymentPolicy: policies.paymentPolicy,
               petPolicy: policies.petPolicy,
-              houseRules: policies.houseRules
+              houseRules: policies.houseRules,
             });
             this.viewState.set('success');
           } else {
             this.viewModel.set(null);
-            this.viewState.set(options.length ? 'empty' : 'success');
+            this.viewState.set('empty');
           }
         },
-        error: () => this.viewState.set('error')
+        error: () => this.viewState.set('error'),
       });
   }
 
-  selectProperty() {
+  onPropSelected(propId: number) {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: this.selectorForm.controls.propId.value || null }
+      queryParams: { prop_id: propId || null },
     });
   }
 
@@ -125,13 +119,13 @@ export class PoliciesPageComponent {
       extraBedPolicy: raw.extraBedPolicy,
       paymentPolicy: raw.paymentPolicy,
       petPolicy: raw.petPolicy,
-      houseRules: raw.houseRules
+      houseRules: raw.houseRules,
     });
     this.api
       .savePolicies(payload)
       .pipe(
         switchMap(() => this.api.getPolicies(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (policies) => {
@@ -142,7 +136,7 @@ export class PoliciesPageComponent {
         error: (error: ApiError) => {
           this.errorMessage.set(error.message || 'No fue posible guardar las politicas.');
           this.message.set('');
-        }
+        },
       });
   }
 }

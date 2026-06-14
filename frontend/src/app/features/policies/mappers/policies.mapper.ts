@@ -1,5 +1,5 @@
 import type { PoliciesDto, PoliciesOptionsDto, PoliciesSaveDto } from '../models/policies.dto';
-import type { PoliciesViewModel, PolicyPropertyOption } from '../models/policies.model';
+import type { PoliciesViewModel, PolicyPropertyOption, PropertyOptionsPage } from '../models/policies.model';
 
 export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
   const checkIn = dto.policies.check_in_time || 'Pendiente';
@@ -30,11 +30,21 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
   };
 }
 
-export function mapPoliciesOptions(dto: PoliciesOptionsDto): PolicyPropertyOption[] {
-  return dto.properties.map((item) => ({
+export function mapPoliciesOptions(dto: PoliciesOptionsDto): PolicyPropertyOption[] | PropertyOptionsPage {
+  const items = dto.properties.map((item) => ({
     propId: item.prop_id,
     label: item.display_name || `Hotel ${item.prop_id}`
   }));
+  if (dto.total !== undefined && dto.has_next !== undefined) {
+    return {
+      items,
+      total: dto.total,
+      page: dto.page ?? 1,
+      pageSize: dto.page_size ?? items.length,
+      hasNext: dto.has_next
+    };
+  }
+  return items;
 }
 
 export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {

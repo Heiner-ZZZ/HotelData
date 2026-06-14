@@ -26,6 +26,10 @@ export interface PoliciesOptionsDto {
     prop_id: number;
     display_name: string;
   }>;
+  total?: number;
+  page?: number;
+  page_size?: number;
+  has_next?: boolean;
 }
 
 export interface PoliciesSaveDto {

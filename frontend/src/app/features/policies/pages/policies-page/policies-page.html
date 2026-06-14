@@ -5,20 +5,11 @@
     description="Operacion y reglas comerciales de la propiedad seleccionada."
   />
 
-  <section class="surface-card selector-panel">
-    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
-      <label class="field">
-        <span>Propiedad</span>
-        <select formControlName="propId">
-          <option [ngValue]="0">Seleccionar propiedad</option>
-          @for (option of propertyOptions(); track option.propId) {
-            <option [ngValue]="option.propId">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-      <button type="submit">Cargar</button>
-    </form>
-  </section>
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
 
   @if (message()) {
     <section class="surface-card message success">{{ message() }}</section>
@@ -37,7 +28,7 @@
     @case ('empty') {
       <app-empty-state
         title="Selecciona una propiedad"
-        description="El módulo de políticas necesita un hotel activo para editar sus reglas operativas."
+        description="El modulo de politicas necesita un hotel activo para editar sus reglas operativas."
       />
     }
     @default {
@@ -46,19 +37,26 @@
 
         <section class="hero-grid">
           <article class="surface-card hero-card">
-            <span class="label">Hotel</span>
-            <strong>{{ vm.hotelName }}</strong>
-            <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+            <span class="hero-icon material-symbols-outlined icon-hotel-warm">business</span>
+            <div class="hero-body">
+              <span class="hero-label">Hotel</span>
+              <strong class="hero-value">{{ vm.hotelName }}</strong>
+              <p class="hero-detail">{{ vm.countryLabel }} &middot; Review {{ vm.reviewLabel }}</p>
+            </div>
           </article>
           <article class="surface-card hero-card">
-            <span class="label">Precio promedio</span>
-            <strong>${{ vm.avgPriceLabel }}</strong>
-            <p>Fuente {{ vm.sourceCollection }}</p>
+            <span class="hero-icon material-symbols-outlined icon-price-green">trending_up</span>
+            <div class="hero-body">
+              <span class="hero-label">Precio promedio</span>
+              <strong class="hero-value">${{ vm.avgPriceLabel }}</strong>
+              <p class="hero-detail">Fuente {{ vm.sourceCollection }}</p>
+            </div>
           </article>
         </section>
 
         <section class="surface-card form-panel">
           <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon icon-policy-amber">gavel</span>
             <div>
               <h2>Politicas operativas</h2>
               <p>Check-in, cancelacion, pagos y reglas de la propiedad.</p>
@@ -67,39 +65,66 @@
 
           <form [formGroup]="policyForm" (ngSubmit)="savePolicies()" class="form-grid">
             <label class="field">
-              <span>Check-in</span>
-              <input formControlName="checkInTime">
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">login</span>
+                Check-in
+              </span>
+              <input formControlName="checkInTime" placeholder="Ej: 15:00" />
             </label>
             <label class="field">
-              <span>Check-out</span>
-              <input formControlName="checkOutTime">
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">logout</span>
+                Check-out
+              </span>
+              <input formControlName="checkOutTime" placeholder="Ej: 11:00" />
             </label>
             <label class="field field-span">
-              <span>Cancelacion</span>
-              <textarea rows="4" formControlName="cancellationPolicy"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">cancel</span>
+                Cancelacion
+              </span>
+              <textarea rows="4" formControlName="cancellationPolicy" placeholder="Politica de cancelacion"></textarea>
             </label>
             <label class="field field-span">
-              <span>Ninos y estancia familiar</span>
-              <textarea rows="4" formControlName="childrenPolicy"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">family_history</span>
+                Ninos y estancia familiar
+              </span>
+              <textarea rows="4" formControlName="childrenPolicy" placeholder="Politica de ninos y familia"></textarea>
             </label>
             <label class="field field-span">
-              <span>Camas extra</span>
-              <textarea rows="4" formControlName="extraBedPolicy"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">bed</span>
+                Camas extra
+              </span>
+              <textarea rows="4" formControlName="extraBedPolicy" placeholder="Politica de camas extra"></textarea>
             </label>
             <label class="field field-span">
-              <span>Pagos y garantias</span>
-              <textarea rows="4" formControlName="paymentPolicy"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">payments</span>
+                Pagos y garantias
+              </span>
+              <textarea rows="4" formControlName="paymentPolicy" placeholder="Politica de pagos"></textarea>
             </label>
             <label class="field field-span">
-              <span>Mascotas</span>
-              <textarea rows="4" formControlName="petPolicy"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">pets</span>
+                Mascotas
+              </span>
+              <textarea rows="4" formControlName="petPolicy" placeholder="Politica de mascotas"></textarea>
             </label>
             <label class="field field-span">
-              <span>Reglas de la propiedad</span>
-              <textarea rows="5" formControlName="houseRules"></textarea>
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">gavel</span>
+                Reglas de la propiedad
+              </span>
+              <textarea rows="5" formControlName="houseRules" placeholder="Reglas de la casa"></textarea>
             </label>
             <div class="form-actions field-span">
-              <button type="submit">Guardar cambios</button>
+              <button type="submit" class="btn-primary">
+                <span class="btn-icon material-symbols-outlined">save</span>
+                Guardar cambios
+              </button>
             </div>
           </form>
         </section>
