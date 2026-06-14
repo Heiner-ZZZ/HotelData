@@ -1,0 +1,128 @@
+.ps-autocomplete {
+  position: relative;
+}
+
+.ps-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ps-icon {
+  position: absolute;
+  left: 0.75rem;
+  font-size: 1.15rem;
+  color: var(--muted-text);
+  pointer-events: none;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.ps-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.25rem 0.5rem 2.4rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+.ps-toggle {
+  position: absolute;
+  right: 0.6rem;
+  font-size: 1.25rem;
+  color: var(--muted-text);
+  pointer-events: none;
+  transition: color 200ms ease, transform 200ms ease;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+
+  &.ps-loading {
+    color: var(--accent);
+    animation: ps-spin 0.6s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes ps-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
+}
+
+.ps-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  z-index: 50;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.ps-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 120ms ease;
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+    color: var(--muted-text);
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  }
+
+  &:hover,
+  &.ps-selected {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+}
+
+.ps-loading-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+}
+
+.ps-spinner {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid var(--app-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ps-rotate 0.6s linear infinite;
+}
+
+@keyframes ps-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
