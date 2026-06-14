@@ -577,3 +577,10 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Semantic icon color overrides */
+.icon-hotel-warm { color: #d97706; }
+.icon-room-blue { color: var(--accent); }
+.icon-price-green { color: var(--success); }
+.icon-block-red { color: var(--danger); }
+.icon-inventory-blue { color: var(--accent); }

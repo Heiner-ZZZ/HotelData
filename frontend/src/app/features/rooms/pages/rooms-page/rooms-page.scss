@@ -363,3 +363,8 @@ select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* Semantic icon color overrides */
+.icon-create-green { color: var(--success); }
+.icon-physical-amber { color: var(--warning); }
+.icon-data-blue { color: var(--accent); }

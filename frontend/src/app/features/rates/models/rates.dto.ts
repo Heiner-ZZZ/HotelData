@@ -45,6 +45,10 @@ export interface RatesOptionsDto {
     prop_id: number;
     display_name: string;
   }>;
+  total?: number;
+  page?: number;
+  page_size?: number;
+  has_next?: boolean;
   rate_plans?: Array<{
     rate_plan_id: string;
     name: string;

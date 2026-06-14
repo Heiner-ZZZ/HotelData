@@ -5,23 +5,11 @@
     description="Calendario operativo de tarifas por fecha para la propiedad seleccionada."
   />
 
-  <section class="surface-card selector-panel">
-    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
-      <label class="field">
-        <span class="field-label">
-          <span class="material-symbols-outlined field-icon">business</span>
-          Propiedad
-        </span>
-        <select formControlName="propId">
-          <option [ngValue]="0">Seleccionar propiedad</option>
-          @for (option of propertyOptions(); track option.propId) {
-            <option [ngValue]="option.propId">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-      <button type="submit" class="btn-primary">Cargar</button>
-    </form>
-  </section>
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
 
   @if (message()) {
     <section class="notification success">
@@ -109,7 +97,7 @@
         <section class="form-grid">
           <article class="surface-card form-panel">
             <div class="panel-head">
-              <span class="material-symbols-outlined panel-head-icon">add_card</span>
+              <span class="material-symbols-outlined panel-head-icon icon-create-green">add_card</span>
               <div>
                 <h2>Nuevo plan tarifario</h2>
                 <p>Configura un plan tarifario base para la propiedad.</p>
@@ -242,7 +230,7 @@
         <!-- Calendar Table -->
         <section class="surface-card data-panel">
           <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon">calendar_view_month</span>
+            <span class="material-symbols-outlined panel-head-icon icon-calendar-purple">calendar_view_month</span>
             <div>
               <h2>Calendario reciente</h2>
               <p>{{ vm.calendar.length }} fila(s) visibles.</p>
@@ -262,7 +250,7 @@
         <!-- Promotions Table -->
         <section class="surface-card data-panel">
           <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon">campaign</span>
+            <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
             <div>
               <h2>Promociones y cupones</h2>
               <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es) activos/demo.</p>
@@ -282,7 +270,7 @@
                   @for (promo of vm.promotions; track promo.name) {
                     <tr>
                       <td>
-                        <span class="material-symbols-outlined table-icon">campaign</span>
+                        <span class="material-symbols-outlined table-icon icon-promo-amber">campaign</span>
                         Campaña
                       </td>
                       <td>{{ promo.name }}</td>
@@ -297,7 +285,7 @@
                   @for (coupon of vm.coupons; track coupon.code) {
                     <tr>
                       <td>
-                        <span class="material-symbols-outlined table-icon">confirmation_number</span>
+                        <span class="material-symbols-outlined table-icon icon-coupon-blue">confirmation_number</span>
                         Cupón
                       </td>
                       <td><code>{{ coupon.code }}</code></td>

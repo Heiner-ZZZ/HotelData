@@ -4,6 +4,7 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapRatePlanOptions, mapRatesPropertyOptions, mapRatesResponse } from '../mappers/rates.mapper';
+import type { PropertyOptionsPage } from '../models/rates.model';
 import type { RatesDto, RatesOptionsDto } from '../models/rates.dto';
 
 @Injectable({
@@ -23,12 +24,17 @@ export class RatesApiService {
       .pipe(map((dto) => mapRatesResponse(dto)));
   }
 
-  getPropertyOptions() {
+  getPropertyOptions(q = '', page = 1, pageSize = 10) {
+    const params = new HttpParams()
+      .set('q', q)
+      .set('page', String(page))
+      .set('page_size', String(pageSize));
     return this.http
       .get<RatesOptionsDto>(`${this.apiConfig.baseUrl}/management/rates/options`, {
+        params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapRatesPropertyOptions(dto)));
+      .pipe(map((dto) => mapRatesPropertyOptions(dto) as PropertyOptionsPage));
   }
 
   getRatePlanOptions(propId: number) {

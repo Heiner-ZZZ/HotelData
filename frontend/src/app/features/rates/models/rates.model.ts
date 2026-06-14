@@ -32,6 +32,14 @@ export interface RatePropertyOption {
   label: string;
 }
 
+export interface PropertyOptionsPage {
+  items: RatePropertyOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}
+
 export interface RatePlanOption {
   id: string;
   label: string;

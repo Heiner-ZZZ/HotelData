@@ -5,12 +5,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { RatePlanOption, RatePropertyOption, RatesViewModel } from '../../models/rates.model';
+import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import { RatesApiService } from '../../services/rates-api.service';
 import { RatePlanTableComponent } from '../../components/rate-plan-table/rate-plan-table';
 import { RateCalendarTableComponent } from '../../components/rate-calendar-table/rate-calendar-table';
@@ -22,6 +23,7 @@ import { RateCalendarTableComponent } from '../../components/rate-calendar-table
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PropertySelectorComponent,
     ReactiveFormsModule,
     RatePlanTableComponent,
     RateCalendarTableComponent
@@ -39,15 +41,14 @@ export class RatesPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<RatesViewModel | null>(null);
-  readonly propertyOptions = signal<RatePropertyOption[]>([]);
   readonly ratePlanOptions = signal<RatePlanOption[]>([]);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectorForm = this.formBuilder.nonNullable.group({
-    propId: [0, [Validators.required, Validators.min(1)]]
-  });
+  readonly selectedPropId = signal(0);
+  readonly selectedLabel = signal('');
 
+  /* ── Forms ── */
   readonly planForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required]],
     description: [''],
@@ -73,36 +74,35 @@ export class RatesPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
-          return forkJoin({
-            options: this.api.getPropertyOptions(),
-            rates: propId > 0 ? this.api.getRates(propId) : of(null),
-            plans: propId > 0 ? this.api.getRatePlanOptions(propId) : of([])
-          });
+          const load = propId > 0
+            ? forkJoin({
+                rates: this.api.getRates(propId),
+                plans: this.api.getRatePlanOptions(propId)
+              })
+            : of(null);
+          return load;
         }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: ({ options, rates, plans }) => {
-          this.propertyOptions.set(options);
-          this.ratePlanOptions.set(plans);
-          if (!this.selectorForm.controls.propId.value && options.length) {
-            this.selectorForm.controls.propId.setValue(options[0].propId);
-          }
-          if (rates) {
-            this.viewModel.set(rates);
-            this.selectorForm.controls.propId.setValue(rates.propId, { emitEvent: false });
+        next: (result) => {
+          if (result) {
+            this.viewModel.set(result.rates);
+            this.ratePlanOptions.set(result.plans);
+            this.selectedPropId.set(result.rates.propId);
+            this.selectedLabel.set(result.rates.hotelLabel);
             this.viewState.set('success');
           } else {
             this.viewModel.set(null);
-            this.viewState.set(options.length ? 'empty' : 'success');
+            this.ratePlanOptions.set([]);
+            this.viewState.set('empty');
           }
         },
         error: () => this.viewState.set('error')
       });
   }
 
-  selectProperty() {
-    const propId = this.selectorForm.controls.propId.value;
+  onPropSelected(propId: number): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null }

@@ -18,66 +18,11 @@
     </div>
   }
 
-  <!-- ═══ Property selector ═══ -->
-  <div class="prop-selector">
-    @if (selectedPropId()) {
-      <div class="prop-chip">
-        <span class="material-symbols-outlined prop-chip-icon">business</span>
-        <span class="prop-chip-label">{{ selectedPropName() }}</span>
-        <button type="button" class="prop-chip-close" (click)="clearProperty()" aria-label="Cambiar propiedad">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-    } @else {
-      <div class="autocomplete" (keydown)="closeDropdown()">
-        <div class="autocomplete-input-wrap">
-          <span class="material-symbols-outlined autocomplete-icon">search</span>
-          <input
-            type="text"
-            class="autocomplete-input"
-            placeholder="Buscar propiedad..."
-            [value]="filter()"
-            (input)="onFilterChange($any($event.target).value); dropdownOpen.set(true)"
-            (focus)="dropdownOpen.set(true)"
-            (blur)="closeDropdown()"
-          />
-          <span class="material-symbols-outlined autocomplete-caret">unfold_more</span>
-        </div>
-        @if (dropdownOpen() && filteredOptions().length) {
-          <ul class="autocomplete-dropdown" (scroll)="onScroll()" #dropdownList>
-            @for (opt of filteredOptions(); track opt.propId) {
-              <li
-                class="autocomplete-option"
-                [class.is-highlighted]="opt.propId === selectedPropId()"
-                (mousedown)="selectProperty(opt.propId)"
-              >
-                <span class="material-symbols-outlined option-icon">hotel</span>
-                <span>{{ opt.label }}</span>
-              </li>
-            }
-            @if (loadingOptions()) {
-              <li class="autocomplete-loader">
-                <span class="material-symbols-outlined spin">sync</span>
-                Cargando...
-              </li>
-            }
-            @if (!hasMore() && propertyOptions().length > 0) {
-              <li class="autocomplete-end">Mostrando {{ propertyOptions().length }} de {{ filteredOptions().length > propertyOptions().length ? 'muchos' : 'disponibles' }}</li>
-            }
-          </ul>
-        }
-        @if (dropdownOpen() && !filteredOptions().length && !loadingOptions()) {
-          <div class="autocomplete-empty">Sin resultados</div>
-        }
-        @if (loadingOptions() && !filteredOptions().length) {
-          <div class="autocomplete-empty">
-            <span class="material-symbols-outlined spin autocomplete-loader-icon">sync</span>
-            Buscando...
-          </div>
-        }
-      </div>
-    }
-  </div>
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
 
   @switch (viewState()) {
     @case ('loading') {
@@ -100,7 +45,7 @@
         <!-- ═══ Info bar ═══ -->
         <div class="info-bar">
           <div class="info-item">
-            <span class="material-symbols-outlined info-icon">hotel</span>
+            <span class="material-symbols-outlined info-icon icon-hotel-warm">hotel</span>
             <div>
               <span class="info-value">{{ vm.hotelName }}</span>
               <span class="info-label">{{ vm.countryLabel }}</span>
@@ -108,7 +53,7 @@
           </div>
           <div class="info-divider"></div>
           <div class="info-item">
-            <span class="material-symbols-outlined info-icon">meeting_room</span>
+            <span class="material-symbols-outlined info-icon icon-room-blue">meeting_room</span>
             <div>
               <span class="info-value">{{ vm.roomTypes.length }}</span>
               <span class="info-label">Tipos de habitación</span>
@@ -116,7 +61,7 @@
           </div>
           <div class="info-divider"></div>
           <div class="info-item">
-            <span class="material-symbols-outlined info-icon">sell</span>
+            <span class="material-symbols-outlined info-icon icon-price-green">sell</span>
             <div>
               <span class="info-value">${{ vm.avgPriceLabel }}</span>
               <span class="info-label">Precio promedio</span>
@@ -124,7 +69,7 @@
           </div>
           <div class="info-divider"></div>
           <div class="info-item">
-            <span class="material-symbols-outlined info-icon">block</span>
+            <span class="material-symbols-outlined info-icon icon-block-red">block</span>
             <div>
               <span class="info-value">{{ vm.availabilityBlocks.length + vm.blackoutItems.length }}</span>
               <span class="info-label">Bloqueos activos</span>
@@ -137,7 +82,7 @@
           <!-- Inventory form -->
           <section class="surface-card form-card">
             <div class="form-card-head">
-              <span class="material-symbols-outlined form-card-icon">edit_note</span>
+              <span class="material-symbols-outlined form-card-icon icon-inventory-blue">edit_note</span>
               <div>
                 <h2>Actualizar inventario</h2>
                 <p>Registra la disponibilidad por tipo de habitación y fecha</p>
@@ -204,7 +149,7 @@
           <!-- Blackout form -->
           <section class="surface-card form-card">
             <div class="form-card-head">
-              <span class="material-symbols-outlined form-card-icon">event_busy</span>
+              <span class="material-symbols-outlined form-card-icon icon-block-red">event_busy</span>
               <div>
                 <h2>Bloquear fechas</h2>
                 <p>Registra bloqueos operativos por mantenimiento o eventos</p>
@@ -272,7 +217,7 @@
         <section class="surface-card data-card">
           <div class="data-card-head">
             <div class="data-card-head-left">
-              <span class="material-symbols-outlined">inventory_2</span>
+              <span class="material-symbols-outlined icon-inventory-blue">inventory_2</span>
               <div>
                 <h2>Inventario registrado</h2>
                 <p>{{ vm.inventoryItems.length }} registro(s)</p>
@@ -326,7 +271,7 @@
         <section class="surface-card data-card">
           <div class="data-card-head">
             <div class="data-card-head-left">
-              <span class="material-symbols-outlined">block</span>
+              <span class="material-symbols-outlined icon-block-red">block</span>
               <div>
                 <h2>Bloqueos operativos</h2>
                 <p>{{ vm.availabilityBlocks.length }} bloqueo(s)</p>
@@ -368,7 +313,7 @@
         <section class="surface-card data-card">
           <div class="data-card-head">
             <div class="data-card-head-left">
-              <span class="material-symbols-outlined">event_busy</span>
+              <span class="material-symbols-outlined icon-block-red">event_busy</span>
               <div>
                 <h2>Bloqueos recientes</h2>
                 <p>{{ vm.blackoutItems.length }} bloqueo(s)</p>

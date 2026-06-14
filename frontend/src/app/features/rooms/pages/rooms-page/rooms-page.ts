@@ -2,15 +2,16 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { RoomPropertyOption, RoomsViewModel } from '../../models/rooms.model';
+import type { RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 
@@ -21,6 +22,7 @@ import { RoomTypeTableComponent } from '../../components/room-type-table/room-ty
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PropertySelectorComponent,
     ReactiveFormsModule,
     RoomTypeTableComponent,
     RouterLink
@@ -38,13 +40,11 @@ export class RoomsPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<RoomsViewModel | null>(null);
-  readonly propertyOptions = signal<RoomPropertyOption[]>([]);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectorForm = this.formBuilder.nonNullable.group({
-    propId: [0, [Validators.required, Validators.min(1)]]
-  });
+  readonly selectedPropId = signal(0);
+  readonly selectedLabel = signal('');
 
   readonly createForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required]],
@@ -64,34 +64,27 @@ export class RoomsPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
-          return forkJoin({
-            options: this.api.getOptions(),
-            rooms: propId > 0 ? this.api.getRooms(propId) : of(null)
-          });
+          return propId > 0 ? this.api.getRooms(propId) : of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: ({ options, rooms }) => {
-          this.propertyOptions.set(options);
-          if (!this.selectorForm.controls.propId.value && options.length) {
-            this.selectorForm.controls.propId.setValue(options[0].propId);
-          }
+        next: (rooms) => {
           if (rooms) {
             this.viewModel.set(rooms);
-            this.selectorForm.controls.propId.setValue(rooms.propId, { emitEvent: false });
+            this.selectedPropId.set(rooms.propId);
+            this.selectedLabel.set(rooms.hotelName);
             this.viewState.set('success');
           } else {
             this.viewModel.set(null);
-            this.viewState.set(options.length ? 'empty' : 'success');
+            this.viewState.set('empty');
           }
         },
         error: () => this.viewState.set('error')
       });
   }
 
-  selectProperty() {
-    const propId = this.selectorForm.controls.propId.value;
+  onPropSelected(propId: number) {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null }

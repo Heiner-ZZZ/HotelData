@@ -2,16 +2,17 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapAmenitiesPayload } from '../../mappers/amenities.mapper';
-import type { AmenityCategoryViewModel, AmenitiesPropertyOption, AmenitiesViewModel } from '../../models/amenities.model';
+import type { AmenityCategoryViewModel, AmenitiesViewModel } from '../../models/amenities.model';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
@@ -25,6 +26,7 @@ import { AmenityCategoryPanelComponent } from '../../components/amenity-category
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    PropertySelectorComponent,
     ReactiveFormsModule
   ],
   templateUrl: './amenities-page.html',
@@ -40,14 +42,12 @@ export class AmenitiesPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<AmenitiesViewModel | null>(null);
-  readonly propertyOptions = signal<AmenitiesPropertyOption[]>([]);
   readonly selectedAmenities = signal<string[]>([]);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectorForm = this.formBuilder.nonNullable.group({
-    propId: [0, [Validators.required, Validators.min(1)]]
-  });
+  readonly selectedPropId = signal(0);
+  readonly selectedLabel = signal('');
 
   readonly utilityForm = this.formBuilder.nonNullable.group({
     search: [''],
@@ -82,38 +82,32 @@ export class AmenitiesPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
-          return forkJoin({
-            options: this.api.getOptions(propId > 0 ? propId : undefined),
-            amenities: propId > 0 ? this.api.getAmenities(propId) : of(null)
-          });
+          return propId > 0 ? this.api.getAmenities(propId) : of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: ({ options, amenities }) => {
-          this.propertyOptions.set(options);
-          if (!this.selectorForm.controls.propId.value && options.length) {
-            this.selectorForm.controls.propId.setValue(options[0].propId);
-          }
+        next: (amenities) => {
           if (amenities) {
             this.viewModel.set(amenities);
             this.selectedAmenities.set(amenities.activeAmenities);
-            this.selectorForm.controls.propId.setValue(amenities.propId, { emitEvent: false });
+            this.selectedPropId.set(amenities.propId);
+            this.selectedLabel.set(amenities.hotelName);
             this.viewState.set('success');
           } else {
             this.viewModel.set(null);
             this.selectedAmenities.set([]);
-            this.viewState.set(options.length ? 'empty' : 'success');
+            this.viewState.set('empty');
           }
         },
         error: () => this.viewState.set('error')
       });
   }
 
-  selectProperty() {
+  onPropSelected(propId: number) {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: this.selectorForm.controls.propId.value || null }
+      queryParams: { prop_id: propId || null }
     });
   }
 

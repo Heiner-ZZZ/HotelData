@@ -5,23 +5,11 @@
     description="Administra los tipos de habitación, capacidades y habitaciones físicas de cada propiedad."
   />
 
-  <section class="surface-card selector-panel">
-    <form [formGroup]="selectorForm" (ngSubmit)="selectProperty()" class="selector-form">
-      <label class="field">
-        <span class="field-label">
-          <span class="material-symbols-outlined field-icon">business</span>
-          Propiedad
-        </span>
-        <select formControlName="propId">
-          <option [ngValue]="0">Seleccionar propiedad</option>
-          @for (option of propertyOptions(); track option.propId) {
-            <option [ngValue]="option.propId">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-      <button type="submit" class="btn-primary">Cargar</button>
-    </form>
-  </section>
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
 
   @if (message()) {
     <section class="notification success">
@@ -112,7 +100,7 @@
         <!-- Create Form -->
         <section class="surface-card form-panel">
           <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon">add_room</span>
+            <span class="material-symbols-outlined panel-head-icon icon-create-green">king_bed</span>
             <div>
               <h2>Nuevo tipo de habitación</h2>
               <p>Crea un tipo de habitación operativo para inventario y disponibilidad.</p>
@@ -193,7 +181,7 @@
         <!-- Physical Rooms Table -->
         <section class="surface-card data-panel">
           <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon">door_sliding</span>
+            <span class="material-symbols-outlined panel-head-icon icon-physical-amber">door_sliding</span>
             <div>
               <h2>Habitaciones físicas</h2>
               <p>{{ vm.totalHotelRooms }} registro(s) asociados.</p>
@@ -215,7 +203,7 @@
                     <tr>
                       <td><code>{{ room.id }}</code></td>
                       <td>
-                        <span class="material-symbols-outlined table-icon">door_front</span>
+                        <span class="material-symbols-outlined table-icon icon-data-blue">door_front</span>
                         {{ room.roomLabel }}
                       </td>
                       <td>{{ room.roomTypeName }}</td>
