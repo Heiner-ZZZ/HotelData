@@ -16,7 +16,7 @@ PYEOF
     echo "Archivo de contraseñas creado con usuario admin / Admin12345*"
 fi
 
-echo "Iniciando servicios..."
+echo "Iniciando scheduler + triggerer + dag-processor + api-server..."
 airflow scheduler &
 airflow triggerer &
 airflow dag-processor &
@@ -26,12 +26,12 @@ airflow api-server &
 
 echo "Esperando que el API server esté listo..."
 for i in $(seq 1 30); do
-    if curl -sf http://localhost:8080/ 2>/dev/null > /dev/null; then
+    if curl -sf http://localhost:8080/auth/token -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"Admin12345*"}' -o /dev/null 2>/dev/null; then
         echo "API server listo!"
         break
     fi
     echo "  esperando... ($i/30)"
-    sleep 2
+    sleep 3
 done
 
 echo "=== Airflow 3.x listo en http://localhost:8080 ==="
