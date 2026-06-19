@@ -7,9 +7,10 @@ RUN apt-get update && \
 
 USER airflow
 
-COPY docker/airflow3.requirements.txt /tmp/airflow3.requirements.txt
+COPY infra/docker/airflow3.requirements.txt /tmp/airflow3.requirements.txt
 RUN pip install --no-cache-dir -r /tmp/airflow3.requirements.txt
 
-COPY src /opt/hoteldata/src
-COPY config /opt/hoteldata/config
-COPY scripts /opt/hoteldata/scripts
+COPY server/src /opt/hoteldata/src
+COPY server/config /opt/hoteldata/config
+COPY server/scripts /opt/hoteldata/scripts
+COPY server/tests /opt/hoteldata/tests
