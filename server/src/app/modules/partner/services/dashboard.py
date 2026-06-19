@@ -14,11 +14,11 @@ from src.app.modules.partner.services._common import (
     money,
     now_utc,
 )
-from src.app.modules.partner.services.properties import (
-    _performance_for_prop,
-    _property_yield_score,
-    list_partner_hotels,
+from src.app.modules.partner.services.properties.performance import (
+    performance_for_prop as _performance_for_prop,
+    property_yield_score as _property_yield_score,
 )
+from src.app.modules.partner.services.properties import list_partner_hotels
 from src.database.connection import get_database
 
 
@@ -94,7 +94,7 @@ def _operational_dashboard_metrics() -> list[dict[str, Any]]:
 
 
 def management_property_options(limit: int = 100) -> list[dict[str, Any]]:
-    from src.app.modules.partner.services.properties import _profile_badge
+    from src.app.modules.partner.services.properties.metadata import profile_badge as _profile_badge
 
     results = list_partner_hotels("", page=1, page_size=min(max(limit, 1), 100))
     return [
@@ -107,7 +107,7 @@ def management_property_options(limit: int = 100) -> list[dict[str, Any]]:
 
 
 def management_reports_summary() -> dict[str, Any]:
-    from src.app.modules.partner.services.properties import _profile_badge
+    from src.app.modules.partner.services.properties.metadata import profile_badge as _profile_badge
 
     db = get_database()
     collection, source_collection = active_fact_collection()

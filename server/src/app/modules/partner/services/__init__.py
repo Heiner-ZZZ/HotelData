@@ -62,7 +62,7 @@ from src.app.modules.partner.services.properties import (
     partner_hotel_detail,
     partner_hotel_performance,
     save_partner_hotel_profile,
-)
+)  # type: ignore[assignment]
 from src.app.modules.partner.services.rates import (
     create_rate_plan,
     partner_hotel_rates,

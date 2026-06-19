@@ -18,11 +18,11 @@ from src.app.modules.partner.services._common import (
     register_content_change,
     split_multiline_tokens,
 )
-from src.app.modules.partner.services.properties import (
-    _profile_description,
-    _profile_payload,
-    partner_hotel_detail,
+from src.app.modules.partner.services.properties.metadata import (
+    profile_description as _profile_description,
+    profile_payload as _profile_payload,
 )
+from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
 
