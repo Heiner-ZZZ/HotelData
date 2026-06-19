@@ -13,7 +13,7 @@ SERVER_ROOT = PROJECT_ROOT / "server"
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from src.etl.ta02_airflow_tasks import (
+from src.etl.ta02_airflow_tasks import (  # type: ignore[assignment]
     convert_to_parquet,
     create_indexes,
     extract_from_pocketbase,
