@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.database.connection import get_database
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validate_management_operational_data_step2.json"
-CONTRACT_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "validate_frontend_backend_contract.py"
+CONTRACT_SCRIPT_PATH = PROJECT_ROOT / "server" / "scripts" / "validate_frontend_backend_contract.py"
 
 
 def utc_now_iso() -> str:

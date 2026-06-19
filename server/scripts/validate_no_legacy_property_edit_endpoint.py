@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_ROOT = PROJECT_ROOT / "frontend" / "src" / "app"
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validate_no_legacy_property_edit_endpoint.json"
 
