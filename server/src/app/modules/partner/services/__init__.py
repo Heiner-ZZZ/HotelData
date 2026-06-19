@@ -39,7 +39,7 @@ from src.app.modules.partner.services.bootstrap import (
     ensure_rate_collections,
     module_status,
 )
-from src.app.modules.partner.services.content import (
+from src.app.modules.partner.services.content import (  # type: ignore[assignment]
     add_partner_hotel_image,
     delete_partner_hotel_image,
     partner_hotel_content,

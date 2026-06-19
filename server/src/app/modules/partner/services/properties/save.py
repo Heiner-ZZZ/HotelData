@@ -20,7 +20,8 @@ def save_partner_hotel_profile(
     changed_by: str = "angular_api",
     reason: str = "Actualización manual de perfil hotelero",
 ) -> dict[str, Any] | None:
-    from src.app.modules.partner.services.content import content_page_for_prop, partner_hotel_profile
+    from src.app.modules.partner.services.content.queries import content_page_for_prop
+    from src.app.modules.partner.services.content.views import partner_hotel_profile
 
     ensure_hotel_profile_metadata(prop_id)
     db = get_database()

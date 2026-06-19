@@ -51,7 +51,7 @@ def profile_badge(hotel: dict[str, Any]) -> str:
 
 
 def profile_description(prop_id: int, hotel: dict[str, Any]) -> str:
-    from src.app.modules.partner.services.content import content_page_for_prop
+    from src.app.modules.partner.services.content.queries import content_page_for_prop
 
     content_page = content_page_for_prop(prop_id)
     return clean_text(hotel.get("description")) or clean_text(content_page.get("description")) or ""
