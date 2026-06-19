@@ -5,9 +5,10 @@ import sys
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+SERVER_ROOT = Path(__file__).resolve().parents[1]
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 from src.database.connection import get_database
 from src.app.modules.reservations.service import ensure_reservation_collections
