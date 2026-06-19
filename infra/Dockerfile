@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY requirements.txt /app/requirements.txt
+COPY server/requirements.txt /app/requirements.txt
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl docker.io && \
@@ -13,10 +13,11 @@ RUN apt-get update && \
     pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
-COPY src /app/src
-COPY config /app/config
-COPY scripts /app/scripts
+COPY server/src /app/src
+COPY server/config /app/config
+COPY server/scripts /app/scripts
 COPY docs /app/docs
+COPY server/tests /app/tests
 
 EXPOSE 8000
 
