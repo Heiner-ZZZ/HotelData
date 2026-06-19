@@ -52,7 +52,7 @@ from src.app.modules.partner.services.content import (  # type: ignore[assignmen
     save_partner_hotel_content,
     save_partner_hotel_policies,
 )
-from src.app.modules.partner.services.dashboard import (
+from src.app.modules.partner.services.dashboard import (  # type: ignore[assignment]
     management_property_options,
     management_reports_summary,
     properties_dashboard,

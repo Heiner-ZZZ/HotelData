@@ -74,7 +74,7 @@ def synthetic_hotel(prop_id: int) -> dict[str, Any]:
 def enriched_property_row(hotel: dict[str, Any] | None, prop_id: int) -> dict[str, Any]:
     base_hotel = hotel or build_fact_backed_hotel(prop_id) or synthetic_hotel(prop_id)
     perf = performance_for_prop(prop_id)
-    from src.app.modules.partner.services.dashboard import _operational_flags
+    from src.app.modules.partner.services.dashboard.operations import _operational_flags
 
     operational = _operational_flags(prop_id)
     country = base_hotel.get("display_country_label") or (

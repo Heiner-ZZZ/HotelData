@@ -28,7 +28,7 @@ def partner_hotel_detail(prop_id: int) -> dict[str, Any] | None:
         return None
     master_hotel = db.hotels.find_one({"hotel_code": {"$exists": True}}, {"_id": 0}) or {}
     perf = performance_for_prop(prop_id)
-    from src.app.modules.partner.services.dashboard import _operational_flags
+    from src.app.modules.partner.services.dashboard.operations import _operational_flags
 
     operational = _operational_flags(prop_id)
     return {
