@@ -10,8 +10,9 @@ from airflow.operators.python import PythonOperator
 
 
 PROJECT_ROOT = Path(os.getenv("HOTELDATA_PROJECT_ROOT", "/opt/hoteldata"))
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+SERVER_ROOT = PROJECT_ROOT / "server"
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
 
 from src.etl.ga03_airflow_tasks import (
     convert_to_parquet_03,
