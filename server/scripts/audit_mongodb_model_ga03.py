@@ -13,7 +13,7 @@ from config.settings import get_settings
 from src.database.connection import get_database
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "mongodb_model_audit.json"
 MARKDOWN_REPORT_PATH = PROJECT_ROOT / "docs" / "ga03" / "mongodb_model_audit.md"
 
@@ -154,8 +154,8 @@ def non_empty_filter(field_name: str) -> dict[str, Any]:
 
 def collection_reference_counts(project_root: Path, collection_names: list[str]) -> dict[str, int]:
     search_roots = [
-        project_root / "src",
-        project_root / "scripts",
+        project_root / "server" / "src",
+        project_root / "server" / "scripts",
         project_root / "frontend" / "src",
         project_root / "docs" / "ga03",
     ]
