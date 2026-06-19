@@ -1,8 +1,8 @@
 services:
   airflow:
     build:
-      context: .
-      dockerfile: docker/airflow3.Dockerfile
+      context: ..
+      dockerfile: infra/docker/airflow3.Dockerfile
     container_name: hoteldata_airflow
     restart: unless-stopped
     ports:
@@ -28,8 +28,8 @@ services:
       META_PB: "500000"
       META_MONGO: "500000"
     volumes:
-      - .:/opt/hoteldata
-      - ./dags:/opt/airflow/dags
+      - ..:/opt/hoteldata
+      - ../server/dags:/opt/airflow/dags
       - ./docker/airflow3-entrypoint.sh:/entrypoint3.sh
     depends_on:
       pocketbase:
