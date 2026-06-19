@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.database.connection import get_database
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AUDIT_REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "mongodb_model_audit.json"
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validate_ga03_mongo_step1.json"
 
