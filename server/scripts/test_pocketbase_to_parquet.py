@@ -10,7 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STAGING_PATH = PROJECT_ROOT / "data" / "staging" / "pocketbase_sample.jsonl"
 PARQUET_PATH = PROJECT_ROOT / "data" / "processed" / "pocketbase_sample.parquet"
 SAMPLE_SIZE = 1000
