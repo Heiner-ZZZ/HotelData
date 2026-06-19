@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.database.connection import get_database
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validate_property_edit_screen_contract.json"
 
 
@@ -126,8 +126,8 @@ def main() -> int:
     property_edit_page_text = read_text(frontend_root / "features" / "properties" / "pages" / "property-edit-page" / "property-edit-page.ts")
     property_edit_html_text = read_text(frontend_root / "features" / "properties" / "pages" / "property-edit-page" / "property-edit-page.html")
     properties_api_text = read_text(frontend_root / "features" / "properties" / "services" / "properties-api.service.ts")
-    route_permissions_text = read_text(PROJECT_ROOT / "src" / "app" / "security" / "route_permissions.py")
-    partner_routes_text = read_text(PROJECT_ROOT / "src" / "app" / "modules" / "partner" / "routes.py")
+    route_permissions_text = read_text(PROJECT_ROOT / "server" / "src" / "app" / "security" / "route_permissions.py")
+    partner_routes_text = read_text(PROJECT_ROOT / "server" / "src" / "app" / "modules" / "partner" / "routes.py")
 
     port = find_free_port()
     base_url = f"http://127.0.0.1:{port}"
