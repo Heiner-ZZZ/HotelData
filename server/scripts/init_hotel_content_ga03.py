@@ -6,24 +6,25 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+SERVER_ROOT = Path(__file__).resolve().parents[1]
+if str(SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVER_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from src.app.modules.partner.services import ensure_inventory_collections
+from src.app.modules.partner.services import ensure_hotel_content_collections
 from src.database.connection import get_database
 
 
 def main() -> None:
     load_dotenv(PROJECT_ROOT / ".env")
-    summary = ensure_inventory_collections()
+
+    summary = ensure_hotel_content_collections()
     db = get_database()
     counts = {
-        "room_types": db.room_types.count_documents({}),
-        "hotel_rooms": db.hotel_rooms.count_documents({}),
-        "room_inventory_calendar": db.room_inventory_calendar.count_documents({}),
-        "room_availability_blocks": db.room_availability_blocks.count_documents({}),
-        "blackout_dates": db.blackout_dates.count_documents({}),
+        "hotel_images": db.hotel_images.count_documents({}),
+        "hotel_policies": db.hotel_policies.count_documents({}),
+        "hotel_content_pages": db.hotel_content_pages.count_documents({}),
+        "hotel_content_changes": db.hotel_content_changes.count_documents({}),
     }
     print(
         json.dumps(
