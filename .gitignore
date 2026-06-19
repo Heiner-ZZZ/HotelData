@@ -117,14 +117,23 @@ mongo_backup/
 # --------------------------
 # PocketBase runtime
 # --------------------------
+pb_data/
 hoteldata_project/pb_data/
+pb_migrations/
 hoteldata_project/pb_migrations/
+pb_hooks/
 hoteldata_project/pb_hooks/
+pb_public/
 hoteldata_project/pb_public/
+pb_*.db
 hoteldata_project/pb_*.db
+pocketbase
 hoteldata_project/pocketbase
+pocketbase.exe
 hoteldata_project/pocketbase.exe
+pb_data*.db
 hoteldata_project/pb_data*.db
+pb_data_types_.d.ts
 hoteldata_project/pb_data_types_.d.ts
 
 # If you intentionally want to version PB migrations/hooks later,
@@ -199,6 +208,7 @@ desktop.ini
 # --------------------------
 # Temporary / rescue / generated
 # --------------------------
+cookies.txt
 *.tmp
 *.temp
 tmp/
