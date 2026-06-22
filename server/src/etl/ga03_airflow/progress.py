@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.etl.ga03_airflow._common import elapsed_ms, _json_default
+from src.etl.ga03_airflow._common import AtomicJsonState, elapsed_ms, _json_default
 from src.etl.ga03_airflow.config import PIPELINE_PROGRESS_STEPS, PIPELINE_STARTED_MONO, paths
 
 
@@ -22,7 +22,6 @@ def write_pipeline_progress(
     detail: dict[str, Any] | None = None,
 ) -> None:
     progress_path = paths()["pipeline_progress"]
-    progress_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "task_number": "03",
         "status": status,
@@ -40,22 +39,15 @@ def write_pipeline_progress(
             "reports": {"label": "Reportes", "complete": percent >= PIPELINE_PROGRESS_STEPS["reports"]},
         },
     }
-    progress_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default), encoding="utf-8")
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = progress_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default), encoding="utf-8")
+    tmp.replace(progress_path)
 
 
 def write_state(update: dict[str, Any]) -> dict[str, Any]:
-    state_path = paths()["state"]
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state: dict[str, Any] = {}
-    if state_path.exists():
-        state = json.loads(state_path.read_text(encoding="utf-8"))
-    state.update(update)
-    state_path.write_text(json.dumps(state, indent=2, ensure_ascii=False, default=_json_default), encoding="utf-8")
-    return state
+    return AtomicJsonState(paths()["state"]).write(update)
 
 
 def read_state() -> dict[str, Any]:
-    state_path = paths()["state"]
-    if not state_path.exists():
-        raise FileNotFoundError(f"No existe estado GA03: {state_path}")
-    return json.loads(state_path.read_text(encoding="utf-8"))
+    return AtomicJsonState(paths()["state"]).read()

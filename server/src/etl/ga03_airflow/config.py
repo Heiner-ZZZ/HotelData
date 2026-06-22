@@ -41,17 +41,16 @@ def paths() -> dict[str, Path]:
 
 def pocketbase_config() -> dict[str, str | int | None]:
     settings = get_settings()
-    meta_pb = int(os.getenv("META_PB", os.getenv("TARGET_RECORDS", str(settings.target_records))))
-    meta_mongo = int(os.getenv("META_MONGO", os.getenv("TARGET_RECORDS", str(settings.target_records))))
+    expected = settings.target_records
     return {
-        "base_url": os.getenv("POCKETBASE_URL", settings.pocketbase_url).rstrip("/"),
-        "collection": os.getenv("POCKETBASE_COLLECTION_03", settings.pocketbase_collection_03),
-        "page_size": int(os.getenv("POCKETBASE_PAGE_SIZE", str(settings.pocketbase_page_size))),
-        "auth_token": os.getenv("POCKETBASE_AUTH_TOKEN") or settings.pocketbase_auth_token,
-        "admin_email": os.getenv("POCKETBASE_ADMIN_EMAIL"),
-        "admin_password": os.getenv("POCKETBASE_ADMIN_PASSWORD"),
-        "task_number": os.getenv("TASK_NUMBER", settings.task_number),
-        "expected_records": meta_mongo,
-        "meta_pb": meta_pb,
-        "meta_mongo": meta_mongo,
+        "base_url": settings.pocketbase_url,
+        "collection": settings.pocketbase_collection_03,
+        "page_size": settings.pocketbase_page_size,
+        "auth_token": settings.pocketbase_auth_token,
+        "admin_email": os.environ.get("POCKETBASE_ADMIN_EMAIL"),
+        "admin_password": os.environ.get("POCKETBASE_ADMIN_PASSWORD"),
+        "task_number": settings.task_number or "03",
+        "expected_records": expected,
+        "meta_pb": expected,
+        "meta_mongo": expected,
     }

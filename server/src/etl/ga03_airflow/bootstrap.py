@@ -25,7 +25,7 @@ def validate_environment_03() -> dict[str, Any]:
     for dimension_file in all_paths["dimension_dir"].glob("*.jsonl"):
         dimension_file.unlink()
     started_at = utc_now_iso()
-    meta_mongo = int(config.get("meta_mongo", 0) or config["expected_records"] or 0)
+    expected = int(config.get("expected_records", 0) or 0)
     state = {
         "execution_id": f"ga03_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
         "phase": PHASE,
@@ -33,9 +33,7 @@ def validate_environment_03() -> dict[str, Any]:
         "started_at": started_at,
         "loaded_at": started_at,
         "database": settings.mongo_database,
-        "expected_records": meta_mongo,
-        "meta_pb": config.get("meta_pb", 0),
-        "meta_mongo": meta_mongo,
+        "expected_records": expected,
         "paths": {name: str(path) for name, path in all_paths.items()},
     }
     write_pipeline_progress(
@@ -43,6 +41,6 @@ def validate_environment_03() -> dict[str, Any]:
         section="environment",
         percent=PIPELINE_PROGRESS_STEPS["environment"],
         message="Entorno GA03 validado.",
-        detail={"database": settings.mongo_database, "meta_mongo": meta_mongo},
+        detail={"database": settings.mongo_database, "expected_records": expected},
     )
     return write_state(state)

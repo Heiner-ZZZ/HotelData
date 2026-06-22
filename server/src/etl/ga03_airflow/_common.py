@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -112,3 +113,24 @@ def existing_dimensions_ready(db) -> tuple[bool, dict[str, int]]:
     counts = dimension_collection_counts(db)
     ready = bool(counts) and all(count > 0 for count in counts.values())
     return ready, counts
+
+
+class AtomicJsonState:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def read(self) -> dict[str, Any]:
+        if not self.path.exists():
+            raise FileNotFoundError(f"No existe archivo de estado: {self.path}")
+        return json.loads(self.path.read_text(encoding="utf-8"))
+
+    def write(self, update: dict[str, Any]) -> dict[str, Any]:
+        state: dict[str, Any] = {}
+        if self.path.exists():
+            state = json.loads(self.path.read_text(encoding="utf-8"))
+        state.update(update)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state, indent=2, ensure_ascii=False, default=_json_default), encoding="utf-8")
+        tmp.replace(self.path)
+        return state

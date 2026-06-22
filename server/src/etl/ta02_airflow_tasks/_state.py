@@ -8,6 +8,7 @@ from typing import Any
 import requests
 
 from config.settings import get_settings
+from src.etl.ga03_airflow._common import AtomicJsonState
 
 DEFAULT_POCKETBASE_URL = "http://127.0.0.1:8090"
 DEFAULT_COLLECTION = "hotel_reservation_events__2"
@@ -37,21 +38,11 @@ def _json_default(value: Any) -> Any:
 
 
 def _read_state() -> dict[str, Any]:
-    state_path = _paths()["state"]
-    if not state_path.exists():
-        raise FileNotFoundError(f"No existe estado TA 02: {state_path}")
-    return json.loads(state_path.read_text(encoding="utf-8"))
+    return AtomicJsonState(_paths()["state"]).read()
 
 
 def _write_state(update: dict[str, Any]) -> dict[str, Any]:
-    paths = _paths()
-    paths["state"].parent.mkdir(parents=True, exist_ok=True)
-    state = {}
-    if paths["state"].exists():
-        state = json.loads(paths["state"].read_text(encoding="utf-8"))
-    state.update(update)
-    paths["state"].write_text(json.dumps(state, indent=2, ensure_ascii=False, default=_json_default), encoding="utf-8")
-    return state
+    return AtomicJsonState(_paths()["state"]).write(update)
 
 
 def _pocketbase_config() -> dict[str, str | int | None]:
@@ -61,8 +52,8 @@ def _pocketbase_config() -> dict[str, str | int | None]:
         "collection": os.getenv("POCKETBASE_COLLECTION", settings.pocketbase_collection or DEFAULT_COLLECTION),
         "page_size": int(os.getenv("POCKETBASE_PAGE_SIZE", str(DEFAULT_PAGE_SIZE))),
         "auth_token": os.getenv("POCKETBASE_AUTH_TOKEN") or settings.pocketbase_auth_token,
-        "admin_email": os.getenv("POCKETBASE_ADMIN_EMAIL", "hzambranor@uteq.edu.ec"),
-        "admin_password": os.getenv("POCKETBASE_ADMIN_PASSWORD", "Heiner2005*"),
+        "admin_email": os.environ["POCKETBASE_ADMIN_EMAIL"],
+        "admin_password": os.environ["POCKETBASE_ADMIN_PASSWORD"],
     }
 
 
