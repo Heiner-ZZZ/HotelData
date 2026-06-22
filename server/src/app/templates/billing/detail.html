@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura {{ invoice.invoice_number if invoice else 'No encontrada' }} - HotelData</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; line-height: 1.6; }
+        .container { max-width: 720px; margin: 40px auto; padding: 0 20px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 20px; }
+        .card-header { background: linear-gradient(135deg, #059669, #047857); color: #fff; padding: 24px 28px; }
+        .card-header h1 { font-size: 20px; font-weight: 600; }
+        .card-header .subtitle { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+        .card-body { padding: 28px; }
+        .status-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .status-badge.issued { background: #fef3c7; color: #92400e; }
+        .status-badge.paid { background: #d1fae5; color: #065f46; }
+        .status-badge.cancelled { background: #f3f4f6; color: #6b7280; }
+        .status-badge.refunded { background: #fef2f2; color: #dc2626; }
+        .status-badge.confirmed { background: #d1fae5; color: #065f46; }
+        .section-title { font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .divider { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .info-item label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 2px; }
+        .info-item .value { font-size: 15px; font-weight: 500; color: #1a1a2e; }
+        .info-item.full { grid-column: 1 / -1; }
+        .price-card { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .price-card .label { font-size: 14px; color: #374151; }
+        .price-card .amount { font-size: 28px; font-weight: 700; color: #059669; }
+        .price-card .amount small { font-size: 16px; font-weight: 400; color: #6b7280; }
+        .back-link { display: inline-flex; align-items: center; gap: 4px; color: #059669; text-decoration: none; font-size: 14px; margin-bottom: 16px; }
+        .back-link:hover { text-decoration: underline; }
+        .not-found { text-align: center; padding: 48px; color: #6b7280; }
+        .not-found h2 { font-size: 20px; margin-bottom: 8px; }
+
+        /* Payment table */
+        .payment-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .payment-table th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+        .payment-table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+        .payment-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/billing" class="back-link">← Volver a facturación</a>
+
+        {% if invoice is none %}
+        <div class="card">
+            <div class="card-body">
+                <div class="not-found">
+                    <h2>Factura no encontrada</h2>
+                    <p>La factura solicitada no existe o ha sido eliminada.</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h1>Factura {{ invoice.invoice_number }}</h1>
+                    <div class="subtitle">
+                        Reserva {{ invoice.booking_id }}
+                        &middot; <span class="status-badge {{ invoice.status }}">{{ invoice.status }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="price-card">
+                    <div>
+                        <div class="label">Total</div>
+                        <div class="label" style="font-size:12px; margin-top:2px;">Subtotal ${{ "%.2f"|format(invoice.subtotal) }} + Impuestos ${{ "%.2f"|format(invoice.taxes) }}</div>
+                    </div>
+                    <div class="amount">${{ "%.2f"|format(invoice.total) }} <small>USD</small></div>
+                </div>
+
+                <hr class="divider">
+                <div class="section-title">Detalles de factura</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>N° Factura</label>
+                        <div class="value">{{ invoice.invoice_number }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Estado</label>
+                        <div class="value"><span class="status-badge {{ invoice.status }}">{{ invoice.status }}</span></div>
+                    </div>
+                    <div class="info-item">
+                        <label>Reserva</label>
+                        <div class="value"><a href="/reservations/{{ invoice.booking_id }}" style="color:#2563eb;">{{ invoice.booking_id }}</a></div>
+                    </div>
+                    <div class="info-item">
+                        <label>Emisión</label>
+                        <div class="value">{{ invoice.issued_at[:10] if invoice.issued_at else 'N/D' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Subtotal</label>
+                        <div class="value">${{ "%.2f"|format(invoice.subtotal) }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Impuestos</label>
+                        <div class="value">${{ "%.2f"|format(invoice.taxes) }}</div>
+                    </div>
+                    {% if invoice.paid_at %}
+                    <div class="info-item">
+                        <label>Fecha de pago</label>
+                        <div class="value">{{ invoice.paid_at[:10] if invoice.paid_at else '' }}</div>
+                    </div>
+                    {% endif %}
+                    {% if invoice.notes %}
+                    <div class="info-item full">
+                        <label>Notas</label>
+                        <div class="value">{{ invoice.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if payments %}
+                <hr class="divider">
+                <div class="section-title">Pagos asociados ({{ payments|length }})</div>
+                <table class="payment-table">
+                    <thead>
+                        <tr>
+                            <th>Referencia</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pay in payments %}
+                        <tr>
+                            <td style="font-weight:500;">{{ pay.reference or pay.id[:12] }}</td>
+                            <td>${{ "%.2f"|format(pay.amount) }}</td>
+                            <td>{{ pay.method }}</td>
+                            <td><span class="status-badge {{ pay.status }}">{{ pay.status }}</span></td>
+                            <td style="font-size:13px; color:#6b7280;">{{ pay.paid_at[:10] if pay.paid_at else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
