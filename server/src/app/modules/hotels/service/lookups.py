@@ -58,6 +58,29 @@ def _site_lookup(site_ids: list[int]) -> dict[int, dict[str, Any]]:
     return {int(item["site_id"]): item for item in docs if item.get("site_id") is not None}
 
 
+def _amenities_prop_ids(amenities_query: str, mode: str = "or") -> list[int]:
+    """Find prop_ids whose hotel_content_pages.amenities_text matches the query.
+
+    Args:
+        amenities_query: Comma-separated amenity names (e.g. "WiFi, Piscina").
+        mode: "or" — match hotels with ANY of the amenities (default).
+              "and" — match hotels with ALL of the amenities.
+    """
+    if not amenities_query:
+        return []
+    db = get_database()
+    terms = [term.strip() for term in amenities_query.split(",") if term.strip()]
+    if not terms:
+        return []
+    conditions = [{"amenities_text": {"$regex": term, "$options": "i"}} for term in terms]
+    operator = "$and" if mode == "and" else "$or"
+    docs = db.hotel_content_pages.find(
+        {operator: conditions},
+        {"_id": 0, "prop_id": 1},
+    ).limit(500)
+    return list({int(doc["prop_id"]) for doc in docs if doc.get("prop_id") is not None})
+
+
 def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
     match: dict[str, Any] = {}
     destination = str(filters.get("destination") or "").strip()
@@ -96,4 +119,19 @@ def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
         match["srch_children_count"] = {"$gte": children}
     if rooms is not None:
         match["srch_room_count"] = {"$gte": rooms}
+
+    amenities = str(filters.get("amenities") or "").strip()
+    amenities_mode = str(filters.get("amenities_mode") or "or").strip().lower()
+    if amenities:
+        amenity_ids = _amenities_prop_ids(amenities, mode=amenities_mode)
+        if not amenity_ids:
+            return None
+        existing_prop = match.get("prop_id", {})
+        if isinstance(existing_prop, dict) and "$in" in existing_prop:
+            # Intersect with existing prop_id filter
+            existing_ids = set(existing_prop["$in"])
+            match["prop_id"] = {"$in": list(existing_ids & set(amenity_ids))}
+        else:
+            match["prop_id"] = {"$in": amenity_ids}
+
     return match

@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.app.modules.hotels.schemas import ModuleStatus
 from src.app.modules.hotels.service import compare_hotel_options, compare_hotels, hotel_detail, module_status, search_hotels
+from src.app.modules.hotels.service.availability import search_available_hotels
 
 
 router = APIRouter(prefix="/modules/hotels", tags=["modules-hotels"])
@@ -36,6 +37,8 @@ def search(
     max_price: str = "",
     min_stars: str = "",
     promotion: str = "",
+    amenities: str = "",
+    amenities_mode: str = "or",
     adults: str = "",
     children: str = "",
     rooms: str = "",
@@ -47,6 +50,8 @@ def search(
         "max_price": max_price,
         "min_stars": min_stars,
         "promotion": promotion,
+        "amenities": amenities,
+        "amenities_mode": amenities_mode,
         "adults": adults,
         "children": children,
         "rooms": rooms,
@@ -91,6 +96,45 @@ def detail(request: Request, prop_id: int):
     return templates.TemplateResponse(request, "hotels/detail.html", {"hotel": hotel})
 
 
+@api_router.get("/compare")
+def compare_api(prop_id: list[int] = Query(default=[])):
+    """Compare up to 3 hotels side by side (JSON)."""
+    comparison = compare_hotels(prop_id)
+    return comparison
+
+
+@api_router.get("/availability")
+def availability_search(
+    destination: str = "",
+    check_in: str = "",
+    check_out: str = "",
+    adults: int = 1,
+    children: int = 0,
+    rooms: int = 1,
+    amenities: str = "",
+    amenities_mode: str = "or",
+    page: int = Query(default=1, ge=1),
+):
+    """Operational search: find hotels with real-time availability for
+    the given dates, guest count, and destination.
+
+    Checks `room_inventory_calendar` for available rooms and
+    `hotel_rate_calendar` for nightly rates.
+    """
+    return search_available_hotels(
+        destination=destination,
+        check_in=check_in,
+        check_out=check_out,
+        adults=adults,
+        children=children,
+        rooms=rooms,
+        amenities=amenities,
+        amenities_mode=amenities_mode,
+        page=page,
+        page_size=10,
+    )
+
+
 @api_router.get("/search")
 def search_api(
     destination: str = "",
@@ -98,6 +142,8 @@ def search_api(
     max_price: str = "",
     min_stars: str = "",
     promotion: str = "",
+    amenities: str = "",
+    amenities_mode: str = "or",
     adults: str = "",
     children: str = "",
     rooms: str = "",
@@ -109,6 +155,8 @@ def search_api(
         "max_price": max_price,
         "min_stars": min_stars,
         "promotion": promotion,
+        "amenities": amenities,
+        "amenities_mode": amenities_mode,
         "adults": adults,
         "children": children,
         "rooms": rooms,
