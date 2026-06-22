@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Query, Request
+from fastapi import Body, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from src.app.modules.partner.routes import api_router, legacy_admin_api_router, templates, web_router
@@ -83,7 +83,6 @@ def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1)):
 def property_edit_api(prop_id: int):
     detail = partner_hotel_edit_profile(prop_id)
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 
@@ -92,7 +91,6 @@ def property_edit_api(prop_id: int):
 def property_profile_api(prop_id: int):
     detail = partner_hotel_profile(prop_id)
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 
@@ -109,7 +107,6 @@ def property_profile_update_api(prop_id: int, payload: dict = Body(...)):
         reason=str(payload.get("reason") or "Actualización manual de perfil hotelero"),
     )
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 
@@ -118,7 +115,6 @@ def property_profile_update_api(prop_id: int, payload: dict = Body(...)):
 def property_detail_api(prop_id: int):
     detail = partner_hotel_detail(prop_id)
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 

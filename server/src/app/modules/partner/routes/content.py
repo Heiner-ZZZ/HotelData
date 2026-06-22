@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, Query, Request
+from fastapi import Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from src.app.modules.partner.routes import api_router, templates, web_router
@@ -96,7 +96,6 @@ def property_content_update_api(prop_id: int, payload: dict = Body(...)):
         changed_by="angular_api",
     )
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 
@@ -108,10 +107,8 @@ def property_image_add_api(prop_id: int, payload: dict = Body(...)):
     try:
         saved = add_partner_hotel_image(prop_id, image_url=image_url, title=title, changed_by="angular_api")
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 

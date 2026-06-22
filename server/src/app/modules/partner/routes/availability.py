@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, Query, Request
+from fastapi import Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from src.app.modules.partner.routes import api_router, templates, web_router
@@ -33,6 +33,7 @@ def inventory_submit(
     total_rooms: int = Form(default=0),
     available_rooms: int = Form(default=0),
     blocked_rooms: int = Form(default=0),
+    version: int = Form(default=0),
 ):
     try:
         saved = save_inventory_entry(
@@ -42,6 +43,7 @@ def inventory_submit(
             total_rooms=total_rooms,
             available_rooms=available_rooms,
             blocked_rooms=blocked_rooms,
+            expected_version=version or None,
         )
     except ValueError as exc:
         return RedirectResponse(
@@ -92,7 +94,6 @@ def blackout_dates_submit(
 def availability_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_inventory(require_prop_id(prop_id))
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 
@@ -121,7 +122,6 @@ def availability_options_api(
     if prop_id:
         rooms_detail = partner_hotel_rooms(require_prop_id(prop_id))
         if rooms_detail is None:
-            from fastapi import HTTPException, status
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
         response["room_types"] = rooms_detail.get("room_types", [])
     return response
@@ -137,23 +137,17 @@ def _availability_update(payload: dict):
             total_rooms=payload.get("total_rooms"),
             available_rooms=payload.get("available_rooms"),
             blocked_rooms=payload.get("blocked_rooms"),
+            expected_version=payload.get("version") or None,
         )
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 
 
 @api_router.post("/availability")
 def availability_update_api(payload: dict = Body(...)):
-    return _availability_update(payload)
-
-
-@api_router.patch("/availability")
-def availability_patch_api(payload: dict = Body(...)):
     return _availability_update(payload)
 
 
@@ -170,9 +164,7 @@ def availability_blackout_api(payload: dict = Body(...)):
             blocked_rooms=payload.get("blocked_rooms"),
         )
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
