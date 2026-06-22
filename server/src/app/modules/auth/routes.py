@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.modules.auth.schemas import ModuleStatus
 from src.app.modules.auth.service import module_status
@@ -27,7 +25,6 @@ from src.database.connection import get_database
 router = APIRouter(prefix="/modules/auth", tags=["modules-auth"])
 web_router = APIRouter(prefix="/auth", tags=["auth"])
 api_router = APIRouter(prefix="/api/auth", tags=["auth-api"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
 def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:

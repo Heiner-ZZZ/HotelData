@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.features.ta02_crud.service import (
     CRUD_COLLECTIONS,
@@ -26,8 +25,6 @@ from src.app.features.ta02_crud.service import (
 
 router = APIRouter(prefix="/api", tags=["ta02-crud"])
 web_router = APIRouter(tags=["ta02-web-crud"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-templates.env.cache = None
 
 FACT_INT_FIELDS = {
     "srch_id",

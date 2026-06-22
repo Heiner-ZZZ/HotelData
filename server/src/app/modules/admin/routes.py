@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.modules.admin.service import (
     build_security_section_pdf,
@@ -21,7 +20,6 @@ from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
 def _serialize_users_overview(current_user: dict) -> dict:

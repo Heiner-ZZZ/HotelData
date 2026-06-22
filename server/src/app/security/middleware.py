@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.security.navigation import get_default_redirect_for_role, get_navigation_for_user
 from src.app.security.permissions import get_user_permission_codes, user_has_permission
@@ -15,7 +14,7 @@ from src.app.security.session import SESSION_COOKIE_NAME, get_current_user
 from src.database.connection import get_database
 
 
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+
 
 
 def _login_redirect(request: Request) -> RedirectResponse:
