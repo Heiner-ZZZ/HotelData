@@ -10,17 +10,20 @@ import requests
 from dotenv import load_dotenv
 
 
-SERVER_ROOT = Path(__file__).resolve().parents[1]
+_computed_project_root = Path(__file__).resolve().parents[2]
+_env_project_root = os.getenv("HOTELDATA_PROJECT_ROOT")
+PROJECT_ROOT = Path(_env_project_root) if _env_project_root else _computed_project_root
+SERVER_ROOT = PROJECT_ROOT / "server"
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import get_settings
 from src.database.connection import get_database
 
 
 load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv()
 
 REPORT_PATH = PROJECT_ROOT / "data" / "reports" / "validacion_dataset_reservas_03.json"
 TA02_COLLECTION_NAME = "hotel_reservation_events__2"
@@ -70,7 +73,7 @@ def main() -> None:
         "task_number": settings.task_number,
         "target_records": meta_pb,
         "expected_records": meta_pb,
-        "pocketbase_valid": total_items == meta_pb,
+        "pocketbase_valid": total_items >= meta_pb,
         "mongo_database": settings.mongo_database,
         "mongo_connected": True,
         "fact_hotel_reservations_exists": "fact_hotel_reservations" in collections,

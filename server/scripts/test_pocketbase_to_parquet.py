@@ -17,7 +17,6 @@ SAMPLE_SIZE = 1000
 PAGE_SIZE = 500
 
 load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv()
 
 
 def fetch_page(collection: str, page: int, per_page: int) -> tuple[int, dict]:

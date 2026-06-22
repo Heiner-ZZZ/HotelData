@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv()
 
 
 def get_required_env(name: str) -> str:

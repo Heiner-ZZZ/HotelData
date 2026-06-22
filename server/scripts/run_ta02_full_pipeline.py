@@ -32,7 +32,6 @@ from src.etl.ta02_load_mongodb import (
 
 
 load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv()
 
 DEFAULT_POCKETBASE_URL = "http://127.0.0.1:8090"
 DEFAULT_COLLECTION = "hotel_reservation_events__2"
