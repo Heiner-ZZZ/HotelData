@@ -52,6 +52,16 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../check-outs/check-outs.routes').then((m) => m.CHECK_OUTS_ROUTES)
   },
   {
+    path: 'reviews',
+    loadChildren: () =>
+      import('../reviews/reviews.routes').then((m) => m.REVIEWS_ROUTES)
+  },
+  {
+    path: 'billing',
+    loadChildren: () =>
+      import('../billing/billing.routes').then((m) => m.BILLING_ROUTES)
+  },
+  {
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)

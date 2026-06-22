@@ -6,10 +6,10 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ManagementReportsViewModel } from '../../models/management-reports.model';
 import { ManagementReportsApiService } from '../../services/management-reports-api.service';
+import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-reports.utils';
 
 @Component({
   selector: 'app-management-reports-page',
@@ -17,7 +17,6 @@ import { ManagementReportsApiService } from '../../services/management-reports-a
     EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
-    PageHeaderComponent,
     RouterLink
   ],
   templateUrl: './reports-page.html',
@@ -38,6 +37,21 @@ export class ManagementReportsPageComponent {
 
   retry() {
     this.load();
+  }
+
+  exportExcel() {
+    const vm = this.viewModel();
+    if (vm) exportToExcel(vm);
+  }
+
+  exportPdf() {
+    const vm = this.viewModel();
+    if (vm) exportToPdf(vm);
+  }
+
+  exportDocx() {
+    const vm = this.viewModel();
+    if (vm) exportToDocx(vm);
   }
 
   private load() {

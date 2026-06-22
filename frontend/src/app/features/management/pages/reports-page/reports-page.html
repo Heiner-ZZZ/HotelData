@@ -1,10 +1,4 @@
 <div class="reports-page">
-  <app-page-header
-    eyebrow="Management analytics"
-    title="Reportes operativos"
-    description="Resumen ejecutivo del hecho principal GA03 y de las colecciones operativas demo conectadas al management."
-  />
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando reportes..." />
@@ -20,92 +14,146 @@
     }
     @default {
       @if (viewModel(); as vm) {
-        <section class="hero-grid">
-          <article class="surface-card hero-card">
-            <span class="label">Eventos totales</span>
-            <strong>{{ vm.totalEvents }}</strong>
-            <p>Fuente {{ vm.sourceCollection }}</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="label">Reservas detectadas</span>
-            <strong>{{ vm.reservationsDetected }}</strong>
-            <p>Reservas sobre el hecho principal</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="label">Revenue bruto</span>
-            <strong>{{ vm.grossRevenueLabel }}</strong>
-            <p>Agregado desde fact_hotel_reservations</p>
-          </article>
-        </section>
-
-        <section class="content-grid">
-          <section class="surface-card data-card">
-            <div class="section-head">
-              <h2>Top hoteles por revenue</h2>
+        <div class="report-card">
+          <div class="report-head">
+            <div>
+              <span class="report-eyebrow">Management analytics</span>
+              <h1 class="report-title">Reportes operativos</h1>
+              <p class="report-desc">Resumen ejecutivo del hecho principal GA03 y de las colecciones operativas demo conectadas al management.</p>
             </div>
-            <ul class="rank-list">
-              @for (hotel of vm.topHotels; track hotel.propId) {
-                <li>
-                  <div>
-                    <a [routerLink]="['/management/properties', hotel.propId]">{{ hotel.displayName }}</a>
-                    <small>{{ hotel.profileBadge }} · {{ hotel.events }} eventos</small>
-                  </div>
-                  <strong>{{ hotel.grossRevenueLabel }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
-
-          <section class="surface-card data-card">
-            <div class="section-head">
-              <h2>Top destinos</h2>
+            <div class="report-actions">
+              <button type="button" class="export-btn excel" (click)="exportExcel()" aria-label="Exportar a Excel">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">table_chart</span>
+                Excel
+              </button>
+              <button type="button" class="export-btn pdf" (click)="exportPdf()" aria-label="Exportar a PDF">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">picture_as_pdf</span>
+                PDF
+              </button>
+              <button type="button" class="export-btn word" (click)="exportDocx()" aria-label="Exportar a Word">
+                <span class="material-symbols-outlined btn-icon" aria-hidden="true">article</span>
+                Word
+              </button>
             </div>
-            <ul class="rank-list">
-              @for (destination of vm.topDestinations; track destination.label) {
-                <li>
-                  <div>
-                    <span>{{ destination.label }}</span>
-                    <small>{{ destination.events }} eventos</small>
-                  </div>
-                  <strong>{{ destination.grossRevenueLabel }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
-        </section>
+          </div>
 
-        <section class="content-grid">
-          <section class="surface-card data-card">
-            <div class="section-head">
-              <h2>Top países visitantes</h2>
+          <div class="kpi-row">
+            <div class="kpi-item">
+              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">database</span>
+              <div>
+                <strong class="kpi-value">{{ vm.totalEvents }}</strong>
+                <span class="kpi-label">Eventos totales</span>
+                <span class="kpi-source">Fuente {{ vm.sourceCollection }}</span>
+              </div>
             </div>
-            <ul class="rank-list">
-              @for (country of vm.topVisitorCountries; track country.label) {
-                <li>
-                  <div>
-                    <span>{{ country.label }}</span>
-                    <small>{{ country.reservations }} reservas</small>
-                  </div>
-                  <strong>{{ country.events }} eventos</strong>
-                </li>
-              }
-            </ul>
-          </section>
+            <div class="kpi-divider"></div>
+            <div class="kpi-item">
+              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">bed</span>
+              <div>
+                <strong class="kpi-value">{{ vm.reservationsDetected }}</strong>
+                <span class="kpi-label">Reservas detectadas</span>
+                <span class="kpi-source">Sobre el hecho principal</span>
+              </div>
+            </div>
+            <div class="kpi-divider"></div>
+            <div class="kpi-item">
+              <span class="kpi-icon material-symbols-outlined" aria-hidden="true">payments</span>
+              <div>
+                <strong class="kpi-value kpi-money">{{ vm.grossRevenueLabel }}</strong>
+                <span class="kpi-label">Revenue bruto</span>
+                <span class="kpi-source">fact_hotel_reservations</span>
+              </div>
+            </div>
+          </div>
 
-          <section class="surface-card data-card">
-            <div class="section-head">
-              <h2>Colecciones operativas configuradas</h2>
-            </div>
-            <ul class="rank-list compact">
-              @for (item of vm.operationalCounts; track item.label) {
-                <li>
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.value }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
-        </section>
+          <div class="report-body">
+            <section class="data-section">
+              <h2 class="data-section-title">
+                <span class="material-symbols-outlined section-icon" aria-hidden="true">hotel</span>
+                Top hoteles por revenue
+              </h2>
+              <table class="data-table">
+                <thead>
+                  <tr><th>Hotel</th><th>Perfil</th><th class="num">Eventos</th><th class="num">Revenue</th></tr>
+                </thead>
+                <tbody>
+                  @for (hotel of vm.topHotels; track hotel.propId) {
+                    <tr>
+                      <td><a [routerLink]="['/management/properties', hotel.propId]">{{ hotel.displayName }}</a></td>
+                      <td><span class="badge">{{ hotel.profileBadge }}</span></td>
+                      <td class="num">{{ hotel.events }}</td>
+                      <td class="num money">{{ hotel.grossRevenueLabel }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            <section class="data-section">
+              <h2 class="data-section-title">
+                <span class="material-symbols-outlined section-icon" aria-hidden="true">map</span>
+                Top destinos
+              </h2>
+              <table class="data-table">
+                <thead>
+                  <tr><th>Destino</th><th class="num">Eventos</th><th class="num">Revenue</th></tr>
+                </thead>
+                <tbody>
+                  @for (dest of vm.topDestinations; track dest.label) {
+                    <tr>
+                      <td>{{ dest.label }}</td>
+                      <td class="num">{{ dest.events }}</td>
+                      <td class="num money">{{ dest.grossRevenueLabel }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            <section class="data-section">
+              <h2 class="data-section-title">
+                <span class="material-symbols-outlined section-icon" aria-hidden="true">flight</span>
+                Top países visitantes
+              </h2>
+              <table class="data-table">
+                <thead>
+                  <tr><th>País</th><th class="num">Eventos</th><th class="num">Reservas</th></tr>
+                </thead>
+                <tbody>
+                  @for (country of vm.topVisitorCountries; track country.label) {
+                    <tr>
+                      <td>{{ country.label }}</td>
+                      <td class="num">{{ country.events }}</td>
+                      <td class="num">{{ country.reservations }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            @if (vm.operationalCounts.length) {
+              <section class="data-section">
+                <h2 class="data-section-title">
+                  <span class="material-symbols-outlined section-icon" aria-hidden="true">category</span>
+                  Colecciones operativas
+                </h2>
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Colección</th><th class="num">Registros</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (item of vm.operationalCounts; track item.label) {
+                      <tr>
+                        <td>{{ item.label }}</td>
+                        <td class="num">{{ item.value }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </section>
+            }
+          </div>
+        </div>
       }
     }
   }
