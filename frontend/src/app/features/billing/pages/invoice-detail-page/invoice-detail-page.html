@@ -1,0 +1,84 @@
+<div class="invoice-detail-page">
+  <app-page-header
+    eyebrow="Detalle de factura"
+    title="Factura"
+    description="Información detallada de la factura y acciones disponibles."
+  />
+
+  <button type="button" class="back-btn" (click)="goBack()">
+    <span class="material-symbols-outlined btn-icon">arrow_back</span>
+    Volver a facturas
+  </button>
+
+  @if (actionMessage(); as msg) {
+    <div class="success-banner">{{ msg }}</div>
+  }
+  @if (actionError(); as err) {
+    <div class="error-banner">{{ err }}</div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando factura..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar la factura"
+        description="Intenta nuevamente o revisa la conectividad con la API."
+      />
+    }
+    @default {
+      @if (invoice(); as inv) {
+        <section class="surface-card panel invoice-summary">
+          <div class="invoice-header">
+            <div>
+              <h3>{{ inv.invoiceNumber }}</h3>
+              <p class="muted-text">Reserva: {{ inv.bookingId }}</p>
+            </div>
+            <app-status-badge
+              [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
+              [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Emitida'"
+            />
+          </div>
+
+          <div class="amount-grid">
+            <div class="amount-item">
+              <span class="label">Subtotal</span>
+              <span class="value">{{ inv.subtotal | currency:'USD' }}</span>
+            </div>
+            <div class="amount-item">
+              <span class="label">Impuestos</span>
+              <span class="value">{{ inv.taxes | currency:'USD' }}</span>
+            </div>
+            <div class="amount-item total">
+              <span class="label">Total</span>
+              <span class="value">{{ inv.total | currency:'USD' }}</span>
+            </div>
+          </div>
+
+          <div class="dates">
+            <div><strong>Emisión:</strong> {{ inv.issuedAt }}</div>
+            <div><strong>Pago:</strong> {{ inv.paidAt || 'Pendiente' }}</div>
+          </div>
+
+          @if (inv.notes) {
+            <div class="notes">
+              <strong>Notas:</strong>
+              <p>{{ inv.notes }}</p>
+            </div>
+          }
+        </section>
+
+        @if (inv.status === 'issued') {
+          <section class="surface-card panel action-section">
+            <h4>Acciones</h4>
+            <button type="button" class="btn-cancel" (click)="cancelInvoice()">
+              <span class="material-symbols-outlined btn-icon">cancel</span>
+              Anular factura
+            </button>
+          </section>
+        }
+      }
+    }
+  }
+</div>
