@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
@@ -23,9 +22,6 @@ from src.app.modules.billing.service import (
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
 web_router = APIRouter(tags=["billing-web"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-
-
 def _page_url(request: Request, page: int) -> str:
     params = dict(request.query_params)
     params["page"] = str(page)

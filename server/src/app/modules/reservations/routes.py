@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.modules.reservations.schemas import ModuleStatus
 from src.app.modules.reservations.service import (
@@ -31,9 +30,6 @@ router = APIRouter(prefix="/modules/reservations", tags=["modules-reservations"]
 web_router = APIRouter(tags=["reservations"])
 api_router = APIRouter(prefix="/api/reservations", tags=["reservations-api"])
 management_api_router = APIRouter(prefix="/api/management", tags=["management-operations-api"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-
-
 @router.get("/status", response_model=ModuleStatus)
 def module_status_endpoint() -> ModuleStatus:
     return module_status()

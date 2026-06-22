@@ -21,7 +21,6 @@ def module_status() -> ModuleStatus:
 def ensure_revenue_collections() -> dict[str, list[str]]:
     db = get_database()
     created_collections: list[str] = []
-    created_indexes: list[str] = []
     for name in ("rate_plans", "hotel_rate_calendar", "rate_rules", "promotion_campaigns", "coupon_codes"):
         if name not in db.list_collection_names():
             try:
@@ -30,34 +29,39 @@ def ensure_revenue_collections() -> dict[str, list[str]]:
             except CollectionInvalid:
                 pass
 
-    index_specs = {
+    index_specs: dict[str, list[tuple[str, tuple | str, dict]]] = {
         "rate_plans": [
-            ("rate_plan_id_1", db.rate_plans.create_index([("rate_plan_id", 1)], unique=True)),
-            ("prop_id_1", db.rate_plans.create_index("prop_id")),
-            ("is_active_1", db.rate_plans.create_index("is_active")),
+            ("rate_plan_id_1", [("rate_plan_id", 1)], {"unique": True}),
+            ("prop_id_1", "prop_id", {}),
+            ("is_active_1", "is_active", {}),
         ],
         "hotel_rate_calendar": [
-            ("prop_plan_date", db.hotel_rate_calendar.create_index([("prop_id", 1), ("rate_plan_id", 1), ("date", 1)], unique=True)),
-            ("date_1", db.hotel_rate_calendar.create_index("date")),
+            ("prop_rate_date", [("prop_id", 1), ("rate_plan_id", 1), ("date", 1)], {"unique": True}),
+            ("date_1", "date", {}),
         ],
         "rate_rules": [
-            ("rule_id_1", db.rate_rules.create_index([("rule_id", 1)], unique=True)),
-            ("rate_plan_id_1", db.rate_rules.create_index("rate_plan_id")),
-            ("prop_id_1", db.rate_rules.create_index("prop_id")),
+            ("rule_id_1", [("rule_id", 1)], {"unique": True}),
+            ("rate_plan_id_1", "rate_plan_id", {}),
+            ("prop_id_1", "prop_id", {}),
         ],
         "promotion_campaigns": [
-            ("campaign_id_1", db.promotion_campaigns.create_index([("campaign_id", 1)], unique=True)),
-            ("prop_id_1", db.promotion_campaigns.create_index("prop_id")),
-            ("is_active_1", db.promotion_campaigns.create_index("is_active")),
+            ("campaign_id_1", [("campaign_id", 1)], {"unique": True}),
+            ("prop_id_1", "prop_id", {}),
+            ("is_active_1", "is_active", {}),
         ],
         "coupon_codes": [
-            ("coupon_code_1", db.coupon_codes.create_index([("coupon_code", 1)], unique=True)),
-            ("campaign_id_1", db.coupon_codes.create_index("campaign_id")),
+            ("coupon_code_1", [("coupon_code", 1)], {"unique": True}),
+            ("campaign_id_1", "campaign_id", {}),
         ],
     }
-    for indexes in index_specs.values():
-        for label, name in indexes:
-            created_indexes.append(f"{label}:{name}")
+    created_indexes: list[str] = []
+    for col_name, specs in index_specs.items():
+        col = db[col_name]
+        existing_names = {idx["name"] for idx in col.list_indexes()}
+        for idx_name, keys, kwargs in specs:
+            if idx_name not in existing_names:
+                col.create_index(keys, **kwargs)
+                created_indexes.append(f"{idx_name}")
     return {"collections": created_collections, "indexes": created_indexes}
 
 
