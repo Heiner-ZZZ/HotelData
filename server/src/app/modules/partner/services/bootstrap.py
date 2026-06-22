@@ -12,10 +12,104 @@ can still invoke them directly outside of a running app process.
 """
 from __future__ import annotations
 
-from pymongo.errors import CollectionInvalid
+import logging
+
+from pymongo import IndexModel, ASCENDING, DESCENDING
 
 from src.app.modules.partner.schemas import ModuleStatus
-from src.database.connection import get_database
+from src.database.collections import ensure_collection, drop_index_safe
+
+logger = logging.getLogger(__name__)
+
+
+CONTENT_COLLECTIONS: dict[str, list[IndexModel]] = {
+    "hotel_images": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("prop_id", ASCENDING), ("image_url", ASCENDING)], name="image_url_1", unique=True),
+        IndexModel([("created_at", DESCENDING)], name="created_at_-1"),
+    ],
+    "hotel_policies": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1", unique=True),
+        IndexModel([("updated_at", DESCENDING)], name="updated_at_-1"),
+    ],
+    "hotel_content_pages": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1", unique=True),
+        IndexModel([("updated_at", DESCENDING)], name="updated_at_-1"),
+    ],
+    "hotel_content_changes": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("entity_type", ASCENDING)], name="entity_type_1"),
+        IndexModel([("changed_at", DESCENDING)], name="changed_at_-1"),
+    ],
+}
+
+INVENTORY_COLLECTIONS: dict[str, list[IndexModel]] = {
+    "room_types": [
+        IndexModel([("room_type_id", ASCENDING)], name="room_type_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("is_active", ASCENDING)], name="is_active_1"),
+    ],
+    "hotel_rooms": [
+        IndexModel([("hotel_room_id", ASCENDING)], name="hotel_room_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("room_type_id", ASCENDING)], name="room_type_id_1"),
+    ],
+    "room_inventory_calendar": [
+        IndexModel([("prop_id", ASCENDING), ("room_type_id", ASCENDING), ("date", ASCENDING)], name="prop_room_date", unique=True),
+        IndexModel([("date", ASCENDING)], name="date_1"),
+    ],
+    "room_availability_blocks": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("room_type_id", ASCENDING)], name="room_type_id_1"),
+        IndexModel([("start_date", ASCENDING)], name="start_date_1"),
+    ],
+    "blackout_dates": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("room_type_id", ASCENDING)], name="room_type_id_1"),
+        IndexModel([("start_date", ASCENDING)], name="start_date_1"),
+        IndexModel([("end_date", ASCENDING)], name="end_date_1"),
+    ],
+}
+
+RATE_COLLECTIONS: dict[str, list[IndexModel]] = {
+    "rate_plans": [
+        IndexModel([("rate_plan_id", ASCENDING)], name="rate_plan_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("is_active", ASCENDING)], name="is_active_1"),
+    ],
+    "hotel_rate_calendar": [
+        IndexModel([("prop_id", ASCENDING), ("rate_plan_id", ASCENDING), ("date", ASCENDING)], name="prop_rate_date", unique=True),
+        IndexModel([("date", ASCENDING)], name="date_1"),
+    ],
+    "rate_rules": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("rate_plan_id", ASCENDING)], name="rate_plan_id_1"),
+    ],
+    "promotion_campaigns": [
+        IndexModel([("campaign_id", ASCENDING)], name="campaign_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("is_active", ASCENDING)], name="is_active_1"),
+    ],
+    "coupon_codes": [
+        IndexModel([("coupon_code", ASCENDING)], name="coupon_code_1", unique=True),
+        IndexModel([("campaign_id", ASCENDING)], name="campaign_id_1"),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+    ],
+}
+
+PROFILE_COLLECTIONS: dict[str, list[IndexModel]] = {
+    "hotel_profile_changes": [
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("changed_at", DESCENDING)], name="changed_at_-1"),
+        IndexModel([("prop_id", ASCENDING), ("field", ASCENDING), ("changed_at", DESCENDING)], name="prop_field_changed_at"),
+    ],
+}
+
+DIM_HOTELS_INDEXES = [
+    IndexModel([("prop_id", ASCENDING)], name="prop_id_1", unique=True),
+    IndexModel([("display_name", ASCENDING)], name="display_name_1"),
+    IndexModel([("manual_override", ASCENDING)], name="manual_override_1"),
+]
 
 
 def module_status() -> ModuleStatus:
@@ -26,168 +120,39 @@ def module_status() -> ModuleStatus:
     )
 
 
-def ensure_hotel_content_collections() -> dict[str, list[str]]:
-    db = get_database()
-    created_collections: list[str] = []
-    created_indexes: list[str] = []
-    for name in ("hotel_images", "hotel_policies", "hotel_content_pages", "hotel_content_changes"):
-        if name not in db.list_collection_names():
-            try:
-                db.create_collection(name)
-                created_collections.append(name)
-            except CollectionInvalid:
-                pass
+def _ensure_with_report(name: str, indexes: list[IndexModel]) -> dict[str, list[str]]:
+    created = ensure_collection(name, indexes)
+    return {"collections": [name] if any(c.startswith("collection:") for c in created) else [], "indexes": [c for c in created if c.startswith("index:")]}
 
-    index_specs = {
-        "hotel_images": [
-            ("prop_id_1", db.hotel_images.create_index("prop_id")),
-            ("image_url_1", db.hotel_images.create_index([("prop_id", 1), ("image_url", 1)], unique=True)),
-            ("created_at_-1", db.hotel_images.create_index([("created_at", -1)])),
-        ],
-        "hotel_policies": [
-            ("prop_id_1", db.hotel_policies.create_index([("prop_id", 1)], unique=True)),
-            ("updated_at_-1", db.hotel_policies.create_index([("updated_at", -1)])),
-        ],
-        "hotel_content_pages": [
-            ("prop_id_1", db.hotel_content_pages.create_index([("prop_id", 1)], unique=True)),
-            ("updated_at_-1", db.hotel_content_pages.create_index([("updated_at", -1)])),
-        ],
-        "hotel_content_changes": [
-            ("prop_id_1", db.hotel_content_changes.create_index("prop_id")),
-            ("entity_type_1", db.hotel_content_changes.create_index("entity_type")),
-            ("changed_at_-1", db.hotel_content_changes.create_index([("changed_at", -1)])),
-        ],
-    }
-    for indexes in index_specs.values():
-        for label, name in indexes:
-            created_indexes.append(f"{label}:{name}")
-    return {"collections": created_collections, "indexes": created_indexes}
+
+def _merge_reports(reports: list[dict[str, list[str]]]) -> dict[str, list[str]]:
+    collections: list[str] = []
+    indexes: list[str] = []
+    for r in reports:
+        collections.extend(r.get("collections", []))
+        indexes.extend(r.get("indexes", []))
+    return {"collections": collections, "indexes": indexes}
+
+
+def ensure_hotel_content_collections() -> dict[str, list[str]]:
+    reports = [_ensure_with_report(name, idxs) for name, idxs in CONTENT_COLLECTIONS.items()]
+    return _merge_reports(reports)
 
 
 def ensure_hotel_profile_collections() -> dict[str, list[str]]:
-    db = get_database()
-    created_collections: list[str] = []
-    created_indexes: list[str] = []
-    if "hotel_profile_changes" not in db.list_collection_names():
-        try:
-            db.create_collection("hotel_profile_changes")
-            created_collections.append("hotel_profile_changes")
-        except CollectionInvalid:
-            pass
-
-    # Drop conflicting non-unique index before creating unique one
-    try:
-        db.dim_hotels.drop_index("prop_id_1")
-    except Exception:
-        pass
-    index_specs = [
-        ("hotel_profile_changes.prop_id_1", db.hotel_profile_changes.create_index("prop_id")),
-        ("hotel_profile_changes.changed_at_-1", db.hotel_profile_changes.create_index([("changed_at", -1)])),
-        ("hotel_profile_changes.prop_field_changed_at", db.hotel_profile_changes.create_index([("prop_id", 1), ("field", 1), ("changed_at", -1)])),
-        ("dim_hotels.prop_id_1", db.dim_hotels.create_index([("prop_id", 1)], unique=True)),
-        ("dim_hotels.display_name_1", db.dim_hotels.create_index("display_name")),
-        ("dim_hotels.manual_override_1", db.dim_hotels.create_index("manual_override")),
-    ]
-    for label, name in index_specs:
-        created_indexes.append(f"{label}:{name}")
-    return {"collections": created_collections, "indexes": created_indexes}
+    drop_index_safe("dim_hotels", "prop_id_1")
+    reports = [_ensure_with_report(name, idxs) for name, idxs in PROFILE_COLLECTIONS.items()]
+    dim_created = ensure_collection("dim_hotels", DIM_HOTELS_INDEXES)
+    dim_indexes = [c for c in dim_created if c.startswith("index:")]
+    reports.append({"collections": [], "indexes": dim_indexes})
+    return _merge_reports(reports)
 
 
 def ensure_inventory_collections() -> dict[str, list[str]]:
-    db = get_database()
-    created_collections: list[str] = []
-    created_indexes: list[str] = []
-    for name in ("room_types", "hotel_rooms", "room_inventory_calendar", "room_availability_blocks", "blackout_dates"):
-        if name not in db.list_collection_names():
-            try:
-                db.create_collection(name)
-                created_collections.append(name)
-            except CollectionInvalid:
-                pass
-
-    index_specs = {
-        "room_types": [
-            ("room_type_id_1", db.room_types.create_index([("room_type_id", 1)], unique=True)),
-            ("prop_id_1", db.room_types.create_index("prop_id")),
-            ("is_active_1", db.room_types.create_index("is_active")),
-        ],
-        "hotel_rooms": [
-            ("hotel_room_id_1", db.hotel_rooms.create_index([("hotel_room_id", 1)], unique=True)),
-            ("prop_id_1", db.hotel_rooms.create_index("prop_id")),
-            ("room_type_id_1", db.hotel_rooms.create_index("room_type_id")),
-        ],
-        "room_inventory_calendar": [
-            ("prop_room_date", db.room_inventory_calendar.create_index([("prop_id", 1), ("room_type_id", 1), ("date", 1)], unique=True)),
-            ("date_1", db.room_inventory_calendar.create_index("date")),
-        ],
-        "room_availability_blocks": [
-            ("prop_id_1", db.room_availability_blocks.create_index("prop_id")),
-            ("room_type_id_1", db.room_availability_blocks.create_index("room_type_id")),
-            ("start_date_1", db.room_availability_blocks.create_index("start_date")),
-        ],
-        "blackout_dates": [
-            ("prop_id_1", db.blackout_dates.create_index("prop_id")),
-            ("room_type_id_1", db.blackout_dates.create_index("room_type_id")),
-            ("start_date_1", db.blackout_dates.create_index("start_date")),
-            ("end_date_1", db.blackout_dates.create_index("end_date")),
-        ],
-    }
-    for indexes in index_specs.values():
-        for label, name in indexes:
-            created_indexes.append(f"{label}:{name}")
-    return {"collections": created_collections, "indexes": created_indexes}
+    reports = [_ensure_with_report(name, idxs) for name, idxs in INVENTORY_COLLECTIONS.items()]
+    return _merge_reports(reports)
 
 
 def ensure_rate_collections() -> dict[str, list[str]]:
-    db = get_database()
-    created_collections: list[str] = []
-    created_indexes: list[str] = []
-    for name in (
-        "rate_plans",
-        "hotel_rate_calendar",
-        "rate_rules",
-        "promotion_campaigns",
-        "coupon_codes",
-    ):
-        if name not in db.list_collection_names():
-            try:
-                db.create_collection(name)
-                created_collections.append(name)
-            except CollectionInvalid:
-                pass
-
-    index_specs = {
-        "rate_plans": [
-            ("rate_plan_id_1", db.rate_plans.create_index([("rate_plan_id", 1)], unique=True)),
-            ("prop_id_1", db.rate_plans.create_index("prop_id")),
-            ("is_active_1", db.rate_plans.create_index("is_active")),
-        ],
-        "hotel_rate_calendar": [
-            (
-                "prop_rate_date",
-                db.hotel_rate_calendar.create_index(
-                    [("prop_id", 1), ("rate_plan_id", 1), ("date", 1)],
-                    unique=True,
-                ),
-            ),
-            ("date_1", db.hotel_rate_calendar.create_index("date")),
-        ],
-        "rate_rules": [
-            ("prop_id_1", db.rate_rules.create_index("prop_id")),
-            ("rate_plan_id_1", db.rate_rules.create_index("rate_plan_id")),
-        ],
-        "promotion_campaigns": [
-            ("campaign_id_1", db.promotion_campaigns.create_index([("campaign_id", 1)], unique=True)),
-            ("prop_id_1", db.promotion_campaigns.create_index("prop_id")),
-            ("is_active_1", db.promotion_campaigns.create_index("is_active")),
-        ],
-        "coupon_codes": [
-            ("coupon_code_1", db.coupon_codes.create_index([("coupon_code", 1)], unique=True)),
-            ("campaign_id_1", db.coupon_codes.create_index("campaign_id")),
-            ("prop_id_1", db.coupon_codes.create_index("prop_id")),
-        ],
-    }
-    for indexes in index_specs.values():
-        for label, name in indexes:
-            created_indexes.append(f"{label}:{name}")
-    return {"collections": created_collections, "indexes": created_indexes}
+    reports = [_ensure_with_report(name, idxs) for name, idxs in RATE_COLLECTIONS.items()]
+    return _merge_reports(reports)

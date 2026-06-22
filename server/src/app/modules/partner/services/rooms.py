@@ -181,6 +181,7 @@ def save_inventory_entry(
     total_rooms: Any,
     available_rooms: Any,
     blocked_rooms: Any,
+    expected_version: int | None = None,
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -201,6 +202,49 @@ def save_inventory_entry(
         available_value = total_value
     if available_value + blocked_value > total_value:
         available_value = max(total_value - blocked_value, 0)
+
+    now = now_utc()
+
+    if expected_version is not None:
+        filter_ = {
+            "prop_id": prop_id,
+            "room_type_id": clean_room_type_id,
+            "date": clean_date,
+            "version": expected_version,
+        }
+        payload = {
+            "total_rooms": total_value,
+            "available_rooms": available_value,
+            "blocked_rooms": blocked_value,
+            "version": expected_version + 1,
+            "updated_at": now,
+        }
+        result = db.room_inventory_calendar.find_one_and_update(
+            filter_,
+            {"$set": payload},
+            return_document=ReturnDocument.AFTER,
+            projection={"_id": 0},
+        )
+        if result is None:
+            existing = db.room_inventory_calendar.find_one(
+                {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date},
+            )
+            if existing is None:
+                raise ValueError("El registro no existe. Use POST sin version para crearlo.")
+            current_version = existing.get("version")
+            if current_version is None and expected_version == 0:
+                return db.room_inventory_calendar.find_one_and_update(
+                    {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date, "version": {"$exists": False}},
+                    {"$set": {"version": 1, "total_rooms": total_value, "available_rooms": available_value, "blocked_rooms": blocked_value, "updated_at": now}},
+                    return_document=ReturnDocument.AFTER,
+                    projection={"_id": 0},
+                )
+            raise ValueError(
+                f"Conflicto de concurrencia: versión actual={current_version or 0}, "
+                f"esperada={expected_version}. Recargue y reintente."
+            )
+        return result
+
     payload = {
         "prop_id": prop_id,
         "room_type_id": clean_room_type_id,
@@ -208,11 +252,12 @@ def save_inventory_entry(
         "total_rooms": total_value,
         "available_rooms": available_value,
         "blocked_rooms": blocked_value,
-        "updated_at": now_utc(),
+        "version": 1,
+        "updated_at": now,
     }
     return db.room_inventory_calendar.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date},
-        {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
+        {"$set": payload, "$setOnInsert": {"created_at": now}},
         upsert=True,
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
@@ -249,38 +294,38 @@ def create_blackout_block(
         "blocked_rooms": blocked_value,
         "updated_at": now_utc(),
     }
+    blackout_filter = {
+        "prop_id": prop_id,
+        "room_type_id": clean_room_type_id,
+        "start_date": clean_start,
+        "end_date": clean_end,
+    }
     blackout_doc = db.blackout_dates.find_one_and_update(
-        {
-            "prop_id": prop_id,
-            "room_type_id": clean_room_type_id,
-            "start_date": clean_start,
-            "end_date": clean_end,
-        },
+        blackout_filter,
         {"$set": blackout_payload, "$setOnInsert": {"created_at": now_utc()}},
         upsert=True,
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
     )
-    db.room_availability_blocks.find_one_and_update(
-        {
-            "prop_id": prop_id,
-            "room_type_id": clean_room_type_id,
-            "start_date": clean_start,
-            "end_date": clean_end,
-        },
-        {
-            "$set": {
-                "prop_id": prop_id,
-                "room_type_id": clean_room_type_id,
-                "start_date": clean_start,
-                "end_date": clean_end,
-                "blocked_rooms": blocked_value,
-                "reason": blackout_payload["reason"],
-                "updated_at": now_utc(),
+    try:
+        db.room_availability_blocks.find_one_and_update(
+            blackout_filter,
+            {
+                "$set": {
+                    "prop_id": prop_id,
+                    "room_type_id": clean_room_type_id,
+                    "start_date": clean_start,
+                    "end_date": clean_end,
+                    "blocked_rooms": blocked_value,
+                    "reason": blackout_payload["reason"],
+                    "updated_at": now_utc(),
+                },
+                "$setOnInsert": {"created_at": now_utc()},
             },
-            "$setOnInsert": {"created_at": now_utc()},
-        },
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+    except Exception:
+        db.blackout_dates.delete_one(blackout_filter)
+        raise
     return blackout_doc

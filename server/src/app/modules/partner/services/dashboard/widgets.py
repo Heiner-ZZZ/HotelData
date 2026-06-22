@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.app.modules.partner.services._common import active_fact_collection, now_utc
 
@@ -74,14 +77,14 @@ def _dashboard_quick_stats(db) -> dict[str, Any]:
             "status": {"$in": ["confirmed", "pending"]},
         })
     except Exception:
-        pass
+        logger.exception("Error counting pending check-ins")
     health = None
     try:
         last = db.data_quality_reports.find_one(sort=[("executed_at", -1)], projection={"overall_score": 1, "_id": 0})
         if last and "overall_score" in last:
             health = int(last["overall_score"])
     except Exception:
-        pass
+        logger.exception("Error reading data health score")
     return {
         "occupancy_rate": occupancy_rate,
         "occupancy_trend": occupancy_trend,
@@ -122,4 +125,5 @@ def _dashboard_arrivals_today(db) -> list[dict[str, Any]]:
             })
         return out
     except Exception:
+        logger.exception("Error fetching arrivals today")
         return []
