@@ -1,6 +1,8 @@
+name: hoteldata
+
 services:
   mongo:
-    image: mongo:latest
+    image: mongo:7.0
     container_name: hoteldata_mongo
     restart: unless-stopped
     ports:
@@ -15,7 +17,7 @@ services:
       start_period: 20s
 
   redis:
-    image: redis:latest
+    image: redis:7.4
     container_name: hoteldata_redis
     restart: unless-stopped
     ports:
@@ -30,7 +32,7 @@ services:
       start_period: 10s
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
+    image: ghcr.io/muchobien/pocketbase:0.22.0
     container_name: hoteldata_pocketbase
     restart: unless-stopped
     ports:
@@ -44,17 +46,16 @@ services:
       retries: 8
       start_period: 20s
 
-  app:
+  server:
     build:
       context: ..
       dockerfile: infra/Dockerfile
-    container_name: hoteldata_app
+    container_name: hoteldata_server
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
       - docker/.env.example
-      - ../.env
     environment:
       HOTELDATA_PROJECT_ROOT: /app
       MONGO_URI: mongodb://mongo:27017
@@ -66,21 +67,23 @@ services:
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03
       TASK_NUMBER: "03"
-      TARGET_RECORDS: "500000"
-      GA03_EXPECTED_RECORDS: "500000"
-      META_PB: "500000"
-      META_MONGO: "500000"
+      TARGET_RECORDS: "300000"
+      GA03_EXPECTED_RECORDS: "300000"
     depends_on:
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       pocketbase:
-        condition: service_started
+        condition: service_healthy
     volumes:
-      - ..:/app
+      - ../server/src:/app/src
+      - ../server/config:/app/config
+      - ../server/scripts:/app/scripts
+      - ../server/tests:/app/tests
+      - ../data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
-    command: python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+    command: python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
   airflow:
     build:
@@ -96,7 +99,6 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:admin
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-      AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "30"
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
       _AIRFLOW_WWW_USER_EMAIL: admin@hoteldata.local
@@ -105,20 +107,23 @@ services:
       MONGO_DATABASE: hoteldata_hub
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03
+      POCKETBASE_ADMIN_EMAIL: hzambranor@uteq.edu.ec
+      POCKETBASE_ADMIN_PASSWORD: Heiner2005*
+      POCKETBASE_PAGE_SIZE: "500"
       TASK_NUMBER: "03"
-      TARGET_RECORDS: "500000"
-      GA03_EXPECTED_RECORDS: "500000"
-      META_PB: "500000"
-      META_MONGO: "500000"
+      TARGET_RECORDS: "300000"
+      GA03_EXPECTED_RECORDS: "300000"
     volumes:
-      - ..:/opt/hoteldata
+      - ../server/src:/opt/hoteldata/src
+      - ../server/config:/opt/hoteldata/config
+      - ../server/scripts:/opt/hoteldata/scripts
+      - ../server/tests:/opt/hoteldata/tests
       - ../server/dags:/opt/airflow/dags
+      - ../data:/opt/hoteldata/data
       - ./docker/airflow3-entrypoint.sh:/entrypoint3.sh
     depends_on:
-      pocketbase:
-        condition: service_started
       mongo:
-        condition: service_started
+        condition: service_healthy
     command: bash /entrypoint3.sh
 
   frontend:
@@ -128,9 +133,6 @@ services:
     restart: unless-stopped
     ports:
       - "4200:80"
-    depends_on:
-      app:
-        condition: service_started
 
 volumes:
   mongo_data:

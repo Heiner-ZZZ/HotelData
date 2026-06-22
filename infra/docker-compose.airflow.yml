@@ -20,7 +20,11 @@ services:
       TARGET_RECORDS: "300000"
       GA03_EXPECTED_RECORDS: "300000"
     volumes:
-      - .:/opt/hoteldata
-      - ./dags:/opt/airflow/dags
+      - ../server/src:/opt/hoteldata/src
+      - ../server/config:/opt/hoteldata/config
+      - ../server/scripts:/opt/hoteldata/scripts
+      - ../server/tests:/opt/hoteldata/tests
+      - ../server/dags:/opt/airflow/dags
+      - ../data:/opt/hoteldata/data
     command: standalone
 

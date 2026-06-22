@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:latest
+    image: redis:7.4
     container_name: hoteldata_redis_localmongo
     restart: unless-stopped
     ports:
@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
+    image: ghcr.io/muchobien/pocketbase:0.22.0
     container_name: hoteldata_pocketbase_localmongo
     restart: unless-stopped
     profiles: ["pocketbase"]
@@ -30,11 +30,11 @@ services:
       retries: 8
       start_period: 20s
 
-  app:
+  server:
     build:
       context: ..
       dockerfile: infra/Dockerfile
-    container_name: hoteldata_app_localmongo
+    container_name: hoteldata_server_localmongo
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -58,10 +58,14 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
-      - ..:/app
-    command: python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+      - ../server/src:/app/src
+      - ../server/config:/app/config
+      - ../server/scripts:/app/scripts
+      - ../server/tests:/app/tests
+      - ../data:/app/data
+    command: python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
   redis_data:
