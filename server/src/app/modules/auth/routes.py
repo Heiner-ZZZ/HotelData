@@ -14,6 +14,7 @@ from src.app.security.session import (
     find_user_by_identifier,
     get_current_user,
     invalidate_session,
+    invalidate_user_sessions,
     log_user_activity,
     verify_password,
 )
@@ -85,7 +86,8 @@ def login_submit(
 ):
     db = get_database()
     user = find_user_by_identifier(db, identifier)
-    if not user or not user.get("is_active", True) or not verify_password(password, user.get("password_hash", "")):
+
+    if not user:
         log_user_activity(
             db,
             action="auth.login_failed",
@@ -104,6 +106,45 @@ def login_submit(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
+    if not user.get("is_active", True):
+        log_user_activity(
+            db,
+            action="auth.login_failed",
+            request=request,
+            details={"identifier": identifier.strip(), "reason": "inactive_account"},
+        )
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {
+                "current_user": None,
+                "error": "Cuenta desactivada. Contacte al administrador.",
+                "identifier": identifier,
+                "next_url": next,
+            },
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if not verify_password(password, user.get("password_hash", "")):
+        log_user_activity(
+            db,
+            action="auth.login_failed",
+            request=request,
+            details={"identifier": identifier.strip()},
+        )
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {
+                "current_user": None,
+                "error": "Credenciales inválidas. Revise usuario, correo o contraseña.",
+                "identifier": identifier,
+                "next_url": next,
+            },
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    invalidate_user_sessions(db, user["_id"])
     token = create_user_session(db, user, request)
     log_user_activity(db, action="auth.login_success", request=request, user=user)
     redirect_url = next if is_safe_internal_next(next) else get_default_redirect_for_role(user.get("primary_role"))
@@ -113,6 +154,7 @@ def login_submit(
         token,
         httponly=True,
         samesite="lax",
+        secure=request.url.scheme == "https",
         max_age=8 * 60 * 60,
         path="/",
     )
@@ -136,7 +178,8 @@ def login_api(
 
     db = get_database()
     user = find_user_by_identifier(db, identifier)
-    if not user or not user.get("is_active", True) or not verify_password(password, user.get("password_hash", "")):
+
+    if not user:
         log_user_activity(
             db,
             action="auth.login_failed",
@@ -148,6 +191,31 @@ def login_api(
             detail="Credenciales inválidas. Revise usuario, correo o contraseña.",
         )
 
+    if not user.get("is_active", True):
+        log_user_activity(
+            db,
+            action="auth.login_failed",
+            request=request,
+            details={"identifier": identifier, "reason": "inactive_account"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Cuenta desactivada. Contacte al administrador.",
+        )
+
+    if not verify_password(password, user.get("password_hash", "")):
+        log_user_activity(
+            db,
+            action="auth.login_failed",
+            request=request,
+            details={"identifier": identifier},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales inválidas. Revise usuario, correo o contraseña.",
+        )
+
+    invalidate_user_sessions(db, user["_id"])
     token = create_user_session(db, user, request)
     log_user_activity(db, action="auth.login_success", request=request, user=user)
     _, session = get_current_user(db, token)
@@ -158,6 +226,7 @@ def login_api(
         token,
         httponly=True,
         samesite="lax",
+        secure=request.url.scheme == "https",
         max_age=8 * 60 * 60,
         path="/",
     )

@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, File, Request, UploadFile
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
+
+from pymongo.errors import DuplicateKeyError
 
 from src.app.security.dependencies import require_login
 from src.app.security.session import log_user_activity
@@ -18,6 +20,7 @@ api_router = APIRouter(prefix="/api/account", tags=["account-api"])
 
 _PROFILE_FIELDS = {
     "display_name": "",
+    "email": "",
     "phone": "",
     "notification_email": "",
     "address_street": "",
@@ -124,7 +127,13 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
     safe_updates["updated_at"] = utc_now()
     safe_updates["updated_by"] = current_user.get("username", "unknown")
 
-    db.users.update_one({"_id": user_id}, {"$set": safe_updates})
+    try:
+        db.users.update_one({"_id": user_id}, {"$set": safe_updates})
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=400,
+            detail="El email ya está registrado por otro usuario.",
+        )
 
     log_user_activity(
         db,

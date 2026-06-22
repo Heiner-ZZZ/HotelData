@@ -73,8 +73,20 @@ def ensure_user_sessions_indexes(db: Database) -> None:
     Called from the FastAPI `lifespan` so we don't pay the cost of
     `create_index` on every login (was previously inside
     `create_user_session`).
+
+    Indexes:
+    - `session_token_hash`: unique lookup for session resolution.
+    - `expires_at`: TTL index so MongoDB automatically removes expired
+      session documents (RNF-002 / CA-007).
     """
     db.user_sessions.create_index("session_token_hash", unique=True, sparse=True)
+    db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
+
+
+def ensure_users_indexes(db: Database) -> None:
+    """Create unique indexes on users collection to prevent duplicates."""
+    db.users.create_index("email", unique=True)
+    db.users.create_index("username", unique=True)
 
 
 def get_session(db: Database, token: str | None) -> dict[str, Any] | None:
@@ -118,6 +130,28 @@ def invalidate_session(db: Database, token: str | None, reason: str = "logout") 
         {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": reason}},
     )
     return session
+
+
+def invalidate_user_sessions(db: Database, user_id: ObjectId | str, reason: str = "new_login") -> int:
+    """Mark all active sessions for a user as inactive.
+
+    Called before creating a new session on login so that each user
+    has at most one active session at any time (RN-004).
+
+    Args:
+        reason: Reason for invalidation ("new_login", "password_changed", etc.)
+    """
+    uid = user_id
+    if isinstance(uid, str):
+        try:
+            uid = ObjectId(uid)
+        except Exception:
+            return 0
+    result = db.user_sessions.update_many(
+        {"user_id": uid, "is_active": True},
+        {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": reason}},
+    )
+    return result.modified_count
 
 
 def log_user_activity(
