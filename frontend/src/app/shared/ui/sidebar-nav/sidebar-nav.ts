@@ -100,6 +100,18 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'marketing_hotelero']
         },
         {
+          label: 'Reseñas',
+          href: '/management/reviews',
+          icon: 'reviews',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'marketing_hotelero', 'auditor_datos']
+        },
+        {
+          label: 'Facturación',
+          href: '/management/billing/invoices',
+          icon: 'receipt_long',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'auditor_datos']
+        },
+        {
           label: 'Reportes',
           href: '/management/reports',
           icon: 'bar_chart',
