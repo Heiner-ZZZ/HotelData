@@ -70,6 +70,14 @@ export class MonitoringApiService {
     );
   }
 
+  triggerStop(process: string) {
+    return this.http.post<ActionResponseDto>(
+      `${this.apiConfig.baseUrl}/etl-status/ga03/stop?process=${process}`,
+      {},
+      { withCredentials: true },
+    );
+  }
+
   uploadCsv(file: File) {
     const formData = new FormData();
     formData.append('ga03_source_file', file);

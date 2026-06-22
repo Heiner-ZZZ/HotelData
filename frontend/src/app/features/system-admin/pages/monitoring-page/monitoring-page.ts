@@ -128,6 +128,15 @@ export class MonitoringPageComponent implements OnInit {
     });
   }
 
+  triggerStop(process: string) {
+    const label = process === 'seed' ? 'Preparación' : 'Pipeline';
+    this.confirmAction.set({
+      title: `Detener ${label}`,
+      message: `Esta acción detendrá el proceso de ${label} GA03 en ejecución. ¿Desea continuar?`,
+      handler: () => this.execAction(this.api.triggerStop(process)),
+    });
+  }
+
   toggleSection(key: string) {
     this.openSection.update(v => v === key ? null : key);
   }

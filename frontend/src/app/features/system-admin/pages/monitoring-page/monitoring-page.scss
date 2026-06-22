@@ -253,6 +253,21 @@
   color: var(--danger);
 }
 
+.stop-btn {
+  border-color: #d97706;
+  background: color-mix(in srgb, #d97706 18%, transparent);
+  color: #d97706;
+}
+
+.stop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--app-border);
+}
+
 .table-wrap {
   overflow-x: auto;
 }

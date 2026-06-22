@@ -163,6 +163,22 @@
                 </article>
               </div>
 
+              <!-- Stop buttons -->
+              @if (vm.progress.isRunning) {
+                <div class="stop-row">
+                  @if (vm.progress.preparationStatus === 'running') {
+                    <button type="button" class="action-btn stop-btn" (click)="triggerStop('seed')" [disabled]="actionBusy()">
+                      Detener preparación
+                    </button>
+                  }
+                  @if (vm.progress.pipelineStatus === 'running') {
+                    <button type="button" class="action-btn stop-btn" (click)="triggerStop('pipeline')" [disabled]="actionBusy()">
+                      Detener pipeline
+                    </button>
+                  }
+                </div>
+              }
+
               <!-- Target selectors -->
               <div class="targets-row">
                 <div class="target-field">
