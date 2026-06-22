@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.features.catalogs.service import (
     catalog_overview,
@@ -17,8 +15,6 @@ from src.app.features.catalogs.service import (
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-templates.env.cache = None
 
 
 @router.get("/")

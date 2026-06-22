@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Request
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-templates.env.cache = None
 
 
 @router.get("/company")

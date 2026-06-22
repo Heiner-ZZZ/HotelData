@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status as http_status
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.modules.revenue.schemas import ModuleStatus
 from src.app.modules.revenue.services import (
@@ -27,7 +25,6 @@ router = APIRouter(prefix="/modules/revenue", tags=["modules-revenue"])
 web_router = APIRouter(prefix="/analytics", tags=["analytics"])
 ops_router = APIRouter(prefix="/revenue", tags=["revenue"])
 api_router = APIRouter(prefix="/api/management", tags=["management-revenue-api"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
 
 
 @router.get("/status", response_model=ModuleStatus)

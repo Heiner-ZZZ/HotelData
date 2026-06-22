@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, File, Query, Request, UploadFile
-from fastapi.templating import Jinja2Templates
+from src.app.template_utils import templates
 
 from src.app.features.etl_status.services import (
     artifact_status,
@@ -31,8 +29,6 @@ JSON_API = APIRouter(prefix="/api")
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[2] / "templates"))
-templates.env.cache = None
 
 
 def _summarize_output(result: dict) -> str:
