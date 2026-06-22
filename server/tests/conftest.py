@@ -104,6 +104,11 @@ TEST_COLLECTIONS = [
     "coupon_codes",
     # --- Reservas --------------------------------------------------------
     "booking_orders",
+    # --- Billing / Facturacion -------------------------------------------
+    "reservation_invoices",
+    "reservation_payments",
+    "fact_reservation_invoices",
+    "fact_reservation_payments",
 ]
 
 
