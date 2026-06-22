@@ -1,0 +1,93 @@
+<div class="invoices-page">
+  <app-page-header
+    eyebrow="Facturación"
+    title="Facturas y comprobantes"
+    description="Consulta las facturas generadas por reservas. Los pagos son simulados, no hay integración bancaria real."
+  />
+
+  <div class="sub-nav">
+    <a routerLink="/management/billing/invoices" class="sub-link active">Facturas</a>
+    <a routerLink="/management/billing/payments" class="sub-link">Pagos</a>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando facturas..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las facturas"
+        description="Intenta nuevamente o revisa la conectividad con la API."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay facturas todavía"
+        description="Las facturas se generan cuando se crea una reserva con datos de facturación."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <section class="surface-card panel">
+          <div class="panel-head">
+            <div>
+              <h2>Facturas emitidas</h2>
+              <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+                <span class="material-symbols-outlined btn-icon">chevron_left</span>
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+                Siguiente
+                <span class="material-symbols-outlined btn-icon">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nº Factura</th>
+                  <th>Reserva</th>
+                  <th>Subtotal</th>
+                  <th>Impuestos</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                  <th>Emisión</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of vm.items; track item.id) {
+                  <tr>
+                    <td><code>{{ item.invoiceNumber }}</code></td>
+                    <td>{{ item.bookingId }}</td>
+                    <td>{{ item.subtotal | currency:'USD' }}</td>
+                    <td>{{ item.taxes | currency:'USD' }}</td>
+                    <td><strong>{{ item.total | currency:'USD' }}</strong></td>
+                    <td>
+                      <app-status-badge
+                        [tone]="item.status === 'paid' ? 'success' : item.status === 'cancelled' ? 'danger' : 'warning'"
+                        [label]="item.status === 'paid' ? 'Pagada' : item.status === 'cancelled' ? 'Anulada' : 'Emitida'"
+                      />
+                    </td>
+                    <td>{{ item.issuedAt }}</td>
+                    <td>
+                      <a [routerLink]="[item.id]" class="inline-link">
+                        <span class="material-symbols-outlined btn-icon">visibility</span>
+                        Ver detalle
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
