@@ -33,8 +33,6 @@ class Settings:
     ga03_expected_records: int
     task_number: str
     target_records: int
-    meta_pb: int
-    meta_mongo: int
     cors_allowed_origins: tuple[str, ...]
     cors_allowed_methods: tuple[str, ...]
     cors_allowed_headers: tuple[str, ...]
@@ -59,6 +57,8 @@ def get_settings() -> Settings:
     else:
         ga03_collection = default_ga03_collection
 
+    _DEFAULT_RECORDS = "300000"
+
     return Settings(
         project_root=root,
         mongo_uri=os.getenv("MONGO_URI", "mongodb://localhost:27017"),
@@ -78,11 +78,9 @@ def get_settings() -> Settings:
         pocketbase_page_size=int(os.getenv("POCKETBASE_PAGE_SIZE", "500")),
         pocketbase_auth_token=os.getenv("POCKETBASE_AUTH_TOKEN") or None,
         reservations_parquet_path=root / "data" / "staging" / "hotel_reservations.parquet",
-        ga03_expected_records=int(os.getenv("GA03_EXPECTED_RECORDS", os.getenv("TARGET_RECORDS", "300000"))),
+        ga03_expected_records=int(os.getenv("GA03_EXPECTED_RECORDS", os.getenv("TARGET_RECORDS", _DEFAULT_RECORDS))),
         task_number=task_number,
-        target_records=int(os.getenv("TARGET_RECORDS", os.getenv("GA03_EXPECTED_RECORDS", "300000"))),
-        meta_pb=int(os.getenv("META_PB", os.getenv("TARGET_RECORDS", "300000"))),
-        meta_mongo=int(os.getenv("META_MONGO", os.getenv("TARGET_RECORDS", "300000"))),
+        target_records=int(os.getenv("TARGET_RECORDS", _DEFAULT_RECORDS)),
         cors_allowed_origins=_csv_env(
             "CORS_ALLOWED_ORIGINS",
             "http://127.0.0.1:4200,http://localhost:4200,http://localhost:80,http://localhost",

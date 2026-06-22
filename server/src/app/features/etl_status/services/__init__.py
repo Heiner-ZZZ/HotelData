@@ -17,6 +17,7 @@ from src.app.features.etl_status.services.runtime_service import (
     run_seed_master_collections,
     start_pipeline,
     start_seed_source,
+    stop_etl,
 )
 from src.app.features.etl_status.services.sources_service import (
     config_status,
@@ -48,4 +49,5 @@ __all__ = [
     "save_uploaded_raw_csv",
     "start_pipeline",
     "start_seed_source",
+    "stop_etl",
 ]

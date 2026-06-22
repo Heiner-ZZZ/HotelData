@@ -29,10 +29,14 @@ from src.app.modules.reservations.routes import management_api_router as reserva
 from src.app.modules.reservations.routes import router as reservations_module_router
 from src.app.modules.revenue.routes import api_router as revenue_api_router
 from src.app.modules.revenue.routes import router as revenue_module_router
+from src.app.modules.reviews.routes import api_router as reviews_api_router
+from src.app.modules.reviews.routes import router as reviews_module_router
+from src.app.modules.billing.routes import api_router as billing_api_router
+from src.app.modules.billing.routes import router as billing_module_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
-from src.app.security.session import ensure_user_sessions_indexes
+from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
 from src.app.modules.partner.services.bootstrap import (
     ensure_hotel_content_collections,
     ensure_hotel_profile_collections,
@@ -40,6 +44,8 @@ from src.app.modules.partner.services.bootstrap import (
     ensure_rate_collections,
 )
 from src.app.modules.revenue.services import ensure_revenue_collections
+from src.app.modules.reviews.service import ensure_reviews_collections
+from src.app.modules.billing.service import ensure_billing_collections
 from config.settings import get_settings
 from src.database.connection import get_database
 
@@ -69,6 +75,10 @@ def create_app() -> FastAPI:
     app.include_router(partner_api_router)
     app.include_router(partner_legacy_admin_api_router)
     app.include_router(revenue_api_router)
+    app.include_router(reviews_api_router)
+    app.include_router(reviews_module_router)
+    app.include_router(billing_api_router)
+    app.include_router(billing_module_router)
     app.include_router(reservations_api_router)
     app.include_router(reservations_management_api_router)
     app.include_router(reservations_module_router)
@@ -86,11 +96,14 @@ async def lifespan(app: FastAPI):
     ensure_default_catalogs()
     ensure_user_status_field()
     ensure_user_sessions_indexes(get_database())
+    ensure_users_indexes(get_database())
     ensure_hotel_content_collections()
     ensure_hotel_profile_collections()
     ensure_inventory_collections()
     ensure_rate_collections()
     ensure_revenue_collections()
+    ensure_reviews_collections()
+    ensure_billing_collections()
     yield
 
 

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from src.app.security.dependencies import require_login
 from src.app.security.session import log_user_activity, verify_password
-from src.app.security.session import password_context
+from src.app.security.session import invalidate_user_sessions, password_context
 from src.database.connection import get_database
 
 from .schemas import PasswordChange, SettingsUpdate
@@ -95,11 +95,19 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
     if not verify_password(payload.current_password, stored_hash):
         raise HTTPException(status_code=400, detail="La contraseña actual no es correcta.")
 
+    if verify_password(payload.new_password, stored_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="La nueva contraseña debe ser diferente a la actual.",
+        )
+
     new_hash = password_context.hash(payload.new_password)
     db.users.update_one(
         {"_id": user_id},
         {"$set": {"password_hash": new_hash, "updated_at": utc_now()}},
     )
+
+    invalidate_user_sessions(db, user_id, reason="password_changed")
 
     log_user_activity(
         db,
@@ -108,7 +116,7 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
         user=current_user,
     )
 
-    return {"ok": True, "message": "Contraseña actualizada correctamente."}
+    return {"ok": True, "message": "Contraseña actualizada correctamente. Se han cerrado todas las sesiones activas."}
 
 
 def utc_now():

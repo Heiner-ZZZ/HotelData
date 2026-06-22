@@ -4,12 +4,16 @@ from pymongo import MongoClient
 
 from config.settings import get_settings
 
+_client: MongoClient | None = None
+
 
 def get_client() -> MongoClient:
-    settings = get_settings()
-    return MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+    global _client
+    if _client is None:
+        settings = get_settings()
+        _client = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+    return _client
 
 
 def get_database():
-    settings = get_settings()
-    return get_client()[settings.mongo_database]
+    return get_client()[get_settings().mongo_database]

@@ -24,6 +24,7 @@ from src.app.features.etl_status.services import (
     save_uploaded_raw_csv,
     start_pipeline,
     start_seed_source,
+    stop_etl,
 )
 
 JSON_API = APIRouter(prefix="/api")
@@ -303,4 +304,16 @@ def api_etl_status_ga03_clear_evidence():
         "ok": result.get("ok", False),
         "deleted_count": len(result.get("deleted", [])),
         "display_message": "Evidencia local GA03 limpiada." if result.get("ok") else "No se pudo limpiar la evidencia.",
+    }
+
+
+@JSON_API.post("/etl-status/ga03/stop")
+def api_etl_status_ga03_stop(process: str = Query("seed")):
+    if process not in ("seed", "pipeline"):
+        return {"ok": False, "display_message": f"Tipo de proceso inválido: {process}. Use 'seed' o 'pipeline'."}
+    result = stop_etl(process)
+    return {
+        "ok": result.get("ok", False),
+        "display_message": f"Detención de {process} solicitada." if result.get("ok") else f"No se pudo detener {process}.",
+        "summary_output": result.get("stdout", ""),
     }

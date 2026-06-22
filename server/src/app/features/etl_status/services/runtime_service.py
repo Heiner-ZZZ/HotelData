@@ -151,6 +151,29 @@ def start_pipeline(target_records: int = 0) -> dict:
     return _start_script("run_reservas_03_pipeline.py", log_name="pipeline_reservas_03.log", env=extra_env)
 
 
+def stop_etl(process: str) -> dict:
+    settings = get_settings()
+    flag_name = "seed" if process == "seed" else "pipeline"
+    flag_path = settings.reports_dir / f"ga03_{flag_name}_stop.flag"
+    try:
+        flag_path.write_text("stop")
+        return {
+            "command": f"stop_etl({process})",
+            "returncode": 0,
+            "stdout": f"Flag de detención creado: {flag_path}",
+            "stderr": "",
+            "ok": True,
+        }
+    except OSError as exc:
+        return {
+            "command": f"stop_etl({process})",
+            "returncode": 1,
+            "stdout": "",
+            "stderr": str(exc),
+            "ok": False,
+        }
+
+
 def clear_local_evidence() -> dict:
     import subprocess
     settings = get_settings()
