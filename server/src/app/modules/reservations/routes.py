@@ -13,13 +13,16 @@ from src.app.modules.reservations.service import (
     cancel_booking,
     complete_check_in,
     complete_check_out,
+    confirm_booking,
     create_booking,
     get_booking_detail,
+    get_reservation_stats,
     hotel_booking_context,
     list_check_ins,
     list_check_outs,
     list_bookings,
     module_status,
+    reject_booking,
     reservation_hotel_options,
 )
 
@@ -43,8 +46,26 @@ def _page_url(request: Request, page: int) -> str:
 
 
 @web_router.get("/reservations")
-def reservations_list(request: Request, page: int = Query(default=1, ge=1)):
-    results = list_bookings(page=page, page_size=20)
+def reservations_list(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    status: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
+    guest_name: str | None = Query(default=None),
+    guest_email: str | None = Query(default=None),
+    check_in_from: str | None = Query(default=None),
+    check_in_to: str | None = Query(default=None),
+):
+    results = list_bookings(
+        page=page,
+        page_size=20,
+        status=status,
+        prop_id=prop_id,
+        guest_name=guest_name,
+        guest_email=guest_email,
+        check_in_from=check_in_from,
+        check_in_to=check_in_to,
+    )
     return templates.TemplateResponse(
         request,
         "reservations/list.html",
@@ -70,6 +91,8 @@ def reservation_new_form(request: Request, prop_id: int | None = None, error: st
                 "prop_id": prop_id or "",
                 "guest_name": "",
                 "guest_email": "",
+                "guest_phone": "",
+                "room_type_id": "",
                 "check_in_date": "",
                 "check_out_date": "",
                 "adults": 2,
@@ -87,6 +110,8 @@ def reservation_new_submit(
     prop_id: int = Form(...),
     guest_name: str = Form(...),
     guest_email: str = Form(...),
+    guest_phone: str = Form(""),
+    room_type_id: str = Form(""),
     check_in_date: str = Form(...),
     check_out_date: str = Form(...),
     adults: int = Form(...),
@@ -98,6 +123,8 @@ def reservation_new_submit(
         "prop_id": prop_id,
         "guest_name": guest_name,
         "guest_email": guest_email,
+        "guest_phone": guest_phone,
+        "room_type_id": room_type_id,
         "check_in_date": check_in_date,
         "check_out_date": check_out_date,
         "adults": adults,
@@ -127,12 +154,47 @@ def reservation_detail(request: Request, booking_id: str):
     return templates.TemplateResponse(request, "reservations/detail.html", detail)
 
 
+@web_router.get("/reservations/{booking_id}/confirm")
+def reservation_confirm_form(request: Request, booking_id: str, error: str = ""):
+    detail = get_booking_detail(booking_id)
+    if detail is None:
+        return RedirectResponse("/reservations", status_code=status.HTTP_303_SEE_OTHER)
+    if detail.get("can_cancel") is not True:
+        return RedirectResponse(
+            f"/reservations/{booking_id}?error=Booking+is+not+in+pending+status",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return templates.TemplateResponse(
+        request,
+        "reservations/confirm.html",
+        {"detail": detail, "error": error},
+    )
+
+
+@web_router.post("/reservations/{booking_id}/confirm")
+def reservation_confirm(booking_id: str):
+    try:
+        confirm_booking(booking_id, reason="confirmed_by_staff", changed_by="web")
+    except ValueError as exc:
+        return RedirectResponse(f"/reservations/{booking_id}?error={exc}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(f"/reservations/{booking_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@web_router.post("/reservations/{booking_id}/reject")
+def reservation_reject(booking_id: str):
+    try:
+        reject_booking(booking_id, reason="rejected_by_staff", changed_by="web")
+    except ValueError as exc:
+        return RedirectResponse(f"/reservations/{booking_id}?error={exc}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(f"/reservations/{booking_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @web_router.post("/reservations/{booking_id}/cancel")
 def reservation_cancel(booking_id: str):
     try:
         cancel_booking(booking_id, reason="cancelled_by_user", changed_by="web")
-    except ValueError:
-        pass
+    except ValueError as exc:
+        return RedirectResponse(f"/reservations/{booking_id}?error={exc}", status_code=status.HTTP_303_SEE_OTHER)
     return RedirectResponse(f"/reservations/{booking_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -150,6 +212,8 @@ def manual_reservation_form(request: Request, prop_id: int | None = None, error:
                 "prop_id": prop_id or "",
                 "guest_name": "",
                 "guest_email": "",
+                "guest_phone": "",
+                "room_type_id": "",
                 "check_in_date": "",
                 "check_out_date": "",
                 "adults": 2,
@@ -168,6 +232,8 @@ def manual_reservation_submit(
     prop_id: int = Form(...),
     guest_name: str = Form(...),
     guest_email: str = Form(...),
+    guest_phone: str = Form(""),
+    room_type_id: str = Form(""),
     check_in_date: str = Form(...),
     check_out_date: str = Form(...),
     adults: int = Form(...),
@@ -180,6 +246,8 @@ def manual_reservation_submit(
         "prop_id": prop_id,
         "guest_name": guest_name,
         "guest_email": guest_email,
+        "guest_phone": guest_phone,
+        "room_type_id": room_type_id,
         "check_in_date": check_in_date,
         "check_out_date": check_out_date,
         "adults": adults,
@@ -203,8 +271,25 @@ def manual_reservation_submit(
 
 
 @api_router.get("")
-def reservations_list_api(page: int = Query(default=1, ge=1)):
-    return list_bookings(page=page, page_size=20)
+def reservations_list_api(
+    page: int = Query(default=1, ge=1),
+    status: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
+    guest_name: str | None = Query(default=None),
+    guest_email: str | None = Query(default=None),
+    check_in_from: str | None = Query(default=None),
+    check_in_to: str | None = Query(default=None),
+):
+    return list_bookings(
+        page=page,
+        page_size=20,
+        status=status,
+        prop_id=prop_id,
+        guest_name=guest_name,
+        guest_email=guest_email,
+        check_in_from=check_in_from,
+        check_in_to=check_in_to,
+    )
 
 
 @api_router.get("/options")
@@ -227,6 +312,35 @@ def reservation_detail_api(booking_id: str):
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
     return detail
+
+
+@api_router.get("/stats")
+def reservations_stats_api():
+    return get_reservation_stats()
+
+
+@api_router.post("/{booking_id}/confirm")
+def reservation_confirm_api(booking_id: str, payload: dict = Body(default={})):
+    try:
+        return confirm_booking(
+            booking_id,
+            reason=str(payload.get("reason") or "confirmed_by_staff"),
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.post("/{booking_id}/reject")
+def reservation_reject_api(booking_id: str, payload: dict = Body(default={})):
+    try:
+        return reject_booking(
+            booking_id,
+            reason=str(payload.get("reason") or "rejected_by_staff"),
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @api_router.post("/{booking_id}/cancel")

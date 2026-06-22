@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar reserva - HotelData</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; line-height: 1.6; }
+        .container { max-width: 640px; margin: 40px auto; padding: 0 20px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .card-header { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; padding: 24px 28px; }
+        .card-header h1 { font-size: 22px; font-weight: 600; }
+        .card-header p { opacity: 0.85; font-size: 14px; margin-top: 4px; }
+        .card-body { padding: 28px; }
+        .error-banner { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .info-item label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 2px; }
+        .info-item .value { font-size: 15px; font-weight: 500; color: #1a1a2e; }
+        .info-item.full { grid-column: 1 / -1; }
+        .divider { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        .price-summary { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+        .price-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .price-row .label { font-size: 14px; color: #374151; }
+        .price-row .amount { font-size: 16px; font-weight: 600; color: #1a1a2e; }
+        .price-row.total { border-top: 1px solid #bae6fd; margin-top: 8px; padding-top: 8px; }
+        .price-row.total .amount { font-size: 20px; color: #2563eb; }
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.confirmed { background: #d1fae5; color: #065f46; }
+        .actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn { flex: 1; padding: 12px 20px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; text-align: center; text-decoration: none; transition: all 0.15s; }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .inline-form { display: inline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h1>{% if error %}Error al procesar{% else %}Confirmar reserva{% endif %}</h1>
+                <p>Booking {{ detail.booking.booking_id }}</p>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="error-banner">{{ error }}</div>
+                {% endif %}
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Hotel</label>
+                        <div class="value">{{ detail.hotel.hotel_label }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Estado actual</label>
+                        <div class="value">
+                            <span class="status-badge pending">{{ detail.booking.status }}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <label>Huésped</label>
+                        <div class="value">{{ detail.booking.guest_name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Email</label>
+                        <div class="value">{{ detail.booking.guest_email }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Check-in</label>
+                        <div class="value">{{ detail.booking.check_in_date }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Check-out</label>
+                        <div class="value">{{ detail.booking.check_out_date }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Adultos</label>
+                        <div class="value">{{ detail.booking.adults }}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Habitaciones</label>
+                        <div class="value">{{ detail.booking.rooms }}</div>
+                    </div>
+                    {% if detail.booking.guest_phone %}
+                    <div class="info-item">
+                        <label>Teléfono</label>
+                        <div class="value">{{ detail.booking.guest_phone }}</div>
+                    </div>
+                    {% endif %}
+                    {% if detail.booking.room_type_id %}
+                    <div class="info-item">
+                        <label>Tipo de habitación</label>
+                        <div class="value">{{ detail.booking.room_type_id }}</div>
+                    </div>
+                    {% endif %}
+                    {% if detail.booking.comment %}
+                    <div class="info-item full">
+                        <label>Comentario</label>
+                        <div class="value">{{ detail.booking.comment }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if detail.total_price is not none %}
+                <hr class="divider">
+                <div class="price-summary">
+                    <div class="price-row">
+                        <span class="label">{{ detail.total_nights }} noche(s) &times; {{ detail.currency }}</span>
+                        <span class="amount">${{ "%.2f"|format(detail.total_price) }}</span>
+                    </div>
+                    <div class="price-row total">
+                        <span class="label">Total estimado</span>
+                        <span class="amount">{{ detail.total_price_label }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <hr class="divider">
+
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 12px;">
+                    {% if detail.can_cancel %}
+                    Revise los datos de la reserva antes de confirmar. Esta acción cambiará el estado de
+                    <strong>pendiente</strong> a <strong>confirmado</strong>.
+                    {% endif %}
+                </p>
+
+                <div class="actions">
+                    <a href="/reservations/{{ detail.booking.booking_id }}" class="btn btn-secondary">Volver</a>
+                    {% if detail.can_cancel %}
+                    <form class="inline-form" action="/reservations/{{ detail.booking.booking_id }}/confirm" method="POST">
+                        <button type="submit" class="btn btn-primary">Confirmar reserva</button>
+                    </form>
+                    <form class="inline-form" action="/reservations/{{ detail.booking.booking_id }}/reject" method="POST">
+                        <button type="submit" class="btn btn-danger">Rechazar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
