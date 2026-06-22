@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Query
+from fastapi import Body, HTTPException, Query, status
 
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
@@ -16,7 +16,6 @@ from src.app.modules.partner.services import (
 def rates_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_rates(require_prop_id(prop_id))
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return {
         "prop_id": detail["hotel"]["prop_id"],
@@ -55,7 +54,6 @@ def rates_options_api(
     if prop_id:
         detail = partner_hotel_rates(require_prop_id(prop_id))
         if detail is None:
-            from fastapi import HTTPException, status
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
         response["rate_plans"] = [
             {
@@ -80,10 +78,8 @@ def rates_plan_create_api(payload: dict = Body(...)):
             is_active=payload.get("is_active", True),
         )
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 
@@ -101,9 +97,7 @@ def rates_calendar_update_api(payload: dict = Body(...)):
             is_closed=payload.get("is_closed", False),
         )
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved

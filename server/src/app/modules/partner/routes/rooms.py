@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, Query, Request
+from fastapi import Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from src.app.modules.partner.routes import api_router, templates, web_router
@@ -79,7 +79,6 @@ def rooms_new_submit(
 def rooms_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_rooms(require_prop_id(prop_id))
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 
@@ -112,9 +111,7 @@ def rooms_create_api(payload: dict = Body(...)):
             is_active=payload.get("is_active", True),
         )
     except ValueError as exc:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved

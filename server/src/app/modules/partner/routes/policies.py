@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, Query, Request
+from fastapi import Body, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from src.app.modules.partner.routes import api_router, templates, web_router
@@ -52,7 +52,6 @@ def policies_submit(
 def policies_api(prop_id: int = Query(..., ge=1)):
     detail = partner_hotel_policies(require_prop_id(prop_id))
     if detail is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
 
@@ -95,6 +94,5 @@ def policies_update_api(payload: dict = Body(...)):
         changed_by="angular_api",
     )
     if saved is None:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
