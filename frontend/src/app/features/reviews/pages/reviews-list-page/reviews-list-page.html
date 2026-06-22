@@ -1,0 +1,107 @@
+<div class="reviews-page">
+  <app-page-header
+    eyebrow="Reputación online"
+    title="Reseñas de huéspedes"
+    description="Modera, responde y consulta las reseñas registradas por los huéspedes después de su estancia."
+  />
+
+  <div class="filter-bar">
+    <button type="button" class="filter-btn" [class.active]="!filterStatus()" (click)="setFilter('')">
+      Todas
+    </button>
+    <button type="button" class="filter-btn" [class.active]="filterStatus() === 'pending'" (click)="setFilter('pending')">
+      <span class="material-symbols-outlined btn-icon">pending</span>
+      Pendientes
+    </button>
+    <button type="button" class="filter-btn" [class.active]="filterStatus() === 'approved'" (click)="setFilter('approved')">
+      <span class="material-symbols-outlined btn-icon">check_circle</span>
+      Aprobadas
+    </button>
+    <button type="button" class="filter-btn" [class.active]="filterStatus() === 'rejected'" (click)="setFilter('rejected')">
+      <span class="material-symbols-outlined btn-icon">cancel</span>
+      Rechazadas
+    </button>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando reseñas..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las reseñas"
+        description="Intenta nuevamente o revisa la conectividad con la API."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay reseñas"
+        description="Las reseñas aparecerán aquí cuando los huéspedes las registren después de su estancia."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <section class="surface-card panel">
+          <div class="panel-head">
+            <div>
+              <h2>Reseñas registradas</h2>
+              <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+                <span class="material-symbols-outlined btn-icon">chevron_left</span>
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+                Siguiente
+                <span class="material-symbols-outlined btn-icon">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Huésped</th>
+                  <th>Puntaje</th>
+                  <th>Reseña</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of vm.items; track item.id) {
+                  <tr>
+                    <td>{{ item.userName }}</td>
+                    <td>
+                      <span class="stars">{{ item.rating }}/5</span>
+                    </td>
+                    <td>
+                      <strong>{{ item.title }}</strong>
+                      <div class="muted-cell">{{ item.comment | slice:0:80 }}{{ item.comment.length > 80 ? '...' : '' }}</div>
+                    </td>
+                    <td>
+                      <app-status-badge
+                        [tone]="item.moderationStatus === 'approved' ? 'success' : item.moderationStatus === 'rejected' ? 'danger' : 'warning'"
+                        [label]="item.moderationStatus === 'approved' ? 'Aprobada' : item.moderationStatus === 'rejected' ? 'Rechazada' : 'Pendiente'"
+                      />
+                    </td>
+                    <td>{{ item.createdAt }}</td>
+                    <td>
+                      <a [routerLink]="[item.id]" class="inline-link">
+                        <span class="material-symbols-outlined btn-icon">visibility</span>
+                        Ver detalle
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

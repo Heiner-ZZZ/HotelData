@@ -1,0 +1,87 @@
+<div class="review-detail-page">
+  <app-page-header
+    eyebrow="Reseña de huésped"
+    title="Detalle de la reseña"
+    description="Revisa el contenido, modera si es necesario y responde al huésped."
+  />
+
+  <button type="button" class="back-btn" (click)="goBack()">
+    <span class="material-symbols-outlined btn-icon">arrow_back</span>
+    Volver a reseñas
+  </button>
+
+  @if (actionMessage(); as msg) {
+    <div class="success-banner">{{ msg }}</div>
+  }
+  @if (actionError(); as err) {
+    <div class="error-banner">{{ err }}</div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando reseña..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar la reseña"
+        description="Intenta nuevamente o revisa la conectividad con la API."
+      />
+    }
+    @default {
+      @if (review(); as r) {
+        <section class="surface-card panel review-card">
+          <div class="review-header">
+            <div class="review-meta">
+              <div class="review-user">{{ r.userName }}</div>
+              <div class="stars">{{ r.rating }}/5 estrellas</div>
+              <div class="muted-text">{{ r.createdAt }}</div>
+            </div>
+            <app-status-badge
+              [tone]="r.moderationStatus === 'approved' ? 'success' : r.moderationStatus === 'rejected' ? 'danger' : 'warning'"
+              [label]="r.moderationStatus === 'approved' ? 'Aprobada' : r.moderationStatus === 'rejected' ? 'Rechazada' : 'Pendiente'"
+            />
+          </div>
+
+          <h3>{{ r.title }}</h3>
+          <p class="review-comment">{{ r.comment }}</p>
+        </section>
+
+        <section class="surface-card panel moderate-section">
+          <h4>Moderación</h4>
+          <p class="muted-text">Define si esta reseña es visible en el perfil del hotel.</p>
+          <div class="action-row">
+            <button type="button" class="btn-approve" (click)="moderate('approved')" [disabled]="r.moderationStatus === 'approved'">
+              <span class="material-symbols-outlined btn-icon">check_circle</span>
+              Aprobar
+            </button>
+            <button type="button" class="btn-reject" (click)="moderate('rejected')" [disabled]="r.moderationStatus === 'rejected'">
+              <span class="material-symbols-outlined btn-icon">cancel</span>
+              Rechazar
+            </button>
+          </div>
+        </section>
+
+        <section class="surface-card panel respond-section">
+          <h4>Respuesta del hotel</h4>
+          <p class="muted-text">Responde públicamente a la reseña del huésped.</p>
+          <textarea
+            [(ngModel)]="staffResponseText"
+            rows="4"
+            placeholder="Escribe tu respuesta aquí..."
+            class="response-textarea"
+          ></textarea>
+          <button type="button" class="btn-respond" (click)="respond()" [disabled]="!staffResponseText().trim()">
+            <span class="material-symbols-outlined btn-icon">reply</span>
+            Guardar respuesta
+          </button>
+          @if (r.staffResponse) {
+            <div class="existing-response">
+              <strong>Respuesta actual:</strong>
+              <p>{{ r.staffResponse }}</p>
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>
