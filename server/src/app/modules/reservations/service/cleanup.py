@@ -2,39 +2,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.database.connection import get_database
-
-from ._helpers import utc_now
+from ._transitions import _transition_status
 
 
 def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", changed_by: str = "web") -> dict[str, Any]:
-    db = get_database()
-    booking = db.booking_orders.find_one({"booking_id": booking_id})
-    if booking is None:
-        raise ValueError("booking not found")
-    if booking.get("status") != "requested":
-        raise ValueError("only requested bookings can be cancelled")
-    changed_at = utc_now()
-    db.booking_orders.update_one(
-        {"booking_id": booking_id},
-        {"$set": {"status": "cancelled", "updated_at": changed_at, "cancel_reason": reason}},
+    """Transition a booking from 'pending' to 'cancelled'.
+
+    Delegates to _transition_status() with extra_updates to store
+    cancel_reason on the booking document.
+    """
+    return _transition_status(
+        booking_id,
+        target_status="cancelled",
+        allowed_current="pending",
+        reason=reason,
+        changed_by=changed_by,
+        extra_updates={"cancel_reason": reason},
     )
-    db.booking_status_history.insert_one(
-        {
-            "booking_id": booking_id,
-            "status": "cancelled",
-            "changed_at": changed_at,
-            "reason": reason,
-            "changed_by": changed_by,
-            "is_test": bool(booking.get("is_test")),
-        }
-    )
-    if db.manual_reservations.count_documents({"booking_id": booking_id}) > 0:
-        db.manual_reservations.update_one(
-            {"booking_id": booking_id},
-            {"$set": {"status": "cancelled", "updated_at": changed_at}},
-        )
-    return {"booking_id": booking_id, "status": "cancelled"}
 
 
 def cleanup_test_booking(booking_id: str) -> dict[str, Any]:
