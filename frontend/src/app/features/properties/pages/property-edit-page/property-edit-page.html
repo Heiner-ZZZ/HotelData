@@ -56,6 +56,7 @@
           </div>
         </div>
 
+        <form [formGroup]="form" (ngSubmit)="saveAll()">
         <!-- ═══ Profile section ═══ -->
         <section class="surface-card edit-card">
           <div class="card-head">
@@ -237,37 +238,46 @@
               </div>
             }
             <div class="gallery-add-form">
-              <div class="field-row">
-                <div class="field">
-                  <label for="imageUrlInput">URL de imagen</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">link</span>
-                    <input id="imageUrlInput" type="text" placeholder="https://..." [value]="newImageUrl()" (input)="onImageUrlInput($event)" />
-                  </div>
+              <input
+                #fileInput
+                type="file"
+                accept="image/*"
+                (change)="onFileSelected($event)"
+                style="display: none"
+              />
+
+              @if (imagePreviewUrl(); as preview) {
+                <div class="image-preview">
+                  <img [src]="preview" alt="Preview" class="preview-img" />
+                  <button type="button" class="preview-clear" (click)="clearSelectedFile()" aria-label="Cancelar selección">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
                 </div>
-                <div class="field">
-                  <label for="imageTitleInput">Título</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">label</span>
-                    <input id="imageTitleInput" type="text" placeholder="Ej: Fachada" [value]="newImageTitle()" (input)="onImageTitleInput($event)" />
-                  </div>
-                </div>
-              </div>
+              }
+
               <div class="add-img-actions">
-                <button type="button" class="btn-primary" (click)="addImage()">
-                  <span class="material-symbols-outlined">add_photo_alternate</span>
-                  Agregar imagen
-                </button>
+                @if (!selectedFile()) {
+                  <button type="button" class="btn-outline" (click)="triggerFileInput()">
+                    <span class="material-symbols-outlined">folder_open</span>
+                    Seleccionar imagen
+                  </button>
+                } @else {
+                  <button type="button" class="btn-primary" (click)="addImage()">
+                    <span class="material-symbols-outlined">cloud_upload</span>
+                    Subir imagen
+                  </button>
+                }
               </div>
             </div>
           </div>
         </section>
+        </form>
       }
     }
   }
 
   <!-- ═══ Floating save bar ═══ -->
-  @if (vm() && unsavedCount() > 0) {
+  @if (vm() && hasUnsavedChanges()) {
     <div class="save-bar">
       <div class="save-bar-inner">
         <div class="save-info">

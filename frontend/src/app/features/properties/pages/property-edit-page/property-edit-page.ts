@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, signal, ElementRef, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -30,6 +30,11 @@ export class PropertyEditPageComponent {
   readonly vm = signal<EditPropertyViewModel | null>(null);
   readonly newImageUrl = signal('');
   readonly newImageTitle = signal('');
+  readonly selectedFile = signal<File | null>(null);
+  readonly imagePreviewUrl = signal<string | null>(null);
+  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+  readonly hasUnsavedChanges = signal(false);
+  private readonly formInitialized = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     hotelName: ['', Validators.required],
@@ -45,6 +50,16 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
+    // Track form changes for the save bar (zoneless-safe signal)
+    this.form.valueChanges
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        filter(() => this.formInitialized())
+      )
+      .subscribe(() => {
+        this.hasUnsavedChanges.set(this.unsavedCount() > 0);
+      });
+
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('propertyId'))),
@@ -72,6 +87,7 @@ export class PropertyEditPageComponent {
             cancellationPolicy: vm.policies.cancellationPolicy,
             petPolicy: vm.policies.petPolicy === 'true' || vm.policies.petPolicy === 'yes'
           });
+          this.formInitialized.set(true);
           this.viewState.set('success');
         },
         error: (error) => {
@@ -132,17 +148,13 @@ export class PropertyEditPageComponent {
           profileBadge: 'Nombre editado manualmente'
         });
         this.saving.set('done');
+        this.hasUnsavedChanges.set(false);
         setTimeout(() => this.saving.set('idle'), 3000);
       } else {
         this.saveError.set('Error al guardar algunos cambios');
         this.saving.set('idle');
       }
     });
-  }
-
-  focusImageInput() {
-    const el = document.getElementById('imageUrlInput');
-    el?.focus();
   }
 
   discard() {
@@ -168,17 +180,63 @@ export class PropertyEditPageComponent {
     this.vm.set({ ...current, amenities: current.amenities.filter(a => a !== label) });
   }
 
+  triggerFileInput() {
+    this.fileInput()?.nativeElement.click();
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.saveError.set('Solo se permiten archivos de imagen.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      this.saveError.set('La imagen no puede superar los 10 MB.');
+      return;
+    }
+
+    this.selectedFile.set(file);
+    this.saveError.set('');
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imagePreviewUrl.set(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  clearSelectedFile() {
+    this.selectedFile.set(null);
+    this.imagePreviewUrl.set(null);
+    if (this.fileInput()?.nativeElement) {
+      this.fileInput()!.nativeElement.value = '';
+    }
+  }
+
   addImage() {
-    const url = this.newImageUrl().trim();
-    if (!url) return;
+    const file = this.selectedFile();
+    if (!file) return;
     const current = this.vm();
     if (!current) return;
-    const title = this.newImageTitle().trim();
-    this.propertiesApi.addImage(this.propId(), url, title).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.vm.set({ ...current, images: [...current.images, { imageUrl: url, title }] });
-        this.newImageUrl.set('');
-        this.newImageTitle.set('');
+
+    this.propertiesApi.uploadImage(this.propId(), file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result: any) => {
+        this.saveError.set('');
+        this.vm.set({
+          ...current,
+          images: [...current.images, { imageUrl: result.image_url, title: result.title || '' }]
+        });
+        this.clearSelectedFile();
+      },
+      error: (err) => {
+        if (isDevMode()) {
+          console.error('Error uploading image', err);
+        }
+        this.saveError.set('Error al subir la imagen. Intenta de nuevo.');
       }
     });
   }
@@ -188,13 +246,16 @@ export class PropertyEditPageComponent {
     if (!current) return;
     this.propertiesApi.deleteImage(this.propId(), imageUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
+        this.saveError.set('');
         this.vm.set({ ...current, images: current.images.filter(i => i.imageUrl !== imageUrl) });
+      },
+      error: (err) => {
+        if (isDevMode()) {
+          console.error('Error removing image', err);
+        }
+        this.saveError.set('Error al eliminar imagen. Intenta de nuevo.');
       }
     });
-  }
-
-  onImageUrlInput(event: Event) {
-    this.newImageUrl.set((event.target as HTMLInputElement).value);
   }
 
   onImageTitleInput(event: Event) {

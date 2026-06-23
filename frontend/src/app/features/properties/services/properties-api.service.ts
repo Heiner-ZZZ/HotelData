@@ -123,6 +123,16 @@ export class PropertiesApiService {
     );
   }
 
+  uploadImage(propId: number, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ image_url: string; title: string }>(
+      `${this.apiConfig.baseUrl}/management/properties/${propId}/images/upload`,
+      formData,
+      { withCredentials: true }
+    );
+  }
+
   deleteImage(propId: number, imageUrl: string) {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/images`,

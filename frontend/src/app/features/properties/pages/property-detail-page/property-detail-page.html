@@ -1,59 +1,126 @@
-<div class="property-detail-page">
-  <app-page-header
-    eyebrow="Gestion hotelera"
-    [title]="viewModel()?.displayName || 'Detalle de propiedad'"
-    [description]="'ID propiedad: ' + (viewModel()?.propId || 'N/D') + '. Vista operativa base de la propiedad hotelera.'"
-  />
-
-  <div class="page-actions">
-    <a routerLink="/management/properties">Volver</a>
-    @if (viewModel(); as vm) {
-      <a [routerLink]="['/management/properties', vm.propId, 'edit']">Editar perfil</a>
-    }
-  </div>
+<div class="detail-page">
+  <!-- ═══ Sticky top bar ═══ -->
+  @if (viewModel(); as vm) {
+    <header class="sticky-bar">
+      <div class="sticky-bar-left">
+        <a routerLink="/management/properties" class="back-link">
+          <span class="material-symbols-outlined">arrow_back</span>
+          <span>Volver</span>
+        </a>
+        <div class="sticky-divider"></div>
+        <div class="sticky-property">
+          <div class="sticky-name-row">
+            <h1>{{ vm.displayName }}</h1>
+            <span class="badge badge-id">ID {{ vm.propId }}</span>
+          </div>
+          <span class="sticky-location">{{ vm.countryDisplayName }}</span>
+        </div>
+      </div>
+      <div class="sticky-bar-right">
+        <div class="sticky-badges">
+          <span class="badge" [class.badge-success]="vm.manualOverride" [class.badge-info]="!vm.manualOverride">
+            <span class="material-symbols-outlined">fact_check</span>
+            {{ vm.profileBadge }}
+          </span>
+          <span class="badge" [class.badge-success]="vm.operationalScore >= 80" [class.badge-warning]="vm.operationalScore >= 50 && vm.operationalScore < 80" [class.badge-danger]="vm.operationalScore < 50">
+            <span class="material-symbols-outlined">monitoring</span>
+            {{ vm.operationalScore }}/100
+          </span>
+        </div>
+        <a [routerLink]="['/management/properties', vm.propId, 'edit']" class="btn-primary">
+          <span class="material-symbols-outlined">edit</span>
+          Editar perfil
+        </a>
+      </div>
+    </header>
+  }
 
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando detalle de la propiedad..." />
+      <div class="page-body">
+        <app-loading-state label="Cargando detalle de la propiedad..." />
+      </div>
     }
     @case ('error') {
-      <app-error-state title="No se pudo cargar la propiedad" />
+      <div class="page-body">
+        <app-error-state title="No se pudo cargar la propiedad" description="Verifica que el ID sea correcto o intenta de nuevo." />
+      </div>
     }
     @default {
       @if (viewModel(); as vm) {
-        <section class="profile-summary surface-card">
-          <div>
-            <strong>{{ vm.displayName }}</strong>
-            <p>{{ vm.countryDisplayName }} · ID técnico {{ vm.propId }}</p>
+        <div class="page-body">
+          <!-- ═══ Hero metrics ═══ -->
+          <div class="metrics-row">
+            @for (metric of vm.heroMetrics; track metric.label) {
+              <article class="metric-card">
+                <div class="metric-icon-wrap">
+                  @switch (metric.label) {
+                    @case ('Ingresos brutos') {
+                      <span class="material-symbols-outlined metric-icon icon-revenue">payments</span>
+                    }
+                    @case ('Reservas') {
+                      <span class="material-symbols-outlined metric-icon icon-bookings">calendar_month</span>
+                    }
+                    @case ('Clicks') {
+                      <span class="material-symbols-outlined metric-icon icon-clicks">ads_click</span>
+                    }
+                    @default {
+                      <span class="material-symbols-outlined metric-icon">analytics</span>
+                    }
+                  }
+                </div>
+                <div class="metric-body">
+                  <span class="metric-label">{{ metric.label }}</span>
+                  <strong class="metric-value">{{ metric.value }}</strong>
+                  <span class="metric-detail">{{ metric.detail }}</span>
+                </div>
+              </article>
+            }
           </div>
-          <div class="summary-badges">
-            <span class="name-badge" [class.manual]="vm.manualOverride">{{ vm.profileBadge }}</span>
-            <span class="name-badge score-badge" [class.manual]="vm.operationalScore >= 80">{{ vm.operationalScore }}/100 operativo</span>
+
+          <!-- ═══ Operational readiness ═══ -->
+          <section class="surface-card ops-card">
+            <div class="card-head">
+              <span class="material-symbols-outlined card-icon icon-ops">checklist</span>
+              <div>
+                <h2>Estado operacional</h2>
+                <p>{{ vm.operationalScore }}/100 — {{ vm.operationalChecks.filter(c => c.ready).length }} de {{ vm.operationalChecks.length }} módulos listos</p>
+              </div>
+            </div>
+            <div class="ops-progress-track">
+              <div class="ops-bar">
+                @for (check of vm.operationalChecks; track check.label; let i = $index) {
+                  <div
+                    class="ops-segment"
+                    [class.ops-segment--ready]="check.ready"
+                    [title]="check.label + ': ' + (check.ready ? 'Listo' : 'Pendiente')"
+                    [style.--seg-index]="i"
+                  ></div>
+                }
+              </div>
+            </div>
+            <div class="ops-grid">
+              @for (check of vm.operationalChecks; track check.label) {
+                <div class="ops-item" [class.ops-item--ready]="check.ready">
+                  <div class="ops-indicator">
+                    @if (check.ready) {
+                      <span class="material-symbols-outlined ops-check">check_circle</span>
+                    } @else {
+                      <span class="material-symbols-outlined ops-pending">radio_button_unchecked</span>
+                    }
+                  </div>
+                  <span class="ops-label">{{ check.label }}</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <!-- ═══ Two-column detail ═══ -->
+          <div class="detail-columns">
+            <app-property-facts-panel title="Perfil de propiedad" [facts]="vm.profileFacts" />
+            <app-property-facts-panel title="Dato maestro" [facts]="vm.masterFacts" />
           </div>
-        </section>
-
-        <section class="operational-grid">
-          @for (check of vm.operationalChecks; track check.label) {
-            <article class="surface-card operational-card" [class.ready]="check.ready">
-              <span>{{ check.label }}</span>
-              <strong>{{ check.ready ? 'Sí' : 'No' }}</strong>
-            </article>
-          }
-        </section>
-        <section class="hero-grid">
-          @for (metric of vm.heroMetrics; track metric.label) {
-            <article class="surface-card hero-card">
-              <span>{{ metric.label }}</span>
-              <strong>{{ metric.value }}</strong>
-              <p>{{ metric.detail }}</p>
-            </article>
-          }
-        </section>
-
-        <section class="content-grid">
-          <app-property-facts-panel title="Perfil de propiedad" [facts]="vm.profileFacts" />
-          <app-property-facts-panel title="Dato maestro disponible" [facts]="vm.masterFacts" />
-        </section>
+        </div>
       }
     }
   }

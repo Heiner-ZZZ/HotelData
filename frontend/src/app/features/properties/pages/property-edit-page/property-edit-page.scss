@@ -456,6 +456,49 @@ select option {
   justify-content: flex-end;
 }
 
+/* ─── Image preview ─── */
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+}
+
+.preview-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-clear {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+  }
+}
+
 /* ─── Buttons ─── */
 
 .btn-primary {
