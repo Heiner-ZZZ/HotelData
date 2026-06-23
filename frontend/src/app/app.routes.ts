@@ -14,6 +14,21 @@ export const routes: Routes = [
       import('./core/auth/login-page').then((m) => m.LoginPageComponent)
   },
   {
+    path: 'register',
+    loadComponent: () =>
+      import('./core/auth/register-page').then((m) => m.RegisterPageComponent)
+  },
+  {
+    path: 'recover',
+    loadComponent: () =>
+      import('./core/auth/recover-page').then((m) => m.RecoverPageComponent)
+  },
+  {
+    path: 'reset',
+    loadComponent: () =>
+      import('./core/auth/reset-page').then((m) => m.ResetPageComponent)
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./core/layout/public-shell/public-shell').then((m) => m.PublicShellComponent),
@@ -29,9 +44,13 @@ export const routes: Routes = [
           import('./features/hotel-detail/hotel-detail.routes').then((m) => m.HOTEL_DETAIL_ROUTES)
       },
       {
-        path: 'reservations',
+        path: 'hotels/compare',
         loadChildren: () =>
-          import('./features/reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
+          import('./features/hotel-compare/hotel-compare.routes').then((m) => m.HOTEL_COMPARE_ROUTES)
+      },
+      {
+        path: 'reservations',
+        redirectTo: '/account/bookings'
       }
     ]
   },
@@ -67,6 +86,22 @@ export const routes: Routes = [
     ]
   },
   {
+    path: 'ownership',
+    loadComponent: () =>
+      import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
+    canActivate: [authGuard, roleGuard],
+    data: {
+      allowedRoles: ['super_admin']
+    },
+    children: [
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/ownership/ownership.routes').then((m) => m.OWNERSHIP_ROUTES)
+      }
+    ]
+  },
+  {
     path: 'system',
     loadComponent: () =>
       import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
@@ -81,11 +116,6 @@ export const routes: Routes = [
           import('./features/system-admin/system-admin.routes').then((m) => m.SYSTEM_ADMIN_ROUTES)
       }
     ]
-  },
-  {
-    path: 'reservations',
-    pathMatch: 'full',
-    redirectTo: 'account/bookings'
   },
   {
     path: 'reservations/new',
