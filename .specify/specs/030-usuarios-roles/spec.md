@@ -1,57 +1,74 @@
-# Especificación: Usuarios Roles
+# Especificacion: Usuarios, Roles y Permisos
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T09
+**Casos de uso TAF06**: CU-T09 (Administrar usuarios, roles, permisos y navegacion por rol)
 
 ## 1. Objetivo
 
-Administrar usuarios, roles, permisos y navegación por rol (RBAC completo)
+Administrar usuarios del sistema, roles, permisos y reglas de navegacion por rol (RBAC completo). 9 roles con permisos granulares.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+El sistema tiene 9 roles: super_admin, admin_sistema, cliente, recepcionista, hotel_partner, gerente_hotel, revenue_manager, marketing_hotelero, auditor_datos.
 
 ## 3. Actores
 
-(Listar actores relevantes)
+| Actor | Descripcion |
+|-------|-------------|
+| Super Admin | Administracion global del sistema |
+| Admin Sistema | Gestion operativa de usuarios |
 
 ## 4. Requisitos funcionales
 
-(Pendiente de detallar)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | El sistema debe listar usuarios con filtros por rol, estado activo/inactivo | Alta |
+| RF-002 | El sistema debe permitir activar/desactivar usuarios | Alta |
+| RF-003 | El sistema debe permitir cambiar el rol de un usuario | Alta |
+| RF-004 | El sistema debe definir permisos por rol en route_permissions.py | Alta |
+| RF-005 | El sistema debe proteger rutas con AuthGuard + RoleGuard | Alta |
+| RF-006 | El sistema debe adaptar sidebar segun el rol del usuario | Alta |
 
-## 5. Requisitos no funcionales
+## 5. Reglas de negocio
 
-(Pendiente de detallar)
+- 9 roles fijos con permisos predefinidos
+- Un usuario tiene exactamente un rol
+- Los permisos se definen en route_permissions.py
+- Frontend: AuthGuard y RoleGuard protegen rutas
 
-## 6. Reglas de negocio
+## 6. Escenarios
 
-(Pendiente de detallar)
+### Escenario 1: Cambiar rol de usuario
+```gherkin
+Dado que el admin selecciona un usuario hotel_partner
+Cuando cambia su rol a gerente_hotel
+Entonces el usuario accede a las rutas de gerente_hotel
+```
 
-## 7. Entradas
+### Escenario 2: Desactivar usuario
+```gherkin
+Dado que el admin desactiva un usuario
+Cuando el usuario intenta iniciar sesion
+Entonces el sistema rechaza el login
+```
 
-(Pendiente de detallar)
+## 7. Criterios de aceptacion
 
-## 8. Salidas
+| ID | Criterio |
+|----|----------|
+| CA-001 | CRUD de usuarios funciona con filtros |
+| CA-002 | Cambio de rol actualiza permisos inmediatamente |
+| CA-003 | Usuario desactivado no puede iniciar sesion |
+| CA-004 | Guards de Angular protegen rutas correctamente |
 
-(Pendiente de detallar)
+## 8. Dependencias
 
-## 9. Escenarios
+- Colecciones: users, roles, permissions, role_permissions
+- Modulo: src/app/security/permissions.py, route_permissions.py
+- Frontend: auth.guard.ts, role.guard.ts, sidebar-nav.ts
 
-(Pendiente de detallar con Gherkin)
+## 9. Fuera de alcance
 
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Roles personalizados (solo 9 fijos)
+- Permisos granulares por recurso (solo por ruta)
