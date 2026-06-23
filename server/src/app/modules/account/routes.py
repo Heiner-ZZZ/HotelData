@@ -1,22 +1,30 @@
 from __future__ import annotations
 
+import hashlib
+import secrets
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse
-
+import gridfs
+from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 
+from src.app.email.service import send_email
 from src.app.security.dependencies import require_login
 from src.app.security.session import log_user_activity
 from src.database.connection import get_database
+from config.settings import get_settings
 
 
 api_router = APIRouter(prefix="/api/account", tags=["account-api"])
 
+
+import re as _re
+
+_PHONE_REGEX = _re.compile(r"^[\d\s\+\-\(\)]{7,20}$")
 
 _PROFILE_FIELDS = {
     "display_name": "",
@@ -124,8 +132,25 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
             status_code=400,
         )
 
+    phone_val = safe_updates.get("phone")
+    if phone_val is not None and phone_val != "" and not _PHONE_REGEX.match(str(phone_val)):
+        return JSONResponse(
+            {"ok": False, "message": "Formato de teléfono inválido. Usa solo dígitos, espacios, +, -, ( )."},
+            status_code=400,
+        )
+
+    email_val = safe_updates.get("notification_email", "")
+    if email_val and "@" not in str(email_val):
+        return JSONResponse(
+            {"ok": False, "message": "Email de notificación inválido."},
+            status_code=400,
+        )
+
     safe_updates["updated_at"] = utc_now()
     safe_updates["updated_by"] = current_user.get("username", "unknown")
+
+    old_email = current_user.get("email", "")
+    new_email = safe_updates.get("email", old_email)
 
     try:
         db.users.update_one({"_id": user_id}, {"$set": safe_updates})
@@ -134,6 +159,24 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
             status_code=400,
             detail="El email ya está registrado por otro usuario.",
         )
+
+    if new_email != old_email:
+        try:
+            _send_email_change_verification(current_user, old_email, new_email)
+        except Exception:
+            pass
+        if old_email:
+            try:
+                html = f"""<!DOCTYPE html>
+<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
+<h2 style="color:#1463ff">HotelData — Correo electrónico actualizado</h2>
+<p>El correo de tu cuenta fue cambiado de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>
+<p>Si no realizaste este cambio, contacta al soporte de inmediato.</p>
+<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
+</body></html>"""
+                send_email(old_email, "Tu correo fue cambiado — HotelData", html)
+            except Exception:
+                pass
 
     log_user_activity(
         db,
@@ -150,12 +193,10 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
 
 @api_router.post("/profile/avatar")
 async def upload_avatar(request: Request, file: UploadFile = File(...)):
-    """Upload a profile avatar image. Saves to static/avatars/ and updates avatar_url."""
     db = get_database()
     current_user = require_login(request)
     user_id = current_user["_id"]
 
-    # Validate content type
     allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
     if file.content_type not in allowed_types:
         return JSONResponse(
@@ -163,38 +204,30 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
             status_code=400,
         )
 
-    # Read file content
     content = await file.read()
-    if len(content) > 5 * 1024 * 1024:
+    if len(content) > 2 * 1024 * 1024:
         return JSONResponse(
-            {"ok": False, "message": "La imagen no puede superar los 5 MB."},
+            {"ok": False, "message": "La imagen no puede superar los 2 MB."},
             status_code=400,
         )
 
-    # Determine extension
-    ext_map = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/avif": ".avif",
-    }
-    ext = ext_map.get(file.content_type, ".jpg")
+    # Remove old avatar from GridFS if exists
+    old_avatar_url = current_user.get("avatar_url", "")
+    if old_avatar_url.startswith("/api/account/avatar/"):
+        try:
+            old_id = ObjectId(old_avatar_url.split("/")[-1])
+            fs = gridfs.GridFS(db)
+            if fs.exists(old_id):
+                fs.delete(old_id)
+        except Exception:
+            pass
 
-    # Build path: static/avatars/{user_id}_{uuid}{ext}
-    avatars_dir = Path(__file__).resolve().parents[2] / "static" / "avatars"
-    avatars_dir.mkdir(parents=True, exist_ok=True)
+    # Store in GridFS
+    unique_name = f"{current_user.get('username', str(user_id))}_{uuid.uuid4().hex[:8]}"
+    fs = gridfs.GridFS(db)
+    file_id = fs.put(content, filename=unique_name, content_type=file.content_type)
+    avatar_url = f"/api/account/avatar/{file_id}"
 
-    unique_name = f"{current_user.get('username', str(user_id))}_{uuid.uuid4().hex[:8]}{ext}"
-    dest_path = avatars_dir / unique_name
-
-    with open(dest_path, "wb") as f:
-        f.write(content)
-
-    # Build URL path
-    avatar_url = f"/static/avatars/{unique_name}"
-
-    # Update user document
     db.users.update_one(
         {"_id": user_id},
         {
@@ -215,3 +248,82 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
     )
 
     return {"ok": True, "avatar_url": avatar_url, "message": "Foto de perfil actualizada."}
+
+
+@api_router.get("/avatar/{file_id}")
+def get_avatar(file_id: str):
+    try:
+        oid = ObjectId(file_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de archivo inválido.")
+
+    fs = gridfs.GridFS(get_database())
+    if not fs.exists(oid):
+        raise HTTPException(status_code=404, detail="Avatar no encontrado.")
+
+    grid_file = fs.get(oid)
+    return Response(
+        content=grid_file.read(),
+        media_type=grid_file.content_type or "image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@api_router.get("/verify-email")
+def verify_email(request: Request, token: str = ""):
+    if not token:
+        raise HTTPException(status_code=400, detail="Token requerido.")
+    if verify_email_change(token):
+        return JSONResponse({"ok": True, "message": "Correo verificado exitosamente."})
+    raise HTTPException(status_code=400, detail="Token inválido o expirado.")
+
+
+def _send_email_change_verification(user: dict, old_email: str, new_email: str) -> None:
+    token = secrets.token_urlsafe(32)
+    db = get_database()
+    settings = get_settings()
+    db.email_verification_tokens.insert_one({
+        "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "user_id": user["_id"],
+        "old_email": old_email,
+        "new_email": new_email,
+        "created_at": utc_now(),
+        "expires_at": utc_now().replace(hour=23, minute=59, second=59) + timedelta(days=7),
+        "used": False,
+    })
+    link = f"{settings.app_base_url}/verify-email?token={token}"
+    html = f"""<!DOCTYPE html>
+<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
+<h2 style="color:#1463ff">HotelData — Verifica tu nuevo correo</h2>
+<p>Has solicitado cambiar tu correo de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>
+<p>Haz clic en el siguiente enlace para confirmar el cambio:</p>
+<p style="text-align:center;margin:32px 0">
+  <a href="{link}" style="background:#1463ff;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:700">Verificar correo</a>
+</p>
+<p>Si no solicitaste este cambio, ignora este mensaje.</p>
+<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
+</body></html>"""
+    try:
+        send_email(new_email, "Verifica tu nuevo correo — HotelData", html)
+    except Exception:
+        pass
+
+
+def verify_email_change(token: str) -> bool:
+    db = get_database()
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    doc = db.email_verification_tokens.find_one({
+        "token_hash": token_hash,
+        "used": False,
+        "expires_at": {"$gt": utc_now()},
+    })
+    if not doc:
+        return False
+    db.email_verification_tokens.update_one({"_id": doc["_id"]}, {"$set": {"used": True}})
+    purpose = doc.get("purpose", "")
+    if purpose == "registration":
+        db.users.update_one(
+            {"_id": doc["user_id"]},
+            {"$set": {"email_verified": True, "updated_at": utc_now()}},
+        )
+    return True
