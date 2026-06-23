@@ -184,6 +184,7 @@ def get_collection(base_url: str, headers: dict[str, str], collection_name: str)
 
 
 def create_collection(base_url: str, headers: dict[str, str]) -> None:
+    fields_schema = [field_schema(name) for name in EXPECTED_COLUMNS]
     payload = {
         "name": COLLECTION_NAME,
         "type": "base",
@@ -192,9 +193,11 @@ def create_collection(base_url: str, headers: dict[str, str]) -> None:
         "createRule": None,
         "updateRule": None,
         "deleteRule": None,
-        "fields": [field_schema(name) for name in EXPECTED_COLUMNS],
+        "schema": fields_schema,
     }
     response = requests.post(f"{base_url}/api/collections", headers=headers, json=payload, timeout=30)
+    if response.status_code != 200:
+        print(f"Create collection error: {response.status_code} {response.text[:500]}")
     response.raise_for_status()
     print(f"Coleccion creada: {COLLECTION_NAME}")
 
@@ -206,7 +209,7 @@ def ensure_collection(base_url: str, headers: dict[str, str]) -> None:
         collection = get_collection(base_url, headers, COLLECTION_NAME)
     if collection is None:
         raise RuntimeError(f"No se pudo crear {COLLECTION_NAME}")
-    field_names = {field["name"] for field in collection.get("fields", [])}
+    field_names = {field["name"] for field in collection.get("schema", collection.get("fields", []))}
     missing = [name for name in EXPECTED_COLUMNS if name not in field_names]
     if missing:
         raise RuntimeError(f"Coleccion {COLLECTION_NAME} sin campos requeridos: {missing}")

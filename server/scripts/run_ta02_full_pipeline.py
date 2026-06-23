@@ -52,8 +52,8 @@ def get_pocketbase_config() -> dict[str, str | int | None]:
         "collection": os.getenv("POCKETBASE_COLLECTION", DEFAULT_COLLECTION),
         "page_size": int(os.getenv("POCKETBASE_PAGE_SIZE", str(DEFAULT_PAGE_SIZE))),
         "auth_token": os.getenv("POCKETBASE_AUTH_TOKEN"),
-        "admin_email": os.getenv("POCKETBASE_ADMIN_EMAIL", "hzambranor@uteq.edu.ec"),
-        "admin_password": os.getenv("POCKETBASE_ADMIN_PASSWORD", "Heiner2005*"),
+        "admin_email": os.getenv("POCKETBASE_ADMIN_EMAIL"),
+        "admin_password": os.getenv("POCKETBASE_ADMIN_PASSWORD"),
     }
 
 
