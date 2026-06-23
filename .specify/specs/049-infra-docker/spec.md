@@ -1,57 +1,36 @@
-# Especificación: Infra Docker
+# Especificacion: Infraestructura Docker
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T11, CU-E04
+**Casos de uso TAF06**: CU-T11, CU-E04 (Monitorear servicios, disponibilidad global)
 
 ## 1. Objetivo
 
-Docker Compose con 6 servicios, versiones pinneadas, health checks
+Desplegar y mantener el sistema con Docker Compose: 6 servicios con health checks.
 
-## 2. Contexto
+## 2. Servicios
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Servicio | Imagen | Puerto | Proposito |
+|----------|--------|--------|-----------|
+| mongo | mongo:7.0 | 27017 | Base de datos |
+| redis | redis:7.4 | 6379 | Cache |
+| pocketbase | pocketbase:0.22 | 8090 | Fuente ETL |
+| server | custom (python:3.12-slim) | 8000 | FastAPI |
+| airflow | custom (apache/airflow:3.2.2) | 8080 | Orquestador ETL |
+| frontend | custom (nginx:alpine) | 4200:80 | Angular SPA |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | docker-compose.yml con 6 servicios y health checks | Alta |
+| RF-002 | Versiones pinneadas para reproducibilidad | Alta |
+| RF-003 | Red compartida entre servicios | Alta |
+| RF-004 | Volumenes persistentes (mongo_data, redis_data, pb_data) | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- infra/docker-compose.yml
+- frontend/Dockerfile
+- infra/Dockerfile
+- infra/docker/airflow3.Dockerfile

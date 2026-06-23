@@ -1,57 +1,33 @@
-# Especificación: Frontend Resenas
+# Especificacion: Frontend - Resenas
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O22, CU-O23
+**Casos de uso TAF06**: CU-O22, CU-O23 (Registro y moderacion de resenas)
 
 ## 1. Objetivo
 
-UI de reseñas: list/detail/moderate/respond (ya implementado)
+UI de resenas: listado, detalle, moderacion, respuesta del hotel.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | CU asociado |
+|------------|------|-------------|
+| ReviewForm | /reviews/new | CU-O22 |
+| ReviewListPage | /reviews | CU-O22 |
+| ModeratePage | /reviews/moderate | CU-O23 |
+| ReviewDetailPage | /reviews/:id | CU-O23 |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | ReviewForm con rating 1-5, titulo, comentario | Alta |
+| RF-002 | ReviewListPage visible en detalle de hotel | Alta |
+| RF-003 | ModeratePage con tabla de resenas pendientes | Alta |
+| RF-004 | Botones de aprobar/rechazar con confirmacion | Alta |
+| RF-005 | Formulario de respuesta del hotel en resena aprobada | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/reviews/
+- modules/reviews/routes.py
