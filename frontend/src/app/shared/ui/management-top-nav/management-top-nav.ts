@@ -13,8 +13,10 @@ interface BreadcrumbItem {
 const SEGMENT_LABELS: Record<string, string> = {
   management: 'Gestión',
   system: 'Sistema',
+  ownership: 'Propietario',
   properties: 'Propiedades',
   rooms: 'Habitaciones',
+  recepcion: 'Recepción',
   reservations: 'Reservas',
   availability: 'Disponibilidad',
   'check-ins': 'Check-ins',
@@ -86,7 +88,7 @@ export class ManagementTopNavComponent {
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const url = this.currentUrl();
     const segments = url.split('/').filter(Boolean);
-    const rootIdx = segments.findIndex(s => s === 'management' || s === 'system');
+    const rootIdx = segments.findIndex(s => s === 'management' || s === 'system' || s === 'ownership');
     if (rootIdx === -1) return [{ label: 'Gestión', path: '/management' }];
     return segments.slice(rootIdx).map((seg, i) => {
       const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');

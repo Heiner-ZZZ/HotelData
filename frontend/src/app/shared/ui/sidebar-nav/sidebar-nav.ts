@@ -46,8 +46,8 @@ export class SidebarNavComponent {
       items: [
         { label: 'Panel hotelero', href: '/management', icon: 'dashboard' },
         {
-          label: 'Reservas',
-          href: '/management/reservations',
+          label: 'Recepción',
+          href: '/management/recepcion',
           icon: 'calendar_month',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager']
         },
@@ -117,6 +117,15 @@ export class SidebarNavComponent {
           icon: 'bar_chart',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos']
         }
+      ]
+    },
+    {
+      id: 'propietario',
+      label: 'Propietario',
+      icon: 'assignment_ind',
+      allowedRoles: ['super_admin'],
+      items: [
+        { label: 'Asignación de hoteles', href: '/ownership/users', icon: 'domain_verification' }
       ]
     },
     {

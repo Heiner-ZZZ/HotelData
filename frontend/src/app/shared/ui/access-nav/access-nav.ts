@@ -102,6 +102,10 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
 
     const items: SessionMenuItem[] = [{ label: 'Mi inicio', href: homeHref, icon: 'home' }];
 
+    if (role === 'super_admin') {
+      items.push({ label: 'Propietario', href: '/ownership/users', icon: 'assignment_ind' });
+    }
+
     if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
       items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
@@ -147,7 +151,7 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
           icon: 'assignment',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'],
           items: [
-            { label: 'Reservas', href: '/management/reservations', icon: 'calendar_month' },
+            { label: 'Recepción', href: '/management/recepcion', icon: 'calendar_month' },
             { label: 'Disponibilidad', href: '/management/availability', icon: 'event_available', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'] },
             { label: 'Check-ins', href: '/management/check-ins', icon: 'login', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] },
             { label: 'Check-outs', href: '/management/check-outs', icon: 'logout', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] }
@@ -167,6 +171,15 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
         } as NavSubGroup,
         { label: 'Reportes', href: '/management/reports', icon: 'bar_chart', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos'] } as NavMenuItem,
         { label: 'Configuración', href: '/management/settings', icon: 'tune', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner'] } as NavMenuItem
+      ]
+    },
+    {
+      id: 'propietario',
+      label: 'Propietario',
+      icon: 'assignment_ind',
+      allowedRoles: ['super_admin'],
+      items: [
+        { label: 'Asignación de hoteles', href: '/ownership/users', icon: 'domain_verification' }
       ]
     },
     {
