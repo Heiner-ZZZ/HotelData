@@ -149,6 +149,53 @@ h2 a {
   font-weight: 600;
 }
 
+.copy-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.compare-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  background: var(--surface);
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    margin: 0;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &.selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+  }
+}
+
+.check-label {
+  font-size: 0.78rem;
+}
+
 .inline-links {
   display: flex;
   gap: 1rem;

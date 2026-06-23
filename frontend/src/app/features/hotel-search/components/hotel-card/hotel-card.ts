@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import type { HotelSearchResult } from '../../models/hotel-search.model';
@@ -11,6 +11,8 @@ import type { HotelSearchResult } from '../../models/hotel-search.model';
 })
 export class HotelCardComponent {
   readonly hotel = input.required<HotelSearchResult>();
+  readonly compareMode = input(false);
+  readonly compareSelected = output<number>();
 
   readonly imageThemes = [
     'theme-amber',
@@ -26,45 +28,41 @@ export class HotelCardComponent {
   get headlineMeta(): string {
     const starsValue = this.hotel().stars;
     const stars = typeof starsValue === 'number' ? `${starsValue.toFixed(1)} estrellas` : 'Categoría por confirmar';
-    return `${this.hotel().location} · ${stars}`;
-  }
-
-  get reviewSummary(): string {
-    return `${this.hotel().reservations} reservas · ${this.hotel().clicks} interacciones`;
+    return `ID ${this.hotel().id} · ${stars}`;
   }
 
   get summaryText(): string {
     const destinations = this.hotel().destinationLabels.length
       ? `Ideal para ${this.hotel().destinationLabels.slice(0, 2).join(' y ')}.`
       : 'Disponible para estancias urbanas y escapadas de viaje.';
-    const promotion = this.hotel().hasPromotion ? 'Incluye una promoción activa ahora mismo.' : 'Tarifa disponible para consulta inmediata.';
-    return `${this.hotel().name} ofrece una experiencia bien posicionada en ${this.hotel().location}. ${destinations} ${promotion}`;
+    return `${this.hotel().name}. ${destinations}`;
   }
 
   get scoreLabel(): string {
-    const stars = this.hotel().stars;
-    const score = Number(this.hotel().reviewLabel);
-    if (!Number.isNaN(score) && Number.isFinite(score)) {
+    const score = this.hotel().reviewScore;
+    if (score !== null && score !== undefined && Number.isFinite(score)) {
       return score.toFixed(1);
     }
-
-    if (typeof stars === 'number' && stars >= 4.5) {
-      return '9.0';
-    }
-    if (typeof stars === 'number' && stars >= 4) {
-      return '8.7';
-    }
+    const stars = this.hotel().stars;
+    if (typeof stars === 'number' && stars >= 4.5) return '9.0';
+    if (typeof stars === 'number' && stars >= 4) return '8.7';
     return '8.2';
   }
 
   get scoreTitle(): string {
     const stars = this.hotel().stars;
-    if (typeof stars === 'number' && stars >= 4.5) {
-      return 'Excepcional';
-    }
-    if (typeof stars === 'number' && stars >= 4) {
-      return 'Fabuloso';
-    }
+    if (typeof stars === 'number' && stars >= 4.5) return 'Excepcional';
+    if (typeof stars === 'number' && stars >= 4) return 'Fabuloso';
     return 'Muy bueno';
+  }
+
+  get roomTypeLabel(): string {
+    const rt = this.hotel().matchedRoomType;
+    if (!rt) return '';
+    return `${rt.name} · ${rt.maxAdults} adulto${rt.maxAdults !== 1 ? 's' : ''} · ${rt.baseCapacity} capacidad`;
+  }
+
+  toggleCompare(): void {
+    this.compareSelected.emit(this.hotel().id);
   }
 }

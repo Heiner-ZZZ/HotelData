@@ -2,8 +2,8 @@
   <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" aria-label="Abrir detalle del hotel">
     <div class="media-overlay">
       <span class="media-chip">Hotel {{ hotel().id }}</span>
-      @if (hotel().hasPromotion) {
-        <span class="media-chip media-chip-accent">Promo</span>
+      @if (hotel().minNightlyRate) {
+        <span class="media-chip media-chip-accent">Desde {{ hotel().minNightlyRateLabel }}</span>
       }
     </div>
   </a>
@@ -11,9 +11,21 @@
   <div class="content-column">
     <div class="content-main">
       <div class="copy-column">
-        <h2>
-          <a [routerLink]="['/hotels', hotel().id]">{{ hotel().name }}</a>
-        </h2>
+        <div class="copy-header">
+          <h2>
+            <a [routerLink]="['/hotels', hotel().id]">{{ hotel().name }}</a>
+          </h2>
+          @if (compareMode()) {
+            <label class="compare-check" [class.selected]="hotel().selected">
+              <input
+                type="checkbox"
+                [checked]="hotel().selected"
+                (change)="toggleCompare()"
+              />
+              <span class="check-label">Comparar</span>
+            </label>
+          }
+        </div>
         <p class="meta-line">{{ headlineMeta }}</p>
         <p class="summary">{{ summaryText }}</p>
 
@@ -21,12 +33,14 @@
           @for (destination of hotel().destinationLabels.slice(0, 3); track destination) {
             <span class="tag">{{ destination }}</span>
           }
-          <span class="tag">Conversión {{ hotel().conversionRate }}%</span>
+          @if (hotel().matchedRoomType; as rt) {
+            <span class="tag">{{ rt.name }}</span>
+          }
         </div>
 
         <div class="inline-links">
           <a [routerLink]="['/hotels', hotel().id]">Ver más</a>
-          <a [href]="'/hotels/compare?prop_id=' + hotel().id">Comparar</a>
+          <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: hotel().id }">Comparar</a>
         </div>
       </div>
 
@@ -34,16 +48,20 @@
         <div class="score-head">
           <div>
             <p class="score-title">{{ scoreTitle }}</p>
-            <p class="score-meta">{{ reviewSummary }}</p>
+            <p class="score-meta">{{ roomTypeLabel }}</p>
           </div>
           <span class="score-badge">{{ scoreLabel }}</span>
         </div>
 
-        <div class="price-box">
-          <p class="price-label">Precio desde</p>
-          <strong>US${{ hotel().avgPriceLabel }}</strong>
-          <p class="price-meta">1 noche · 2 adultos</p>
-        </div>
+        @if (hotel().minNightlyRate) {
+          <div class="price-box">
+            <p class="price-label">Precio por noche</p>
+            <strong>{{ hotel().minNightlyRateLabel }}</strong>
+            @if (hotel().totalEstimated) {
+              <p class="price-meta">Total estimado: {{ hotel().totalEstimatedLabel }}</p>
+            }
+          </div>
+        }
 
         <a [routerLink]="['/hotels', hotel().id]" class="primary-link">Ver disponibilidad</a>
       </div>
