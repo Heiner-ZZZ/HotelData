@@ -1,57 +1,44 @@
-# Especificación: Analisis Mercados
+# Especificacion: Analisis de Mercados
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-E05
+**Casos de uso TAF06**: CU-E05 (Analizar mercados visitantes, destinos, canales y hoteles con mayor rendimiento)
 
 ## 1. Objetivo
 
-Analizar mercados visitantes, destinos, canales y hoteles con mayor rendimiento
+Analizar mercados visitantes, destinos, canales y hoteles con mayor rendimiento usando las dimensiones del modelo estrella.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+Las dimensiones permiten segmentar por pais visitante, destino, canal y propiedad.
 
-## 3. Actores
+## 3. KPIs por dimension
 
-(Listar actores relevantes)
+| Dimension | KPI | Formula |
+|-----------|-----|---------|
+| dim_visitor_countries | Top paises por eventos | COUNT(eventos) GROUP BY pais |
+| dim_visitor_countries | Conversion por pais | reservas / eventos x 100 |
+| dim_destinations | Top destinos por demanda | COUNT(busquedas) GROUP BY destino |
+| dim_sites | Distribucion por canal | COUNT(eventos) GROUP BY site_name |
+| dim_hotels | Hoteles con mayor revenue | SUM(price_usd) GROUP BY prop_id |
 
 ## 4. Requisitos funcionales
 
-(Pendiente de detallar)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | El sistema debe mostrar top paises por eventos y conversion | Alta |
+| RF-002 | El sistema debe mostrar top destinos por demanda y revenue | Alta |
+| RF-003 | El sistema debe mostrar distribucion por canal | Alta |
+| RF-004 | El sistema debe mostrar hoteles con mayor rendimiento | Alta |
 
-## 5. Requisitos no funcionales
+## 5. Criterios de aceptacion
 
-(Pendiente de detallar)
+| ID | Criterio |
+|----|----------|
+| CA-001 | Top paises se muestra con eventos y conversion |
+| CA-002 | Top destinos con demanda y revenue |
+| CA-003 | Distribucion por canal correcta |
 
-## 6. Reglas de negocio
+## 6. Dependencias
 
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Colecciones: fact_hotel_reservations, dim_visitor_countries, dim_destinations, dim_sites, dim_hotels

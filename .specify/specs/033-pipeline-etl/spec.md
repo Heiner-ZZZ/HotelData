@@ -1,57 +1,71 @@
-# Especificación: Pipeline Etl
+# Especificacion: Pipeline ETL
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T12, CU-E07
+**Casos de uso TAF06**: CU-T12 (Ejecutar y validar pipeline Airflow sobre 600000 registros), CU-E07 (Evaluar calidad de datos)
 
 ## 1. Objetivo
 
-Ejecutar y validar pipeline Airflow ETL sobre 600000 registros con calidad y rechazos
+Ejecutar el pipeline ETL orquestado por Airflow que extrae datos desde PocketBase, transforma a dimensiones y hechos, y carga en MongoDB.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+Pipeline GA03 procesa ~600k registros. Usa Airflow con PythonOperator. 14 tareas, chunk 50k, batch 5k.
 
 ## 3. Actores
 
-(Listar actores relevantes)
+| Actor | Descripcion |
+|-------|-------------|
+| Operador de datos | Ejecuta y monitorea pipeline |
+| Auditor de Datos | Revisa calidad post-ejecucion |
 
 ## 4. Requisitos funcionales
 
-(Pendiente de detallar)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | Airflow debe ejecutar DAG hoteldata_ga03_etl con 14 tareas | Alta |
+| RF-002 | El DAG debe usar solo PythonOperator | Alta |
+| RF-003 | El pipeline debe extraer datos desde PocketBase | Alta |
+| RF-004 | El pipeline debe transformar a dimensiones (upsert) y hechos (batch insert) | Alta |
+| RF-005 | El pipeline debe generar reporte de calidad por ejecucion | Alta |
+| RF-006 | El pipeline debe registrar rechazos en rejected_records | Alta |
 
-## 5. Requisitos no funcionales
+## 5. Reglas de negocio
 
-(Pendiente de detallar)
+- Solo PythonOperator (no BashOperator)
+- Chunk size: 50,000 filas, batch insert: 5,000 documentos
+- Dimensiones primero (upsert), hechos despues (batch insert)
 
-## 6. Reglas de negocio
+## 6. Flujo del DAG
 
-(Pendiente de detallar)
+extract_from_pocketbase validate_schema convert_to_jsonl convert_to_parquet build_dim_* (8 tareas) build_fact load_to_mongodb generate_quality_report
 
-## 7. Entradas
+## 7. Escenarios
 
-(Pendiente de detallar)
+### Escenario 1: Ejecutar pipeline exitosamente
+```gherkin
+Dado que Airflow inicia el DAG hoteldata_ga03_etl
+Cuando se ejecutan las 14 tareas
+Entonces los datos se cargan en MongoDB
+Y se genera el reporte de calidad
+```
 
-## 8. Salidas
+## 8. Criterios de aceptacion
 
-(Pendiente de detallar)
+| ID | Criterio |
+|----|----------|
+| CA-001 | DAG se ejecuta con 14 tareas PythonOperator |
+| CA-002 | Datos se cargan en MongoDB correctamente |
+| CA-003 | Reporte de calidad se genera por ejecucion |
+| CA-004 | test_dag_boundaries.py pasa |
 
-## 9. Escenarios
 
-(Pendiente de detallar con Gherkin)
+## 9. Dependencias
 
-## 10. Criterios de aceptación
+- DAG: server/dags/hoteldata_ga03_etl.py
+- Modulos: src/etl/tasks.py, ta02_dimensions.py, ta02_fact.py, transform_clean.py, validate.py
+- PocketBase (fuente), MongoDB (destino)
 
-(Pendiente de detallar)
+## 10. Fuera de alcance
 
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Streaming en tiempo real (solo batch)

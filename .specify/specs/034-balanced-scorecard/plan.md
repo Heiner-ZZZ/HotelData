@@ -1,12 +1,30 @@
 # Plan de Implementación: Balanced Scorecard
 
-**Spec**: 034-balanced-scorecard | **CU**: CU-E01
+**Branch**: `034-balanced-scorecard` | **Spec**: [spec.md](spec.md)
 
 ## Arquitectura
-Módulo: `server/src/app/modules/dashboard/`
+
+```
+Gerente General
+  → BSCPage (4 perspectivas con KPIs, semáforos, tendencias)
+    → GET /api/reports/bsc
+      → services/bsc.py
+        → fact_hotel_reservations (aggregation)
+        → dim_* dimensions
+```
+
+## KPIs por Perspectiva
+
+| Perspectiva | KPIs |
+|-------------|------|
+| Financiera | Revenue bruto, precio promedio, CAC |
+| Cliente | Tasa de conversión, CTR, reseñas promedio, NPS |
+| Procesos Internos | Ejecuciones ETL exitosas, registros rechazados, uptime |
+| Aprendizaje | Cobertura de integraciones, adopción de módulos |
 
 ## Endpoints
-(Pendiente de detallar durante implementación)
 
-## Componentes
-(Pendiente de detallar durante implementación)
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| GET | /api/reports/bsc | Balanced Scorecard completo |
+| GET | /api/reports/bsc/export | Exportar a PDF/Excel |

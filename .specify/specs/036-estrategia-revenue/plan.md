@@ -1,12 +1,28 @@
-# Plan de Implementación: Estrategia Revenue
+# Plan de Implementación: Estrategia de Revenue
 
-**Spec**: 036-estrategia-revenue | **CU**: CU-E06
+**Branch**: `036-estrategia-revenue` | **Spec**: [spec.md](spec.md)
 
 ## Arquitectura
-Módulo: `server/src/app/modules/revenue/`
+
+```
+Revenue Manager
+  → EstrategiaRevenuePage
+    → GET /api/reports/revenue/trends (tendencias precio)
+    → GET /api/reports/revenue/promotions (efectividad)
+    → GET /api/reports/revenue/forecast (proyección)
+```
 
 ## Endpoints
-(Pendiente de detallar durante implementación)
 
-## Componentes
-(Pendiente de detallar durante implementación)
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| GET | /api/reports/revenue/trends | Tendencias de precio por destino/temporada |
+| GET | /api/reports/revenue/promotions | Efectividad (con/sin promoción) |
+| GET | /api/reports/revenue/forecast | Proyección de demanda (histórico) |
+| GET | /api/reports/revenue/by-channel | Revenue por canal y segmento |
+
+## Fuentes
+
+- `fact_hotel_reservations` con filtro `reserva_bool=true`
+- Dimensiones para segmentación
+- Histórico de promociones para comparativa

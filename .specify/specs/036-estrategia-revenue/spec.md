@@ -1,57 +1,45 @@
-# Especificación: Estrategia Revenue
+# Especificacion: Estrategia de Revenue
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-E06
+**Casos de uso TAF06**: CU-E06 (Definir estrategia de revenue, campanas, pricing y proyeccion de demanda)
 
 ## 1. Objetivo
 
-Definir estrategia de revenue, campañas, pricing y proyección de demanda
+Definir estrategia de revenue, campanas y pricing mediante forecasting y analisis de promociones.
 
-## 2. Contexto
+## 2. Actores
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Actor | Descripcion |
+|-------|-------------|
+| Revenue manager | Define estrategia de precios y promociones |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | El sistema debe mostrar tendencias de precio promedio por destino y temporada | Alta |
+| RF-002 | El sistema debe mostrar efectividad de promociones | Alta |
+| RF-003 | El sistema debe permitir proyectar demanda | Media |
+| RF-004 | El sistema debe mostrar revenue por canal y segmento | Alta |
 
-## 4. Requisitos funcionales
+## 4. Escenarios
 
-(Pendiente de detallar)
+### Escenario 1: Analizar efectividad de promociones
+```gherkin
+Dado que el revenue manager consulta efectividad
+Cuando compara revenue con promocion vs sin promocion
+Entonces ve la diferencia en conversion
+```
 
-## 5. Requisitos no funcionales
+## 5. Criterios de aceptacion
 
-(Pendiente de detallar)
+| ID | Criterio |
+|----|----------|
+| CA-001 | Tendencias de precio se muestran correctamente |
+| CA-002 | Efectividad de promociones se compara correctamente |
+| CA-003 | Proyeccion de demanda usa datos historicos |
 
-## 6. Reglas de negocio
+## 6. Dependencias
 
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Colecciones: fact_hotel_reservations, dim_promotions, dim_dates
