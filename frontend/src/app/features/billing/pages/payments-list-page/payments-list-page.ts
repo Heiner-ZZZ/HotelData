@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
+import { CurrencyPipe } from '@angular/common';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -14,7 +15,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-payments-list-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent, RouterLink],
+  imports: [CurrencyPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent, RouterLink],
   templateUrl: './payments-list-page.html',
   styleUrl: './payments-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

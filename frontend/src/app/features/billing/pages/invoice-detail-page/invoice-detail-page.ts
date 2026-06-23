@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { switchMap } from 'rxjs';
 
+import { CurrencyPipe } from '@angular/common';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
@@ -13,7 +14,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-invoice-detail-page',
-  imports: [ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
+  imports: [CurrencyPipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
   templateUrl: './invoice-detail-page.html',
   styleUrl: './invoice-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
