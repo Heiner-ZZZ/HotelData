@@ -1,57 +1,33 @@
-# Especificación: Frontend Facturacion
+# Especificacion: Frontend - Facturacion
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O24, CU-O25
+**Casos de uso TAF06**: CU-O24, CU-O25 (Facturacion y pagos)
 
 ## 1. Objetivo
 
-UI de facturación: invoices list/detail, payments list (ya implementado)
+UI de facturacion: listado/detalle de facturas y pagos, creacion de factura y registro de pago.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | CU asociado |
+|------------|------|-------------|
+| InvoicesListPage | /billing/invoices | CU-O24 |
+| InvoiceDetailPage | /billing/invoices/:id | CU-O24 |
+| PaymentsListPage | /billing/payments | CU-O25 |
+| PaymentDetailPage | /billing/payments/:id | CU-O25 |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | InvoicesListPage con tabla de facturas por booking y estado | Alta |
+| RF-002 | InvoiceDetailPage con detalle de factura | Alta |
+| RF-003 | PaymentsListPage con tabla de pagos | Alta |
+| RF-004 | Crear factura desde detalle de reserva | Alta |
+| RF-005 | Registrar pago simulado desde detalle de factura | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/billing/
+- modules/billing/routes.py

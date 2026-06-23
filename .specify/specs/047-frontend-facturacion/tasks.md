@@ -1,13 +1,19 @@
-# Tareas: Frontend Facturación
+# Tareas: Frontend - Facturación
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Verificación de páginas existentes
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Verificar InvoicesListPage con tabla por booking y estado
+- [ ] T002 Verificar InvoiceDetailPage con subtotal, taxes, total
+- [ ] T003 Verificar PaymentsListPage con tabla de pagos
+
+## Fase 2: Diálogos
+
+- [ ] T004 Verificar CreateInvoiceDialog
+- [ ] T005 Verificar RegisterPaymentDialog
+
+## Fase 3: Validación
+
+- [ ] T006 Verificar que factura se genera con número único
+- [ ] T007 Verificar que pago actualiza estado de factura
