@@ -1,13 +1,18 @@
-# Tareas: Historial Cambios
+# Tareas: Historial de Cambios
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Backend
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Crear `partner/services/history.py` con `list_hotel_changes(filters)` y `get_change_detail()`
+- [ ] T002 Agregar endpoint `GET /api/partner/properties/{id}/history` con paginación y filtros (fecha, campo, usuario)
+- [ ] T003 Agregar endpoint `GET /api/partner/properties/{id}/history/{change_id}` para detalle
+
+## Fase 2: Frontend
+
+- [ ] T004 [P] Crear `HistoryPage` con tabla de auditoría filtrable
+- [ ] T005 [P] Agregar modal de detalle de cambio con old/new value
+
+## Fase 3: Validación
+
+- [ ] T006 Verificar índices en `hotel_profile_changes` y `hotel_content_changes`
