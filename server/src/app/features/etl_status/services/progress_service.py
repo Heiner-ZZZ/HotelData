@@ -84,13 +84,17 @@ def preparation_progress() -> dict:
             "message": "El archivo de progreso no es JSON válido.",
         }
     status = payload.get("status", "pending")
-    return {
+    result = {
         **default_progress,
         **payload,
         "exists": True,
         "path": str(progress_path),
         "is_running": status == "running",
     }
+    if not result.get("target_records"):
+        result["target_records"] = result.get("loaded_records", 0) or 0
+        result["remaining_records"] = max(result["target_records"] - result.get("loaded_records", 0), 0)
+    return result
 
 
 def pipeline_progress() -> dict:
@@ -156,7 +160,7 @@ def pipeline_progress() -> dict:
             except OSError:
                 pass
         status = "stopped"
-    return {
+    result = {
         **default_progress,
         **payload,
         "exists": True,
@@ -164,3 +168,7 @@ def pipeline_progress() -> dict:
         "sections": sections,
         "is_running": status == "running",
     }
+    if not result.get("target_records"):
+        percent_progress = result.get("percent", 0) or 0
+        result["target_records"] = result.get("finally_count") or 0
+    return result
