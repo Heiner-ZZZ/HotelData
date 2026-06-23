@@ -1,0 +1,181 @@
+<div class="hotel-compare-page">
+  <app-page-header
+    eyebrow="Comparador de hoteles"
+    [title]="'Comparar ' + propIds().length + ' hoteles'"
+    description="Compara hasta 3 hoteles lado a lado para tomar la mejor decisión."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando comparativa..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar la comparativa"
+        description="Revisa la conectividad con la API o intenta con otros hoteles."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona hoteles para comparar"
+        description="Usa el enlace 'Comparar' en los resultados de búsqueda para añadir hoteles."
+      />
+    }
+    @default {
+      @if (compareData(); as data) {
+        <div class="compare-table-wrapper">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th class="row-label-col"></th>
+                @for (hotel of data.items; track hotel.propId) {
+                  <th class="hotel-col">
+                    <button class="remove-btn" (click)="removeId(hotel.propId)" aria-label="Quitar hotel">&times;</button>
+                  </th>
+                }
+                @if (data.items.length < 3) {
+                  <th class="hotel-col add-col">
+                    <a [routerLink]="addMoreUrl()" class="add-link">+ Añadir hotel</a>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="row-label">Hotel</td>
+                @for (hotel of data.items; track hotel.propId) {
+                  <td class="hotel-col">
+                    <div class="hotel-card-compare">
+                      <div class="hotel-image" [style.background-color]="'var(--accent)'">
+                        @if (hotel.imageUrl) {
+                          <img [src]="hotel.imageUrl" [alt]="hotel.hotelName" loading="lazy" />
+                        }
+                      </div>
+                      <h3>
+                        <a [routerLink]="['/hotels', hotel.propId]">{{ hotel.hotelName }}</a>
+                      </h3>
+                    </div>
+                  </td>
+                }
+                @if (data.items.length < 3) {
+                  <td class="hotel-col"></td>
+                }
+              </tr>
+
+              <tr>
+                <td class="row-label">Calificación</td>
+                @for (hotel of data.items; track hotel.propId) {
+                  <td class="hotel-col">
+                    <div class="stars-row">
+                      @if (hotel.propStarrating; as stars) {
+                        <span class="stars">{{ stars }} ★</span>
+                      }
+                      @if (hotel.propReviewScore; as score) {
+                        <span class="score">{{ score.toFixed(1) }}</span>
+                      }
+                    </div>
+                  </td>
+                }
+                @if (data.items.length < 3) {
+                  <td class="hotel-col"></td>
+                }
+              </tr>
+
+              @if (data.items[0]?.minNightlyRate != null) {
+                <tr>
+                  <td class="row-label">Precio por noche</td>
+                  @for (hotel of data.items; track hotel.propId) {
+                    <td class="hotel-col">
+                      <strong class="price">{{ hotel.minNightlyRateLabel }}</strong>
+                    </td>
+                  }
+                  @if (data.items.length < 3) {
+                    <td class="hotel-col"></td>
+                  }
+                </tr>
+              }
+
+              @if (data.items[0]?.totalEstimated != null) {
+                <tr>
+                  <td class="row-label">Total estimado</td>
+                  @for (hotel of data.items; track hotel.propId) {
+                    <td class="hotel-col">
+                      <strong class="price">{{ hotel.totalEstimatedLabel }}</strong>
+                    </td>
+                  }
+                  @if (data.items.length < 3) {
+                    <td class="hotel-col"></td>
+                  }
+                </tr>
+              }
+
+              <tr>
+                <td class="row-label">Tipo de habitación</td>
+                @for (hotel of data.items; track hotel.propId) {
+                  <td class="hotel-col">
+                    @if (hotel.roomTypes.length) {
+                      <span class="room-type-tag">{{ hotel.roomTypes[0].name }}</span>
+                      @if (hotel.roomTypes.length > 1) {
+                        <span class="more-types">+{{ hotel.roomTypes.length - 1 }} más</span>
+                      }
+                    }
+                  </td>
+                }
+                @if (data.items.length < 3) {
+                  <td class="hotel-col"></td>
+                }
+              </tr>
+
+              @if (amenityList(data.items[0]?.amenitiesText).length) {
+                <tr>
+                  <td class="row-label">Servicios</td>
+                  @for (hotel of data.items; track hotel.propId) {
+                    <td class="hotel-col">
+                      <div class="amenities-list">
+                        @for (a of amenityList(hotel.amenitiesText).slice(0, 6); track a) {
+                          <span class="amenity-tag">{{ a }}</span>
+                        }
+                        @if (amenityList(hotel.amenitiesText).length > 6) {
+                          <span class="more-types">+{{ amenityList(hotel.amenitiesText).length - 6 }}</span>
+                        }
+                      </div>
+                    </td>
+                  }
+                  @if (data.items.length < 3) {
+                    <td class="hotel-col"></td>
+                  }
+                </tr>
+              }
+
+              <tr>
+                <td class="row-label">Habitaciones disponibles</td>
+                @for (hotel of data.items; track hotel.propId) {
+                  <td class="hotel-col">
+                    <div class="room-types-list">
+                      @for (rt of hotel.roomTypes.slice(0, 4); track rt.roomTypeId) {
+                        <div class="room-type-item">
+                          <span class="room-type-name">{{ rt.name }}</span>
+                          <span class="room-type-cap">{{ rt.maxAdults }} adulto{{ rt.maxAdults !== 1 ? 's' : '' }} · {{ rt.maxChildren }} niño{{ rt.maxChildren !== 1 ? 's' : '' }}</span>
+                        </div>
+                      }
+                      @if (hotel.roomTypes.length > 4) {
+                        <span class="more-types">+{{ hotel.roomTypes.length - 4 }} más</span>
+                      }
+                    </div>
+                  </td>
+                }
+                @if (data.items.length < 3) {
+                  <td class="hotel-col"></td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="actions-row">
+          <a [routerLink]="['/search']" class="back-link">← Volver a resultados</a>
+        </div>
+      }
+    }
+  }
+</div>
