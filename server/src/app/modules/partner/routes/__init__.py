@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from src.app.template_utils import templates
 
 from src.app.modules.partner.schemas import ModuleStatus
 from src.app.modules.partner.services import module_status

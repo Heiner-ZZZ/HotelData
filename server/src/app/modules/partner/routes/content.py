@@ -1,35 +1,21 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, HTTPException, Query, Request, status
+import uuid
+from pathlib import Path
+
+from fastapi import Body, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import RedirectResponse
 
-from src.app.modules.partner.routes import api_router, templates, web_router
+from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.services import (
     add_partner_hotel_image,
     delete_partner_hotel_image,
     partner_hotel_content,
     partner_hotel_content_editor,
+    partner_hotel_detail,
     partner_hotel_images,
     save_partner_hotel_content,
 )
-
-
-@web_router.get("/hotels/{prop_id}/content")
-def content(request: Request, prop_id: int):
-    detail = partner_hotel_content(prop_id)
-    if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    return templates.TemplateResponse(request, "partner/content.html", detail)
-
-
-@web_router.get("/hotels/{prop_id}/content/edit")
-def content_edit(request: Request, prop_id: int):
-    detail = partner_hotel_content_editor(prop_id)
-    if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    detail["message"] = request.query_params.get("message")
-    detail["error"] = request.query_params.get("error")
-    return templates.TemplateResponse(request, "partner/content_edit.html", detail)
 
 
 @web_router.post("/hotels/{prop_id}/content/edit")
@@ -52,16 +38,6 @@ def content_edit_submit(
         url=f"/partner/hotels/{prop_id}/content/edit?message=Contenido+actualizado",
         status_code=303,
     )
-
-
-@web_router.get("/hotels/{prop_id}/images")
-def images(request: Request, prop_id: int):
-    detail = partner_hotel_images(prop_id)
-    if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    detail["message"] = request.query_params.get("message")
-    detail["error"] = request.query_params.get("error")
-    return templates.TemplateResponse(request, "partner/images.html", detail)
 
 
 @web_router.post("/hotels/{prop_id}/images")
@@ -108,6 +84,34 @@ def property_image_add_api(prop_id: int, payload: dict = Body(...)):
         saved = add_partner_hotel_image(prop_id, image_url=image_url, title=title, changed_by="angular_api")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.post("/properties/{prop_id}/images/upload")
+async def property_image_upload_api(prop_id: int, file: UploadFile):
+    """Upload an image file and store it for a property."""
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se permiten archivos de imagen.")
+
+    ext = Path(file.filename or "image.jpg").suffix or ".jpg"
+    filename = f"prop_{prop_id}_{uuid.uuid4().hex[:8]}{ext}"
+    upload_dir = Path("/app/data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filepath = upload_dir / filename
+
+    content = await file.read()
+    filepath.write_bytes(content)
+
+    image_url = f"/uploads/{filename}"
+    title = Path(file.filename or "image").stem.replace("-", " ").replace("_", " ").title()
+
+    saved = add_partner_hotel_image(prop_id, image_url=image_url, title=title, changed_by="angular_api")
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved

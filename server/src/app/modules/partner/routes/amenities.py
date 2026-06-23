@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import Body, HTTPException, Query, status
 
+from fastapi import Depends
+
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
@@ -9,6 +11,7 @@ from src.app.modules.partner.services import (
     partner_hotel_content,
     save_partner_hotel_amenities,
 )
+from src.app.security.dependencies import require_login
 
 
 @api_router.get("/amenities")
@@ -20,8 +23,8 @@ def amenities_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/amenities/options")
-def amenities_options_api(prop_id: int | None = Query(default=None, ge=1)):
-    response: dict[str, object] = {"properties": management_property_options()}
+def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_login)):
+    response: dict[str, object] = {"properties": management_property_options(user=current_user)}
     if prop_id:
         detail = partner_hotel_content(require_prop_id(prop_id))
         if detail is None:
