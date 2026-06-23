@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 from pymongo import ASCENDING
@@ -39,8 +40,8 @@ def _operational_item(
         "guest_name": (guest or {}).get("guest_name") or booking.get("guest_name") or "Huesped principal",
         "guest_email": (guest or {}).get("guest_email") or booking.get("guest_email") or "",
         "date": booking.get("check_in_date") if flow == "check_in" else booking.get("check_out_date"),
-        "reservation_status": str(booking.get("status") or "pending"),
-        "reservation_status_label": _reservation_status_label(str(booking.get("status") or "pending")),
+        "reservation_status": str(booking.get("status") or "requested"),
+        "reservation_status_label": _reservation_status_label(str(booking.get("status") or "requested")),
         "stay_status": stay_status,
         "stay_status_label": _reservation_status_label(stay_status),
         "rooms_label": room_label,
@@ -51,6 +52,61 @@ def _operational_item(
         and booking.get("status") not in {"cancelled", "rejected"},
         "history_count": len(history),
     }
+
+
+def _list_operational_dates(*, flow: str, prop_id: int | None = None) -> list[dict[str, Any]]:
+    """Return distinct past/current dates with booking count for the given flow and property."""
+    db = get_database()
+    field = "check_in_date" if flow == "check_in" else "check_out_date"
+    today = datetime.date.today().isoformat()
+    filters: dict[str, Any] = {
+        field: {"$lte": today},
+    }
+    if prop_id:
+        filters["prop_id"] = prop_id
+    if prop_id:
+        # Per-property: group by date only
+        pipeline: list[dict[str, Any]] = [
+            {"$match": filters},
+            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
+            {"$sort": {"_id": -1}},
+            {"$project": {"_id": 0, "date": "$_id", "count": 1}},
+        ]
+    else:
+        # Global: group by date + prop_id, enrich with hotel label
+        pipeline = [
+            {"$match": filters},
+            {"$group": {"_id": {"date": f"${field}", "prop_id": "$prop_id"}, "count": {"$sum": 1}}},
+            {"$sort": {"_id.date": -1, "_id.prop_id": 1}},
+            {"$lookup": {
+                "from": "dim_hotels",
+                "localField": "_id.prop_id",
+                "foreignField": "prop_id",
+                "as": "hotel",
+            }},
+            {"$project": {
+                "_id": 0,
+                "date": "$_id.date",
+                "count": 1,
+                "prop_id": "$_id.prop_id",
+                "hotel_label": {
+                    "$ifNull": [
+                        {"$arrayElemAt": ["$hotel.display_name", 0]},
+                        {"$arrayElemAt": ["$hotel.hotel_name", 0]},
+                        {"$concat": ["Hotel ", {"$toString": "$_id.prop_id"}]}
+                    ]
+                },
+            }},
+        ]
+    return list(db.booking_orders.aggregate(pipeline))
+
+
+def list_check_in_dates(*, prop_id: int | None = None) -> list[dict[str, Any]]:
+    return _list_operational_dates(flow="check_in", prop_id=prop_id)
+
+
+def list_check_out_dates(*, prop_id: int | None = None) -> list[dict[str, Any]]:
+    return _list_operational_dates(flow="check_out", prop_id=prop_id)
 
 
 def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
