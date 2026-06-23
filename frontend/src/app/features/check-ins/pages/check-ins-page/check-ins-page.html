@@ -79,7 +79,75 @@
         </div>
       }
     </div>
+
+    <!-- More menu (⋮) -->
+    <div class="more-menu">
+      <button type="button" class="more-btn" (click)="toggleMenu()" (blur)="closeMenu()" aria-label="Más opciones">
+        <span class="material-symbols-outlined">more_vert</span>
+      </button>
+      @if (showMenu()) {
+        <div class="more-dropdown">
+          <button type="button" class="more-option" (mousedown)="openHistory()">
+            <span class="material-symbols-outlined">history</span>
+            <span>Ver historial de fechas</span>
+          </button>
+        </div>
+      }
+    </div>
   </section>
+
+  <!-- ═══ Date history modal ═══ -->
+  @if (showHistory()) {
+    <div class="modal-overlay" (click)="closeHistory()">
+      <div class="modal-panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">history</span>
+          <div>
+            <h2>Historial de check-ins</h2>
+            @if (!historyGlobal()) {
+              <p>Fechas con llegadas para {{ selectedPropName() }}</p>
+            } @else {
+              <p>Todas las propiedades &mdash; fechas con llegadas</p>
+            }
+          </div>
+          <button type="button" class="modal-close" (click)="closeHistory()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (historyLoading()) {
+            <div class="history-loading">
+              <span class="material-symbols-outlined spinning">sync</span>
+              <span>Cargando historial...</span>
+            </div>
+          } @else if (historyDates().length === 0) {
+            <div class="history-empty">
+              <span class="material-symbols-outlined">info</span>
+              <span>No se encontraron fechas anteriores con check-ins para esta propiedad.</span>
+            </div>
+          } @else {
+            <div class="history-list">
+              @for (entry of historyDates(); track entry.date + (entry.prop_id || 0)) {
+                <button type="button" class="history-item" (click)="goToDate(entry.date, entry.prop_id)">
+                  <span class="history-item-date">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span>{{ entry.date | date:'longDate' }}</span>
+                  </span>
+                  @if (historyGlobal() && entry.hotel_label) {
+                    <span class="history-item-hotel">{{ entry.hotel_label }}</span>
+                  }
+                  <span class="history-item-count">
+                    <span class="badge badge-info">{{ entry.count }} llegada(s)</span>
+                  </span>
+                  <span class="material-symbols-outlined history-item-arrow">chevron_right</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 
   @switch (viewState()) {
     @case ('loading') {
