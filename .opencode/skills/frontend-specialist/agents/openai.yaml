@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Specialist"
+  short_description: "Polish frontend UI with accessible CSS"
+  default_prompt: "Use $frontend-specialist to refine a frontend interface with accessible, responsive UI and modern CSS."
