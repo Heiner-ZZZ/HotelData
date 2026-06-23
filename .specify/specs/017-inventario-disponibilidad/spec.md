@@ -125,4 +125,8 @@ Entonces el sistema actualiza los 30 registros
 ## 13. Fuera de alcance
 
 - Sincronizacion automatica con reservas (el booked se calcula aparte)
+- notificaciones de cambios a usuarios
+- comercializacion de estrategias de negocio basadas en inventario
+- powerbi o reportes de ocupacion por tipo de habitacion
+- calendario de inventario para multiples propiedades a la vez
 - Bloqueos de disponibilidad por rango (cubierto en spec 018)

@@ -120,4 +120,5 @@ Y el plan no se elimina
 ## 13. Fuera de alcance
 
 - Pricing dinamico automatico basado en demanda
+- UI coorporativa para gestion de planes tarifarios
 - Reglas de estancia minima por plan tarifario

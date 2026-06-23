@@ -121,3 +121,9 @@ Entonces el sistema responde 403 Forbidden
 
 - Edicion de otros campos del perfil (cubierto en otros specs)
 - Sincronizacion con PocketBase o fuente ETL
+- Validaciones de nombre comercial (unicidad, marca registrada)
+- implementacion de UI/UX para edicion de perfil
+- UI para visualizacion de historial de cambios
+- IA o analisis de cambios para sugerencias de nombre comercial
+- mapa de propiedades en el dashboard del partner
+- gestion de permisos avanzados para roles de marketing o administracion

@@ -38,4 +38,8 @@ Al finalizar la estancia, el gerente realiza el check-out. Esto libera la habita
 - Actualización automática de programas de fidelidad o recompensas al check-out
 - Notificaciones automáticas a servicios de transporte o actividades relacionadas con la salida del huésped
 - Gestión de check-out express o sin contacto (self check-out)
+- check-out calendario de disponibilidad
+- calendario de ocupación
+- logística de limpieza y mantenimiento
+- chat de soporte al huésped durante el proceso de check-out
 

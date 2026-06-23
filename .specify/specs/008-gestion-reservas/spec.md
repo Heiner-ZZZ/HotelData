@@ -149,10 +149,12 @@ Una vez que el cliente solicita una reserva (spec 007), necesita consultar su es
 
 ### Cubiertos por otros specs
 - Pagos integrados al flujo de reserva → spec 009 (Facturación y Cancelaciones)
-- Generación automática de factura al check-out → spec 009 (Facturación y Cancelaciones)
-- Notificaciones automáticas al cliente por email/SMS → spec 054 (Alertas operativas)
-- Integración con Channel Managers, OTAs → spec 037 (Integraciones API)
-- Validación de datos de huéspedes (pasaportes, visas, etc.) → spec 031 (Contratos API)
+- Generación automática de factura al check-out 
+- Notificaciones automáticas al staff por email/SMS 
+- chat bot para asistencia en gestión de reservas →
+- Notificaciones automáticas al cliente por email/SMS 
+- Integración con Channel Managers, OTAs 
+- Validación de datos de huéspedes (pasaportes, visas, etc.) 
 
 ### Pendientes de evaluar (posibles specs dedicados)
 - Exportar reservas a PDF / CSV
@@ -160,6 +162,7 @@ Una vez que el cliente solicita una reserva (spec 007), necesita consultar su es
 - Quejas y reclamos de clientes sobre reservas
 - Uso de códigos promocionales o descuentos aplicados a reservas
 - Gestión de solicitudes especiales (cama extra, accesibilidad, mascotas, etc.)
+- calendario de disponibilidad visual para staff al gestionar reservas
 - Gestión de reservas con múltiples tipos de habitación en una sola solicitud (split booking)
 - Integración con calendarios externos (Google Calendar, Outlook, iCal)
 - Reembolso automático dentro del flujo de cancelación

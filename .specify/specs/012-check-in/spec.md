@@ -36,6 +36,12 @@ Cuando el huésped llega al hotel, el gerente realiza el check-in en el sistema.
 - Asignación automática de habitación específica
 - Gestión de check-out
 - Notificaciones al huésped
+- check-in calendario de disponibilidad
+- calendario de ocupación
+- logística de limpieza y mantenimiento
+- pagos y facturación
+- excel para reportes de check-in
+- diseño de interfaz de usuario para check-in
 - Integración con sistemas de control de acceso (tarjetas, cerraduras inteligentes)
 - Gestión de check-in para grupos o eventos especiales
 - Validaciones de documentos de identidad o métodos de pago durante el check-in

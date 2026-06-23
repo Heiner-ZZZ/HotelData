@@ -122,3 +122,7 @@ Y el mensaje indica que los rangos se solapan
 
 - Bloqueos recurrentes automaticos (ej. todos los lunes)
 - Notificaciones al crear bloqueo
+- notificaciones de cambios a usuarios
+- ingreso de dias de blackout en el calendario de reservas (solo afecta disponibilidad)
+- management de estrategias de negocio basadas en inventario
+- mantenimientos programados de forma automatica/manual

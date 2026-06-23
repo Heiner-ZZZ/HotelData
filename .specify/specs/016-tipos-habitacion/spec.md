@@ -126,3 +126,8 @@ Y el tipo no se elimina
 
 - Amenities por tipo de habitacion (incluido en el spec)
 - Tarifas dinamicas por tipo (cubierto en spec 019-020)
+- configuracion de disponibilidad por tipo
+- email de notificacion a usuarios sobre cambios en tipos de habitacion
+- notificaciones push a app movil sobre cambios en tipos de habitacion
+- ganancias y reportes de ocupacion por tipo de habitacion para analisis de negocio
+- estrategias de negocios competitivas basadas en tipos de habitacion (ej. promociones, descuentos, paquetes)

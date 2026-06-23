@@ -39,8 +39,11 @@ El cliente encontró el hotel deseado y procede a reservar. Debe seleccionar tip
 **Fuera de alcance**: 
 
 - Pago en línea al reservar (solo facturación post-estancia)
+- webhook para notificar al gerente del hotel sobre nueva reserva
 - Modificación o cancelación de reservas por parte del cliente
+- chat bot para asistencia en reservas
 - Solicitud de reserva para múltiples tipos de habitación en una sola acción
+- IA para sugerir upgrades o promociones al solicitar reserva
 - Solicitud de reserva para múltiples fechas en una sola acción
 - Automatización de confirmación de reservas (requiere acción del gerente)
 - Webhooks o notificaciones automáticas al cliente y gerente al crear reserva

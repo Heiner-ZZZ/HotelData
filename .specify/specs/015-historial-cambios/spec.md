@@ -116,3 +116,6 @@ Y la respuesta incluye old_value, new_value, changed_by y changed_at
 
 - Exportacion del historial a CSV/PDF
 - Auditoria de actividad de usuarios (sesiones, logins)
+- sistema de notificaciones de cambios a usuarios
+- trazabilidad de cambios en otros modulos (reservas, pagos, etc.)
+- exportar a pdf o excel con filtros aplicados

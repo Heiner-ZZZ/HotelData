@@ -109,3 +109,6 @@ Entonces el sistema actualiza solo los sabados y domingos del rango
 
 - Precios dinamicos automaticos basados en ocupacion
 - Reglas de pricing por anticipacion (booking window)
+- block de fechas para promociones especiales
+- email de notificacion de cambios de precio a clientes
+- facturacion de tarifas especiales (solo configuracion de calendario, no facturacion)
