@@ -3,6 +3,11 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+
+export interface DateHistoryEntry {
+  date: string;
+  count: number;
+}
 import {
   mapReservationCreatePayload,
   mapReservationCreateResult,
@@ -26,14 +31,28 @@ export class ReservationsApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getReservations(page: number) {
-    const params = new HttpParams().set('page', String(page));
+  getReservations(page: number, createdDate?: string) {
+    let params = new HttpParams().set('page', String(page));
+    if (createdDate) {
+      params = params.set('date', createdDate);
+    }
     return this.http
       .get<ReservationsListDto>(`${this.apiConfig.baseUrl}/reservations`, {
         params,
         withCredentials: true
       })
       .pipe(map((dto) => mapReservationsList(dto)));
+  }
+
+  getReservationDates(propId?: number) {
+    let params = new HttpParams();
+    if (propId) {
+      params = params.set('prop_id', String(propId));
+    }
+    return this.http.get<DateHistoryEntry[]>(`${this.apiConfig.baseUrl}/reservations/dates`, {
+      params,
+      withCredentials: true
+    });
   }
 
   getOptions() {

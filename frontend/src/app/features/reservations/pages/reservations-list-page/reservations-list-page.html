@@ -14,7 +14,96 @@
       <span class="material-symbols-outlined btn-icon">edit_note</span>
       Reserva manual partner
     </a>
+
+    <div class="more-menu">
+      <button type="button" class="more-btn" (click)="toggleMenu()" (blur)="closeMenu()" aria-label="M&aacute;s opciones">
+        <span class="material-symbols-outlined">more_vert</span>
+      </button>
+      @if (showMenu()) {
+        <div class="more-dropdown">
+          <button type="button" class="more-option" (mousedown)="openHistory()">
+            <span class="material-symbols-outlined">history</span>
+            <span>Ver historial de fechas</span>
+          </button>
+        </div>
+      }
+    </div>
   </div>
+
+  <!-- ═══ Date navigator ═══ -->
+  <section class="nav-bar">
+    <button type="button" class="nav-arrow" (click)="navigateDate(-1)" aria-label="D&iacute;a anterior">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+
+    <form [formGroup]="dateForm" (ngSubmit)="applyFilter()" class="date-field">
+      <span class="material-symbols-outlined date-icon">calendar_today</span>
+      <input type="date" formControlName="createdDate" (change)="applyFilter()" />
+    </form>
+
+    <button type="button" class="nav-arrow" (click)="navigateDate(1)" aria-label="D&iacute;a siguiente">
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+
+    <div class="nav-quick">
+      <button type="button" class="quick-btn" (click)="goToday()">Hoy</button>
+      <button type="button" class="quick-btn" (click)="navigateDate(-7)">-7</button>
+      <button type="button" class="quick-btn" (click)="navigateDate(7)">+7</button>
+    </div>
+
+    @if (dateForm.controls.createdDate.value) {
+      <button type="button" class="quick-btn clear-btn" (click)="clearDateFilter()">
+        <span class="material-symbols-outlined">close</span>
+        Limpiar filtro
+      </button>
+    }
+  </section>
+
+  <!-- ═══ Date history modal ═══ -->
+  @if (showHistory()) {
+    <div class="modal-overlay" (click)="closeHistory()">
+      <div class="modal-panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">history</span>
+          <div>
+            <h2>Historial de reservas</h2>
+            <p>Fechas con creaci&oacute;n de reservas</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeHistory()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (historyLoading()) {
+            <div class="history-loading">
+              <span class="material-symbols-outlined spinning">sync</span>
+              <span>Cargando historial...</span>
+            </div>
+          } @else if (historyDates().length === 0) {
+            <div class="history-empty">
+              <span class="material-symbols-outlined">info</span>
+              <span>No se encontraron fechas con reservas creadas.</span>
+            </div>
+          } @else {
+            <div class="history-list">
+              @for (entry of historyDates(); track entry.date) {
+                <button type="button" class="history-item" (click)="goToDate(entry.date)">
+                  <span class="history-item-date">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span>{{ entry.date | date:'longDate' }}</span>
+                  </span>
+                  <span class="history-item-count">
+                    <span class="badge badge-info">{{ entry.count }} reserva(s)</span>
+                  </span>
+                  <span class="material-symbols-outlined history-item-arrow">chevron_right</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 
   @switch (viewState()) {
     @case ('loading') {
