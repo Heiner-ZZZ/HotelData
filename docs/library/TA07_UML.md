@@ -2,7 +2,7 @@
 
 **Asignatura**: Construcción del Software — Sexto semestre
 **Sistema**: HotelData Hub — Plataforma de gestión hotelera y analítica
-**Base**: TA07_ESPECIFICACIONES.md (Casos de Uso Operativos CU-O01 a CU-O37, Tácticos T14-T17, Estratégico E09-E10)
+**Base**: TA07_ESPECIFICACIONES.md (Casos de Uso Operativos CU-O01 a CU-O40, Tácticos T14-T15, Estratégico E09)
 **Versión**: 1.0 | **Fecha**: 2026-06-21
 
 ---
@@ -43,20 +43,20 @@ graph TB
     UC27[CU-O27: Reporte Calidad Datos]
     UC28[CU-O28: Cerrar Sesión]
     UC29[CU-O29: Cambiar Password/Perfil]
-    UC30[CU-O30: Gestión/Habitaciones]
-    UC31[CU-O31: Geolocalización]
-    UC32[CU-O32: Notificaciones]
-    UC33[CU-O33: Alertas Staff]
-    UC34[CU-O34: Campañas Multi]
-    UC35[CU-O35: Chatbot IA]
-    UC36[CU-O36: Up-Selling]
-    UC37[CU-O37: Multimedia Geo]
+    UC30[CU-O30: Estado Habitaciones]
+    UC31[CU-O31: Asignar Tipo Hab.]
+    UC32[CU-O32: Disponibilidad x Hab.]
+    UC33[CU-O33: Amenities x Tipo Hab.]
+    UC34[CU-O34: Cargos Adicionales]
+    UC35[CU-O35: Editar Metadata Destino]
+    UC36[CU-O36: Nombre Hotel Override]
+    UC37[CU-O37: Mapa Mundial]
+    UC38[CU-O38: Seleccionar Ubicación Mapa]
+    UC39[CU-O39: Limpieza/Rotación]
+    UC40[CU-O40: Mantenimiento Preventivo]
     UT14[CU-T14: Rotación/Limpieza Táctico]
     UT15[CU-T15: Mantenimiento Proactivo]
-    UT16[CU-T16: Canales Notificaciones]
-    UT17[CU-T17: Base Conocimiento Chat]
     UE09[CU-E09: Eficiencia Operativa]
-    UE10[CU-E10: Ingresos Up-Selling]
   end
 
   subgraph "Actores"
@@ -71,13 +71,13 @@ graph TB
   end
 
   A1 --- UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC22 & UC28 & UC29
-  A2 --- UC1 & UC8 & UC10 & UC11 & UC24 & UC25 & UC28 & UC29 & UC30 & UC34 & UC36
-  A3 --- UC1 & UC9 & UC15 & UC16 & UC26 & UC28 & UC29 & UC30 & UT14 & UT15 & UE09
-  A4 --- UC1 & UC14 & UC20 & UC28 & UC29
-  A5 --- UC1 & UC17 & UC18 & UC19 & UC26 & UC28 & UC29 & UC34 & UC36 & UE10
-  A6 --- UC1 & UC12 & UC19 & UC21 & UC23 & UC28 & UC29 & UC31 & UC34 & UC37
-  A7 --- UC1 & UC13 & UC23 & UC27 & UC28 & UC29 & UE09 & UE10
-  A8 --- UC1 & UC13 & UC27 & UC28 & UC29 & UC31 & UC37
+  A2 --- UC1 & UC8 & UC10 & UC11 & UC24 & UC25 & UC28 & UC29 & UC30 & UC31 & UC32 & UC34 & UC39
+  A3 --- UC1 & UC9 & UC15 & UC16 & UC26 & UC28 & UC29 & UC30 & UC31 & UC32 & UC39 & UC40 & UT14 & UT15 & UE09
+  A4 --- UC1 & UC14 & UC20 & UC28 & UC29 & UC33
+  A5 --- UC1 & UC17 & UC18 & UC19 & UC26 & UC28 & UC29 & UC34
+  A6 --- UC1 & UC12 & UC19 & UC21 & UC23 & UC28 & UC29 & UC33 & UC36 & UC37
+  A7 --- UC1 & UC13 & UC23 & UC27 & UC28 & UC29 & UE09
+  A8 --- UC1 & UC13 & UC27 & UC28 & UC29 & UC35 & UC36 & UC37 & UC38
 ```
 
 ## 1.2 Diagrama por Paquete
@@ -138,33 +138,32 @@ graph LR
   end
 
   subgraph "Paquete 9: Mapa/Geo"
-    CU31[CU-O31: Geolocalización]
-    CU37[CU-O37: Multimedia Geo]
+    CU35[CU-O35: Metadata Destino]
+    CU37[CU-O37: Mapa Mundial]
+    CU38[CU-O38: Selector Mapa]
   end
 
-  subgraph "Paquete 10: Housekeeping/Mant."
+  subgraph "Paquete 10: Housekeeping"
     CU30[CU-O30: Estado Habs]
-    CU33[CU-O33: Alertas Staff]
+    CU31[CU-O31: Asignar Tipo]
+    CU32[CU-O32: Disp x Hab]
+    CU33[CU-O33: Amenities]
+    CU39[CU-O39: Limpieza]
+    CU40[CU-O40: Mantenimiento]
     UT14[CU-T14: Rotación]
-    UT15[CU-T15: Mantenimiento]
+    UT15[CU-T15: Mantenim. Proact.]
   end
 
-  subgraph "Paquete 11: Notificaciones/Comunicación"
-    CU32[CU-O32: Notificaciones]
-    UT16[CU-T16: Canales Notif]
+  subgraph "Paquete 11: Revenue Ext"
+    CU34[CU-O34: Cargos Adicionales]
   end
 
-  subgraph "Paquete 12: Revenue Ext"
-    CU34[CU-O34: Campañas Multi]
-    CU36[CU-O36: Up-Selling]
-    UE10[CU-E10: Ing Up-Selling]
+  subgraph "Paquete 12: Admin"
+    CU36[CU-O36: Nombre Override]
   end
 
   subgraph "Estratégico"
     UE09[CU-E09: Eficiencia]
-    UE10[CU-E10: Ing Up-Selling]
-    UT16[CU-T16: Notificaciones]
-    UT17[CU-T17: Chatbot]
   end
 ```
 

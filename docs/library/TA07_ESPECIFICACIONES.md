@@ -98,12 +98,8 @@ HotelData se estructura en tres niveles organizacionales que conectan la estrate
 |--------|-------------------|-------------|
 | **OO1.1.1** | Registrar eventos de búsqueda y reserva digital con país, destino, canal, hotel, fecha y usuario | OT1.1 |
 | **OO1.1.2** | Medir conversión de búsqueda, detalle, click, reserva, abandono y revenue por segmento | OT1.1 |
-| **OO1.1.3** | Gestionar campañas promocionales multicanal (email, SMS, push) con segmentación de mercado | OT1.1 |
-| **OO1.1.4** | Atender consultas de clientes mediante asistente virtual (chatbot IA) con escalamiento a humano | OT1.1 |
-| **OO1.1.5** | Gestionar up-selling y ancillaries durante la estancia (upgrade de habitación, late check-out, extras) | OT1.1 |
 | **OO1.2.1** | Registrar reseñas de estancia y respuestas del hotel con moderación y trazabilidad | OT1.2 |
-| **OO1.2.2** | Generar comprobantes/facturación, registro de pago y cargos adicionales asociados a la reserva | OT1.2 |
-| **OO1.2.3** | Enviar notificaciones transaccionales al huésped (confirmación de reserva, recordatorio check-in, factura) | OT1.2 |
+| **OO1.2.2** | Generar comprobantes/facturación y registro de pago asociado a la reserva | OT1.2 |
 | **OO2.1.1** | Exponer endpoints JSON para hoteles, reservas, management, sistema, auth y reportes | OT2.1 |
 | **OO2.1.2** | Validar JWT, sesión, permisos, rol y navegación por cada endpoint sensible | OT2.1 |
 | **OO2.2.1** | Administrar perfil comercial de hotel con nombres visibles manuales y prop_id estable | OT2.2 |
@@ -119,27 +115,22 @@ HotelData se estructura en tres niveles organizacionales que conectan la estrate
 | **OO2.3.1** | Editar metadata de destinos (nombre visible, coordenadas geográficas, país, ciudad, descripción) | OT2.3 |
 | **OO2.3.2** | Editar nombre visible de hotel (manual_override sobre hoteles con ID numérico) | OT2.3 |
 | **OO2.3.3** | Visualizar destinos y hoteles en mapa mundial interactivo con geolocalización | OT2.3 |
-| **OO2.3.4** | Gestionar contenidos multimedia con geolocalización (fotos, videos vinculados a coordenadas) | OT2.3 |
 | **OO3.3.1** | Consultar estado actual, limpieza y disponibilidad de cada habitación individual | OT3.3 |
 | **OO3.3.2** | Gestionar rotación de limpieza y asignación de tareas de housekeeping | OT3.3 |
 | **OO3.3.3** | Programar y registrar mantenimiento preventivo de habitaciones e instalaciones | OT3.3 |
-| **OO3.3.5** | Gestionar alertas operativas internas al staff (housekeeping, mantenimiento, recepción) | OT3.3 |
-| **OO5.1.1** | Monitorear eficiencia operativa: tiempo de rotación, cumplimiento de mantenimiento, ocupación real vs disponible, cargos extra, efectividad de up-selling | OT5.1 |
+| **OO3.3.4** | Registrar cargos adicionales a reserva (room service, daños, extras) | OT3.3 |
+| **OO5.1.1** | Monitorear eficiencia operativa: tiempo de rotación, cumplimiento de mantenimiento, ocupación real vs disponible, cargos extra | OT5.1 |
 
 ## 2.5 Jerarquía Completa OE → OT → OO
 
 ```
 OE1: Penetrar mercados hoteleros digitales
   ├── OT1.1: Automatizar captación digital internacional
-  │      ├── OO1.1.1: Registrar eventos de búsqueda y reserva
-  │   ├── OO1.1.2: Medir conversión del embudo digital
-  │   ├── OO1.1.3: Gestionar campañas promocionales multicanal
-  │   ├── OO1.1.4: Atender consultas con chatbot IA
-  │   └── OO1.1.5: Gestionar up-selling y ancillaries
+  │   ├── OO1.1.1: Registrar eventos de búsqueda y reserva
+  │   └── OO1.1.2: Medir conversión del embudo digital
   └── OT1.2: Fortalecer reputación del huésped
       ├── OO1.2.1: Registrar reseñas de estancia
-      ├── OO1.2.2: Generar comprobantes/facturación y cargos
-      └── OO1.2.3: Enviar notificaciones transaccionales
+      └── OO1.2.2: Generar comprobantes/facturación
 
 OE2: Escalar comercialmente mediante APIs y módulos
   ├── OT2.1: Estandarizar servicios por API
@@ -169,20 +160,18 @@ OE2: Escalar comercialmente mediante APIs y módulos
   └── OT2.3: Enriquecer catálogo geoespacial de destinos
       ├── OO2.3.1: Editar metadata de destinos
       ├── OO2.3.2: Editar nombre visible de hotel
-      ├── OO2.3.3: Visualizar destinos en mapa interactivo
-      └── OO2.3.4: Gestionar contenidos multimedia con geolocalización
+      └── OO2.3.3: Visualizar destinos en mapa interactivo
 
 OE3: Asegurar disponibilidad técnica
   └── OT3.3: Automatizar gestión de habitaciones
-      ├── OO3.3.1: Consultar estado y disponibilidad de habitaciones
-      ├── OO3.3.2: Gestionar limpieza, rotación y tareas housekeeping
-      ├── OO3.3.3: Programar y registrar mantenimiento preventivo
-      ├── OO3.3.4: Registrar cargos adicionales (absorbido en facturación)
-      └── OO3.3.5: Gestionar alertas operativas internas al staff
+      ├── OO3.3.1: Consultar estado de habitaciones
+      ├── OO3.3.2: Gestionar limpieza y rotación
+      ├── OO3.3.3: Programar mantenimiento preventivo
+      └── OO3.3.4: Registrar cargos adicionales
 
 OE5: Optimizar eficiencia operativa hotelera
   └── OT5.1: Monitorear eficiencia operativa
-      └── OO5.1.1: Monitorear eficiencia operativa y efectividad de up-selling
+      └── OO5.1.1: Monitorear eficiencia operativa
 ```
 
 ---
@@ -212,8 +201,8 @@ La operación de HotelData se organiza en 6 departamentos que cubren todas las �
 | **Función** | Configurar y optimizar tarifas, planes tarifarios, promociones y cupones para maximizar el ingreso por habitación disponible |
 | **Procesos** | Creación de planes tarifarios, configuración de tarifas por fecha, creación de promociones y cupones, análisis de revenue |
 | **Sistemas que usa** | Módulo revenue (tarifas, promociones), rate_plans, hotel_rate_calendar |
-| **CU asociados** | CU-O17, CU-O18, CU-O19, CU-O26, CU-O34, CU-O36 |
-| **KPIs** | ADR (Average Daily Rate), RevPAR, revenue bruto, precio promedio, ocupación, ingresos por up-selling |
+| **CU asociados** | CU-O17, CU-O18, CU-O19, CU-O26, CU-O34 |
+| **KPIs** | ADR (Average Daily Rate), RevPAR, revenue bruto, precio promedio, ocupación |
 
 ### Departamento 3: Marketing Hotelero
 
@@ -234,8 +223,8 @@ La operación de HotelData se organiza en 6 departamentos que cubren todas las �
 | **Función** | Ejecutar la operación diaria del hotel: atención al huésped en front desk, check-in/out, reservas manuales, facturación, gestión de tipos de habitación, inventario, disponibilidad y políticas |
 | **Procesos** | Check-in, check-out, reservas manuales, facturación, pagos, consulta de solicitudes, creación de tipos de habitación, actualización de inventario, bloqueos, gestión de políticas |
 | **Sistemas que usa** | Módulo partner (rooms, availability, policies), módulo reservas (check-in/out), módulo billing (facturas, pagos) |
-| **CU asociados** | CU-O08 (Recepcionista), CU-O09 (Gerente), CU-O10 (Recepcionista), CU-O11 (Recepcionista), CU-O14, CU-O15 (Gerente), CU-O16 (Gerente), CU-O20, CU-O24 (Recepcionista), CU-O25 (Recepcionista), CU-O30, CU-O33 |
-| **KPIs** | Ocupación, días de inventario configurado, check-ins/outs por día, tiempo de estancia media, cargos adicionales promedio |
+| **CU asociados** | CU-O08 (Recepcionista), CU-O09 (Gerente), CU-O10 (Recepcionista), CU-O11 (Recepcionista), CU-O14, CU-O15 (Gerente), CU-O16 (Gerente), CU-O20, CU-O24 (Recepcionista), CU-O25 (Recepcionista), CU-O30, CU-O31, CU-O32, CU-O33, CU-O39, CU-O40 |
+| **KPIs** | Ocupación, días de inventario configurado, check-ins/outs por día, tiempo de estancia media |
 
 ### Departamento 5: Administración / Sistemas
 
@@ -256,7 +245,7 @@ La operación de HotelData se organiza en 6 departamentos que cubren todas las �
 | **Función** | Ejecutar y validar pipelines ETL, monitorear calidad de datos, auditar trazabilidad del sistema, generar reportes de revenue y calidad |
 | **Procesos** | Ejecución de pipeline ETL, validación de calidad, consulta de reportes, consulta de auditoría, análisis de mercados, consulta de historial de cambios |
 | **Sistemas que usa** | Módulo ETL (Airflow), dashboard, reportes, calidad, auditoría, módulo partner (historial) |
-| **CU asociados** | CU-O13, CU-O26, CU-O27, CU-O31, CU-O37 |
+| **CU asociados** | CU-O13, CU-O26, CU-O27, CU-O35, CU-O36, CU-O37, CU-O38 |
 | **KPIs** | Registros procesados, registros rechazados, cobertura de auditoría, calidad del dataset, tiempo de ejecución ETL |
 
 ### Departamento 7: Operaciones de Infraestructura Hotelera
@@ -267,8 +256,8 @@ La operación de HotelData se organiza en 6 departamentos que cubren todas las �
 | **Función** | Gestionar el estado físico y operativo de las habitaciones: limpieza, rotación, mantenimiento preventivo y cargos adicionales |
 | **Procesos** | Consulta de estado de habitaciones, asignación de limpieza, rotación post-checkout, mantenimiento programado, registro de cargos extras |
 | **Sistemas que usa** | Módulo housekeeping (room_status, tareas), módulo maintenance (programación), módulo billing (cargos adicionales) |
-| **CU asociados** | CU-O30, CU-O33 |
-| **KPIs** | Tiempo de rotación de habitaciones, cumplimiento de limpieza, cumplimiento de mantenimiento, cargos adicionales por reserva, alertas operativas |
+| **CU asociados** | CU-O30, CU-O31, CU-O32, CU-O33, CU-O34, CU-O39, CU-O40 |
+| **KPIs** | Tiempo de rotación de habitaciones, cumplimiento de limpieza, cumplimiento de mantenimiento, cargos adicionales por reserva |
 
 ---
 
@@ -276,7 +265,7 @@ La operación de HotelData se organiza en 6 departamentos que cubren todas las �
 
 ## 4.1 Mapa de Paquetes
 
-El sistema HotelData se organiza en 11 paquetes funcionales que agrupan los módulos, colecciones y casos de uso relacionados.
+El sistema HotelData se organiza en 7 paquetes funcionales que agrupan los módulos, colecciones y casos de uso relacionados.
 
 | # | Paquete | Descripción | Módulo backend | Colecciones principales |
 |---|---------|-------------|----------------|------------------------|
@@ -289,8 +278,7 @@ El sistema HotelData se organiza en 11 paquetes funcionales que agrupan los mód
 | 7 | **Facturación y Pagos** | Generación de comprobantes, facturas y registro de pagos | billing | reservation_invoices, reservation_payments, fact_invoices, fact_payments |
 | 8 | **Reportes y Analítica** | Dashboards ejecutivos, reportes de revenue, calidad de datos y análisis de mercado | revenue (reportes), dashboard, quality, audit | data_quality_reports, etl_executions, fact_hotel_reservations, dim_* |
 | 9 | **Mapa y Geo-localización** | Visualización de destinos y hoteles en mapa mundial interactivo con Leaflet.js, selección de ubicación por coordenadas | map | destinations_enriched, hotel_locations_geo |
-| 10 | **Housekeeping y Mantenimiento** | Gestión de estado de habitaciones, limpieza, rotación, mantenimiento preventivo, alertas operativas y cargos adicionales | housekeeping, maintenance | room_status_log, housekeeping_tasks, maintenance_schedule, maintenance_tasks, additional_charges |
-| 11 | **Notificaciones y Comunicación** | Envío de notificaciones transaccionales (email, SMS, push) al huésped y alertas operativas internas al staff | notifications | notification_templates, notification_queue, notification_logs, notification_preferences |
+| 10 | **Housekeeping y Mantenimiento** | Gestión de estado de habitaciones, limpieza, rotación, mantenimiento preventivo y cargos adicionales | housekeeping, maintenance | room_status_log, housekeeping_tasks, maintenance_schedule, maintenance_tasks, additional_charges |
 
 ## 4.2 Diagrama de Paquetes y Dependencias
 
@@ -343,7 +331,7 @@ El sistema HotelData se organiza en 11 paquetes funcionales que agrupan los mód
 
 # 5. MATRIZ NIVEL → DEPARTAMENTO → PAQUETE → CASO DE USO
 
-## 5.1 Matriz Completa de la Parte Operativa (CU-O01 a CU-O37) + Tácticos (T14-T17) + Estratégico (E09-E10)
+## 5.1 Matriz Completa de la Parte Operativa (CU-O01 a CU-O40) + Tácticos (T14-T15) + Estratégico (E09)
 
 La siguiente matriz relaciona los niveles organizacionales, departamentos funcionales, paquetes del sistema y casos de uso operativos de HotelData.
 
@@ -378,20 +366,20 @@ La siguiente matriz relaciona los niveles organizacionales, departamentos funcio
 | CU-O27 | Operativo | Datos/Analítica | Reportes y Analítica | Consultar reporte de calidad y registros rechazados | Auditor de Datos |
 | CU-O28 | Operativo | Administración/Sistemas | Autenticación y Seguridad | Administrar cuenta, sesión y cierre seguro | Todos los usuarios |
 | CU-O29 | Operativo | Administración/Sistemas | Autenticación y Seguridad | Cambiar contraseña y actualizar perfil de usuario | Todos los usuarios |
-| CU-O30 | Operativo | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar disponibilidad y estado de habitaciones | Recepcionista / Gerente |
-| CU-O31 | Operativo | Datos/Analítica | Mapa y Geo-localización | Gestionar geolocalización y metadata de contenido | Auditor de Datos / Marketing |
-| CU-O32 | Operativo | Comercial/Cliente | Notificaciones y Comunicación | Gestionar notificaciones transaccionales al huésped | Sistema |
-| CU-O33 | Operativo | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar alertas operativas internas al staff | Sistema / Recepcionista |
-| CU-O34 | Operativo | Revenue Management | Promociones y Revenue | Gestionar campañas promocionales multicanal | Marketing / Revenue |
-| CU-O35 | Operativo | Comercial/Cliente | Búsqueda y Experiencia Cliente | Atender cliente mediante asistente virtual (chatbot) | Cliente |
-| CU-O36 | Operativo | Revenue Management | Promociones y Revenue | Gestionar up-selling y ancillaries durante la estancia | Recepcionista / Revenue |
-| CU-O37 | Operativo | Marketing Hotelero | Mapa y Geo-localización | Gestionar contenidos multimedia con geolocalización | Marketing hotelero |
-| CU-T14 | Táctico | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar rotación, limpieza y tareas de housekeeping | Gerente de hotel |
-| CU-T15 | Táctico | Operaciones Hoteleras | Housekeeping y Mantenimiento | Programar mantenimiento preventivo y correctivo de habitaciones | Gerente de hotel |
-| CU-T16 | Táctico | Administración/Sistemas | Notificaciones y Comunicación | Configurar canales y plantillas de notificación | Super Admin |
-| CU-T17 | Táctico | Comercial/Cliente | Búsqueda y Experiencia Cliente | Configurar base de conocimiento del chatbot | Marketing / Super Admin |
+| CU-O30 | Operativo | Operaciones Hoteleras | Gestión Hotelera (Partner Central) | Consultar estado actual de habitaciones | Recepcionista / Gerente |
+| CU-O31 | Operativo | Operaciones Hoteleras | Gestión Hotelera (Partner Central) | Asignar tipo de habitación a habitación individual | Recepcionista / Gerente |
+| CU-O32 | Operativo | Operaciones Hoteleras | Gestión Hotelera (Partner Central) | Consultar disponibilidad por habitación individual | Recepcionista / Gerente |
+| CU-O33 | Operativo | Operaciones Hoteleras | Gestión Hotelera (Partner Central) | Gestionar amenities por tipo de habitación | Hotel partner / Marketing |
+| CU-O34 | Operativo | Revenue Management | Promociones y Revenue | Registrar cargos adicionales a reserva | Recepcionista / Gerente |
+| CU-O35 | Operativo | Datos/Analítica | Mapa y Geo-localización | Editar metadata de destino (nombre, coordenadas geográficas) | Auditor de Datos |
+| CU-O36 | Operativo | Datos/Analítica | Gestión Hotelera (Partner Central) | Editar nombre visible de hotel (manual_override) | Auditor de Datos / Marketing |
+| CU-O37 | Operativo | Datos/Analítica | Mapa y Geo-localización | Visualizar mapa mundial de destinos con hoteles geolocalizados | Auditor de Datos / Marketing |
+| CU-O38 | Operativo | Datos/Analítica | Mapa y Geo-localización | Seleccionar ubicación de destino en mapa interactivo | Auditor de Datos |
+| CU-O39 | Operativo | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar limpieza y rotación de habitaciones | Recepcionista / Gerente |
+| CU-O40 | Operativo | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar mantenimiento preventivo de habitaciones | Gerente de hotel |
+| CU-T14 | Táctico | Operaciones Hoteleras | Housekeeping y Mantenimiento | Gestionar rotación y limpieza de habitaciones | Gerente de hotel |
+| CU-T15 | Táctico | Operaciones Hoteleras | Housekeeping y Mantenimiento | Programar mantenimiento preventivo proactivo | Gerente de hotel |
 | CU-E09 | Estratégico | Operaciones Hoteleras | Housekeeping y Mantenimiento | Monitorear eficiencia operativa del hotel | Gerente general / Super Admin |
-| CU-E10 | Estratégico | Revenue Management | Promociones y Revenue | Gestionar ingresos por up-selling y ancillaries | Gerente general / Revenue |
 
 ## 5.2 Matriz Estratégica → Táctica → Operativa → Caso de Uso
 
@@ -399,12 +387,8 @@ La siguiente matriz relaciona los niveles organizacionales, departamentos funcio
 |----|----|----|-------------|
 | OE1: Penetrar mercados hoteleros digitales | OT1.1: Automatizar captación digital | OO1.1.1: Registrar eventos de búsqueda y reserva | CU-O02, CU-O03, CU-O04, CU-O05 |
 | OE1 | OT1.1 | OO1.1.2: Medir conversión del embudo digital | CU-O26 |
-| OE1 | OT1.1 | OO1.1.3: Gestionar campañas promocionales multicanal | CU-O34 |
-| OE1 | OT1.1 | OO1.1.4: Atender consultas con chatbot IA | CU-O35 |
-| OE1 | OT1.1 | OO1.1.5: Gestionar up-selling y ancillaries | CU-O36 |
 | OE1 | OT1.2: Fortalecer reputación del huésped | OO1.2.1: Registrar reseñas de estancia | CU-O22, CU-O23 |
-| OE1 | OT1.2 | OO1.2.2: Generar comprobantes/facturación y cargos adicionales | CU-O24, CU-O25 |
-| OE1 | OT1.2 | OO1.2.3: Enviar notificaciones transaccionales | CU-O32 |
+| OE1 | OT1.2 | OO1.2.2: Generar comprobantes/facturación | CU-O24, CU-O25 |
 | OE2: Escalar comercialmente | OT2.1: Estandarizar servicios por API | OO2.1.1: Exponer endpoints JSON | (todos los CU) |
 | OE2 | OT2.1 | OO2.1.2: Validar JWT y roles por endpoint | CU-O01, CU-O28 |
 | OE2 | OT2.2: Integrar módulos comerciales | OO2.2.1: Administrar perfil comercial de hotel | CU-O12 |
@@ -417,19 +401,14 @@ La siguiente matriz relaciona los niveles organizacionales, departamentos funcio
 | OE4 | OT4.1 | OO4.1.2: Analizar mercados | CU-O26 |
 | OE4 | OT4.2: Aplicar BI y ML | OO4.2.1: Proyectar demanda y revenue | CU-O26 |
 | OE4 | OT4.2 | OO4.2.2: Detectar anomalías | CU-O27 |
-| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O31 |
-| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O31 |
-| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O31 |
-| OE2 | OT2.3 | OO2.3.4: Gestionar contenidos multimedia con geolocalización | CU-O37 |
-| OE3 | OT3.3: Automatizar gestión de habitaciones | OO3.3.1: Consultar estado y disponibilidad de habitaciones | CU-O30 |
-| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza, rotación y housekeeping | CU-T14 |
-| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo y correctivo | CU-T15 |
-| OE3 | OT3.3 | OO3.3.4: Registrar cargos adicionales (absorbido en facturación) | CU-O24 |
-| OE3 | OT3.3 | OO3.3.5: Gestionar alertas operativas internas al staff | CU-O33 |
-| OE1 | OT1.2 | (táctico T16) | CU-T16 |
-| OE1 | OT1.1 | (táctico T17) | CU-T17 |
-| OE1/OE4 | OT1.1/OT4.1 | (estratégico E10) | CU-E10 |
-| OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia y up-selling | CU-E09, CU-E10 |
+| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35 |
+| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36 |
+| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37, CU-O38 |
+| OE3 | OT3.3: Automatizar gestión de habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30, CU-O31, CU-O32 |
+| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39, CU-T14 |
+| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40, CU-T15 |
+| OE3 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34 |
+| OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia | CU-E09 |
 
 ---
 
@@ -1137,195 +1116,267 @@ Cada caso de uso operativo se especifica con la siguiente estructura:
 
 ---
 
-## 6.31 CU-O30: Gestionar Disponibilidad y Estado de Habitaciones
+## 6.31 CU-O30: Consultar Estado Actual de Habitaciones
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O30 |
-| **Nombre** | Gestionar disponibilidad y estado de habitaciones |
-| **Objetivo** | Unificar en un solo caso de uso la consulta del estado operativo de todas las habitaciones (disponible, ocupada, limpieza, mantenimiento), la consulta de disponibilidad por habitación individual y la asignación de tipo de habitación a una habitación individual, centralizando la gestión del inventario físico del hotel |
+| **Nombre** | Consultar Estado Actual de Habitaciones |
+| **Objetivo** | Permitir que el recepcionista o gerente consulte el estado operativo de todas las habitaciones del hotel: ocupadas, disponibles, en limpieza, en mantenimiento, bloqueadas, con check-in/out pendiente |
 | **Actor Principal** | Recepcionista / Gerente de hotel |
-| **Actores Secundarios** | Sistema (room_status_log, housekeeping_tasks, room_inventory_calendar) |
-| **Disparador** | El recepcionista o gerente necesita conocer el estado de las habitaciones, asignar un nuevo huésped a una habitación específica o verificar disponibilidad individual |
-| **Precondiciones** | 1. El usuario debe estar autenticado con rol `recepcionista` o `gerente_hotel`.<br>2. El hotel debe tener habitaciones creadas en `hotel_rooms` y `room_types`.<br>3. Debe existir al menos un tipo de habitación configurado para la propiedad. |
-| **Flujo Principal** | **Paso 1:** El usuario navega al panel de estado de habitaciones (`GET /partner/hotels/{prop_id}/rooms/status`).<br>**Paso 2:** El sistema muestra un grid/table con todas las habitaciones del hotel, su tipo, estado actual (disponible, ocupada, limpieza, mantenimiento, fuera_de_servicio) y última actualización.<br>**Paso 3:** El usuario puede filtrar por tipo de habitación, estado o rango de fechas.<br>**Paso 4:** El usuario selecciona una habitación específica para ver su detalle o cambiar su estado.<br>**Paso 5:** (Asignación) Si la habitación está disponible, el usuario puede asignar el tipo de habitación a una habitación individual o reasignar a un huésped entrante.<br>**Paso 6:** (Disponibilidad) El sistema muestra el calendario de disponibilidad por habitación individual para las próximas fechas.<br>**Paso 7:** El sistema actualiza `room_status_log` con el nuevo estado o `room_inventory_calendar` si hay cambios de disponibilidad.<br>**Paso 8:** El sistema registra la acción en `user_activity_logs`. |
-| **Flujos Alternos** | **FA-01: Habitación en mantenimiento**<br>Si la habitación está en estado "mantenimiento", el sistema muestra el motivo, fecha estimada de finalización y no permite asignación.<br><br>**FA-02: Conflicto de ocupación**<br>Si se intenta asignar una habitación ya ocupada, el sistema muestra "La habitación {número} está actualmente ocupada hasta {fecha}". |
-| **Reglas de Negocio** | **RN-O30-01:** Una habitación en estado "mantenimiento" o "limpieza" no puede asignarse a un huésped.<br>**RN-O30-02:** El cambio de estado queda registrado en `room_status_log` con timestamp y usuario responsable.<br>**RN-O30-03:** La disponibilidad por habitación individual se calcula desde `room_inventory_calendar` + `room_status_log`. |
-| **Entradas** | `prop_id` (string), `room_id` (string opcional), `room_type_id` (string opcional), `filtro_estado` (string opcional), `fecha_desde`, `fecha_hasta` (dates opcionales) |
-| **Salidas** | Grid de estado de habitaciones con: room_id, número, tipo, estado, última actualización, ocupante actual (si aplica), fechas de ocupación.<br>Calendario de disponibilidad por habitación individual. |
-| **Postcondiciones** | 1. `room_status_log` tiene los cambios registrados si se modificó algún estado.<br>2. `user_activity_logs` tiene el registro de la consulta/acción.<br>3. El usuario visualiza la información actualizada de disponibilidad y estado. |
-| **Restricciones** | 1. El grid de estado se actualiza en tiempo real (polling cada 30s) para reflejar cambios de housekeeping/check-out.<br>2. Solo disponible para roles `recepcionista` y `gerente_hotel`. |
-| **Colecciones MongoDB** | `hotel_rooms` (lectura), `room_types` (lectura), `room_status_log` (lectura/escritura), `room_inventory_calendar` (lectura), `booking_orders` (lectura), `housekeeping_tasks` (lectura) |
-| **Endpoints** | `GET /partner/hotels/{prop_id}/rooms/status` — Panel de estado HTML.<br>`GET /api/housekeeping/rooms/status?prop_id=X` — API de estado JSON.<br>`PUT /api/housekeeping/rooms/{room_id}/status` — Actualizar estado.<br>`POST /api/management/rooms/{room_id}/assign-room-type` — Asignar tipo de habitación. |
-| **Código implementado** | `server/src/app/modules/housekeeping/room_status_service.py` — Servicio de estado.<br>`frontend/src/app/features/housekeeping/room-status/` — RoomStatusPanel. |
+| **Actores Secundarios** | Sistema (consulta a MongoDB) |
+| **Disparador** | El recepcionista accede al panel de estado de habitaciones |
+| **Precondiciones** | 1. El usuario debe estar autenticado con rol recepcionista o gerente. 2. El hotel debe tener habitaciones configuradas en `hotel_rooms`. |
+| **Flujo Principal** | Paso 1: El usuario navega a `GET /housekeeping/rooms/status` o panel de habitaciones. Paso 2: El sistema consulta `hotel_rooms` con el prop_id del hotel asignado. Paso 3: Para cada habitación, el sistema consulta `room_status_log` para obtener el último estado registrado (available, occupied, cleaning, maintenance, blocked). Paso 4: El sistema cruza con `room_inventory_calendar` y `booking_orders` para mostrar ocupación actual. Paso 5: El sistema devuelve una matriz visual de habitaciones por piso con código de colores: verde=disponible, rojo=ocupada, amarillo=limpieza, gris=mantenimiento, azul=bloqueada. |
+| **Flujos Alternos** | **FA-01:** Hotel sin habitaciones configuradas - Si no hay habitaciones en `hotel_rooms` para el prop_id, muestra "No hay habitaciones configuradas para este hotel". **FA-02:** Acceso denegado - Si el usuario no pertenece al hotel, HTTP 403. |
+| **Reglas de Negocio** | **RN-O30-01:** El estado de una habitación se determina por el registro más reciente en `room_status_log`. **RN-O30-02:** Una habitación con booking activo (checked_in) se marca como "occupied" automáticamente aunque no tenga registro en room_status_log. |
+| **Entradas** | `prop_id`: string (de la sesión del usuario), `fecha`: date (opcional, por defecto hoy) |
+| **Salidas** | Matriz visual de habitaciones con: room_number, floor, room_type, status, color, last_cleaned, next_maintenance, current_booking_id (si ocupada) |
+| **Postcondiciones** | El usuario visualiza el estado actual de todas las habitaciones. No se modifica la base de datos. |
+| **Restricciones** | 1. La vista muestra hasta 200 habitaciones por hotel. 2. Los colores siguen el estándar definido en la UI. |
+| **Colecciones MongoDB** | `hotel_rooms` (lectura), `room_status_log` (lectura), `room_inventory_calendar` (lectura), `booking_orders` (lectura) |
+| **Endpoints** | `GET /api/housekeeping/rooms/status?prop_id=X` - API JSON. `GET /housekeeping/rooms/status` - Página HTML. |
+| **Código implementado** | `server/src/app/modules/housekeeping/routes.py`, `frontend/src/app/features/housekeeping/room-status/` |
 
 ---
 
-## 6.32 CU-O31: Gestionar Geolocalización y Metadata de Contenido
+## 6.32 CU-O31: Asignar Tipo de Habitación a Habitación Individual
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O31 |
-| **Nombre** | Gestionar geolocalización y metadata de contenido |
-| **Objetivo** | Unificar en un solo caso de uso la edición de metadata de destinos (nombre, coordenadas), la edición de nombre visible de hotel (manual_override), la visualización de mapa mundial interactivo con hoteles geolocalizados y la selección de ubicación de destino en mapa, centralizando toda la gestión geoespacial del catálogo de destinos |
-| **Actor Principal** | Auditor de Datos / Marketing hotelero |
-| **Actores Secundarios** | Sistema, ETL (respetar manual_override) |
-| **Disparador** | El auditor necesita corregir coordenadas de un destino, editar metadata o visualizar el mapa de hoteles. Marketing necesita editar nombres visibles. |
-| **Precondiciones** | 1. El usuario debe estar autenticado con rol `auditor_datos` o `marketing_hotelero`.<br>2. Deben existir destinos en `dim_hotels.destination` o `destinations_enriched`.<br>3. Se requiere conexión a internet para cargar tiles de mapa (OpenStreetMap vía Leaflet.js). |
-| **Flujo Principal** | **Paso 1:** El usuario navega al gestor geoespacial (`GET /geo/destinations`).<br>**Paso 2:** El sistema muestra un mapa mundial interactivo (Leaflet.js) con marcadores de puntos por destino y hoteles asociados.<br>**Paso 3:** El usuario puede hacer clic en un marcador para ver detalle del destino: nombre, país, coordenadas, cantidad de hoteles.<br>**Paso 4:** (Editar metadata) El usuario selecciona "Editar" y modifica: nombre visible del destino, coordenadas (lat, lng), país, ciudad, descripción.<br>**Paso 5:** (Editar nombre hotel) El usuario selecciona un hotel en el mapa o desde el listado y edita su nombre visible, activando `manual_override = true`.<br>**Paso 6:** (Seleccionar ubicación) El usuario hace clic en el mapa para seleccionar una nueva ubicación y arrastra el marcador para ajustar coordenadas.<br>**Paso 7:** El sistema valida los datos y guarda los cambios en las colecciones correspondientes.<br>**Paso 8:** El sistema registra los cambios en `hotel_profile_changes` o `destinations_log` según corresponda.<br>**Paso 9:** El sistema muestra confirmación y actualiza el mapa. |
-| **Flujos Alternos** | **FA-01: Sin conexión a internet**<br>Si no hay conexión, el mapa muestra un mensaje "Se requiere conexión a internet para cargar el mapa. Los tiles de OpenStreetMap no están disponibles offline."<br><br>**FA-02: Coordenadas inválidas**<br>Si las coordenadas ingresadas están fuera de rango (lat -90..90, lng -180..180), el sistema rechaza y muestra "Coordenadas inválidas".<br><br>**FA-03: Destino sin coordenadas**<br>Si un destino no tiene coordenadas asignadas, se muestra en el mapa en el centro del país correspondiente (si está disponible) o se omite. |
-| **Reglas de Negocio** | **RN-O31-01:** El `prop_id` es la clave técnica inmutable de la propiedad — no puede editarse desde el mapa.<br>**RN-O31-02:** `manual_override` impide que el ETL sobrescriba el nombre editado manualmente.<br>**RN-O31-03:** Las coordenadas (lat, lng) deben ser válidas geográficamente.<br>**RN-O31-04:** Los tiles de mapa se cargan desde `tile.openstreetmap.org` vía internet. No hay modo offline completo.<br>**RN-O31-05:** Todos los cambios de metadata quedan registrados para trazabilidad. |
-| **Entradas** | `accion` (editar_metadata/editar_hotel/seleccionar_ubicacion), `destino_id`, `prop_id`, `nombre_visible`, `latitud`, `longitud`, `pais`, `ciudad`, `descripcion`, `hotel_name_override` |
-| **Salidas** | Mapa mundial interactivo con marcadores.<br>Formulario de edición de metadata/destino/hotel.<br>Confirmación de cambios guardados. |
-| **Postcondiciones** | 1. `destinations_enriched` o `dim_hotels` tienen la metadata actualizada.<br>2. `hotel_profile_changes` o `destinations_log` registran los cambios.<br>3. El mapa refleja los cambios inmediatamente. |
-| **Restricciones** | 1. Se requiere internet para cargar tiles del mapa.<br>2. Los tiles de Leaflet.js se cargan desde CDN. Si no hay internet, el mapa no se renderiza.<br>3. `manual_override` no puede desactivarse una vez activado (solo por super admin directo en BD). |
-| **Colecciones MongoDB** | `dim_hotels` (lectura/actualización), `destinations_enriched` (lectura/escritura), `hotel_profile_changes` (escritura), `hotel_content_pages` (lectura), `user_activity_logs` (escritura), `hotel_locations_geo` (lectura) |
-| **Endpoints** | `GET /geo/destinations` — Gestor geoespacial HTML.<br>`GET /api/geo/destinations` — API de destinos geo.<br>`PUT /api/geo/destinations/{destino_id}` — Actualizar metadata.<br>`PUT /api/management/properties/{prop_id}/profile` — Editar nombre hotel (override).<br>`GET /api/geo/destinations/{destino_id}/map` — Datos para mapa. |
-| **Código implementado** | `server/src/app/modules/geo/` — Rutas y servicios geoespaciales.<br>`frontend/src/app/features/geo/` — DestinationMapComponent, DestinationEditor. |
+| **Nombre** | Asignar tipo de habitación a habitación individual |
+| **Objetivo** | Permitir que el recepcionista o gerente asigne o cambie el tipo de habitación (room_type_id) a una habitación física individual, permitiendo reclasificar habitaciones según necesidad operativa |
+| **Actor Principal** | Recepcionista / Gerente de hotel |
+| **Actores Secundarios** | Sistema (actualización de hotel_rooms) |
+| **Disparador** | El usuario selecciona una habitación individual desde la matriz de estado y hace clic en "Asignar tipo" |
+| **Precondiciones** | 1. El usuario autenticado con rol recepcionista o gerente. 2. La habitación debe existir en `hotel_rooms`. 3. El tipo de habitación destino debe existir en `room_types`. |
+| **Flujo Principal** | Paso 1: El usuario selecciona una habitación de la matriz de estado. Paso 2: El usuario hace clic en "Asignar tipo de habitación". Paso 3: El sistema muestra un selector con los tipos de habitación disponibles en `room_types` para ese prop_id. Paso 4: El usuario selecciona el nuevo tipo y confirma. Paso 5: El sistema valida que la habitación no esté ocupada actualmente. Paso 6: El sistema actualiza `hotel_rooms.room_type_id` con el nuevo valor. Paso 7: El sistema registra el cambio en `room_status_log` con tipo "room_type_change" |
+| **Flujos Alternos** | **FA-01:** Habitación ocupada - Si la habitación tiene un booking activo, el sistema muestra "No se puede cambiar el tipo de una habitación ocupada" y bloquea la operación. **FA-02:** Tipo de habitación inexistente - Si el room_type_id seleccionado no existe, muestra "Tipo de habitación no encontrado" |
+| **Reglas de Negocio** | **RN-O31-01:** Solo se puede cambiar el tipo si la habitación está en estado "available", "cleaning" o "maintenance". **RN-O31-02:** El cambio se registra en `room_status_log` para trazabilidad. |
+| **Entradas** | `room_id`: string, `new_room_type_id`: string |
+| **Salidas** | Confirmación de cambio exitoso con nuevo tipo de habitación asignado. |
+| **Postcondiciones** | 1. `hotel_rooms.room_type_id` actualizado. 2. Registro en `room_status_log` con el cambio. 3. El inventario en `room_inventory_calendar` se ajusta al nuevo tipo. |
+| **Restricciones** | 1. No se puede cambiar el tipo si hay reservas futuras para esa habitación. |
+| **Colecciones MongoDB** | `hotel_rooms` (lectura/escritura), `room_types` (lectura), `room_status_log` (escritura) |
+| **Endpoints** | `PUT /api/housekeeping/rooms/{room_id}/assign-type` - API JSON |
+| **Código implementado** | `server/src/app/modules/housekeeping/routes.py` |
 
 ---
 
-## 6.33 CU-O32: Gestionar Notificaciones Transaccionales al Huésped
+## 6.33 CU-O32: Consultar Disponibilidad por Habitación Individual
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O32 |
-| **Nombre** | Gestionar notificaciones transaccionales al huésped |
-| **Objetivo** | Permitir que el sistema envíe notificaciones automáticas al huésped durante el ciclo de vida de su reserva: confirmación de reserva, recordatorio de check-in, factura post-estancia, cambios de estado y ofertas personalizadas, a través de múltiples canales (email, SMS, push) |
-| **Actor Principal** | Sistema (automático). Configurado por Super Admin / Marketing |
-| **Actores Secundarios** | Proveedores externos (email/SMS/push), Motor de plantillas |
-| **Disparador** | Eventos del ciclo de vida de la reserva: creación, confirmación, check-in, check-out, cancelación, recordatorio programado |
-| **Precondiciones** | 1. Debe existir una reserva activa en `booking_orders` con datos de contacto del huésped.<br>2. Deben existir plantillas de notificación configuradas en `notification_templates`.<br>3. El canal de envío (email/SMS/push) debe estar configurado en las preferencias del huésped. |
-| **Flujo Principal** | **Paso 1:** Un evento del sistema dispara una notificación (ej: reserva creada → notificación de confirmación).<br>**Paso 2:** El sistema consulta `notification_templates` para obtener la plantilla correspondiente al evento y canal.<br>**Paso 3:** El sistema personaliza la plantilla con datos de la reserva: nombre del huésped, hotel, fechas, monto, etc.<br>**Paso 4:** El sistema verifica las preferencias del huésped en `notification_preferences` (qué canales tiene habilitados).<br>**Paso 5:** El sistema envía la notificación por el/los canales habilitados (email, SMS, push).<br>**Paso 6:** El sistema registra el envío en `notification_logs` con: timestamp, tipo, canal, destinatario, estado (enviado/fallido), event_id de referencia.<br>**Paso 7:** Si el envío falla, el sistema reintenta hasta 3 veces con backoff exponencial. |
-| **Flujos Alternos** | **FA-01: Canal no configurado**<br>Si el canal seleccionado no está configurado (ej: no hay API key de SMS), el sistema omite ese canal y registra "canal_no_disponible".<br><br>**FA-02: Huésped sin preferencias**<br>Si el huésped no tiene preferencias configuradas, el sistema envía por email (canal por defecto).<br><br>**FA-03: Falla de envío después de reintentos**<br>Después de 3 reintentos fallidos, el sistema registra "fallo_permanente" y notifica al administrador. |
-| **Reglas de Negocio** | **RN-O32-01:** Las notificaciones transaccionales son obligatorias (confirmación, recordatorio, factura) — el huésped no puede desactivarlas.<br>**RN-O32-02:** Las notificaciones promocionales (ofertas, upgrades) requieren opt-in explícito del huésped.<br>**RN-O32-03:** Los reintentos de envío usan backoff exponencial: 1 min, 5 min, 30 min.<br>**RN-O32-04:** Todas las notificaciones quedan registradas en `notification_logs` para auditoría. |
-| **Entradas** | Generadas por eventos del sistema: `event_type` (booking_confirmed, checkin_reminder, checkout_bill, etc.), `booking_id`, `guest_email`, `guest_phone`, `guest_push_token` |
-| **Salidas** | Notificación enviada al huésped por el/los canales configurados.<br>Registro en `notification_logs` con estado del envío. |
-| **Postcondiciones** | 1. `notification_logs` tiene el registro del envío con estado, timestamp, canal y destinatario.<br>2. El huésped recibe la notificación en el/los canales configurados.<br>3. Si falló, queda registrado para diagnóstico. |
-| **Restricciones** | 1. Depende de proveedores externos (email: SMTP/SendGrid, SMS: Twilio, Push: Firebase).<br>2. No se envían notificaciones en horas de silencio (23:00-07:00) a menos que sean transaccionales críticas.<br>3. Máximo 5 notificaciones promocionales por huésped por semana. |
-| **Colecciones MongoDB** | `notification_templates` (lectura), `notification_logs` (escritura), `notification_preferences` (lectura), `booking_orders` (lectura), `booking_guests` (lectura) |
-| **Endpoints** | `POST /api/notifications/send` — Enviar notificación (interno, llamado por eventos del sistema).<br>`GET /api/notifications/logs` — Consultar logs de notificaciones (admin).<br>`GET /api/notifications/preferences` — Consultar preferencias (cliente).<br>`PUT /api/notifications/preferences` — Actualizar preferencias (cliente). |
-| **Código implementado** | `server/src/app/modules/notifications/` — Servicios de envío (`email_service.py`, `sms_service.py`, `push_service.py`), `notification_orchestrator.py`. |
+| **Nombre** | Consultar disponibilidad por habitación individual |
+| **Objetivo** | Permitir que el recepcionista consulte la disponibilidad de una habitación específica en un rango de fechas, viendo el calendario de ocupación, bloqueos y mantenimiento programado para esa unidad |
+| **Actor Principal** | Recepcionista / Gerente de hotel |
+| **Actores Secundarios** | Sistema (consulta calendarios) |
+| **Disparador** | El usuario selecciona una habitación desde la matriz de estado y hace clic en "Ver disponibilidad" |
+| **Precondiciones** | 1. Usuario autenticado. 2. La habitación existe en `hotel_rooms`. |
+| **Flujo Principal** | Paso 1: El usuario selecciona una habitación. Paso 2: El sistema consulta `room_inventory_calendar` para esa habitación en los próximos 90 días. Paso 3: El sistema cruza con `booking_orders` para mostrar qué reservas ocupan cada noche. Paso 4: El sistema cruza con `hotel_rooms.maintenance_dates` para mostrar mantenimiento programado. Paso 5: El sistema muestra un calendario visual por noche: verde=disponible, rojo=ocupada, gris=mantenimiento, naranja=bloqueada. |
+| **Flujos Alternos** | **FA-01:** Sin datos de inventario - Si no hay registros en `room_inventory_calendar`, se muestra "Sin configuración de inventario para esta habitación" |
+| **Reglas de Negocio** | **RN-O32-01:** Una habitación se considera disponible si no tiene booking en estado confirmed/checked_in para esa noche. **RN-O32-02:** Los bloqueos administrativos tienen prioridad sobre la disponibilidad. |
+| **Entradas** | `room_id`: string, `fecha_inicio`: date (opcional), `fecha_fin`: date (opcional) |
+| **Salidas** | Calendario visual de 90 días con estado por noche más lista de reservas activas en el período. |
+| **Postcondiciones** | El usuario visualiza la disponibilidad. No se modifica la base de datos. |
+| **Restricciones** | 1. El calendario muestra máximo 90 días hacia adelante. |
+| **Colecciones MongoDB** | `hotel_rooms` (lectura), `room_inventory_calendar` (lectura), `booking_orders` (lectura), `room_availability_blocks` (lectura) |
+| **Endpoints** | `GET /api/housekeeping/rooms/{room_id}/availability` - API JSON |
+| **Código implementado** | `server/src/app/modules/housekeeping/routes.py`, `frontend/src/app/features/housekeeping/room-calendar/` |
 
 ---
 
-## 6.34 CU-O33: Gestionar Alertas Operativas Internas al Staff
+## 6.34 CU-O33: Gestionar Amenities por Tipo de Habitación
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O33 |
-| **Nombre** | Gestionar alertas operativas internas al staff |
-| **Objetivo** | Permitir que el sistema genere y gestione alertas operativas dirigidas al personal interno del hotel (housekeeping, mantenimiento, recepción) basadas en eventos de la operación diaria: check-out completado (limpieza requerida), incidencia reportada, ocupación crítica, mantenimiento programado, cargos adicionales pendientes |
-| **Actor Principal** | Sistema (generación automática). Recepcionista / Housekeeping / Mantenimiento (destinatarios) |
-| **Actores Secundarios** | Gerente de hotel (supervisión) |
-| **Disparador** | Eventos operativos: check-out completado, reporte de avería en habitación, ocupación supera umbral, tarea de mantenimiento programada, hora de limpieza programada |
-| **Precondiciones** | 1. Debe existir personal asignado en el hotel (usuarios con roles housekeeping, mantenimiento, recepción).<br>2. Debe existir al menos un tipo de alerta definido en el sistema.<br>3. Las habitaciones deben estar registradas en `hotel_rooms`. |
-| **Flujo Principal** | **Paso 1:** Un evento operativo dispara una alerta (ej: check-out completado en habitación 205 → alerta de limpieza).<br>**Paso 2:** El sistema determina el tipo de alerta: limpieza, mantenimiento, ocupación, incidencia, cargo_pendiente.<br>**Paso 3:** El sistema identifica el personal destinatario según el tipo de alerta y disponibilidad.<br>**Paso 4:** El sistema crea la alerta en `notifications_queue` con: tipo, prioridad (alta/media/baja), destino (rol/usuario específico), mensaje, habitación asociada, timestamp.<br>**Paso 5:** El personal recibe la alerta en su panel de notificaciones internas (frontend Angular).<br>**Paso 6:** El destinatario puede marcar la alerta como "vista", "en_proceso" o "resuelta".<br>**Paso 7:** Si la alerta no se resuelve en el tiempo definido (ej: limpieza en 60 min), el sistema escala al gerente de hotel. |
-| **Flujos Alternos** | **FA-01: Sin personal disponible**<br>Si no hay personal del rol requerido disponible, el sistema asigna la alerta al gerente de hotel directamente.<br><br>**FA-02: Alerta de alta prioridad**<br>Si la alerta es de alta prioridad (ej: incidencia de seguridad), se muestra con notificación push y sonido en el frontend. |
-| **Reglas de Negocio** | **RN-O33-01:** Las alertas de limpieza se generan automáticamente al completar un check-out (CU-O11).<br>**RN-O33-02:** Las alertas de mantenimiento se generan al reportar una incidencia o al llegar la fecha programada de mantenimiento preventivo.<br>**RN-O33-03:** Las alertas no resueltas escalan al gerente después del tiempo límite.<br>**RN-O33-04:** Una alerta puede reasignarse manualmente a otro miembro del staff. |
-| **Entradas** | Generadas por eventos del sistema: `event_type` (checkout_completed, incident_reported, maintenance_due, occupancy_critical), `room_id`, `prop_id`, `descripcion`, `prioridad` |
-| **Salidas** | Alerta visible en el panel de notificaciones internas del personal destinatario.<br>Registro en `notification_logs` con estado de la alerta. |
-| **Postcondiciones** | 1. `notification_queue` tiene la alerta registrada con prioridad y asignación.<br>2. El personal recibe la notificación en su panel.<br>3. Queda registrado en `notification_logs` para auditoría operativa. |
-| **Restricciones** | 1. Las alertas operativas son internas — no se envían al huésped.<br>2. Las alertas de alta prioridad no pueden ignorarse (deben marcarse como "vistas").<br>3. El tiempo de resolución por tipo de alerta se configura en `system_catalogs` (limpieza: 60 min, mantenimiento urgente: 120 min). |
-| **Colecciones MongoDB** | `notification_queue` (escritura), `notification_logs` (escritura), `hotel_rooms` (lectura), `housekeeping_tasks` (lectura/escritura), `maintenance_tasks` (lectura), `booking_orders` (lectura), `users` (lectura, para asignación) |
-| **Endpoints** | `GET /api/notifications/alerts` — Panel de alertas internas.<br>`PUT /api/notifications/alerts/{alert_id}/status` — Actualizar estado (vista/en_proceso/resuelta).<br>`POST /api/notifications/alerts/{alert_id}/reassign` — Reasignar alerta. |
-| **Código implementado** | `server/src/app/modules/notifications/` — `alert_service.py` (generación y gestión de alertas), `scaling_rules.py` (escalamiento).<br>`frontend/src/app/features/notifications/` — InternalAlertsPanel. |
+| **Nombre** | Gestionar amenities por tipo de habitación |
+| **Objetivo** | Permitir que el hotel partner o marketing configure los amenities específicos por tipo de habitación (no solo a nivel de hotel), como TV, aire acondicionado, minibar, vista al mar, etc. |
+| **Actor Principal** | Hotel partner / Marketing hotelero |
+| **Actores Secundarios** | Sistema (actualización de room_types) |
+| **Disparador** | El usuario navega a la sección de tipos de habitación y selecciona "Editar amenities" |
+| **Precondiciones** | 1. Usuario autenticado con rol hotel_partner o marketing. 2. El tipo de habitación existe en `room_types`. |
+| **Flujo Principal** | Paso 1: El usuario selecciona un tipo de habitación de la lista. Paso 2: El usuario hace clic en "Amenities". Paso 3: El sistema muestra los amenities actuales desde `room_types.amenities`. Paso 4: El usuario agrega o elimina amenities de una lista predefinida (WiFi, TV, A/C, Minibar, Caja fuerte, Balcón, Vista al mar, Jacuzzi, etc.). Paso 5: El usuario guarda los cambios. Paso 6: El sistema actualiza `room_types.amenities` con la nueva lista. Paso 7: El sistema registra el cambio en `hotel_edit_history` con campo "room_types.amenities". |
+| **Flujos Alternos** | **FA-01:** Amenity personalizado - Si el amenity no está en la lista predefinida, el usuario puede escribir un amenity personalizado (máx 50 caracteres). |
+| **Reglas de Negocio** | **RN-O33-01:** Los amenities de tipo de habitación son independientes de los amenities del hotel. **RN-O33-02:** Máximo 20 amenities por tipo de habitación. |
+| **Entradas** | `room_type_id`: string, `amenities[]`: string[] - Lista de amenities |
+| **Salidas** | Lista actualizada de amenities para el tipo de habitación. |
+| **Postcondiciones** | 1. `room_types.amenities` actualizado. 2. Cambio registrado en `hotel_edit_history`. |
+| **Restricciones** | 1. Los amenities personalizados deben ser aprobados por super admin antes de mostrarse en búsqueda. |
+| **Colecciones MongoDB** | `room_types` (lectura/escritura), `hotel_edit_history` (escritura) |
+| **Endpoints** | `PUT /api/partner/room-types/{room_type_id}/amenities` - API JSON. `GET /api/partner/room-types/{room_type_id}/amenities` - Consultar amenities actuales. |
+| **Código implementado** | `server/src/app/modules/partner/services/room_type_service.py`, `frontend/src/app/features/partner/room-type-amenities/` |
 
 ---
 
-## 6.35 CU-O34: Gestionar Campañas Promocionales Multicanal
+## 6.35 CU-O34: Registrar Cargos Adicionales a Reserva
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O34 |
-| **Nombre** | Gestionar campañas promocionales multicanal |
-| **Objetivo** | Permitir que marketing lance campañas promocionales segmentadas a través de múltiples canales (email, SMS, push) dirigidas a huéspedes según criterios de segmentación: historial de reservas, destino favorito, temporada, valor de reserva, y medir la efectividad de cada campaña en términos de conversión y revenue generado |
-| **Actor Principal** | Marketing hotelero / Revenue manager |
-| **Actores Secundarios** | Sistema (segmentación, envío, medición), Proveedores externos (email/SMS/push) |
-| **Disparador** | El equipo de marketing necesita lanzar una campaña promocional para incentivar reservas en temporada baja o promocionar un nuevo hotel/destino |
-| **Precondiciones** | 1. El usuario debe estar autenticado con rol `marketing_hotelero` o `revenue_manager`.<br>2. Debe existir al menos una plantilla de notificación configurada en `notification_templates`.<br>3. Debe existir al menos una promoción activa en `promotion_campaigns` o se creará una nueva. |
-| **Flujo Principal** | **Paso 1:** El usuario navega al gestor de campañas (`GET /marketing/campaigns`).<br>**Paso 2:** El usuario hace clic en "Nueva campaña" y define: nombre, descripción, tipo (email/SMS/push/multicanal), segmento objetivo (huéspedes frecuentes, clientes de un destino específico, reservas de alto valor, etc.), fechas de envío, promoción asociada (cupón/código de descuento).<br>**Paso 3:** El sistema calcula el tamaño del segmento y muestra una previsualización de la campaña.<br>**Paso 4:** El usuario programa la campaña (inmediata o diferida) y la lanza.<br>**Paso 5:** El sistema ejecuta la campaña: para cada huésped en el segmento, envía la notificación por el/los canales seleccionados usando las plantillas configuradas.<br>**Paso 6:** El sistema registra cada envío en `notification_logs` con campaign_id, huésped, canal, estado.<br>**Paso 7:** El sistema muestra métricas en tiempo real: enviados, abiertos, clickeados, convertidos (reservas con el cupón), revenue generado. |
-| **Flujos Alternos** | **FA-01: Segmento vacío**<br>Si el segmento seleccionado no tiene huéspedes, el sistema advierte "El segmento seleccionado no contiene huéspedes. Ajuste los criterios."<br><br>**FA-02: Campaña cancelada**<br>El usuario puede cancelar una campaña programada antes de su ejecución. Las campañas en ejecución no pueden cancelarse. |
-| **Reglas de Negocio** | **RN-O34-01:** Los huéspedes deben tener opt-in habilitado para notificaciones promocionales.<br>**RN-O34-02:** Máximo 5 campañas promocionales por huésped por semana.<br>**RN-O34-03:** Las campañas miden efectividad por: tasa de apertura, CTR, tasa de conversión, revenue generado vs costo de envío.<br>**RN-O34-04:** El segmento se calcula al momento del envío (no al momento de creación) para garantizar datos actualizados. |
-| **Entradas** | `nombre`, `descripcion`, `tipo` (email/sms/push/multicanal), `segmento` (criterios: frecuencia_reservas, destino, valor_reserva, fecha_ultima_reserva), `plantilla_id`, `promocion_id`, `fecha_programada` |
-| **Salidas** | Campaña creada y programada.<br>Métricas en tiempo real de ejecución: enviados, abiertos, clicks, conversiones, revenue. |
-| **Postcondiciones** | 1. `marketing_campaigns` tiene la campaña registrada con su configuración.<br>2. `notification_logs` tiene los registros de cada envío.<br>3. Las métricas de efectividad están disponibles en el dashboard de campañas. |
-| **Restricciones** | 1. Cada campaña tiene un costo por envío (email: ~$0.001, SMS: ~$0.05, según proveedor).<br>2. No se pueden enviar campañas masivas en horas nocturnas (23:00-07:00). |
-| **Colecciones MongoDB** | `marketing_campaigns` (escritura), `campaign_segments` (escritura), `notification_templates` (lectura), `notification_logs` (escritura), `promotion_campaigns` (lectura), `booking_orders` (lectura, para segmentación), `users` (lectura) |
-| **Endpoints** | `GET /marketing/campaigns` — Gestor de campañas HTML.<br>`POST /api/marketing/campaigns` — Crear campaña.<br>`PUT /api/marketing/campaigns/{id}/launch` — Lanzar campaña.<br>`PUT /api/marketing/campaigns/{id}/cancel` — Cancelar campaña.<br>`GET /api/marketing/campaigns/{id}/metrics` — Métricas de campaña. |
-| **Código implementado** | `server/src/app/modules/marketing/` — `campaign_service.py`, `segmentation_service.py`, `campaign_metrics.py`.<br>`frontend/src/app/features/marketing/` — CampaignManager, CampaignMetrics. |
+| **Nombre** | Registrar cargos adicionales a reserva |
+| **Objetivo** | Permitir que el recepcionista registre cargos adicionales asociados a una reserva activa (room service, consumo de minibar, daños, servicios extra, estacionamiento) para que se reflejen en la factura final |
+| **Actor Principal** | Recepcionista / Gerente de hotel |
+| **Actores Secundarios** | Sistema (creación de cargo, actualización de total) |
+| **Disparador** | El usuario identifica un cargo adicional durante la estancia del huésped |
+| **Precondiciones** | 1. Usuario autenticado con rol recepcionista. 2. Existe una reserva en estado "confirmed" o "checked_in". 3. La reserva pertenece al hotel del usuario. |
+| **Flujo Principal** | Paso 1: El usuario busca la reserva por booking_id o nombre del huésped. Paso 2: El usuario navega a "Cargos adicionales". Paso 3: El usuario selecciona tipo de cargo (room_service, minibar, daños, estacionamiento, lavandería, otro). Paso 4: El usuario ingresa descripción y monto. Paso 5: El usuario confirma el cargo. Paso 6: El sistema crea el documento en la colección `additional_charges` con: booking_id, charge_type, description, amount, created_by, timestamp. Paso 7: El sistema actualiza el total pendiente en la reserva. |
+| **Flujos Alternos** | **FA-01:** Reserva no encontrada - Si el booking_id no existe, muestra "Reserva no encontrada". **FA-02:** Reserva finalizada - Si la reserva está en "checked_out" o "cancelled", muestra "No se pueden agregar cargos a una reserva finalizada". |
+| **Reglas de Negocio** | **RN-O34-01:** Los cargos adicionales se suman al total de la factura final. **RN-O34-02:** Tipos de cargo predefinidos: room_service, minibar, damages, parking, laundry, other. **RN-O34-03:** El monto debe ser mayor a cero. |
+| **Entradas** | `booking_id`: string, `charge_type`: string (enum), `description`: string, `amount`: float |
+| **Salidas** | Confirmación con ID del cargo registrado y nuevo total de la reserva. |
+| **Postcondiciones** | 1. Documento creado en `additional_charges`. 2. Total de reserva actualizado (suma de cargos). 3. El cargo aparece en la factura al generar (CU-O24). |
+| **Restricciones** | 1. No se pueden modificar cargos después de generar la factura. 2. Solo el super admin puede anular un cargo. |
+| **Colecciones MongoDB** | `additional_charges` (escritura), `booking_orders` (lectura/escritura) |
+| **Endpoints** | `POST /api/billing/additional-charges` - Crear cargo. `GET /api/billing/additional-charges/{booking_id}` - Listar cargos de una reserva. |
+| **Código implementado** | `server/src/app/modules/billing/service/additional_charges.py`, `frontend/src/app/features/billing/additional-charges/` |
 
 ---
 
-## 6.36 CU-O35: Atender Cliente Mediante Asistente Virtual (Chatbot IA)
+## 6.36 CU-O35: Editar Metadata de Destino
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O35 |
-| **Nombre** | Atender cliente mediante asistente virtual (chatbot IA) |
-| **Objetivo** | Proporcionar un asistente virtual conversacional (chatbot con IA) que atienda consultas de clientes sobre hoteles, reservas, check-in/out, servicios del hotel, actividades locales y preguntas frecuentes, con capacidad de escalar a un agente humano cuando sea necesario |
-| **Actor Principal** | Cliente |
-| **Actores Secundarios** | Sistema (motor de chatbot IA), Recepcionista (escalamiento humano) |
-| **Disparador** | El cliente inicia una conversación desde el widget de chat en la página de búsqueda, detalle de hotel, o desde su panel de reservas |
-| **Precondiciones** | 1. El sistema debe tener una base de conocimiento configurada en `chatbot_knowledge_base`.<br>2. El motor de chatbot (integración con API de IA) debe estar operativo.<br>3. Para consultas sobre reservas específicas, el cliente debe estar autenticado. |
-| **Flujo Principal** | **Paso 1:** El cliente abre el widget de chat desde cualquier página del frontend.<br>**Paso 2:** El chatbot saluda y pregunta cómo puede ayudar.<br>**Paso 3:** El cliente escribe su consulta en lenguaje natural (ej: "¿Tienen habitaciones disponibles para el fin de semana?" o "¿Cuál es la política de cancelación?").<br>**Paso 4:** El sistema procesa la consulta: busca en la base de conocimiento (`chatbot_knowledge_base`), consulta disponibilidad real si es necesario, y genera una respuesta en lenguaje natural.<br>**Paso 5:** El chatbot muestra la respuesta al cliente con opciones de seguimiento (botones rápidos).<br>**Paso 6:** El cliente puede continuar la conversación o finalizar.<br>**Paso 7:** Si el chatbot no puede resolver la consulta o el cliente solicita hablar con un humano, el sistema escala la conversación a un recepcionista disponible.<br>**Paso 8:** La conversación queda registrada en `chatbot_conversations` para análisis de calidad. |
-| **Flujos Alternos** | **FA-01: Consulta no resuelta**<br>Si el chatbot no encuentra respuesta en su base de conocimiento (confianza < 0.7), responde "No estoy seguro de poder responder eso. ¿Quieres que te conecte con un agente humano?" y ofrece escalar.<br><br>**FA-02: Escalamiento a humano**<br>Cuando se escala, el sistema asigna la conversación al recepcionista menos ocupado y le muestra el historial completo del chat.<br><br>**FA-03: Fuera de horario**<br>Si no hay recepcionistas disponibles (horario nocturno), el chatbot recoge los datos y agenda un follow-up para el día siguiente. |
-| **Reglas de Negocio** | **RN-O35-01:** El chatbot debe presentarse como asistente virtual y nunca como humano.<br>**RN-O35-02:** Las consultas sobre datos sensibles (datos de tarjeta de crédito) no deben responderse — el chatbot deriva a métodos seguros.<br>**RN-O35-03:** El historial de conversaciones se almacena por 90 días para mejora continua.<br>**RN-O35-04:** El chatbot puede realizar reservas simples (misma capacidad que CU-O05) si el cliente está autenticado. |
-| **Entradas** | `mensaje` (texto libre en lenguaje natural), `contexto` (página actual, hotel/booking_id si aplica), `user_id` (si autenticado) |
-| **Salidas** | Respuesta en lenguaje natural del chatbot.<br>Opcional: escalamiento a recepcionista humano con historial de conversación. |
-| **Postcondiciones** | 1. `chatbot_conversations` tiene el registro de la conversación.<br>2. Si se escaló, el recepcionista tiene la conversación asignada.<br>3. Si se realizó una reserva, `booking_orders` tiene el registro. |
-| **Restricciones** | 1. Depende de API de IA externa para procesamiento de lenguaje natural.<br>2. El chatbot no puede procesar pagos ni datos sensibles.<br>3. Límite de 1000 consultas/día en el plan gratuito de la API de IA. |
-| **Colecciones MongoDB** | `chatbot_knowledge_base` (lectura), `chatbot_conversations` (escritura), `booking_orders` (lectura/escritura para reservas simples), `hotels` (lectura), `hotel_policies` (lectura), `room_inventory_calendar` (lectura) |
-| **Endpoints** | `POST /api/chatbot/message` — Enviar mensaje al chatbot.<br>`GET /api/chatbot/conversations` — Historial de conversaciones (admin).<br>`POST /api/chatbot/escalate` — Escalar a humano. |
-| **Código implementado** | `server/src/app/modules/chatbot/` — `chatbot_engine.py` (procesamiento), `knowledge_base.py`, `conversation_service.py`.<br>`frontend/src/app/features/chatbot/` — ChatWidget, ChatConversation. |
+| **Nombre** | Editar metadata de destino |
+| **Objetivo** | Permitir que el auditor de datos edite la metadata de un destino hotelero (nombre visible, coordenadas geográficas, país, ciudad, descripción) para corregir nombres genéricos o numéricos provenientes del dataset original |
+| **Actor Principal** | Auditor de Datos |
+| **Actores Secundarios** | Sistema (actualización en MongoDB) |
+| **Disparador** | El usuario identifica un destino con nombre genérico o numérico (ej. "Destination 8250") y necesita asignarle un nombre real |
+| **Precondiciones** | 1. Usuario autenticado con rol data_auditor. 2. El destino debe existir en `dim_destinations` o `locations`. |
+| **Flujo Principal** | Paso 1: El usuario navega a `GET /admin/destinations` o busca un destino por código. Paso 2: El sistema muestra una lista de destinos con su metadata actual. Paso 3: El usuario selecciona un destino para editar. Paso 4: El sistema muestra el formulario de edición con campos: nombre visible, coordenadas (lat, lng), país, ciudad, descripción. Paso 5: El usuario modifica los campos necesarios y guarda. Paso 6: El sistema actualiza la metadata en la colección `dim_destinations` (o crea/enriquece el documento). Paso 7: El sistema registra el cambio en `hotel_edit_history` con tipo "destination_metadata". |
+| **Flujos Alternos** | **FA-01:** Destino no encontrado - Si el destination_id no existe, muestra "Destino no encontrado". **FA-02:** Coordenadas inválidas - Si lat/lng están fuera de rango, muestra "Coordenadas geográficas inválidas". |
+| **Reglas de Negocio** | **RN-O35-01:** El nombre visible del destino no puede estar vacío. **RN-O35-02:** Las coordenadas deben ser válidas (lat: -90 a 90, lng: -180 a 180). **RN-O35-03:** Se conserva el ID original del destino para mantener trazabilidad con el dataset. |
+| **Entradas** | `destination_id`: string, `visible_name`: string, `latitude`: float, `longitude`: float, `country`: string, `city`: string, `description`: string |
+| **Salidas** | Confirmación de actualización de metadata del destino. |
+| **Postcondiciones** | 1. `dim_destinations` actualizado con nueva metadata. 2. Cambio registrado en historial de auditoría. 3. El destino aparece con nombre correcto en búsquedas y mapas. |
+| **Restricciones** | 1. El destination_id original no se modifica (FK a fact tables). |
+| **Colecciones MongoDB** | `dim_destinations` (lectura/escritura), `locations` (lectura/escritura), `hotel_edit_history` (escritura) |
+| **Endpoints** | `GET /api/admin/destinations` - Listar destinos. `PUT /api/admin/destinations/{destination_id}` - Actualizar metadata. `GET /api/admin/destinations/{destination_id}` - Ver detalle. |
+| **Código implementado** | `server/src/app/modules/admin/routes/destinations.py`, `frontend/src/app/features/admin/destinations/` |
 
 ---
 
-## 6.37 CU-O36: Gestionar Up-Selling y Ancillaries Durante la Estancia
+## 6.37 CU-O36: Editar Nombre Visible de Hotel (Manual Override)
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O36 |
-| **Nombre** | Gestionar up-selling y ancillaries durante la estancia |
-| **Objetivo** | Permitir que el recepcionista o revenue manager ofrezca y gestione servicios adicionales durante la estancia del huésped: upgrade de habitación, late check-out, early check-in, servicios de spa, cenas, traslados, y otros ancillaries, generando ingresos adicionales por huésped |
-| **Actor Principal** | Recepcionista / Revenue manager |
-| **Actores Secundarios** | Sistema, Huésped (acepta/rechaza ofertas) |
-| **Disparador** | Durante el check-in, check-out, o durante la estancia, el recepcionista identifica oportunidades de up-selling basadas en disponibilidad y perfil del huésped |
-| **Precondiciones** | 1. El usuario debe estar autenticado con rol `recepcionista` o `revenue_manager`.<br>2. Debe existir una reserva activa (estado "confirmed" o "checked_in").<br>3. Debe haber disponibilidad para el servicio ofrecido (habitación superior disponible, horario de late check-out disponible, etc.). |
-| **Flujo Principal** | **Paso 1:** El recepcionista abre el perfil de la reserva del huésped durante el check-in, estancia o check-out.<br>**Paso 2:** El sistema muestra oportunidades de up-selling basadas en: disponibilidad actual, perfil del huésped (historial de compras anteriores, segmento), temporada.<br>**Paso 3:** El recepcionista selecciona una oferta (ej: "Upgrade a Suite Ejecutiva por $50/noche") y la presenta al huésped.<br>**Paso 4:** Si el huésped acepta, el recepcionista confirma el up-selling en el sistema.<br>**Paso 5:** El sistema crea el cargo adicional en `additional_charges` asociado a la reserva con: tipo, descripción, monto, fecha.<br>**Paso 6:** El sistema actualiza `booking_orders.total` sumando el monto del up-selling.<br>**Paso 7:** Para upgrades de habitación, el sistema actualiza el room_type asignado y el inventario correspondiente.<br>**Paso 8:** El sistema registra el up-selling en `upselling_log` para análisis de revenue.<br>**Paso 9:** El sistema muestra confirmación con el nuevo total de la reserva. |
-| **Flujos Alternos** | **FA-01: Huésped rechaza**<br>Si el huésped rechaza la oferta, el recepcionista marca como "rechazada" y el sistema registra la oportunidad perdida para análisis.<br><br>**FA-02: Sin disponibilidad para upgrade**<br>Si no hay habitaciones del tipo superior disponibles, el sistema no muestra opciones de upgrade de habitación pero sí otros ancillaries (spa, cena, traslados). |
-| **Reglas de Negocio** | **RN-O36-01:** El up-selling no debe interferir con la experiencia del huésped — máximo 2 ofertas por interacción.<br>**RN-O36-02:** Los upgrades de habitación solo son posibles si hay disponibilidad en la categoría superior.<br>**RN-O36-03:** Late check-out tiene un costo fijo configurable por hotel (ej: $30 hasta las 18:00).<br>**RN-O36-04:** Todos los ancillaries quedan registrados en `additional_charges` para facturación.<br>**RN-O36-05:** Las ofertas se recomiendan basadas en segmento del huésped (frecuente, alto valor, etc.). |
-| **Entradas** | `booking_id`, `tipo_upgrade` (room_upgrade, late_checkout, early_checkin, spa, dinner, transport, other), `descripcion`, `monto`, `room_type_id` (si aplica) |
-| **Salidas** | Confirmación de up-selling/ancillary registrado.<br>Nuevo total de la reserva actualizado.<br>Si aplica: habitación actualizada al nuevo tipo. |
-| **Postcondiciones** | 1. `additional_charges` tiene el cargo registrado.<br>2. `booking_orders.total` refleja el nuevo monto.<br>3. `upselling_log` tiene el registro para analítica.<br>4. Si fue upgrade: `booking_orders.room_type_id` actualizado + inventario ajustado. |
-| **Restricciones** | 1. Late check-out no puede exceder las 20:00 horas (límite operativo para limpieza).<br>2. Early check-in solo disponible si la habitación está disponible desde las 06:00.<br>3. Los ancillaries no son reembolsables (política del sistema). |
-| **Colecciones MongoDB** | `additional_charges` (escritura), `booking_orders` (actualización), `upselling_log` (escritura), `room_inventory_calendar` (lectura/actualización para upgrades), `hotel_rooms` (lectura), `system_catalogs` (lectura, para precios de ancillaries) |
-| **Endpoints** | `POST /api/upselling/offer` — Registrar up-selling/ancillary.<br>`GET /api/upselling/opportunities/{booking_id}` — Obtener oportunidades de up-selling.<br>`GET /api/upselling/metrics` — Reporte de ingresos por up-selling. |
-| **Código implementado** | `server/src/app/modules/revenue/upselling/` — `upselling_service.py`, `opportunity_engine.py`.<br>`frontend/src/app/features/upselling/` — UpsellingPanel, AncillarySelector. |
+| **Nombre** | Editar nombre visible de hotel (Manual Override) |
+| **Objetivo** | Permitir que el auditor de datos o marketing edite el nombre comercial visible de un hotel cuyo nombre original en el dataset es un ID numérico (ej. "Property 14239"), asignando un nombre real para mejorar la experiencia de búsqueda |
+| **Actor Principal** | Auditor de Datos / Marketing hotelero |
+| **Actores Secundarios** | Sistema (actualización de dim_hotels y hotels) |
+| **Disparador** | El usuario identifica un hotel con nombre numérico genérico en el catálogo |
+| **Precondiciones** | 1. Usuario autenticado con rol data_auditor o marketing. 2. El hotel debe existir en `dim_hotels` (o `hotels`). |
+| **Flujo Principal** | Paso 1: El usuario navega a la sección de administración de hoteles o busca por prop_id. Paso 2: El sistema muestra el nombre actual (posiblemente numérico) y los datos del hotel. Paso 3: El usuario activa "Editar nombre visible". Paso 4: El usuario ingresa el nuevo nombre comercial en el campo `manual_override_name`. Paso 5: El sistema valida que el nombre no esté vacío (mín 3 caracteres). Paso 6: El sistema actualiza `dim_hotels.hotel_name` con el nuevo valor y establece `dim_hotels.name_is_manual_override = true`. Paso 7: El sistema actualiza `hotels.hotel_name` si la colección existe. Paso 8: El sistema registra el cambio en `hotel_edit_history`. |
+| **Flujos Alternos** | **FA-01:** Hotel no encontrado - Si prop_id no existe en dim_hotels, muestra "Hotel no encontrado en el catálogo". **FA-02:** Nombre muy corto - Si el nombre tiene menos de 3 caracteres, muestra "El nombre debe tener al menos 3 caracteres". |
+| **Reglas de Negocio** | **RN-O36-01:** El nombre override se usa en todas las interfaces visibles (búsqueda, detalle, factura). **RN-O36-02:** El nombre original siempre se conserva en un campo `original_name` para referencia. **RN-O36-03:** Solo data_auditor y marketing pueden modificar este campo. |
+| **Entradas** | `prop_id`: int, `new_name`: string (3-200 caracteres) |
+| **Salidas** | Confirmación de actualización con nombre anterior → nombre nuevo. |
+| **Postcondiciones** | 1. `dim_hotels.hotel_name` actualizado. 2. `dim_hotels.name_is_manual_override = true`. 3. Cambio registrado en `hotel_edit_history`. 4. El hotel aparece con nombre correcto en búsquedas. |
+| **Restricciones** | 1. No se puede revertir automáticamente (requiere edición manual). |
+| **Colecciones MongoDB** | `dim_hotels` (lectura/escritura), `hotels` (lectura/escritura), `hotel_edit_history` (escritura) |
+| **Endpoints** | `PUT /api/admin/hotels/{prop_id}/override-name` - Actualizar nombre. `GET /api/admin/hotels/{prop_id}` - Ver datos actuales. |
+| **Código implementado** | `server/src/app/modules/admin/routes/hotels.py`, `frontend/src/app/features/admin/hotel-override/` |
 
 ---
 
-## 6.38 CU-O37: Gestionar Contenidos Multimedia con Geolocalización
+## 6.38 CU-O37: Visualizar Mapa Mundial de Destinos con Hoteles
 
 | Elemento | Detalle |
 |----------|---------|
 | **Código** | CU-O37 |
-| **Nombre** | Gestionar contenidos multimedia con geolocalización |
-| **Objetivo** | Permitir que marketing hotelero gestione contenidos multimedia (fotos, videos, tours virtuales) asociados a coordenadas geográficas específicas, enriqueciendo la presentación de hoteles y destinos con material visual geolocalizado para mejorar la experiencia de búsqueda del cliente |
-| **Actor Principal** | Marketing hotelero |
-| **Actores Secundarios** | Sistema, Almacenamiento MongoDB GridFS |
-| **Disparador** | El equipo de marketing necesita subir, geolocalizar o actualizar contenido multimedia de un hotel o destino |
-| **Precondiciones** | 1. El usuario debe estar autenticado con rol `marketing_hotelero`.<br>2. El hotel o destino debe existir en la base de datos.<br>3. El archivo multimedia debe cumplir con los formatos y tamaños permitidos. |
-| **Flujo Principal** | **Paso 1:** El usuario navega al gestor multimedia del hotel/destino (`GET /partner/hotels/{prop_id}/multimedia` o `GET /geo/destinations/{destino_id}/multimedia`).<br>**Paso 2:** El sistema muestra el contenido multimedia existente con: tipo (foto/video/tour), previsualización, coordenadas asociadas, estado (activo/inactivo).<br>**Paso 3:** El usuario hace clic en "Subir nuevo" y selecciona el archivo.<br>**Paso 4:** El sistema muestra un mapa interactivo para geolocalizar el contenido: el usuario arrastra un marcador a la ubicación exacta (ej: foto de la piscina → coordenadas de la piscina).<br>**Paso 5:** El usuario completa los metadatos: título, descripción, tipo de contenido (habitación, lobby, piscina, restaurante, exterior, destino), tags.<br>**Paso 6:** El usuario guarda el contenido.<br>**Paso 7:** El sistema almacena el archivo en MongoDB GridFS y crea el registro en `hotel_multimedia` con: prop_id, tipo, coordenadas, metadata, estado, URL de acceso.<br>**Paso 8:** El sistema muestra confirmación y actualiza la galería. |
-| **Flujos Alternos** | **FA-01: Archivo muy grande**<br>Si el archivo excede 50MB (video) o 20MB (foto), el sistema rechaza con "El archivo excede el tamaño máximo permitido".<br><br>**FA-02: Formato no soportado**<br>Si el formato no es JPEG, PNG, WebP (fotos) o MP4, WebM (videos), el sistema rechaza con "Formato no soportado". |
-| **Reglas de Negocio** | **RN-O37-01:** Los formatos permitidos son: JPEG, PNG, WebP (fotos hasta 20MB), MP4, WebM (videos hasta 50MB).<br>**RN-O37-02:** Las coordenadas de geolocalización son opcionales para contenido general, obligatorias para contenido de ubicaciones específicas.<br>**RN-O37-03:** El contenido multimedia puede marcarse como "principal" (aparece en la portada del hotel).<br>**RN-O37-04:** El contenido multimedia puede desactivarse (oculto) sin eliminarse. |
-| **Entradas** | `prop_id` o `destino_id`, `archivo` (file), `titulo`, `descripcion`, `tipo_contenido` (habitacion/lobby/piscina/restaurante/exterior/destino/other), `latitud`, `longitud`, `tags[]`, `es_principal` (boolean) |
-| **Salidas** | Contenido multimedia subido y geolocalizado.<br>Confirmación con URL de acceso. |
-| **Postcondiciones** | 1. `hotel_multimedia` tiene el nuevo registro con archivo en GridFS.<br>2. El contenido es visible en la galería del hotel/destino.<br>3. Si tiene coordenadas, aparece en el mapa interactivo. |
-| **Restricciones** | 1. Los archivos se almacenan en MongoDB GridFS (no en disco ni CDN externo).<br>2. Los videos se transcodifican automáticamente a formato compatible con navegadores.<br>3. Máximo 100 archivos multimedia por hotel. |
-| **Colecciones MongoDB** | `hotel_multimedia` (escritura), `fs.files` + `fs.chunks` (GridFS, escritura), `destinations_enriched` (lectura/actualización si se asocia a destino), `hotel_content_pages` (actualización) |
-| **Endpoints** | `GET /partner/hotels/{prop_id}/multimedia` — Gestor multimedia HTML.<br>`POST /api/management/properties/{prop_id}/multimedia` — Subir archivo.<br>`PUT /api/management/properties/{prop_id}/multimedia/{media_id}` — Actualizar metadata.<br>`DELETE /api/management/properties/{prop_id}/multimedia/{media_id}` — Desactivar/eliminar.<br>`GET /api/management/properties/{prop_id}/multimedia` — Listar multimedia JSON. |
-| **Código implementado** | `server/src/app/modules/partner/services/content/multimedia.py` — Servicio multimedia.<br>`server/src/app/modules/partner/routes/content.py` — Rutas de contenido.<br>`frontend/src/app/features/multimedia/` — MultimediaGallery, MapGeolocationPicker. |
+| **Nombre** | Visualizar mapa mundial de destinos con hoteles |
+| **Objetivo** | Permitir que el usuario visualice un mapa mundial interactivo (Leaflet.js/OpenLayers) con marcadores de destinos turísticos y hoteles, donde los hoteles se muestran con colores según su estado (disponibilidad, precio, rating) |
+| **Actor Principal** | Auditor de Datos / Marketing hotelero |
+| **Actores Secundarios** | Sistema (carga de datos geoespaciales desde MongoDB), Leaflet.js (renderizado de mapa, requiere conexión a internet para tiles) |
+| **Disparador** | El usuario navega a la sección "Mapa Mundial" desde el panel de administración o marketing |
+| **Precondiciones** | 1. Usuario autenticado. 2. Debe haber al menos un destino con coordenadas en `dim_destinations`. 3. Debe haber al menos un hotel asociado a un destino. |
+| **Flujo Principal** | Paso 1: El usuario navega a `GET /map/world`. Paso 2: El sistema carga el mapa Leaflet.js centrado en coordenadas [20, 0] con zoom 2. Paso 3: El sistema consulta `dim_destinations` filtrando destinos con coordenadas no nulas. Paso 4: Para cada destino, el sistema consulta `dim_hotels` para obtener hoteles asociados. Paso 5: El sistema calcula posición promedio para marcadores de destino (cluster). Paso 6: El sistema envía datos geoespaciales al frontend como GeoJSON. Paso 7: El frontend renderiza marcadores en el mapa: círculos grandes para destinos (con nombre), círculos pequeños para hoteles (con prop_id, nombre, rating, precio). Paso 8: Los hoteles se colorean por rango de precio: verde (< $50), amarillo ($50-150), naranja ($150-300), rojo (> $300). Paso 9: El usuario puede hacer zoom y hacer clic en marcadores para ver detalle. |
+| **Flujos Alternos** | **FA-01:** Sin coordenadas - Si ningún destino tiene coordenadas, muestra "No hay destinos con coordenadas configuradas. Use la edición de metadata (CU-O35) para asignar coordenadas." **FA-02:** Sin internet - Si el navegador no puede cargar los tiles de OpenStreetMap, muestra una advertencia "Se requiere conexión a internet para visualizar el mapa. Los tiles de OpenStreetMap no pudieron cargarse." |
+| **Reglas de Negocio** | **RN-O37-01:** Los destinos sin coordenadas no se muestran en el mapa. **RN-O37-02:** Los colores de hoteles siguen la escala de precios configurable. **RN-O37-03:** Máximo 500 marcadores visibles simultáneamente (clustering automático). |
+| **Entradas** | Filtros opcionales: `pais`, `precio_min`, `precio_max`, `rating_min`. Sesión del usuario. |
+| **Salidas** | Mapa Leaflet.js/OpenLayers interactivo con marcadores de destinos y hoteles coloreados por precio, más tooltip con nombre, rating y precio al hacer hover. |
+| **Postcondiciones** | El usuario visualiza el mapa interactivo. No se modifica la base de datos. |
+| **Restricciones** | 1. Requiere conexión a internet para cargar tiles de OpenStreetMap. 2. No apto para navegadores sin WebGL (fallback a marcadores SVG). |
+| **Colecciones MongoDB** | `dim_destinations` (lectura), `dim_hotels` (lectura), `hotels` (lectura) |
+| **Endpoints** | `GET /map/world` - Página del mapa HTML. `GET /api/map/destinations?format=geojson` - Datos geoespaciales formato GeoJSON. `GET /api/map/hotels?lat=X&lng=Y&radius=Z` - Hoteles por radio. |
+| **Código implementado** | `server/src/app/modules/map/routes.py`, `server/src/app/modules/map/services/geo_service.py`, `frontend/src/app/features/map/world-map/` |
+
+---
+
+## 6.39 CU-O38: Seleccionar Ubicación de Destino en Mapa Interactivo
+
+| Elemento | Detalle |
+|----------|---------|
+| **Código** | CU-O38 |
+| **Nombre** | Seleccionar ubicación de destino en mapa interactivo |
+| **Objetivo** | Permitir que el auditor de datos seleccione la ubicación geográfica de un destino haciendo clic en un mapa mundial interactivo, capturando automáticamente las coordenadas (lat, lng), nombre del país y ciudad desde las coordenadas seleccionadas |
+| **Actor Principal** | Auditor de Datos |
+| **Actores Secundarios** | Sistema (reverse geocoding opcional), Leaflet.js (mapa interactivo) |
+| **Disparador** | El usuario está editando la metadata de un destino (CU-O35) y hace clic en "Seleccionar en mapa" |
+| **Precondiciones** | 1. Usuario autenticado con rol data_auditor. 2. El destino existe en `dim_destinations`. 3. Conexión a internet para tiles del mapa. |
+| **Flujo Principal** | Paso 1: El usuario navega a editar un destino (CU-O35) y hace clic en "Seleccionar ubicación en mapa". Paso 2: El sistema abre un modal con un mapa Leaflet.js interactivo. Paso 3: El mapa se centra en las coordenadas actuales del destino (si existen) o en [20, 0] con zoom 2. Paso 4: El usuario navega el mapa (zoom, pan) hasta encontrar la ubicación deseada. Paso 5: El usuario hace clic en el punto exacto del destino. Paso 6: El sistema captura las coordenadas (lat, lng) del clic. Paso 7: Opcional: el sistema realiza reverse geocoding (servicio Nominatim de OSM) para obtener país y ciudad sugeridos. Paso 8: El sistema previsualiza las coordenadas y ubicación sugerida. Paso 9: El usuario confirma la selección. Paso 10: El sistema cierra el modal y rellena los campos de coordenadas (y opcionalmente país/ciudad) en el formulario de metadata. |
+| **Flujos Alternos** | **FA-01:** Sin coordenadas previas - Si el destino no tiene coordenadas, el mapa se centra en [20, 0] con zoom 2. **FA-02:** Reverse geocoding falla - Si el servicio Nominatim no responde, el usuario puede ingresar país y ciudad manualmente. **FA-03:** Sin internet - Si no hay conexión, muestra mensaje "Se requiere conexión a internet para el mapa interactivo". |
+| **Reglas de Negocio** | **RN-O38-01:** Las coordenadas se capturan con precisión de 6 decimales. **RN-O38-02:** El reverse geocoding es una funcionalidad de ayuda, no obligatoria. **RN-O38-03:** El usuario puede ajustar manualmente las coordenadas después de la selección. |
+| **Entradas** | Clic del usuario en el mapa → coordenadas (lat, lng) |
+| **Salidas** | Coordenadas (lat, lng) + país y ciudad sugeridos (opcional). |
+| **Postcondiciones** | Las coordenadas seleccionadas se transfieren al formulario de metadata del destino para ser guardadas en el paso de confirmación de CU-O35. |
+| **Restricciones** | 1. Requiere internet para tiles y reverse geocoding. 2. Reverse geocoding usa Nominatim (1 request/segundo máximo). |
+| **Colecciones MongoDB** | Ninguna directamente (usa datos en memoria, se persisten al guardar en CU-O35) |
+| **Endpoints** | `GET /api/map/select-location` - Página/modal del selector de mapa. `GET /api/map/reverse-geocode?lat=X&lng=Y` - Reverse geocoding (proxy a Nominatim). |
+| **Código implementado** | `server/src/app/modules/map/routes.py`, `frontend/src/app/features/map/location-picker/` |
+
+---
+
+## 6.40 CU-O39: Gestionar Limpieza y Rotación de Habitaciones
+
+| Elemento | Detalle |
+|----------|---------|
+| **Código** | CU-O39 |
+| **Nombre** | Gestionar limpieza y rotación de habitaciones |
+| **Objetivo** | Permitir que el recepcionista o gerente gestione el flujo de limpieza de habitaciones: marcar habitación para limpiar después del check-out, asignar tarea de limpieza a personal, registrar inicio/fin de limpieza, y actualizar estado a disponible |
+| **Actor Principal** | Recepcionista / Gerente de hotel |
+| **Actores Secundarios** | Sistema (creación de tareas, actualización de estado) |
+| **Disparador** | Un huésped completa el check-out (CU-O11) o el recepcionista identifica una habitación que necesita limpieza |
+| **Precondiciones** | 1. Usuario autenticado con rol recepcionista o gerente. 2. La habitación debe existir en `hotel_rooms`. |
+| **Flujo Principal** | Paso 1: El sistema detecta un check-out completado y automáticamente marca la habitación como "cleaning_needed" en `room_status_log`. Paso 2: El recepcionista abre la lista de tareas de limpieza. Paso 3: El sistema muestra las habitaciones pendientes de limpieza. Paso 4: El recepcionista asigna una tarea a un miembro del personal (texto libre o futuro módulo de usuarios housekeeping). Paso 5: El personal inicia la limpieza (cambio a "cleaning_in_progress"). Paso 6: El personal marca la limpieza como completada. Paso 7: El sistema actualiza el estado de la habitación a "available" en `room_status_log`. Paso 8: El sistema registra el tiempo de rotación (check-out → disponible). |
+| **Flujos Alternos** | **FA-01:** Habitación ya limpia - Si la habitación ya está "available", no aparece en la lista de limpieza. **FA-02:** Limpieza nocturna - El sistema permite programar limpiezas para el día siguiente. |
+| **Reglas de Negocio** | **RN-O39-01:** El tiempo de rotación (check-out a disponible) se registra para métricas de eficiencia. **RN-O39-02:** Una habitación no puede ser asignada hasta que esté "available". **RN-O39-03:** Estados: available, cleaning_needed, cleaning_in_progress, occupied, maintenance, blocked. |
+| **Entradas** | `room_id`: string, `action`: string (assign, start_cleaning, complete_cleaning), `assigned_to`: string (opcional) |
+| **Salidas** | Confirmación de cambio de estado + tiempo de rotación registrado. |
+| **Postcondiciones** | 1. `room_status_log` actualizado con nuevo estado. 2. Si se completó: habitación disponible para asignar. 3. Tiempo de rotación registrado para reportes T14/E09. |
+| **Restricciones** | 1. Solo una tarea de limpieza activa por habitación. |
+| **Colecciones MongoDB** | `room_status_log` (lectura/escritura), `housekeeping_tasks` (lectura/escritura), `hotel_rooms` (lectura) |
+| **Endpoints** | `POST /api/housekeeping/cleaning/assign` - Asignar limpieza. `POST /api/housekeeping/cleaning/{room_id}/start` - Iniciar limpieza. `POST /api/housekeeping/cleaning/{room_id}/complete` - Completar limpieza. `GET /api/housekeeping/cleaning/pending` - Tareas pendientes. |
+| **Código implementado** | `server/src/app/modules/housekeeping/cleaning_service.py`, `frontend/src/app/features/housekeeping/cleaning/` |
+
+---
+
+## 6.41 CU-O40: Gestionar Mantenimiento Preventivo de Habitaciones
+
+| Elemento | Detalle |
+|----------|---------|
+| **Código** | CU-O40 |
+| **Nombre** | Gestionar mantenimiento preventivo de habitaciones |
+| **Objetivo** | Permitir que el gerente de hotel programe y registre mantenimiento preventivo de habitaciones e instalaciones, incluyendo fecha programada, tipo de mantenimiento, habitación afectada, estado de ejecución y observaciones |
+| **Actor Principal** | Gerente de hotel |
+| **Actores Secundarios** | Sistema (programación de mantenimiento) |
+| **Disparador** | El gerente identifica la necesidad de mantenimiento programado (preventivo) o correctivo (avería reportada) |
+| **Precondiciones** | 1. Usuario autenticado con rol hotel_manager. 2. La habitación/área existe en el sistema. 3. La habitación no debe estar ocupada durante el mantenimiento programado. |
+| **Flujo Principal** | Paso 1: El gerente navega a `GET /housekeeping/maintenance`. Paso 2: El sistema muestra el calendario de mantenimientos programados y el historial. Paso 3: El gerente hace clic en "Nuevo mantenimiento". Paso 4: El gerente selecciona tipo: preventivo (eléctrico, plomería, HVAC, mobiliario, pintura) o correctivo. Paso 5: El gerente selecciona la habitación y fecha programada. Paso 6: El gerente ingresa descripción y prioridad (baja, media, alta, crítica). Paso 7: El sistema valida que la habitación no esté ocupada en la fecha seleccionada. Paso 8: El sistema crea el documento en `maintenance_schedule`. Paso 9: En la fecha programada, el gerente marca como "in_progress" y luego "completed". Paso 10: El sistema actualiza `hotel_rooms.status` a "maintenance" durante la ejecución y vuelve a "available" al completar. |
+| **Flujos Alternos** | **FA-01:** Habitación ocupada - Si la habitación tiene reserva activa en la fecha programada, muestra conflicto y sugiere fechas alternativas. **FA-02:** Mantenimiento recurrente - El gerente puede programar mantenimiento recurrente (semanal, mensual, trimestral). |
+| **Reglas de Negocio** | **RN-O40-01:** Una habitación en mantenimiento no está disponible para reservas. **RN-O40-02:** El mantenimiento preventivo se programa con al menos 7 días de anticipación. **RN-O40-03:** Mantenimiento crítico (avería) se puede programar inmediato con prioridad "crítica". |
+| **Entradas** | `room_id`: string, `maintenance_type`: string, `description`: string, `scheduled_date`: date, `priority`: string, `is_recurring`: bool, `recurrence`: string (opcional) |
+| **Salidas** | Confirmación de mantenimiento programado con ID. |
+| **Postcondiciones** | 1. Documento creado en `maintenance_schedule`. 2. Si se ejecuta, `hotel_rooms.status` actualizado. 3. Historial en `maintenance_tasks`. |
+| **Restricciones** | 1. No se puede programar mantenimiento en habitaciones con check-in programado para la misma fecha. |
+| **Colecciones MongoDB** | `maintenance_schedule` (lectura/escritura), `maintenance_tasks` (lectura/escritura), `hotel_rooms` (lectura/escritura), `room_status_log` (escritura) |
+| **Endpoints** | `POST /api/housekeeping/maintenance` - Crear mantenimiento. `GET /api/housekeeping/maintenance/schedule` - Calendario. `PUT /api/housekeeping/maintenance/{id}/status` - Actualizar estado. `GET /api/housekeeping/maintenance/history` - Historial. |
+| **Código implementado** | `server/src/app/modules/housekeeping/maintenance_service.py`, `frontend/src/app/features/housekeeping/maintenance/` |
 
 ---
 
@@ -2201,437 +2252,307 @@ Feature: Cambio de contraseña y actualización de perfil
     And el sistema no actualiza el perfil
 ```
 
-## 7.30 CU-O30: Gestionar Disponibilidad y Estado de Habitaciones
+## 7.30 CU-O30: Consultar Estado Actual de Habitaciones
 
 ```gherkin
-Feature: Gestión de disponibilidad y estado de habitaciones
+Feature: Consulta de estado de habitaciones
   Como recepcionista o gerente de hotel
-  Quiero consultar el estado de las habitaciones, asignar tipos y verificar disponibilidad individual
-  Para gestionar el inventario físico del hotel de manera centralizada
+  Quiero consultar el estado operativo de todas las habitaciones del hotel en una matriz visual
+  Para gestionar la asignación y conocer la disponibilidad en tiempo real
 
   Background:
-    Given el recepcionista está autenticado con rol "recepcionista"
-    And el hotel tiene habitaciones configuradas en "hotel_rooms" y "room_types"
+    Given el usuario está autenticado con rol "recepcionista" o "hotel_manager"
+    And el hotel tiene habitaciones configuradas en "hotel_rooms"
 
-  Scenario: Consultar estado de todas las habitaciones
-    When el recepcionista navega al panel de estado de habitaciones
-    Then el sistema muestra un grid con todas las habitaciones del hotel
-    And cada habitación muestra: número, tipo, estado actual, última actualización
-    And el sistema permite filtrar por tipo de habitación, estado o rango de fechas
+  Scenario: Consulta exitosa de matriz de estados
+    When el usuario navega al panel de estado de habitaciones
+    Then el sistema muestra una matriz visual con todas las habitaciones
+    And cada habitación muestra su número, piso, tipo y estado con código de colores
+    And los estados visibles incluyen: disponible (verde), ocupada (rojo), limpieza (amarillo), mantenimiento (gris), bloqueada (azul)
 
-  Scenario: Asignar tipo de habitación a habitación individual
-    Given la habitación 205 está en estado "disponible"
-    When el recepcionista selecciona la habitación 205
-    And asigna el tipo de habitación "Suite Ejecutiva" a esta habitación
-    Then el sistema actualiza el tipo de habitación asignado
-    And el sistema registra el cambio en "room_status_log" con timestamp
+  Scenario: Hotel sin habitaciones configuradas
+    Given el hotel no tiene habitaciones en "hotel_rooms"
+    When el usuario navega al panel de estado
+    Then el sistema muestra "No hay habitaciones configuradas para este hotel"
 
-  Scenario: Consultar disponibilidad por habitación individual
-    When el recepcionista selecciona la habitación 205
-    And solicita ver el calendario de disponibilidad
-    Then el sistema muestra disponibilidad por fecha para los próximos 30 días
-    And muestra las reservas activas que ocupan esa habitación
+  Scenario: Acceso a hotel no asignado
+    When el usuario intenta consultar un hotel al que no está asignado
+    Then el sistema muestra error de acceso denegado
 ```
 
-## 7.31 CU-O31: Gestionar Geolocalización y Metadata de Contenido
+## 7.31 CU-O31: Asignar Tipo de Habitación
 
 ```gherkin
-Feature: Gestión de geolocalización y metadata
-  Como auditor de datos o marketing hotelero
-  Quiero editar metadata de destinos, nombres de hoteles y visualizar el mapa mundial
-  Para mantener actualizado el catálogo geoespacial de destinos
+Feature: Asignación de tipo de habitación
+  Como recepcionista o gerente
+  Quiero asignar o cambiar el tipo de habitación a una habitación individual
+  Para reclasificar habitaciones según necesidad operativa
 
   Background:
-    Given el usuario está autenticado con rol "auditor_datos" o "marketing_hotelero"
-    And existen destinos con coordenadas en "destinations_enriched"
+    Given el usuario está autenticado con rol "recepcionista" o "hotel_manager"
+    And la habitación existe en "hotel_rooms"
+    And existen tipos de habitación en "room_types"
 
-  Scenario: Editar metadata de destino
-    When el usuario selecciona un destino en el mapa
-    And edita el nombre visible a "Cancún Centro" y coordenadas a 21.1619, -86.8515
-    Then el sistema actualiza "destinations_enriched" con los nuevos datos
-    And el sistema registra el cambio en "destinations_log"
+  Scenario: Asignación exitosa de tipo de habitación
+    When el usuario selecciona una habitación disponible
+    And selecciona un nuevo tipo de habitación del selector
+    And confirma el cambio
+    Then el sistema actualiza "hotel_rooms.room_type_id"
+    And el sistema registra el cambio en "room_status_log"
+    And el sistema muestra "Tipo de habitación asignado exitosamente"
 
-  Scenario: Editar nombre visible de hotel con manual_override
-    When el usuario selecciona un hotel en el mapa o listado
-    And edita el nombre visible de "Hotel 12345" a "Grand Paradise Resort"
-    Then el sistema actualiza "dim_hotels.hotel_name" con el nuevo nombre
-    And el sistema activa "manual_override = true" para evitar sobrescritura del ETL
-
-  Scenario: Visualizar mapa mundial con hoteles geolocalizados
-    When el usuario navega al gestor geoespacial
-    Then el sistema carga el mapa mundial interactivo con Leaflet.js
-    And el sistema muestra marcadores en las coordenadas de cada destino con hoteles
-    And cada marcador muestra nombre del destino y cantidad de hoteles al hacer clic
+  Scenario: Intento de cambio en habitación ocupada
+    Given la habitación está ocupada con un booking activo
+    When el usuario intenta cambiar el tipo de habitación
+    Then el sistema muestra "No se puede cambiar el tipo de una habitación ocupada"
+    And el sistema no realiza el cambio
 ```
 
-## 7.32 CU-O32: Gestionar Notificaciones Transaccionales al Huésped
+## 7.32 CU-O32: Consultar Disponibilidad por Habitación
 
 ```gherkin
-Feature: Notificaciones transaccionales al huésped
-  Como sistema
-  Quiero enviar notificaciones automáticas al huésped durante el ciclo de su reserva
-  Para mantenerlo informado sobre el estado de su estancia
-
-  Background:
-    Given existe una reserva activa en "booking_orders" con datos de contacto del huésped
-    And existen plantillas configuradas en "notification_templates"
-
-  Scenario: Notificación de confirmación de reserva
-    When una reserva es creada con estado "confirmed"
-    Then el sistema selecciona la plantilla "booking_confirmation" desde "notification_templates"
-    And el sistema personaliza la plantilla con datos de la reserva
-    And el sistema envía la notificación por email al huésped
-    And el sistema registra el envío en "notification_logs" con estado "enviado"
-
-  Scenario: Notificación de recordatorio de check-in
-    Given es 24 horas antes del check-in de una reserva confirmada
-    When el sistema ejecuta el job de recordatorios
-    Then el sistema envía recordatorio de check-in con instrucciones y horarios
-    And el sistema registra el envío en "notification_logs"
-
-  Scenario: Notificación post-checkout con factura
-    When el check-out es completado exitosamente
-    Then el sistema envía la factura de la estancia al email del huésped
-    And el sistema incluye detalle de cargos, fechas y total
-```
-
-## 7.33 CU-O33: Gestionar Alertas Operativas Internas al Staff
-
-```gherkin
-Feature: Alertas operativas internas al staff
-  Como sistema
-  Quiero generar alertas operativas para el personal del hotel
-  Para coordinar limpieza, mantenimiento y atención al huésped
-
-  Background:
-    Given existe personal asignado en roles housekeeping, mantenimiento y recepción
-    And las habitaciones están registradas en "hotel_rooms"
-
-  Scenario: Alerta de limpieza post-checkout
-    When un check-out es completado en la habitación 205
-    Then el sistema crea una alerta de limpieza con prioridad "alta"
-    And la alerta se asigna al equipo de housekeeping disponible
-    And la alerta aparece en el panel de notificaciones internas
-
-  Scenario: Marcar alerta como resuelta
-    Given existe una alerta de limpieza activa para la habitación 205
-    When el personal de housekeeping marca la alerta como "resuelta"
-    Then el sistema actualiza el estado de la alerta a "resuelta"
-    And el sistema registra el tiempo de resolución
-
-  Scenario: Escalamiento de alerta no resuelta
-    Given existe una alerta de limpieza sin resolver después de 60 minutos
-    When el tiempo límite se supera
-    Then el sistema escala la alerta al gerente de hotel
-    And la alerta se marca con prioridad "crítica"
-```
-
-## 7.34 CU-O34: Gestionar Campañas Promocionales Multicanal
-
-```gherkin
-Feature: Campañas promocionales multicanal
-  Como marketing hotelero
-  Quiero crear y lanzar campañas promocionales segmentadas por múltiples canales
-  Para incentivar reservas y medir la efectividad de cada campaña
-
-  Background:
-    Given el usuario está autenticado con rol "marketing_hotelero"
-    And existen plantillas de notificación configuradas
-
-  Scenario: Crear y lanzar campaña promocional
-    When el usuario crea una nueva campaña con nombre "Verano 2026"
-    And selecciona segmento: huéspedes frecuentes con historial de 3+ reservas
-    And selecciona canales: email y SMS
-    And selecciona promoción "Descuento 20%" asociada
-    And programa la campaña para el próximo lunes
-    Then el sistema calcula el tamaño del segmento (ej: 1,247 huéspedes)
-    And el sistema programa la campaña para la fecha seleccionada
-
-  Scenario: Ver métricas de campaña
-    Given la campaña "Verano 2026" ha sido ejecutada
-    When el usuario navega a las métricas de la campaña
-    Then el sistema muestra: enviados, abiertos, clicks, conversiones, revenue generado
-    And el sistema muestra el ROI de la campaña
-```
-
-## 7.35 CU-O35: Atender Cliente Mediante Asistente Virtual (Chatbot IA)
-
-```gherkin
-Feature: Atención al cliente mediante chatbot IA
-  Como cliente
-  Quiero hacer consultas en lenguaje natural a un asistente virtual
-  Para obtener respuestas rápidas sobre hoteles, reservas y servicios
-
-  Background:
-    Given el sistema tiene una base de conocimiento configurada en "chatbot_knowledge_base"
-    And el motor de chatbot IA está operativo
-
-  Scenario: Consulta resuelta por el chatbot
-    When el cliente escribe "¿Cuál es la política de cancelación del Hotel Paraíso?"
-    Then el chatbot busca en la base de conocimiento la política de cancelación
-    And el chatbot responde con la información de la política
-    And la conversación queda registrada en "chatbot_conversations"
-
-  Scenario: Consulta escalada a humano
-    When el cliente escribe "Tengo un problema con mi reserva y necesito hablar con alguien"
-    Then el chatbot detecta que no puede resolver la consulta
-    And el chatbot ofrece escalar a un agente humano
-    When el cliente confirma el escalamiento
-    Then la conversación se asigna a un recepcionista disponible
-    And el recepcionista recibe el historial completo del chat
-
-  Scenario: Chatbot fuera de horario
-    Given es horario nocturno (23:00-07:00)
-    When el cliente solicita escalamiento a humano
-    Then el chatbot informa que no hay agentes disponibles en este horario
-    And el chatbot agenda un follow-up para el día siguiente
-```
-
-## 7.36 CU-O36: Gestionar Up-Selling y Ancillaries Durante la Estancia
-
-```gherkin
-Feature: Up-selling y ancillaries durante la estancia
+Feature: Consulta de disponibilidad por habitación
   Como recepcionista
-  Quiero ofrecer servicios adicionales a los huéspedes durante su estancia
-  Para generar ingresos adicionales y mejorar su experiencia
+  Quiero consultar la disponibilidad de una habitación específica en un calendario
+  Para conocer la ocupación futura y planificar asignaciones
+
+  Background:
+    Given el usuario está autenticado con rol "recepcionista"
+    And la habitación existe en "hotel_rooms"
+
+  Scenario: Consulta exitosa de calendario de disponibilidad
+    When el usuario selecciona una habitación y hace clic en "Ver disponibilidad"
+    Then el sistema muestra un calendario de 90 días
+    And cada noche se muestra con color: verde (disponible), rojo (ocupada), gris (mantenimiento)
+    And el sistema muestra las reservas activas en el período
+
+  Scenario: Habitación sin configuración de inventario
+    When el usuario consulta una habitación sin registros en "room_inventory_calendar"
+    Then el sistema muestra "Sin configuración de inventario para esta habitación"
+```
+
+## 7.33 CU-O33: Gestionar Amenities por Tipo de Habitación
+
+```gherkin
+Feature: Gestión de amenities por tipo de habitación
+  Como hotel partner o marketing
+  Quiero configurar los amenities específicos por tipo de habitación
+  Para que los clientes vean el equipamiento exacto de cada categoría
+
+  Background:
+    Given el usuario está autenticado con rol "hotel_partner" o "marketing"
+    And el tipo de habitación existe en "room_types"
+
+  Scenario: Agregar amenities exitosamente
+    When el usuario selecciona un tipo de habitación
+    And agrega los amenities "WiFi", "TV", "A/C" y "Minibar"
+    And guarda los cambios
+    Then el sistema actualiza "room_types.amenities" con la nueva lista
+    And el sistema registra el cambio en "hotel_edit_history"
+    And el sistema muestra "Amenities actualizados exitosamente"
+
+  Scenario: Agregar amenity personalizado
+    When el usuario escribe un amenity personalizado "Vista al jardín"
+    Then el sistema permite agregarlo como amenity personalizado
+    And el sistema lo muestra en la lista de amenities del tipo de habitación
+```
+
+## 7.34 CU-O34: Registrar Cargos Adicionales
+
+```gherkin
+Feature: Registro de cargos adicionales a reserva
+  Como recepcionista
+  Quiero registrar cargos adicionales asociados a una reserva activa
+  Para que se reflejen en la factura final del huésped
 
   Background:
     Given el recepcionista está autenticado con rol "recepcionista"
-    And existe una reserva activa en estado "confirmed" o "checked_in"
+    And existe una reserva en estado "confirmed" o "checked_in"
 
-  Scenario: Ofrecer upgrade de habitación en check-in
-    When el recepcionista abre la reserva durante el check-in
-    Then el sistema muestra oportunidades de up-selling basadas en disponibilidad
-    When el recepcionista ofrece upgrade a Suite Ejecutiva por $50/noche
-    And el huésped acepta
-    Then el sistema registra el cargo adicional en "additional_charges"
-    And el sistema actualiza "booking_orders.total"
-    And el sistema actualiza el tipo de habitación asignado
+  Scenario: Registro exitoso de cargo adicional
+    When el recepcionista busca la reserva por booking_id
+    And selecciona tipo de cargo "room_service"
+    And ingresa descripción "Cena habitación" y monto $450
+    And confirma el cargo
+    Then el sistema crea el registro en "additional_charges"
+    And el sistema actualiza el total pendiente de la reserva
+    And el sistema muestra "Cargo registrado exitosamente"
 
-  Scenario: Late check-out durante la estancia
-    When el recepcionista ofrece late check-out hasta las 18:00 por $30
-    And el huésped acepta
-    Then el sistema registra el cargo adicional por late check-out
-    And el sistema actualiza la hora de check-out en la reserva
-
-  Scenario: Huésped rechaza up-selling
-    When el recepcionista ofrece un servicio adicional
-    And el huésped rechaza la oferta
-    Then el recepcionista marca la oferta como "rechazada"
-    And el sistema registra la oportunidad perdida para análisis
+  Scenario: Cargo en reserva finalizada
+    Given la reserva está en estado "checked_out"
+    When el recepcionista intenta registrar un cargo
+    Then el sistema muestra "No se pueden agregar cargos a una reserva finalizada"
 ```
 
-## 7.37 CU-O37: Gestionar Contenidos Multimedia con Geolocalización
+## 7.35 CU-O35: Editar Metadata de Destino
 
 ```gherkin
-Feature: Contenidos multimedia con geolocalización
-  Como marketing hotelero
-  Quiero subir y geolocalizar contenido multimedia de hoteles y destinos
-  Para enriquecer la presentación visual con fotos y videos ubicados geográficamente
+Feature: Edición de metadata de destino
+  Como auditor de datos
+  Quiero editar la metadata de los destinos hoteleros (nombre, coordenadas, país, ciudad)
+  Para corregir nombres genéricos o numéricos del dataset original
 
   Background:
-    Given el usuario está autenticado con rol "marketing_hotelero"
-    And el hotel o destino existe en la base de datos
+    Given el auditor está autenticado con rol "data_auditor"
+    And el destino existe en "dim_destinations"
 
-  Scenario: Subir foto geolocalizada
-    When el usuario navega al gestor multimedia del hotel
-    And selecciona una foto de la piscina (JPEG, 3MB)
-    And arrastra el marcador en el mapa a la ubicación de la piscina
-    And completa título "Piscina principal" y tags ["piscina", "exterior"]
-    Then el sistema almacena la foto en MongoDB GridFS
-    And el sistema crea el registro en "hotel_multimedia" con coordenadas y metadata
-    And la foto aparece en la galería y en el mapa interactivo
+  Scenario: Edición exitosa de metadata de destino
+    When el auditor busca un destino por código
+    And modifica el nombre visible a "Cancún"
+    And asigna coordenadas 21.1619, -86.8515
+    And ingresa país "México" y ciudad "Cancún"
+    And guarda los cambios
+    Then el sistema actualiza "dim_destinations" con la nueva metadata
+    And el sistema registra el cambio en "hotel_edit_history"
+    And el sistema muestra "Destino actualizado exitosamente"
 
-  Scenario: Archivo excede tamaño máximo
-    When el usuario intenta subir un video de 80MB
-    Then el sistema rechaza con "El archivo excede el tamaño máximo permitido (50MB)"
-    And el archivo no se almacena
-
-  Scenario: Desactivar contenido multimedia
-    Given existe una foto activa en la galería
-    When el usuario desactiva la foto
-    Then el sistema cambia el estado a "inactivo"
-    And la foto deja de ser visible en la galería pública
-    And el archivo no se elimina del almacenamiento
+  Scenario: Coordenadas inválidas
+    When el auditor ingresa latitud 100 y longitud 200
+    Then el sistema muestra "Coordenadas geográficas inválidas"
+    And el sistema no actualiza el destino
 ```
 
-## 7.38 CU-T14: Gestionar Rotación y Limpieza de Habitaciones (Táctico)
+## 7.36 CU-O36: Editar Nombre Visible de Hotel
 
 ```gherkin
-Feature: Gestión táctica de rotación y limpieza
+Feature: Edición de nombre visible de hotel
+  Como auditor de datos o marketing
+  Quiero editar el nombre comercial visible de hoteles con ID numérico
+  Para mejorar la experiencia de búsqueda con nombres reales
+
+  Background:
+    Given el usuario está autenticado con rol "data_auditor" o "marketing"
+    And el hotel existe en "dim_hotels"
+
+  Scenario: Edición exitosa de nombre visible
+    When el usuario busca un hotel por prop_id "14239"
+    And el sistema muestra nombre actual "Property 14239"
+    And el usuario ingresa nuevo nombre "Hotel Paraíso Caribe"
+    And guarda el cambio
+    Then el sistema actualiza "dim_hotels.hotel_name" a "Hotel Paraíso Caribe"
+    And el sistema establece "dim_hotels.name_is_manual_override = true"
+    And el sistema registra el cambio en "hotel_edit_history"
+    And el sistema muestra "Nombre de hotel actualizado exitosamente"
+    And el hotel aparece con el nuevo nombre en búsquedas
+
+  Scenario: Nombre muy corto
+    When el usuario intenta guardar un nombre de 1 carácter
+    Then el sistema muestra "El nombre debe tener al menos 3 caracteres"
+```
+
+## 7.37 CU-O37: Visualizar Mapa Mundial de Destinos
+
+```gherkin
+Feature: Visualización de mapa mundial de destinos con hoteles
+  Como usuario de marketing o datos
+  Quiero visualizar un mapa mundial interactivo con destinos y hoteles geolocalizados
+  Para explorar la cobertura geográfica y filtrar hoteles por ubicación y precio
+
+  Background:
+    Given el usuario está autenticado
+    And existen destinos con coordenadas en "dim_destinations"
+    And existe conexión a internet para tiles de mapa
+
+  Scenario: Visualización exitosa del mapa mundial
+    When el usuario navega a la sección "Mapa Mundial"
+    Then el sistema carga un mapa Leaflet.js centrado en vista mundial
+    And el sistema muestra marcadores de destinos con nombre visible
+    And los hoteles se muestran como marcadores coloreados por rango de precio
+    And el usuario puede hacer zoom y hacer clic en marcadores para ver detalle
+
+  Scenario: Sin internet para tiles
+    When el navegador no puede cargar los tiles de OpenStreetMap
+    Then el sistema muestra "Se requiere conexión a internet para visualizar el mapa"
+
+  Scenario: Sin destinos con coordenadas
+    Given ningún destino tiene coordenadas configuradas
+    When el usuario navega al mapa
+    Then el sistema muestra "No hay destinos con coordenadas configuradas"
+    And el sistema sugiere usar CU-O35/CU-O38 para asignar coordenadas
+```
+
+## 7.38 CU-O38: Seleccionar Ubicación en Mapa Interactivo
+
+```gherkin
+Feature: Selección de ubicación en mapa interactivo
+  Como auditor de datos
+  Quiero seleccionar la ubicación de un destino haciendo clic en un mapa mundial
+  Para capturar coordenadas geográficas precisas sin calcularlas manualmente
+
+  Background:
+    Given el usuario está autenticado con rol "data_auditor"
+    And el destino existe en "dim_destinations"
+    And existe conexión a internet
+
+  Scenario: Selección exitosa de ubicación en mapa
+    When el usuario está editando un destino y hace clic en "Seleccionar en mapa"
+    Then el sistema abre un modal con mapa Leaflet.js interactivo
+    When el usuario navega al destino deseado y hace clic en el punto exacto
+    Then el sistema captura las coordenadas (lat, lng) del clic
+    And el sistema muestra previsualización de coordenadas
+    When el usuario confirma la selección
+    Then el sistema cierra el modal y rellena los campos de coordenadas
+
+  Scenario: Sin conexión a internet
+    When el usuario intenta abrir el selector de mapa sin conexión
+    Then el sistema muestra "Se requiere conexión a internet para el mapa interactivo"
+```
+
+## 7.39 CU-O39: Gestionar Limpieza y Rotación de Habitaciones
+
+```gherkin
+Feature: Gestión de limpieza y rotación de habitaciones
+  Como recepcionista o gerente
+  Quiero gestionar el flujo de limpieza post-checkout
+  Para que las habitaciones estén disponibles para el próximo huésped
+
+  Background:
+    Given el usuario está autenticado con rol "recepcionista" o "hotel_manager"
+    And existe una habitación en "hotel_rooms"
+
+  Scenario: Rotación post-checkout exitosa
+    When un huésped completa el check-out
+    Then el sistema marca automáticamente la habitación como "cleaning_needed"
+    When el recepcionista asigna la tarea de limpieza
+    And el personal completa la limpieza
+    Then el sistema actualiza el estado a "available"
+    And el sistema registra el tiempo de rotación
+
+  Scenario: Lista de tareas de limpieza pendientes
+    When el recepcionista abre la lista de tareas de limpieza
+    Then el sistema muestra las habitaciones pendientes con: número, tipo, tiempo desde check-out
+```
+
+## 7.40 CU-O40: Gestionar Mantenimiento Preventivo
+
+```gherkin
+Feature: Gestión de mantenimiento preventivo de habitaciones
   Como gerente de hotel
-  Quiero optimizar la rotación de habitaciones y asignar personal de limpieza
-  Para reducir tiempos muertos entre check-out y check-in
+  Quiero programar y registrar mantenimiento preventivo de habitaciones
+  Para mantener las instalaciones en óptimas condiciones
 
   Background:
-    Given el gerente está autenticado con rol "gerente_hotel"
+    Given el gerente está autenticado con rol "hotel_manager"
+    And la habitación existe en "hotel_rooms"
 
-  Scenario: Definir tiempo objetivo de rotación
-    When el gerente navega a la configuración de housekeeping
-    And establece tiempo objetivo de rotación en 45 minutos
-    Then el sistema guarda el tiempo objetivo en "hotel_settings"
-    And el dashboard de eficiencia mostrará alertas cuando se supere este tiempo
+  Scenario: Programación exitosa de mantenimiento preventivo
+    When el gerente navega al calendario de mantenimiento
+    And hace clic en "Nuevo mantenimiento"
+    And selecciona tipo "preventivo - HVAC", habitación "101", fecha "2026-07-15"
+    And asigna prioridad "media"
+    And guarda el programa
+    Then el sistema crea el documento en "maintenance_schedule"
+    And el sistema muestra la tarea en el calendario
 
-  Scenario: Asignar cuadrilla de limpieza
-    When el gerente navega al planificador de housekeeping
-    And asigna 3 personas al turno matutino y 2 al vespertino
-    Then el sistema registra la asignación de personal
-    And las alertas de limpieza se asignarán automáticamente al personal disponible
-
-  Scenario: Ver reporte de tiempos de rotación
-    When el gerente solicita el reporte de rotación semanal
-    Then el sistema muestra tiempo promedio de rotación, máximo y mínimo
-    And el sistema muestra cuántas habitaciones superaron el tiempo objetivo
+  Scenario: Mantenimiento en habitación ocupada
+    When el gerente intenta programar mantenimiento en una habitación con reserva activa
+    Then el sistema muestra conflicto de fechas
+    And el sistema sugiere fechas alternativas donde la habitación esté disponible
 ```
 
-## 7.39 CU-T15: Programar Mantenimiento Preventivo y Correctivo (Táctico)
+---
 
-```gherkin
-Feature: Programación de mantenimiento preventivo y correctivo
-  Como gerente de hotel
-  Quiero programar y dar seguimiento al mantenimiento de habitaciones
-  Para minimizar interrupciones y prolongar la vida útil de las instalaciones
-
-  Background:
-    Given el gerente está autenticado con rol "gerente_hotel"
-
-  Scenario: Programar mantenimiento preventivo
-    When el gerente navega al planificador de mantenimiento
-    And selecciona habitaciones 201-210 para mantenimiento trimestral
-    And programa para el próximo lunes 09:00-13:00
-    Then el sistema bloquea la disponibilidad de esas habitaciones en ese horario
-    And el sistema crea tareas de mantenimiento en "maintenance_schedule"
-    And el sistema notifica al equipo de mantenimiento
-
-  Scenario: Registrar mantenimiento correctivo
-    Given existe una incidencia reportada en la habitación 305 (Aire acondicionado)
-    When el gerente asigna la tarea al técnico disponible
-    And el técnico completa la reparación
-    Then el sistema registra el mantenimiento en "maintenance_tasks" con fecha y costo
-    And la habitación vuelve a estar disponible
-
-  Scenario: Ver calendario de mantenimiento
-    When el gerente solicita el calendario de mantenimiento mensual
-    Then el sistema muestra las tareas programadas y completadas
-    And el sistema muestra el cumplimiento de mantenimiento preventivo (%)
-```
-
-## 7.40 CU-T16: Configurar Canales y Plantillas de Notificación (Táctico)
-
-```gherkin
-Feature: Configuración de canales y plantillas de notificación
-  Como super admin
-  Quiero configurar los canales de envío y las plantillas de notificación del sistema
-  Para garantizar que las comunicaciones con huéspedes y staff sean correctas y personalizadas
-
-  Background:
-    Given el super admin está autenticado con rol "super_admin"
-
-  Scenario: Configurar canal de email
-    When el super admin navega a configuración de notificaciones
-    And configura servidor SMTP: host "smtp.hoteldata.com", puerto 587, TLS habilitado
-    And guarda la configuración
-    Then el sistema prueba la conexión SMTP
-    And el sistema muestra "Canal de email configurado exitosamente"
-
-  Scenario: Editar plantilla de notificación
-    When el super admin selecciona la plantilla "booking_confirmation"
-    And edita el asunto a "¡Reserva confirmada en {{hotel_name}}!"
-    And modifica el cuerpo de la plantilla
-    Then el sistema guarda la plantilla actualizada en "notification_templates"
-    And la nueva plantilla se usará en el próximo envío
-
-  Scenario: Probar envío de notificación
-    Given existe una plantilla configurada
-    When el super admin hace clic en "Enviar prueba"
-    And ingresa email "test@hoteldata.com"
-    Then el sistema envía una notificación de prueba al email ingresado
-    And el sistema muestra "Notificación de prueba enviada"
-```
-
-## 7.41 CU-T17: Configurar Base de Conocimiento del Chatbot (Táctico)
-
-```gherkin
-Feature: Configuración de base de conocimiento del chatbot
-  Como marketing o super admin
-  Quiero gestionar la base de conocimiento del chatbot
-  Para mejorar la precisión de las respuestas del asistente virtual
-
-  Background:
-    Given el usuario está autenticado con rol "marketing_hotelero" o "super_admin"
-
-  Scenario: Agregar entrada a la base de conocimiento
-    When el usuario navega al gestor de base de conocimiento
-    And agrega nueva entrada: pregunta "¿Hay estacionamiento gratuito?", respuesta "Sí, todos nuestros hoteles ofrecen estacionamiento gratuito para huéspedes"
-    And asigna categoría "Servicios del hotel"
-    Then el sistema guarda la entrada en "chatbot_knowledge_base"
-    And el chatbot podrá responder esta pregunta automáticamente
-
-  Scenario: Desactivar entrada de conocimiento
-    Given existe una entrada desactualizada en la base de conocimiento
-    When el usuario desactiva la entrada
-    Then el sistema cambia el estado a "inactivo"
-    And el chatbot dejará de usar esa entrada para responder
-
-  Scenario: Ver estadísticas del chatbot
-    When el usuario solicita estadísticas del chatbot
-    Then el sistema muestra: consultas totales, tasa de resolución, tasa de escalamiento
-    And el sistema muestra las preguntas más frecuentes no resueltas
-```
-
-## 7.42 CU-E09: Monitorear Eficiencia Operativa del Hotel (Estratégico)
-
-```gherkin
-Feature: Monitoreo de eficiencia operativa del hotel
-  Como gerente general o super admin
-  Quiero monitorear KPIs operativos del hotel en un dashboard ejecutivo
-  Para tomar decisiones estratégicas basadas en datos de operación
-
-  Background:
-    Given el usuario está autenticado con rol "gerente_general" o "super_admin"
-
-  Scenario: Ver dashboard de eficiencia operativa
-    When el usuario navega al dashboard de eficiencia operativa
-    Then el sistema muestra KPIs principales: tiempo promedio de rotación, cumplimiento de limpieza, cumplimiento de mantenimiento, ocupación real vs disponible
-    And el sistema muestra tendencias semanales de cada KPI
-    And el sistema muestra alertas de eficiencia (cuando un KPI está por debajo del objetivo)
-
-  Scenario: Identificar cuellos de botella operativos
-    When el usuario selecciona "Ver detalles de rotación"
-    Then el sistema muestra las habitaciones con mayor tiempo de rotación
-    And el sistema muestra el personal de limpieza con menor productividad
-    And el sistema sugiere optimizaciones basadas en datos históricos
-```
-
-## 7.43 CU-E10: Gestionar Ingresos por Up-Selling y Ancillaries (Estratégico)
-
-```gherkin
-Feature: Gestión de ingresos por up-selling y ancillaries
-  Como gerente general o revenue manager
-  Quiero analizar los ingresos generados por up-selling y ancillaries
-  Para optimizar la estrategia de venta adicional y maximizar el revenue por huésped
-
-  Background:
-    Given el usuario está autenticado con rol "gerente_general" o "revenue_manager"
-
-  Scenario: Ver reporte de ingresos por up-selling
-    When el usuario navega al reporte de up-selling
-    Then el sistema muestra ingresos totales por up-selling en el período seleccionado
-    And el sistema desglosa por tipo: upgrades, late check-out, ancillaries
-    And el sistema muestra el revenue por huésped (RevPH) con y sin up-selling
-
-  Scenario: Comparar efectividad por tipo de ancillary
-    When el usuario selecciona comparar por tipo de ancillary
-    Then el sistema muestra tasa de aceptación por tipo: upgrades 35%, late check-out 28%, spa 15%
-    And el sistema muestra el revenue promedio por transacción de cada tipo
-    And el sistema recomienda focos de mejora basados en los datos
-
-  Scenario: Proyectar ingresos por up-selling
-    When el usuario solicita proyección trimestral
-    Then el sistema calcula el revenue potencial basado en ocupación proyectada y tasas históricas de aceptación
-    And el sistema muestra el revenue estimado con y sin optimización de up-selling
-```
-
+# 8. TRAZABILIDAD OE → OT → OO → CU → HISTORIA DE USUARIO
 
 ## 8.1 Matriz de Trazabilidad Completa
 
@@ -2666,20 +2587,20 @@ La siguiente matriz conecta los objetivos estratégicos (OE) con los objetivos t
 | OE4 | OT4.1 | OO4.1.2: Analizar mercados y destinos | CU-O26: Consultar reportes de revenue y mercado | HU-26: Consulta de reportes de revenue y mercado |
 | OE4 | OT4.2: Aplicar BI y ML | OO4.2.1: Proyectar demanda y revenue | CU-O26: Consultar reportes de revenue y mercado | HU-26: Consulta de reportes de revenue y mercado |
 | OE4 | OT4.2 | OO4.2.2: Detectar anomalías y calidad | CU-O27: Consultar reporte de calidad de datos | HU-27: Consulta de reporte de calidad y registros rechazados |
-| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O31: Gestionar geolocalización y metadata | HU-31: Gestión de geolocalización y metadata |
-| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O31 | HU-31 |
-| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O31 | HU-31 |
-| OE1 | OT1.2: Fortalecer reputación del huésped | OO1.2.3: Enviar notificaciones transaccionales | CU-O32: Gestionar notificaciones transaccionales | HU-32: Gestión de notificaciones transaccionales |
-| OE3 | OT3.3: Automatizar gestión habitaciones | OO3.3.5: Gestionar alertas operativas internas | CU-O33: Gestionar alertas operativas al staff | HU-33: Gestión de alertas operativas |
-| OE1 | OT1.1: Automatizar captación digital | OO1.1.3: Gestionar campañas promocionales multicanal | CU-O34: Gestionar campañas promocionales multicanal | HU-34: Gestión de campañas promocionales |
-| OE1 | OT1.1 | OO1.1.4: Atender consultas con chatbot IA | CU-O35: Atender cliente mediante chatbot | HU-35: Atención mediante chatbot |
-| OE1 | OT1.1 | OO1.1.5: Gestionar up-selling y ancillaries | CU-O36: Gestionar up-selling y ancillaries | HU-36: Gestión de up-selling |
-| OE2 | OT2.3 | OO2.3.4: Gestionar contenidos multimedia con geolocalización | CU-O37: Gestionar contenidos multimedia geolocalizados | HU-37: Gestión de contenidos multimedia |
-
-| OE3 | OT3.3: Automatizar gestión habitaciones | OO3.3.1: Consultar estado y disponibilidad de habitaciones | CU-O30: Gestionar disponibilidad y estado de habitaciones | HU-30: Gestión de disponibilidad y estado de habitaciones |
-| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza, rotación y housekeeping | CU-T14: Gestionar rotación y limpieza | HU-T14: Gestión de rotación y limpieza |
-| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo y correctivo | CU-T15: Programar mantenimiento preventivo y correctivo | HU-T15: Programación de mantenimiento preventivo |
-| OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia, up-selling y ancillaries | CU-E09, CU-E10 | HU-E09, HU-E10 |
+| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35: Editar metadata de destino | HU-35: Edición de metadata de destino |
+| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36: Editar nombre visible de hotel | HU-36: Edición de nombre visible de hotel |
+| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37: Visualizar mapa mundial | HU-37: Visualización de mapa mundial |
+| OE2 | OT2.3 | OO2.3.3 | CU-O38: Seleccionar ubicación en mapa | HU-38: Selección de ubicación en mapa |
+| OE3 | OT3.3: Automatizar gestión habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30: Consultar estado de habitaciones | HU-30: Consulta de estado de habitaciones |
+| OE3 | OT3.3 | OO3.3.1 | CU-O31: Asignar tipo de habitación | HU-31: Asignación de tipo de habitación |
+| OE3 | OT3.3 | OO3.3.1 | CU-O32: Consultar disponibilidad por habitación | HU-32: Consulta de disponibilidad por habitación |
+| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39: Gestionar limpieza y rotación | HU-39: Gestión de limpieza y rotación |
+| OE3 | OT3.3 | OO3.3.2 | CU-T14: Gestionar rotación y limpieza | HU-T14: Gestión de rotación y limpieza |
+| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40: Gestionar mantenimiento preventivo | HU-40: Gestión de mantenimiento preventivo |
+| OE3 | OT3.3 | OO3.3.3 | CU-T15: Programar mantenimiento preventivo proactivo | HU-T15: Programación de mantenimiento preventivo |
+| OE3 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34: Registrar cargos adicionales | HU-34: Registro de cargos adicionales |
+| OE3 | OT3.3 | OO3.3.1 | CU-O33: Gestionar amenities por tipo habitación | HU-33: Gestión de amenities por tipo habitación |
+| OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia | CU-E09: Monitorear eficiencia operativa | HU-E09: Monitoreo de eficiencia operativa |
 
 ## 8.2 Trazabilidad por Caso de Uso
 
@@ -2714,16 +2635,18 @@ La siguiente matriz conecta los objetivos estratégicos (OE) con los objetivos t
 | CU-O27 | Consultar reporte de calidad de datos | OO3.2.1, OO4.2.2 | OE3, OE4 | §7.27 HU-O27 |
 | CU-O28 | Administrar cuenta, sesión y cierre seguro | OO2.1.2, OO3.2.2 | OE2, OE3 | §7.28 HU-O28 |
 | CU-O29 | Cambiar contraseña y actualizar perfil | OO2.1.2 | OE2 | §7.29 HU-O29 |
-| CU-O30 | Gestionar disponibilidad y estado de habitaciones | OO3.3.1 | OE3 | §7.30 HU-O30 |
-| CU-O31 | Gestionar geolocalización y metadata de contenido | OO2.3.1, OO2.3.2, OO2.3.3 | OE2 | §7.31 HU-O31 |
-| CU-O32 | Gestionar notificaciones transaccionales al huésped | OO1.2.3 | OE1 | §7.32 HU-O32 |
-| CU-O33 | Gestionar alertas operativas internas al staff | OO3.3.5 | OE3 | §7.33 HU-O33 |
-| CU-O34 | Gestionar campañas promocionales multicanal | OO1.1.3 | OE1 | §7.34 HU-O34 |
-| CU-O35 | Atender cliente mediante asistente virtual (chatbot) | OO1.1.4 | OE1 | §7.35 HU-O35 |
-| CU-O36 | Gestionar up-selling y ancillaries | OO1.1.5 | OE1 | §7.36 HU-O36 |
-| CU-O37 | Gestionar contenidos multimedia con geolocalización | OO2.3.4 | OE2 | §7.37 HU-O37 |
-| CU-T14 | Gestionar rotación y limpieza (Táctico) | OO3.3.2 | OE3 | §7.38 HU-T14 |
-| CU-T15 | Programar mantenimiento preventivo (Táctico) | OO3.3.3 | OE3 | §7.39 HU-T15 |
-| CU-E09 | Monitorear eficiencia operativa (Estratégico) | OO5.1.1 | OE5 | §7.42 HU-E09 |
-| CU-E10 | Gestionar ingresos por up-selling (Estratégico) | OO5.1.1 | OE1/OE4 | §7.43 HU-E10 |
+| CU-O30 | Consultar estado actual de habitaciones | OO3.3.1 | OE3 | §7.30 HU-O30 |
+| CU-O31 | Asignar tipo de habitación | OO3.3.1 | OE3 | §7.31 HU-O31 |
+| CU-O32 | Consultar disponibilidad por habitación | OO3.3.1 | OE3 | §7.32 HU-O32 |
+| CU-O33 | Gestionar amenities por tipo de habitación | OO3.3.1 | OE3 | §7.33 HU-O33 |
+| CU-O34 | Registrar cargos adicionales | OO3.3.4 | OE3 | §7.34 HU-O34 |
+| CU-O35 | Editar metadata de destino | OO2.3.1 | OE2 | §7.35 HU-O35 |
+| CU-O36 | Editar nombre visible de hotel | OO2.3.2 | OE2 | §7.36 HU-O36 |
+| CU-O37 | Visualizar mapa mundial de destinos | OO2.3.3 | OE2 | §7.37 HU-O37 |
+| CU-O38 | Seleccionar ubicación en mapa interactivo | OO2.3.3 | OE2 | §7.38 HU-O38 |
+| CU-O39 | Gestionar limpieza y rotación | OO3.3.2 | OE3 | §7.39 HU-O39 |
+| CU-O40 | Gestionar mantenimiento preventivo | OO3.3.3 | OE3 | §7.40 HU-O40 |
+| CU-T14 | Gestionar rotación y limpieza (Táctico) | OO3.3.2 | OE3 | §7.41 HU-T14 |
+| CU-T15 | Programar mantenimiento preventivo (Táctico) | OO3.3.3 | OE3 | §7.42 HU-T15 |
+| CU-E09 | Monitorear eficiencia operativa (Estratégico) | OO5.1.1 | OE5 | §7.43 HU-E09 |
 

@@ -917,12 +917,6 @@ OT4.1
 Consolidar analítica hotelera global mediante dashboards y reportes de management. 
 OT4.2 
 Aplicar BI, IA, modelos predictivos, segmentación, forecasting y detección de anomalías. 
-OT2.3 
-Enriquecer catálogo geoespacial de destinos con mapa interactivo y edición de metadata de nombres y coordenadas 
-OT3.3 
-Automatizar gestión de limpieza, rotación, mantenimiento y cargos adicionales de habitaciones 
-OT5.1 
-Monitorear eficiencia operativa mediante indicadores de limpieza, mantenimiento, ocupación y cargos adicionales 
  
 10.3 Objetivos operativos 
 Código 
@@ -961,22 +955,6 @@ OO4.2.1
 Proyectar demanda, revenue, conversión, ocupación y campañas por mercado. 
 OO4.2.2 
 Detectar anomalías, registros rechazados, caídas de conversión e inconsistencias. 
-OO2.3.1 
-Editar metadata de destinos (nombre visible, coordenadas geográficas, país, ciudad, descripción) 
-OO2.3.2 
-Editar nombre visible de hotel (manual_override sobre hoteles con ID numérico) 
-OO2.3.3 
-Visualizar destinos y hoteles en mapa mundial interactivo con geolocalización 
-OO3.3.1 
-Consultar estado actual, limpieza y disponibilidad de cada habitación individual 
-OO3.3.2 
-Gestionar rotación de limpieza y asignación de tareas de housekeeping 
-OO3.3.3 
-Programar y registrar mantenimiento preventivo de habitaciones e instalaciones 
-OO3.3.4 
-Registrar cargos adicionales a reserva (room service, daños, extras) 
-OO5.1.1 
-Monitorear eficiencia operativa: tiempo de rotación, cumplimiento de mantenimiento, ocupación real vs disponible, cargos extra 
  
 11. Catálogo general de casos de uso 
 11.1 Casos de uso estratégicos 
@@ -1031,8 +1009,7 @@ OE5
 |-----------|-----------|-------------|-----------------|--------|----------|----------------|
 | CE-01 | CU-E01–CU-E04 | Supervisión estratégica y operativa del sistema | Gerente / Super admin / Admin sistema | gobierno_integración | Proveer a la alta dirección visibilidad consolidada del BSC, conversión digital, consumo de API y disponibilidad técnica del sistema | OE1–OE4 |
 | CE-02 | CU-E05–CU-E08 | Inteligencia de mercados y reporting ejecutivo | Gerente / Revenue manager / Auditor de Datos | datos_analítica | Consolidar el análisis de mercados, revenue, calidad de datos y reportes gerenciales para la toma de decisiones estratégicas | OE1–OE4 |
-| CE-03 | CU-E09 | Monitorear eficiencia operativa del hotel | Super Admin / Gerente general | operaciones_integración | Proporcionar a la gerencia una visión consolidada de KPIs operativos: rotación, limpieza, mantenimiento, ocupación real vs disponible, cargos adicionales promedio | OE5 |
-| CE-04 | CU-E10 | Gestionar ingresos por up-selling y ancillaries | Gerente general / Revenue | revenue_upselling | Proporcionar a la gerencia visión consolidada de ingresos por venta adicional durante la estancia, incluyendo upgrades, late check-out y ancillaries | OE1/OE4 |
+| CE-03 | CU-E09 | Monitorear eficiencia operativa del hotel | Super Admin / Gerente general | operaciones_integración | Proporcionar a la gerencia una visión consolidada de KPIs operativos: rotación, limpieza, mantenimiento, ocupación real vs disponible, cargos adicionales promedio | OE5 |
 
 11.2 Casos de uso tácticos
 Código 
@@ -1123,9 +1100,7 @@ OE3 (OT3.3)
 | CT-02 | CU-T04–CU-T07 | Gestión de inventario, tarifas y políticas hoteleras | Hotel partner / Gerente hotel / Revenue manager | operaciones_tarifas | Configurar habitaciones, disponibilidad, tarifas, políticas y cancelaciones para optimizar la ocupación y el revenue | OE1–OE4 |
 | CT-03 | CU-T08–CU-T13 | Gestión de contenido, usuarios, datos y monitoreo | Marketing / Super admin / Auditor de Datos | gobierno_datos | Gestionar contenido comercial, usuarios, auditoría, monitoreo de servicios, ETL y reseñas para asegurar calidad operativa | OE1–OE4 |
 | CT-04 | CU-T14 | Gestionar rotación y limpieza de habitaciones | Gerente de hotel | operaciones_integración | Optimizar el tiempo de rotación entre check-out y check-in, estableciendo métricas objetivo de eficiencia de limpieza | OE3 (OT3.3) |
-| CT-05 | CU-T15 | Programar mantenimiento preventivo y correctivo de habitaciones | Gerente de hotel | operaciones_integración | Establecer plan de mantenimiento recurrente basado en histórico, estacionalidad y uso, minimizando interrupciones | OE3 (OT3.3) |
-| CT-06 | CU-T16 | Configurar canales y plantillas de notificación | Super Admin | notificaciones_comunicación | Configurar los canales de envío (email, SMS, push) y las plantillas de notificación del sistema para comunicación con huéspedes y staff | OE1 |
-| CT-07 | CU-T17 | Configurar base de conocimiento del chatbot | Marketing / Super Admin | experiencia_cliente | Gestionar la base de conocimiento del chatbot IA para mejorar la precisión de las respuestas del asistente virtual | OE1 |
+| CT-05 | CU-T15 | Programar mantenimiento preventivo proactivo | Gerente de hotel | operaciones_integración | Establecer plan de mantenimiento recurrente basado en histórico, estacionalidad y uso, minimizando interrupciones | OE3 (OT3.3) |
 
 11.3 Casos de uso operativos
 Código 
@@ -1348,21 +1323,20 @@ Gestionar reseñas
 - 
 Actualizar imágenes y contenido 
 - 
-Analizar revenue-- SISTEMA Y DATOS -- 
-- Administrar usuarios y permisos 
-- Validar JWT y roles 
-- Consultar auditoría 
-- Ejecutar Airflow 
-- Validar calidad de datos 
-- Monitorear Redis/Docker/API 
--- HOUSEKEEPING Y MANTENIMIENTO -- 
-- Gestionar disponibilidad y estado de habitaciones 
-- Gestionar alertas operativas internas al staff 
-- Gestionar rotación y limpieza (Táctico) 
-- Programar mantenimiento preventivo (Táctico) 
--- MAPA Y GEOLOCALIZACIÓN -- 
-- Gestionar geolocalización y metadata de contenido 
-- Gestionar contenidos multimedia con geolocalización 
+Analizar revenue 
+-- SISTEMA Y DATOS -- 
+- 
+Administrar usuarios y permisos 
+- 
+Validar JWT y roles 
+- 
+Consultar auditoría 
+- 
+Ejecutar Airflow 
+- 
+Validar calidad de datos 
+- 
+Monitorear Redis/Docker/API 
 13. Matriz de aporte del sistema a los niveles organizacionales 
 La siguiente matriz relaciona los objetivos estratégicos, tácticos y operativos con el proceso que apoya el sistema, su funcionalidad, el KPI y el caso de uso correspondiente. Se 
 usan celdas combinadas para conservar la relación OE -> OT -> OO sin repetir texto innecesariamente. Cada fila explica de forma pormenorizada cómo HotelData aporta a lo que 
@@ -2004,95 +1978,10 @@ CU-T05:
 Configurar 
 disponibilidad; CU-T06: 
 Configurar tarifas; CU-
-T07: Gestionar políticas;CU-T08: 
+T07: Gestionar políticas; 
+CU-T08: 
 Gestionar 
 amenities e imágenes. 
-OT2.3: 
-Enriquecer 
-catálogo 
-geoespacial 
-de 
-destinos 
-con 
-mapa 
-interactivo. 
-OO2.3.1: 
-Editar metadata de 
-destinos (nombre visible, 
-coordenadas geográficas, 
-país, ciudad, 
-descripción) 
-Enriquecimiento 
-geoespacial 
-de 
-destinos 
-y 
-edición 
-de 
-coordenadas. 
-El sistema permite editar el 
-nombre visible, coordenadas, país, 
-ciudad y descripción de los destinos, 
-preservando el ID técnico y 
-registrando los cambios en 
-hotel_profile_changes. 
-Destinos con 
-coordenadas; cambios 
-de metadata 
-auditados; destinos 
-enriquecidos. 
-CU-O35: Editar metadata 
-de destino. 
-OO2.3.2: 
-Editar nombre visible de 
-hotel (manual_override 
-sobre hoteles con ID 
-numérico) 
-Enriquecimiento 
-manual 
-de 
-perfil 
-comercial 
-hotelero 
-con 
-override. 
-El sistema permite editar el nombre 
-visible del hotel, activando 
-manual_override para proteger el 
-cambio contra sobrescritura del ETL, 
-registrando el cambio en 
-hotel_profile_changes. 
-Nombres override 
-preservados; cambios 
-auditados. 
-CU-O36: Editar nombre 
-visible de hotel. 
-OO2.3.3: 
-Visualizar destinos y 
-hoteles en mapa mundial 
-interactivo con 
-geolocalización 
-Mapa 
-mundial 
-interactivo 
-con 
-Leaflet.js 
-y 
-geolocalización. 
-El sistema renderiza un mapa mundial 
-interactivo con marcadores de 
-destinos y hoteles geolocalizados, 
-permitiendo navegación, zoom y 
-selección de ubicación. 
-Hoteles 
-geolocalizados; 
-destinos en mapa; 
-interacciones de 
-usuario. 
-CU-O37: Visualizar mapa 
-mundial; 
-CU-O38: Seleccionar 
-ubicación en mapa. 
 OE3: 
 Asegurar 
 expansión continua y 
@@ -2368,124 +2257,9 @@ Consultar
 auditoría y trazabilidad; 
 CU-O13: 
 Consultar 
-historial de cambios;CU-O28: Administrar sesión 
+historial de cambios; CU-
+O28: Administrar sesión 
 y cierre seguro. 
-OT3.3: 
-Automatizar 
-gestión 
-de 
-limpieza, 
-rotación, 
-mantenimiento 
-y 
-cargos 
-adicionales 
-de 
-habitaciones. 
-OO3.3.1: 
-Consultar estado actual, 
-limpieza y disponibilidad 
-de cada habitación 
-individual 
-Gestión 
-del 
-estado 
-físico 
-y 
-operativo 
-de 
-habitaciones. 
-El sistema permite consultar en 
-tiempo real el estado de cada 
-habitación: disponible, ocupada, en 
-limpieza, en mantenimiento, 
-mostrando el historial de cambios de 
-estado desde room_status_log. 
-Habitaciones con 
-estado visible; 
-cambios de estado 
-auditados. 
-CU-O30: Consultar estado 
-de habitaciones. 
-OO3.3.2: 
-Gestionar rotación de 
-limpieza y asignación de 
-tareas de housekeeping 
-Gestión 
-de 
-housekeeping 
-y 
-asignación 
-de 
-tareas 
-de 
-limpieza. 
-El sistema permite asignar tareas de 
-limpieza a personal, registrar 
-completitud, medir tiempo de 
-rotación y mantener historial en 
-housekeeping_tasks y 
-room_status_log. 
-Tareas de limpieza 
-asignadas; tiempo de 
-rotación promedio; 
-cumplimiento de 
-limpieza. 
-CU-O39: Gestionar 
-limpieza/rotación; 
-CU-T14: Rotación/limpieza 
-táctico. 
-OO3.3.3: 
-Programar y registrar 
-mantenimiento preventivo 
-de habitaciones e 
-instalaciones 
-Gestión 
-de 
-mantenimiento 
-preventivo 
-y 
-programación. 
-El sistema permite programar 
-mantenimiento recurrente o puntual, 
-registrar ejecución, observaciones y 
-mantener historial en 
-maintenance_schedule y 
-maintenance_tasks. 
-Tareas de 
-mantenimiento 
-programadas; 
-cumplimiento de 
-mantenimiento. 
-CU-O40: Mantenimiento 
-preventivo; 
-CU-T15: Mantenimiento 
-proactivo táctico. 
-OO3.3.4: 
-Registrar cargos 
-adicionales a reserva 
-(room service, daños, 
-extras) 
-Registro 
-de 
-cargos 
-extras 
-y 
-adicionales 
-a 
-la 
-reserva. 
-El sistema permite registrar cargos 
-adicionales asociados a una reserva 
-(room service, daños, late check-out, 
-extras), actualizando el total de la 
-reserva y registrando en 
-additional_charges. 
-Cargos adicionales 
-registrados; monto 
-total actualizado. 
-CU-O34: Registrar cargos 
-adicionales. 
 OE4: 
 Consolidar 
 inteligencia 
@@ -2777,70 +2551,14 @@ calidad
 del 
 dataset; 
 caídas de conversión; 
-campos incompletos.CU-E07: Evaluar calidad 
+campos incompletos. 
+CU-E07: Evaluar calidad 
 de datos y pipeline; CU-
 O27: Consultar reporte de 
 calidad 
 y 
-registros rechazados. 
-OE5: 
-Monitorear 
-la 
- eficiencia 
-operativa 
-del 
-hotel 
-mediante 
-KPIs 
-de 
-operación. 
-OT5.1: 
-Monitorear 
- eficiencia 
-operativa 
-mediante 
-indicadores 
-de 
-limpieza, 
-mantenimiento, 
-ocupación 
-y 
-cargos 
-adicionales. 
-OO5.1.1: 
-Monitorear eficiencia 
-operativa: tiempo de 
-rotación, cumplimiento 
-de mantenimiento, 
-ocupación real vs 
-disponible, cargos extra 
-Monitoreo 
-de 
- KPIs 
-operativos 
-y 
- eficiencia 
-del 
-hotel. 
-El sistema consolida KPIs operativos: 
-tiempo de rotación promedio, 
-cumplimiento de limpieza y 
-mantenimiento, ocupación real vs 
-disponible y cargos adicionales 
-promedio, presentándolos en un 
-dashboards de eficiencia operativa. 
-Tiempo de rotación; 
-cumplimiento de 
-limpieza; 
-cumplimiento de 
-mantenimiento; 
-ocupación real; 
-cargos extra 
-promedio. 
-CU-O30, CU-T14, CU-T15, 
-CU-T14, CU-T15, 
-CU-E09: Eficiencia 
-operativa. 
+registros 
+rechazados. 
  
 14. Visión arquitectónica 
 A continuación se relacionan los niveles organizacionales de HotelData con los casos de uso del sistema, indicando 
@@ -3245,37 +2963,6 @@ auditoría,
 reservas, 
 revenue, 
 calidad, campañas y usuarios. 
-CU-E09 
-Monitorear 
-eficiencia 
-operativa 
-del 
-hotel 
-Dashboard operativo, KPIs de rotación, 
-cumplimiento de limpieza, mantenimiento 
-y ocupación real vs disponible. 
-Fact_Room_Status_Log, 
-Fact_Housekeeping_Tasks, 
-Fact_Maintenance_Schedule, 
-Fact_Booking_Orders, 
-Dim_Time, 
-Dim_Hotel, 
-Dim_Room_Type. 
-Reporte de eficiencia 
-operativa: tiempo de 
-rotación, cumplimiento 
-de limpieza, 
-mantenimiento 
-al día, ocupación 
-real vs disponible, 
-cargos adicionales 
-promedio. 
-room_status_log, 
-housekeeping_tasks, 
-maintenance_schedule, 
-booking_orders, 
-hotel_rooms, 
-additional_charges. 
  
 17. Matriz por casos de uso tácticos 
 Caso de uso 
@@ -4140,160 +3827,6 @@ users,
 roles, 
 permissions, 
 user_sessions, activity logs. 
-CU-O30 
-Consultar 
-estado actual de 
-habitaciones 
-Reglas de inventario, consulta de 
-estado de habitación, disponibilidad 
-en tiempo real. 
-Fact_Room_Status_Log, 
-Dim_Hotel, 
-Dim_Room_Type 
-Reporte de estado de 
-habitaciones por hotel y 
-piso. 
-hotel_rooms, 
-room_status_log, 
-room_types. 
-CU-O31 
-Asignar tipo de 
-habitación a 
-habitación 
-individual 
-Reglas de negocio, validación de 
-capacidad, actualización de 
-inventario. 
-Fact_Room_Inventory_Calendar, 
-Dim_Hotel, 
-Dim_Room_Type 
-Reporte de asignación de 
-habitaciones. 
-hotel_rooms, 
-room_types. 
-CU-O32 
-Consultar 
-disponibilidad 
-por habitación 
-individual 
-Reglas de inventario, consulta de 
-disponibilidad por fecha y 
-habitación. 
-Fact_Room_Inventory_Calendar, 
-Dim_Hotel, 
-Dim_Room_Type, 
-Dim_Time 
-Reporte de disponibilidad 
-por habitación individual. 
-room_inventory_calendar, 
-hotel_rooms. 
-CU-O33 
-Gestionar 
-amenities por tipo 
-de habitación 
-Auditoría de cambios, clasificación 
-de amenities, actualización de 
-contenido. 
-Fact_Hotel_Profile_Changes, 
-Dim_Room_Type, Dim_Hotel 
-Reporte de amenities por 
-tipo de habitación. 
-room_types, 
-hotel_content_pages. 
-CU-O34 
-Registrar cargos 
-adicionales a 
-reserva 
-Reglas de billing, cálculo de cargos, 
-actualización de total de reserva. 
-Fact_Reservation_Payments, 
-Fact_Booking_Orders, 
-Dim_Time 
-Reporte de cargos 
-adicionales por reserva. 
-additional_charges, 
-booking_orders. 
-CU-O35 
-Editar metadata de 
-destino 
-Auditoría de cambios, edición de 
-coordenadas, nombre y descripción. 
-Fact_Hotel_Profile_Changes, 
-Dim_Destination, Dim_Hotel 
-Reporte de cambios de 
-destino. 
-destinations_enriched, 
-hotel_locations_geo. 
-CU-O36 
-Editar nombre 
-visible de hotel 
-(manual_override) 
-Auditoría de cambios, reglas de 
-preservación manual_override. 
-Fact_Hotel_Profile_Changes, 
-Fact_User_Activity_Logs, 
-Dim_Hotel 
-Reporte de overrides de 
-nombre de hotel. 
-dim_hotels, 
-hotel_profile_changes. 
-CU-O37 
-Visualizar mapa 
-mundial de 
-destinos con 
-hoteles 
-BI geoespacial, consulta de 
-coordenadas, renderizado de mapa. 
-Dim_Hotel, Dim_Destination, 
-Fact_Hotel_Reservations 
-Mapa mundial con 
-marcadores de hoteles. 
-destinations_enriched, 
-hotel_locations_geo. 
-CU-O38 
-Seleccionar 
-ubicación de 
-destino en mapa 
-interactivo 
-Geolocalización, actualización de 
-coordenadas, validación 
-espacial. 
-Fact_Hotel_Profile_Changes, 
-Dim_Destination 
-Reporte de ubicaciones 
-actualizadas. 
-destinations_enriched. 
-CU-O39 
-Gestionar limpieza 
-y rotación de 
-habitaciones 
-Reglas operativas de housekeeping, 
-asignación de tareas, control de 
-tiempo de rotación. 
-Fact_Room_Status_Log, 
-Fact_Housekeeping_Tasks, 
-Dim_Hotel, Dim_Room_Type 
-Reporte de limpieza y 
-rotación. 
-room_status_log, 
-housekeeping_tasks, 
-hotel_rooms. 
-CU-O40 
-Gestionar 
-mantenimiento 
-preventivo de 
-habitaciones 
-Reglas de mantenimiento, 
-programación recurrente, control 
-de cumplimiento. 
-Fact_Maintenance_Schedule, 
-Fact_Maintenance_Tasks, 
-Dim_Hotel, Dim_Room_Type 
-Reporte de mantenimiento 
-preventivo. 
-maintenance_schedule, 
-maintenance_tasks, 
-hotel_rooms. 
  
 19. Técnicas de IA y Machine Learning aplicables 
 A. Segmentación de clientes y mercados 
@@ -4473,7 +4006,7 @@ y
 operación 
 comercial escalable. 
 Operativo 
-CU-O01 a CU-O37 
+CU-O01 a CU-O29 
 Reglas de negocio, validaciones, 
 alertas, registros transaccionales, 
 JWT y trazabilidad funcional. 
