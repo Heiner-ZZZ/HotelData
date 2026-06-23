@@ -36,4 +36,34 @@ El cliente encontró el hotel deseado y procede a reservar. Debe seleccionar tip
 
 **Dependencias**: booking_orders, booking_guests, booking_status_history, room_inventory_calendar
 
-**Fuera de alcance**: Pago en línea al reservar (solo facturación post-estancia)
+**Fuera de alcance**: 
+
+- Pago en línea al reservar (solo facturación post-estancia)
+- Modificación o cancelación de reservas por parte del cliente
+- Solicitud de reserva para múltiples tipos de habitación en una sola acción
+- Solicitud de reserva para múltiples fechas en una sola acción
+- Automatización de confirmación de reservas (requiere acción del gerente)
+- Webhooks o notificaciones automáticas al cliente y gerente al crear reserva
+- Confirmación automática de reservas (requiere acción del gerente)
+- Integración con sistemas de terceros para gestión de reservas (Channel Managers, OTAs)
+- Envío de notificaciones automáticas al cliente y gerente (email, SMS) al crear reserva
+- Gestión de reservas para grupos o eventos especiales
+- Gestión de solicitudes especiales (cama extra, accesibilidad, etc.) durante la reserva
+- Validación de datos de huéspedes contra bases de datos externas (pasaportes, visas, etc.)
+- Gestión de reservas con múltiples tipos de habitación en una sola solicitud
+- Gestión de reservas con diferentes políticas de cancelación en una sola solicitud
+- Gestión de reservas con diferentes tarifas en una sola solicitud
+- Gestión de reservas con diferentes fechas de check-in/check-out en una sola solicitud
+- Gestión de reservas con diferentes opciones de pago en una sola solicitud
+- Gestión de reservas con diferentes opciones de cancelación gratuita en una sola solicitud
+- Gestión de reservas con diferentes opciones de reembolso en una sola solicitud
+- Gestión de reservas con diferentes opciones de servicios adicionales en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para no fumadores/fumadores en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para discapacitados en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para grupos en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para familias en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para mascotas en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para parejas en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para solteros en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para viajeros de negocios en una sola solicitud
+- Gestión de reservas con diferentes opciones de habitación para viajeros de ocio en una sola solicitud     
