@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-ALLOWED_STATUSES = {"pending", "confirmed", "cancelled", "rejected"}
+ALLOWED_STATUSES = {"requested", "confirmed", "cancelled", "rejected"}
 CHECKIN_COMPLETED_STATUSES = {"checked_in", "checked_out"}
 CHECKOUT_COMPLETED_STATUSES = {"checked_out"}
 
@@ -22,8 +22,6 @@ class ReservationInput:
     children: int
     rooms: int
     comment: str
-    guest_phone: str = ""
-    room_type_id: str = ""
     source: str = "web_request"
     user_id: str | None = None
     created_by: str | None = None

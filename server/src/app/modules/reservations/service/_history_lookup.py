@@ -50,7 +50,7 @@ def _derived_stay_status(booking: dict[str, Any], history: list[dict[str, Any]],
 
 def _reservation_status_label(status: str) -> str:
     mapping = {
-        "pending": "Pendiente",
+        "requested": "Pendiente",
         "confirmed": "Confirmada",
         "cancelled": "Cancelada",
         "rejected": "Rechazada",
