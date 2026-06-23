@@ -1,8 +1,3 @@
-"""Billing lifecycle: invoices and payments.
-
-Uses string booking_id (e.g. "BK-20260810-XXXX") for all booking lookups,
-not MongoDB ObjectId. Each document still gets a native ObjectId _id.
-"""
 from __future__ import annotations
 
 import secrets
@@ -45,13 +40,12 @@ def _generate_invoice_number() -> str:
 
 def create_invoice(payload: InvoiceCreate) -> dict | None:
     db = get_database()
-    # Look up booking by string booking_id (GAP-042 fix)
-    booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
+    booking = db.booking_orders.find_one({"_id": ObjectId(payload.booking_id)})
     if not booking:
         return None
     total = round(payload.subtotal + payload.taxes, 2)
     doc = {
-        "booking_id": payload.booking_id,       # string, not ObjectId
+        "booking_id": ObjectId(payload.booking_id),
         "prop_id": booking.get("prop_id", 0),
         "invoice_number": _generate_invoice_number(),
         "subtotal": round(payload.subtotal, 2),
@@ -76,7 +70,7 @@ def list_invoices(
     db = get_database()
     query: dict = {}
     if booking_id:
-        query["booking_id"] = booking_id          # string match
+        query["booking_id"] = ObjectId(booking_id)
     if status:
         query["status"] = status
     total = db[INVOICES].count_documents(query)
@@ -121,8 +115,7 @@ def cancel_invoice(invoice_id: str) -> dict | None:
 
 def create_payment(payload: PaymentCreate) -> dict | None:
     db = get_database()
-    # Look up booking by string booking_id (GAP-042 fix)
-    booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
+    booking = db.booking_orders.find_one({"_id": ObjectId(payload.booking_id)})
     if not booking:
         return None
     invoice_id = None
@@ -132,7 +125,7 @@ def create_payment(payload: PaymentCreate) -> dict | None:
             invoice_id = ObjectId(payload.invoice_id)
 
     doc = {
-        "booking_id": payload.booking_id,         # string, not ObjectId
+        "booking_id": ObjectId(payload.booking_id),
         "prop_id": booking.get("prop_id", 0),
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
@@ -159,7 +152,7 @@ def list_payments(
     db = get_database()
     query: dict = {}
     if booking_id:
-        query["booking_id"] = booking_id          # string match
+        query["booking_id"] = ObjectId(booking_id)
     total = db[PAYMENTS].count_documents(query)
     cursor = (
         db[PAYMENTS]
@@ -212,7 +205,6 @@ def _fmt(val):
 
 def _enrich_invoice(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
-    # booking_id is already a string, just ensure it
     doc["booking_id"] = str(doc.get("booking_id", ""))
     for f in ("issued_at", "paid_at"):
         doc[f] = _fmt(doc.get(f))

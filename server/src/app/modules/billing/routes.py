@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import urlencode
-
-from fastapi import APIRouter, Body, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
-from src.app.template_utils import templates
+from fastapi import APIRouter, Body, HTTPException, Query, status
 
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
@@ -21,72 +17,11 @@ from src.app.modules.billing.service import (
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
-web_router = APIRouter(tags=["billing-web"])
-def _page_url(request: Request, page: int) -> str:
-    params = dict(request.query_params)
-    params["page"] = str(page)
-    return f"{request.url.path}?{urlencode(params)}"
 
 
 @router.get("/status", response_model=ModuleStatus)
 def billing_module_status():
     return module_status()
-
-
-# --- Web routes ---
-
-@web_router.get("/billing")
-def billing_list(request: Request, page: int = Query(default=1, ge=1)):
-    results = list_invoices(page=page, page_size=20)
-    return templates.TemplateResponse(
-        request,
-        "billing/list.html",
-        {
-            "results": results,
-            "prev_url": _page_url(request, results["page"] - 1) if results["has_prev"] else None,
-            "next_url": _page_url(request, results["page"] + 1) if results["has_next"] else None,
-        },
-    )
-
-
-@web_router.post("/billing/{invoice_id}/cancel")
-def billing_cancel_web(invoice_id: str):
-    try:
-        result = cancel_invoice(invoice_id)
-        if result is None:
-            return RedirectResponse(
-                f"/billing/{invoice_id}?error=No+se+pudo+cancelar+la+factura",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
-        return RedirectResponse(f"/billing/{invoice_id}", status_code=status.HTTP_303_SEE_OTHER)
-    except Exception as exc:
-        return RedirectResponse(
-            f"/billing/{invoice_id}?error={exc}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-
-@web_router.get("/billing/{invoice_id}")
-def billing_detail(request: Request, invoice_id: str):
-    invoice = get_invoice(invoice_id)
-    if invoice is None:
-        return templates.TemplateResponse(
-            request,
-            "billing/detail.html",
-            {"invoice": None, "payments": []},
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-    # Note: filtered by booking_id (not invoice_id) for now — captures all
-    # payments tied to the reservation, not just ones linked to this invoice.
-    payments = list_payments(booking_id=invoice.get("booking_id", ""), page_size=50)
-    return templates.TemplateResponse(
-        request,
-        "billing/detail.html",
-        {
-            "invoice": invoice,
-            "payments": payments["items"],
-        },
-    )
 
 
 # --- Invoices ---

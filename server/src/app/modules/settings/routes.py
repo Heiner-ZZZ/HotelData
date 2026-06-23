@@ -1,16 +1,28 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from src.app.email.service import send_email
 from src.app.security.dependencies import require_login
-from src.app.security.session import log_user_activity, verify_password
-from src.app.security.session import invalidate_user_sessions, password_context
+from src.app.security.session import invalidate_user_sessions, log_user_activity, verify_password
+from src.app.security.session import password_context
 from src.database.connection import get_database
 
 from .schemas import PasswordChange, SettingsUpdate
+
+
+PASSWORD_HISTORY_LIMIT = 5
+
+_COMMON_PASSWORDS = {
+    "password", "12345678", "123456789", "qwerty123", "admin123",
+    "letmein", "welcome", "monkey", "dragon", "password1",
+    "contraseña", "abcdefgh", "password123", "1234567890",
+    "iloveyou", "trustno1", "sunshine", "princess", "football",
+}
 
 
 api_router = APIRouter(prefix="/api/settings", tags=["settings-api"])
@@ -95,19 +107,60 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
     if not verify_password(payload.current_password, stored_hash):
         raise HTTPException(status_code=400, detail="La contraseña actual no es correcta.")
 
-    if verify_password(payload.new_password, stored_hash):
+    new_lower = payload.new_password.lower()
+    if new_lower in _COMMON_PASSWORDS:
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña es demasiado común. Elige una más segura.",
+        )
+
+    new_hash = password_context.hash(payload.new_password)
+    password_history = current_user.get("password_history", [])
+    for old_hash in password_history:
+        if password_context.verify(payload.new_password, old_hash):
+            raise HTTPException(
+                status_code=400,
+                detail="La nueva contraseña no puede ser igual a ninguna de las últimas 5 contraseñas usadas.",
+            )
+
+    if payload.current_password == payload.new_password:
         raise HTTPException(
             status_code=400,
             detail="La nueva contraseña debe ser diferente a la actual.",
         )
 
-    new_hash = password_context.hash(payload.new_password)
+    if stored_hash:
+        password_history.append(stored_hash)
+    if len(password_history) > PASSWORD_HISTORY_LIMIT:
+        password_history = password_history[-PASSWORD_HISTORY_LIMIT:]
+
     db.users.update_one(
         {"_id": user_id},
-        {"$set": {"password_hash": new_hash, "updated_at": utc_now()}},
+        {
+            "$set": {
+                "password_hash": new_hash,
+                "password_history": password_history,
+                "password_changed_at": utc_now(),
+                "updated_at": utc_now(),
+            }
+        },
     )
 
     invalidate_user_sessions(db, user_id, reason="password_changed")
+
+    try:
+        email = current_user.get("email", "")
+        if email:
+            html = f"""<!DOCTYPE html>
+<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
+<h2 style="color:#1463ff">HotelData — Contraseña actualizada</h2>
+<p>Tu contraseña fue cambiada exitosamente.</p>
+<p>Si no realizaste este cambio, contacta al soporte de inmediato.</p>
+<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
+</body></html>"""
+            send_email(email, "Tu contraseña fue cambiada — HotelData", html)
+    except Exception:
+        pass
 
     log_user_activity(
         db,
@@ -116,7 +169,7 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
         user=current_user,
     )
 
-    return {"ok": True, "message": "Contraseña actualizada correctamente. Se han cerrado todas las sesiones activas."}
+    return {"ok": True, "message": "Contraseña actualizada correctamente. Tus otras sesiones han sido cerradas."}
 
 
 def utc_now():
