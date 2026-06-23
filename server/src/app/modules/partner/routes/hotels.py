@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from fastapi import Body, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import Body, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
-from src.app.modules.partner.routes import api_router, legacy_admin_api_router, templates, web_router
-from src.app.modules.partner.routes._common import page_url, require_prop_id
+from src.app.modules.partner.routes import api_router, legacy_admin_api_router, web_router
+from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     list_partner_hotels,
-    management_property_options,
     partner_hotel_detail,
     partner_hotel_edit_profile,
     partner_hotel_performance,
@@ -15,41 +14,34 @@ from src.app.modules.partner.services import (
     properties_dashboard,
     save_partner_hotel_profile,
 )
+from src.app.security.dependencies import require_login
 
 
 @web_router.get("/hotels")
 def hotels(request: Request, q: str = "", page: int = Query(default=1, ge=1)):
     results = list_partner_hotels(q, page=page, page_size=20)
-    return templates.TemplateResponse(
-        request,
-        "partner/hotels.html",
-        {
-            "results": results,
-            "prev_url": page_url(request, results["page"] - 1) if results["has_prev"] else None,
-            "next_url": page_url(request, results["page"] + 1) if results["has_next"] else None,
-        },
-    )
+    return results
 
 
 @web_router.get("/hotels/{prop_id}")
 def hotel_detail(request: Request, prop_id: int):
     detail = partner_hotel_detail(prop_id)
     if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    return templates.TemplateResponse(request, "partner/hotel_detail.html", detail)
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+    return detail
 
 
 @web_router.get("/hotels/{prop_id}/performance")
 def performance(request: Request, prop_id: int):
     detail = partner_hotel_performance(prop_id)
     if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    return templates.TemplateResponse(request, "partner/performance.html", detail)
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+    return detail
 
 
 @api_router.get("/properties")
-def properties_api(q: str = "", page: int = Query(default=1, ge=1)):
-    return list_partner_hotels(q, page=page, page_size=20)
+def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
+    return list_partner_hotels(q, page=page, page_size=20, user=current_user)
 
 
 @api_router.get("/properties/options")
@@ -57,8 +49,9 @@ def properties_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
+    current_user: dict = Depends(require_login),
 ):
-    results = list_partner_hotels(q, page=page, page_size=page_size)
+    results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     return {
         "properties": [
             {
@@ -75,8 +68,8 @@ def properties_options_api(
 
 
 @api_router.get("/properties/dashboard")
-def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1)):
-    return properties_dashboard(q, page=page, page_size=20)
+def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
+    return properties_dashboard(q, page=page, page_size=20, user=current_user)
 
 
 @api_router.get("/properties/{prop_id}/edit")
@@ -112,8 +105,8 @@ def property_profile_update_api(prop_id: int, payload: dict = Body(...)):
 
 
 @api_router.get("/properties/{prop_id}")
-def property_detail_api(prop_id: int):
-    detail = partner_hotel_detail(prop_id)
+def property_detail_api(prop_id: int, current_user: dict = Depends(require_login)):
+    detail = partner_hotel_detail(prop_id, user=current_user)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from fastapi import Body, Form, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse
 
-from src.app.modules.partner.routes import api_router, templates, web_router
+from fastapi import Depends
+
+from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     create_room_type,
@@ -11,34 +13,23 @@ from src.app.modules.partner.services import (
     partner_hotel_detail,
     partner_hotel_rooms,
 )
+from src.app.security.dependencies import require_login
 
 
 @web_router.get("/hotels/{prop_id}/rooms")
 def rooms(request: Request, prop_id: int):
     detail = partner_hotel_rooms(prop_id)
     if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    detail["message"] = request.query_params.get("message")
-    detail["error"] = request.query_params.get("error")
-    return templates.TemplateResponse(request, "partner/rooms.html", detail)
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+    return detail
 
 
 @web_router.get("/hotels/{prop_id}/rooms/new")
 def rooms_new(request: Request, prop_id: int):
     detail = partner_hotel_detail(prop_id)
     if detail is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    detail["message"] = request.query_params.get("message")
-    detail["error"] = request.query_params.get("error")
-    detail["form_values"] = {
-        "name": "",
-        "description": "",
-        "max_adults": 2,
-        "max_children": 0,
-        "base_capacity": 2,
-        "is_active": True,
-    }
-    return templates.TemplateResponse(request, "partner/rooms_new.html", detail)
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+    return detail
 
 
 @web_router.post("/hotels/{prop_id}/rooms/new")
@@ -63,16 +54,10 @@ def rooms_new_submit(
             is_active=is_active,
         )
     except ValueError as exc:
-        return RedirectResponse(
-            url=f"/partner/hotels/{prop_id}/rooms/new?error={str(exc).replace(' ', '+')}",
-            status_code=303,
-        )
+        return JSONResponse({"error": str(exc)}, status_code=400)
     if saved is None:
-        return RedirectResponse(url="/partner/hotels", status_code=303)
-    return RedirectResponse(
-        url=f"/partner/hotels/{prop_id}/rooms?message=Tipo+de+habitacion+registrado",
-        status_code=303,
-    )
+        return JSONResponse({"error": "Property not found"}, status_code=404)
+    return JSONResponse({"ok": True, "message": "Tipo de habitacion registrado"})
 
 
 @api_router.get("/rooms")
@@ -84,8 +69,8 @@ def rooms_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/rooms/options")
-def rooms_options_api():
-    properties = list_partner_hotels("", page=1, page_size=200)
+def rooms_options_api(current_user: dict = Depends(require_login)):
+    properties = list_partner_hotels("", page=1, page_size=200, user=current_user)
     return {
         "properties": [
             {

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import Body, HTTPException, Query, status
 
+from fastapi import Depends
+
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
@@ -10,6 +12,7 @@ from src.app.modules.partner.services import (
     partner_hotel_rates,
     save_rate_calendar_entry,
 )
+from src.app.security.dependencies import require_login
 
 
 @api_router.get("/rates")
@@ -36,8 +39,9 @@ def rates_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
+    current_user: dict = Depends(require_login),
 ):
-    results = list_partner_hotels(q, page=page, page_size=page_size)
+    results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     response: dict[str, object] = {
         "properties": [
             {
