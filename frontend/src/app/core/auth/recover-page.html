@@ -1,0 +1,52 @@
+<main class="recover-page">
+  <section class="recover-hero">
+    <p class="recover-kicker">HotelData Hub</p>
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
+    <div class="hero-copy">
+      <h2>Recuperar acceso</h2>
+      <p>Te enviaremos un enlace para restablecer tu contraseña.</p>
+    </div>
+  </section>
+
+  <section class="recover-card surface-card">
+    <div class="card-head">
+      <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">lock_reset</span> Recuperación</p>
+      <h2>¿Olvidaste tu contraseña?</h2>
+      <p>Ingresa el correo con el que te registraste.</p>
+    </div>
+
+    @if (sent()) {
+      <div class="notice notice-success">
+        Si el correo existe, recibirás un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada y la carpeta de spam.
+      </div>
+      <a routerLink="/login" class="back-link">Volver al inicio de sesión</a>
+    } @else {
+      @if (errorMessage()) {
+        <div class="notice notice-error">{{ errorMessage() }}</div>
+      }
+
+      <form class="recover-form" [formGroup]="recoverForm" (ngSubmit)="submit()">
+        <label class="input-field">
+          <span class="material-symbols-outlined input-icon">mail</span>
+          <span class="input-label">Correo electrónico</span>
+          <input type="email" formControlName="email" placeholder="ej: usuario@correo.com" autocomplete="email">
+          @if (recoverForm.controls.email.touched && recoverForm.controls.email.invalid) {
+            <span class="field-error">Ingresa un correo válido</span>
+          }
+        </label>
+
+        <button type="submit" [disabled]="submitting()">
+          @if (submitting()) {
+            <span class="material-symbols-outlined btn-icon">sync</span> Enviando...
+          } @else {
+            <span class="material-symbols-outlined btn-icon">send</span> Enviar enlace
+          }
+        </button>
+      </form>
+
+      <p class="card-footnote">
+        <a routerLink="/login">Volver al inicio de sesión</a>
+      </p>
+    }
+  </section>
+</main>
