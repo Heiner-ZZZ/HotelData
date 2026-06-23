@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from src.app.template_utils import templates
+from fastapi import APIRouter
 
 
 router = APIRouter()
 
 
 @router.get("/company")
-def company(request: Request):
-    return templates.TemplateResponse(request, "company/index.html", {})
+def company():
+    return {"ok": True, "message": "Company page"}
