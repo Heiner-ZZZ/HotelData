@@ -30,4 +30,12 @@ export class SystemUsersApiService {
       )
       .pipe(map((dto) => mapSystemUserToggleResult(dto)));
   }
+
+  deleteUser(userId: string) {
+    return this.http
+      .delete<{ ok: boolean; message: string }>(
+        `${this.apiConfig.baseUrl}/admin/users/${userId}`,
+        { withCredentials: true }
+      );
+  }
 }

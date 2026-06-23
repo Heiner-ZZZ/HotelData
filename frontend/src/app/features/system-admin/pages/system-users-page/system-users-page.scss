@@ -214,6 +214,11 @@ th {
   color: var(--accent);
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.row-action:hover {
+  background: rgba(20, 99, 255, 0.15);
 }
 
 .row-action[disabled] {
@@ -221,8 +226,73 @@ th {
   cursor: wait;
 }
 
+.row-action--danger {
+  border-color: var(--danger);
+  background: rgba(201, 61, 50, 0.08);
+  color: var(--danger);
+  min-width: 2.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-action--danger:hover {
+  background: rgba(201, 61, 50, 0.15);
+}
+
+.row-action--danger .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+.action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .action-hint {
   font-size: 0.92rem;
+}
+
+.row-deleted {
+  opacity: 0.5;
+}
+
+.confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.confirm-yes,
+.confirm-no {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-yes {
+  background: var(--danger);
+  color: #fff;
+}
+
+.confirm-yes[disabled] {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.confirm-no {
+  background: transparent;
+  color: var(--muted-text);
+  border-color: var(--app-border);
 }
 
 .message.success {

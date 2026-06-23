@@ -44,6 +44,9 @@ export class SystemUsersPageComponent {
   readonly message = signal('');
   readonly errorMessage = signal('');
   readonly pendingUserId = signal<string | null>(null);
+  readonly pendingDeleteId = signal<string | null>(null);
+  readonly confirmDeleteId = signal<string | null>(null);
+  readonly deletingId = signal<string | null>(null);
   readonly openSection = signal<string | null>(null);
 
   readonly openFilter = signal<ColumnKey | null>(null);
@@ -182,6 +185,38 @@ export class SystemUsersPageComponent {
         error: (error) => {
           this.pendingUserId.set(null);
           this.errorMessage.set(error?.error?.message || 'No fue posible actualizar el estado del usuario.');
+        }
+      });
+  }
+
+  requestDelete(userId: string) {
+    this.confirmDeleteId.set(userId);
+    this.message.set('');
+    this.errorMessage.set('');
+  }
+
+  cancelDelete() {
+    this.confirmDeleteId.set(null);
+  }
+
+  confirmDelete(userId: string) {
+    this.confirmDeleteId.set(null);
+    this.deletingId.set(userId);
+    this.message.set('');
+    this.errorMessage.set('');
+
+    this.api
+      .deleteUser(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.message.set(result.message);
+          this.deletingId.set(null);
+          this.loadUsers();
+        },
+        error: (error) => {
+          this.deletingId.set(null);
+          this.errorMessage.set(error?.error?.message || 'No fue posible eliminar el usuario.');
         }
       });
   }
