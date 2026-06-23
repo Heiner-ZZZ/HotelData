@@ -33,6 +33,18 @@ class Settings:
     ga03_expected_records: int
     task_number: str
     target_records: int
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
+    smtp_from: str
+    app_base_url: str
+    nvidia_api_key: str
+    nvidia_api_base: str
+    nvidia_chat_model: str
+    nvidia_chat_temperature: float
+    nvidia_chat_top_p: float
+    nvidia_chat_max_tokens: int
     cors_allowed_origins: tuple[str, ...]
     cors_allowed_methods: tuple[str, ...]
     cors_allowed_headers: tuple[str, ...]
@@ -57,7 +69,7 @@ def get_settings() -> Settings:
     else:
         ga03_collection = default_ga03_collection
 
-    _DEFAULT_RECORDS = "300000"
+    _DEFAULT_RECORDS = "0"
 
     return Settings(
         project_root=root,
@@ -81,6 +93,18 @@ def get_settings() -> Settings:
         ga03_expected_records=int(os.getenv("GA03_EXPECTED_RECORDS", os.getenv("TARGET_RECORDS", _DEFAULT_RECORDS))),
         task_number=task_number,
         target_records=int(os.getenv("TARGET_RECORDS", _DEFAULT_RECORDS)),
+        smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
+        smtp_port=int(os.getenv("SMTP_PORT", "587")),
+        smtp_user=os.getenv("SMTP_USER", ""),
+        smtp_password=os.getenv("SMTP_PASSWORD", ""),
+        smtp_from=os.getenv("SMTP_FROM", "noreply@hoteldata.local"),
+        app_base_url=os.getenv("APP_BASE_URL", "http://localhost:4200"),
+        nvidia_api_key=os.getenv("NVIDIA_API_KEY", ""),
+        nvidia_api_base=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1"),
+        nvidia_chat_model=os.getenv("NVIDIA_CHAT_MODEL", "deepseek-ai/deepseek-v4-pro"),
+        nvidia_chat_temperature=float(os.getenv("NVIDIA_CHAT_TEMPERATURE", "1")),
+        nvidia_chat_top_p=float(os.getenv("NVIDIA_CHAT_TOP_P", "0.95")),
+        nvidia_chat_max_tokens=int(os.getenv("NVIDIA_CHAT_MAX_TOKENS", "16384")),
         cors_allowed_origins=_csv_env(
             "CORS_ALLOWED_ORIGINS",
             "http://127.0.0.1:4200,http://localhost:4200,http://localhost:80,http://localhost",
