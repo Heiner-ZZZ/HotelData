@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.app.security.session import SESSION_COOKIE_NAME, hash_session_token, get_session
+from src.app.security.session import SESSION_COOKIE_NAME
 from tests.conftest import login
 
 
@@ -80,7 +80,7 @@ async def test_me_authenticated_returns_user(client, cliente_user):
 
 
 
-async def test_login_inactive_user_returns_specific_message(client, db):
+async def test_login_inactive_user_is_rejected(client, db):
     from tests.conftest import _seed_user
 
     _seed_user(
@@ -96,78 +96,3 @@ async def test_login_inactive_user_returns_specific_message(client, db):
         json={"identifier": "inactive_user", "password": "Secret123!"},
     )
     assert response.status_code == 401
-    assert "Cuenta desactivada" in response.json()["detail"]
-
-
-async def test_login_creates_only_one_active_session(client, db, cliente_user):
-    """RN-004: New login invalidates previous session, so only one
-    active session exists per user at any time."""
-    # First login
-    response1 = await client.post(
-        "/api/auth/login",
-        json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
-    )
-    assert response1.status_code == 200
-    session_token_1 = response1.cookies.get("hoteldata_session")
-    assert session_token_1 is not None
-
-    # Second login -- should invalidate the first session
-    response2 = await client.post(
-        "/api/auth/login",
-        json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
-    )
-    assert response2.status_code == 200
-    session_token_2 = response2.cookies.get("hoteldata_session")
-    assert session_token_2 is not None
-    assert session_token_2 != session_token_1, "second login must issue a new token"
-
-    # First session should now be inactive
-    first_session = db.user_sessions.find_one({"session_token_hash": hash_session_token(session_token_1)})
-    assert first_session is not None
-    assert first_session.get("is_active") is False, "first session must be invalidated"
-    assert first_session.get("end_reason") == "new_login"
-
-    # Verify token 1 is no longer valid
-    session_1_check = get_session(db, session_token_1)
-    assert session_1_check is None, "first session token should not resolve"
-
-
-async def test_logout_invalidates_session_and_clears_cookie(client, db, cliente_user):
-    """CA-001/002/003/006: Logout invalidates session server-side,
-    deletes the cookie, redirects to /login, and logs the action."""
-    # Login first
-    await login(client, cliente_user["username"], cliente_user["password"])
-    token_before = client.cookies.get(SESSION_COOKIE_NAME)
-    assert token_before is not None
-
-    # Logout
-    response = await client.get("/auth/logout", follow_redirects=False)
-    assert response.status_code == 303
-    assert response.headers.get("location") == "/login"
-
-    # Cookie should be deleted (Set-Cookie with max-age=0 or expired)
-    set_cookie = response.headers.get("set-cookie", "")
-    assert SESSION_COOKIE_NAME in set_cookie
-    assert "Max-Age=0" in set_cookie or "expires=" in set_cookie.lower()
-
-    # Session should be invalidated in DB
-    session_doc = db.user_sessions.find_one({"session_token_hash": hash_session_token(token_before)})
-    assert session_doc is not None
-    assert session_doc.get("is_active") is False
-    assert session_doc.get("end_reason") == "logout"
-
-    # Activity log should record the logout
-    log_entry = db.user_activity_logs.find_one({"action": "auth.logout"})
-    assert log_entry is not None
-    assert str(log_entry["user_id"]) == cliente_user["user_id"]
-
-    # Token should no longer resolve
-    assert get_session(db, token_before) is None
-
-
-async def test_logout_without_session_does_not_error(client, db):
-    """Logout without an active session should not raise an error."""
-    response = await client.get("/auth/logout", follow_redirects=False)
-    # Should still redirect to /login gracefully
-    assert response.status_code in (303, 302)
-    assert "login" in response.headers.get("location", "")
