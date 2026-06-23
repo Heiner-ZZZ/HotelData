@@ -10,6 +10,7 @@ from src.app.modules.partner.services.properties.builders import (
 )
 from src.app.modules.partner.services.properties.metadata import ensure_hotel_profile_metadata
 from src.app.modules.partner.services.properties.performance import performance_for_prop
+from src.app.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database
 
 
@@ -29,17 +30,26 @@ def _paginate(page: int, page_size: int, total: int) -> dict[str, Any]:
     }
 
 
-def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> dict[str, Any]:
+def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20, user: dict[str, Any] | None = None) -> dict[str, Any]:
     db = get_database()
     page = max(page, 1)
     page_size = min(max(page_size, 1), 200)
     query = query.strip()
     query_as_id = safe_int(query)
+    user_filter = hotel_filter_from_user(user)
+    allowed_ids: set[int] | None = None
+
+    # If user has assigned_hotels, resolve the set immediately for in-memory filtering
+    if "prop_id" in user_filter:
+        allowed_ids = set(int(p) for p in user_filter["prop_id"]["$in"])
 
     has_dim = db.dim_hotels.estimated_document_count() > 0
     if not has_dim:
         all_ids = db.fact_hotel_reservations.distinct("prop_id")
         all_ids.sort()
+        # Apply user filter
+        if allowed_ids is not None:
+            all_ids = [pid for pid in all_ids if pid in allowed_ids]
         if query_as_id is not None:
             all_ids = [pid for pid in all_ids if pid == query_as_id]
         total = len(all_ids)
@@ -57,6 +67,9 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> 
     dim_lookup = {int(item["prop_id"]): item for item in dim_hotels if item.get("prop_id") is not None}
     dim_prop_ids = set(dim_lookup.keys())
     all_prop_ids = sorted(fact_prop_ids | dim_prop_ids)
+    # Apply user filter
+    if allowed_ids is not None:
+        all_prop_ids = [pid for pid in all_prop_ids if pid in allowed_ids]
 
     if len(dim_prop_ids) < len(fact_prop_ids):
         filtered_ids = all_prop_ids
@@ -88,14 +101,22 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20) -> 
         return result
 
     filters: dict[str, Any] = {}
+    # Apply user hotel filter as base
+    if user_filter:
+        filters.update(user_filter)
     if query:
-        filters["$or"] = [
+        # Combine query with user filter using $and if user_filter exists
+        query_or = [
             {"display_name": {"$regex": query, "$options": "i"}},
             {"hotel_label": {"$regex": query, "$options": "i"}},
             {"hotel_name": {"$regex": query, "$options": "i"}},
         ]
         if query_as_id is not None:
-            filters["$or"].append({"prop_id": query_as_id})
+            query_or.append({"prop_id": query_as_id})
+        if user_filter:
+            filters = {"$and": [user_filter, {"$or": query_or}]}
+        else:
+            filters["$or"] = query_or
 
     total = db.dim_hotels.count_documents(filters)
     result = _paginate(page, page_size, total)

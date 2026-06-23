@@ -10,11 +10,12 @@ from src.app.modules.partner.services._common import (
 from src.app.modules.partner.services.dashboard.operations import _operational_dashboard_metrics
 from src.app.modules.partner.services.properties import list_partner_hotels
 from src.app.modules.partner.services.properties.metadata import profile_badge as _profile_badge
+from src.app.security.hotel_filter import assigned_hotels_for_user
 from src.database.connection import get_database
 
 
-def management_property_options(limit: int = 100) -> list[dict[str, Any]]:
-    results = list_partner_hotels("", page=1, page_size=min(max(limit, 1), 100))
+def management_property_options(limit: int = 100, user: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    results = list_partner_hotels("", page=1, page_size=min(max(limit, 1), 100), user=user)
     return [
         {
             "prop_id": item["prop_id"],
@@ -24,9 +25,18 @@ def management_property_options(limit: int = 100) -> list[dict[str, Any]]:
     ]
 
 
-def management_reports_summary() -> dict[str, Any]:
+def _reports_hotel_match(user: dict[str, Any] | None) -> dict[str, Any]:
+    """Build a $match stage for aggregation pipelines that filters by assigned hotels."""
+    ids = assigned_hotels_for_user(user)
+    if ids:
+        return {"$match": {"prop_id": {"$in": ids}}}
+    return {}
+
+
+def management_reports_summary(user: dict[str, Any] | None = None) -> dict[str, Any]:
     db = get_database()
     collection, source_collection = active_fact_collection()
+    hotel_match = _reports_hotel_match(user)
     booked = {"$or": [{"$eq": ["$reserva_bool", 1]}, {"$eq": ["$reserva_bool", True]}]}
     totals_pipeline = [
         {
@@ -38,6 +48,8 @@ def management_reports_summary() -> dict[str, Any]:
             }
         }
     ]
+    if hotel_match:
+        totals_pipeline.insert(0, hotel_match)
     totals = next(collection.aggregate(totals_pipeline, allowDiskUse=True), None) or {}
 
     hotel_lookup = {
@@ -56,42 +68,33 @@ def management_reports_summary() -> dict[str, Any]:
         if item.get("visitor_location_country_id") is not None
     }
 
-    top_hotels = list(
-        collection.aggregate(
-            [
-                {"$group": {"_id": "$prop_id", "gross_revenue": {"$sum": "$reservas_brutas_usd"}, "events": {"$sum": 1}}},
-                {"$sort": {"gross_revenue": -1}},
-                {"$limit": 5},
-            ],
-            allowDiskUse=True,
-        )
-    )
-    top_destinations = list(
-        collection.aggregate(
-            [
-                {"$group": {"_id": "$srch_destination_id", "events": {"$sum": 1}, "gross_revenue": {"$sum": "$reservas_brutas_usd"}}},
-                {"$sort": {"events": -1}},
-                {"$limit": 5},
-            ],
-            allowDiskUse=True,
-        )
-    )
-    top_countries = list(
-        collection.aggregate(
-            [
-                {
-                    "$group": {
-                        "_id": "$visitor_location_country_id",
-                        "events": {"$sum": 1},
-                        "reservations": {"$sum": {"$cond": [booked, 1, 0]}},
-                    }
-                },
-                {"$sort": {"events": -1}},
-                {"$limit": 5},
-            ],
-            allowDiskUse=True,
-        )
-    )
+    def _top_aggregate(pipeline_base: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        pipeline = list(pipeline_base)
+        if hotel_match:
+            pipeline.insert(0, hotel_match)
+        return list(collection.aggregate(pipeline, allowDiskUse=True))
+
+    top_hotels = _top_aggregate([
+        {"$group": {"_id": "$prop_id", "gross_revenue": {"$sum": "$reservas_brutas_usd"}, "events": {"$sum": 1}}},
+        {"$sort": {"gross_revenue": -1}},
+        {"$limit": 5},
+    ])
+    top_destinations = _top_aggregate([
+        {"$group": {"_id": "$srch_destination_id", "events": {"$sum": 1}, "gross_revenue": {"$sum": "$reservas_brutas_usd"}}},
+        {"$sort": {"events": -1}},
+        {"$limit": 5},
+    ])
+    top_countries = _top_aggregate([
+        {
+            "$group": {
+                "_id": "$visitor_location_country_id",
+                "events": {"$sum": 1},
+                "reservations": {"$sum": {"$cond": [booked, 1, 0]}},
+            }
+        },
+        {"$sort": {"events": -1}},
+        {"$limit": 5},
+    ])
 
     operational_counts = _operational_dashboard_metrics()
     return {

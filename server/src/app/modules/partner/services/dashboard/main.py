@@ -11,7 +11,8 @@ from src.app.modules.partner.services.properties import list_partner_hotels
 from src.database.connection import get_database
 
 
-def properties_dashboard(query: str = "", page: int = 1, page_size: int = 20) -> dict[str, Any]:
+def properties_dashboard(query: str = "", page: int = 1, page_size: int = 20, user: dict[str, Any] | None = None) -> dict[str, Any]:
+    props_list = list_partner_hotels(query, page=page, page_size=page_size, user=user)
     db = get_database()
     quick_stats = _dashboard_quick_stats(db)
     revenue_chart = _dashboard_revenue_chart(db)

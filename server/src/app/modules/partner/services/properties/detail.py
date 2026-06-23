@@ -15,10 +15,14 @@ from src.app.modules.partner.services.properties.metadata import (
     profile_badge,
 )
 from src.app.modules.partner.services.properties.performance import performance_for_prop
+from src.app.security.hotel_filter import user_can_access_hotel
 from src.database.connection import get_database
 
 
-def partner_hotel_detail(prop_id: int) -> dict[str, Any] | None:
+def partner_hotel_detail(prop_id: int, user: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    # Enforce assigned_hotels access control
+    if user is not None and not user_can_access_hotel(user, prop_id):
+        return None
     ensure_hotel_profile_metadata(prop_id)
     db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0})
