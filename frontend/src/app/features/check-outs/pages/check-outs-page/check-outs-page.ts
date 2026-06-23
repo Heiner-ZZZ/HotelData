@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,7 +12,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { CheckOutsViewModel } from '../../models/check-outs.model';
-import { CheckOutsApiService } from '../../services/check-outs-api.service';
+import { CheckOutsApiService, type DateHistoryEntry } from '../../services/check-outs-api.service';
 
 function todayIso(): string {
   const d = new Date();
@@ -26,7 +27,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-outs-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
   templateUrl: './check-outs-page.html',
   styleUrl: './check-outs-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,6 +53,15 @@ export class CheckOutsPageComponent {
   readonly filter = signal('');
   readonly propertyOptions = signal<Array<{ propId: number; label: string }>>([]);
   readonly dropdownOpen = signal(false);
+
+  // More menu (⋮)
+  readonly showMenu = signal(false);
+
+  // Date history
+  readonly showHistory = signal(false);
+  readonly historyDates = signal<DateHistoryEntry[]>([]);
+  readonly historyLoading = signal(false);
+  readonly historyGlobal = signal(false);
 
   readonly filteredOptions = computed(() => {
     const q = this.filter().toLowerCase().trim();
@@ -118,6 +128,53 @@ export class CheckOutsPageComponent {
 
   clearProperty(): void {
     this.selectProperty(0, '');
+  }
+
+  toggleMenu(): void {
+    this.showMenu.update(v => !v);
+  }
+
+  closeMenu(): void {
+    this.showMenu.set(false);
+  }
+
+  openHistory(): void {
+    if (this.historyLoading()) return;
+    this.closeMenu();
+    const propId = this.selectedPropId();
+    this.historyGlobal.set(!propId);
+    this.showHistory.set(true);
+    this.historyLoading.set(true);
+    this.errorMessage.set('');
+    this.api.getCheckOutDates(propId || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (dates) => {
+        this.historyDates.set(dates);
+        this.historyLoading.set(false);
+      },
+      error: () => {
+        this.historyLoading.set(false);
+        this.errorMessage.set('Error al cargar historial de fechas.');
+      }
+    });
+  }
+
+  closeHistory(): void {
+    this.showHistory.set(false);
+    this.historyDates.set([]);
+    this.errorMessage.set('');
+  }
+
+  goToDate(date: string, entryPropId?: number): void {
+    this.closeHistory();
+    if (entryPropId) {
+      const opt = this.propertyOptions().find(p => p.propId === entryPropId);
+      if (opt) {
+        this.selectedPropId.set(entryPropId);
+        this.selectedPropName.set(opt.label);
+      }
+    }
+    this.dateForm.controls.operationDate.setValue(date);
+    this.applyFilters();
   }
 
   toggleDropdown(): void {
