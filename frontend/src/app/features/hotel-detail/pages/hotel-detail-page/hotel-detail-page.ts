@@ -9,7 +9,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { HotelDetailViewModel } from '../../models/hotel-detail.model';
+import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
 import { HotelDetailApiService } from '../../services/hotel-detail-api.service';
 
 @Component({
@@ -27,6 +27,8 @@ export class HotelDetailPageComponent {
   readonly viewState = signal<ViewState>('loading');
   readonly hotel = signal<HotelDetailViewModel | null>(null);
   readonly activeTab = signal<string>('overview');
+  readonly similarHotels = signal<SimilarHotel[]>([]);
+  readonly similarLoading = signal(false);
 
   readonly stars = computed(() => {
     const h = this.hotel();
@@ -50,6 +52,7 @@ export class HotelDetailPageComponent {
         next: (hotel) => {
           this.hotel.set(hotel);
           this.viewState.set('success');
+          this.loadSimilarHotels(hotel.id);
         },
         error: (error: ApiError) => {
           this.viewState.set(error.status === 404 ? 'empty' : 'error');
@@ -61,5 +64,18 @@ export class HotelDetailPageComponent {
     this.activeTab.set(sectionId);
     const el = document.getElementById(sectionId);
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private loadSimilarHotels(hotelId: number): void {
+    this.similarLoading.set(true);
+    this.hotelDetailApi.getSimilarHotels(hotelId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (items) => {
+        this.similarHotels.set(items);
+        this.similarLoading.set(false);
+      },
+      error: () => this.similarLoading.set(false),
+    });
   }
 }

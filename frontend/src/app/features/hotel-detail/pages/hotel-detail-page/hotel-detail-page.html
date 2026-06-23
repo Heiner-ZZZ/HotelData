@@ -65,6 +65,45 @@
           </a>
         </div>
 
+        <!-- Gallery -->
+        @if (vm.galleryImages.length) {
+          <section class="gallery-section">
+            <div class="gallery-scroll">
+              @for (url of vm.galleryImages; track url) {
+                <div class="gallery-item">
+                  <img [src]="url" [alt]="vm.name" loading="lazy" />
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Description -->
+        @if (vm.description) {
+          <section class="description-section surface-card">
+            <h2 class="section-title">Descripción</h2>
+            <p class="description-text">{{ vm.description }}</p>
+            @if (vm.highlights) {
+              <div class="highlights-box">
+                <span class="material-symbols-outlined highlights-icon">star</span>
+                <span>{{ vm.highlights }}</span>
+              </div>
+            }
+          </section>
+        }
+
+        <!-- Amenities -->
+        @if (vm.amenitiesTags.length) {
+          <section class="amenities-section surface-card">
+            <h2 class="section-title">Servicios e instalaciones</h2>
+            <div class="amenities-tags">
+              @for (tag of vm.amenitiesTags; track tag) {
+                <span class="amenity-tag">{{ tag }}</span>
+              }
+            </div>
+          </section>
+        }
+
         <!-- Sticky Tabs -->
         <nav class="sticky-tabs">
           <button class="tab-btn" [class.tab-active]="activeTab() === 'overview'" (click)="scrollTo('overview')">Resumen</button>
@@ -279,6 +318,31 @@
           }
         </section>
 
+        <!-- Reviews -->
+        @if (vm.reviews.length) {
+          <section id="reviews" class="detail-section">
+            <h2 class="section-title">Reseñas de huéspedes</h2>
+            <div class="reviews-grid">
+              @for (rev of vm.reviews; track rev.reviewerName + rev.date) {
+                <article class="review-card-item surface-card">
+                  <div class="review-card-header">
+                    <div class="review-card-score" [class.score-high]="rev.score >= 8" [class.score-mid]="rev.score >= 5 && rev.score < 8" [class.score-low]="rev.score < 5">
+                      {{ rev.score }}
+                    </div>
+                    <div class="review-card-meta">
+                      <strong>{{ rev.reviewerName }}</strong>
+                      <span class="review-card-date">{{ rev.date }}</span>
+                    </div>
+                  </div>
+                  @if (rev.text) {
+                    <p class="review-card-text">{{ rev.text }}</p>
+                  }
+                </article>
+              }
+            </div>
+          </section>
+        }
+
         <!-- Policies -->
         <section id="policies" class="detail-section">
           <h2 class="section-title">Políticas de la Propiedad</h2>
@@ -311,6 +375,38 @@
             </div>
           } @else {
             <app-empty-state icon="policy" title="Sin políticas" description="No hay políticas configuradas para esta propiedad." />
+          }
+        </section>
+
+        <!-- Similar Hotels -->
+        <section class="detail-section">
+          <h2 class="section-title">Hoteles similares</h2>
+          @if (similarLoading()) {
+            <app-loading-state label="Buscando hoteles similares..." />
+          } @else if (similarHotels().length) {
+            <div class="similar-grid">
+              @for (item of similarHotels(); track item.id) {
+                <a [routerLink]="['/hotels', item.id]" class="similar-card">
+                  @if (item.imageUrl) {
+                    <div class="similar-img-wrap">
+                      <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" />
+                    </div>
+                  }
+                  <div class="similar-body">
+                    <strong class="similar-name">{{ item.name }}</strong>
+                    <div class="similar-meta">
+                      <span class="similar-stars">{{ item.stars }}★</span>
+                      <span class="similar-review">{{ item.reviewLabel }}</span>
+                    </div>
+                    <p class="similar-location">{{ item.location }}</p>
+                    <div class="similar-match">
+                      <span class="similar-score">{{ item.similarityScore }}%</span>
+                      <span class="similar-reason">{{ item.reason }}</span>
+                    </div>
+                  </div>
+                </a>
+              }
+            </div>
           }
         </section>
       }

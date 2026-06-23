@@ -4,7 +4,21 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapHotelDetailResponse } from '../mappers/hotel-detail.mapper';
-import type { HotelDetailDto } from '../models/hotel-detail.dto';
+import type { HotelDetailDto, SimilarHotelDto, SimilarHotelsResponseDto } from '../models/hotel-detail.dto';
+import type { SimilarHotel } from '../models/hotel-detail.model';
+
+function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
+  return {
+    id: dto.prop_id,
+    name: dto.hotel_label,
+    stars: dto.prop_starrating ?? 0,
+    reviewLabel: dto.review_label,
+    location: dto.country_display_name,
+    similarityScore: dto.similarity_score,
+    reason: dto.reason,
+    imageUrl: dto.image_url,
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -19,5 +33,13 @@ export class HotelDetailApiService {
         withCredentials: true
       })
       .pipe(map((dto) => mapHotelDetailResponse(dto)));
+  }
+
+  getSimilarHotels(hotelId: number) {
+    return this.http
+      .get<SimilarHotelsResponseDto>(`${this.apiConfig.baseUrl}/hotels/${hotelId}/similar`, {
+        withCredentials: true
+      })
+      .pipe(map((dto) => dto.items.map(mapSimilarHotel)));
   }
 }
