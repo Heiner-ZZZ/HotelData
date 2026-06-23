@@ -31,4 +31,11 @@ Al finalizar la estancia, el gerente realiza el check-out. Esto libera la habita
 
 **Dependencias**: booking_orders, booking_status_history, room_inventory_calendar
 
-**Fuera de alcance**: Generación automática de factura al check-out
+**Fuera de alcance**: 
+- Generación automática de factura al check-out
+- Integración con sistemas de pago para liquidar cuentas pendientes
+- Gestión de check-out para grupos o eventos especiales
+- Actualización automática de programas de fidelidad o recompensas al check-out
+- Notificaciones automáticas a servicios de transporte o actividades relacionadas con la salida del huésped
+- Gestión de check-out express o sin contacto (self check-out)
+
