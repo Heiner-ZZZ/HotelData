@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from src.app.template_utils import templates
+from fastapi import APIRouter
 
 from src.app.modules.audit.schemas import ModuleStatus, RecentActivity
 from src.app.modules.audit.service import module_status, recent_activity
@@ -10,13 +9,9 @@ from src.app.modules.audit.service import module_status, recent_activity
 router = APIRouter()
 
 
-@router.get("/audit", response_model=None)
-def audit(request: Request):
-    return templates.TemplateResponse(
-        request,
-        "audit/index.html",
-        {"activity": recent_activity().model_dump()},
-    )
+@router.get("/audit")
+def audit():
+    return {"activity": recent_activity().model_dump()}
 
 
 @router.get("/api/audit/activity", response_model=RecentActivity)

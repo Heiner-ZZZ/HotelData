@@ -6,6 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+from src.app.security.rate_limit import limiter
 
 from src.app.features.catalogs.service import ensure_default_catalogs
 from src.app.features.dashboard.routes import api_router as dashboard_api_router
@@ -15,6 +20,7 @@ from src.app.modules.account.routes import api_router as account_api_router
 from src.app.modules.audit.routes import router as audit_router
 from src.app.modules.admin.routes import api_router as admin_api_router
 from src.app.modules.admin.service import ensure_user_status_field
+from src.app.modules.auth.collections import ensure_auth_collections
 from src.app.modules.auth.routes import api_router as auth_api_router
 from src.app.modules.auth.routes import router as auth_module_router
 from src.app.modules.auth.routes import web_router as auth_web_router
@@ -53,6 +59,9 @@ from src.database.connection import get_database
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="HotelData Hub", version="1.0.0", lifespan=lifespan)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_allowed_origins),
@@ -62,6 +71,7 @@ def create_app() -> FastAPI:
     )
     app.middleware("http")(role_access_middleware)
     app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
+    app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
     app.include_router(dashboard_api_router)
     app.include_router(etl_status_json_router)
     app.include_router(audit_router)
@@ -104,6 +114,7 @@ async def lifespan(app: FastAPI):
     ensure_revenue_collections()
     ensure_reviews_collections()
     ensure_billing_collections()
+    ensure_auth_collections()
     yield
 
 
