@@ -14,6 +14,7 @@ from src.app.modules.hotels.service.compare import (
     compare_hotel_options,
     compare_hotels,
 )
+from src.app.modules.hotels.service.similar import similar_hotels
 
 __all__ = [
     "compare_hotel_options",
@@ -23,5 +24,6 @@ __all__ = [
     "hotel_detail",
     "module_status",
     "search_hotels",
+    "similar_hotels",
     "top_destinations_for_hotel",
 ]

@@ -1,11 +1,113 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any
+
+from src.database.connection import get_database
 
 from ._helpers import _active_fact_collection, _format_number, _hotel_display_name, _metric_projection
 from .detail import get_hotel_detail_view
 from .lookups import _hotel_lookup
 from .search import _enrich_hotel_metrics
+
+
+def _compare_hotel_rate(prop_id: int, check_in: str, check_out: str) -> float | None:
+    try:
+        start = date.fromisoformat(check_in)
+        end = date.fromisoformat(check_out)
+    except (ValueError, TypeError):
+        return None
+    nights = (end - start).days
+    if nights < 1:
+        return None
+    dates = [(start + timedelta(days=i)).isoformat() for i in range(nights)]
+    db = get_database()
+    result = db.hotel_rate_calendar.aggregate([
+        {"$match": {"prop_id": prop_id, "date": {"$in": dates}, "is_closed": {"$ne": True}}},
+        {"$group": {"_id": None, "min_rate": {"$min": "$rate_amount"}}},
+    ])
+    row = next(result, None)
+    if row and row.get("min_rate") is not None:
+        return round(float(row["min_rate"]), 2)
+    return None
+
+
+def compare_hotels_with_availability(
+    prop_ids: list[int],
+    check_in: str = "",
+    check_out: str = "",
+    adults: int = 1,
+    children: int = 0,
+) -> dict[str, Any]:
+    """Compare hotels with operational availability data (rates, room types, amenities, policies).
+
+    Returns enhanced comparison data for up to 3 hotels,
+    combining analytical metrics with real-time operational info.
+    """
+    unique_ids = list(dict.fromkeys([pid for pid in prop_ids if pid is not None]))[:3]
+    if not unique_ids:
+        return {"items": []}
+
+    db = get_database()
+    hotel_lookup = _hotel_lookup(unique_ids)
+    has_dates = bool(check_in and check_out)
+    items: list[dict[str, Any]] = []
+
+    for prop_id in unique_ids:
+        hotel = hotel_lookup.get(prop_id, {})
+        prop_id_int = int(prop_id)
+
+        image_url = None
+        img = db.hotel_images.find_one(
+            {"prop_id": prop_id_int},
+            {"_id": 0, "image_url": 1},
+            sort=[("_id", 1)],
+        )
+        if img:
+            image_url = img.get("image_url")
+
+        amenities_text = ""
+        content = db.hotel_content_pages.find_one(
+            {"prop_id": prop_id_int},
+            {"_id": 0, "amenities_text": 1},
+        )
+        if content:
+            amenities_text = (content.get("amenities_text") or "")
+
+        room_types = list(db.room_types.find(
+            {"prop_id": prop_id_int, "is_active": True},
+            {"_id": 0, "room_type_id": 1, "name": 1, "max_adults": 1, "max_children": 1, "base_capacity": 1, "description": 1},
+        ).sort([("base_capacity", 1)]))
+
+        policy_doc = db.hotel_policies.find_one({"prop_id": prop_id_int}, {"_id": 0})
+
+        item: dict[str, Any] = {
+            "prop_id": prop_id_int,
+            "hotel_name": _hotel_display_name(hotel, prop_id_int),
+            "display_name": hotel.get("display_name", ""),
+            "prop_starrating": hotel.get("prop_starrating"),
+            "prop_review_score": hotel.get("prop_review_score"),
+            "image_url": image_url,
+            "amenities_text": amenities_text,
+            "room_types": room_types,
+            "policies": policy_doc or {},
+            "destination_labels": [],
+        }
+
+        if has_dates:
+            rate = _compare_hotel_rate(prop_id_int, check_in, check_out)
+            if rate is not None:
+                nights = max((date.fromisoformat(check_out) - date.fromisoformat(check_in)).days, 1)
+                item["min_nightly_rate"] = rate
+                item["min_nightly_rate_label"] = f"${rate:.2f}"
+                item["total_estimated"] = round(rate * nights, 2)
+                item["total_estimated_label"] = f"${round(rate * nights, 2):.2f}"
+
+        items.append(item)
+
+    order = {pid: i for i, pid in enumerate(unique_ids)}
+    items.sort(key=lambda x: order.get(x["prop_id"], 999))
+    return {"items": items}
 
 
 def compare_hotel_options(limit: int = 120) -> list[dict[str, Any]]:

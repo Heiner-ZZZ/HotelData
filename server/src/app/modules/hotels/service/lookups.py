@@ -58,27 +58,88 @@ def _site_lookup(site_ids: list[int]) -> dict[int, dict[str, Any]]:
     return {int(item["site_id"]): item for item in docs if item.get("site_id") is not None}
 
 
-def _amenities_prop_ids(amenities_query: str, mode: str = "or") -> list[int]:
-    """Find prop_ids whose hotel_content_pages.amenities_text matches the query.
+def _suggest_alternative_destinations(
+    destination: str,
+    exclude_ids: list[int] | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Suggest alternative destinations when search yields no results.
 
-    Args:
-        amenities_query: Comma-separated amenity names (e.g. "WiFi, Piscina").
-        mode: "or" — match hotels with ANY of the amenities (default).
-              "and" — match hotels with ALL of the amenities.
+    Strategy: find destinations whose name shares at least one word with the
+    searched destination, or has a similar prefix. Excludes the searched IDs.
+    Returns up to `limit` suggestions with id and display name.
     """
-    if not amenities_query:
+    if not destination:
         return []
+    words = [w for w in destination.strip().lower().split() if len(w) > 2]
+    if not words:
+        return []
+
     db = get_database()
-    terms = [term.strip() for term in amenities_query.split(",") if term.strip()]
+    terms = [{"destination_display_name": {"$regex": w, "$options": "i"}} for w in words]
+    terms += [{"destination_name": {"$regex": w, "$options": "i"}} for w in words]
+
+    match: dict[str, Any] = {"$or": terms}
+    if exclude_ids:
+        match["srch_destination_id"] = {"$nin": exclude_ids}
+
+    docs = db.dim_destinations.find(
+        match,
+        {"_id": 0, "srch_destination_id": 1, "destination_display_name": 1, "destination_name": 1},
+    ).limit(limit * 3)
+
+    seen: set[int] = set()
+    suggestions: list[dict[str, Any]] = []
+    for doc in docs:
+        did = int(doc["srch_destination_id"])
+        if did in seen:
+            continue
+        seen.add(did)
+        suggestions.append({
+            "id": did,
+            "display_name": doc.get("destination_display_name") or doc.get("destination_name") or f"Destino {did}",
+        })
+        if len(suggestions) >= limit:
+            break
+
+    return suggestions
+
+
+def _amenities_prop_ids(amenities: str, mode: str = "or") -> list[int]:
+    """Find prop_ids whose amenity text matches the given terms.
+
+    Parameters
+    ----------
+    amenities : str
+        Comma-separated amenity terms (e.g. "piscina,gimnasio,wifi").
+    mode : str
+        "or" — any term matches; "and" — all terms must match.
+
+    Returns
+    -------
+    list[int]
+        Matching prop_ids, or empty if none found.
+    """
+    if not amenities:
+        return []
+    terms = [t.strip() for t in amenities.split(",") if t.strip()]
     if not terms:
         return []
-    conditions = [{"amenities_text": {"$regex": term, "$options": "i"}} for term in terms]
-    operator = "$and" if mode == "and" else "$or"
-    docs = db.hotel_content_pages.find(
-        {operator: conditions},
-        {"_id": 0, "prop_id": 1},
-    ).limit(500)
-    return list({int(doc["prop_id"]) for doc in docs if doc.get("prop_id") is not None})
+    db = get_database()
+    if mode == "and":
+        conditions = [{"amenities_text": {"$regex": t, "$options": "i"}} for t in terms]
+        pipeline = [
+            {"$match": {"$and": conditions}},
+            {"$group": {"_id": "$prop_id"}},
+        ]
+    else:
+        conditions = [{"amenities_text": {"$regex": t, "$options": "i"}} for t in terms]
+        pipeline = [
+            {"$match": {"$or": conditions}},
+            {"$group": {"_id": "$prop_id"}},
+        ]
+    results = db.hotel_content_pages.aggregate(pipeline)
+    return [int(r["_id"]) for r in results if r.get("_id") is not None]
 
 
 def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
@@ -119,19 +180,4 @@ def _build_match(filters: dict[str, Any]) -> dict[str, Any] | None:
         match["srch_children_count"] = {"$gte": children}
     if rooms is not None:
         match["srch_room_count"] = {"$gte": rooms}
-
-    amenities = str(filters.get("amenities") or "").strip()
-    amenities_mode = str(filters.get("amenities_mode") or "or").strip().lower()
-    if amenities:
-        amenity_ids = _amenities_prop_ids(amenities, mode=amenities_mode)
-        if not amenity_ids:
-            return None
-        existing_prop = match.get("prop_id", {})
-        if isinstance(existing_prop, dict) and "$in" in existing_prop:
-            # Intersect with existing prop_id filter
-            existing_ids = set(existing_prop["$in"])
-            match["prop_id"] = {"$in": list(existing_ids & set(amenity_ids))}
-        else:
-            match["prop_id"] = {"$in": amenity_ids}
-
     return match

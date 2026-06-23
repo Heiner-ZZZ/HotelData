@@ -12,7 +12,6 @@ from ._helpers import (
 )
 from .lookups import _country_lookup, _destination_lookup, _site_lookup
 from .search import _enrich_hotel_metrics
-from src.app.modules.reviews.service.lifecycle import list_reviews
 from src.database.connection import get_database
 
 
@@ -125,35 +124,29 @@ def _hotel_policies_for_detail(prop_id: int) -> dict[str, Any] | None:
 
 def _hotel_images_for_detail(prop_id: int) -> list[dict[str, Any]]:
     db = get_database()
-    return list(
-        db.hotel_images.find(
-            {"prop_id": prop_id},
-            {"_id": 0, "image_url": 1, "title": 1},
-        ).sort([("_id", 1)])
+    return list(db.hotel_images.find({"prop_id": prop_id}, {"_id": 0, "image_url": 1}).sort([("_id", 1)]).limit(20))
+
+
+def _hotel_content_for_detail(prop_id: int) -> dict[str, Any] | None:
+    db = get_database()
+    return db.hotel_content_pages.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "description": 1, "highlights": 1, "amenities_text": 1},
     )
 
 
-def _hotel_content_for_detail(prop_id: int) -> dict[str, Any]:
+def _hotel_reviews_for_detail(prop_id: int, limit: int = 5) -> list[dict[str, Any]]:
     db = get_database()
-    content = db.hotel_content_pages.find_one(
-        {"prop_id": prop_id},
-        {"_id": 0, "description": 1, "highlights": 1, "amenities_text": 1},
-    ) or {}
-    # Parse amenities_text into a list
-    amenities_list: list[str] = []
-    if content.get("amenities_text"):
-        amenities_list = [a.strip() for a in content["amenities_text"].split(",") if a.strip()]
-    return {
-        "description": content.get("description", ""),
-        "highlights": content.get("highlights", ""),
-        "amenities": amenities_list,
-        "amenities_text": content.get("amenities_text", ""),
-    }
+    return list(
+        db.reviews.find({"prop_id": prop_id}, {"_id": 0})
+        .sort([("created_at", -1)])
+        .limit(limit)
+    )
 
 
 def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
-    db = get_database()
     collection, source_collection = _active_fact_collection()
+    db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0}) or {}
     pipeline = [
         {"$match": {"prop_id": prop_id}},
@@ -166,20 +159,15 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     item = _enrich_hotel_metrics([metrics or {"prop_id": prop_id, "events": 0, "reservations": 0, "clicks": 0, "destinations": []}])[0]
     item["source_collection"] = source_collection
     item["hotel"] = hotel
-    item["images"] = _hotel_images_for_detail(prop_id)
-    item["images_count"] = len(item["images"])
-    content = _hotel_content_for_detail(prop_id)
-    item["description"] = content["description"]
-    item["highlights"] = content["highlights"]
-    item["amenities"] = content["amenities"]
-    item["amenities_text"] = content["amenities_text"]
     item["top_destinations"] = top_destinations_for_hotel(prop_id)
     item["top_visitor_countries"] = _top_visitor_countries_for_hotel(prop_id)
     item["top_sites"] = _top_sites_for_hotel(prop_id)
     item["hotel_rates"] = _hotel_rates_for_detail(prop_id)
     item["room_types"] = _room_types_for_detail(prop_id)
     item["hotel_policies"] = _hotel_policies_for_detail(prop_id)
-    item["reviews"] = list_reviews(prop_id=prop_id, page=1, page_size=10)
+    item["hotel_images"] = _hotel_images_for_detail(prop_id)
+    item["hotel_content"] = _hotel_content_for_detail(prop_id)
+    item["reviews"] = _hotel_reviews_for_detail(prop_id)
     return item
 
 
