@@ -2,13 +2,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from './auth.service';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -26,7 +26,8 @@ export class LoginPageComponent {
 
   readonly loginForm = this.formBuilder.nonNullable.group({
     identifier: ['', [Validators.required]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
+    rememberMe: [false]
   });
 
   constructor() {
@@ -58,10 +59,10 @@ export class LoginPageComponent {
     this.errorMessage.set('');
 
     const nextUrl = this.route.snapshot.queryParamMap.get('next');
-    const { identifier, password } = this.loginForm.getRawValue();
+    const { identifier, password, rememberMe } = this.loginForm.getRawValue();
 
     this.authService
-      .login(identifier.trim(), password, nextUrl)
+      .login(identifier.trim(), password, nextUrl, rememberMe)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (state) => {

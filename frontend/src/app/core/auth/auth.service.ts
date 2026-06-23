@@ -48,14 +48,15 @@ export class AuthService {
       );
   }
 
-  login(identifier: string, password: string, nextUrl: string | null = null) {
+  login(identifier: string, password: string, nextUrl: string | null = null, rememberMe: boolean = false) {
     return this.http
       .post<AuthMeDto>(
         `${this.apiConfig.baseUrl}/auth/login`,
         {
           identifier,
           password,
-          next: nextUrl ?? ''
+          next: nextUrl ?? '',
+          remember_me: rememberMe
         },
         { withCredentials: true }
       )
