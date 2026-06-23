@@ -69,6 +69,16 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
           { label: 'Niños', value: displayValue(dto.hotel_policies.children_policy) }
         ]
       : [],
-    cancellationPolicy: displayValue(dto.hotel_policies?.cancellation_policy)
+    cancellationPolicy: displayValue(dto.hotel_policies?.cancellation_policy),
+    galleryImages: (dto.hotel_images || []).map((img) => img.image_url),
+    description: dto.hotel_content?.description || '',
+    highlights: dto.hotel_content?.highlights || '',
+    amenitiesTags: (dto.hotel_content?.amenities_text || '').split(',').map((s) => s.trim()).filter(Boolean),
+    reviews: (dto.reviews || []).map((r) => ({
+      reviewerName: r.reviewer_name || 'Anónimo',
+      score: r.review_score || 0,
+      text: r.review_text || '',
+      date: r.created_at || ''
+    }))
   };
 }

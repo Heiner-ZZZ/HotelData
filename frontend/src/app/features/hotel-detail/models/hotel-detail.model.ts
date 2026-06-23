@@ -20,4 +20,25 @@ export interface HotelDetailViewModel {
   roomTypes: Array<{ id: string; name: string; capacityLabel: string; statusLabel: string }>;
   policies: Array<{ label: string; value: string }>;
   cancellationPolicy: string;
+  galleryImages: string[];
+  description: string;
+  highlights: string;
+  amenitiesTags: string[];
+  reviews: Array<{
+    reviewerName: string;
+    score: number;
+    text: string;
+    date: string;
+  }>;
+}
+
+export interface SimilarHotel {
+  id: number;
+  name: string;
+  stars: number;
+  reviewLabel: string;
+  location: string;
+  similarityScore: number;
+  reason: string;
+  imageUrl: string;
 }

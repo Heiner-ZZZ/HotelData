@@ -52,4 +52,34 @@ export interface HotelDetailDto {
     children_policy?: string | null;
     cancellation_policy?: string | null;
   } | null;
+  hotel_images: Array<{
+    image_url: string;
+  }>;
+  hotel_content: {
+    description?: string | null;
+    highlights?: string | null;
+    amenities_text?: string | null;
+  } | null;
+  reviews: Array<{
+    review_id?: string;
+    reviewer_name?: string;
+    review_score?: number;
+    review_text?: string;
+    created_at?: string;
+  }>;
+}
+
+export interface SimilarHotelDto {
+  prop_id: number;
+  hotel_label: string;
+  prop_starrating: number | null;
+  review_label: string;
+  country_display_name: string;
+  similarity_score: number;
+  reason: string;
+  image_url: string;
+}
+
+export interface SimilarHotelsResponseDto {
+  items: SimilarHotelDto[];
 }
