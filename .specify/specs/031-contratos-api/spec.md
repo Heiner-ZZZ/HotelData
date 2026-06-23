@@ -1,57 +1,56 @@
-# Especificación: Contratos Api
+# Especificacion: Contratos API
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T02
+**Casos de uso TAF06**: CU-T02 (Gestionar contratos API, endpoints y documentacion OpenAPI)
 
 ## 1. Objetivo
 
-Gestionar contratos API, endpoints JSON, documentación OpenAPI y validaciones frontend-backend
+Gestionar contratos API, endpoints JSON documentados con OpenAPI y validacion frontend-backend.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+FastAPI genera documentacion OpenAPI automaticamente en /docs. Los contratos se validan con scripts.
 
 ## 3. Actores
 
-(Listar actores relevantes)
+| Actor | Descripcion |
+|-------|-------------|
+| Admin sistema | Gestiona documentacion y contratos |
+| Desarrollador | Consulta documentacion OpenAPI |
 
 ## 4. Requisitos funcionales
 
-(Pendiente de detallar)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | El sistema debe exponer OpenAPI en /docs con todos los endpoints | Alta |
+| RF-002 | El sistema debe tener scripts de validacion de contrato frontend-backend | Alta |
+| RF-003 | El sistema debe exponer endpoint de health check | Alta |
+| RF-004 | El sistema debe usar Pydantic models para validacion | Alta |
 
-## 5. Requisitos no funcionales
+## 5. Escenarios
 
-(Pendiente de detallar)
+### Escenario 1: Validar contratos frontend-backend
+```gherkin
+Dado que se ejecuta el script de validacion de contratos
+Cuando encuentra discrepancias
+Entonces reporta las rutas faltantes o incorrectas
+```
 
-## 6. Reglas de negocio
+## 6. Criterios de aceptacion
 
-(Pendiente de detallar)
+| ID | Criterio |
+|----|----------|
+| CA-001 | OpenAPI en /docs muestra todos los endpoints |
+| CA-002 | Health check responde correctamente |
+| CA-003 | Scripts de validacion no reportan errores |
 
-## 7. Entradas
+## 7. Dependencias
 
-(Pendiente de detallar)
+- FastAPI (OpenAPI automatico)
+- Scripts: validate_frontend_backend_contract.py, validate_angular_routes_contract.py
 
-## 8. Salidas
+## 8. Fuera de alcance
 
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- API keys para partners externos
+- Rate limiting
