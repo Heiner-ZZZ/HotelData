@@ -6,7 +6,7 @@ services:
     container_name: hoteldata_mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -32,7 +32,7 @@ services:
       start_period: 10s
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:0.22.0
+    image: ghcr.io/muchobien/pocketbase:0.26.3
     container_name: hoteldata_pocketbase
     restart: unless-stopped
     ports:
@@ -55,7 +55,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - docker/.env.example
+      - docker/.env
     environment:
       HOTELDATA_PROJECT_ROOT: /app
       MONGO_URI: mongodb://mongo:27017
@@ -67,8 +67,7 @@ services:
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03
       TASK_NUMBER: "03"
-      TARGET_RECORDS: "300000"
-      GA03_EXPECTED_RECORDS: "300000"
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4200}
     depends_on:
       mongo:
         condition: service_healthy
@@ -96,8 +95,8 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:admin
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
@@ -107,12 +106,9 @@ services:
       MONGO_DATABASE: hoteldata_hub
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03
-      POCKETBASE_ADMIN_EMAIL: hzambranor@uteq.edu.ec
-      POCKETBASE_ADMIN_PASSWORD: Heiner2005*
       POCKETBASE_PAGE_SIZE: "500"
       TASK_NUMBER: "03"
-      TARGET_RECORDS: "300000"
-      GA03_EXPECTED_RECORDS: "300000"
+    env_file: ../.env
     volumes:
       - ../server/src:/opt/hoteldata/src
       - ../server/config:/opt/hoteldata/config

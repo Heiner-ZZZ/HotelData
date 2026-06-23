@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:0.22.0
+    image: ghcr.io/muchobien/pocketbase:0.26.3
     container_name: hoteldata_pocketbase_localmongo
     restart: unless-stopped
     profiles: ["pocketbase"]
