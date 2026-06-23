@@ -1,57 +1,36 @@
-# Especificación: Frontend Auth
+# Especificacion: Frontend - Autenticacion
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O01, CU-O28, CU-O29
+**Casos de uso TAF06**: CU-O01, CU-O28, CU-O29 (Login, logout, cambio de contrasena y perfil)
 
 ## 1. Objetivo
 
-Componentes frontend de autenticación: login, guards, interceptors, layouts
+Componentes frontend de autenticacion: login page, guards, interceptors, layouts por rol.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | Descripcion |
+|------------|------|-------------|
+| LoginPage | /auth/login | Formulario de inicio de sesion |
+| AuthGuard | - | Protege rutas que requieren autenticacion |
+| RoleGuard | - | Protege rutas segun rol del usuario |
+| AuthInterceptor | - | Adjunta cookie de sesion a requests |
+| AccessNav | - | Navegacion adaptativa por rol |
+| SidebarNav | - | Sidebar con modulos segun rol |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | LoginPage con formulario de email + contrasena | Alta |
+| RF-002 | AuthGuard redirige a /auth/login si no hay sesion | Alta |
+| RF-003 | RoleGuard redirige a /403 si el rol no tiene permiso | Alta |
+| RF-004 | AuthInterceptor envia cookie en cada request | Alta |
+| RF-005 | Sidebar/access-nav se adapta segun el rol | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/auth/
+- frontend/src/app/core/guards/
+- frontend/src/app/core/interceptors/

@@ -1,57 +1,38 @@
-# Especificación: Frontend Partner
+# Especificacion: Frontend - Gestion Hotelera (Partner)
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O12 al CU-O21
+**Casos de uso TAF06**: CU-O12 al CU-O21 (Partner: rooms, inventory, rates, policies, content)
 
 ## 1. Objetivo
 
-UI de gestión hotelera: rooms, inventory, rates, policies, amenities, content
+UI de gestion hotelera: propiedades, habitaciones, inventario, tarifas, politicas, contenido.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | CU asociado |
+|------------|------|-------------|
+| PropertyListPage | /management/properties | CU-O12 |
+| PropertyEditPage | /management/properties/:id/edit | CU-O12 |
+| RoomTypesPage | /management/rooms | CU-O14 |
+| InventoryCalendar | /management/availability | CU-O15, CU-O16 |
+| RatePlansPage | /management/rates | CU-O17, CU-O18 |
+| PoliciesPage | /management/policies | CU-O20 |
+| ContentPage | /management/content | CU-O21 |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | PropertyListPage con tabla de propiedades asignadas | Alta |
+| RF-002 | PropertyEditPage con formulario de edicion de perfil | Alta |
+| RF-003 | RoomTypesPage con CRUD de tipos de habitacion | Alta |
+| RF-004 | InventoryCalendar con vista mensual | Alta |
+| RF-005 | RatePlansPage con tabla de planes tarifarios | Alta |
+| RF-006 | PoliciesPage con formulario de politicas | Alta |
+| RF-007 | ContentPage con editor de descripcion y amenities | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/partner/
+- partner.routes.ts

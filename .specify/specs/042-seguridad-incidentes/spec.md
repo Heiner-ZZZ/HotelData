@@ -1,57 +1,29 @@
-# Especificación: Seguridad Incidentes
+# Especificacion: Seguridad e Incidentes
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O01, CU-T09
+**Casos de uso TAF06**: CU-O01, CU-T09 (Arquitectura de seguridad, perimetro, activos, plan de incidentes)
 
 ## 1. Objetivo
 
-Arquitectura de seguridad: perímetro, activos, plan de incidentes, backup
+Definir la arquitectura de seguridad del sistema: perimetro, activos protegidos, plan de incidentes educacional.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+Proyecto educacional sin datos reales de huespedes. La postura de seguridad previene exposicion accidental.
 
-## 3. Actores
+## 3. Perimetro de seguridad
 
-(Listar actores relevantes)
+Internet (solo frontend Angular) - Nginx (proxy, TLS) - FastAPI (auth, RBAC) - MongoDB (red interna Docker)
 
-## 4. Requisitos funcionales
+## 4. Activos protegidos
 
-(Pendiente de detallar)
+| Activo | Proteccion |
+|--------|-----------|
+| Credenciales | bcrypt + sesiones TTL 8h |
+| Sesiones | Hash SHA-256 en DB, cookie httponly |
+| .env | .gitignore + env_file Docker |
 
-## 5. Requisitos no funcionales
+## 5. Fuera de alcance (seguridad enterprise)
 
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+Rate limiting, CSRF tokens, PCI DSS, cifrado en reposo, hardening de contenedores

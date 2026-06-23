@@ -1,12 +1,27 @@
-# Plan de Implementación: Frontend Auth
+# Plan de Implementación: Frontend - Autenticación
 
-**Spec**: 043-frontend-auth | **CU**: -
+**Branch**: `043-frontend-auth` | **Spec**: [spec.md](spec.md)
 
-## Arquitectura
-Módulo: `server/src/app/modules/frontend/`
+## Componentes (existente)
 
-## Endpoints
-(Pendiente de detallar durante implementación)
+| Componente | Archivo | Propósito |
+|-----------|---------|-----------|
+| LoginPage | `features/auth/pages/login/` | Formulario email + password |
+| AuthGuard | `core/guards/auth.guard.ts` | Protege rutas sin sesión |
+| RoleGuard | `core/guards/role.guard.ts` | Protege rutas por rol |
+| AuthInterceptor | `core/interceptors/auth.interceptor.ts` | Adjunta cookie de sesión |
+| AccessNav | `shared/ui/access-nav/` | Navegación adaptativa |
+| SidebarNav | `shared/ui/sidebar-nav/` | Sidebar por rol |
 
-## Componentes
-(Pendiente de detallar durante implementación)
+## Rutas
+
+| Ruta | Componente | Guard |
+|------|-----------|-------|
+| /auth/login | LoginPage | — |
+| /auth/logout | — (acción) | AuthGuard |
+| /403 | ForbiddenPage | — |
+| /* | (resto) | AuthGuard + RoleGuard |
+
+## Entregables
+
+Este spec documenta la UI de autenticación existente y asegura que todos los componentes estén correctamente implementados y probados.
