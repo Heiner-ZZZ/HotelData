@@ -2,16 +2,22 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-from src.app.template_utils import templates
 
 from src.app.modules.admin.service import (
     build_security_section_pdf,
+    create_ownership_user,
+    delete_user,
     ensure_user_status_field,
+    get_ownership_user,
+    get_roles_list,
+    list_ownership_users,
     role_editor_payload,
+    search_hotels,
     security_overview,
     toggle_user_active,
+    update_assigned_hotels,
     update_role_definition,
     users_overview,
 )
@@ -99,29 +105,13 @@ def _serialize_permissions_overview() -> dict:
 
 @router.get("/security")
 def security_dashboard(request: Request, current_user: dict = Depends(require_permission("users.manage"))):
-    return templates.TemplateResponse(
-        request,
-        "admin/security.html",
-        {
-            "current_user": current_user,
-            "overview": security_overview(),
-        },
-    )
+    return _serialize_permissions_overview()
 
 
 @router.get("/users")
 def users_dashboard(request: Request, current_user: dict = Depends(require_permission("users.manage"))):
     ensure_user_status_field()
-    return templates.TemplateResponse(
-        request,
-        "admin/users.html",
-        {
-            "current_user": current_user,
-            "overview": users_overview(),
-            "message": request.query_params.get("message", ""),
-            "error": request.query_params.get("error", ""),
-        },
-    )
+    return _serialize_users_overview(current_user)
 
 
 @api_router.get("/users")
@@ -165,17 +155,8 @@ def permissions_role_update_api(
 def role_editor(request: Request, role_name: str, current_user: dict = Depends(require_permission("users.manage"))):
     payload = role_editor_payload(role_name)
     if payload is None:
-        return RedirectResponse(url="/admin/security?error=Rol no encontrado.", status_code=303)
-    return templates.TemplateResponse(
-        request,
-        "admin/role_edit.html",
-        {
-            "current_user": current_user,
-            "payload": payload,
-            "message": request.query_params.get("message", ""),
-            "error": request.query_params.get("error", ""),
-        },
-    )
+        return JSONResponse({"error": "Rol no encontrado."}, status_code=404)
+    return payload
 
 
 @router.post("/roles/{role_name}")
@@ -187,15 +168,14 @@ def role_editor_save(
     current_user: dict = Depends(require_permission("users.manage")),
 ):
     result = update_role_definition(role_name, description, permission_codes, current_user)
-    param = "message" if result["ok"] else "error"
-    return RedirectResponse(url=f"/admin/roles/{role_name}?{urlencode({param: result['message']})}", status_code=303)
+    return result
 
 
 @router.get("/reports/{section}.pdf")
 def security_report_pdf(section: str, current_user: dict = Depends(require_permission("users.manage"))):
     result = build_security_section_pdf(section)
     if result is None:
-        return RedirectResponse(url="/admin/security?error=Sección de reporte no encontrada.", status_code=303)
+        return JSONResponse({"error": "Sección de reporte no encontrada."}, status_code=404)
     pdf_bytes, title = result
     filename = f"{section}_report.pdf"
     return Response(
@@ -207,8 +187,7 @@ def security_report_pdf(section: str, current_user: dict = Depends(require_permi
 
 def _toggle_user_active_redirect(user_id: str, current_user: dict) -> RedirectResponse:
     result = toggle_user_active(user_id, current_user)
-    param = "message" if result["ok"] else "error"
-    return RedirectResponse(url=f"/admin/users?{urlencode({param: result['message']})}", status_code=303)
+    return RedirectResponse(url=f"/admin/users", status_code=303)
 
 
 @router.post("/users/{user_id}/toggle-active")
@@ -226,3 +205,72 @@ def users_toggle_active_api(user_id: str, current_user: dict = Depends(require_p
     result = toggle_user_active(user_id, current_user)
     status_code = 200 if result["ok"] else 400
     return JSONResponse(result, status_code=status_code)
+
+
+@api_router.delete("/users/{user_id}")
+def users_delete_api(user_id: str, current_user: dict = Depends(require_permission("users.manage"))):
+    result = delete_user(user_id, current_user)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+# ─── Ownership Management ──────────────────────────────────────────────
+
+@api_router.get("/ownership/users")
+def ownership_users_list(current_user: dict = Depends(require_permission("users.manage"))):
+    return {"users": list_ownership_users(), "roles": get_roles_list()}
+
+
+@api_router.post("/ownership/users")
+def ownership_users_create(
+    body: dict,
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    username = str(body.get("username", "")).strip()
+    email = str(body.get("email", "")).strip().lower()
+    password = str(body.get("password", ""))
+    primary_role = str(body.get("primary_role", "")).strip()
+    display_name = str(body.get("display_name", "")).strip() or username
+    assigned_hotels = body.get("assigned_hotels", [])
+
+    result = create_ownership_user(username, email, password, primary_role, display_name, assigned_hotels)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+@api_router.get("/ownership/users/{user_id}")
+def ownership_users_detail(
+    user_id: str,
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    user = get_ownership_user(user_id)
+    if user is None:
+        return JSONResponse({"ok": False, "message": "Usuario no encontrado."}, status_code=404)
+    return {"user": user}
+
+
+@api_router.put("/ownership/users/{user_id}/assigned-hotels")
+def ownership_update_assigned_hotels(
+    user_id: str,
+    body: dict,
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    assigned_hotels = body.get("assigned_hotels", [])
+    result = update_assigned_hotels(user_id, assigned_hotels)
+    status_code = 200 if result["ok"] else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+@api_router.get("/ownership/hotels/search")
+def ownership_hotels_search(
+    q: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    return search_hotels(q, page, page_size)
+
+
+@api_router.get("/ownership/roles")
+def ownership_roles_list(current_user: dict = Depends(require_permission("users.manage"))):
+    return {"roles": get_roles_list()}
