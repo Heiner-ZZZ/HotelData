@@ -41,6 +41,7 @@ Después de buscar y filtrar, el cliente selecciona un hotel para ver su informa
 - Integración con Google Maps para mapa de ubicación
 - Recomendaciones de hoteles similares o cercanos
 - Envío de solicitudes de reserva desde la página de detalle
+- Ganancias de afiliados o comisiones por reservas
 - Transacciones de pago o procesamiento de reservas
 - Un sistema de mensajería interna para contactar al hotel directamente
 - Personalización de la experiencia del usuario basada en historial de búsqueda o preferencias

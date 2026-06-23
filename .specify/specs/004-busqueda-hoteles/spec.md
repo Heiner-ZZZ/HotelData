@@ -198,7 +198,9 @@ Entonces el sistema devuelve 200 con lista vacía
 - IA para sugerir destinos alternativos si no hay resultados
 - Búsqueda por nombre de hotel (CU-O04) — spec 006 ya existe
 - Experiencia de búsqueda avanzada con filtros múltiples (CU-O06) — spec 009 ya existe
-- Autocompletado de destinos y hoteles (CU-O07) — spec 010 ya existe
+- Autocompletado de destinos y hoteles (CU-O07) — 
+- IMG de resultados con carrusel de imágenes 
+- IA para sugerir hoteles similares basados en preferencias del usuario
 - Comparación simultánea de hoteles (CU-O03) — spec 005 ya existe
 - Reserva directa desde resultados (CU-O05) — specs 007/008 ya existen
 - chat bot de asistencia a búsqueda de hoteles

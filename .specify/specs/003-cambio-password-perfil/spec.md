@@ -194,6 +194,7 @@ Y responde con el perfil actualizado
 
 - Autenticación de dos factores (2FA) — ya esbozado en spec 001
 - Políticas de expiración de contraseña (obligar cambio cada N días)
+- Envío de notificaciones push o SMS para cambios de cuenta
 - Eliminación o desactivación de cuenta
 - Internacionalización / localización de mensajes
 - Cambios masivos de perfil por administradores

@@ -160,9 +160,15 @@ Entonces muestra mensaje "Selecciona hoteles para comparar"
 ## 14. Fuera de alcance (implementable, merece spec propio)
 
 - Comparación con hoteles de otros sistemas (OTAs)
+- CHAT BOT para sugerir hoteles similares según preferencias
 - Personalización de filtros basada en preferencias del usuario
 - Comparación de precios en tiempo real (conectado a motor de pricing)
+- Transparencia de políticas de cancelación y reembolso en la comparación
+- GANs para generar imágenes de habitaciones según descripción
 - Búsqueda por coordenadas geográficas (mapa) — spec dedicado
+- Comparación de hoteles con diferentes opciones de desayuno, cancelación, mascotas, etc. — spec dedicado
+- Los filtros de amenities podrían ser más complejos (checkboxes, categorías) — spec dedicado
+- IMG de habitaciones generadas por IA según descripción — spec dedicado
 
 → Ver `ideas-para-specs-dedicados.md` en la raíz del proyecto para detalles.
 
