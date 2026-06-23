@@ -1,8 +1,8 @@
 <div class="hotel-search-page">
   <app-page-header
-    [eyebrow]="pageHeader().eyebrow"
-    [title]="pageHeader().title"
-    [description]="pageHeader().description"
+    [eyebrow]="'Cliente / viajero'"
+    [title]="'Buscar hoteles'"
+    [description]="'Encuentra hoteles con disponibilidad real y tarifas en tiempo real.'"
   />
 
   <div class="page-grid">
@@ -23,28 +23,74 @@
             title="No hay hoteles para esos filtros"
             description="Prueba con otro destino, rango de precio o estrellas mínimas."
           />
-        }
-        @default {
-          @if (pageData(); as data) {
-            <app-sort-control
-              [total]="data.total"
-              [startIndex]="data.startIndex"
-              [endIndex]="data.endIndex"
-              [sourceCollection]="data.sourceCollection"
-              [page]="data.page"
-              [totalPages]="data.totalPages"
-              [hasPrev]="data.hasPrev"
-              [hasNext]="data.hasNext"
-              (previous)="goToPage(data.page - 1)"
-              (next)="goToPage(data.page + 1)"
-            />
-
-            <section class="results-grid">
-              @for (hotel of data.items; track hotel.id) {
-                <app-hotel-card [hotel]="hotel" />
-              }
+          @if (alternativeDestinations().length > 0) {
+            <section class="alternative-destinations surface-card">
+              <h3 class="alt-title">
+                <span class="material-symbols-outlined alt-icon">travel_explore</span>
+                Destinos alternativos sugeridos
+              </h3>
+              <p class="alt-description">
+                No encontramos resultados para <strong>{{ currentFilters().destination }}</strong>.
+                ¿Quizás quisiste buscar en uno de estos destinos?
+              </p>
+              <div class="alt-chips">
+                @for (alt of alternativeDestinations(); track alt.id) {
+                  <a
+                    class="alt-chip"
+                    [routerLink]="[]"
+                    [queryParams]="{ destination: alt.displayName, check_in: null, check_out: null, page: null }"
+                    queryParamsHandling="merge"
+                  >
+                    <span class="material-symbols-outlined chip-icon">location_on</span>
+                    {{ alt.displayName }}
+                  </a>
+                }
+              </div>
             </section>
           }
+        }
+        @default {
+          <app-sort-control
+            [total]="total()"
+            [page]="page()"
+            [totalPages]="totalPages()"
+            [hasPrev]="hasPrev()"
+            [hasNext]="hasNext()"
+            (previous)="goToPage(page() - 1)"
+            (next)="goToPage(page() + 1)"
+          />
+
+          <!-- Compare toolbar -->
+          @if (showCompareMode()) {
+            <div class="compare-toolbar surface-card">
+              <span class="compare-info">
+                <strong>{{ selectedCompareIds().length }}</strong> hotel{{ selectedCompareIds().length !== 1 ? 'es' : '' }} seleccionado{{ selectedCompareIds().length !== 1 ? 's' : '' }}
+                @if (selectedCompareIds().length < 3) {
+                  <span class="compare-hint"> (selecciona hasta 3 para comparar)</span>
+                }
+              </span>
+              <div class="compare-actions">
+                <button class="clear-btn" type="button" (click)="clearCompare()">Limpiar</button>
+                @if (selectedCompareIds().length >= 2) {
+                  <a class="compare-btn"
+                    [routerLink]="['/hotels/compare']"
+                    [queryParams]="{ prop_id: selectedCompareIds() }">
+                    Comparar {{ selectedCompareIds().length }} hoteles
+                  </a>
+                }
+              </div>
+            </div>
+          }
+
+          <section class="results-grid">
+            @for (hotel of items(); track hotel.id) {
+              <app-hotel-card
+                [hotel]="hotel"
+                [compareMode]="showCompareMode()"
+                (compareSelected)="onCompareSelected($event)"
+              />
+            }
+          </section>
         }
       }
     </section>

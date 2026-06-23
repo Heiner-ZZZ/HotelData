@@ -16,30 +16,36 @@ export class HotelSearchApiService {
 
   search(filters: Partial<HotelSearchFilters>) {
     const normalized = createHotelSearchFilters(filters);
-    let params = new HttpParams().set('page', String(normalized.page));
+    let params = new HttpParams()
+      .set('page', String(normalized.page))
+      .set('page_size', '10');
 
-    const paramMap = {
-      destination: normalized.destination,
-      min_price: normalized.minPrice,
-      max_price: normalized.maxPrice,
-      min_stars: normalized.minStars,
-      promotion: normalized.promotion,
-      adults: normalized.adults,
-      children: normalized.children,
-      rooms: normalized.rooms
+    const paramMap: Record<string, string | number | undefined> = {
+      destination: normalized.destination || undefined,
+      check_in: normalized.checkIn || undefined,
+      check_out: normalized.checkOut || undefined,
+      adults: Number(normalized.adults) || undefined,
+      children: Number(normalized.children) || undefined,
+      rooms: Number(normalized.rooms) || undefined,
+      price_min: normalized.minPrice ? Number(normalized.minPrice) : undefined,
+      price_max: normalized.maxPrice ? Number(normalized.maxPrice) : undefined,
+      star_rating: normalized.minStars ? Number(normalized.minStars) : undefined,
+      amenities: normalized.amenities || undefined,
+      amenities_mode: normalized.amenitiesMode || undefined,
+      sort_by: normalized.sortBy || undefined,
     };
 
     for (const [key, value] of Object.entries(paramMap)) {
-      if (value) {
-        params = params.set(key, value);
+      if (value !== undefined && value !== '') {
+        params = params.set(key, String(value));
       }
     }
 
     return this.http
-      .get<HotelSearchDto>(`${this.apiConfig.baseUrl}/hotels/search`, {
+      .get<HotelSearchDto>(`${this.apiConfig.baseUrl}/hotels/availability`, {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapHotelSearchResponse(dto)));
+      .pipe(map((dto) => mapHotelSearchResponse(dto, normalized)));
   }
 }

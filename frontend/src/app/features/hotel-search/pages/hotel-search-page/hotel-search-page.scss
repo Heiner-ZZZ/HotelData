@@ -19,7 +19,143 @@
   gap: 1rem;
 }
 
+.compare-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.compare-info {
+  font-size: 0.9rem;
+  color: var(--app-text);
+
+  strong {
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+}
+
+.compare-hint {
+  color: var(--muted-text);
+  font-size: 0.8rem;
+}
+
+.compare-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.clear-btn {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  color: var(--muted-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  &:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+}
+
+.compare-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 1rem;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.88;
+  }
+}
+
+.alternative-destinations {
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+
+  .alt-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--app-text);
+  }
+
+  .alt-icon {
+    font-size: 1.25rem;
+    color: var(--accent);
+    font-variation-settings: 'FILL' 0, 'wght' 300;
+  }
+
+  .alt-description {
+    margin: 0 0 1rem;
+    font-size: 0.88rem;
+    color: var(--muted-text);
+    line-height: 1.6;
+  }
+
+  .alt-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .alt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+  }
+
+  .chip-icon {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300;
+  }
+}
+
 @media (max-width: 920px) {
+  .compare-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .compare-actions {
+    justify-content: center;
+  }
   .page-grid {
     grid-template-columns: 1fr;
   }
