@@ -1,0 +1,129 @@
+<div class="ownership-create-page">
+  <app-page-header
+    eyebrow="Propietario"
+    title="Nuevo usuario hotelero"
+    description="Crea una cuenta con acceso a propiedades específicas del catálogo hotelero."
+  />
+
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  <form class="surface-card create-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="form-grid">
+      <div class="field">
+        <label for="username">Nombre de usuario *</label>
+        <input id="username" type="text" formControlName="username" placeholder="ej: partner_marriot" />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <span class="field-error">Requerido</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="email">Correo electrónico *</label>
+        <input id="email" type="email" formControlName="email" placeholder="partner@hotel.com" />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <span class="field-error">Email válido requerido</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="displayName">Nombre visible</label>
+        <input id="displayName" type="text" formControlName="displayName" placeholder="Nombre del hotelero" />
+      </div>
+
+      <div class="field">
+        <label for="password">Contraseña *</label>
+        <input id="password" type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field-error">Mínimo 6 caracteres</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="primaryRole">Rol *</label>
+        <select id="primaryRole" formControlName="primaryRole">
+          <option value="">Seleccionar rol...</option>
+          @for (role of roles(); track role.roleName) {
+            <option [value]="role.roleName">{{ role.roleName.replace(/_/g, ' ') }}</option>
+          }
+        </select>
+        @if (form.controls.primaryRole.touched && form.controls.primaryRole.invalid) {
+          <span class="field-error">Selecciona un rol</span>
+        }
+      </div>
+    </div>
+
+    <div class="field hotel-search-field">
+      <label>Hoteles asignados</label>
+      <p class="field-hint">Busca hoteles por nombre o ID para asignarlos al usuario.</p>
+
+      <div class="hotel-search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="hotel-search-input"
+          [formControl]="searchControl"
+          placeholder="Buscar hotel por nombre, ID o país..."
+        />
+        @if (searching()) {
+          <span class="search-spinner"></span>
+        }
+      </div>
+
+      @if (searchResults().length > 0) {
+        <div class="search-results">
+          @for (hotel of searchResults(); track hotel.propId) {
+            <button
+              type="button"
+              class="search-result-item"
+              [disabled]="isSelected(hotel.propId)"
+              (click)="addHotel(hotel)"
+            >
+              <div class="result-info">
+                <span class="result-label">{{ hotel.label }}</span>
+                <span class="result-meta">
+                  ID: {{ hotel.propId }}
+                  @if (hotel.starRating) { · {{ hotel.starRating }}★ }
+                  @if (hotel.countryLabel) { · {{ hotel.countryLabel }} }
+                </span>
+              </div>
+              @if (isSelected(hotel.propId)) {
+                <span class="material-symbols-outlined check-icon">check_circle</span>
+              } @else {
+                <span class="material-symbols-outlined add-icon">add_circle</span>
+              }
+            </button>
+          }
+        </div>
+      }
+
+      @if (selectedHotels().length > 0) {
+        <div class="selected-hotels">
+          @for (hotel of selectedHotels(); track hotel.propId) {
+            <div class="selected-hotel-chip">
+          <span class="chip-label">{{ hotel.label }}</span>
+          <span class="chip-id">#{{ hotel.propId }}</span>
+          <button type="button" class="chip-remove" (click)="removeHotel(hotel.propId)">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="form-actions">
+      <a class="btn-cancel" routerLink="/ownership/users">Cancelar</a>
+      <button type="submit" class="btn-submit" [disabled]="form.invalid || submitting()">
+        @if (submitting()) {
+          <span class="btn-spinner"></span>
+          Creando...
+        } @else {
+          <span class="material-symbols-outlined">person_add</span>
+          Crear usuario
+        }
+      </button>
+    </div>
+  </form>
+</div>

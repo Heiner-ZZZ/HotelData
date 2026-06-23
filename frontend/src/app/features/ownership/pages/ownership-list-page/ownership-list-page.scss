@@ -1,0 +1,215 @@
+.ownership-list-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.toolbar-count {
+  color: var(--muted-text);
+  font-size: 0.88rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.12s;
+  min-height: 2.5rem;
+}
+
+.btn-primary:hover {
+  opacity: 0.88;
+}
+
+.btn-primary .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  color: var(--muted-text);
+  text-decoration: none;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.btn-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-action .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 0.85rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-avatar-icon {
+  font-size: 1.6rem;
+  color: var(--muted-text);
+  font-variation-settings: 'FILL' 1;
+}
+
+.sub-text {
+  display: block;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.role-badge.role-gerente_hotel {
+  background: color-mix(in srgb, #e67e22 10%, transparent);
+  color: #e67e22;
+}
+
+.role-badge.role-revenue_manager {
+  background: color-mix(in srgb, #9b59b6 10%, transparent);
+  color: #9b59b6;
+}
+
+.role-badge.role-marketing_hotelero {
+  background: color-mix(in srgb, #1abc9c 10%, transparent);
+  color: #1abc9c;
+}
+
+.hotel-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.hotel-chip {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--app-text);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotel-overflow {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
+.date-cell {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.message.success {
+  border: 1px solid rgba(15, 138, 96, 0.2);
+}
+
+.message.error {
+  border: 1px solid rgba(201, 61, 50, 0.2);
+}
+
+.roles-section {
+  padding: 1.125rem;
+}
+
+.roles-section h3 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.role-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.role-card-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-transform: capitalize;
+}
+
+.role-card-desc {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+@media (max-width: 980px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

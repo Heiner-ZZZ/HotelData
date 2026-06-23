@@ -1,0 +1,123 @@
+<div class="ownership-list-page">
+  <app-page-header
+    eyebrow="Propietario"
+    title="Asignación de hoteles"
+    description="Gestiona los usuarios con acceso a propiedades hoteleras y asigna hoteles específicos a cada cuenta."
+  />
+
+  @if (message()) {
+    <section class="surface-card message success">{{ message() }}</section>
+  }
+  @if (errorMessage()) {
+    <section class="surface-card message error">{{ errorMessage() }}</section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando asignaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las asignaciones"
+        [description]="loadErrorMessage() || 'Revisa la conexión con el servidor.'"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin usuarios con roles hoteleros"
+        description="Crea usuarios con roles como hotel_partner o gerente_hotel para comenzar a asignar propiedades."
+      >
+        <a class="btn-primary" routerLink="/ownership/users/new">
+          <span class="material-symbols-outlined">person_add</span>
+          Crear usuario hotelero
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      <section class="toolbar">
+        <a class="btn-primary" routerLink="/ownership/users/new">
+          <span class="material-symbols-outlined">person_add</span>
+          Nuevo usuario hotelero
+        </a>
+        <span class="toolbar-count">{{ users().length }} usuarios con roles de propiedad</span>
+      </section>
+
+      <section class="surface-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Hoteles asignados</th>
+                <th>Creado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of users(); track user.userId) {
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <span class="material-symbols-outlined user-avatar-icon">account_circle</span>
+                      <div>
+                        <strong>{{ user.displayName }}</strong>
+                        <span class="sub-text">@{{ user.username }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="role-badge" [class]="'role-' + user.primaryRole">
+                      {{ user.primaryRole.replace('_', ' ') }}
+                    </span>
+                  </td>
+                  <td>
+                    <app-status-badge
+                      [tone]="user.isActive ? 'success' : 'warning'"
+                      [label]="user.isActive ? 'Activo' : 'Inactivo'"
+                    />
+                  </td>
+                  <td>
+                    @if (user.hotelCount > 0) {
+                      <div class="hotel-preview">
+                        @for (name of user.hotelPreview; track name) {
+                          <span class="hotel-chip">{{ name }}</span>
+                        }
+                        @if (user.hotelOverflow > 0) {
+                          <span class="hotel-overflow">+{{ user.hotelOverflow }} más</span>
+                        }
+                      </div>
+                    } @else {
+                      <span class="sub-text">Sin hoteles asignados</span>
+                    }
+                  </td>
+                  <td class="date-cell">{{ user.createdAtLabel }}</td>
+                  <td>
+                    <a class="btn-action" [routerLink]="'/ownership/users/' + user.userId">
+                      <span class="material-symbols-outlined">edit_square</span>
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="surface-card roles-section">
+        <h3>Roles disponibles para asignación</h3>
+        <div class="roles-grid">
+          @for (role of roles(); track role.roleName) {
+            <article class="role-card">
+              <span class="role-card-name">{{ role.roleName.replace(/_/g, ' ') }}</span>
+              <span class="role-card-desc">{{ role.description }}</span>
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>
