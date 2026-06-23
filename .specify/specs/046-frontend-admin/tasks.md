@@ -1,13 +1,20 @@
-# Tareas: Frontend Admin
+# Tareas: Frontend - Administración
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Verificación de páginas existentes
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Verificar UsersPage con tabla, filtros, activar/desactivar
+- [ ] T002 Verificar RolesPage con matriz de permisos
+- [ ] T003 Verificar AuditPage con tabla de actividad filtrable
+- [ ] T004 Verificar MonitoringPage con health checks
+
+## Fase 2: Ownership
+
+- [ ] T005 Verificar OwnershipListPage
+- [ ] T006 Verificar OwnershipCreatePage
+- [ ] T007 Verificar OwnershipDetailPage
+
+## Fase 3: Validación
+
+- [ ] T008 Verificar que solo super_admin y admin_sistema acceden a /system/*

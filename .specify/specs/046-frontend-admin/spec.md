@@ -1,57 +1,33 @@
-# Especificación: Frontend Admin
+# Especificacion: Frontend - Administracion
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T09, CU-T10, CU-T11
+**Casos de uso TAF06**: CU-T09, CU-T10, CU-T11 (Usuarios, roles, auditoria, monitoreo, permisos)
 
 ## 1. Objetivo
 
-UI de administración: users, roles, audit, monitoring, permissions
+UI de administracion: gestion de usuarios y roles, panel de auditoria, monitoreo de servicios.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | CU asociado |
+|------------|------|-------------|
+| UsersPage | /system/users | CU-T09 |
+| RolesPage | /system/permissions | CU-T09 |
+| AuditPage | /system/audit | CU-T10 |
+| MonitoringPage | /system/monitoring | CU-T11 |
+| OwnershipListPage | /ownership/users | CU-T09 |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | UsersPage con tabla de usuarios, activar/desactivar, cambiar rol | Alta |
+| RF-002 | RolesPage con matriz de permisos por rol | Alta |
+| RF-003 | AuditPage con tabla de actividad filtrable | Alta |
+| RF-004 | MonitoringPage con health checks de servicios | Media |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/system-admin/
+- system-admin.routes.ts
