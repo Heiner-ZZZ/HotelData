@@ -46,11 +46,17 @@ def find_user_by_identifier(db: Database, identifier: str) -> dict[str, Any] | N
     )
 
 
-def create_user_session(db: Database, user: dict[str, Any], request: Request) -> str:
+def create_user_session(
+    db: Database,
+    user: dict[str, Any],
+    request: Request,
+    remember_me: bool = False,
+) -> str:
     token = secrets.token_urlsafe(48)
     token_hash = hash_session_token(token)
     now = utc_now()
-    expires_at = now + timedelta(hours=SESSION_TTL_HOURS)
+    ttl_hours = 30 * 24 if remember_me else SESSION_TTL_HOURS
+    expires_at = now + timedelta(hours=ttl_hours)
     db.user_sessions.insert_one(
         {
             "session_token_hash": token_hash,
@@ -62,6 +68,7 @@ def create_user_session(db: Database, user: dict[str, Any], request: Request) ->
             "expires_at": expires_at,
             "ip_address": request.client.host if request.client else None,
             "user_agent": request.headers.get("user-agent"),
+            "remember_me": remember_me,
         }
     )
     return token
@@ -73,14 +80,8 @@ def ensure_user_sessions_indexes(db: Database) -> None:
     Called from the FastAPI `lifespan` so we don't pay the cost of
     `create_index` on every login (was previously inside
     `create_user_session`).
-
-    Indexes:
-    - `session_token_hash`: unique lookup for session resolution.
-    - `expires_at`: TTL index so MongoDB automatically removes expired
-      session documents (RNF-002 / CA-007).
     """
     db.user_sessions.create_index("session_token_hash", unique=True, sparse=True)
-    db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
 
 
 def ensure_users_indexes(db: Database) -> None:
@@ -132,26 +133,12 @@ def invalidate_session(db: Database, token: str | None, reason: str = "logout") 
     return session
 
 
-def invalidate_user_sessions(db: Database, user_id: ObjectId | str, reason: str = "new_login") -> int:
-    """Mark all active sessions for a user as inactive.
-
-    Called before creating a new session on login so that each user
-    has at most one active session at any time (RN-004).
-
-    Args:
-        reason: Reason for invalidation ("new_login", "password_changed", etc.)
-    """
-    uid = user_id
-    if isinstance(uid, str):
-        try:
-            uid = ObjectId(uid)
-        except Exception:
-            return 0
-    result = db.user_sessions.update_many(
-        {"user_id": uid, "is_active": True},
+def invalidate_user_sessions(db: Database, user_id: ObjectId, reason: str = "password_changed") -> int:
+    count = db.user_sessions.update_many(
+        {"user_id": user_id, "is_active": True},
         {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": reason}},
-    )
-    return result.modified_count
+    ).modified_count
+    return count
 
 
 def log_user_activity(

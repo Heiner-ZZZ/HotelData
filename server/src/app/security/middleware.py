@@ -1,19 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
-from src.app.template_utils import templates
 
 from src.app.security.navigation import get_default_redirect_for_role, get_navigation_for_user
 from src.app.security.permissions import get_user_permission_codes, user_has_permission
 from src.app.security.route_permissions import get_access_rule, is_public_path, role_allowed
 from src.app.security.session import SESSION_COOKIE_NAME, get_current_user
 from src.database.connection import get_database
-
-
 
 
 
@@ -79,15 +77,14 @@ async def role_access_middleware(request: Request, call_next):
                     "allowed_roles": list(rule.roles) if rule else [],
                 },
             )
-        return templates.TemplateResponse(
-            request,
-            "errors/403.html",
-            {
-                "required_permission": rule.permission if rule else None,
-                "allowed_roles": rule.roles if rule else (),
-                "current_user": user,
-            },
+        return JSONResponse(
             status_code=403,
+            content={
+                "authenticated": True,
+                "detail": "Forbidden",
+                "required_permission": rule.permission if rule else None,
+                "allowed_roles": list(rule.roles) if rule else [],
+            },
         )
 
     return await call_next(request)

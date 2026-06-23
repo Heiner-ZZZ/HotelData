@@ -13,7 +13,7 @@ class AccessRule:
 
 
 PUBLIC_PREFIXES = ("/static", "/api/hotels")
-PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/me")
+PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code", "/api/auth/refresh", "/api/auth/me")
 
 
 ROUTE_RULES = [
@@ -22,13 +22,13 @@ ROUTE_RULES = [
     AccessRule("/api/admin/security", permission="users.manage", roles=("super_admin", "admin_sistema")),
     AccessRule("/api/admin/users", permission="users.manage", roles=("super_admin", "admin_sistema")),
     AccessRule("/api/admin/permissions", permission="users.manage", roles=("super_admin", "admin_sistema")),
+    AccessRule("/api/admin/ownership", permission="users.manage", roles=("super_admin", "admin_sistema")),
     AccessRule("/dashboard", permission="dashboard.read"),
     AccessRule("/api/dashboard", permission="dashboard.read"),
     AccessRule("/api/reservations", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel")),
     AccessRule("/api/account", roles=("cliente", "super_admin", "admin_sistema")),
-    AccessRule("/api/settings/password", roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos")),
     AccessRule("/api/settings",
-        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
+        roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
     ),
     AccessRule("/api/management",
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
