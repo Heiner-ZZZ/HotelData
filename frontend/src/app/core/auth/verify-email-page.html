@@ -1,0 +1,37 @@
+<main class="verify-page">
+  <section class="verify-hero">
+    <p class="verify-kicker">HotelData Hub</p>
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
+    <div class="hero-copy">
+      <h2>Verificación de correo</h2>
+      <p>Confirmando el cambio de tu dirección de correo electrónico.</p>
+    </div>
+  </section>
+
+  <section class="verify-card surface-card">
+    <div class="card-head">
+      <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">mail</span> Verificación</p>
+      <h2>{{ success() ? '¡Correo verificado!' : 'Verificando...' }}</h2>
+    </div>
+
+    @if (loading()) {
+      <div class="verify-loading">
+        <span class="material-symbols-outlined spin">sync</span>
+        <p>Verificando tu correo...</p>
+      </div>
+    } @else {
+      <div class="notice" [class.notice-success]="success()" [class.notice-error]="!success()">
+        {{ message() }}
+      </div>
+      @if (success()) {
+        <a routerLink="/login" class="back-link">
+          <span class="material-symbols-outlined">arrow_back</span> Ir al inicio de sesión
+        </a>
+      } @else {
+        <a routerLink="/login" class="back-link">
+          <span class="material-symbols-outlined">arrow_back</span> Volver al inicio
+        </a>
+      }
+    }
+  </section>
+</main>
