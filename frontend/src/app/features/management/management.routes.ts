@@ -7,9 +7,13 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('./pages/dashboard-page/dashboard-page').then((m) => m.ManagementDashboardPageComponent)
   },
   {
-    path: 'reservations',
+    path: 'recepcion',
     loadChildren: () =>
       import('../reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
+  },
+  {
+    path: 'reservations',
+    redirectTo: 'recepcion'
   },
   {
     path: 'properties',
