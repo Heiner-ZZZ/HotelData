@@ -1,6 +1,6 @@
 # Especificación: Búsqueda Operacional de Hoteles con Disponibilidad
 
-**Versión**: 1.1 | **Estado**: Implementado
+**Versión**: 2.0 | **Estado**: Implementado | **Última actualización**: 2026-06-22
 
 **Casos de uso TAF06**: CU-O02 (Buscar hoteles)
 
@@ -45,7 +45,7 @@ El cliente accede a la plataforma para encontrar alojamiento. El sistema verific
 | RN-001 | Solo hoteles con disponibilidad en TODAS las noches del rango solicitado aparecen |
 | RN-002 | El precio mostrado es la tarifa nocturna mínima entre todos los planes tarifarios activos |
 | RN-003 | Los tipos de habitación deben cumplir con la capacidad de adultos y niños solicitada |
-| RN-004 | Resultados ordenados por tarifa mínima ascendente (más económico primero) |
+| RN-004 | Resultados ordenados por tarifa mínima ascendente (más económico primero) por defecto |
 
 ## 7. Entradas
 
@@ -57,7 +57,14 @@ El cliente accede a la plataforma para encontrar alojamiento. El sistema verific
 | adults | int (default=1) | GET /api/hotels/availability?adults=2 |
 | children | int (default=0) | GET /api/hotels/availability?children=1 |
 | rooms | int (default=1) | GET /api/hotels/availability?rooms=1 |
-| page | int (default=1) | GET /api/hotels/availability?page=1 |
+| amenities | string | GET /api/hotels/availability?amenities=piscina,wifi |
+| amenities_mode | string (or/and) | GET /api/hotels/availability?amenities_mode=and |
+| sort_by | string (price/rating/stars/name) | GET /api/hotels/availability?sort_by=rating |
+| price_min | float | GET /api/hotels/availability?price_min=50 |
+| price_max | float | GET /api/hotels/availability?price_max=300 |
+| star_rating | float | GET /api/hotels/availability?star_rating=4 |
+| page | int (default=1) | GET /api/hotels/availability?page=2 |
+| page_size | int (default=10, max=20) | GET /api/hotels/availability?page_size=20 |
 
 ## 8. Salidas
 
@@ -76,6 +83,7 @@ El cliente accede a la plataforma para encontrar alojamiento. El sistema verific
   "prop_starrating": 4.0,
   "prop_review_score": 8.5,
   "image_url": "/static/hotels/12345/main.jpg",
+  "destination_labels": ["Madrid"],
   "matched_room_type": {
     "room_type_id": "RT-12345-estandar",
     "name": "Habitación Estándar",
@@ -88,6 +96,20 @@ El cliente accede a la plataforma para encontrar alojamiento. El sistema verific
   "total_estimated": 447.50,
   "total_estimated_label": "$447.50",
   "available_room_types_count": 3
+}
+```
+
+### Metadatos de paginación:
+```json
+{
+  "items": [...],
+  "total": 45,
+  "page": 1,
+  "page_size": 10,
+  "total_pages": 5,
+  "has_prev": false,
+  "has_next": true,
+  "filters": { "destination": "Madrid", ... }
 }
 ```
 
@@ -120,7 +142,11 @@ Entonces el sistema devuelve 200 con lista vacía
 | CA-003 | Hoteles sin tarifa configurada son excluidos |
 | CA-004 | Resultados incluyen precio mínimo por noche y total estimado |
 | CA-005 | Resultados incluyen tipo de habitación que cumple capacidad de huéspedes |
-| CA-006 | Resultados ordenados por precio ascendente |
+| CA-006 | Resultados ordenados por precio ascendente por defecto |
+| CA-007 | Parámetro sort_by permite ordenar por rating, estrellas o nombre |
+| CA-008 | Filtros price_min, price_max, star_rating funcionan correctamente |
+| CA-009 | Filtro amenities por texto (or/and) funciona en hotel_content_pages |
+| CA-010 | Paginación funcional con page, page_size, total_pages, has_prev, has_next |
 
 ## 11. Restricciones
 
@@ -128,21 +154,60 @@ Entonces el sistema devuelve 200 con lista vacía
 - Fechas en formato ISO 8601 (YYYY-MM-DD)
 - La disponibilidad se verifica contra `room_inventory_calendar.available_rooms >= rooms_solicitados`
 - La tarifa se obtiene como mínimo de `hotel_rate_calendar.rate_amount` para todas las noches
+- page_size máximo 20 para evitar timeouts
 
 ## 12. Dependencias
 
 - `server/src/app/modules/hotels/service/availability.py` — Lógica de búsqueda operacional
-- `server/src/app/modules/hotels/service/lookups.py` — Resolución de destinos
+- `server/src/app/modules/hotels/service/lookups.py` — Resolución de destinos + amenities
 - `server/src/app/modules/hotels/service/_helpers.py` — Formateo y utilidades
 - `room_inventory_calendar` — Disponibilidad de habitaciones por fecha
 - `hotel_rate_calendar` — Tarifas por fecha y plan
 - `room_types` — Capacidad de habitaciones (adultos, niños)
 - `dim_hotels` — Datos maestros de hoteles
 - `hotel_images` — Imágenes de propiedad
+- `hotel_content_pages` — Texto de amenities para filtro
 
-## 13. Fuera de alcance
+## 13. Implementaciones adicionales
 
-- Búsqueda por coordenadas geográficas (mapa)
-- Búsqueda por texto libre en amenities
-- Reserva directa desde resultados (CU-O05)
-- Comparación simultánea de hoteles (CU-O03)
+### Paginación completa
+| ID | Requisito |
+|----|-----------|
+| RF-010 | El sistema debe paginar resultados con page, page_size, total_pages, has_prev, has_next |
+
+### Ordenamiento múltiple
+| ID | Requisito |
+|----|-----------|
+| RF-011 | El sistema debe permitir ordenar por precio (default, asc), rating (desc), estrellas (desc), nombre (asc) |
+
+### Filtro por amenities (texto libre)
+| ID | Requisito |
+|----|-----------|
+| RF-012 | El sistema debe filtrar hoteles cuyo amenities_text contenga los términos (modo or/and) |
+| RF-013 | Los términos se separan por coma: amenities=piscina,wifi,gimnasio |
+
+### Filtros de precio y estrellas
+| ID | Requisito |
+|----|-----------|
+| RF-014 | El sistema debe filtrar por precio mínimo y máximo (price_min, price_max) |
+| RF-015 | El sistema debe filtrar por calificación mínima de estrellas (star_rating) |
+
+## 14. Fuera de alcance (implementable, merece spec propio)
+
+- Búsqueda por coordenadas geográficas (mapa) — requiere índice 2dsphere en dim_hotels
+- IA para sugerir destinos alternativos si no hay resultados
+- Búsqueda por nombre de hotel (CU-O04) — spec 006 ya existe
+- Experiencia de búsqueda avanzada con filtros múltiples (CU-O06) — spec 009 ya existe
+- Autocompletado de destinos y hoteles (CU-O07) — spec 010 ya existe
+- Comparación simultánea de hoteles (CU-O03) — spec 005 ya existe
+- Reserva directa desde resultados (CU-O05) — specs 007/008 ya existen
+- chat bot de asistencia a búsqueda de hoteles
+- logica de recomendación de hoteles similares basados en IA
+- Tarifas dinámicas basadas en demanda
+- Promociones y descuentos aplicados en resultados de búsqueda
+
+→ Ver `ideas-para-specs-dedicados.md` en la raíz del proyecto para detalles.
+
+## 15. Nota
+
+Items de "Resultados con información de [X]" generados por IA fueron descartados por ser redundancias de datos ya disponibles en la ficha de detalle del hotel y no aportar valor a la búsqueda.
