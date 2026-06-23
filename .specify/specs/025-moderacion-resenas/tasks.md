@@ -1,13 +1,19 @@
-# Tareas: Moderación Reseñas
+# Tareas: Moderación de Reseñas
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Backend
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Implementar `modules/reviews/services/reviews.py`: `approve_review()`, `reject_review()`, `respond_to_review()`
+- [ ] T002 Validar permisos: solo marketing_hotelero y super_admin moderan
+- [ ] T003 Validar que no se puede responder reseña rechazada
+
+## Fase 2: Frontend
+
+- [ ] T004 [P] Crear `ModeratePage` con tabla de reseñas pendientes
+- [ ] T005 [P] Botones de aprobar/rechazar con confirmación
+- [ ] T006 [P] Formulario de respuesta del hotel en reseña aprobada
+
+## Fase 3: Validación
+
+- [ ] T007 Verificar que reseñas aprobadas son visibles en detalle del hotel
