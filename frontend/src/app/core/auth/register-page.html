@@ -1,0 +1,237 @@
+<main class="register-page">
+  <section class="register-hero">
+    <p class="register-kicker">HotelData Hub</p>
+    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
+    <div class="hero-copy">
+      @if (!awaitingVerification()) {
+        <h2>Crea tu cuenta</h2>
+        <p>Regístrate para explorar hoteles, comparar tarifas y gestionar tus reservaciones.</p>
+      } @else {
+        <h2>Verifica tu cuenta</h2>
+        <p>Revisa tu correo e ingresa el código de 6 dígitos, luego completa los datos restantes.</p>
+      }
+    </div>
+  </section>
+
+  <section class="register-card surface-card">
+    @if (!awaitingVerification()) {
+      <!-- ── Step 1: Registration Form ── -->
+      <div class="card-head">
+        <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">person_add</span> Registro</p>
+        <h2>Crear cuenta nueva</h2>
+      </div>
+
+      @if (successMessage()) {
+        <div class="notice notice-success">{{ successMessage() }}</div>
+      }
+      @if (errorMessage()) {
+        <div class="notice notice-error">{{ errorMessage() }}</div>
+      }
+
+      <form class="register-form" [formGroup]="registerForm" (ngSubmit)="submit()">
+        <!-- Email field siempre primero -->
+        <label class="input-field">
+          <span class="material-symbols-outlined input-icon">mail</span>
+          <span class="input-label">Correo electrónico</span>
+          <input type="email" formControlName="email" placeholder="ej: juan@correo.com" autocomplete="email">
+          @if (registerForm.controls.email.touched && registerForm.controls.email.invalid) {
+            <span class="field-error">Correo inválido</span>
+          }
+        </label>
+
+        <!-- Toggle para verificación -->
+        <label class="toggle-field" (click)="toggleVerification()">
+          <div class="toggle-switch" [class.active]="sendVerification()">
+            <span class="toggle-knob"></span>
+          </div>
+          <div class="toggle-content">
+            <span class="toggle-label">Enviar código de verificación al correo</span>
+            <span class="toggle-hint">
+              @if (sendVerification()) {
+                Se enviará un código de verificación al correo electrónico.
+              } @else {
+                Cuenta creada sin verificación de email (ideal para pruebas).
+              }
+            </span>
+          </div>
+        </label>
+
+        <!-- Estado de envío (mientras toggle ON y esperando respuesta) -->
+        @if (sendVerification() && sendingCode() && !awaitingVerification()) {
+          <div class="sending-indicator">
+            <span class="material-symbols-outlined sending-spinner">sync</span>
+            Enviando código de verificación...
+          </div>
+        }
+
+        <!-- Campos restantes (solo visibles SIN verificación) -->
+        @if (!sendVerification()) {
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">person</span>
+            <span class="input-label">Usuario</span>
+            <input type="text" formControlName="username" placeholder="ej: juanperez" autocomplete="username">
+            @if (registerForm.controls.username.touched && registerForm.controls.username.invalid) {
+              <span class="field-error">Mínimo 3 caracteres</span>
+            }
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">badge</span>
+            <span class="input-label">Nombre completo <span class="optional">(opcional)</span></span>
+            <input type="text" formControlName="display_name" placeholder="ej: Juan Pérez" autocomplete="name">
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">lock</span>
+            <span class="input-label">Contraseña</span>
+            <div class="password-field">
+              <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" aria-label="Mostrar u ocultar contraseña">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="password-toggle-icon">
+                  @if (passwordVisible()) {
+                    <path d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 5.1A10.9 10.9 0 0 1 12 5c5.5 0 9.5 4.1 10.8 7-0.5 1.1-1.4 2.4-2.6 3.6M6.7 6.8C4.6 8 3.2 10.1 2.2 12 3.5 14.9 7.5 19 13 19c1 0 2-.1 2.9-.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  } @else {
+                    <path d="M2.2 12C3.5 9.1 7.5 5 13 5s9.5 4.1 10.8 7c-1.3 2.9-5.3 7-10.8 7S3.5 14.9 2.2 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  }
+                </svg>
+              </button>
+            </div>
+            @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) {
+              <span class="field-error">Mínimo 6 caracteres</span>
+            }
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">lock</span>
+            <span class="input-label">Confirmar contraseña</span>
+            <div class="password-field">
+              <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="confirm_password" placeholder="Repite la contraseña" autocomplete="new-password">
+            </div>
+            @if (registerForm.controls.confirm_password.touched && registerForm.errors?.['mismatch']) {
+              <span class="field-error">Las contraseñas no coinciden</span>
+            }
+          </label>
+
+          <button type="submit" [disabled]="submitting()">
+            @if (submitting()) {
+              <span class="material-symbols-outlined btn-icon">sync</span> Creando cuenta...
+            } @else {
+              <span class="material-symbols-outlined btn-icon">person_add</span> Crear cuenta
+            }
+          </button>
+        }
+
+        <!-- Si toggle está ON pero no se ha enviado código, ocultar botón submit final -->
+      </form>
+
+      <p class="card-footnote">
+        ¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a>
+      </p>
+
+    } @else {
+      <!-- ── Step 2: Code Verification + Complete Form ── -->
+      <div class="card-head code-head">
+        <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">mail</span> Verificación</p>
+        <h2>Ingresa el código</h2>
+        <p>Te enviamos un código de 6 dígitos a <strong>{{ verificationEmail() }}</strong>.</p>
+      </div>
+
+      @if (successMessage()) {
+        <div class="notice notice-success">{{ successMessage() }}</div>
+      }
+      @if (errorMessage()) {
+        <div class="notice notice-error">{{ errorMessage() }}</div>
+      }
+
+      <div class="code-section" (paste)="onDigitPaste($event)">
+        <!-- Code digits -->
+        <div class="code-digits">
+          @for (digit of codeDigits(); track $index; let i = $index) {
+            <input
+              id="code-digit-{{ i }}"
+              class="code-input"
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              [formControl]="codeControls[i]"
+              (input)="onDigitInput(i, $event)"
+              (keydown)="onDigitKeydown(i, $event)"
+              (focus)="$event.target.select()"
+              [class.filled]="!!digit"
+            >
+          }
+        </div>
+
+        <!-- Resto del formulario (usuario, nombre, contraseña) -->
+        <div class="code-form-fields">
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">person</span>
+            <span class="input-label">Usuario</span>
+            <input type="text" formControlName="username" placeholder="ej: juanperez" autocomplete="username">
+            @if (registerForm.controls.username.touched && registerForm.controls.username.invalid) {
+              <span class="field-error">Mínimo 3 caracteres</span>
+            }
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">badge</span>
+            <span class="input-label">Nombre completo <span class="optional">(opcional)</span></span>
+            <input type="text" formControlName="display_name" placeholder="ej: Juan Pérez" autocomplete="name">
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">lock</span>
+            <span class="input-label">Contraseña</span>
+            <div class="password-field">
+              <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" aria-label="Mostrar u ocultar contraseña">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="password-toggle-icon">
+                  @if (passwordVisible()) {
+                    <path d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 5.1A10.9 10.9 0 0 1 12 5c5.5 0 9.5 4.1 10.8 7-0.5 1.1-1.4 2.4-2.6 3.6M6.7 6.8C4.6 8 3.2 10.1 2.2 12 3.5 14.9 7.5 19 13 19c1 0 2-.1 2.9-.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  } @else {
+                    <path d="M2.2 12C3.5 9.1 7.5 5 13 5s9.5 4.1 10.8 7c-1.3 2.9-5.3 7-10.8 7S3.5 14.9 2.2 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  }
+                </svg>
+              </button>
+            </div>
+            @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) {
+              <span class="field-error">Mínimo 6 caracteres</span>
+            }
+          </label>
+
+          <label class="input-field">
+            <span class="material-symbols-outlined input-icon">lock</span>
+            <span class="input-label">Confirmar contraseña</span>
+            <div class="password-field">
+              <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="confirm_password" placeholder="Repite la contraseña" autocomplete="new-password">
+            </div>
+            @if (registerForm.controls.confirm_password.touched && registerForm.errors?.['mismatch']) {
+              <span class="field-error">Las contraseñas no coinciden</span>
+            }
+          </label>
+        </div>
+
+        <button class="code-submit" (click)="confirmCode()" [disabled]="verifyingCode() || codeDigits().join('').length !== 6 || registerForm.invalid">
+          @if (verifyingCode()) {
+            <span class="material-symbols-outlined btn-icon">sync</span> Verificando...
+          } @else {
+            <span class="material-symbols-outlined btn-icon">check_circle</span> Verificar y crear cuenta
+          }
+        </button>
+
+        <div class="code-actions">
+          <button class="code-link" (click)="resendCode()" [disabled]="sendingCode()">
+            <span class="material-symbols-outlined code-link-icon">refresh</span>
+            Reenviar código
+          </button>
+          <button class="code-link code-link--muted" (click)="cancelVerification()">
+            <span class="material-symbols-outlined code-link-icon">arrow_back</span>
+            Volver al registro
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</main>
