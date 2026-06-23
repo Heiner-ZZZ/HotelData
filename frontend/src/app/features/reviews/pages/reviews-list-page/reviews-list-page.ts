@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
+import { SlicePipe } from '@angular/common';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -15,7 +16,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-reviews-list-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent, RouterLink, FormsModule],
+  imports: [SlicePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent, RouterLink, FormsModule],
   templateUrl: './reviews-list-page.html',
   styleUrl: './reviews-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
