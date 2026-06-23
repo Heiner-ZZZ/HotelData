@@ -8,7 +8,7 @@ import requests
 
 from src.etl.ga03_airflow._common import auth_headers, request_with_retries, _json_default
 from src.etl.ga03_airflow.config import PHASE, PIPELINE_PROGRESS_STEPS, paths, pocketbase_config
-from src.etl.ga03_airflow.progress import write_pipeline_progress, write_state, _elapsed
+from src.etl.ga03_airflow.progress import write_pipeline_progress, write_state, read_state, _elapsed
 
 
 def extract_from_pocketbase_03() -> dict[str, Any]:
@@ -24,22 +24,27 @@ def extract_from_pocketbase_03() -> dict[str, Any]:
         )
         payload = response.json()
     total_items = int(payload.get("totalItems", 0) or 0)
-    expected = int(config.get("expected_records", 0) or 0)
-    if expected > 0 and total_items < expected:
-        raise ValueError(f"GA03 requiere minimo {expected} registros en PocketBase, actual={total_items}")
+    min_expected = int(config.get("expected_records", 0) or 0)
+    if total_items < min_expected:
+        raise ValueError(f"GA03 requiere minimo {min_expected} registros en PocketBase, actual={total_items}")
+    actual_expected = max(total_items, min_expected)
+    if total_items > min_expected:
+        print(f"GA03 PocketBase tiene {total_items} registros, procesando todos (minimo configurado={min_expected})")
     write_pipeline_progress(
         status="running",
         section="extract",
         percent=10,
         message="Fuente PocketBase validada.",
-        detail={"total_items": total_items, "expected_records": expected},
+        detail={"total_items": total_items, "min_expected": min_expected, "actual_expected": actual_expected},
     )
+    write_state({"expected_records": actual_expected})
     report = {
         "pocketbase_url": config["base_url"],
         "collection": config["collection"],
         "total_items": total_items,
         "total_pages": payload.get("totalPages", 0),
         "page_size": config["page_size"],
+        "expected_records": actual_expected,
     }
     write_state({"extract_plan": report})
     return report
@@ -53,7 +58,8 @@ def save_extract_jsonl_03() -> dict[str, Any]:
     columns: set[str] = set()
     digest = hashlib.sha256()
     temp_path = all_paths["extract_jsonl"].with_suffix(".jsonl.tmp")
-    expected = int(config.get("expected_records", 0) or 0)
+    state = read_state()
+    expected = int(state.get("expected_records", config.get("expected_records", 0) or 0))
     if all_paths["extract_jsonl"].exists():
         all_paths["extract_jsonl"].unlink()
     if temp_path.exists():

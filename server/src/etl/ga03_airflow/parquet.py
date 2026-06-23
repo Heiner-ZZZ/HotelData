@@ -107,4 +107,11 @@ def validate_parquet_schema_03() -> dict[str, Any]:
         raise ValueError(f"Parquet GA03 esperado={expected}, actual={len(dataframe)}")
     report = {"valid": True, "records": len(dataframe), "columns": list(dataframe.columns)}
     write_state({"schema_report": report})
+    write_pipeline_progress(
+        status="running",
+        section="transform",
+        percent=PIPELINE_PROGRESS_STEPS.get("parquet", 50),
+        message="Esquema de Parquet validado correctamente.",
+        detail=report,
+    )
     return report

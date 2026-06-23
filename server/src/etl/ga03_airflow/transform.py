@@ -7,7 +7,10 @@ import pandas as pd
 from src.database.connection import get_database
 from src.etl.ga03_airflow._common import (
     existing_dimensions_ready,
+    file_sha256,
+    read_json_file,
     reuse_existing_dimensions_enabled,
+    write_json_file,
     write_jsonl,
 )
 from src.etl.ga03_airflow.config import PHASE, PIPELINE_PROGRESS_STEPS, paths
@@ -40,7 +43,7 @@ def transform_dimensions_03() -> dict[str, int]:
         )
         return existing_counts
     dataframe = pd.read_parquet(all_paths["parquet"])
-    _, _, valid_fact_frame = transform_fact_hotel_reservations(dataframe, state["execution_id"], state["loaded_at"])
+    facts, rejected, valid_fact_frame = transform_fact_hotel_reservations(dataframe, state["execution_id"], state["loaded_at"])
     dimensions = build_ta02_dimensions(valid_fact_frame, state["loaded_at"])
     counts = {}
     total_dimensions = max(len(DIMENSION_KEY_FIELDS), 1)
@@ -55,6 +58,28 @@ def transform_dimensions_03() -> dict[str, int]:
             detail={"dimension": collection_name, "count": counts[collection_name], "processed_dimensions": len(counts)},
         )
     write_state({"dimension_counts": counts})
+    for document in facts:
+        document["phase"] = PHASE
+    for document in rejected:
+        document["phase"] = PHASE
+    fact_count = write_jsonl(all_paths["fact_jsonl"], facts)
+    rejected_count = write_jsonl(all_paths["rejected_jsonl"], rejected)
+    parquet_report = state.get("parquet_report", {})
+    write_json_file(
+        all_paths["fact_meta"],
+        {
+            "fact_hotel_reservations": fact_count,
+            "rejected_records": rejected_count,
+            "fact_jsonl_bytes": all_paths["fact_jsonl"].stat().st_size,
+            "rejected_jsonl_bytes": all_paths["rejected_jsonl"].stat().st_size,
+            "fact_jsonl_sha256": file_sha256(all_paths["fact_jsonl"]),
+            "rejected_jsonl_sha256": file_sha256(all_paths["rejected_jsonl"]),
+            "parquet_sha256": parquet_report.get("parquet_sha256"),
+            "collection": state.get("extract_report", {}).get("collection"),
+            "expected_records": int(state["expected_records"]),
+            "created_at": utc_now_iso(),
+        },
+    )
     return counts
 
 
@@ -63,7 +88,6 @@ def transform_fact_reservations_03() -> dict[str, int]:
     state = read_state()
     expected = int(state["expected_records"])
     parquet_report = state.get("parquet_report", {})
-    from src.etl.ga03_airflow._common import read_json_file, file_sha256
     fact_meta = read_json_file(all_paths["fact_meta"])
     fact_cache_valid = (
         all_paths["fact_jsonl"].exists()
@@ -107,7 +131,6 @@ def transform_fact_reservations_03() -> dict[str, int]:
     if fact_count != expected or rejected_count != 0:
         raise ValueError(f"Transformacion GA03 invalida: hechos={fact_count}, rechazados={rejected_count}, esperado={expected}")
     report = {"fact_hotel_reservations": fact_count, "rejected_records": rejected_count, "cached": False}
-    from src.etl.ga03_airflow._common import write_json_file, file_sha256
     write_json_file(
         all_paths["fact_meta"],
         {
