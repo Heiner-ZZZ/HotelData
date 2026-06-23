@@ -1,0 +1,4 @@
+vamos con specs ###, la IA autocompleto mas ideas fuera de alcance, mira cuales puedes implementar AHORITA, cuales debes dejar en fuera de alcance y cuales merecen un spec dedicado para que actualices  el "ideas para specs dedicados", 
+y si necesitas agregar una nueva columna a una tabla o una nueva tabla me dices e igualmente la creas por que es "necesaria" y no había una tabla que apoyara esta decisión.
+No intentes hacer archivos DIOS, si necesitas crear otros archivos adicionales para mantener la escalabilidad y todo mas dividido lo creas sin ningún problema. 
+Implementa el flujo completo, desde lo visual, la lógica, las conexiones, y la persistencia en caso de ser necesario
