@@ -23,6 +23,25 @@
   gap: 0.4rem;
 }
 
+fieldset.field-section {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+
+  legend {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    padding: 0 0.35rem;
+  }
+}
+
+.mode-select {
+  margin-top: 0.35rem;
+}
+
 h2,
 p,
 span {

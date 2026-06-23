@@ -17,13 +17,17 @@ export class FilterSidebarComponent {
 
   readonly form = this.formBuilder.nonNullable.group({
     destination: [''],
+    checkIn: [''],
+    checkOut: [''],
+    adults: ['1'],
+    children: ['0'],
+    rooms: ['1'],
     minPrice: [''],
     maxPrice: [''],
     minStars: [''],
-    promotion: ['' as HotelSearchFilters['promotion']],
-    adults: [''],
-    children: [''],
-    rooms: ['']
+    amenities: [''],
+    amenitiesMode: ['or' as HotelSearchFilters['amenitiesMode']],
+    sortBy: ['price' as HotelSearchFilters['sortBy']],
   });
 
   constructor() {
@@ -32,13 +36,17 @@ export class FilterSidebarComponent {
       this.form.patchValue(
         {
           destination: filters.destination,
+          checkIn: filters.checkIn,
+          checkOut: filters.checkOut,
+          adults: filters.adults,
+          children: filters.children,
+          rooms: filters.rooms,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           minStars: filters.minStars,
-          promotion: filters.promotion,
-          adults: filters.adults,
-          children: filters.children,
-          rooms: filters.rooms
+          amenities: filters.amenities,
+          amenitiesMode: filters.amenitiesMode,
+          sortBy: filters.sortBy,
         },
         { emitEvent: false }
       );
@@ -49,20 +57,25 @@ export class FilterSidebarComponent {
     this.submitted.emit({
       ...this.filters(),
       ...this.form.getRawValue(),
-      page: 1
-    });
+      page: 1,
+      compareIds: this.filters().compareIds,
+    } as HotelSearchFilters);
   }
 
   resetFilters() {
     this.form.reset({
       destination: '',
+      checkIn: '',
+      checkOut: '',
+      adults: '1',
+      children: '0',
+      rooms: '1',
       minPrice: '',
       maxPrice: '',
       minStars: '',
-      promotion: '',
-      adults: '',
-      children: '',
-      rooms: ''
+      amenities: '',
+      amenitiesMode: 'or',
+      sortBy: 'price',
     });
     this.applyFilters();
   }
