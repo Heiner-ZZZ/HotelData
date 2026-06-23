@@ -1,6 +1,6 @@
 # Especificación: Gestión de Sesiones y Cierre Seguro
 
-**Versión**: 1.0 | **Estado**: Draft | **Última actualización**: 2026-06-21
+**Versión**: 2.0 | **Estado**: Implementado | **Última actualización**: 2026-06-22
 
 **Casos de uso TAF06**: CU-O28 (Administrar cuenta, sesión y cierre seguro)
 
@@ -22,11 +22,11 @@ Una vez que el usuario inició sesión, necesita poder cerrarla explícitamente 
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RF-001 | El sistema debe invalidar la sesión al hacer logout (marcar is_active=false en user_sessions) | Alta |
-| RF-002 | El sistema debe eliminar la cookie `hoteldata_session` del navegador | Alta |
+| RF-001 | El sistema debe invalidar la sesión al hacer logout (is_active=false en user_sessions) | Alta |
+| RF-002 | El sistema debe eliminar la cookie hoteldata_session del navegador | Alta |
 | RF-003 | El sistema debe redirigir al usuario a la página de login después del logout | Alta |
 | RF-004 | El sistema debe exponer endpoint GET /api/auth/me para consultar sesión actual | Alta |
-| RF-005 | El sistema debe registrar el logout en `user_activity_logs` | Alta |
+| RF-005 | El sistema debe registrar el logout en user_activity_logs | Alta |
 | RF-006 | El sistema debe rechazar peticiones con sesión inválida o expirada (HTTP 401) | Alta |
 
 ## 5. Requisitos no funcionales
@@ -42,49 +42,48 @@ Una vez que el usuario inició sesión, necesita poder cerrarla explícitamente 
 | ID | Regla |
 |----|-------|
 | RN-001 | Una sesión expirada no puede usarse para acceder a rutas protegidas |
-| RN-002 | Al hacer logout, la sesión se invalida en servidor (no confiar solo en borrar cookie cliente) |
-| RN-003 | Si un usuario hace login con sesión activa previa, la sesión anterior se invalida automáticamente |
+| RN-002 | Al hacer logout, la sesión se invalida en servidor |
+| RN-003 | Si un usuario hace login con sesión activa previa, la anterior se invalida automáticamente |
 
 ## 7. Entradas
 
 | Dato | Tipo | Origen |
 |------|------|--------|
-| Cookie `hoteldata_session` | string (token) | Navegador / Header HTTP |
+| Cookie hoteldata_session | string (token) | Navegador / Header HTTP |
 
 ## 8. Salidas
 
 | Escenario | Respuesta |
 |-----------|-----------|
-| Logout exitoso | Cookie eliminada + redirección a /login + registro en activity_logs |
+| Logout exitoso | Cookie eliminada + redirección a /login |
 | Sesión expirada | HTTP 401 + redirección a /login |
 | Sesión válida (me) | JSON con user_id, email, role, display_name |
-| Logout sin sesión | Redirección a /login sin error |
 
 ## 9. Escenarios
 
 ### Escenario 1: Logout exitoso
-```gherkin
+gherkin
 Dado que el usuario tiene una sesión activa
 Cuando accede a GET /auth/logout
-Entonces el sistema elimina el documento de user_sessions
+Entonces el sistema invalida user_sessions (is_active=false)
 Y elimina la cookie hoteldata_session
 Y redirige a /login
-```
+
 
 ### Escenario 2: Sesión expirada
-```gherkin
+gherkin
 Dado que la sesión del usuario ha expirado (más de 8 horas)
 Cuando intenta acceder a una ruta protegida
 Entonces el sistema responde con HTTP 401
 Y redirige al login
-```
+
 
 ### Escenario 3: Consultar sesión actual
-```gherkin
+gherkin
 Dado que el usuario tiene una sesión activa
 Cuando consulta GET /api/auth/me
 Entonces el sistema responde con JSON que incluye user_id, email, role, display_name
-```
+
 
 ## 10. Criterios de aceptación
 
@@ -96,22 +95,37 @@ Entonces el sistema responde con JSON que incluye user_id, email, role, display_
 | CA-004 | GET /api/auth/me devuelve datos del usuario autenticado |
 | CA-005 | GET /api/auth/me devuelve 401 si no hay sesión válida |
 | CA-006 | Logout registrado en user_activity_logs |
-| CA-007 | Sesión expirada automáticamente por TTL index después de 8 horas |
+| CA-007 | Sesión expirada automáticamente por TTL index |
 
 ## 11. Restricciones
 
 - No confiar en cookie del lado cliente para validar sesión — siempre verificar en servidor
-- TTL index en `user_sessions.expires_at` para limpieza automática
+- TTL index en user_sessions.expires_at para limpieza automática
 
 ## 12. Dependencias
 
-- `server/src/app/security/session.py` — invalidate_session()
-- `server/src/app/security/dependencies.py` — require_login(), get_current_user()
-- `user_sessions` collection con TTL index en expires_at
-- `user_activity_logs` collection para auditoría
+- server/src/app/security/session.py — invalidate_session()
+- server/src/app/security/dependencies.py — require_login(), get_current_user()
+- user_sessions collection con TTL index en expires_at
+- user_activity_logs collection para auditoría
 
-## 13. Fuera de alcance
+## 13. Fuera de alcance (implementable sin spec propio)
 
-- Sesión persistente entre reinicios del servidor (las sesiones se pierden al reiniciar si no hay respaldo)
-- Single sign-on (SSO)
-- Notificación de sesión expirada vía websocket
+- SSO / OAuth / SAML
+- Expiración por inactividad (heartbeat del frontend)
+- Logout remoto en todos los dispositivos
+- Protección contra CSRF (ya implementada en otros specs)
+- Detección de actividad sospechosa / geolocalización de sesiones
+- Force logout de sesiones activas por administrador
+- Detección de actividad sospechosa / geolocalización de sesiones
+- Logout remoto en todos los dispositivos
+- Token de refresco (refresh token) para mantener sesión sin re-login
+- Logout remoto en todos los dispositivos
+- JWT como complemento a cookie de sesión
+- Logout con doble factor de autenticación (2FA)
+- Rate limiting por usuario (no solo por IP)
+- Bloqueo geográfico (geo-blocking)
+
+## 14. Nota
+
+Los items en "Fuera de alcance" no están implementados pero son viables técnicamente. Cada uno merece un spec dedicado (ver ideas-para-specs-dedicados.md en la raíz del proyecto). Items de "logout con X" generados por IA fueron descartados por no aportar valor al dominio hotelero.

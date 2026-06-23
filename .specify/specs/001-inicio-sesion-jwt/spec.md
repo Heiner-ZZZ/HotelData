@@ -1,6 +1,6 @@
 # Especificación: Inicio de Sesión con JWT
 
-**Versión**: 1.0 | **Estado**: Draft | **Última actualización**: 2026-06-21
+**Versión**: 3.0 | **Estado**: Implementado | **Última actualización**: 2026-06-22
 
 **Casos de uso TAF06**: CU-O01 (Iniciar sesión con autenticación JWT y rol)
 
@@ -123,9 +123,86 @@ Entonces el sistema responde con "Cuenta desactivada. Contacte al administrador.
 - `users` collection — Datos de usuario y hash de contraseña
 - `user_activity_logs` collection — Auditoría de intentos de login
 
-## 13. Fuera de alcance
+## 13. Implementaciones adicionales
 
+### Registro de usuario (CU-O01-ext)
+| ID | Requisito |
+|----|-----------|
+| RF-010 | El sistema debe permitir registro con username, email, password mín 6 caracteres |
+| RF-011 | El sistema debe asignar rol "cliente" por defecto y marcar email_verified=false |
+| RF-012 | El sistema debe enviar email de verificación al registrarse |
+| RF-013 | El sistema debe rechazar registro si username o email ya existen |
+
+**Endpoint**: `POST /api/auth/register` + verificación por email
+
+### Autenticación de dos factores (2FA) por email
+| ID | Requisito |
+|----|-----------|
+| RF-014 | El sistema debe permitir a usuarios administradores activar 2FA |
+| RF-015 | El sistema debe enviar código de 6 dígitos por email al login |
+| RF-016 | El sistema debe exigir el código 2FA antes de completar autenticación |
+
+**Endpoints**: `POST /api/auth/2fa/setup`, `/verify`, `/disable`, `/verify-login`
+**Colecciones**: `two_factor_codes` (TTL), `user_2fa`
+
+### Recuperación de contraseña
+| ID | Requisito |
+|----|-----------|
+| RF-017 | El sistema debe enviar email con enlace de recuperación |
+| RF-018 | El sistema debe generar token con expiración de 1 hora |
+| RF-019 | El sistema debe invalidar sesiones activas al restablecer contraseña |
+
+**Endpoints**: `POST /api/auth/recover`, `POST /api/auth/recover/reset`
+**Colección**: `password_recovery_tokens`
+
+### Bloqueo de cuenta por intentos fallidos
+| ID | Requisito |
+|----|-----------|
+| RF-020 | El sistema debe incrementar `failed_login_attempts` en cada login fallido |
+| RF-021 | El sistema debe bloquear la cuenta por 15 minutos tras 5 intentos fallidos |
+| RF-022 | El sistema debe resetear el contador al iniciar sesión exitosamente |
+
+**Campos**: `failed_login_attempts` (int), `locked_until` (datetime) en documento `users`
+
+### Rate limiting en login
+| ID | Requisito |
+|----|-----------|
+| RF-023 | El sistema debe limitar a 5 intentos por minuto por IP en POST /api/auth/login |
+| RF-024 | El sistema debe devolver HTTP 429 al exceder el límite |
+
+**Dependencia**: slowapi
+
+### Verificación de email post-registro y cambio de email
+| ID | Requisito |
+|----|-----------|
+| RF-025 | El sistema debe exponer GET /api/account/verify-email?token= para confirmar |
+| RF-026 | El sistema debe marcar `email_verified=true` al verificar el token |
+| RF-027 | El sistema debe enviar verificación al nuevo email cuando el usuario lo cambia |
+
+**Colección**: `email_verification_tokens` (TTL index + unique token_hash)
+
+### Gestión de sesiones del propio usuario
+| ID | Requisito |
+|----|-----------|
+| RF-028 | El sistema debe exponer GET /api/auth/sessions para listar sesiones activas propias |
+| RF-029 | El sistema debe permitir DELETE /api/auth/sessions/{id} para terminar una sesión específica |
+
+### Refresh tokens para sesiones prolongadas
+| ID | Requisito |
+|----|-----------|
+| RF-030 | El sistema debe generar un refresh token al hacer login con remember_me |
+| RF-031 | El sistema debe exponer POST /api/auth/refresh para renovar sesión sin credenciales |
+| RF-032 | El refresh token es de un solo uso con expiración de 30 días |
+
+**Colección**: `refresh_tokens` (TTL index + unique token_hash)
+
+### Fuera de alcance (implementable, merece spec propio)
 - SSO / OAuth / Google Login
-- Autenticación de dos factores (2FA)
-- Recuperación de contraseña por email (cambio de password está en spec 003)
-- Rate limiting en login (slowapi) — documentado como seguridad futura
+- Expiración de sesión basada en actividad
+- JWT adicional al token de sesión
+- Políticas de seguridad avanzadas (bloqueo geográfico, detección de anomalías)
+- Rate limiting por usuario (no solo por IP)
+- Pruebas de carga o rendimiento específicas
+
+→ Ver `ideas-para-specs-dedicados.md` en la raíz del proyecto para detalles.
+
