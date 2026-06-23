@@ -1,6 +1,6 @@
 # Especificación: Detalle de Hotel
 
-**Versión**: 1.0 | **Estado**: Draft
+**Versión**: 2.0 | **Estado**: Implementado
 
 **Casos de uso TAF06**: CU-O04 (Ver detalle de hotel)
 
@@ -20,18 +20,36 @@ Después de buscar y filtrar, el cliente selecciona un hotel para ver su informa
 
 | ID | Descripción |
 |----|-------------|
-| RF-001 | Mostrar galería de imágenes del hotel |
-| RF-002 | Mostrar nombre, descripción, rating, dirección |
-| RF-003 | Mostrar lista de amenities con iconos |
-| RF-004 | Mostrar políticas de cancelación, check-in/out, mascotas, niños |
-| RF-005 | Mostrar tarifas por tipo de habitación con disponibilidad |
-| RF-006 | Mostrar reseñas de huéspedes con puntuación promedio |
-| RF-007 | GET /api/hotels/{prop_id} devuelve todos los datos |
+| RF-001 | Mostrar galería de imágenes del hotel (hotel_images) |
+| RF-002 | Mostrar nombre, descripción, rating, dirección, highlights |
+| RF-003 | Mostrar lista de amenities con tags (desde amenities_text de hotel_content_pages) |
+| RF-004 | Mostrar políticas de cancelación, check-in/out, mascotas, niños (hotel_policies) |
+| RF-005 | Mostrar tarifas por tipo de habitación desde hotel_rate_calendar |
+| RF-006 | Mostrar reseñas de huéspedes con puntuación (top 5 recientes desde reviews) |
+| RF-007 | Mostrar KPIs analíticos (precio promedio, reservas, clicks, eventos, tasa de conversión) |
+| RF-008 | Mostrar tablas de destinos, países visitantes y canales principales |
+| RF-009 | GET /api/hotels/{prop_id} devuelve todos los datos enriquecidos |
 
-**Escenarios**: Cliente ve detalle con 8 imágenes, amenities listadas, tarifas desde $80/noche, rating 4.2, reseñas recientes.
+**Escenarios**: Cliente ve detalle con galería horizontal, descripción, amenities como tags, KPIs, tarifas por fecha, tipos de habitación, reseñas recientes y políticas.
 
-**Criterios**: CA-001: Datos básicos se muestran correctamente; CA-002: Imágenes cargan; CA-003: Tarifas visibles por tipo habitación.
+**Criterios**: CA-001: Datos básicos se muestran correctamente; CA-002: Imágenes cargan en carrusel horizontal; CA-003: Tarifas visibles por fecha y plan; CA-004: Reseñas ordenadas por fecha descendente (top 5).
 
-**Dependencias**: dim_hotels, hotel_content_pages, hotel_images, hotel_policies, reviews, fact_reviews
+**Dependencias**: dim_hotels, hotel_content_pages, hotel_images, hotel_policies, reviews, room_types, hotel_rate_calendar, fact_[active]
 
-**Fuera de alcance**: Tour virtual 360°, video del hotel
+**Fuera de alcance**: 
+- Tour virtual 360° o video del hotel
+- Integración con Google Maps para mapa de ubicación
+- Recomendaciones de hoteles similares o cercanos
+- Envío de solicitudes de reserva desde la página de detalle
+- Transacciones de pago o procesamiento de reservas
+- Un sistema de mensajería interna para contactar al hotel directamente
+- Personalización de la experiencia del usuario basada en historial de búsqueda o preferencias
+- Generación de itinerarios o paquetes turísticos desde la página de detalle
+- Envío de notificaciones push o correos electrónicos desde la página de detalle
+- Integración con reseñas externas (TripAdvisor, Yelp)
+- Comparación de hoteles desde la página de detalle
+- Reservas directas desde la página de detalle (solo se muestra información, no se permite reservar)
+- Integración con chat en vivo o soporte al cliente desde la página de detalle
+- Integración con redes sociales para compartir el hotel
+- Integración con programas de fidelidad o recompensas desde la página de detalle
+-
