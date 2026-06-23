@@ -163,6 +163,7 @@ Entonces muestra mensaje "Selecciona hoteles para comparar"
 - CHAT BOT para sugerir hoteles similares según preferencias
 - Personalización de filtros basada en preferencias del usuario
 - Comparación de precios en tiempo real (conectado a motor de pricing)
+- filtros de amenities más complejos (checkboxes, categorías)
 - Transparencia de políticas de cancelación y reembolso en la comparación
 - GANs para generar imágenes de habitaciones según descripción
 - Búsqueda por coordenadas geográficas (mapa) — spec dedicado
