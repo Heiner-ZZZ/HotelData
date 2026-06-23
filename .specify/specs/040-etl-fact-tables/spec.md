@@ -1,57 +1,31 @@
-# Especificación: Etl Fact Tables
+# Especificacion: ETL - Fact Tables
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T12
+**Casos de uso TAF06**: CU-T12 (Ejecutar y validar pipeline Airflow)
 
 ## 1. Objetivo
 
-Transformar y cargar fact tables con batch insert, calidad y rejected_records
+Transformar datos a fact tables con batch insert, validacion de calidad y rejected_records.
 
-## 2. Contexto
+## 2. Fact Tables
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Fact Table | Grain | Coleccion |
+|------------|-------|-----------|
+| fact_hotel_reservations | 1 evento de busqueda | fact_hotel_reservations |
+| fact_hotel_events | Evento legacy TAF01 | fact_hotel_events |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | Cargar fact_hotel_reservations con batch insert de 5k documentos | Alta |
+| RF-002 | Validar campos obligatorios: srch_id, date_key, prop_id, price_usd | Alta |
+| RF-003 | Rechazar price_usd < 0, occupancy invalida, srch_id duplicados | Alta |
+| RF-004 | Reportar conteos de insertados vs rechazados | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- server/src/etl/ta02_fact.py
+- server/src/etl/validate.py
+- Datos Parquet y dimensiones cargadas previamente

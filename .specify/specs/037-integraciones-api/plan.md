@@ -1,12 +1,27 @@
 # Plan de Implementación: Integraciones API
 
-**Spec**: 037-integraciones-api | **CU**: CU-E03
+**Branch**: `037-integraciones-api` | **Spec**: [spec.md](spec.md)
 
 ## Arquitectura
-Módulo: `server/src/app/modules/admin/`
+
+```
+Admin
+  → IntegracionesPage
+    → GET /api/admin/integrations
+      → Lista de endpoints con estado de validación
+      → Documentación OpenAPI
+```
 
 ## Endpoints
-(Pendiente de detallar durante implementación)
 
-## Componentes
-(Pendiente de detallar durante implementación)
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| GET | /api/admin/integrations | Listar integraciones/endpoints |
+| GET | /api/admin/integrations/{id}/logs | Consumo de API por endpoint |
+
+## Entregables
+
+- Documentación OpenAPI actualizada (todos los endpoints)
+- Health checks por módulo
+- Registro de consumo de API (en logs)
+- Preparación para API keys de partners externos

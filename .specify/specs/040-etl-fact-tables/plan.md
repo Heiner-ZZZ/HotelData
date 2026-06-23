@@ -1,12 +1,32 @@
-# Plan de Implementación: ETL Fact Tables
+# Plan de Implementación: ETL - Fact Tables
 
-**Spec**: 040-etl-fact-tables | **CU**: CU-T12
+**Branch**: `040-etl-fact-tables` | **Spec**: [spec.md](spec.md)
 
 ## Arquitectura
-Módulo: `server/src/app/modules/etl/`
 
-## Endpoints
-(Pendiente de detallar durante implementación)
+```
+Parquet → build_ta02_fact() → Validar calidad → Batch insert 5k → MongoDB
+                                                      → Rechazos → rejected_records
+```
 
-## Componentes
-(Pendiente de detallar durante implementación)
+## Fact Tables
+
+| Tabla | Grain | Documentos |
+|-------|-------|-----------|
+| fact_hotel_reservations | 1 evento de búsqueda | ~600k |
+
+## Validaciones
+
+| Validación | Acción |
+|-----------|--------|
+| Campos obligatorios faltantes | Rechazar con razón |
+| price_usd < 0 | Rechazar (precios negativos) |
+| adults=0 o rooms=0 | Rechazar (ocupación inválida) |
+| srch_id duplicado | Rechazar |
+| price_usd > 3σ | Rechazar (valores atípicos) |
+
+## Reglas
+
+- Batch insert: 5,000 documentos por operación
+- Registros rechazados → `rejected_records` con `raw_record` y `rejection_reason`
+- Conteo de insertados vs rechazados en reporte de calidad

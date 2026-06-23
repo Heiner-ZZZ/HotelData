@@ -1,57 +1,34 @@
-# Especificación: Etl Ingesta
+# Especificacion: ETL - Ingesta de Datos
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-T12
+**Casos de uso TAF06**: CU-T12 (Ejecutar y validar pipeline Airflow)
 
 ## 1. Objetivo
 
-Extraer datos desde PocketBase/CSV, validar esquema y convertir a JSONL + Parquet
+Extraer datos desde PocketBase y CSV, validar esquema, y convertir a JSONL + Parquet.
 
 ## 2. Contexto
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+El pipeline ingiere datos desde PocketBase y los transforma a formato intermedio antes de cargar a MongoDB.
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | Extraer datos desde PocketBase via API | Alta |
+| RF-002 | Extraer datos desde CSV local | Alta |
+| RF-003 | Validar esquema minimo de columnas requeridas | Alta |
+| RF-004 | Convertir a JSONL (staging) | Alta |
+| RF-005 | Convertir a Parquet (processed) | Alta |
+| RF-006 | Procesar en chunks de 50k filas | Alta |
 
-## 4. Requisitos funcionales
+## 4. Flujo de datos
 
-(Pendiente de detallar)
+PocketBase - JSONL - Parquet - Dimensiones (upsert) - Fact (batch insert) - MongoDB
 
-## 5. Requisitos no funcionales
+## 5. Dependencias
 
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- server/src/etl/tasks.py
+- server/src/etl/transform_clean.py
+- PocketBase como fuente de datos

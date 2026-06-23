@@ -1,13 +1,19 @@
-# Tareas: ETL Fact Tables
+# Tareas: ETL - Fact Tables
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Implementación
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Verificar que `ta02_fact.py` construye fact_hotel_reservations con batch insert de 5k documentos
+- [ ] T002 Verificar validaciones: campos obligatorios, price_usd > 0, occupancy válida
+- [ ] T003 Verificar que srch_id duplicados se rechazan
+- [ ] T004 Verificar que registros rechazados van a `rejected_records`
+
+## Fase 2: Calidad
+
+- [ ] T005 Verificar conteo de insertados vs rechazados en reporte
+- [ ] T006 Verificar que rejected_records contiene raw_record + rejection_reason
+
+## Fase 3: Validación
+
+- [ ] T007 Ejecutar pipeline de prueba y verificar conteos

@@ -1,57 +1,39 @@
-# Especificación: Integraciones Api
+# Especificacion: Integraciones API
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-E03
+**Casos de uso TAF06**: CU-E03 (Evaluar ingresos, consumo y madurez de integraciones API)
 
 ## 1. Objetivo
 
-Evaluar ingresos, consumo y madurez de integraciones API y partners
+Evaluar el consumo de APIs del sistema y la madurez de integraciones con partners externos.
 
-## 2. Contexto
+## 2. Requisitos funcionales
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | El sistema debe documentar todos los endpoints en OpenAPI (/docs) | Alta |
+| RF-002 | El sistema debe exponer health checks de API | Alta |
+| RF-003 | El sistema debe registrar consumo de API por endpoint en logs | Media |
 
-## 3. Actores
+## 3. Escenarios
 
-(Listar actores relevantes)
+### Escenario 1: Evaluar madurez de integraciones
+```gherkin
+Dado que el admin consulta la seccion de integraciones
+Entonces el sistema muestra lista de endpoints disponibles
+Y su estado de validacion
+```
 
-## 4. Requisitos funcionales
+## 4. Criterios de aceptacion
 
-(Pendiente de detallar)
+| ID | Criterio |
+|----|----------|
+| CA-001 | Documentacion OpenAPI completa en /docs |
+| CA-002 | Health check endpoint funcional |
+| CA-003 | Logs de consumo de API registrados |
 
-## 5. Requisitos no funcionales
+## 5. Dependencias
 
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Modulos: todos los routers de FastAPI
+- Scripts: server/scripts/validate_*.py

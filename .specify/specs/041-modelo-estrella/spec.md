@@ -1,57 +1,30 @@
-# Especificación: Modelo Estrella
+# Especificacion: Modelo Estrella
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: (todos los CU analíticos)
+**Casos de uso TAF06**: Todos los CU analiticos
 
 ## 1. Objetivo
 
-Diseño del estrella: 12 dimensiones, 5 fact tables, integridad referencial
+Diseno del modelo estrella con 12 dimensiones y 5 fact tables.
 
-## 2. Contexto
+## 2. Estructura
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+### Fact Tables (5)
+fact_hotel_reservations, fact_hotel_events, data_quality_reports, etl_executions, rejected_records
 
-## 3. Actores
+### Dimensiones (12)
+dim_hotels, dim_destinations, dim_visitor_countries, dim_sites, dim_dates, dim_promotions, dim_click_status, dim_reservation_status, dim_occupancy_profile, dim_stay_length_category, dim_booking_window_category, dim_price_category
 
-(Listar actores relevantes)
+## 3. Requisitos funcionales
 
-## 4. Requisitos funcionales
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | Mantener 12 dimensiones con upsert y key fields | Alta |
+| RF-002 | Mantener fact_hotel_reservations como fact table principal | Alta |
+| RF-003 | Asegurar integridad referencial | Alta |
 
-(Pendiente de detallar)
+## 4. Dependencias
 
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- Colecciones: 12 dim_*, fact_hotel_reservations, fact_hotel_events
+- Modulos: src/etl/ta02_dimensions.py, src/etl/ta02_fact.py
