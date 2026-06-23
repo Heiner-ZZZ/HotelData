@@ -4,20 +4,31 @@ import type { HotelSearchFilters, HotelSearchPageData, HotelSearchResult } from 
 export function mapHotelSearchItems(dto: HotelSearchDto): HotelSearchResult[] {
   return dto.items.map((item) => ({
     id: item.prop_id,
-    name: item.hotel_label,
-    location: item.country_display_name,
+    name: item.hotel_name,
+    displayName: item.display_name,
     stars: item.prop_starrating,
-    reviewLabel: item.review_label,
-    hasPromotion: item.has_promotion,
-    avgPriceLabel: item.avg_price_label,
-    reservations: item.reservations,
-    clicks: item.clicks,
-    conversionRate: item.conversion_rate,
-    destinationLabels: item.destination_labels
+    reviewScore: item.prop_review_score,
+    imageUrl: item.image_url,
+    destinationLabels: item.destination_labels,
+    matchedRoomType: item.matched_room_type
+      ? {
+          roomTypeId: item.matched_room_type.room_type_id,
+          name: item.matched_room_type.name,
+          maxAdults: item.matched_room_type.max_adults,
+          maxChildren: item.matched_room_type.max_children,
+          baseCapacity: item.matched_room_type.base_capacity,
+        }
+      : null,
+    minNightlyRate: item.min_nightly_rate,
+    minNightlyRateLabel: item.min_nightly_rate_label,
+    totalEstimated: item.total_estimated,
+    totalEstimatedLabel: item.total_estimated_label,
+    availableRoomTypesCount: item.available_room_types_count,
+    selected: false,
   }));
 }
 
-export function mapHotelSearchResponse(dto: HotelSearchDto): HotelSearchPageData {
+export function mapHotelSearchResponse(dto: HotelSearchDto, filters: HotelSearchFilters): HotelSearchPageData {
   return {
     items: mapHotelSearchItems(dto),
     total: dto.total,
@@ -26,10 +37,11 @@ export function mapHotelSearchResponse(dto: HotelSearchDto): HotelSearchPageData
     totalPages: dto.total_pages,
     hasPrev: dto.has_prev,
     hasNext: dto.has_next,
-    sourceCollection: dto.source_collection,
-    filters: mapHotelSearchFilters(dto),
-    startIndex: dto.start_index,
-    endIndex: dto.end_index
+    filters,
+    alternativeDestinations: dto.alternative_destinations?.map((d) => ({
+      id: d.id,
+      displayName: d.display_name,
+    })),
   };
 }
 
@@ -38,27 +50,18 @@ export function createHotelSearchFilters(
 ): HotelSearchFilters {
   return {
     destination: partial.destination ?? '',
+    checkIn: partial.checkIn ?? '',
+    checkOut: partial.checkOut ?? '',
+    adults: partial.adults ?? '1',
+    children: partial.children ?? '0',
+    rooms: partial.rooms ?? '1',
     minPrice: partial.minPrice ?? '',
     maxPrice: partial.maxPrice ?? '',
     minStars: partial.minStars ?? '',
-    promotion: partial.promotion ?? '',
-    adults: partial.adults ?? '',
-    children: partial.children ?? '',
-    rooms: partial.rooms ?? '',
-    page: partial.page ?? 1
+    amenities: partial.amenities ?? '',
+    amenitiesMode: partial.amenitiesMode ?? 'or',
+    sortBy: partial.sortBy ?? 'price',
+    compareIds: partial.compareIds ?? [],
+    page: partial.page ?? 1,
   };
-}
-
-export function mapHotelSearchFilters(dto: Pick<HotelSearchDto, 'filters' | 'page'>): HotelSearchFilters {
-  return createHotelSearchFilters({
-    destination: dto.filters.destination,
-    minPrice: dto.filters.min_price,
-    maxPrice: dto.filters.max_price,
-    minStars: dto.filters.min_stars,
-    promotion: (dto.filters.promotion as HotelSearchFilters['promotion']) || '',
-    adults: dto.filters.adults,
-    children: dto.filters.children,
-    rooms: dto.filters.rooms,
-    page: dto.page
-  });
 }

@@ -5,8 +5,8 @@ import { Component, input, output } from '@angular/core';
   template: `
     <div class="sort-control surface-card">
       <div class="copy-block">
-        <strong>{{ startIndex() }}-{{ endIndex() }} de {{ total() }} hoteles</strong>
-        <span>Fuente {{ sourceCollection() }} · Orden backend por reservas, clicks y eventos</span>
+        <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrados</strong>
+        <span>Disponibilidad y tarifas en tiempo real</span>
       </div>
       <div class="actions">
         <button type="button" (click)="previous.emit()" [disabled]="!hasPrev()">Anterior</button>
@@ -63,9 +63,6 @@ import { Component, input, output } from '@angular/core';
 })
 export class SortControlComponent {
   readonly total = input(0);
-  readonly startIndex = input(0);
-  readonly endIndex = input(0);
-  readonly sourceCollection = input('N/D');
   readonly page = input(1);
   readonly totalPages = input(0);
   readonly hasPrev = input(false);

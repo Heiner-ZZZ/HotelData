@@ -1,27 +1,46 @@
 export interface HotelSearchFilters {
   destination: string;
-  minPrice: string;
-  maxPrice: string;
-  minStars: string;
-  promotion: '' | 'yes' | 'no';
+  checkIn: string;
+  checkOut: string;
   adults: string;
   children: string;
   rooms: string;
+  minPrice: string;
+  maxPrice: string;
+  minStars: string;
+  amenities: string;
+  amenitiesMode: 'or' | 'and';
+  sortBy: 'price' | 'rating' | 'stars' | 'name';
+  compareIds: number[];
   page: number;
 }
 
 export interface HotelSearchResult {
   id: number;
   name: string;
-  location: string;
+  displayName: string;
   stars: number | null;
-  reviewLabel: string;
-  hasPromotion: boolean;
-  avgPriceLabel: string;
-  reservations: number;
-  clicks: number;
-  conversionRate: number;
+  reviewScore: number | null;
+  imageUrl: string | null;
   destinationLabels: string[];
+  matchedRoomType: {
+    roomTypeId: string;
+    name: string;
+    maxAdults: number;
+    maxChildren: number;
+    baseCapacity: number;
+  } | null;
+  minNightlyRate: number | null;
+  minNightlyRateLabel: string | null;
+  totalEstimated: number | null;
+  totalEstimatedLabel: string | null;
+  availableRoomTypesCount: number;
+  selected: boolean;
+}
+
+export interface AlternativeDestination {
+  id: number;
+  displayName: string;
 }
 
 export interface HotelSearchPageData {
@@ -32,8 +51,6 @@ export interface HotelSearchPageData {
   totalPages: number;
   hasPrev: boolean;
   hasNext: boolean;
-  sourceCollection: string;
   filters: HotelSearchFilters;
-  startIndex: number;
-  endIndex: number;
+  alternativeDestinations?: AlternativeDestination[];
 }
