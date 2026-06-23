@@ -30,24 +30,28 @@ function buildServiceCards(config: Ga03ConfigDto, pb: PocketbaseStatusDto, mongo
   return [
     {
       label: 'PocketBase',
+      icon: 'db',
       value: pb.message,
       description: `Colección: ${pb.collection} | Conteo: ${pb.count ?? 'N/D'} / ${pbTarget}`,
       tone: serviceTone(pb, mongo),
     },
     {
       label: 'MongoDB',
+      icon: 'doc',
       value: mongo.message,
       description: `Base: ${mongo.database} | Fact GA03: ${mongo.ga03_fact_count ?? 'N/D'}`,
       tone: mongo.available ? 'success' : 'error',
     },
     {
       label: 'Parquet',
+      icon: 'table',
       value: artifacts.parquet.exists ? 'Generado' : 'Pendiente',
       description: artifacts.parquet.path,
       tone: artifacts.parquet.exists ? 'success' : 'warning',
     },
     {
       label: 'JSONL',
+      icon: 'list',
       value: artifacts.jsonl.exists ? 'Generado' : 'Pendiente',
       description: artifacts.jsonl.path,
       tone: artifacts.jsonl.exists ? 'success' : 'warning',
@@ -82,13 +86,13 @@ function buildProgressInfo(prep: PreparationProgressDto, pipe: PipelineProgressD
     preparationPercent: prep.percent,
     preparationMessage: prep.message,
     preparationLoaded: prep.loaded_records,
-    preparationTarget: prep.target_records,
+    preparationTarget: prep.target_records || prep.loaded_records || 0,
     pipelineStatus: pipe.status,
     pipelinePercent: pipe.percent,
     pipelineElapsedMs: pipe.elapsed_ms,
     pipelineMessage: pipe.message,
     pipelineSections: sections,
-    pipelineTarget: pipe.target_records,
+    pipelineTarget: pipe.target_records || prep.loaded_records || 0,
     isRunning: prep.is_running || pipe.is_running,
   };
 }

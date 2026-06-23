@@ -1,5 +1,6 @@
 export interface ServiceStatusCard {
   label: string;
+  icon: string;
   value: string;
   description: string;
   tone: 'success' | 'warning' | 'error' | 'muted';

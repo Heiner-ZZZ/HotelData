@@ -73,6 +73,13 @@
   gap: 0.5rem;
 }
 
+.service-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  color: var(--accent-color, #4a90d9);
+}
+
 .service-value {
   font-weight: 700;
   margin: 0;
