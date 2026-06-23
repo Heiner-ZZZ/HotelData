@@ -32,4 +32,11 @@ Cuando el huésped llega al hotel, el gerente realiza el check-in en el sistema.
 
 **Dependencias**: booking_orders, booking_status_history, room_inventory_calendar
 
-**Fuera de alcance**: Asignación automática de habitación específica
+**Fuera de alcance**: 
+- Asignación automática de habitación específica
+- Gestión de check-out
+- Notificaciones al huésped
+- Integración con sistemas de control de acceso (tarjetas, cerraduras inteligentes)
+- Gestión de check-in para grupos o eventos especiales
+- Validaciones de documentos de identidad o métodos de pago durante el check-in
+- Funcionalidades de self check-in o kioscos de check-in
