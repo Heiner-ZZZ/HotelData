@@ -1,57 +1,35 @@
-# Especificación: Frontend Cliente
+# Especificacion: Frontend - Experiencia Cliente
 
-**Versión**: 1.0 | **Estado**: Draft
+**Version**: 1.0 | **Estado**: Draft | **Ultima actualizacion**: 2026-06-22
 
-**Casos de uso TAF06**: CU-O02 al CU-O07
+**Casos de uso TAF06**: CU-O02 al CU-O07 (Busqueda, filtros, detalle, reserva, mis reservas, cancelacion)
 
 ## 1. Objetivo
 
-UI de cliente: search, filters, detail, booking, my reservations, cancel
+UI de cliente: busqueda de hoteles, filtros, comparacion, detalle, reserva y cancelacion.
 
-## 2. Contexto
+## 2. Componentes
 
-Este spec corresponde al caso de uso TAF06 indicado. Complete el contexto específico durante la iteración de implementación.
+| Componente | Ruta | CU asociado |
+|------------|------|-------------|
+| HotelSearchPage | /hotels/search | CU-O02 |
+| HotelDetailPage | /hotels/:id | CU-O04 |
+| ComparePage | /hotels/compare | CU-O03 |
+| BookingForm | /reservations/new | CU-O05 |
+| MyReservationsPage | /reservations | CU-O06 |
+| CancelDialog | - | CU-O07 |
 
-## 3. Actores
+## 3. Requisitos funcionales
 
-(Listar actores relevantes)
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-001 | HotelSearchPage con filtros (precio, rating, amenities, destino) | Alta |
+| RF-002 | HotelDetailPage con galeria, tarifas, resenas | Alta |
+| RF-003 | ComparePage con tabla lado a lado de hasta 3 hoteles | Alta |
+| RF-004 | BookingForm con seleccion de tipo habitacion | Alta |
+| RF-005 | MyReservationsPage con lista de reservas y estados | Alta |
+| RF-006 | CancelDialog con confirmacion | Alta |
 
-## 4. Requisitos funcionales
+## 4. Dependencias
 
-(Pendiente de detallar)
-
-## 5. Requisitos no funcionales
-
-(Pendiente de detallar)
-
-## 6. Reglas de negocio
-
-(Pendiente de detallar)
-
-## 7. Entradas
-
-(Pendiente de detallar)
-
-## 8. Salidas
-
-(Pendiente de detallar)
-
-## 9. Escenarios
-
-(Pendiente de detallar con Gherkin)
-
-## 10. Criterios de aceptación
-
-(Pendiente de detallar)
-
-## 11. Restricciones
-
-(Pendiente de detallar)
-
-## 12. Dependencias
-
-(Pendiente de detallar)
-
-## 13. Fuera de alcance
-
-(Pendiente de detallar)
+- frontend/src/app/features/booking/
