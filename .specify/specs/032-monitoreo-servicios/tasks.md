@@ -1,13 +1,17 @@
-# Tareas: Monitoreo Servicios
+# Tareas: Monitoreo de Servicios
 
-## Fase 1: Fundación
-- [ ] T001 Setup de estructura de archivos
+**Input**: [spec.md](spec.md), [plan.md](plan.md)
 
-## Fase 2: Implementación
-- [ ] T002 Implementar lógica core
-- [ ] T003 Implementar endpoints
-- [ ] T004 Implementar frontend (si aplica)
+## Fase 1: Backend
 
-## Tests
-- [ ] T005 Tests unitarios
-- [ ] T006 Tests de integración
+- [ ] T001 Implementar `GET /api/admin/health/details` con verificación de MongoDB, Redis, PocketBase
+- [ ] T002 Verificar que GET /health retorna status general
+
+## Fase 2: Frontend
+
+- [ ] T003 [P] Crear `MonitoringPage` con cards por servicio (verde/rojo)
+- [ ] T004 [P] Mostrar última comprobación y tiempo de respuesta
+
+## Fase 3: Validación
+
+- [ ] T005 Probar health check con servicios caídos
