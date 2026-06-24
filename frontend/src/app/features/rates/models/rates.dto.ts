@@ -3,6 +3,10 @@ export interface RatesDto {
   hotel_label: string;
   manual_override?: boolean;
   profile_badge?: string;
+  room_types: Array<{
+    room_type_id: string;
+    name: string;
+  }>;
   rate_plans: Array<{
     rate_plan_id: string;
     prop_id: number;
@@ -11,6 +15,7 @@ export interface RatesDto {
     base_rate: number;
     base_rate_label: string;
     currency: string;
+    room_type_id?: string;
     is_active: boolean;
     updated_at_label?: string;
   }>;
@@ -24,9 +29,15 @@ export interface RatesDto {
     is_closed: boolean;
   }>;
   rate_rules?: Array<{
-    rate_plan_id?: string;
+    rule_id?: string;
     rule_name?: string;
+    rate_plan_id?: string;
+    name?: string;
     description?: string;
+    start_date?: string;
+    end_date?: string;
+    price_override?: number;
+    range_label?: string;
   }>;
   promotions?: Array<{
     campaign_id: string;

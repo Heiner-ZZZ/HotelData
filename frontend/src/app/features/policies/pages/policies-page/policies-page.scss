@@ -85,9 +85,69 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* ── Field Groups ── */
+.field-group {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+
+.field-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.field-group-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.field-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.checkbox-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+}
+
+.checkbox-field .field-label {
+  grid-column: 1;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  min-height: auto;
+  padding: 0;
+  accent-color: var(--accent);
 }
 
 .panel-head {

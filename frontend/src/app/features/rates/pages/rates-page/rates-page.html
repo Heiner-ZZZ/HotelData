@@ -104,6 +104,15 @@
               </div>
             </div>
             <form [formGroup]="planForm" (ngSubmit)="createRatePlan()" class="panel-form">
+              @if (editingPlan(); as edit) {
+                <div class="editing-banner">
+                  <span class="material-symbols-outlined">edit</span>
+                  Editando: {{ edit.name }}
+                  <button type="button" class="cancel-edit-btn" (click)="cancelEditPlan()">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              }
               <label class="field">
                 <span class="field-label">
                   <span class="material-symbols-outlined field-icon">badge</span>
@@ -117,6 +126,18 @@
                   Descripción
                 </span>
                 <input formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_plan_tarifario">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">bed</span>
+                  Tipo de habitación
+                </span>
+                <select formControlName="roomTypeId">
+                  <option value="">Sin asignar</option>
+                  @for (rt of roomTypes; track rt.id) {
+                    <option [value]="rt.id">{{ rt.name }}</option>
+                  }
+                </select>
               </label>
               <label class="field">
                 <span class="field-label">
@@ -141,8 +162,8 @@
               </label>
               <div class="form-actions">
                 <button type="submit" class="btn-primary">
-                  <span class="material-symbols-outlined btn-icon">add</span>
-                  Crear plan
+                  <span class="material-symbols-outlined btn-icon">{{ editingPlan() ? 'save' : 'add' }}</span>
+                  {{ editingPlan() ? 'Guardar cambios' : 'Crear plan' }}
                 </button>
               </div>
             </form>
@@ -206,15 +227,200 @@
             </form>
           </article>
 
+          <!-- Batch Calendar Update -->
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon" style="color: #0891b2">date_range</span>
+              <div>
+                <h2>Actualizar por lote</h2>
+                <p>Aplica un precio a todo un rango de fechas.</p>
+              </div>
+            </div>
+            <form [formGroup]="batchForm" (ngSubmit)="batchUpdateCalendar()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">table_rows</span>
+                  Plan tarifario
+                </span>
+                <select formControlName="ratePlanId">
+                  <option value="">Seleccione</option>
+                  @for (plan of ratePlanOptions(); track plan.id) {
+                    <option [value]="plan.id">{{ plan.label }}</option>
+                  }
+                </select>
+              </label>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Fecha inicio
+                  </span>
+                  <input type="date" formControlName="startDate">
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Fecha fin
+                  </span>
+                  <input type="date" formControlName="endDate">
+                </label>
+              </div>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">payments</span>
+                  Tarifa
+                  </span>
+                  <input type="number" min="0.01" step="0.01" formControlName="rateAmount" placeholder="0.00">
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">night_stay</span>
+                    Min stay
+                  </span>
+                  <input type="number" min="1" formControlName="minStayNights">
+                </label>
+              </div>
+              <label class="field checkbox-field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">weekend</span>
+                  Solo fines de semana
+                </span>
+                <input type="checkbox" formControlName="onlyWeekends">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined btn-icon">date_range</span>
+                  Actualizar lote
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <!-- Generate Calendar from Rules -->
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon" style="color: #16a34a">auto_generated</span>
+              <div>
+                <h2>Generar calendario</h2>
+                <p>Genera entradas desde tarifa base y reglas de temporada.</p>
+              </div>
+            </div>
+            <form [formGroup]="generateForm" (ngSubmit)="generateCalendar()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">table_rows</span>
+                  Plan (opcional)
+                </span>
+                <select formControlName="ratePlanId">
+                  <option value="">Todos los planes</option>
+                  @for (plan of ratePlanOptions(); track plan.id) {
+                    <option [value]="plan.id">{{ plan.label }}</option>
+                  }
+                </select>
+              </label>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Desde (opcional)
+                  </span>
+                  <input type="date" formControlName="startDate">
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Hasta (opcional)
+                  </span>
+                  <input type="date" formControlName="endDate">
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary" style="background: #16a34a">
+                  <span class="material-symbols-outlined btn-icon">auto_generated</span>
+                  Generar
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <!-- Seasonal Rules Form -->
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
+              <div>
+                <h2>Regla de temporada</h2>
+                <p>Define un precio override por rango de fechas.</p>
+              </div>
+            </div>
+            <form [formGroup]="seasonalForm" (ngSubmit)="createSeasonalRule()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">table_rows</span>
+                  Plan tarifario
+                </span>
+                <select formControlName="ratePlanId">
+                  <option value="">Seleccione</option>
+                  @for (plan of ratePlanOptions(); track plan.id) {
+                    <option [value]="plan.id">{{ plan.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">badge</span>
+                  Nombre
+                </span>
+                <input formControlName="name" placeholder="Ej: Temporada alta">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">calendar_today</span>
+                  Fecha inicio
+                </span>
+                <input type="date" formControlName="startDate">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">calendar_today</span>
+                  Fecha fin
+                </span>
+                <input type="date" formControlName="endDate">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">payments</span>
+                  Precio override
+                </span>
+                <input type="number" min="0" step="0.01" formControlName="priceOverride" placeholder="0.00">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined btn-icon">add</span>
+                  Crear regla
+                </button>
+              </div>
+            </form>
+          </article>
+
           <article class="surface-card form-panel">
             <div class="panel-head">
               <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
               <div>
-                <h2>Nueva promoción</h2>
-                <p>Crea una campaña promocional con descuento.</p>
+                <h2>{{ editingPromo() ? 'Editar promoción' : 'Nueva promoción' }}</h2>
+                <p>{{ editingPromo() ? 'Actualiza los datos de la campaña promocional.' : 'Crea una campaña promocional con descuento y cupones.' }}</p>
               </div>
             </div>
             <form [formGroup]="promoForm" (ngSubmit)="createPromotion()" class="panel-form">
+              @if (editingPromo(); as edit) {
+                <div class="editing-banner" style="background: color-mix(in srgb, #f59e0b 8%, transparent); border-color: color-mix(in srgb, #f59e0b 20%, transparent); color: #d97706;">
+                  <span class="material-symbols-outlined">edit</span>
+                  Editando: {{ edit.name }}
+                  <button type="button" class="cancel-edit-btn" style="color: #d97706;" (click)="cancelEditPromo()">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              }
               <label class="field">
                 <span class="field-label">
                   <span class="material-symbols-outlined field-icon">badge</span>
@@ -234,26 +440,37 @@
                   <span class="material-symbols-outlined field-icon">percent</span>
                   Descuento (%)
                 </span>
-                <input type="number" min="0" max="100" formControlName="discountPercent" placeholder="10">
+                <input type="number" min="1" max="100" formControlName="discountPercent" placeholder="10">
               </label>
-              <label class="field">
-                <span class="field-label">
-                  <span class="material-symbols-outlined field-icon">calendar_today</span>
-                  Fecha inicio
-                </span>
-                <input type="date" formControlName="startDate">
-              </label>
-              <label class="field">
-                <span class="field-label">
-                  <span class="material-symbols-outlined field-icon">calendar_today</span>
-                  Fecha fin
-                </span>
-                <input type="date" formControlName="endDate">
-              </label>
+              @if (!editingPromo()) {
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">numbers</span>
+                    Cantidad de cupones
+                  </span>
+                  <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
+                </label>
+              }
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Fecha inicio
+                  </span>
+                  <input type="date" formControlName="startDate">
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="material-symbols-outlined field-icon">calendar_today</span>
+                    Fecha fin
+                  </span>
+                  <input type="date" formControlName="endDate">
+                </label>
+              </div>
               <label class="field">
                 <span class="field-label">
                   <span class="material-symbols-outlined field-icon">confirmation_number</span>
-                  Cupón (opcional)
+                  Cupón adicional (opcional)
                 </span>
                 <input formControlName="couponCode" placeholder="Ej: VERANO2024">
               </label>
@@ -265,9 +482,9 @@
                 <input type="checkbox" formControlName="isActive">
               </label>
               <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <span class="material-symbols-outlined btn-icon">add</span>
-                  Crear promoción
+                <button type="submit" class="btn-primary" style="background: var(--warning)">
+                  <span class="material-symbols-outlined btn-icon">{{ editingPromo() ? 'save' : 'add' }}</span>
+                  {{ editingPromo() ? 'Guardar cambios' : 'Crear promoción' }}
                 </button>
               </div>
             </form>
@@ -284,12 +501,68 @@
             </div>
           </div>
           @if (vm.ratePlans.length) {
-            <app-rate-plan-table [items]="vm.ratePlans" />
+            <app-rate-plan-table
+              [items]="vm.ratePlans"
+              (editPlan)="onEditPlan($event)"
+              (deletePlan)="onDeletePlan($event)"
+            />
           } @else {
             <app-empty-state
               icon="attach_money"
               title="Sin planes todavía"
               description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
+            />
+          }
+        </section>
+
+        <!-- Seasonal Rules Table -->
+        <section class="surface-card data-panel">
+          <div class="panel-head">
+            <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
+            <div>
+              <h2>Reglas de temporada</h2>
+              <p>{{ seasonalRules.length }} regla(s) configurada(s).</p>
+            </div>
+          </div>
+          @if (seasonalRules.length) {
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Plan</th>
+                    <th>Rango</th>
+                    <th>Precio override</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (rule of seasonalRules; track rule.ruleId) {
+                    <tr>
+                      <td><strong>{{ rule.name }}</strong></td>
+                      <td>{{ rule.ratePlanId }}</td>
+                      <td>{{ rule.rangeLabel }}</td>
+                      <td><strong>${{ rule.priceOverride }}</strong></td>
+                      <td>
+                        <button
+                          type="button"
+                          class="qa-btn delete-btn"
+                          (click)="deleteSeasonalRule(rule.ruleId)"
+                          title="Eliminar regla"
+                        >
+                          <span class="material-symbols-outlined">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-empty-state
+              icon="event"
+              title="Sin reglas de temporada"
+              description="Crea reglas por temporada para sobreescribir tarifas base en rangos de fecha."
             />
           }
         </section>
@@ -323,7 +596,7 @@
               <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es) activos/demo.</p>
             </div>
           </div>
-          @if (vm.promotions.length || vm.coupons.length) {
+          @if (promotionsCampaigns.length || vm.coupons.length) {
             <div class="table-wrap">
               <table class="data-table">
                 <thead>
@@ -331,12 +604,14 @@
                     <th>Tipo</th>
                     <th>Nombre / código</th>
                     <th>Dto.</th>
+                    <th>Cupones</th>
                     <th>Vigencia</th>
                     <th>Estado</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (promo of vm.promotions; track promo.campaignId) {
+                  @for (promo of promotionsCampaigns; track promo.campaign_id) {
                     <tr>
                       <td>
                         <span class="material-symbols-outlined table-icon icon-promo-amber">campaign</span>
@@ -348,13 +623,49 @@
                           <br><small>{{ promo.description }}</small>
                         }
                       </td>
-                      <td>{{ promo.discountPercent }}%</td>
-                      <td><small>{{ promo.dateRange }}</small></td>
+                      <td>{{ promo.discount_percent }}%</td>
                       <td>
-                        <span class="status-badge" [class.active]="promo.activeLabel === 'Sí'" [class.inactive]="promo.activeLabel !== 'Sí'">
-                          <span class="material-symbols-outlined badge-icon">{{ promo.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
-                          {{ promo.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
-                        </span>
+                        <small>{{ promo.coupon_available ?? '—' }}/{{ promo.coupon_total ?? '—' }} disp.</small>
+                      </td>
+                      <td><small>{{ promo.start_date }} → {{ promo.end_date }}</small></td>
+                      <td>
+                        <button
+                          type="button"
+                          class="toggle-badge-btn"
+                          [class.active]="promo.is_active"
+                          [class.inactive]="!promo.is_active"
+                          (click)="onTogglePromo(promo.campaign_id)"
+                          title="Cambiar estado"
+                        >
+                          <span class="material-symbols-outlined badge-icon">{{ promo.is_active ? 'check_circle' : 'cancel' }}</span>
+                          {{ promo.is_active ? 'Activo' : 'Inactivo' }}
+                        </button>
+                      </td>
+                      <td class="actions-cell">
+                        <button
+                          type="button"
+                          class="edit-btn"
+                          (click)="onEditPromo({
+                            campaignId: promo.campaign_id,
+                            name: promo.name,
+                            description: promo.description || '',
+                            discountPercent: promo.discount_percent ?? 0,
+                            startDate: promo.start_date || '',
+                            endDate: promo.end_date || '',
+                            isActive: promo.is_active
+                          })"
+                          title="Editar promoción"
+                        >
+                          <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="delete-btn"
+                          (click)="onDeletePromo(promo.campaign_id)"
+                          title="Desactivar promoción"
+                        >
+                          <span class="material-symbols-outlined">toggle_off</span>
+                        </button>
                       </td>
                     </tr>
                   }
@@ -367,12 +678,14 @@
                       <td><code>{{ coupon.code }}</code></td>
                       <td>—</td>
                       <td><small>—</small></td>
+                      <td><small>—</small></td>
                       <td>
                         <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
                           <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
                           {{ coupon.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
                         </span>
                       </td>
+                      <td></td>
                     </tr>
                   }
                 </tbody>
@@ -388,5 +701,33 @@
         </section>
       }
     }
+  }
+
+  <!-- Delete confirmation modal -->
+  @if (deleteConfirm(); as planId) {
+    <div class="modal-backdrop" (click)="deleteConfirm.set(null)">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Eliminar plan tarifario</h2>
+        <p>¿Estás seguro de eliminar este plan tarifario? Se eliminarán también las tarifas del calendario asociadas. Esta acción no se puede deshacer.</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeletePlan()">Eliminar</button>
+        </div>
+      </article>
+    </div>
+  }
+
+  <!-- Promo delete confirmation -->
+  @if (promoDeleteConfirm(); as campaignId) {
+    <div class="modal-backdrop" (click)="promoDeleteConfirm.set(null)">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Desactivar promoción</h2>
+        <p>¿Estás seguro de desactivar esta campaña promocional? Los cupones asociados dejarán de ser válidos.</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="promoDeleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeletePromo()">Desactivar</button>
+        </div>
+      </article>
+    </div>
   }
 </div>

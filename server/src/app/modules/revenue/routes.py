@@ -9,6 +9,7 @@ from src.app.modules.revenue.services import (
     create_promotion_campaign,
     create_rate_plan,
     hotel_rates_overview,
+    list_property_campaigns,
     module_status,
     promotions_management_overview,
     promotions_overview,
@@ -16,6 +17,8 @@ from src.app.modules.revenue.services import (
     reservations_overview,
     revenue_overview,
     save_hotel_rate,
+    toggle_promotion_campaign,
+    update_promotion_campaign,
     visitor_markets_overview,
 )
 
@@ -89,5 +92,62 @@ def save_rate_calendar_api(payload: dict = Body(...)):
             min_stay_nights=payload.get("min_stay_nights"),
             is_closed=payload.get("is_closed", False),
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ──────── Promociones (SPEC 021) ────────
+
+
+@api_router.get("/promotions")
+def list_promotions_api(prop_id: int = Query(..., ge=1)):
+    """RF-004: Listar campañas promocionales por propiedad."""
+    try:
+        return list_property_campaigns(prop_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.post("/promotions", status_code=http_status.HTTP_201_CREATED)
+def create_promotion_api(payload: dict = Body(...)):
+    """RF-001/RF-002: Crear campaña con N cupones."""
+    try:
+        return create_promotion_campaign(
+            prop_id=payload.get("prop_id"),
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            discount_percent=payload.get("discount_percent"),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            coupon_count=int(payload.get("coupon_count", 10)),
+            coupon_code=str(payload.get("coupon_code") or ""),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.put("/promotions/{campaign_id}")
+def update_promotion_api(campaign_id: str, payload: dict = Body(...)):
+    """RF-006: Editar campaña promocional."""
+    try:
+        return update_promotion_campaign(
+            campaign_id,
+            name=payload.get("name"),
+            description=payload.get("description"),
+            discount_percent=payload.get("discount_percent"),
+            start_date=payload.get("start_date"),
+            end_date=payload.get("end_date"),
+            is_active=payload.get("is_active"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.post("/promotions/{campaign_id}/toggle")
+def toggle_promotion_api(campaign_id: str):
+    """RF-003: Activar/desactivar campaña."""
+    try:
+        return toggle_promotion_campaign(campaign_id)
     except ValueError as exc:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

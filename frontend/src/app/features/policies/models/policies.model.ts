@@ -38,6 +38,14 @@ export interface PoliciesViewModel {
   paymentPolicy: string;
   houseRules: string;
   roomTypeId: string;
+  // SPEC 022 structured fields
+  cancellationHours: number;
+  petsAllowed: boolean;
+  petFee: number;
+  childrenAllowed: boolean;
+  extraBedFee: number;
+  minStay: number;
+  maxStay: number;
   roomTypes: PolicyRoomTypeOption[];
   summary: PolicySummaryItem[];
 }

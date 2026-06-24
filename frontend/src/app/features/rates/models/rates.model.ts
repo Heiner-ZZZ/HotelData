@@ -3,9 +3,11 @@ export interface RatesViewModel {
   hotelLabel: string;
   manualOverride: boolean;
   profileBadge: string;
+  roomTypes: Array<{ id: string; name: string }>;
   ratePlans: RatePlanItem[];
   calendar: RateCalendarItem[];
   rateRules: Array<{ label: string; detail: string }>;
+  seasonalRules: SeasonalRuleItem[];
   promotions: Array<{
     campaignId: string;
     name: string;
@@ -17,12 +19,24 @@ export interface RatesViewModel {
   coupons: Array<{ code: string; activeLabel: string }>;
 }
 
+export interface SeasonalRuleItem {
+  ruleId: string;
+  name: string;
+  ratePlanId: string;
+  startDate: string;
+  endDate: string;
+  priceOverride: number;
+  rangeLabel: string;
+}
+
 export interface RatePlanItem {
   id: string;
   name: string;
   description: string;
   baseRateLabel: string;
+  baseRate: number;
   currency: string;
+  roomTypeId?: string;
   activeLabel: string;
 }
 

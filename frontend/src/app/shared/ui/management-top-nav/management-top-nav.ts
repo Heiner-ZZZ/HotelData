@@ -177,6 +177,14 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
             this._stopPolling();
             return;
           }
+          // 401 = session expired → stop polling to prevent redirect flood
+          if (err?.status === 401) {
+            this._pollingStopped = true;
+            this.notifications.set([]);
+            this.pollingError.set(false);
+            this._stopPolling();
+            return;
+          }
           this.pollingError.set(true);
         }
       });

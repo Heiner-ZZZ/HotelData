@@ -2,23 +2,24 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th>ID</th>
         <th>Nombre</th>
         <th>Descripción</th>
+        <th>Tipo habitación</th>
         <th>Tarifa base</th>
         <th>Moneda</th>
         <th>Estado</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       @for (item of items(); track item.id) {
         <tr>
-          <td><code>{{ item.id }}</code></td>
           <td>
             <span class="material-symbols-outlined table-icon">attach_money</span>
             {{ item.name }}
           </td>
           <td class="desc-cell">{{ item.description }}</td>
+          <td class="desc-cell">{{ item.roomTypeId || '—' }}</td>
           <td><strong>${{ item.baseRateLabel }}</strong></td>
           <td>
             <span class="currency-pill">
@@ -31,6 +32,14 @@
               <span class="material-symbols-outlined badge-icon">{{ item.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
               {{ item.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
             </span>
+          </td>
+          <td class="actions-cell">
+            <button type="button" class="qa-btn edit-btn" (click)="editPlan.emit(item)" title="Editar plan">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button type="button" class="qa-btn delete-btn" (click)="deletePlan.emit(item.id)" title="Eliminar plan">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
           </td>
         </tr>
       }

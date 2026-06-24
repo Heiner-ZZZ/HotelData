@@ -4,8 +4,11 @@ from src.app.modules.revenue.services.markets import visitor_markets_overview
 from src.app.modules.revenue.services.overview import conversion_overview, reservations_overview, revenue_overview
 from src.app.modules.revenue.services.promotions import (
     create_promotion_campaign,
+    list_property_campaigns,
     promotions_management_overview,
     promotions_overview,
+    toggle_promotion_campaign,
+    update_promotion_campaign,
 )
 from src.app.modules.revenue.services.rate_plans import create_rate_plan, rate_plans_overview
 
@@ -15,6 +18,7 @@ __all__ = [
     "create_rate_plan",
     "ensure_revenue_collections",
     "hotel_rates_overview",
+    "list_property_campaigns",
     "module_status",
     "promotions_management_overview",
     "promotions_overview",
@@ -22,5 +26,7 @@ __all__ = [
     "reservations_overview",
     "revenue_overview",
     "save_hotel_rate",
+    "toggle_promotion_campaign",
+    "update_promotion_campaign",
     "visitor_markets_overview",
 ]

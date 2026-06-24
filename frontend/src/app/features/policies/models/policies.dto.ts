@@ -24,6 +24,14 @@ export interface PoliciesDto {
     payment_policy?: string;
     house_rules?: string;
     room_type_id?: string;
+    // SPEC 022 structured fields
+    cancellation_hours?: number;
+    pets_allowed?: boolean;
+    pet_fee?: number;
+    children_allowed?: boolean;
+    extra_bed_fee?: number;
+    min_stay?: number;
+    max_stay?: number;
   };
   room_types?: PolicyRoomTypeItem[];
   per_room_policies?: Array<Record<string, unknown>>;
@@ -51,4 +59,12 @@ export interface PoliciesSaveDto {
   payment_policy: string;
   house_rules: string;
   room_type_id?: string;
+  // SPEC 022 structured fields
+  cancellation_hours?: number;
+  pets_allowed?: boolean;
+  pet_fee?: number;
+  children_allowed?: boolean;
+  extra_bed_fee?: number;
+  min_stay?: number;
+  max_stay?: number;
 }

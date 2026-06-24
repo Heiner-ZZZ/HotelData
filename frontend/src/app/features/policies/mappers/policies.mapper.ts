@@ -6,6 +6,9 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
   const checkOut = dto.policies.check_out_time || 'Pendiente';
   const cancellation = dto.policies.cancellation_policy || 'Sin politica registrada';
   const payments = dto.policies.payment_policy || 'Sin politica de pagos';
+  const cancelHours = dto.policies.cancellation_hours ?? 0;
+  const minStay = dto.policies.min_stay ?? 0;
+  const maxStay = dto.policies.max_stay ?? 0;
   return {
     propId: dto.hotel.prop_id,
     hotelName: dto.hotel.display_name,
@@ -22,6 +25,13 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
     paymentPolicy: dto.policies.payment_policy || '',
     houseRules: dto.policies.house_rules || '',
     roomTypeId: dto.policies.room_type_id || '',
+    cancellationHours: cancelHours,
+    petsAllowed: dto.policies.pets_allowed ?? false,
+    petFee: dto.policies.pet_fee ?? 0,
+    childrenAllowed: dto.policies.children_allowed ?? false,
+    extraBedFee: dto.policies.extra_bed_fee ?? 0,
+    minStay: minStay,
+    maxStay: maxStay,
     roomTypes: (dto.room_types ?? []).map(r => ({
       id: r.room_type_id,
       name: r.name
@@ -29,7 +39,9 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
     summary: [
       { label: 'Check-in', value: checkIn, detail: 'Horario de llegada' },
       { label: 'Check-out', value: checkOut, detail: 'Horario de salida' },
-      { label: 'Cancelacion', value: cancellation, detail: 'Politica comercial' },
+      { label: 'Cancelacion', value: cancelHours > 0 ? `${cancelHours}h antes` : cancellation, detail: 'Politica comercial' },
+      { label: 'Estancia', value: minStay > 0 ? `${minStay}-${maxStay || '∞'} noches` : 'Flexible', detail: 'Min/Max estancia' },
+      { label: 'Mascotas', value: dto.policies.pets_allowed ? 'Sí' : 'No', detail: dto.policies.pet_fee ? `$${dto.policies.pet_fee} cargo` : 'Sin cargo' },
       { label: 'Pagos', value: payments, detail: 'Cobros y garantias' }
     ]
   };
@@ -63,6 +75,13 @@ export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {
     extra_bed_policy: vm.extraBedPolicy,
     payment_policy: vm.paymentPolicy,
     house_rules: vm.houseRules,
-    room_type_id: vm.roomTypeId || undefined
+    room_type_id: vm.roomTypeId || undefined,
+    cancellation_hours: vm.cancellationHours || undefined,
+    pets_allowed: vm.petsAllowed || undefined,
+    pet_fee: vm.petFee || undefined,
+    children_allowed: vm.childrenAllowed || undefined,
+    extra_bed_fee: vm.extraBedFee || undefined,
+    min_stay: vm.minStay || undefined,
+    max_stay: vm.maxStay || undefined
   };
 }

@@ -53,6 +53,7 @@ export class RatesApiService {
     description: string;
     baseRate: number;
     currency: string;
+    roomTypeId?: string;
     isActive: boolean;
   }) {
     return this.http.post(
@@ -63,7 +64,110 @@ export class RatesApiService {
         description: payload.description,
         base_rate: payload.baseRate,
         currency: payload.currency,
+        room_type_id: payload.roomTypeId || '',
         is_active: payload.isActive
+      },
+      { withCredentials: true }
+    );
+  }
+
+  updateRatePlan(planId: string, payload: {
+    name: string;
+    description: string;
+    baseRate: number;
+    currency: string;
+    roomTypeId?: string;
+    isActive: boolean;
+  }) {
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
+      {
+        name: payload.name,
+        description: payload.description,
+        base_rate: payload.baseRate,
+        currency: payload.currency,
+        room_type_id: payload.roomTypeId || '',
+        is_active: payload.isActive
+      },
+      { withCredentials: true }
+    );
+  }
+
+  deleteRatePlan(planId: string) {
+    return this.http.delete(
+      `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
+      { withCredentials: true }
+    );
+  }
+
+  createSeasonalRule(payload: {
+    propId: number;
+    ratePlanId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    priceOverride: number;
+  }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/management/rates/seasonal-rules`,
+      {
+        prop_id: payload.propId,
+        rate_plan_id: payload.ratePlanId,
+        name: payload.name,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        price_override: payload.priceOverride
+      },
+      { withCredentials: true }
+    );
+  }
+
+  deleteSeasonalRule(ruleId: string) {
+    return this.http.delete(
+      `${this.apiConfig.baseUrl}/management/rates/seasonal-rules/${ruleId}`,
+      { withCredentials: true }
+    );
+  }
+
+  batchUpdateCalendar(payload: {
+    propId: number;
+    ratePlanId: string;
+    startDate: string;
+    endDate: string;
+    rateAmount: number;
+    minStayNights?: number;
+    isClosed?: boolean;
+    onlyWeekends?: boolean;
+  }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/management/rates/calendar/batch`,
+      {
+        prop_id: payload.propId,
+        rate_plan_id: payload.ratePlanId,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        rate_amount: payload.rateAmount,
+        min_stay_nights: payload.minStayNights,
+        is_closed: payload.isClosed,
+        only_weekends: payload.onlyWeekends || false
+      },
+      { withCredentials: true }
+    );
+  }
+
+  generateCalendar(payload: {
+    propId: number;
+    ratePlanId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    return this.http.post<{ plans_processed: number; entries_generated: number; start_date: string; end_date: string }>(
+      `${this.apiConfig.baseUrl}/management/rates/calendar/generate`,
+      {
+        prop_id: payload.propId,
+        rate_plan_id: payload.ratePlanId || '',
+        start_date: payload.startDate || '',
+        end_date: payload.endDate || '',
       },
       { withCredentials: true }
     );
@@ -98,11 +202,12 @@ export class RatesApiService {
     discountPercent: number;
     startDate: string;
     endDate: string;
+    couponCount: number;
     couponCode: string;
     isActive: boolean;
   }) {
     return this.http.post(
-      `${this.apiConfig.baseUrl}/management/rates/promotions`,
+      `${this.apiConfig.baseUrl}/management/promotions`,
       {
         prop_id: payload.propId,
         name: payload.name,
@@ -110,10 +215,62 @@ export class RatesApiService {
         discount_percent: payload.discountPercent,
         start_date: payload.startDate,
         end_date: payload.endDate,
+        coupon_count: payload.couponCount,
         coupon_code: payload.couponCode,
         is_active: payload.isActive
       },
       { withCredentials: true }
+    );
+  }
+
+  updatePromotion(campaignId: string, payload: {
+    name?: string;
+    description?: string;
+    discountPercent?: number;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+  }) {
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/management/promotions/${campaignId}`,
+      {
+        name: payload.name,
+        description: payload.description,
+        discount_percent: payload.discountPercent,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        is_active: payload.isActive
+      },
+      { withCredentials: true }
+    );
+  }
+
+  togglePromotion(campaignId: string) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/management/promotions/${campaignId}/toggle`,
+      {},
+      { withCredentials: true }
+    );
+  }
+
+  listPropertyPromotions(propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<{ campaigns: Array<{
+      campaign_id: string;
+      name: string;
+      description?: string;
+      discount_percent?: number;
+      start_date?: string;
+      end_date?: string;
+      is_active: boolean;
+      coupon_total?: number;
+      coupon_used?: number;
+      coupon_available?: number;
+      discount_percent_label?: string;
+      hotel_label?: string;
+    }>; total: number }>(
+      `${this.apiConfig.baseUrl}/management/promotions`,
+      { params, withCredentials: true }
     );
   }
 }

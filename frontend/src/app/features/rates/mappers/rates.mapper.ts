@@ -7,12 +7,18 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
     hotelLabel: dto.hotel_label,
     manualOverride: dto.manual_override ?? false,
     profileBadge: dto.profile_badge || (dto.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
+    roomTypes: (dto.room_types || []).map((rt) => ({
+      id: rt.room_type_id,
+      name: rt.name
+    })),
     ratePlans: dto.rate_plans.map((plan) => ({
       id: plan.rate_plan_id,
       name: plan.name,
       description: plan.description || 'Sin descripción',
       baseRateLabel: plan.base_rate_label,
+      baseRate: plan.base_rate,
       currency: plan.currency,
+      roomTypeId: plan.room_type_id,
       activeLabel: plan.is_active ? 'Sí' : 'No'
     })),
     calendar: dto.calendar.map((item) => ({
@@ -26,6 +32,17 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       label: rule.rule_name || rule.rate_plan_id || 'Regla operativa',
       detail: rule.description || 'Sin detalle'
     })),
+    seasonalRules: (dto.rate_rules || [])
+      .filter((rule) => rule.start_date)
+      .map((rule) => ({
+        ruleId: rule.rule_id || '',
+        name: rule.name || '',
+        ratePlanId: rule.rate_plan_id || '',
+        startDate: rule.start_date || '',
+        endDate: rule.end_date || '',
+        priceOverride: rule.price_override ?? 0,
+        rangeLabel: rule.range_label || `${rule.start_date} -> ${rule.end_date}`
+      })),
     promotions: (dto.promotions || []).map((promo) => ({
       campaignId: promo.campaign_id,
       name: promo.name || promo.campaign_id,

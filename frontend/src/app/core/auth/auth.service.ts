@@ -45,6 +45,18 @@ export class AuthService {
     } catch { /* localStorage unavailable */ }
   }
 
+  /** Invalidate session without requiring an API call — used when auth
+   *  interceptor detects a 401 so guards immediately block access. */
+  invalidateSession(): void {
+    this._clearSessionFlag();
+    this.authStateSignal.set({
+      authenticated: false,
+      user: null,
+      session: null,
+      homeHref: null
+    });
+  }
+
   readonly authState = this.authStateSignal.asReadonly();
   readonly currentUser = computed(() => this.authStateSignal().user);
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import type { RatePlanItem } from '../../models/rates.model';
 
@@ -10,4 +10,7 @@ import type { RatePlanItem } from '../../models/rates.model';
 })
 export class RatePlanTableComponent {
   readonly items = input<RatePlanItem[]>([]);
+
+  readonly editPlan = output<RatePlanItem>();
+  readonly deletePlan = output<string>();
 }

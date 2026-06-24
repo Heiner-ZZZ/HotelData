@@ -88,19 +88,30 @@ def policies_options_api(
 @api_router.put("/policies")
 def policies_update_api(payload: dict = Body(...)):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
-    saved = save_partner_hotel_policies(
-        prop_id,
-        check_in_time=str(payload.get("check_in_time") or ""),
-        check_out_time=str(payload.get("check_out_time") or ""),
-        cancellation_policy=str(payload.get("cancellation_policy") or ""),
-        pet_policy=str(payload.get("pet_policy") or ""),
-        children_policy=str(payload.get("children_policy") or ""),
-        extra_bed_policy=str(payload.get("extra_bed_policy") or ""),
-        payment_policy=str(payload.get("payment_policy") or ""),
-        house_rules=str(payload.get("house_rules") or ""),
-        room_type_id=str(payload.get("room_type_id") or ""),
-        changed_by="angular_api",
-    )
+    try:
+        saved = save_partner_hotel_policies(
+            prop_id,
+            check_in_time=str(payload.get("check_in_time") or ""),
+            check_out_time=str(payload.get("check_out_time") or ""),
+            cancellation_policy=str(payload.get("cancellation_policy") or ""),
+            pet_policy=str(payload.get("pet_policy") or ""),
+            children_policy=str(payload.get("children_policy") or ""),
+            extra_bed_policy=str(payload.get("extra_bed_policy") or ""),
+            payment_policy=str(payload.get("payment_policy") or ""),
+            house_rules=str(payload.get("house_rules") or ""),
+            room_type_id=str(payload.get("room_type_id") or ""),
+            # SPEC 022 structured fields
+            cancellation_hours=payload.get("cancellation_hours"),
+            pets_allowed=payload.get("pets_allowed"),
+            pet_fee=payload.get("pet_fee"),
+            children_allowed=payload.get("children_allowed"),
+            extra_bed_fee=payload.get("extra_bed_fee"),
+            min_stay=payload.get("min_stay"),
+            max_stay=payload.get("max_stay"),
+            changed_by="angular_api",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved

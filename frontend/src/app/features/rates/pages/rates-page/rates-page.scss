@@ -195,6 +195,91 @@ select option {
   color: var(--app-text);
 }
 
+.editing-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, #3b82f6 8%, transparent);
+  border: 1px solid color-mix(in srgb, #3b82f6 20%, transparent);
+  color: #3b82f6;
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.cancel-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-left: auto;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+}
+
+.delete-btn {
+  color: #dc3545;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.edit-btn {
+  color: var(--accent, #1463ff);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.actions-cell {
+  white-space: nowrap;
+  width: 1%;
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -442,8 +527,9 @@ select option {
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
 }
 
-/* ── Status Badges ── */
-.status-badge {
+/* ── Status Badges / Toggle Buttons ── */
+.status-badge,
+.toggle-badge-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -454,12 +540,26 @@ select option {
   white-space: nowrap;
 }
 
-.status-badge.active {
+.toggle-badge-btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: opacity 120ms ease, transform 100ms ease;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.status-badge.active,
+.toggle-badge-btn.active {
   background: color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
 }
 
-.status-badge.inactive {
+.status-badge.inactive,
+.toggle-badge-btn.inactive {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
 }

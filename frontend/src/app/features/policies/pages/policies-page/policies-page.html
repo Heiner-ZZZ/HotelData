@@ -93,62 +93,171 @@
           </div>
 
           <form [formGroup]="policyForm" (ngSubmit)="savePolicies()" class="form-grid">
-            <label class="field">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">login</span>
-                Check-in
-              </span>
-              <input formControlName="checkInTime" placeholder="Ej: 15:00" />
-            </label>
-            <label class="field">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">logout</span>
-                Check-out
-              </span>
-              <input formControlName="checkOutTime" placeholder="Ej: 11:00" />
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">cancel</span>
-                Cancelacion
-              </span>
-              <textarea rows="4" formControlName="cancellationPolicy" placeholder="Política de cancelación" appAiSuggest="politica_cancelacion"></textarea>
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">family_history</span>
-                Niños y estancia familiar
-              </span>
-              <textarea rows="4" formControlName="childrenPolicy" placeholder="Política de niños y familia" appAiSuggest="politica_niños_y_familia"></textarea>
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">bed</span>
-                Camas extra
-              </span>
-              <textarea rows="4" formControlName="extraBedPolicy" placeholder="Política de camas extra" appAiSuggest="politica_camas_extra"></textarea>
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">payments</span>
-                Pagos y garantías
-              </span>
-              <textarea rows="4" formControlName="paymentPolicy" placeholder="Política de pagos" appAiSuggest="politica_pagos_y_garantias"></textarea>
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">pets</span>
-                Mascotas
-              </span>
-              <textarea rows="4" formControlName="petPolicy" placeholder="Política de mascotas" appAiSuggest="politica_mascotas"></textarea>
-            </label>
-            <label class="field field-span">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">gavel</span>
-                Reglas de la propiedad
-              </span>
-              <textarea rows="5" formControlName="houseRules" placeholder="Reglas de la casa" appAiSuggest="reglas_casa"></textarea>
-            </label>
+            <!-- Time fields -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">schedule</span>
+                <span>Horarios</span>
+              </div>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">login</span>
+                    Check-in
+                  </span>
+                  <input formControlName="checkInTime" placeholder="Ej: 15:00" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">logout</span>
+                    Check-out
+                  </span>
+                  <input formControlName="checkOutTime" placeholder="Ej: 11:00" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Cancellation -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">cancel</span>
+                <span>Cancelación</span>
+              </div>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">timer</span>
+                    Horas antes (gratuita)
+                  </span>
+                  <input type="number" min="0" max="720" formControlName="cancellationHours" placeholder="48" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">description</span>
+                    Descripción
+                  </span>
+                  <textarea rows="3" formControlName="cancellationPolicy" placeholder="Política de cancelación" appAiSuggest="politica_cancelacion"></textarea>
+                </label>
+              </div>
+            </div>
+
+            <!-- Pets -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">pets</span>
+                <span>Mascotas</span>
+              </div>
+              <div class="field-row">
+                <label class="field checkbox-field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">check</span>
+                    Permitir mascotas
+                  </span>
+                  <input type="checkbox" formControlName="petsAllowed" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">payments</span>
+                    Cargo mascota ($)
+                  </span>
+                  <input type="number" min="0" step="0.01" formControlName="petFee" placeholder="0.00" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">description</span>
+                    Descripción
+                  </span>
+                  <textarea rows="3" formControlName="petPolicy" placeholder="Política de mascotas" appAiSuggest="politica_mascotas"></textarea>
+                </label>
+              </div>
+            </div>
+
+            <!-- Children & Extra beds -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">family_history</span>
+                <span>Niños y familias</span>
+              </div>
+              <div class="field-row">
+                <label class="field checkbox-field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">check</span>
+                    Aceptar niños
+                  </span>
+                  <input type="checkbox" formControlName="childrenAllowed" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">bed</span>
+                    Cargo cama extra ($)
+                  </span>
+                  <input type="number" min="0" step="0.01" formControlName="extraBedFee" placeholder="0.00" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">description</span>
+                    Descripción
+                  </span>
+                  <textarea rows="3" formControlName="childrenPolicy" placeholder="Política de niños y familia" appAiSuggest="politica_niños_y_familia"></textarea>
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">bed</span>
+                    Camas extra (texto)
+                  </span>
+                  <textarea rows="2" formControlName="extraBedPolicy" placeholder="Política de camas extra" appAiSuggest="politica_camas_extra"></textarea>
+                </label>
+              </div>
+            </div>
+
+            <!-- Stay limits -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">night_stay</span>
+                <span>Estancia</span>
+              </div>
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">exposure_minus_1</span>
+                    Noches mínimas
+                  </span>
+                  <input type="number" min="1" max="365" formControlName="minStay" placeholder="1" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">exposure_plus_1</span>
+                    Noches máximas
+                  </span>
+                  <input type="number" min="1" max="365" formControlName="maxStay" placeholder="30" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Payment & House rules -->
+            <div class="field-group field-span">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">payments</span>
+                <span>Pagos y reglas</span>
+              </div>
+              <div class="field-row-2col">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">payments</span>
+                    Pagos y garantías
+                  </span>
+                  <textarea rows="4" formControlName="paymentPolicy" placeholder="Política de pagos" appAiSuggest="politica_pagos_y_garantias"></textarea>
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">gavel</span>
+                    Reglas de la propiedad
+                  </span>
+                  <textarea rows="4" formControlName="houseRules" placeholder="Reglas de la casa" appAiSuggest="reglas_casa"></textarea>
+                </label>
+              </div>
+            </div>
+
             <div class="form-actions field-span">
               <button type="submit" class="btn-primary">
                 <span class="btn-icon material-symbols-outlined">save</span>

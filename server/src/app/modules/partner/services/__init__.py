@@ -67,8 +67,14 @@ from src.app.modules.partner.services.properties import (
 )  # type: ignore[assignment]
 from src.app.modules.partner.services.rates import (
     create_rate_plan,
+    create_seasonal_rule,
+    delete_rate_plan,
+    delete_seasonal_rule,
+    list_rate_plans_for_prop,
+    list_seasonal_rules,
     partner_hotel_rates,
     save_rate_calendar_entry,
+    update_rate_plan,
 )
 from src.app.modules.partner.services.rooms import (
     create_blackout_block,
