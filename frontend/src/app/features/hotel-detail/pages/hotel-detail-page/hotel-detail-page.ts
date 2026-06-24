@@ -29,6 +29,11 @@ export class HotelDetailPageComponent {
   readonly activeTab = signal<string>('overview');
   readonly similarHotels = signal<SimilarHotel[]>([]);
   readonly similarLoading = signal(false);
+  readonly imageErrors = signal<Set<string>>(new Set());
+
+  onImageError(key: string) {
+    this.imageErrors.update((s) => new Set(s).add(key));
+  }
 
   readonly stars = computed(() => {
     const h = this.hotel();
@@ -59,6 +64,18 @@ export class HotelDetailPageComponent {
         }
       });
   }
+
+  readonly shareHotel = () => {
+    const vm = this.hotel();
+    if (!vm) return;
+    const url = window.location.href;
+    const title = vm.name;
+    if (typeof navigator.share === 'function') {
+      void navigator.share({ title, url });
+    } else {
+      void navigator.clipboard.writeText(url);
+    }
+  };
 
   scrollTo(sectionId: string): void {
     this.activeTab.set(sectionId);

@@ -59,19 +59,35 @@
             <span class="material-symbols-outlined act-icon">arrow_back</span>
             Volver a búsqueda
           </a>
-          <a [href]="'/reservations/new?prop_id=' + vm.id" class="primary-link">
-            <span class="material-symbols-outlined act-icon">calendar_add_on</span>
-            Solicitar reserva
-          </a>
+          <div class="action-row-right">
+            <button type="button" class="secondary-link" (click)="shareHotel()" aria-label="Compartir hotel">
+              <span class="material-symbols-outlined act-icon">share</span>
+              Compartir
+            </button>
+            <a [routerLink]="['/search']" [queryParams]="{ compare_ids: vm.id }" class="secondary-link">
+              <span class="material-symbols-outlined act-icon">compare_arrows</span>
+              Comparar
+            </a>
+            <a [href]="'/reservations/new?prop_id=' + vm.id" class="primary-link">
+              <span class="material-symbols-outlined act-icon">calendar_add_on</span>
+              Solicitar reserva
+            </a>
+          </div>
         </div>
 
         <!-- Gallery -->
         @if (vm.galleryImages.length) {
           <section class="gallery-section">
             <div class="gallery-scroll">
-              @for (url of vm.galleryImages; track url) {
+              @for (url of vm.galleryImages; track url; let i = $index) {
                 <div class="gallery-item">
-                  <img [src]="url" [alt]="vm.name" loading="lazy" />
+                  @if (!imageErrors().has('gallery-' + i)) {
+                    <img [src]="url" [alt]="vm.name" loading="lazy" (error)="onImageError('gallery-' + i)" />
+                  } @else {
+                    <div class="gallery-fallback">
+                      <span class="material-symbols-outlined" style="font-size:3rem;color:var(--muted-text)">hotel</span>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -387,11 +403,13 @@
             <div class="similar-grid">
               @for (item of similarHotels(); track item.id) {
                 <a [routerLink]="['/hotels', item.id]" class="similar-card">
-                  @if (item.imageUrl) {
-                    <div class="similar-img-wrap">
-                      <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" />
-                    </div>
-                  }
+                  <div class="similar-img-wrap">
+                    @if (item.imageUrl && !imageErrors().has('sim-' + item.id)) {
+                      <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id)" />
+                    } @else {
+                      <span class="material-symbols-outlined img-placeholder">hotel</span>
+                    }
+                  </div>
                   <div class="similar-body">
                     <strong class="similar-name">{{ item.name }}</strong>
                     <div class="similar-meta">

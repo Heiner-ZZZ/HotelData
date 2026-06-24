@@ -70,7 +70,13 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
         ]
       : [],
     cancellationPolicy: displayValue(dto.hotel_policies?.cancellation_policy),
-    galleryImages: (dto.hotel_images || []).map((img) => img.image_url),
+    galleryImages: (dto.hotel_images || []).length > 0
+      ? dto.hotel_images.map((img) => img.image_url)
+      : [
+          `https://picsum.photos/seed/${dto.prop_id}1/800/400`,
+          `https://picsum.photos/seed/${dto.prop_id}2/800/400`,
+          `https://picsum.photos/seed/${dto.prop_id}3/800/400`,
+        ],
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',
     amenitiesTags: (dto.hotel_content?.amenities_text || '').split(',').map((s) => s.trim()).filter(Boolean),

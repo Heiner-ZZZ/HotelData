@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import type { HotelSearchResult } from '../../models/hotel-search.model';
@@ -13,6 +13,16 @@ export class HotelCardComponent {
   readonly hotel = input.required<HotelSearchResult>();
   readonly compareMode = input(false);
   readonly compareSelected = output<number>();
+
+  readonly imgError = signal(false);
+
+  readonly picsumUrl = computed(() =>
+    `https://picsum.photos/seed/${this.hotel().id}/400/250`
+  );
+
+  onImgError() {
+    this.imgError.set(true);
+  }
 
   readonly imageThemes = [
     'theme-amber',

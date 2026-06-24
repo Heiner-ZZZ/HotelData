@@ -16,7 +16,7 @@ function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
     location: dto.country_display_name,
     similarityScore: dto.similarity_score,
     reason: dto.reason,
-    imageUrl: dto.image_url,
+    imageUrl: dto.image_url || `https://picsum.photos/seed/${dto.prop_id}1/400/250`,
   };
 }
 

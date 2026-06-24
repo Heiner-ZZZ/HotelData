@@ -67,6 +67,7 @@ button {
 input,
 select {
   min-height: 2.75rem;
+  min-width: 0;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 0 0.875rem;

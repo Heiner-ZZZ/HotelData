@@ -1,5 +1,8 @@
 <article class="hotel-card surface-card">
-  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" aria-label="Abrir detalle del hotel">
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!imgError()" aria-label="Abrir detalle del hotel">
+    @if (!imgError()) {
+      <img class="card-bg-img" [src]="picsumUrl()" alt="" loading="lazy" (error)="onImgError()" />
+    }
     <div class="media-overlay">
       <span class="media-chip">Hotel {{ hotel().id }}</span>
       @if (hotel().minNightlyRate) {
@@ -40,7 +43,7 @@
 
         <div class="inline-links">
           <a [routerLink]="['/hotels', hotel().id]">Ver más</a>
-          <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: hotel().id }">Comparar</a>
+          <a [routerLink]="['/search']" [queryParams]="{ compare_ids: hotel().id }">Comparar</a>
         </div>
       </div>
 
