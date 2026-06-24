@@ -39,14 +39,14 @@ export const routes: Routes = [
           import('./features/hotel-search/hotel-search.routes').then((m) => m.HOTEL_SEARCH_ROUTES)
       },
       {
-        path: 'hotels',
-        loadChildren: () =>
-          import('./features/hotel-detail/hotel-detail.routes').then((m) => m.HOTEL_DETAIL_ROUTES)
-      },
-      {
         path: 'hotels/compare',
         loadChildren: () =>
           import('./features/hotel-compare/hotel-compare.routes').then((m) => m.HOTEL_COMPARE_ROUTES)
+      },
+      {
+        path: 'hotels',
+        loadChildren: () =>
+          import('./features/hotel-detail/hotel-detail.routes').then((m) => m.HOTEL_DETAIL_ROUTES)
       },
       {
         path: 'reservations',

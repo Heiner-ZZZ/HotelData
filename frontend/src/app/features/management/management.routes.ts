@@ -66,6 +66,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../billing/billing.routes').then((m) => m.BILLING_ROUTES)
   },
   {
+    path: 'manual-reservations',
+    loadChildren: () =>
+      import('../manual-reservations/manual-reservations.routes').then((m) => m.MANUAL_RESERVATIONS_ROUTES)
+  },
+  {
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)

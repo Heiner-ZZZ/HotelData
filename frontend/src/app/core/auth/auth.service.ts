@@ -12,6 +12,8 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
+  private readonly SESSION_FLAG_KEY = 'hoteldata_session';
+
   private readonly authStateSignal = signal<AuthState>({
     authenticated: false,
     user: null,
@@ -20,12 +22,49 @@ export class AuthService {
   });
   private readonly sessionLoadedSignal = signal(false);
 
+  /** Check if there's a saved session flag from a previous login. */
+  private _hasStoredSession(): boolean {
+    try {
+      return localStorage.getItem(this.SESSION_FLAG_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Save a flag so future page loads know a session may exist. */
+  private _saveSessionFlag(): void {
+    try {
+      localStorage.setItem(this.SESSION_FLAG_KEY, '1');
+    } catch { /* localStorage unavailable */ }
+  }
+
+  /** Clear the session flag (logout or session expired). */
+  private _clearSessionFlag(): void {
+    try {
+      localStorage.removeItem(this.SESSION_FLAG_KEY);
+    } catch { /* localStorage unavailable */ }
+  }
+
   readonly authState = this.authStateSignal.asReadonly();
   readonly currentUser = computed(() => this.authStateSignal().user);
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);
   readonly sessionLoaded = this.sessionLoadedSignal.asReadonly();
 
   loadSession() {
+    // If no stored session flag, skip the HTTP call entirely — avoids a
+    // browser console 401 log for first-time / anonymous visitors.
+    if (!this._hasStoredSession()) {
+      const anonymousState: AuthState = {
+        authenticated: false,
+        user: null,
+        session: null,
+        homeHref: null
+      };
+      this.authStateSignal.set(anonymousState);
+      this.sessionLoadedSignal.set(true);
+      return of(anonymousState);
+    }
+
     return this.http
       .get<AuthMeDto>(`${this.apiConfig.baseUrl}/auth/me`, { withCredentials: true })
       .pipe(
@@ -35,6 +74,8 @@ export class AuthService {
           this.sessionLoadedSignal.set(true);
         }),
         catchError(() => {
+          // Session flag was stale — session expired or invalidated
+          this._clearSessionFlag();
           const anonymousState: AuthState = {
             authenticated: false,
             user: null,
@@ -65,6 +106,9 @@ export class AuthService {
         tap((state) => {
           this.authStateSignal.set(state);
           this.sessionLoadedSignal.set(true);
+          if (state.authenticated) {
+            this._saveSessionFlag();
+          }
         })
       );
   }

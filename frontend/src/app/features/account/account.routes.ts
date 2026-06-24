@@ -15,5 +15,10 @@ export const ACCOUNT_ROUTES: Routes = [
     path: 'profile',
     loadComponent: () =>
       import('./pages/profile-page/profile-page').then((m) => m.ProfilePageComponent)
+  },
+  {
+    path: 'billing',
+    loadChildren: () =>
+      import('../billing/client-billing.routes').then((m) => m.CLIENT_BILLING_ROUTES)
   }
 ];
