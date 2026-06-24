@@ -1,16 +1,17 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { ReservationsListViewModel } from '../../models/reservations.model';
+import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
 import { ReservationsApiService, type DateHistoryEntry } from '../../services/reservations-api.service';
 
 function todayIso(): string {
@@ -33,6 +34,7 @@ function shiftDate(iso: string, days: number): string {
 })
 export class ReservationsListPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly formBuilder = inject(FormBuilder);
@@ -40,6 +42,14 @@ export class ReservationsListPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<ReservationsListViewModel | null>(null);
+  readonly stats = signal<ReservationStats | null>(null);
+  readonly statsLoading = signal(false);
+  readonly exporting = signal(false);
+
+  readonly isStaff = computed(() => {
+    const role = this.authService.currentUser()?.primaryRole;
+    return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
+  });
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     createdDate: ['', [Validators.required]]
@@ -47,6 +57,12 @@ export class ReservationsListPageComponent {
 
   // Current date filter (to sync between switchMap and next)
   readonly currentDateFilter = signal('');
+  readonly currentStatusFilter = signal('');
+
+  // Inline confirm/reject
+  readonly confirmingId = signal<string | null>(null);
+  readonly rejectingId = signal<string | null>(null);
+  readonly successMessage = signal('');
 
   // More menu (⋮)
   readonly showMenu = signal(false);
@@ -61,13 +77,15 @@ export class ReservationsListPageComponent {
       .pipe(
         map((params) => ({
           page: Number(params.get('page') ?? '1'),
-          createdDate: params.get('date') || ''
+          createdDate: params.get('date') || '',
+          status: params.get('status') || ''
         })),
-        distinctUntilChanged((a, b) => a.page === b.page && a.createdDate === b.createdDate),
-        switchMap(({ page, createdDate }) => {
+        distinctUntilChanged((a, b) => a.page === b.page && a.createdDate === b.createdDate && a.status === b.status),
+        switchMap(({ page, createdDate, status }) => {
           this.viewState.set('loading');
           this.currentDateFilter.set(createdDate || '');
-          return this.reservationsApi.getReservations(page, createdDate || undefined);
+          this.currentStatusFilter.set(status || '');
+          return this.reservationsApi.getReservations(page, createdDate || undefined, status || undefined);
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -78,6 +96,42 @@ export class ReservationsListPageComponent {
           this.viewState.set(data.items.length ? 'success' : 'empty');
         },
         error: () => this.viewState.set('error')
+      });
+
+    this.loadStats();
+  }
+
+  private loadStats() {
+    this.statsLoading.set(true);
+    this.reservationsApi
+      .getStats()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (stats) => {
+          this.stats.set(stats);
+          this.statsLoading.set(false);
+        },
+        error: () => this.statsLoading.set(false)
+      });
+  }
+
+  exportCsv() {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.reservationsApi
+      .exportCsv()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `reservas_export_${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+          this.exporting.set(false);
+        },
+        error: () => this.exporting.set(false)
       });
   }
 
@@ -97,19 +151,85 @@ export class ReservationsListPageComponent {
     this.applyFilter();
   }
 
-  applyFilter(): void {
-    const createdDate = this.dateForm.controls.createdDate.value;
+  filterPending(): void {
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
-      queryParams: { date: createdDate || null, page: null }
+      queryParams: { status: 'pending', date: null, page: null }
+    });
+  }
+
+  clearStatusFilter(): void {
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { status: null, page: null }
+    });
+  }
+
+  applyFilter(): void {
+    const createdDate = this.dateForm.controls.createdDate.value;
+    const status = this.currentStatusFilter();
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { status: status || null, date: createdDate || null, page: null }
     });
   }
 
   goToPage(page: number) {
     const createdDate = this.dateForm.controls.createdDate.value;
+    const status = this.currentStatusFilter();
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
-      queryParams: { date: createdDate || null, page: page > 1 ? page : null }
+      queryParams: { status: status || null, date: createdDate || null, page: page > 1 ? page : null }
+    });
+  }
+
+  confirmReservation(bookingId: string): void {
+    if (this.confirmingId()) return;
+    this.confirmingId.set(bookingId);
+    this.successMessage.set('');
+    this.reservationsApi.confirmReservation(bookingId).pipe(
+      switchMap(() => {
+        const date = this.currentDateFilter();
+        const status = this.currentStatusFilter();
+        return this.reservationsApi.getReservations(1, date || undefined, status || undefined);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (data) => {
+        this.data.set(data);
+        this.confirmingId.set(null);
+        this.successMessage.set('Reserva confirmada');
+        this.loadStats();
+        setTimeout(() => this.successMessage.set(''), 3000);
+      },
+      error: () => {
+        this.confirmingId.set(null);
+      }
+    });
+  }
+
+  rejectReservation(bookingId: string): void {
+    if (this.rejectingId()) return;
+    this.rejectingId.set(bookingId);
+    this.successMessage.set('');
+    this.reservationsApi.rejectReservation(bookingId).pipe(
+      switchMap(() => {
+        const date = this.currentDateFilter();
+        const status = this.currentStatusFilter();
+        return this.reservationsApi.getReservations(1, date || undefined, status || undefined);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (data) => {
+        this.data.set(data);
+        this.rejectingId.set(null);
+        this.successMessage.set('Reserva rechazada');
+        this.loadStats();
+        setTimeout(() => this.successMessage.set(''), 3000);
+      },
+      error: () => {
+        this.rejectingId.set(null);
+      }
     });
   }
 

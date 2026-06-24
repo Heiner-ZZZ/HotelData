@@ -242,6 +242,12 @@
   flex-wrap: wrap;
 }
 
+.planner-dates input {
+  width: 0;
+  flex: 1;
+  min-width: 0;
+}
+
 .planner-dates input::-webkit-calendar-picker-indicator {
   opacity: 0.75;
   cursor: pointer;
@@ -684,6 +690,18 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+.review-total-error {
+  color: var(--error, #e53935);
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.review-total-error strong {
+  color: var(--error, #e53935);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 /* ── Responsive ── */

@@ -496,3 +496,220 @@ button:disabled {
 .inline-link {
   color: var(--accent);
 }
+
+/* ─── Stats bar ─── */
+
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.stats-bar-loading {
+  gap: 0.5rem;
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 0.75rem;
+  min-width: 65px;
+  cursor: default;
+}
+
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 2rem;
+  background: var(--app-border);
+  flex-shrink: 0;
+}
+
+.stat-pending .stat-value { color: var(--warning, #f59e0b); }
+.stat-confirmed .stat-value { color: var(--success, #16a34a); }
+.stat-active .stat-value { color: #1463ff; }
+.stat-checked-in .stat-value { color: #6366f1; }
+.stat-checked-out .stat-value { color: #8b5cf6; }
+.stat-lost .stat-value { color: var(--muted-text); }
+.stat-total .stat-value { color: var(--app-text); }
+
+/* ─── Clickable stat ─── */
+.stat-clickable {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  border-radius: 10px;
+  transition: background 120ms, transform 120ms;
+  position: relative;
+
+  &:hover {
+    background: color-mix(in srgb, var(--warning, #f59e0b) 6%, transparent);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.stat-active-indicator {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--warning, #f59e0b);
+}
+
+/* ─── Toast ─── */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  animation: toast-in 220ms ease;
+  width: fit-content;
+}
+
+.toast-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Inline action buttons ─── */
+.cell-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.btn-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 120ms;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+}
+
+.btn-confirm {
+  &:hover:not(:disabled) {
+    border-color: var(--success, #16a34a);
+    color: var(--success, #16a34a);
+    background: rgba(22, 163, 74, 0.06);
+  }
+}
+
+.btn-reject {
+  &:hover:not(:disabled) {
+    border-color: var(--danger, #dc2626);
+    color: var(--danger, #dc2626);
+    background: rgba(220, 38, 38, 0.06);
+  }
+}
+
+/* ─── Row highlight for pending ─── */
+.row-pending {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 4%, transparent);
+}
+
+/* ─── Badges in table ─── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.badge-warning {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+  color: #d97706;
+}
+
+.badge-success {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+.badge-muted {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.badge-info {
+  background: rgba(20, 99, 255, 0.1);
+  color: #1463ff;
+}
+
+.spin {
+  animation: spin 800ms linear infinite;
+}

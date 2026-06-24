@@ -154,14 +154,32 @@
           </div>
 
           <div class="field-group two-col">
-            <label class="field" [class.field-error]="form.controls.guestName.invalid && form.controls.guestName.touched">
+            <label class="field guest-field" [class.field-error]="form.controls.guestName.invalid && form.controls.guestName.touched">
               <span class="field-label">Nombre completo</span>
               <div class="input-wrap">
                 <span class="material-symbols-outlined input-prefix">badge</span>
-                <input formControlName="guestName" placeholder="Ej: Juan Pérez" autocomplete="name" />
+                <input formControlName="guestName"
+                       placeholder="Ej: Juan Pérez"
+                       autocomplete="name"
+                       (focus)="guestSearchFocused.set(true); toggleGuestDropdown(true)"
+                       (blur)="guestSearchFocused.set(false); toggleGuestDropdown(false)"
+                       (input)="showGuestDropdown.set(true)" />
               </div>
               @if (form.controls.guestName.invalid && form.controls.guestName.touched) {
                 <span class="field-error-msg">El nombre es obligatorio</span>
+              }
+              @if (showGuestDropdown() && filteredGuestSuggestions().length > 0) {
+                <div class="guest-dropdown">
+                  @for (g of filteredGuestSuggestions(); track g.email) {
+                    <button type="button" class="guest-option" (mousedown)="selectGuest(g)">
+                      <span class="material-symbols-outlined guest-option-icon">person</span>
+                      <div class="guest-option-info">
+                        <strong>{{ g.name }}</strong>
+                        <span>{{ g.email }}</span>
+                      </div>
+                    </button>
+                  }
+                </div>
               }
             </label>
 
@@ -174,6 +192,16 @@
               @if (form.controls.guestEmail.invalid && form.controls.guestEmail.touched) {
                 <span class="field-error-msg">Ingresa un correo válido</span>
               }
+            </label>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <span class="field-label">Teléfono (opcional)</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">phone</span>
+                <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" />
+              </div>
             </label>
           </div>
         </section>
@@ -230,6 +258,12 @@
               <span class="review-label">Email</span>
               <strong>{{ form.controls.guestEmail.value }}</strong>
             </div>
+            @if (form.controls.guestPhone.value) {
+              <div class="review-item">
+                <span class="review-label">Teléfono</span>
+                <strong>{{ form.controls.guestPhone.value }}</strong>
+              </div>
+            }
             <div class="review-item">
               <span class="review-label">Entrada</span>
               <strong>{{ form.controls.checkInDate.value | date:'dd/MM/yyyy' }}</strong>
@@ -254,7 +288,24 @@
             }
           </div>
 
-          @if (computedNights() > 0) {
+          @if (preview(); as p) {
+            @if (p.available && p.totalPrice !== null) {
+              <div class="review-total">
+                <span>Total estimado</span>
+                <strong>{{ p.totalPrice | currency:p.currency }} ({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</strong>
+              </div>
+            } @else if (!p.available) {
+              <div class="review-total review-total-error">
+                <span class="material-symbols-outlined">error</span>
+                <strong>{{ p.availabilityMessage || 'Habitación no disponible' }}</strong>
+              </div>
+            }
+          } @else if (previewing()) {
+            <div class="review-total">
+              <span class="material-symbols-outlined loading-spin">sync</span>
+              <strong>Calculando disponibilidad...</strong>
+            </div>
+          } @else if (computedNights() > 0) {
             <div class="review-total">
               <span>Total de la estancia</span>
               <strong>{{ computedNights() }} {{ computedNights() === 1 ? 'noche' : 'noches' }}</strong>

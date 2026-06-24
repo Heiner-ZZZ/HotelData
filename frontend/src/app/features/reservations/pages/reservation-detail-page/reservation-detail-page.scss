@@ -13,6 +13,7 @@
 .action-row {
   grid-auto-flow: column;
   justify-content: start;
+  align-items: center;
 }
 
 .hero-grid {
@@ -81,11 +82,83 @@ button {
   background: var(--danger);
   color: #fff;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-action {
+  font-weight: 500;
+  font-size: 0.85rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-confirm {
+  border: 1px solid var(--success, #16a34a);
+  background: var(--success, #16a34a);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--success, #16a34a) 85%, black);
+  }
+}
+
+.btn-reject {
+  border: 1px solid var(--warning, #f59e0b);
+  background: var(--warning, #f59e0b);
+  color: #000;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--warning, #f59e0b) 85%, black);
+  }
+}
+
+.btn-cancel {
+  border: 1px solid var(--danger, #dc2626);
+  background: var(--danger, #dc2626);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger, #dc2626) 85%, black);
+  }
+}
+
+.btn-icon {
+  font-size: 1rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+}
+
+/* ─── Toast ─── */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: toast-slide-in 250ms ease;
+}
+
+.toast-success {
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  color: var(--success, #16a34a);
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  }
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .secondary-link {

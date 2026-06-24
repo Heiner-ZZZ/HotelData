@@ -1,4 +1,11 @@
 <div class="reservation-detail-page">
+  @if (successMessage()) {
+    <div class="toast toast-success">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ successMessage() }}
+    </div>
+  }
+
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando detalle de la reserva..." />
@@ -25,27 +32,44 @@
 
         <div class="action-row">
           <a routerLink="/reservations" class="secondary-link">Volver</a>
+          @if (canConfirm()) {
+            <button type="button" class="btn-action btn-confirm" (click)="confirmReservation()" [disabled]="confirmPending()">
+              <span class="material-symbols-outlined btn-icon">check_circle</span>
+              {{ confirmPending() ? 'Confirmando...' : 'Confirmar reserva' }}
+            </button>
+            <button type="button" class="btn-action btn-reject" (click)="rejectReservation()" [disabled]="rejectPending()">
+              <span class="material-symbols-outlined btn-icon">cancel</span>
+              {{ rejectPending() ? 'Rechazando...' : 'Rechazar reserva' }}
+            </button>
+          }
           @if (vm.canCancel) {
-            <button type="button" (click)="cancelReservation()" [disabled]="cancelPending()">
+            <button type="button" class="btn-action btn-cancel" (click)="cancelReservation()" [disabled]="cancelPending()">
+              <span class="material-symbols-outlined btn-icon">block</span>
               Cancelar solicitud
             </button>
           }
         </div>
 
-        <section class="hero-grid">
-          <article class="surface-card hero-card">
-            <span class="stat-label">Hotel</span>
-            <strong>{{ vm.hotelLabel }}</strong>
-          </article>
-          <article class="surface-card hero-card accent-card">
-            <span class="stat-label">Status</span>
-            <strong>{{ vm.status }}</strong>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="stat-label">Origen</span>
-            <strong>{{ vm.bookingSource }}</strong>
-          </article>
-        </section>
+          <section class="hero-grid">
+            <article class="surface-card hero-card">
+              <span class="stat-label">Hotel</span>
+              <strong>{{ vm.hotelLabel }}</strong>
+            </article>
+            <article class="surface-card hero-card accent-card">
+              <span class="stat-label">Status</span>
+              <strong>{{ vm.status }}</strong>
+            </article>
+            <article class="surface-card hero-card">
+              <span class="stat-label">Origen</span>
+              <strong>{{ vm.bookingSource }}</strong>
+            </article>
+            @if (vm.totalPrice !== null) {
+              <article class="surface-card hero-card">
+                <span class="stat-label">Total</span>
+                <strong>{{ vm.totalPrice | currency:vm.currency }}</strong>
+              </article>
+            }
+          </section>
 
         <section class="insight-grid">
           <article class="surface-card panel">
@@ -70,6 +94,12 @@
                 <tbody>
                   <tr><th>Nombre</th><td>{{ vm.guestName }}</td></tr>
                   <tr><th>Email</th><td>{{ vm.guestEmail }}</td></tr>
+                  @if (vm.guestPhone) {
+                    <tr><th>Teléfono</th><td>{{ vm.guestPhone }}</td></tr>
+                  }
+                  @if (vm.totalPrice !== null) {
+                    <tr><th>Total</th><td>{{ vm.totalPrice | currency:vm.currency }} ({{ vm.totalNights }} {{ vm.totalNights === 1 ? 'noche' : 'noches' }})</td></tr>
+                  }
                   <tr><th>Reserva manual</th><td>{{ vm.isManual ? 'Sí' : 'No' }}</td></tr>
                   @if (vm.manualReservationId) {
                     <tr><th>Manual ID</th><td>{{ vm.manualReservationId }}</td></tr>

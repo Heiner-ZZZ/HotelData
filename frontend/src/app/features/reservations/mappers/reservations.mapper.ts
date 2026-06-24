@@ -4,6 +4,8 @@ import type {
   ReservationDetailDto,
   ReservationListItemDto,
   ReservationOptionsDto,
+  ReservationPreviewDto,
+  ReservationStatsDto,
   ReservationsListDto
 } from '../models/reservations.dto';
 import type {
@@ -11,6 +13,7 @@ import type {
   ReservationDetailViewModel,
   ReservationHotelOption,
   ReservationListItem,
+  ReservationStats,
   ReservationsListViewModel
 } from '../models/reservations.model';
 
@@ -52,6 +55,7 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     prop_id: input.propId,
     guest_name: input.guestName,
     guest_email: input.guestEmail,
+    guest_phone: input.guestPhone,
     check_in_date: input.checkInDate,
     check_out_date: input.checkOutDate,
     adults: input.adults,
@@ -65,7 +69,35 @@ export function mapReservationCreateResult(dto: ReservationCreateDto) {
   return {
     bookingId: dto.booking_id,
     status: dto.status,
+    totalPrice: dto.total_price,
+    currency: dto.currency,
+    totalNights: dto.total_nights,
     manualReservationId: dto.manual_reservation_id
+  };
+}
+
+export function mapReservationPreview(dto: ReservationPreviewDto) {
+  return {
+    available: dto.available,
+    availabilityMessage: dto.availability_message,
+    totalPrice: dto.total_price,
+    currency: dto.currency,
+    totalNights: dto.total_nights
+  };
+}
+
+export function mapReservationStats(dto: ReservationStatsDto): ReservationStats {
+  return {
+    pending: dto.pending,
+    confirmed: dto.confirmed,
+    cancelled: dto.cancelled,
+    rejected: dto.rejected,
+    checkedIn: dto.checked_in,
+    checkedOut: dto.checked_out,
+    total: dto.total,
+    active: dto.active,
+    completed: dto.completed,
+    lost: dto.lost
   };
 }
 
@@ -83,9 +115,15 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     createdAt: formatDateTime(dto.booking.created_at),
     guestName: dto.guest?.guest_name || dto.booking.guest_name,
     guestEmail: dto.guest?.guest_email || dto.booking.guest_email,
+    guestPhone: dto.guest?.guest_phone || dto.booking.guest_phone || '',
+    totalPrice: dto.booking.total_price ?? null,
+    currency: dto.booking.currency || 'USD',
+    totalNights: dto.booking.total_nights || 0,
     isManual: Boolean(dto.manual),
     manualReservationId: dto.manual?.manual_reservation_id || null,
     canCancel: dto.can_cancel,
+    canConfirm: false,
+    canReject: false,
     history: dto.history.map((item) => ({
       status: item.status,
       changedAt: formatDateTime(item.changed_at),

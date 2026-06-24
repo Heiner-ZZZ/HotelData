@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -8,12 +8,12 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ReservationCreateInput, ReservationHotelOption } from '../../models/reservations.model';
+import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -27,9 +27,16 @@ export class ReservationNewPageComponent {
 
   readonly loading = signal(true);
   readonly submitting = signal(false);
+  readonly previewing = signal(false);
   readonly errorMessage = signal('');
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
+  readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review'>('details');
+
+  /** Guest autocomplete: cached recent guests from sessionStorage */
+  readonly guestSuggestions = signal<Array<{ name: string; email: string; phone: string }>>([]);
+  readonly showGuestDropdown = signal(false);
+  readonly guestSearchFocused = signal(false);
 
   readonly selectedHotel = computed(() => {
     const selectedId = this.form.controls.propId.value;
@@ -60,6 +67,7 @@ export class ReservationNewPageComponent {
     propId: [0, [Validators.required, Validators.min(1)]],
     guestName: ['', [Validators.required]],
     guestEmail: ['', [Validators.required, Validators.email]],
+    guestPhone: [''],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
@@ -70,6 +78,7 @@ export class ReservationNewPageComponent {
 
   constructor() {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
+    this._loadGuestSuggestions();
     this.reservationsApi
       .getOptions()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -94,10 +103,45 @@ export class ReservationNewPageComponent {
       return;
     }
     this.step.set('review');
+    this.loadPreview();
+  }
+
+  private loadPreview() {
+    const payload = this.buildPayload();
+    this.previewing.set(true);
+    this.preview.set(null);
+    this.reservationsApi
+      .previewReservation(payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.preview.set(result);
+          this.previewing.set(false);
+        },
+        error: () => {
+          this.previewing.set(false);
+        }
+      });
   }
 
   backToDetails() {
     this.step.set('details');
+  }
+
+  private buildPayload(): ReservationCreateInput {
+    const v = this.form.getRawValue();
+    return {
+      propId: v.propId,
+      guestName: v.guestName,
+      guestEmail: v.guestEmail,
+      guestPhone: v.guestPhone,
+      checkInDate: v.checkInDate,
+      checkOutDate: v.checkOutDate,
+      adults: v.adults,
+      children: v.children,
+      rooms: v.rooms,
+      comment: v.comment
+    };
   }
 
   submit() {
@@ -106,21 +150,14 @@ export class ReservationNewPageComponent {
       return;
     }
 
+    // Save guest data for future autocomplete
+    const v = this.form.getRawValue();
+    this._saveGuestSuggestion(v.guestName, v.guestEmail, v.guestPhone);
+
     this.submitting.set(true);
     this.errorMessage.set('');
 
-    const value = this.form.getRawValue();
-    const payload: ReservationCreateInput = {
-      propId: value.propId,
-      guestName: value.guestName,
-      guestEmail: value.guestEmail,
-      checkInDate: value.checkInDate,
-      checkOutDate: value.checkOutDate,
-      adults: value.adults,
-      children: value.children,
-      rooms: value.rooms,
-      comment: value.comment
-    };
+    const payload = this.buildPayload();
 
     this.reservationsApi
       .createReservation(payload)
@@ -134,6 +171,58 @@ export class ReservationNewPageComponent {
           this.submitting.set(false);
         }
       });
+  }
+
+  /** Load recently used guests from localStorage for autocomplete suggestions */
+  private _loadGuestSuggestions() {
+    try {
+      const raw = localStorage.getItem('hoteldata_recent_guests');
+      if (raw) {
+        this.guestSuggestions.set(JSON.parse(raw));
+      }
+    } catch {
+      // ignore corrupt localStorage
+    }
+  }
+
+  /** Save a guest to localStorage for future autocomplete */
+  private _saveGuestSuggestion(name: string, email: string, phone: string) {
+    if (!name || !email) return;
+    const current = this.guestSuggestions();
+    const filtered = current.filter(g => g.email !== email);
+    const updated = [{ name, email, phone }, ...filtered].slice(0, 10);
+    this.guestSuggestions.set(updated);
+    try {
+      localStorage.setItem('hoteldata_recent_guests', JSON.stringify(updated));
+    } catch {
+      // localStorage full or unavailable
+    }
+  }
+
+  /** Filter guest suggestions based on user input */
+  readonly filteredGuestSuggestions = computed(() => {
+    const query = this.form.controls.guestName.value.toLowerCase().trim();
+    if (!query || query.length < 1) return this.guestSuggestions();
+    return this.guestSuggestions().filter(
+      g => g.name.toLowerCase().includes(query) || g.email.toLowerCase().includes(query)
+    );
+  });
+
+  /** Select a guest from the autocomplete dropdown, filling name + email + phone */
+  selectGuest(guest: { name: string; email: string; phone: string }) {
+    this.form.controls.guestName.setValue(guest.name);
+    this.form.controls.guestEmail.setValue(guest.email);
+    this.form.controls.guestPhone.setValue(guest.phone || '');
+    this.showGuestDropdown.set(false);
+  }
+
+  /** Toggle guest dropdown visibility */
+  toggleGuestDropdown(show: boolean) {
+    // Small delay to allow click events on dropdown items
+    setTimeout(() => {
+      if (!show && !this.guestSearchFocused()) return;
+      this.showGuestDropdown.set(show);
+    }, 150);
   }
 
   adjustValue(field: 'adults' | 'children' | 'rooms', delta: number) {

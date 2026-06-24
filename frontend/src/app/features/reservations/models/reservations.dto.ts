@@ -42,7 +42,18 @@ export interface ReservationOptionsDto {
 export interface ReservationCreateDto {
   booking_id: string;
   status: string;
+  total_price: number | null;
+  currency: string;
+  total_nights: number;
   manual_reservation_id: string | null;
+}
+
+export interface ReservationPreviewDto {
+  available: boolean;
+  availability_message: string | null;
+  total_price: number | null;
+  currency: string;
+  total_nights: number;
 }
 
 export interface ReservationDetailDto {
@@ -53,17 +64,23 @@ export interface ReservationDetailDto {
     booking_source: string;
     guest_name: string;
     guest_email: string;
+    guest_phone: string;
+    room_type_id: string;
     check_in_date: string;
     check_out_date: string;
     adults: number;
     children: number;
     rooms: number;
     comment: string;
+    total_price: number | null;
+    currency: string;
+    total_nights: number;
     created_at: string;
   };
   guest: {
     guest_name: string;
     guest_email: string;
+    guest_phone: string;
   } | null;
   history: Array<{
     status: string;
@@ -79,6 +96,24 @@ export interface ReservationDetailDto {
 }
 
 export interface ReservationCancelDto {
+  booking_id: string;
+  status: string;
+}
+
+export interface ReservationStatsDto {
+  pending: number;
+  confirmed: number;
+  cancelled: number;
+  rejected: number;
+  checked_in: number;
+  checked_out: number;
+  total: number;
+  active: number;
+  completed: number;
+  lost: number;
+}
+
+export interface ReservationConfirmRejectDto {
   booking_id: string;
   status: string;
 }

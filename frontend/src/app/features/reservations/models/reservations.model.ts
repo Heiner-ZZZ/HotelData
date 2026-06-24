@@ -29,12 +29,34 @@ export interface ReservationCreateInput {
   propId: number;
   guestName: string;
   guestEmail: string;
+  guestPhone: string;
   checkInDate: string;
   checkOutDate: string;
   adults: number;
   children: number;
   rooms: number;
   comment: string;
+}
+
+export interface ReservationPreview {
+  available: boolean;
+  availabilityMessage: string | null;
+  totalPrice: number | null;
+  currency: string;
+  totalNights: number;
+}
+
+export interface ReservationStats {
+  pending: number;
+  confirmed: number;
+  cancelled: number;
+  rejected: number;
+  checkedIn: number;
+  checkedOut: number;
+  total: number;
+  active: number;
+  completed: number;
+  lost: number;
 }
 
 export interface ReservationDetailViewModel {
@@ -50,9 +72,15 @@ export interface ReservationDetailViewModel {
   createdAt: string;
   guestName: string;
   guestEmail: string;
+  guestPhone: string;
+  totalPrice: number | null;
+  currency: string;
+  totalNights: number;
   isManual: boolean;
   manualReservationId: string | null;
   canCancel: boolean;
+  canConfirm: boolean;
+  canReject: boolean;
   history: Array<{
     status: string;
     changedAt: string;
