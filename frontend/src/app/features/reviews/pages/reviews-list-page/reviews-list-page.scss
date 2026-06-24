@@ -92,3 +92,48 @@ button {
   font-weight: 600;
   color: var(--warning);
 }
+
+/* Sentiment badges */
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sentiment-positive {
+  background: #e6f7ee;
+  color: #0f8a60;
+  border: 1px solid #b7e0c8;
+}
+
+.sentiment-neutral {
+  background: #fef9e7;
+  color: #b8860b;
+  border: 1px solid #f0d78c;
+}
+
+.sentiment-negative {
+  background: #fff2f1;
+  color: #c93d32;
+  border: 1px solid #f5c8c3;
+}
+
+.sentiment-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sentiment-score {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.muted-text {
+  color: var(--muted-text);
+  font-size: 0.85rem;
+}

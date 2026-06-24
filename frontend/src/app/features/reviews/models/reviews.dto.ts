@@ -20,6 +20,10 @@ export interface ReviewItemDto {
   moderation_status: string;
   staff_response: string | null;
   staff_response_at: string | null;
+  sentiment_label: string | null;
+  sentiment_score: number | null;
+  sentiment_confidence: number | null;
+  sentiment_analyzed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +40,10 @@ export interface ReviewDetailDto {
   moderation_status: string;
   staff_response: string | null;
   staff_response_at: string | null;
+  sentiment_label: string | null;
+  sentiment_score: number | null;
+  sentiment_confidence: number | null;
+  sentiment_analyzed_at: string | null;
   created_at: string;
   updated_at: string;
 }

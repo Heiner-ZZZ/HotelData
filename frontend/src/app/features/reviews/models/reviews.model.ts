@@ -18,6 +18,8 @@ export interface ReviewListItem {
   comment: string;
   moderationStatus: string;
   staffResponse: string | null;
+  sentimentLabel: string | null;
+  sentimentScore: number | null;
   createdAt: string;
 }
 
@@ -33,6 +35,10 @@ export interface ReviewDetailViewModel {
   moderationStatus: string;
   staffResponse: string | null;
   staffResponseAt: string | null;
+  sentimentLabel: string | null;
+  sentimentScore: number | null;
+  sentimentConfidence: number | null;
+  sentimentAnalyzedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

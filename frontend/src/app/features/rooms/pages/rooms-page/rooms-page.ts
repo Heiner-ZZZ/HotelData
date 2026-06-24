@@ -55,6 +55,19 @@ export class RoomsPageComponent {
     isActive: [true]
   });
 
+  readonly editForm = this.formBuilder.nonNullable.group({
+    roomTypeId: ['', [Validators.required]],
+    name: ['', [Validators.required]],
+    description: [''],
+    maxAdults: [2, [Validators.required, Validators.min(1)]],
+    maxChildren: [0, [Validators.required, Validators.min(0)]],
+    baseCapacity: [2, [Validators.required, Validators.min(1)]],
+    isActive: [true]
+  });
+
+  readonly showEditModal = signal(false);
+  readonly savingEdit = signal(false);
+
   constructor() {
     this.route.queryParamMap
       .pipe(
@@ -88,6 +101,60 @@ export class RoomsPageComponent {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null }
+    });
+  }
+
+  startEdit(roomType: { id: string; name: string; description: string; capacityLabel: string; activeLabel: string }) {
+    const parts = roomType.capacityLabel.match(/(\d+)/g);
+    this.editForm.setValue({
+      roomTypeId: roomType.id,
+      name: roomType.name,
+      description: roomType.description === 'Sin descripción' ? '' : roomType.description,
+      maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
+      maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
+      baseCapacity: parts ? Number(parts[0]) : 2,
+      isActive: roomType.activeLabel === 'Sí'
+    });
+    this.showEditModal.set(true);
+  }
+
+  cancelEdit() {
+    this.showEditModal.set(false);
+    this.editForm.reset();
+  }
+
+  saveEdit() {
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    const value = this.editForm.getRawValue();
+    this.savingEdit.set(true);
+    this.api.updateRoomType(value.roomTypeId, {
+      name: value.name,
+      description: value.description,
+      maxAdults: value.maxAdults,
+      maxChildren: value.maxChildren,
+      baseCapacity: value.baseCapacity,
+      isActive: value.isActive
+    }).pipe(
+      switchMap(() => {          const current = this.viewModel();
+          return current ? this.api.getRooms(current.propId) : of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (rooms) => {
+        this.viewModel.set(rooms);
+        this.message.set('Tipo de habitación actualizado');
+        this.errorMessage.set('');
+        this.savingEdit.set(false);
+        this.showEditModal.set(false);
+      },
+      error: (error: ApiError) => {
+        this.errorMessage.set(error.message || 'No fue posible actualizar el tipo de habitación.');
+        this.message.set('');
+        this.savingEdit.set(false);
+      }
     });
   }
 

@@ -65,6 +65,7 @@
                 <tr>
                   <th>Huésped</th>
                   <th>Puntaje</th>
+                  <th>Sentimiento</th>
                   <th>Reseña</th>
                   <th>Estado</th>
                   <th>Fecha</th>
@@ -77,6 +78,22 @@
                     <td>{{ item.userName }}</td>
                     <td>
                       <span class="stars">{{ item.rating }}/5</span>
+                    </td>
+                    <td>
+                      @if (item.sentimentLabel) {
+                        <span class="sentiment-badge" [class.sentiment-positive]="item.sentimentLabel === 'positive'" [class.sentiment-neutral]="item.sentimentLabel === 'neutral'" [class.sentiment-negative]="item.sentimentLabel === 'negative'">
+                          <span class="sentiment-icon">{{
+                            item.sentimentLabel === 'positive' ? '😊' :
+                            item.sentimentLabel === 'neutral' ? '😐' : '😞'
+                          }}</span>
+                          <span>{{ item.sentimentLabel === 'positive' ? 'Positivo' : item.sentimentLabel === 'neutral' ? 'Neutral' : 'Negativo' }}</span>
+                          @if (item.sentimentScore != null) {
+                            <span class="sentiment-score">{{ (item.sentimentScore * 100).toFixed(0) }}%</span>
+                          }
+                        </span>
+                      } @else {
+                        <span class="muted-text">—</span>
+                      }
                     </td>
                     <td>
                       <strong>{{ item.title }}</strong>

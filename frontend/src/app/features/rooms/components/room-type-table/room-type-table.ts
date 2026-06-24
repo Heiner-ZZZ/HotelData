@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import type { RoomTypeItem } from '../../models/rooms.model';
 
@@ -10,4 +10,9 @@ import type { RoomTypeItem } from '../../models/rooms.model';
 })
 export class RoomTypeTableComponent {
   readonly items = input<RoomTypeItem[]>([]);
+  readonly editRoom = output<RoomTypeItem>();
+
+  onEdit(room: RoomTypeItem) {
+    this.editRoom.emit(room);
+  }
 }

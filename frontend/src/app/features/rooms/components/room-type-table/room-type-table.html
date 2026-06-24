@@ -7,6 +7,7 @@
         <th>Descripción</th>
         <th>Capacidad</th>
         <th>Estado</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -29,6 +30,11 @@
               <span class="material-symbols-outlined badge-icon">{{ room.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
               {{ room.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
             </span>
+          </td>
+          <td class="cell-action">
+            <button type="button" class="btn-icon-edit" (click)="onEdit(room)" title="Editar tipo de habitación">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
           </td>
         </tr>
       }

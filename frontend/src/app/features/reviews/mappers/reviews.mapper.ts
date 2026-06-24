@@ -13,6 +13,8 @@ function mapReviewItem(item: ReviewItemDto): ReviewListItem {
     comment: item.comment,
     moderationStatus: item.moderation_status,
     staffResponse: item.staff_response,
+    sentimentLabel: item.sentiment_label,
+    sentimentScore: item.sentiment_score,
     createdAt: formatDateTime(item.created_at),
   };
 }
@@ -42,6 +44,10 @@ export function mapReviewDetail(dto: ReviewDetailDto): ReviewDetailViewModel {
     moderationStatus: dto.moderation_status,
     staffResponse: dto.staff_response,
     staffResponseAt: dto.staff_response_at,
+    sentimentLabel: dto.sentiment_label,
+    sentimentScore: dto.sentiment_score,
+    sentimentConfidence: dto.sentiment_confidence,
+    sentimentAnalyzedAt: dto.sentiment_analyzed_at,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };

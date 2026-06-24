@@ -36,10 +36,27 @@
               <div class="stars">{{ r.rating }}/5 estrellas</div>
               <div class="muted-text">{{ r.createdAt }}</div>
             </div>
-            <app-status-badge
-              [tone]="r.moderationStatus === 'approved' ? 'success' : r.moderationStatus === 'rejected' ? 'danger' : 'warning'"
-              [label]="r.moderationStatus === 'approved' ? 'Aprobada' : r.moderationStatus === 'rejected' ? 'Rechazada' : 'Pendiente'"
-            />
+            <div class="review-badges">
+              @if (r.sentimentLabel) {
+                <span class="sentiment-badge" [class.sentiment-positive]="r.sentimentLabel === 'positive'" [class.sentiment-neutral]="r.sentimentLabel === 'neutral'" [class.sentiment-negative]="r.sentimentLabel === 'negative'">
+                  <span>{{
+                    r.sentimentLabel === 'positive' ? '😊' :
+                    r.sentimentLabel === 'neutral' ? '😐' : '😞'
+                  }}</span>
+                  <span>{{ r.sentimentLabel === 'positive' ? 'Positivo' : r.sentimentLabel === 'neutral' ? 'Neutral' : 'Negativo' }}</span>
+                  @if (r.sentimentScore != null) {
+                    <span class="sentiment-score">{{ (r.sentimentScore * 100).toFixed(0) }}%</span>
+                  }
+                  @if (r.sentimentConfidence != null) {
+                    <span class="sentiment-conf">conf: {{ (r.sentimentConfidence * 100).toFixed(0) }}%</span>
+                  }
+                </span>
+              }
+              <app-status-badge
+                [tone]="r.moderationStatus === 'approved' ? 'success' : r.moderationStatus === 'rejected' ? 'danger' : 'warning'"
+                [label]="r.moderationStatus === 'approved' ? 'Aprobada' : r.moderationStatus === 'rejected' ? 'Rechazada' : 'Pendiente'"
+              />
+            </div>
           </div>
 
           <h3>{{ r.title }}</h3>

@@ -168,7 +168,7 @@
             </div>
           </div>
           @if (vm.roomTypes.length) {
-            <app-room-type-table [items]="vm.roomTypes" />
+            <app-room-type-table [items]="vm.roomTypes" (editRoom)="startEdit($event)" />
           } @else {
             <app-empty-state
               icon="meeting_room"
@@ -228,5 +228,60 @@
         </section>
       }
     }
+  }
+
+  <!-- ═══ Edit Modal ═══ -->
+  @if (showEditModal()) {
+    <div class="modal-overlay" (click)="cancelEdit()">
+      <div class="modal-panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">edit</span>
+          <div>
+            <h2>Editar tipo de habitación</h2>
+            <p>{{ editForm.controls.roomTypeId.value }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="form-grid">
+          <label class="field">
+            <span class="field-label">Nombre</span>
+            <input formControlName="name" placeholder="Ej: Suite Premium">
+          </label>
+          <label class="field">
+            <span class="field-label">Descripción</span>
+            <input formControlName="description" placeholder="Opcional">
+          </label>
+          <label class="field">
+            <span class="field-label">Adultos máx.</span>
+            <input type="number" min="1" formControlName="maxAdults">
+          </label>
+          <label class="field">
+            <span class="field-label">Niños máx.</span>
+            <input type="number" min="0" formControlName="maxChildren">
+          </label>
+          <label class="field">
+            <span class="field-label">Capacidad base</span>
+            <input type="number" min="1" formControlName="baseCapacity">
+          </label>
+          <label class="field checkbox-field">
+            <span class="field-label">Activo</span>
+            <input type="checkbox" formControlName="isActive">
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="cancelEdit()">Cancelar</button>
+            <button type="submit" class="btn-primary" [disabled]="savingEdit()">
+              @if (savingEdit()) {
+                <span class="material-symbols-outlined spin">progress_activity</span>
+              } @else {
+                <span class="material-symbols-outlined">save</span>
+              }
+              Guardar cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   }
 </div>

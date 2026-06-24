@@ -46,4 +46,26 @@ export class RoomsApiService {
       { withCredentials: true }
     );
   }
+
+  updateRoomType(roomTypeId: string, payload: {
+    name: string;
+    description: string;
+    maxAdults: number;
+    maxChildren: number;
+    baseCapacity: number;
+    isActive: boolean;
+  }) {
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
+      {
+        name: payload.name,
+        description: payload.description,
+        max_adults: payload.maxAdults,
+        max_children: payload.maxChildren,
+        base_capacity: payload.baseCapacity,
+        is_active: payload.isActive,
+      },
+      { withCredentials: true }
+    );
+  }
 }
