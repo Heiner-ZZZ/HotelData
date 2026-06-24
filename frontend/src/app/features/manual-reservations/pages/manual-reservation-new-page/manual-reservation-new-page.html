@@ -1,0 +1,289 @@
+<div class="manual-page">
+  <div class="page-head">
+    <div class="page-head-left">
+      <span class="material-symbols-outlined page-icon">edit_note</span>
+      <div>
+        <h1>Nueva reserva manual</h1>
+        <p class="page-desc">Registra una reserva directa (walk-in, teléfono, cortesía) para un huésped</p>
+      </div>
+    </div>
+    <a routerLink="/management/recepcion" class="btn-outline">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Volver a recepción
+    </a>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state surface-card">
+      <span class="material-symbols-outlined spin">progress_activity</span>
+      <p>Cargando datos del formulario...</p>
+    </div>
+  } @else {
+    @if (errorMessage()) {
+      <div class="alert alert-error">
+        <span class="material-symbols-outlined">error</span>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    @if (!errorMessage()) {
+      <form [formGroup]="form" (ngSubmit)="submit()" class="manual-form" novalidate>
+        <!-- Hotel & Room -->
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">hotel</span>
+            <div>
+              <h2>Propiedad y habitación</h2>
+              <p>Selecciona el hotel y tipo de habitación</p>
+            </div>
+          </div>
+
+          <div class="field-group two-col">
+            <label class="field" [class.field-error]="form.controls.propId.invalid && form.controls.propId.touched">
+              <span class="field-label">Hotel</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">location_on</span>
+                <select formControlName="propId" (change)="onHotelChange()">
+                  <option [ngValue]="0">Seleccionar hotel</option>
+                  @for (opt of hotelOptions(); track opt.propId) {
+                    <option [ngValue]="opt.propId">{{ opt.label }}</option>
+                  }
+                </select>
+                <span class="material-symbols-outlined select-arrow">expand_more</span>
+              </div>
+              @if (form.controls.propId.invalid && form.controls.propId.touched) {
+                <span class="field-error-msg">Selecciona un hotel</span>
+              }
+            </label>
+
+            <label class="field" [class.field-error]="form.controls.roomTypeId.invalid && form.controls.roomTypeId.touched">
+              <span class="field-label">Tipo de habitación</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">bed</span>
+                @if (roomTypesLoading()) {
+                  <span class="material-symbols-outlined spin" style="font-size:1.1rem;color:var(--muted-text)">progress_activity</span>
+                }
+                <select formControlName="roomTypeId" [disabled]="roomTypesLoading()">
+                  <option value="">Seleccionar</option>
+                  @for (rt of roomTypeOptions(); track rt.roomTypeId) {
+                    <option [value]="rt.roomTypeId">{{ rt.name }} ({{ rt.maxAdults }} adulto{{ rt.maxAdults !== 1 ? 's' : '' }})</option>
+                  }
+                </select>
+                <span class="material-symbols-outlined select-arrow">expand_more</span>
+              </div>
+              @if (form.controls.roomTypeId.invalid && form.controls.roomTypeId.touched) {
+                <span class="field-error-msg">Selecciona un tipo de habitación</span>
+              }
+            </label>
+          </div>
+        </section>
+
+        <!-- Dates & Occupancy -->
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">calendar_month</span>
+            <div>
+              <h2>Fechas y ocupación</h2>
+              <p>Check-in, check-out y número de huéspedes</p>
+            </div>
+          </div>
+
+          <div class="field-group two-col">
+            <div class="field" [class.field-error]="form.controls.checkInDate.invalid && form.controls.checkInDate.touched">
+              <span class="field-label">Fecha de entrada</span>
+              <div class="date-trigger-wrap" (click)="triggerDatePicker('checkInDate')">
+                <span class="material-symbols-outlined date-trigger-icon">calendar_month</span>
+                @if (form.controls.checkInDate.value) {
+                  <span class="date-trigger-text">{{ formatDate(form.controls.checkInDate.value) }}</span>
+                } @else {
+                  <span class="date-trigger-placeholder">Seleccionar fecha</span>
+                }
+                <span class="material-symbols-outlined date-trigger-chevron">edit_calendar</span>
+              </div>
+              <input
+                [id]="triggerMap.checkIn.forId"
+                class="date-hidden-input"
+                type="date"
+                [attr.min]="today"
+                [formControl]="form.controls.checkInDate"
+                tabindex="-1"
+              />
+              @if (form.controls.checkInDate.invalid && form.controls.checkInDate.touched) {
+                <span class="field-error-msg">Campo obligatorio</span>
+              }
+            </div>
+
+            <div class="field" [class.field-error]="form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched">
+              <span class="field-label">Fecha de salida</span>
+              <div class="date-trigger-wrap" (click)="triggerDatePicker('checkOutDate')">
+                <span class="material-symbols-outlined date-trigger-icon">calendar_month</span>
+                @if (form.controls.checkOutDate.value) {
+                  <span class="date-trigger-text">{{ formatDate(form.controls.checkOutDate.value) }}</span>
+                } @else {
+                  <span class="date-trigger-placeholder">Seleccionar fecha</span>
+                }
+                <span class="material-symbols-outlined date-trigger-chevron">edit_calendar</span>
+              </div>
+              <input
+                [id]="triggerMap.checkOut.forId"
+                class="date-hidden-input"
+                type="date"
+                [attr.min]="form.controls.checkInDate.value || today"
+                [formControl]="form.controls.checkOutDate"
+                tabindex="-1"
+              />
+              @if (form.controls.checkOutDate.invalid && form.controls.checkOutDate.touched) {
+                <span class="field-error-msg">Campo obligatorio</span>
+              }
+            </div>
+          </div>
+
+          @if (form.errors?.['dateRangeInvalid'] && form.controls.checkOutDate.touched) {
+            <div class="alert alert-error" style="margin-top:-0.5rem">
+              <span class="material-symbols-outlined">calendar_month</span>
+              <span>{{ form.errors?.['dateRangeInvalid'] }}</span>
+            </div>
+          }
+
+          @if (computedNights() > 0) {
+            <div class="nights-display">
+              <span class="material-symbols-outlined">nightstay</span>
+              <strong>{{ computedNights() }} {{ computedNights() === 1 ? 'noche' : 'noches' }}</strong>
+            </div>
+          }
+
+          <div class="occupancy-steppers">
+            <div class="stepper-item">
+              <span class="stepper-label">
+                <span class="material-symbols-outlined stepper-icon">person</span>
+                Adultos
+              </span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('adults', -1)" [disabled]="form.controls.adults.value <= 1">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.adults.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('adults', 1)" [disabled]="form.controls.adults.value >= 20">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="stepper-item">
+              <span class="stepper-label">
+                <span class="material-symbols-outlined stepper-icon">child_care</span>
+                Niños
+              </span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('children', -1)" [disabled]="form.controls.children.value <= 0">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.children.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('children', 1)" [disabled]="form.controls.children.value >= 10">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="stepper-item">
+              <span class="stepper-label">
+                <span class="material-symbols-outlined stepper-icon">meeting_room</span>
+                Habitaciones
+              </span>
+              <div class="stepper">
+                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', -1)" [disabled]="form.controls.rooms.value <= 1">
+                  <span class="material-symbols-outlined">remove</span>
+                </button>
+                <span class="stepper-value">{{ form.controls.rooms.value }}</span>
+                <button type="button" class="stepper-btn" (click)="adjustValue('rooms', 1)" [disabled]="form.controls.rooms.value >= 10">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Guest Info -->
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">person</span>
+            <div>
+              <h2>Datos del huésped</h2>
+              <p>Información de contacto del viajero</p>
+            </div>
+          </div>
+
+          <div class="field-group two-col">
+            <label class="field" [class.field-error]="form.controls.guestName.invalid && form.controls.guestName.touched">
+              <span class="field-label">Nombre completo</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">badge</span>
+                <input formControlName="guestName" placeholder="Ej: Juan Pérez" />
+              </div>
+              @if (form.controls.guestName.invalid && form.controls.guestName.touched) {
+                <span class="field-error-msg">El nombre es obligatorio</span>
+              }
+            </label>
+
+            <label class="field" [class.field-error]="form.controls.guestEmail.invalid && form.controls.guestEmail.touched">
+              <span class="field-label">Correo electrónico</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">mail</span>
+                <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" />
+              </div>
+              @if (form.controls.guestEmail.invalid && form.controls.guestEmail.touched) {
+                <span class="field-error-msg">Ingresa un correo válido</span>
+              }
+            </label>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <span class="field-label">Teléfono (opcional)</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">phone</span>
+                <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" />
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Notes -->
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">notes</span>
+            <div>
+              <h2>Notas</h2>
+              <p>Motivo de la reserva manual o requerimientos especiales</p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <div class="input-wrap">
+                <textarea formControlName="comment" rows="3" placeholder="Ej: Reserva walk-in sin confirmación previa, huésped frecuente..."></textarea>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Submit -->
+        <div class="form-footer">
+          <button type="button" class="btn-outline" routerLink="/management/recepcion">
+            <span class="material-symbols-outlined">close</span>
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="submitting()">
+            @if (submitting()) {
+              <span class="material-symbols-outlined spin">progress_activity</span>
+              Creando...
+            } @else {
+              <span class="material-symbols-outlined">how_to_reg</span>
+              Registrar reserva manual
+            }
+          </button>
+        </div>
+      </form>
+    }
+  }
+</div>

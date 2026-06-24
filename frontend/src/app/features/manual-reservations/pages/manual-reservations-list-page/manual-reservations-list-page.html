@@ -1,0 +1,134 @@
+<div class="manual-list-page">
+  <app-page-header
+    eyebrow="Gestión hotelera"
+    title="Reservas manuales"
+    description="Registros de reservas creadas directamente por el staff (walk-in, teléfono, cortesía)."
+  />
+
+  <div class="action-row">
+    <a routerLink="new" class="btn-primary">
+      <span class="material-symbols-outlined">add</span>
+      Nueva reserva manual
+    </a>
+    <a routerLink="/management/recepcion" class="btn-outline">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Volver a recepción
+    </a>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando reservas manuales..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar"
+        description="No se pudieron obtener las reservas manuales. Verifica la conexión."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin reservas manuales"
+        description="Aún no se han creado reservas manuales. Usa el botón superior para registrar una."
+      >
+        <a routerLink="new" class="btn-primary">
+          <span class="material-symbols-outlined">add</span>
+          Crear primera reserva manual
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      <section class="surface-card data-card">
+        <div class="data-card-head">
+          <div class="data-card-head-left">
+            <span class="material-symbols-outlined">edit_note</span>
+            <div>
+              <h2>Registros</h2>
+              <p>{{ total() }} reserva(s) manual(es)</p>
+            </div>
+          </div>
+          @if (hasPrev() || hasNext()) {
+            <div class="pagination-row">
+              <button type="button" class="pagination-btn" [disabled]="!hasPrev()" (click)="goToPage(page() - 1)">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <span class="pagination-info">Pág. {{ page() }}</span>
+              <button type="button" class="pagination-btn" [disabled]="!hasNext()" (click)="goToPage(page() + 1)">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Reserva</th>
+                <th>Hotel</th>
+                <th>Huésped</th>
+                <th>Fechas</th>
+                <th>Ocupación</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items(); track item.bookingId) {
+                <tr>
+                  <td>
+                    <code class="booking-code">{{ item.bookingId }}</code>
+                    <span class="cell-muted">Creada: {{ item.createdAt }}</span>
+                  </td>
+                  <td>
+                    <strong>{{ item.hotelLabel }}</strong>
+                  </td>
+                  <td>
+                    <strong>{{ item.guestName }}</strong>
+                    <span class="cell-muted">{{ item.guestEmail }}</span>
+                  </td>
+                  <td>
+                    <span class="date-range">
+                      {{ item.checkInDate }}
+                      <span class="material-symbols-outlined date-arrow">arrow_forward</span>
+                      {{ item.checkOutDate }}
+                    </span>
+                    <span class="cell-muted">{{ item.totalNights }} {{ item.totalNights === 1 ? 'noche' : 'noches' }}</span>
+                  </td>
+                  <td>
+                    <span class="occupancy-badge">
+                      <span class="material-symbols-outlined occ-icon">person</span>
+                      {{ item.adults }}
+                      @if (item.children > 0) {
+                        <span class="material-symbols-outlined occ-icon" style="margin-left:4px">child_care</span>
+                        {{ item.children }}
+                      }
+                      <span class="material-symbols-outlined occ-icon" style="margin-left:4px">meeting_room</span>
+                      {{ item.rooms }}
+                    </span>
+                  </td>
+                  <td>
+                    @if (item.totalPrice !== null) {
+                      <strong>{{ item.totalPrice | currency:item.currency }}</strong>
+                    } @else {
+                      <span class="cell-muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="badge badge-success">{{ item.status }}</span>
+                  </td>
+                  <td class="cell-action">
+                    <a [routerLink]="['/management/recepcion', item.bookingId]" class="btn-icon-only" aria-label="Ver detalle">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  }
+</div>

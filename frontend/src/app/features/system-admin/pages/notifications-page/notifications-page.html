@@ -1,0 +1,200 @@
+<div class="notifications-page">
+  <app-page-header
+    eyebrow="Auditoría"
+    title="Notificaciones"
+    description="Historial de notificaciones enviadas automáticamente por el sistema."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando notificaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las notificaciones"
+        [description]="errorMessage()"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin notificaciones registradas"
+        description="Cuando el sistema envíe correos automáticos (nueva reserva, confirmación, rechazo) aparecerán aquí."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <!-- ═══ Stats bar ═══ -->
+        <section class="stats-bar">
+          <div class="stat-block">
+            <span class="stat-value">{{ vm.stats.total }}</span>
+            <span class="stat-label">Total enviadas</span>
+          </div>
+          @for (entry of vm.stats.byStatus | keyvalue; track entry.key) {
+            <div class="stat-divider"></div>
+            <div class="stat-block" [class.stat-sent]="entry.key === 'sent'"
+                 [class.stat-failed]="entry.key === 'failed'"
+                 [class.stat-error]="entry.key === 'error'">
+              <span class="stat-value">{{ entry.value }}</span>
+              <span class="stat-label">{{ entry.key === 'sent' ? 'Enviadas' : entry.key === 'failed' ? 'Fallidas' : 'Error' }}</span>
+            </div>
+          }
+          <div class="stat-divider"></div>
+          <div class="stat-block">
+            <span class="stat-value">{{ vm.stats.byType['staff_new_booking'] || 0 }}</span>
+            <span class="stat-label">A staff</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-block">
+            <span class="stat-value">{{ (vm.stats.byType['guest_confirmed'] || 0) + (vm.stats.byType['guest_rejected'] || 0) }}</span>
+            <span class="stat-label">A clientes</span>
+          </div>
+        </section>
+
+        <!-- ═══ Filters ═══ -->
+        <section class="filters-bar">
+          <div class="filters-row">
+            <!-- Type filter -->
+            <div class="filter-group">
+              <span class="filter-label">Tipo:</span>
+              @if (typeFilter()) {
+                <div class="filter-chip">
+                  <span class="material-symbols-outlined filter-chip-icon">filter_alt</span>
+                  <span>{{ typeLabel(typeFilter()) }}</span>
+                  <button type="button" class="filter-chip-close" (click)="clearFilter()" aria-label="Quitar filtro tipo">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              } @else {
+                @for (opt of typeOptions(); track opt.key) {
+                  <button type="button" class="filter-btn" (click)="filterByType(opt.key)">
+                    {{ opt.label }}
+                  </button>
+                }
+              }
+            </div>
+
+            <!-- Date range filter -->
+            <div class="filter-group date-filter-group">
+              <span class="filter-label">Período:</span>
+
+              <!-- Quick presets -->
+              <div class="presets-row">
+                <button type="button" class="preset-btn"
+                        [class.is-active]="startDate() === todayISO(7) && endDate() === todayISO(0)"
+                        (click)="setQuickRange(7)">
+                  <span class="material-symbols-outlined">schedule</span>
+                  Últ. 7 días
+                </button>
+                <button type="button" class="preset-btn"
+                        [class.is-active]="startDate() === todayISO(30) && endDate() === todayISO(0)"
+                        (click)="setQuickRange(30)">
+                  <span class="material-symbols-outlined">schedule</span>
+                  Últ. 30 días
+                </button>
+                <button type="button" class="preset-btn"
+                        [class.is-active]="startDate() === monthStartISO() && endDate() === todayISO(0)"
+                        (click)="setQuickMonth()">
+                  <span class="material-symbols-outlined">calendar_month</span>
+                  Este mes
+                </button>
+              </div>
+
+              <div class="date-input-wrap">
+                <span class="material-symbols-outlined date-input-icon">calendar_today</span>
+                <input type="date" class="date-input"
+                       [value]="startDate()"
+                       (input)="startDate.set($any($event.target).value)"
+                       max="{{ endDate() || '' }}"
+                       placeholder="Desde" />
+              </div>
+              <span class="date-sep">→</span>
+              <div class="date-input-wrap">
+                <span class="material-symbols-outlined date-input-icon">calendar_today</span>
+                <input type="date" class="date-input"
+                       [value]="endDate()"
+                       (input)="endDate.set($any($event.target).value)"
+                       min="{{ startDate() || '' }}"
+                       placeholder="Hasta" />
+              </div>
+              @if (startDate() || endDate()) {
+                <button type="button" class="filter-btn filter-btn-active" (click)="setDateRange()">
+                  <span class="material-symbols-outlined">search</span>
+                  Filtrar
+                </button>
+                <button type="button" class="filter-btn-clear" (click)="clearDateFilter()" title="Limpiar fechas">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Table ═══ -->
+        <section class="surface-card panel">
+          <div class="panel-head">
+            <div>
+              <h2>Registro de notificaciones</h2>
+              <p>{{ vm.total }} registro(s) · página {{ vm.page }} de {{ vm.totalPages }}</p>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="vm.page <= 1">
+                <span class="material-symbols-outlined btn-icon">chevron_left</span>
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="vm.page >= vm.totalPages">
+                Siguiente
+                <span class="material-symbols-outlined btn-icon">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Destinatario</th>
+                  <th>Reserva</th>
+                  <th>Estado</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of vm.items; track item.createdAt + item.recipientEmail + item.bookingId) {
+                  <tr [class.row-error]="item.status === 'error'" [class.row-failed]="item.status === 'failed'">
+                    <td class="cell-date">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                      <span class="type-badge">{{ item.typeLabel }}</span>
+                    </td>
+                    <td class="cell-recipient">
+                      <strong>{{ item.recipientName }}</strong>
+                      <span class="cell-muted">{{ item.recipientEmail }}</span>
+                    </td>
+                    <td>
+                      <code>{{ item.bookingId }}</code>
+                      <span class="cell-muted">Hotel #{{ item.propId }}</span>
+                    </td>
+                    <td>
+                      <app-status-badge
+                        [tone]="item.statusTone"
+                        [label]="item.statusLabel"
+                      />
+                    </td>
+                    <td class="cell-detail">
+                      @if (item.errorMessage) {
+                        <span class="error-msg">{{ item.errorMessage }}</span>
+                      } @else {
+                        <span class="cell-muted">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
