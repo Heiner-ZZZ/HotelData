@@ -1,54 +1,160 @@
-<!-- ═══ Inventory table ═══ -->
+<!-- ═══ Inventory registered ═══ -->
 <section class="surface-card data-card">
   <div class="data-card-head">
     <div class="data-card-head-left">
       <span class="material-symbols-outlined icon-inventory-blue">inventory_2</span>
       <div>
         <h2>Inventario registrado</h2>
-        <p>{{ inventoryItems().length }} registro(s)</p>
+        <p>{{ totalCount() }} registro(s) @if (filteredCount() < totalCount()) { (filtrados: {{ filteredCount() }}) }</p>
       </div>
     </div>
-  </div>
-  @if (inventoryItems().length) {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Total</th>
-            <th>Disponibles</th>
-            <th>Bloqueadas</th>
-            <th>Ocupación</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of inventoryItems(); track item.date + item.roomTypeName) {
-            <tr>
-              <td>{{ item.date }}</td>
-              <td>{{ item.roomTypeName }}</td>
-              <td>{{ item.totalRooms }}</td>
-              <td>{{ item.availableRooms }}</td>
-              <td>{{ item.blockedRooms }}</td>
-              <td>
-                @if (item.occupancyPct >= 0) {
-                  <span [class]="occupancyBadgeClass(item.occupancyPct)">
-                    {{ item.occupancyLabel }}
-                  </span>
-                } @else {
-                  <span class="badge">--</span>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="inv-view-toggle">
+      <button type="button" class="qa-btn" [class.is-active]="viewMode() === 'table'" (click)="viewMode.set('table')">
+        <span class="material-symbols-outlined">table_rows</span>
+        Tabla
+      </button>
+      <button type="button" class="qa-btn" [class.is-active]="viewMode() === 'calendar'" (click)="viewMode.set('calendar')">
+        <span class="material-symbols-outlined">calendar_view_month</span>
+        Calendario
+      </button>
     </div>
-  } @else {
-    <app-empty-state
-      title="Sin inventario"
-      description="Aún no hay registros de inventario para esta propiedad."
-    />
+  </div>
+
+  @if (viewMode() === 'table') {
+    <!-- ═══ Filters ═══ -->
+    <div class="inv-filters">
+      <div class="inv-filter-field">
+        <span class="material-symbols-outlined inv-filter-icon">bed</span>
+        <select [ngModel]="filterRoomType()" (ngModelChange)="filterRoomType.set($event); currentPage.set(1)" class="inv-filter-select">
+          <option value="">Todos los tipos</option>
+          @for (rt of roomTypeOptions(); track rt) {
+            <option [value]="rt">{{ rt }}</option>
+          }
+        </select>
+      </div>
+      <div class="inv-filter-field">
+        <span class="material-symbols-outlined inv-filter-icon">calendar_today</span>
+        <input type="date" [ngModel]="filterDateFrom()" (ngModelChange)="filterDateFrom.set($event); currentPage.set(1)" class="inv-filter-input" placeholder="Desde" />
+      </div>
+      <div class="inv-filter-field">
+        <span class="material-symbols-outlined inv-filter-icon">calendar_today</span>
+        <input type="date" [ngModel]="filterDateTo()" (ngModelChange)="filterDateTo.set($event); currentPage.set(1)" class="inv-filter-input" placeholder="Hasta" />
+      </div>
+      @if (filterRoomType() || filterDateFrom() || filterDateTo()) {
+        <button type="button" class="qa-btn inv-clear-btn" (click)="filterRoomType.set(''); filterDateFrom.set(''); filterDateTo.set(''); currentPage.set(1)">
+          <span class="material-symbols-outlined">close</span>
+          Limpiar
+        </button>
+      }
+    </div>
+
+    @if (paginatedItems().length) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Total</th>
+              <th>Disponibles</th>
+              <th>Bloqueadas</th>
+              <th>Ocupación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of paginatedItems(); track item.date + item.roomTypeName) {
+              <tr>
+                <td>{{ item.date }}</td>
+                <td><span class="inv-room-type-badge">{{ item.roomTypeName }}</span></td>
+                <td class="num-cell">{{ item.totalRooms }}</td>
+                <td class="num-cell">{{ item.availableRooms }}</td>
+                <td class="num-cell">{{ item.blockedRooms }}</td>
+                <td>
+                  @if (item.occupancyPct >= 0) {
+                    <span [class]="occupancyBadgeClass(item.occupancyPct)">
+                      {{ item.occupancyLabel }}
+                    </span>
+                  } @else {
+                    <span class="badge">--</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <!-- ═══ Pagination ═══ -->
+      <div class="inv-pagination">
+        <button type="button" class="qa-btn page-btn" [disabled]="currentPage() <= 1" (click)="prevPage()">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        @for (p of pageNumbers(); track p) {
+          <button type="button" class="qa-btn page-btn" [class.is-active]="p === currentPage()" (click)="goToPage(p)">
+            {{ p }}
+          </button>
+        }
+        <button type="button" class="qa-btn page-btn" [disabled]="currentPage() >= totalPages()" (click)="nextPage()">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+        <span class="page-total">{{ filteredCount() }} registro(s) · Página {{ currentPage() }} de {{ totalPages() }}</span>
+      </div>
+    } @else {
+      <app-empty-state
+        title="Sin inventario"
+        description="Aún no hay registros de inventario para esta propiedad."
+      />
+    }
+  }
+
+  @if (viewMode() === 'calendar') {
+    <!-- ═══ Mini calendar view ═══ -->
+    <div class="inv-cal">
+      <div class="inv-cal-nav">
+        <button type="button" class="qa-btn" (click)="prevMonth()">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <span class="inv-cal-title">{{ calendarGrid().monthName }} {{ calendarGrid().year }}</span>
+        <button type="button" class="qa-btn" (click)="nextMonth()">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+      <div class="inv-cal-grid">
+        <div class="inv-cal-hd">
+          @for (dn of DAY_NAMES; track dn) {
+            <span class="inv-cal-hd-cell">{{ dn }}</span>
+          }
+        </div>
+        @for (week of calendarGrid().weeks; track $index) {
+          <div class="inv-cal-week">
+            @for (day of week; track $index) {
+              <div class="inv-cal-day" [class.is-today]="day.isToday" [class.is-other]="day.isOtherMonth">
+                @if (!day.isOtherMonth) {
+                  <span class="inv-cal-day-num">{{ day.day }}</span>
+                  <div class="inv-cal-rooms">
+                    @for (rt of day.roomTypes; track rt.roomTypeName) {
+                      <div class="inv-cal-room"
+                        [class]="occupancyColor(rt.occupancyPct)"
+                        [title]="rt.date + ' · ' + rt.roomTypeName + ': ' + rt.availableRooms + '/' + rt.totalRooms + ' (' + rt.occupancyLabel + ')'">
+                        <span class="inv-cal-room-name">{{ rt.roomTypeName }}</span>
+                        <span class="inv-cal-room-val">{{ rt.availableRooms }}/{{ rt.totalRooms }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <div class="inv-cal-legend">
+        <span class="legend-item"><span class="legend-swatch swatch-occ-0"></span> 0%</span>
+        <span class="legend-item"><span class="legend-swatch swatch-occ-low"></span> 1-29%</span>
+        <span class="legend-item"><span class="legend-swatch swatch-occ-mid"></span> 30-59%</span>
+        <span class="legend-item"><span class="legend-swatch swatch-occ-high"></span> 60-89%</span>
+        <span class="legend-item"><span class="legend-swatch swatch-occ-full"></span> 90-100%</span>
+        <span class="inv-cal-summary">· {{ calendarSummary().totalRooms }} hab. · {{ calendarSummary().avgOccupancy }}% ocup. promedio</span>
+      </div>
+    </div>
   }
 </section>
 

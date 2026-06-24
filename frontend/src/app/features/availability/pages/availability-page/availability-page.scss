@@ -409,6 +409,302 @@ select option {
 
 /* ─── Button ─── */
 
+/* ════════════════════════════════════════════════════════════ */
+/*  INVENTORY DATA TABLES — filters, pagination, mini-calendar */
+/* ══════════════════════════════════════════════════════════════ */
+
+.inv-view-toggle {
+  display: flex;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+
+  .qa-btn {
+    border: 0;
+    border-radius: 0;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.7rem;
+
+    & + .qa-btn {
+      border-left: 1px solid var(--app-border);
+    }
+
+    &.is-active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+  }
+}
+
+.inv-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.inv-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: border-color 160ms ease;
+
+  &:focus-within {
+    border-color: var(--accent);
+  }
+}
+
+.inv-filter-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+}
+
+.inv-filter-select,
+.inv-filter-input {
+  border: 0;
+  background: transparent;
+  font-size: 0.8rem;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+  padding: 0.35rem 0;
+  min-height: 30px;
+
+  &::placeholder { color: #9ca3af; }
+}
+
+.inv-filter-select {
+  appearance: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.inv-filter-input {
+  width: 130px;
+}
+
+.inv-clear-btn {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  color: var(--danger);
+}
+
+.inv-room-type-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.num-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* ─── Pagination ─── */
+
+.inv-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0 0;
+}
+
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  justify-content: center;
+  font-size: 0.78rem;
+  border-radius: 6px;
+
+  &.is-active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.page-total {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+/* ─── Mini calendar ─── */
+
+.inv-cal {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.inv-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.inv-cal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-width: 120px;
+  text-align: center;
+}
+
+.inv-cal-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--app-border);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.inv-cal-hd {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--surface-soft);
+}
+
+.inv-cal-hd-cell {
+  padding: 0.35rem 0.15rem;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-text);
+}
+
+.inv-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.inv-cal-day {
+  min-height: 60px;
+  padding: 0.2rem;
+  background: var(--surface);
+  display: grid;
+  gap: 1px;
+  align-content: start;
+
+  &.is-today {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    border-radius: 4px;
+  }
+
+  &.is-other {
+    background: var(--surface-soft);
+    opacity: 0.5;
+  }
+}
+
+.inv-cal-day-num {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  padding: 0 0 1px;
+}
+
+.inv-cal-rooms {
+  display: grid;
+  gap: 1px;
+}
+
+.inv-cal-room {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  cursor: default;
+  transition: opacity 120ms;
+  line-height: 1.3;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.inv-cal-room-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.inv-cal-room-val {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Occupancy color classes for mini-calendar */
+.occ-0 {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.occ-low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.occ-mid {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.occ-high {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.occ-full {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+/* Legend swatches for mini-calendar */
+.swatch-occ-0 { background: #f3f4f6; }
+.swatch-occ-low { background: #dcfce7; }
+.swatch-occ-mid { background: #fef9c3; }
+.swatch-occ-high { background: #fed7aa; }
+.swatch-occ-full { background: #fecaca; }
+
+.inv-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.35rem 0.25rem 0;
+  font-size: 0.68rem;
+  color: var(--muted-text);
+}
+
+.inv-cal-summary {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
 .spin {
   animation: btn-spin 0.8s linear infinite;
 }
