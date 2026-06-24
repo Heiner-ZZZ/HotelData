@@ -1,0 +1,132 @@
+import { SlicePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { distinctUntilChanged, map, switchMap } from 'rxjs';
+
+import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
+import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
+import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { HousekeepingApiService, type AdditionalChargeItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
+
+@Component({
+  selector: 'app-additional-charges-page',
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, SlicePipe],
+
+  templateUrl: './additional-charges-page.html',
+  styleUrl: './additional-charges-page.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AdditionalChargesPageComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(HousekeepingApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly formBuilder = inject(FormBuilder);
+
+  readonly viewState = signal<ViewState>('loading');
+  readonly data = signal<PaginatedResponse<AdditionalChargeItem> | null>(null);
+  readonly message = signal('');
+  readonly errorMessage = signal('');
+
+  readonly filterBookingId = signal('');
+  readonly showCreateForm = signal(false);
+
+  readonly createForm = this.formBuilder.nonNullable.group({
+    bookingId: ['', Validators.required],
+    concept: ['', Validators.required],
+    amount: [0, [Validators.required, Validators.min(0.01)]],
+    quantity: [1, [Validators.required, Validators.min(1)]],
+    note: [''],
+  });
+
+  constructor() {
+    this.route.queryParamMap
+      .pipe(
+        map((params) => ({
+          page: Number(params.get('page') ?? '1'),
+          bookingId: params.get('booking_id') ?? '',
+        })),
+        distinctUntilChanged((a, b) => a.page === b.page && a.bookingId === b.bookingId),
+        switchMap(({ page, bookingId }) => {
+          this.viewState.set('loading');
+          this.filterBookingId.set(bookingId);
+          return this.api.getCharges(bookingId || undefined, undefined, page);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (data) => {
+          this.data.set(data);
+          this.viewState.set(data.items.length ? 'success' : 'empty');
+        },
+        error: () => this.viewState.set('error'),
+      });
+  }
+
+  get totalFormatted(): string {
+    const amount = this.createForm.controls.amount.value || 0;
+    const qty = this.createForm.controls.quantity.value || 1;
+    return (amount * qty).toFixed(2);
+  }
+
+  toggleCreateForm(): void {
+    this.showCreateForm.update((v) => !v);
+    if (this.showCreateForm()) {
+      this.createForm.reset({ bookingId: '', concept: '', amount: 0, quantity: 1, note: '' });
+    }
+  }
+
+  submitCharge(): void {
+    if (this.createForm.invalid) return;
+    const val = this.createForm.getRawValue();
+    this.api
+      .createCharge({
+        booking_id: val.bookingId,
+        prop_id: 0,
+        concept: val.concept,
+        amount: val.amount,
+        quantity: val.quantity,
+        note: val.note || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set('Cargo registrado exitosamente');
+          this.errorMessage.set('');
+          this.showCreateForm.set(false);
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.message || 'Error al registrar cargo');
+          this.message.set('');
+        },
+      });
+  }
+
+  goToPage(page: number): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page: page > 1 ? page : null },
+    });
+  }
+
+  private refresh(): void {
+    const current = this.data();
+    if (!current) return;
+    this.viewState.set('loading');
+    this.api
+      .getCharges(this.filterBookingId() || undefined, undefined, current.page)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.data.set(data);
+          this.viewState.set(data.items.length ? 'success' : 'empty');
+        },
+        error: () => this.viewState.set('error'),
+      });
+  }
+}

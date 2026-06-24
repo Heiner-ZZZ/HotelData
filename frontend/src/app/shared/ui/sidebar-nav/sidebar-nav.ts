@@ -106,6 +106,12 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'marketing_hotelero', 'auditor_datos']
         },
         {
+          label: 'Housekeeping',
+          href: '/management/housekeeping',
+          icon: 'cleaning_services',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel']
+        },
+        {
           label: 'Facturación',
           href: '/management/billing/invoices',
           icon: 'receipt_long',

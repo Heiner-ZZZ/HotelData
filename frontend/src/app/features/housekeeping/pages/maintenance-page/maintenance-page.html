@@ -1,0 +1,166 @@
+<div class="hk-subpage">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Mantenimiento preventivo"
+    description="Programar y registrar mantenimiento de habitaciones e instalaciones (CU-O40, CU-T15)."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success" (click)="message.set('')">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error" (click)="errorMessage.set('')">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <div class="bar-actions">
+    <div class="status-filter-chips">
+      <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
+      @for (s of statusOptions; track s) {
+        <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'in_progress' ? 'En progreso' : s === 'scheduled' ? 'Programado' : s }}</button>
+      }
+    </div>
+    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+      {{ showCreateForm() ? 'Cancelar' : 'Nuevo mantenimiento' }}
+    </button>
+  </div>
+
+  @if (showCreateForm()) {
+    <section class="surface-card form-card">
+      <h3>Programar mantenimiento</h3>
+      <form [formGroup]="createForm" (ngSubmit)="submitTask()" class="task-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="roomLabel">Habitación/Área *</label>
+            <input id="roomLabel" type="text" formControlName="roomLabel" placeholder="Ej: 101, Lobby" />
+          </div>
+          <div class="form-group">
+            <label for="taskType">Tipo</label>
+            <select id="taskType" formControlName="taskType">
+              <option value="preventive">Preventivo</option>
+              <option value="corrective">Correctivo</option>
+              <option value="inspection">Inspección</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="priority">Prioridad</label>
+            <select id="priority" formControlName="priority">
+              @for (p of priorities; track p) {
+                <option [value]="p">{{ p }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="title">Título *</label>
+            <input id="title" type="text" formControlName="title" placeholder="Ej: Revisión de HVAC" />
+          </div>
+          <div class="form-group">
+            <label for="scheduledDate">Fecha programada</label>
+            <input id="scheduledDate" type="date" formControlName="scheduledDate" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="description">Descripción</label>
+          <textarea id="description" formControlName="description" rows="2" placeholder="Detalles del mantenimiento..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+          <span class="material-symbols-outlined">build</span>
+          Programar
+        </button>
+      </form>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando mantenimientos..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" description="No se pudieron obtener los mantenimientos." />
+    }
+    @case ('empty') {
+      <app-empty-state title="Sin mantenimientos" description="No hay tareas de mantenimiento registradas." />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">build</span>
+              <div>
+                <h2>Órdenes de mantenimiento</h2>
+                <p>{{ d.total }} orden(es) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+              </div>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span> Anterior
+              </button>
+              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                Siguiente <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Habitación</th>
+                  <th>Tipo</th>
+                  <th>Prioridad</th>
+                  <th>Estado</th>
+                  <th>Programado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr>
+                    <td><strong>{{ item.title }}</strong></td>
+                    <td>{{ item.roomLabel }}</td>
+                    <td>{{ item.taskType }}</td>
+                    <td>
+                      <span class="priority-badge"
+                        [class.prio-low]="item.priority === 'low'"
+                        [class.prio-normal]="item.priority === 'normal'"
+                        [class.prio-high]="item.priority === 'high'"
+                        [class.prio-urgent]="item.priority === 'urgent'"
+                      >{{ item.priority }}</span>
+                    </td>
+                    <td>
+                      <span class="badge"
+                        [class.badge-scheduled]="item.status === 'scheduled'"
+                        [class.badge-progress]="item.status === 'in_progress'"
+                        [class.badge-done]="item.status === 'completed'"
+                      >
+                        {{ item.status === 'scheduled' ? 'Programado' : item.status === 'in_progress' ? 'En progreso' : 'Completado' }}
+                      </span>
+                    </td>
+                    <td class="cell-time">{{ item.scheduledDate | slice:0:10 }}</td>
+                    <td class="cell-action">
+                      @if (item.status !== 'completed') {
+                        <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
+                          <span class="material-symbols-outlined">check</span>
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

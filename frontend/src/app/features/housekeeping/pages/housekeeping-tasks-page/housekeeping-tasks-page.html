@@ -1,0 +1,160 @@
+<div class="hk-subpage">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Limpieza y rotación"
+    description="Gestionar tareas de limpieza, rotación post-checkout y asignación (CU-O39, CU-T14)."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success" (click)="message.set('')">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error" (click)="errorMessage.set('')">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- ═══ Filters + Create ═══ -->
+  <div class="bar-actions">
+    <div class="status-filter-chips">
+      <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
+      @for (s of statusOptions; track s) {
+        <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s }}</button>
+      }
+    </div>
+    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+      {{ showCreateForm() ? 'Cancelar' : 'Nueva tarea' }}
+    </button>
+  </div>
+
+  <!-- ═══ Create form ═══ -->
+  @if (showCreateForm()) {
+    <section class="surface-card form-card">
+      <h3>Crear tarea de limpieza</h3>
+      <form [formGroup]="createForm" (ngSubmit)="submitTask()" class="task-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="roomLabel">Habitación *</label>
+            <input id="roomLabel" type="text" formControlName="roomLabel" placeholder="Ej: 101" />
+          </div>
+          <div class="form-group">
+            <label for="taskType">Tipo</label>
+            <select id="taskType" formControlName="taskType">
+              @for (t of taskTypes; track t) {
+                <option [value]="t">{{ t === 'deep_clean' ? 'Limpieza profunda' : t === 'turnover' ? 'Rotación' : t === 'inspection' ? 'Inspección' : 'Limpieza' }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="priority">Prioridad</label>
+            <select id="priority" formControlName="priority">
+              @for (p of priorities; track p) {
+                <option [value]="p">{{ p }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="assignedTo">Asignar a</label>
+            <input id="assignedTo" type="text" formControlName="assignedTo" placeholder="Nombre del personal" />
+          </div>
+          <div class="form-group">
+            <label for="note">Nota</label>
+            <input id="note" type="text" formControlName="note" placeholder="Instrucciones adicionales" />
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+          <span class="material-symbols-outlined">add_task</span>
+          Crear tarea
+        </button>
+      </form>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando tareas..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" description="No se pudieron obtener las tareas." />
+    }
+    @case ('empty') {
+      <app-empty-state title="Sin tareas" description="No hay tareas de limpieza pendientes. Crea una nueva tarea para empezar." />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">cleaning_services</span>
+              <div>
+                <h2>Tareas de limpieza</h2>
+                <p>{{ d.total }} tarea(s) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+              </div>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span> Anterior
+              </button>
+              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                Siguiente <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Habitación</th>
+                  <th>Tipo</th>
+                  <th>Prioridad</th>
+                  <th>Asignado</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr>
+                    <td><strong>{{ item.roomLabel }}</strong></td>
+                    <td>{{ item.taskType === 'deep_clean' ? 'Limpieza profunda' : item.taskType === 'turnover' ? 'Rotación' : item.taskType === 'inspection' ? 'Inspección' : 'Limpieza' }}</td>
+                    <td>
+                      <span class="priority-badge"
+                        [class.prio-low]="item.priority === 'low'"
+                        [class.prio-normal]="item.priority === 'normal'"
+                        [class.prio-high]="item.priority === 'high'"
+                        [class.prio-urgent]="item.priority === 'urgent'"
+                      >{{ item.priority }}</span>
+                    </td>
+                    <td>{{ item.assignedTo || '--' }}</td>
+                    <td>
+                      <span class="badge" [class.badge-pending]="item.status === 'pending'" [class.badge-done]="item.status === 'completed'">
+                        {{ item.status === 'pending' ? 'Pendiente' : 'Completada' }}
+                      </span>
+                    </td>
+                    <td class="cell-time">{{ item.createdAt | slice:0:16 }}</td>
+                    <td class="cell-action">
+                      @if (item.status === 'pending') {
+                        <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
+                          <span class="material-symbols-outlined">check</span>
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

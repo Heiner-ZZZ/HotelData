@@ -1,0 +1,155 @@
+<div class="hk-subpage">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Estado de habitaciones"
+    description="Consultar y actualizar el estado individual de cada habitación (CU-O30, O31, O32)."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success" (click)="message.set('')">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error" (click)="errorMessage.set('')">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- ═══ Filters ═══ -->
+  <section class="filters-bar">
+    <div class="status-filter-chips">
+      <button
+        type="button"
+        class="status-chip-filter"
+        [class.active]="statusFilter() === ''"
+        (click)="setStatusFilter('')"
+      >Todas</button>
+      @for (s of statusOptions; track s) {
+        <button
+          type="button"
+          class="status-chip-filter"
+          [class.active]="statusFilter() === s"
+          [class.chip-available]="s === 'available'"
+          [class.chip-occupied]="s === 'occupied'"
+          [class.chip-cleaning]="s === 'cleaning'"
+          [class.chip-maintenance]="s === 'maintenance'"
+          [class.chip-out]="s === 'out_of_order'"
+          (click)="setStatusFilter(s)"
+        >{{ s === 'out_of_order' ? 'Fuera de servicio' : s }}</button>
+      }
+    </div>
+
+    <div class="prop-filter-area">
+      @if (propFilter()) {
+        <div class="prop-chip-sm">
+          <span class="material-symbols-outlined prop-chip-icon">business</span>
+          <span>Propiedad #{{ propFilter() }}</span>
+          <button type="button" class="prop-chip-close" (click)="clearProperty()" aria-label="Todas">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Status form ═══ -->
+  <section class="surface-card status-form-card">
+    <form [formGroup]="statusForm" class="status-form">
+      <label for="new-status">Nuevo estado</label>
+      <select id="new-status" formControlName="newStatus">
+        @for (s of statusOptions; track s) {
+          <option [value]="s">{{ s === 'out_of_order' ? 'Fuera de servicio' : s }}</option>
+        }
+      </select>
+      <input type="text" formControlName="note" placeholder="Nota (opcional)" />
+      <span class="form-hint">Selecciona un estado y haz clic en el icono ✏️ de una habitación para aplicarlo</span>
+    </form>
+  </section>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando habitaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar"
+        description="No se pudieron obtener los estados de habitaciones."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin habitaciones"
+        description="No hay registros de estado de habitaciones para los filtros seleccionados. Usa check-ins para generar los primeros registros."
+      />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">meeting_room</span>
+              <div>
+                <h2>Registro de estados</h2>
+                <p>{{ d.total }} registro(s) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+              </div>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined btn-icon">chevron_left</span>
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                Siguiente
+                <span class="material-symbols-outlined btn-icon">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Habitación</th>
+                  <th>Propiedad</th>
+                  <th>Estado</th>
+                  <th>Nota</th>
+                  <th>Actualizado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr>
+                    <td><strong>{{ item.roomLabel }}</strong></td>
+                    <td><code>#{{ item.propId }}</code></td>
+                    <td>
+                      <span class="badge"
+                        [class.badge-available]="item.status === 'available'"
+                        [class.badge-occupied]="item.status === 'occupied'"
+                        [class.badge-cleaning]="item.status === 'cleaning'"
+                        [class.badge-maintenance]="item.status === 'maintenance'"
+                        [class.badge-out]="item.status === 'out_of_order'"
+                      >
+                        {{ item.status === 'out_of_order' ? 'Fuera de servicio' : item.status }}
+                      </span>
+                    </td>
+                    <td class="cell-notes">{{ item.note || '--' }}</td>
+                    <td class="cell-time">{{ (item.updatedAt || item.createdAt) | slice:0:16 }}</td>
+                    <td class="cell-action">
+                      <button type="button" class="btn-icon-only" (click)="updateStatus(item)" aria-label="Actualizar estado">
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

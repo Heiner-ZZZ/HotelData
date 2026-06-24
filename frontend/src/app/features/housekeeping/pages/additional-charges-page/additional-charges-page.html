@@ -1,0 +1,142 @@
+<div class="hk-subpage">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Cargos adicionales"
+    description="Registrar cargos extra a reservas: room service, daños, extras (CU-O34)."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success" (click)="message.set('')">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error" (click)="errorMessage.set('')">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <div class="bar-actions">
+    <div class="filter-area">
+      @if (filterBookingId()) {
+        <div class="filter-chip">
+          <span class="material-symbols-outlined">confirmation_number</span>
+          <span>Reserva {{ filterBookingId() }}</span>
+          <button type="button" class="filter-chip-close" (click)="filterBookingId.set(''); goToPage(1)" aria-label="Limpiar filtro">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      }
+    </div>
+    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+      {{ showCreateForm() ? 'Cancelar' : 'Nuevo cargo' }}
+    </button>
+  </div>
+
+  @if (showCreateForm()) {
+    <section class="surface-card form-card">
+      <h3>Registrar cargo adicional</h3>
+      <form [formGroup]="createForm" (ngSubmit)="submitCharge()" class="charge-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bookingId">Reserva *</label>
+            <input id="bookingId" type="text" formControlName="bookingId" placeholder="booking_id" />
+          </div>
+          <div class="form-group">
+            <label for="concept">Concepto *</label>
+            <input id="concept" type="text" formControlName="concept" placeholder="Ej: Room service, daños" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="amount">Monto unitario (USD) *</label>
+            <input id="amount" type="number" formControlName="amount" min="0.01" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label for="quantity">Cantidad</label>
+            <input id="quantity" type="number" formControlName="quantity" min="1" />
+          </div>
+          <div class="form-group">
+            <label>Total estimado</label>
+            <div class="total-display"><strong>${{ totalFormatted }} USD</strong></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="note">Nota</label>
+          <input id="note" type="text" formControlName="note" placeholder="Detalle opcional" />
+        </div>
+        <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+          <span class="material-symbols-outlined">receipt_long</span>
+          Registrar cargo
+        </button>
+      </form>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando cargos..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" description="No se pudieron obtener los cargos adicionales." />
+    }
+    @case ('empty') {
+      <app-empty-state title="Sin cargos" description="No hay cargos adicionales registrados." />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <div>
+                <h2>Cargos registrados</h2>
+                <p>{{ d.total }} cargo(s) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+              </div>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span> Anterior
+              </button>
+              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                Siguiente <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reserva</th>
+                  <th>Concepto</th>
+                  <th>Monto</th>
+                  <th>Cant.</th>
+                  <th>Total</th>
+                  <th>Nota</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr>
+                    <td><code>{{ item.bookingId | slice:0:12 }}...</code></td>
+                    <td><strong>{{ item.concept }}</strong></td>
+                    <td>${{ item.amount.toFixed(2) }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td><strong>${{ item.total.toFixed(2) }}</strong></td>
+                    <td class="cell-notes">{{ item.note || '--' }}</td>
+                    <td class="cell-time">{{ item.createdAt | slice:0:16 }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

@@ -1,0 +1,106 @@
+<div class="hk-page">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Panel de operaciones"
+    description="Monitoreo de eficiencia operativa hotelera (CU-E09)"
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando indicadores..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" description="No se pudieron obtener los indicadores de housekeeping." />
+    }
+    @default {
+      @if (dashboard(); as d) {
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <span class="material-symbols-outlined kpi-icon">meeting_room</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Habitaciones totales</span>
+              <strong class="kpi-value">{{ d.totalRooms }}</strong>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <span class="material-symbols-outlined kpi-icon">bed</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Ocupadas</span>
+              <strong class="kpi-value">{{ d.occupied }}</strong>
+              <span class="kpi-sub">{{ d.occupancyRate }}% ocupación</span>
+            </div>
+          </article>
+          <article class="kpi-card kpi-warning">
+            <span class="material-symbols-outlined kpi-icon">cleaning_services</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Limpieza pendiente</span>
+              <strong class="kpi-value">{{ d.pendingHousekeepingTasks }}</strong>
+            </div>
+          </article>
+          <article class="kpi-card kpi-success">
+            <span class="material-symbols-outlined kpi-icon">task_alt</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Completadas hoy</span>
+              <strong class="kpi-value">{{ d.completedToday }}</strong>
+            </div>
+          </article>
+          <article class="kpi-card kpi-accent">
+            <span class="material-symbols-outlined kpi-icon">build</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Mantenimiento próximo</span>
+              <strong class="kpi-value">{{ d.upcomingMaintenance }}</strong>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <span class="material-symbols-outlined kpi-icon">receipt_long</span>
+            <div class="kpi-body">
+              <span class="kpi-label">Cargos pendientes</span>
+              <strong class="kpi-value">{{ d.pendingCharges }}</strong>
+            </div>
+          </article>
+        </section>
+
+        <!-- Room status breakdown -->
+        @if (d.roomStatuses && Object.keys(d.roomStatuses).length) {
+          <section class="surface-card status-breakdown">
+            <h2 class="section-title">Estado de habitaciones</h2>
+            <div class="status-chips">
+              @for (entry of d.roomStatuses | keyvalue; track entry.key) {
+                <span class="status-chip" [class.chip-available]="entry.key === 'available'"
+                      [class.chip-occupied]="entry.key === 'occupied'"
+                      [class.chip-cleaning]="entry.key === 'cleaning'"
+                      [class.chip-maintenance]="entry.key === 'maintenance'">
+                  {{ entry.key }}: <strong>{{ entry.value }}</strong>
+                </span>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Navigation modules -->
+        <section class="module-grid">
+          <a class="module-card surface-card" routerLink="rooms">
+            <span class="material-symbols-outlined module-icon">meeting_room</span>
+            <h3>Estado de habitaciones</h3>
+            <p>Consultar y actualizar el estado individual de cada habitación (CU-O30, O31, O32)</p>
+          </a>
+          <a class="module-card surface-card" routerLink="tasks">
+            <span class="material-symbols-outlined module-icon">cleaning_services</span>
+            <h3>Limpieza y rotación</h3>
+            <p>Gestionar tareas de limpieza, rotación post-checkout y asignación (CU-O39, CU-T14)</p>
+          </a>
+          <a class="module-card surface-card" routerLink="maintenance">
+            <span class="material-symbols-outlined module-icon">build</span>
+            <h3>Mantenimiento preventivo</h3>
+            <p>Programar y registrar mantenimiento de habitaciones e instalaciones (CU-O40, CU-T15)</p>
+          </a>
+          <a class="module-card surface-card" routerLink="charges">
+            <span class="material-symbols-outlined module-icon">receipt_long</span>
+            <h3>Cargos adicionales</h3>
+            <p>Registrar cargos extra a reservas: room service, daños, extras (CU-O34)</p>
+          </a>
+        </section>
+      }
+    }
+  }
+</div>

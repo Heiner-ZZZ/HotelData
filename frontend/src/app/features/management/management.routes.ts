@@ -71,6 +71,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../manual-reservations/manual-reservations.routes').then((m) => m.MANUAL_RESERVATIONS_ROUTES)
   },
   {
+    path: 'housekeeping',
+    loadChildren: () =>
+      import('../housekeeping/housekeeping.routes').then((m) => m.HOUSEKEEPING_ROUTES)
+  },
+  {
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)

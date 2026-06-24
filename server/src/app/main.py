@@ -43,6 +43,8 @@ from src.app.modules.reviews.routes import api_router as reviews_api_router
 from src.app.modules.reviews.routes import router as reviews_module_router
 from src.app.modules.billing.routes import api_router as billing_api_router
 from src.app.modules.billing.routes import router as billing_module_router
+from src.app.modules.housekeeping.routes import api_router as housekeeping_api_router
+from src.app.modules.housekeeping.routes import router as housekeeping_module_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -56,6 +58,7 @@ from src.app.modules.partner.services.bootstrap import (
 from src.app.modules.revenue.services import ensure_revenue_collections
 from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.billing.service import ensure_billing_collections
+from src.app.modules.housekeeping.service import ensure_housekeeping_collections
 from src.app.modules.reservations.service import ensure_reservation_collections
 from config.settings import get_settings
 from src.database.connection import get_database
@@ -105,6 +108,8 @@ def create_app() -> FastAPI:
     app.include_router(settings_api_router)
     app.include_router(account_api_router)
     app.include_router(system_router)
+    app.include_router(housekeeping_api_router)
+    app.include_router(housekeeping_module_router)
     app.include_router(crud_router)
     return app
 
@@ -122,6 +127,7 @@ async def lifespan(app: FastAPI):
     ensure_revenue_collections()
     ensure_reviews_collections()
     ensure_billing_collections()
+    ensure_housekeeping_collections()
     ensure_reservation_collections()
     ensure_auth_collections()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
