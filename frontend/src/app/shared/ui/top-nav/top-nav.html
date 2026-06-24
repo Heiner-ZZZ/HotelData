@@ -50,6 +50,37 @@
   </nav>
 
   <div class="nav-actions">
+    @if (authState().authenticated) {
+      <div class="menu-shell notif-wrapper">
+        <button type="button" class="icon-btn notif-bell" (click)="toggleNotifications()" aria-label="Notificaciones">
+          <span class="material-symbols-outlined">notifications</span>
+          @if (notifBookingCount() > 0) {
+            <span class="notif-badge-sm">{{ notifBookingCount() }}</span>
+          }
+        </button>
+        @if (showNotifications()) {
+          <div class="dropdown dropdown-right notif-dropdown-sm" (click)="$event.stopPropagation()">
+            <div class="notif-head-sm">
+              <strong>Notificaciones</strong>
+            </div>
+            <div class="notif-body-sm">
+              <div class="notif-row-sm">
+                <span class="material-symbols-outlined notif-row-icon">pending_actions</span>
+                <div>
+                  <strong>{{ notifBookingCount() }}</strong> reserva{{ notifBookingCount() === 1 ? '' : 's' }} activa{{ notifBookingCount() === 1 ? '' : 's' }}
+                  <p class="notif-row-desc">Pendientes o confirmadas</p>
+                </div>
+              </div>
+              <a class="notif-row-sm notif-row-link" routerLink="/account/bookings" (click)="closeNotifications()">
+                <span class="material-symbols-outlined notif-row-icon">visibility</span>
+                <span>Ver reservas</span>
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     <button
       class="icon-btn"
       (click)="theme.toggle()"

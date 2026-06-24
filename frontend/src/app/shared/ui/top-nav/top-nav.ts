@@ -6,6 +6,8 @@ import {
   DestroyRef,
   HostListener,
   inject,
+  OnInit,
+  OnDestroy,
   signal
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -13,6 +15,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
 
 interface TopNavItem {
   label: string;
@@ -36,8 +39,9 @@ interface TopNavGroup {
   styleUrl: './top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TopNavComponent {
+export class TopNavComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly reservationsApi = inject(ReservationsApiService);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -47,6 +51,19 @@ export class TopNavComponent {
   readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
+  readonly showNotifications = signal(false);
+  readonly notifBookingCount = signal(0);
+  private _notifPollSub: ReturnType<typeof setInterval> | null = null;
+  /** Track if polling was permanently stopped due to an auth error. */
+  private _notifPollingStopped = false;
+
+  /** Whether the current user can access the reservations stats endpoint. */
+  private get _canAccessReservations(): boolean {
+    const role = this.currentUser()?.primaryRole;
+    if (!role) return false;
+    const allowed = ['cliente', 'super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'];
+    return allowed.includes(role);
+  }
   readonly navTransform = signal('translateY(0%)');
   readonly navOpacity = signal(1);
   private readonly SCROLL_HIDE_RANGE = 120;
@@ -99,6 +116,55 @@ export class TopNavComponent {
       }))
       .filter(g => g.items.length > 0);
   });
+
+  ngOnInit() {
+    this._startNotifPolling();
+  }
+
+  ngOnDestroy() {
+    this._stopNotifPolling();
+  }
+
+  private _startNotifPolling() {
+    this._fetchBookingCount();
+    this._notifPollSub = setInterval(() => this._fetchBookingCount(), 30000);
+  }
+
+  private _stopNotifPolling() {
+    if (this._notifPollSub) {
+      clearInterval(this._notifPollSub);
+      this._notifPollSub = null;
+    }
+  }
+
+  private _fetchBookingCount() {
+    if (this._notifPollingStopped || !this._canAccessReservations) {
+      this._stopNotifPolling();
+      return;
+    }
+
+    this.reservationsApi.getStats()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (stats) => {
+          this.notifBookingCount.set(stats.pending + stats.confirmed);
+        },
+        error: (err) => {
+          if (err?.status === 403) {
+            this._notifPollingStopped = true;
+            this._stopNotifPolling();
+          }
+        }
+      });
+  }
+
+  toggleNotifications() {
+    this.showNotifications.update(v => !v);
+  }
+
+  closeNotifications() {
+    this.showNotifications.set(false);
+  }
 
   constructor() {
     this.authService.ensureSessionLoaded()

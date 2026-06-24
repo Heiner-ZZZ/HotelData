@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
 
 interface BreadcrumbItem {
   label: string;
@@ -40,8 +41,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   styleUrl: './management-top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ManagementTopNavComponent {
+export class ManagementTopNavComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly notificationsApi = inject(NotificationsApiService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -96,6 +98,21 @@ export class ManagementTopNavComponent {
     });
   });
 
+  readonly pollingError = signal(false);
+  /** Whether the user has admin-level access to the notifications API. */
+  readonly canViewNotifications = computed(() => {
+    const role = this.currentUser()?.primaryRole;
+    return role === 'super_admin' || role === 'admin_sistema';
+  });
+
+  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean }>>([]);
+
+  readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
+
+  private _pollingSub: ReturnType<typeof setInterval> | null = null;
+  /** Track if polling was permanently stopped due to an auth error. */
+  private _pollingStopped = false;
+
   constructor() {
     this.router.events
       .pipe(
@@ -105,14 +122,75 @@ export class ManagementTopNavComponent {
       .subscribe(e => this.currentUrl.set(e.urlAfterRedirects.split('?')[0]));
   }
 
-  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean }>>([
-    { id: 1, title: 'Nueva reserva', description: 'Reserva #1234 confirmada para Grand Plaza', time: 'Hace 5 min', unread: true },
-    { id: 2, title: 'Actualización ETL', description: 'Pipeline de datos completado exitosamente', time: 'Hace 1 hora', unread: true },
-    { id: 3, title: 'Alerta de ocupación', description: 'Hotel Marriott al 95% de capacidad', time: 'Hace 3 horas', unread: false },
-    { id: 4, title: 'Mantenimiento', description: 'Actualización del sistema programada', time: 'Hace 1 día', unread: false },
-  ]);
+  ngOnInit() {
+    this._startPolling();
+  }
 
-  readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
+  ngOnDestroy() {
+    this._stopPolling();
+  }
+
+  private _startPolling() {
+    this._fetchNotifications();
+    this._pollingSub = setInterval(() => this._fetchNotifications(), 30000);
+  }
+
+  private _stopPolling() {
+    if (this._pollingSub) {
+      clearInterval(this._pollingSub);
+      this._pollingSub = null;
+    }
+  }
+
+  private _fetchNotifications() {
+    if (this._pollingStopped || !this.canViewNotifications()) {
+      // No access: show empty state silently, stop polling
+      this.pollingError.set(false);
+      this.notifications.set([]);
+      this._stopPolling();
+      return;
+    }
+
+    this.notificationsApi.getNotifications(1, undefined, undefined, undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (viewModel) => {
+          this.pollingError.set(false);
+          const mapped = viewModel.items.map((item, idx) => ({
+            id: idx + 1,
+            title: item.typeLabel,
+            description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
+            time: this._timeAgo(item.createdAt),
+            unread: item.status === 'sent'
+          }));
+          this.notifications.set(mapped);
+        },
+        error: (err) => {
+          // 403 = no access → stop polling permanently to avoid console noise
+          if (err?.status === 403) {
+            this._pollingStopped = true;
+            this.notifications.set([]);
+            this.pollingError.set(false);
+            this._stopPolling();
+            return;
+          }
+          this.pollingError.set(true);
+        }
+      });
+  }
+
+  private _timeAgo(iso: string): string {
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    const diffMs = now - then;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Ahora';
+    if (mins < 60) return `Hace ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
+    const days = Math.floor(hrs / 24);
+    return `Hace ${days} día${days > 1 ? 's' : ''}`;
+  }
 
   toggleNotifications() {
     this.showNotifications.update(v => !v);
