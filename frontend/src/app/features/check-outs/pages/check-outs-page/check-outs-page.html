@@ -256,6 +256,11 @@
                             <span class="material-symbols-outlined">logout</span>
                           </button>
                         }
+                        @if (item.stayStatusLabel === 'checked_out') {
+                          <button type="button" class="btn-icon-only review-trigger" (click)="openReviewModal(item.bookingId, item.propId, item.guestName)" aria-label="Dejar reseña" title="Invitar a reseña">
+                            <span class="material-symbols-outlined">rate_review</span>
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -271,5 +276,75 @@
         </section>
       }
     }
+  }
+
+  <!-- ═══ Review Modal ═══ -->
+  @if (showReviewModal()) {
+    <div class="modal-overlay" (click)="closeReviewModal()">
+      <div class="modal-panel review-modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">rate_review</span>
+          <div>
+            <h2>Invitar a reseña</h2>
+            <p>Huésped: {{ reviewGuestName() }} · Reserva: {{ reviewBookingId() }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeReviewModal()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          @if (reviewSuccess()) {
+            <div class="review-success-msg">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Reseña guardada correctamente</span>
+            </div>
+          } @else {
+            <div class="review-form">
+              <label class="review-field">
+                <span class="review-label">Puntuación</span>
+                <div class="star-input">
+                  @for (s of [1,2,3,4,5]; track s) {
+                    <button type="button" class="star-btn" [class.active]="s <= reviewRating()" (click)="setReviewRating(s)" [attr.aria-label]="s + ' estrella' + (s !== 1 ? 's' : '')">
+                      <span class="material-symbols-outlined">{{ s <= reviewRating() ? 'star' : 'star_border' }}</span>
+                    </button>
+                  }
+                  @if (reviewRating() > 0) {
+                    <span class="rating-label">{{ reviewRating() }}/5</span>
+                  }
+                </div>
+              </label>
+
+              <label class="review-field">
+                <span class="review-label">Título (opcional)</span>
+                <input type="text" class="review-input" [ngModel]="reviewTitle()" (ngModelChange)="reviewTitle.set($event)" placeholder="Ej: Excelente estancia" maxlength="200" />
+              </label>
+
+              <label class="review-field">
+                <span class="review-label">Comentario (opcional)</span>
+                <textarea class="review-textarea" [ngModel]="reviewComment()" (ngModelChange)="reviewComment.set($event)" rows="4" placeholder="Comparte tu experiencia..." maxlength="5000"></textarea>
+              </label>
+
+              @if (reviewError()) {
+                <div class="review-error-msg">
+                  <span class="material-symbols-outlined">error</span>
+                  <span>{{ reviewError() }}</span>
+                </div>
+              }
+
+              <button type="button" class="btn-submit-review" (click)="submitReview()" [disabled]="reviewSubmitting() || reviewRating() < 1">
+                @if (reviewSubmitting()) {
+                  <span class="material-symbols-outlined spinning">sync</span>
+                  Guardando...
+                } @else {
+                  <span class="material-symbols-outlined">send</span>
+                  Guardar reseña
+                }
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
   }
 </div>

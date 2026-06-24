@@ -1,0 +1,197 @@
+<div class="client-invoice-page">
+  <button type="button" class="back-link" (click)="goBack()">
+    <span class="material-symbols-outlined">arrow_back</span>
+    Volver a mis facturas
+  </button>
+
+  @if (actionError(); as err) {
+    <div class="alert alert-error">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ err }}</span>
+    </div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando factura..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No pudimos cargar la factura"
+        description="Verifica el identificador e intenta nuevamente."
+      />
+    }
+    @default {
+      @if (invoice(); as inv) {
+        <!-- ═══ Invoice header ═══ -->
+        <div class="invoice-card surface-card">
+          <div class="invoice-card-head">
+            <div class="invoice-brand">
+              <span class="material-symbols-outlined brand-icon">receipt_long</span>
+              <div>
+                <h1>Factura {{ inv.invoiceNumber }}</h1>
+                <p class="muted-text">Reserva: <code>{{ inv.bookingId }}</code></p>
+              </div>
+            </div>
+            <app-status-badge
+              [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
+              [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Pendiente de pago'"
+            />
+          </div>
+
+          <!-- ═══ Amount breakdown ═══ -->
+          <div class="amount-breakdown">
+            <div class="amount-row">
+              <span>Subtotal</span>
+              <span>{{ inv.subtotal | currency:'USD' }}</span>
+            </div>
+            <div class="amount-row">
+              <span>Impuestos (IVA)</span>
+              <span>{{ inv.taxes | currency:'USD' }}</span>
+            </div>
+            <div class="amount-row amount-row--divider"></div>
+            <div class="amount-row amount-row--total">
+              <span>Total</span>
+              <span class="total-value">{{ inv.total | currency:'USD' }}</span>
+            </div>
+          </div>
+
+          <!-- ═══ Dates ═══ -->
+          <div class="dates-row">
+            <div class="date-item">
+              <span class="date-label">Fecha de emisión</span>
+              <span class="date-value">{{ inv.issuedAt | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="date-item">
+              <span class="date-label">Fecha de pago</span>
+              <span class="date-value">{{ (inv.paidAt | date:'dd/MM/yyyy') || '—' }}</span>
+            </div>
+          </div>
+
+          @if (inv.notes) {
+            <div class="notes-section">
+              <span class="material-symbols-outlined">description</span>
+              <p>{{ inv.notes }}</p>
+            </div>
+          }
+        </div>
+
+        <!-- ═══ Payment section (only for issued invoices) ═══ -->
+        @if (inv.status === 'issued') {
+          <div class="payment-section surface-card">
+            <div class="payment-head">
+              <span class="material-symbols-outlined payment-icon">account_balance</span>
+              <div>
+                <h2>Pago en línea</h2>
+                <p>Transferencia bancaria simulada · Procesado por HotelData Pay</p>
+              </div>
+            </div>
+
+            @if (paymentStep() === 'idle') {
+              <div class="payment-idle">
+                <div class="payment-summary">
+                  <span class="pay-label">Monto a pagar</span>
+                  <span class="pay-amount">{{ inv.total | currency:'USD' }}</span>
+                </div>
+                <button type="button" class="btn-pay" (click)="startPayment()" [disabled]="paying()">
+                  <span class="material-symbols-outlined">lock</span>
+                  Pagar ahora
+                </button>
+                <p class="payment-disclaimer">
+                  <span class="material-symbols-outlined">info</span>
+                  Pago simulado — no hay movimiento de dinero real
+                </p>
+              </div>
+            }
+
+            @if (paymentStep() === 'processing') {
+              <div class="payment-processing">
+                <div class="processing-animation">
+                  <span class="material-symbols-outlined processing-spin">sync</span>
+                </div>
+                <h3>Procesando pago</h3>
+                <p>Conectando con el banco emisor...</p>
+                <div class="processing-bar">
+                  <div class="processing-bar-fill"></div>
+                </div>
+              </div>
+            }
+
+            @if (paymentStep() === 'confirm') {
+              <div class="payment-confirm">
+                <div class="confirm-details">
+                  <div class="confirm-row">
+                    <span>Beneficiario</span>
+                    <strong>HotelData Hub SAPI de CV</strong>
+                  </div>
+                  <div class="confirm-row">
+                    <span>Concepto</span>
+                    <strong>Factura {{ inv.invoiceNumber }}</strong>
+                  </div>
+                  <div class="confirm-row">
+                    <span>Monto</span>
+                    <strong class="confirm-amount">{{ inv.total | currency:'USD' }}</strong>
+                  </div>
+                </div>
+                <div class="confirm-actions">
+                  <button type="button" class="btn-cancel-pay" (click)="cancelPayment()" [disabled]="paying()">
+                    Cancelar
+                  </button>
+                  <button type="button" class="btn-confirm-pay" (click)="confirmPayment()" [disabled]="paying()">
+                    @if (paying()) {
+                      <span class="material-symbols-outlined processing-spin">sync</span>
+                      Procesando...
+                    } @else {
+                      <span class="material-symbols-outlined">check_circle</span>
+                      Confirmar pago
+                    }
+                  </button>
+                </div>
+              </div>
+            }
+
+            @if (paymentStep() === 'done') {
+              <div class="payment-done">
+                <div class="done-icon">
+                  <span class="material-symbols-outlined">check_circle</span>
+                </div>
+                <h3>Pago exitoso</h3>
+                <p>Tu pago ha sido procesado correctamente.</p>
+                <div class="done-details">
+                  <div class="done-row">
+                    <span>Referencia</span>
+                    <code>{{ paymentReference() || 'HD-' + inv.invoiceNumber }}</code>
+                  </div>
+                  <div class="done-row">
+                    <span>Monto</span>
+                    <strong>{{ inv.total | currency:'USD' }}</strong>
+                  </div>
+                  <div class="done-row">
+                    <span>Fecha</span>
+                    <strong>{{ today }}</strong>
+                  </div>
+                </div>
+                <button type="button" class="btn-done" (click)="goBack()">
+                  <span class="material-symbols-outlined">arrow_back</span>
+                  Volver a mis facturas
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (inv.status === 'paid') {
+          <div class="paid-badge-card surface-card">
+            <div class="paid-badge-content">
+              <span class="material-symbols-outlined paid-icon">verified</span>
+              <div>
+                <h3>Factura pagada</h3>
+                <p>Este comprobante ha sido liquidado. No se requieren acciones adicionales.</p>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>

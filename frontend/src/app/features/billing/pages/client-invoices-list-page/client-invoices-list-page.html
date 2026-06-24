@@ -1,0 +1,150 @@
+<div class="billing-page">
+  <app-page-header
+    eyebrow="Facturación"
+    title="Mis Facturas"
+    description="Consulta el estado de tus facturas, descarga comprobantes y realiza pagos simulados de forma segura."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando tus facturas..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No pudimos cargar tus facturas"
+        description="Verifica tu conexión e intenta nuevamente. Si el problema persiste, contacta a soporte."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No tienes facturas pendientes"
+        description="Tus facturas aparecerán aquí cuando realices una reserva. Todo está en orden."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <!-- Summary -->
+        <div class="billing-summary">
+          <div class="summary-card summary-card--paid">
+            <span class="summary-icon material-symbols-outlined">check_circle</span>
+            <div>
+              <span class="summary-value">{{ paidCount() }}</span>
+              <span class="summary-label">Pagadas</span>
+            </div>
+          </div>
+          <div class="summary-card summary-card--pending">
+            <span class="summary-icon material-symbols-outlined">pending_actions</span>
+            <div>
+              <span class="summary-value">{{ pendingCount() }}</span>
+              <span class="summary-label">Pendientes</span>
+            </div>
+          </div>
+          <div class="summary-card summary-card--total">
+            <span class="summary-icon material-symbols-outlined">account_balance</span>
+            <div>
+              <span class="summary-value">{{ pendingTotal() | currency:'USD' }}</span>
+              <span class="summary-label">Total pendiente</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoices table -->
+        <section class="surface-card billing-table">
+          <div class="table-header">
+            <div>
+              <h2>Historial de facturas</h2>
+              <p>{{ vm.total }} registros · {{ vm.page }} de {{ vm.totalPages }}</p>
+            </div>
+            <div class="pagination">
+              <button (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev" class="page-btn">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <span class="page-info">{{ vm.page }} / {{ vm.totalPages || 1 }}</span>
+              <button (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext" class="page-btn">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Factura</th>
+                  <th>Reserva</th>
+                  <th>Monto</th>
+                  <th>Estado</th>
+                  <th>Emisión</th>
+                  <th>Vencimiento</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (inv of vm.items; track inv.id) {
+                  <tr [class.row-pending]="inv.status === 'issued'">
+                    <td>
+                      <span class="invoice-number">{{ inv.invoiceNumber }}</span>
+                    </td>
+                    <td>
+                      <code class="booking-ref">{{ inv.bookingId }}</code>
+                    </td>
+                    <td class="cell-amount">
+                      <strong>{{ inv.total | currency:'USD' }}</strong>
+                    </td>
+                    <td>
+                      <app-status-badge
+                        [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
+                        [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Pendiente'"
+                      />
+                    </td>
+                    <td class="cell-date">{{ inv.issuedAt | date:'dd/MM/yyyy' }}</td>
+                    <td class="cell-date">{{ inv.paidAt || '—' }}</td>
+                    <td>
+                      <a [routerLink]="[inv.id]" class="action-link">
+                        <span>Ver detalle</span>
+                        <span class="material-symbols-outlined">chevron_right</span>
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Banking info -->
+        <div class="banking-info surface-card">
+          <div class="banking-info-head">
+            <span class="material-symbols-outlined banking-icon">account_balance</span>
+            <div>
+              <h3>Transferencia bancaria simulada</h3>
+              <p>Los pagos se procesan de forma simulada. No hay movimiento de dinero real.</p>
+            </div>
+          </div>
+          <div class="banking-details">
+            <div class="banking-field">
+              <span class="banking-label">Banco</span>
+              <span class="banking-value">Banco HotelData S.A.</span>
+            </div>
+            <div class="banking-field">
+              <span class="banking-label">Titular</span>
+              <span class="banking-value">HotelData Hub SAPI de CV</span>
+            </div>
+            <div class="banking-field">
+              <span class="banking-label">Cuenta</span>
+              <span class="banking-value banking-mono">6460 1802 3004 7812</span>
+            </div>
+            <div class="banking-field">
+              <span class="banking-label">CLABE</span>
+              <span class="banking-value banking-mono">002 646 018023007812 5</span>
+            </div>
+            <div class="banking-field">
+              <span class="banking-label">Referencia</span>
+              <span class="banking-value banking-mono">HD-{{ invNumber() }}</span>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>

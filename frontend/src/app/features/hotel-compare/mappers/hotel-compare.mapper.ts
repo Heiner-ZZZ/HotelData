@@ -24,6 +24,8 @@ function mapItem(dto: HotelCompareItemDto): HotelCompareItem {
     roomTypes: (dto.room_types ?? []).map(mapRoomType),
     policies: dto.policies ?? {},
     destinationLabels: dto.destination_labels ?? [],
+    latitude: dto.latitude,
+    longitude: dto.longitude,
     minNightlyRate: dto.min_nightly_rate,
     minNightlyRateLabel: dto.min_nightly_rate_label,
     totalEstimated: dto.total_estimated,

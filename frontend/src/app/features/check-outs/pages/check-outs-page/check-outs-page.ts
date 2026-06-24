@@ -1,9 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { API_CONFIG } from '../../../../core/api/api.config';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -27,7 +29,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-outs-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, FormsModule],
   templateUrl: './check-outs-page.html',
   styleUrl: './check-outs-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,6 +38,8 @@ export class CheckOutsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckOutsApiService);
+  private readonly http = inject(HttpClient);
+  private readonly apiConfig = inject(API_CONFIG);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
 
@@ -43,6 +47,18 @@ export class CheckOutsPageComponent {
   readonly viewModel = signal<CheckOutsViewModel | null>(null);
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  // Review modal
+  readonly showReviewModal = signal(false);
+  readonly reviewBookingId = signal('');
+  readonly reviewPropId = signal(0);
+  readonly reviewGuestName = signal('');
+  readonly reviewRating = signal(0);
+  readonly reviewTitle = signal('');
+  readonly reviewComment = signal('');
+  readonly reviewSubmitting = signal(false);
+  readonly reviewError = signal('');
+  readonly reviewSuccess = signal(false);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     operationDate: [todayIso(), [Validators.required]]
@@ -203,5 +219,54 @@ export class CheckOutsPageComponent {
         this.message.set('');
       }
     });
+  }
+
+  /** ═══ Review modal ═══ */
+
+  openReviewModal(bookingId: string, propId: number, guestName: string) {
+    this.reviewBookingId.set(bookingId);
+    this.reviewPropId.set(propId);
+    this.reviewGuestName.set(guestName);
+    this.reviewRating.set(0);
+    this.reviewTitle.set('');
+    this.reviewComment.set('');
+    this.reviewError.set('');
+    this.reviewSuccess.set(false);
+    this.showReviewModal.set(true);
+  }
+
+  setReviewRating(stars: number) {
+    this.reviewRating.set(stars);
+  }
+
+  submitReview() {
+    if (this.reviewRating() < 1) {
+      this.reviewError.set('Selecciona una puntuación de 1 a 5 estrellas.');
+      return;
+    }
+    this.reviewSubmitting.set(true);
+    this.reviewError.set('');
+
+    this.http.post(`${this.apiConfig.baseUrl}/reviews/staff`, {
+      booking_id: this.reviewBookingId(),
+      prop_id: this.reviewPropId(),
+      rating: this.reviewRating(),
+      title: this.reviewTitle(),
+      comment: this.reviewComment(),
+    }, { withCredentials: true }).subscribe({
+      next: () => {
+        this.reviewSuccess.set(true);
+        this.reviewSubmitting.set(false);
+        setTimeout(() => this.showReviewModal.set(false), 1500);
+      },
+      error: () => {
+        this.reviewError.set('No se pudo guardar la reseña. Intenta nuevamente.');
+        this.reviewSubmitting.set(false);
+      },
+    });
+  }
+
+  closeReviewModal() {
+    this.showReviewModal.set(false);
   }
 }

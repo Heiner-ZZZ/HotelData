@@ -1,179 +1,282 @@
-<div class="hotel-compare-page">
-  <app-page-header
-    eyebrow="Comparador de hoteles"
-    [title]="'Comparar ' + propIds().length + ' hoteles'"
-    description="Compara hasta 3 hoteles lado a lado para tomar la mejor decisión."
-  />
+<div class="compare-page">
+  <!-- ═══ Hero ═══ -->
+  <div class="compare-hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <span class="hero-eyebrow">Comparador de hoteles</span>
+      <h1 class="hero-title">
+        @if (propIds().length === 1) {
+          Comparando 1 hotel
+        } @else {
+          Comparando {{ propIds().length }} hoteles
+        }
+      </h1>
+      <p class="hero-desc">Compara precios, servicios y tipos de habitación lado a lado</p>
+    </div>
+  </div>
 
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando comparativa..." />
+      <div class="loading-section">
+        <div class="loading-card">
+          <span class="material-symbols-outlined spin">progress_activity</span>
+          <p>Cargando comparativa...</p>
+        </div>
+      </div>
     }
     @case ('error') {
-      <app-error-state
-        title="No se pudo cargar la comparativa"
-        description="Revisa la conectividad con la API o intenta con otros hoteles."
-      />
+      <div class="error-section surface-card">
+        <span class="material-symbols-outlined error-icon">error</span>
+        <h2>No se pudo cargar la comparativa</h2>
+        <p>Revisa la conexión o intenta con otros hoteles.</p>
+        <a routerLink="/search" class="btn-outline">Volver a resultados</a>
+      </div>
     }
     @case ('empty') {
-      <app-empty-state
-        title="Selecciona hoteles para comparar"
-        description="Usa el enlace 'Comparar' en los resultados de búsqueda para añadir hoteles."
-      />
+      <div class="empty-section surface-card">
+        <span class="material-symbols-outlined empty-icon">compare_arrows</span>
+        <h2>Selecciona hoteles para comparar</h2>
+        <p>Elige hasta 3 hoteles desde los resultados de búsqueda para verlos lado a lado.</p>
+        <a routerLink="/search" class="btn-primary">Buscar hoteles</a>
+      </div>
     }
     @default {
       @if (compareData(); as data) {
-        <div class="compare-table-wrapper">
-          <table class="compare-table">
-            <thead>
-              <tr>
-                <th class="row-label-col"></th>
-                @for (hotel of data.items; track hotel.propId) {
-                  <th class="hotel-col">
-                    <button class="remove-btn" (click)="removeId(hotel.propId)" aria-label="Quitar hotel">&times;</button>
-                  </th>
-                }
-                @if (data.items.length < 3) {
-                  <th class="hotel-col add-col">
-                    <a [routerLink]="addMoreUrl()" class="add-link">+ Añadir hotel</a>
-                  </th>
-                }
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="row-label">Hotel</td>
-                @for (hotel of data.items; track hotel.propId) {
-                  <td class="hotel-col">
-                    <div class="hotel-card-compare">
-                      <div class="hotel-image" [style.background-color]="'var(--accent)'">
-                        @if (hotel.imageUrl) {
-                          <img [src]="hotel.imageUrl" [alt]="hotel.hotelName" loading="lazy" />
-                        }
-                      </div>
-                      <h3>
-                        <a [routerLink]="['/hotels', hotel.propId]">{{ hotel.hotelName }}</a>
-                      </h3>
-                    </div>
-                  </td>
-                }
-                @if (data.items.length < 3) {
-                  <td class="hotel-col"></td>
-                }
-              </tr>
-
-              <tr>
-                <td class="row-label">Calificación</td>
-                @for (hotel of data.items; track hotel.propId) {
-                  <td class="hotel-col">
-                    <div class="stars-row">
-                      @if (hotel.propStarrating; as stars) {
-                        <span class="stars">{{ stars }} ★</span>
-                      }
-                      @if (hotel.propReviewScore; as score) {
-                        <span class="score">{{ score.toFixed(1) }}</span>
-                      }
-                    </div>
-                  </td>
-                }
-                @if (data.items.length < 3) {
-                  <td class="hotel-col"></td>
-                }
-              </tr>
-
-              @if (data.items[0]?.minNightlyRate != null) {
-                <tr>
-                  <td class="row-label">Precio por noche</td>
-                  @for (hotel of data.items; track hotel.propId) {
-                    <td class="hotel-col">
-                      <strong class="price">{{ hotel.minNightlyRateLabel }}</strong>
-                    </td>
-                  }
-                  @if (data.items.length < 3) {
-                    <td class="hotel-col"></td>
-                  }
-                </tr>
-              }
-
-              @if (data.items[0]?.totalEstimated != null) {
-                <tr>
-                  <td class="row-label">Total estimado</td>
-                  @for (hotel of data.items; track hotel.propId) {
-                    <td class="hotel-col">
-                      <strong class="price">{{ hotel.totalEstimatedLabel }}</strong>
-                    </td>
-                  }
-                  @if (data.items.length < 3) {
-                    <td class="hotel-col"></td>
-                  }
-                </tr>
-              }
-
-              <tr>
-                <td class="row-label">Tipo de habitación</td>
-                @for (hotel of data.items; track hotel.propId) {
-                  <td class="hotel-col">
-                    @if (hotel.roomTypes.length) {
-                      <span class="room-type-tag">{{ hotel.roomTypes[0].name }}</span>
-                      @if (hotel.roomTypes.length > 1) {
-                        <span class="more-types">+{{ hotel.roomTypes.length - 1 }} más</span>
-                      }
-                    }
-                  </td>
-                }
-                @if (data.items.length < 3) {
-                  <td class="hotel-col"></td>
-                }
-              </tr>
-
-              @if (amenityList(data.items[0]?.amenitiesText).length) {
-                <tr>
-                  <td class="row-label">Servicios</td>
-                  @for (hotel of data.items; track hotel.propId) {
-                    <td class="hotel-col">
-                      <div class="amenities-list">
-                        @for (a of amenityList(hotel.amenitiesText).slice(0, 6); track a) {
-                          <span class="amenity-tag">{{ a }}</span>
-                        }
-                        @if (amenityList(hotel.amenitiesText).length > 6) {
-                          <span class="more-types">+{{ amenityList(hotel.amenitiesText).length - 6 }}</span>
-                        }
-                      </div>
-                    </td>
-                  }
-                  @if (data.items.length < 3) {
-                    <td class="hotel-col"></td>
-                  }
-                </tr>
-              }
-
-              <tr>
-                <td class="row-label">Habitaciones disponibles</td>
-                @for (hotel of data.items; track hotel.propId) {
-                  <td class="hotel-col">
-                    <div class="room-types-list">
-                      @for (rt of hotel.roomTypes.slice(0, 4); track rt.roomTypeId) {
-                        <div class="room-type-item">
-                          <span class="room-type-name">{{ rt.name }}</span>
-                          <span class="room-type-cap">{{ rt.maxAdults }} adulto{{ rt.maxAdults !== 1 ? 's' : '' }} · {{ rt.maxChildren }} niño{{ rt.maxChildren !== 1 ? 's' : '' }}</span>
-                        </div>
-                      }
-                      @if (hotel.roomTypes.length > 4) {
-                        <span class="more-types">+{{ hotel.roomTypes.length - 4 }} más</span>
-                      }
-                    </div>
-                  </td>
-                }
-                @if (data.items.length < 3) {
-                  <td class="hotel-col"></td>
-                }
-              </tr>
-            </tbody>
-          </table>
+        <!-- ═══ Stats bar ═══ -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-value">{{ data.items.length }}</span>
+            <span class="stat-label">Hotel{{ data.items.length !== 1 ? 'es' : '' }}</span>
+          </div>
+          @if (data.items[0]?.minNightlyRate != null) {
+            <div class="stat-item">
+              <span class="stat-value">Desde {{ minRate(data.items) }}</span>
+              <span class="stat-label">Mejor precio/noche</span>
+            </div>
+          }
+          <div class="stat-item">
+            <span class="stat-value">{{ data.items[0]?.roomTypes?.length || 0 }}</span>
+            <span class="stat-label">Tipos de habitación</span>
+          </div>
         </div>
 
-        <div class="actions-row">
-          <a [routerLink]="['/search']" class="back-link">← Volver a resultados</a>
+        <!-- ═══ Hotel cards grid ═══ -->
+        <div class="compare-grid">
+          @for (hotel of data.items; track hotel.propId; let i = $index) {
+            @let flags = hotelFlags(hotel.propId);
+            <article class="hotel-card surface-card" [style.--card-index]="i">
+              <!-- ═══ Carousel ═══ -->
+              <div class="card-image-wrap"
+                   (mouseenter)="startAutoPlay(hotel.propId, 4)"
+                   (mouseleave)="stopAutoPlay(hotel.propId)">
+                @let images = carouselImages(hotel);
+                @let slide = currentSlide(hotel.propId);
+
+                <!-- Slides track -->
+                <div class="carousel-track" [style.transform]="carouselTransform(slide)">
+                  @for (img of images; track $index) {
+                    <div class="carousel-slide">
+                      @if (imageErrors().has(hotel.propId + '-' + $index)) {
+                        <div class="carousel-fallback">
+                          <span class="material-symbols-outlined fallback-icon">hotel</span>
+                        </div>
+                      } @else {
+                        <img
+                          [src]="img"
+                          [alt]="hotel.hotelName + ' foto ' + ($index + 1)"
+                          class="carousel-img"
+                          loading="lazy"
+                          (error)="handleImageError(hotel.propId + '-' + $index)"
+                        />
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Prev / Next -->
+                <button class="carousel-btn carousel-prev" (click)="$event.stopPropagation(); goToSlide(hotel.propId, slide - 1, 4)" aria-label="Anterior">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <button class="carousel-btn carousel-next" (click)="$event.stopPropagation(); goToSlide(hotel.propId, slide + 1, 4)" aria-label="Siguiente">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+
+                <!-- Dots -->
+                <div class="carousel-dots">
+                  @for (img of images; track $index) {
+                    <button
+                      class="carousel-dot"
+                      [class.is-active]="$index === slide"
+                      (click)="$event.stopPropagation(); goToSlide(hotel.propId, $index, 4)"
+                      [attr.aria-label]="'Ir a foto ' + ($index + 1)">
+                    </button>
+                  }
+                </div>
+
+                <!-- Overlay badges + remove (on top of carousel) -->
+                <div class="card-image-overlay">
+                  @if (hotel.propStarrating; as stars) {
+                    <div class="star-badge" [class.is-best]="flags?.betterStars">
+                      <span class="material-symbols-outlined star-icon">star</span>
+                      {{ stars }}
+                      @if (flags?.betterStars) {
+                        <span class="better-chip">Mejor calidad</span>
+                      }
+                    </div>
+                  }
+                  @if (hotel.propReviewScore; as score) {
+                    <div class="score-badge" [class.score-high]="score >= 8" [class.score-mid]="score >= 6 && score < 8" [class.is-best]="flags?.betterScore">
+                      {{ score.toFixed(1) }}
+                      @if (flags?.betterScore) {
+                        <span class="better-chip">Mejor puntuación</span>
+                      }
+                    </div>
+                  }
+                </div>
+                <button class="remove-btn" (click)="removeId(hotel.propId)" aria-label="Quitar hotel" title="Quitar de la comparativa">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <!-- Body -->
+              <div class="card-body">
+                <h2 class="card-title">
+                  <a [routerLink]="['/hotels', hotel.propId]">{{ hotel.hotelName }}</a>
+                </h2>
+
+                @if (hotel.destinationLabels.length) {
+                  <div class="card-location">
+                    <span class="material-symbols-outlined location-icon">location_on</span>
+                    <span>{{ hotel.destinationLabels[0] }}</span>
+                  </div>
+                }
+
+                <!-- Price -->
+                @if (hotel.minNightlyRateLabel) {
+                  <div class="price-block" [class.is-best]="flags?.betterPrice">
+                    <span class="price-label">Desde</span>
+                    <span class="price-value">{{ hotel.minNightlyRateLabel }}</span>
+                    <span class="price-unit">/noche</span>
+                    @if (flags?.betterPrice) {
+                      <span class="better-chip price-better">Mejor precio</span>
+                    }
+                  </div>
+                  @if (hotel.totalEstimatedLabel) {
+                    <div class="total-estimate">
+                      <span class="material-symbols-outlined estimate-icon">receipt_long</span>
+                      Total estimado: <strong>{{ hotel.totalEstimatedLabel }}</strong>
+                    </div>
+                  }
+                }
+
+                <!-- Amenities -->
+                @if (amenityList(hotel.amenitiesText).length) {
+                  <div class="amenities-section">
+                    <h3 class="section-label">Servicios</h3>
+                    <div class="amenities-grid">
+                      @for (a of amenityList(hotel.amenitiesText).slice(0, 6); track a) {
+                        <span class="amenity-chip">
+                          <span class="material-symbols-outlined amenity-icon">{{ amenityIcon(a) }}</span>
+                          {{ a }}
+                        </span>
+                      }
+                      @if (amenityList(hotel.amenitiesText).length > 6) {
+                        <span class="amenity-more">+{{ amenityList(hotel.amenitiesText).length - 6 }} más</span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Room types -->
+                @if (hotel.roomTypes.length) {
+                  <div class="rooms-section">
+                    <button
+                      class="rooms-toggle"
+                      (click)="toggleRooms(hotel.propId)"
+                      [class.is-expanded]="expandedRooms().has(hotel.propId)"
+                    >
+                      <span class="section-label">Habitaciones ({{ hotel.roomTypes.length }})</span>
+                      @if (flags?.betterRoomTypes) {
+                        <span class="better-chip rooms-better">Más variedad</span>
+                      }
+                      <span class="material-symbols-outlined toggle-arrow">expand_more</span>
+                    </button>
+                    @if (expandedRooms().has(hotel.propId)) {
+                      <div class="rooms-list">
+                        @for (rt of hotel.roomTypes; track rt.roomTypeId) {
+                          <div class="room-item">
+                            <div class="room-item-head">
+                              <span class="material-symbols-outlined room-item-icon">bed</span>
+                              <div>
+                                <strong class="room-item-name">{{ rt.name }}</strong>
+                                <span class="room-item-cap">{{ rt.maxAdults }} adulto{{ rt.maxAdults !== 1 ? 's' : '' }} · {{ rt.maxChildren }} niño{{ rt.maxChildren !== 1 ? 's' : '' }}</span>
+                              </div>
+                            </div>
+                            @if (rt.description) {
+                              <p class="room-item-desc">{{ rt.description }}</p>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+
+                <!-- Action -->
+                <div class="card-actions">
+                  <a [routerLink]="['/hotels', hotel.propId]" class="btn-card">
+                    <span class="material-symbols-outlined btn-card-icon">open_in_new</span>
+                    Ver detalle
+                  </a>
+                </div>
+              </div>
+            </article>
+          }
+
+          <!-- Add hotel placeholder -->
+          @if (data.items.length < 3) {
+            <a [routerLink]="addMoreUrl()" class="add-card surface-card">
+              <div class="add-card-content">
+                <span class="material-symbols-outlined add-icon">add_circle</span>
+                <span class="add-text">Añadir hotel</span>
+                <span class="add-sub">Agrega hasta {{ 3 - data.items.length }} más</span>
+              </div>
+            </a>
+          }
+        </div>
+
+        <!-- ═══ Map ═══ -->
+        <div class="map-section">
+          <div class="map-header">
+            <span class="material-symbols-outlined map-header-icon">map</span>
+            <span>Ubicación de hoteles</span>
+            @if (userLocation()) {
+              <button class="map-fit-btn" (click)="fitMapToHotels()" title="Ajustar mapa">
+                <span class="material-symbols-outlined">my_location</span>
+              </button>
+            }
+          </div>
+          <div #mapContainer class="map-container"></div>
+          <div class="map-legend">
+            <span class="map-legend-item">
+              <span class="material-symbols-outlined" style="font-size:1rem;color:#1463FF">hotel</span>
+              Hoteles
+            </span>
+            @if (userLocation()) {
+              <span class="map-legend-item">
+                <span class="material-symbols-outlined" style="font-size:1rem;color:#D32F2F">person_pin_circle</span>
+                Tu ubicación
+              </span>
+            }
+          </div>
+        </div>
+
+        <!-- ═══ Bottom actions ═══ -->
+        <div class="bottom-actions">
+          <a routerLink="/search" class="btn-outline">
+            <span class="material-symbols-outlined">search</span>
+            Buscar hoteles
+          </a>
         </div>
       }
     }

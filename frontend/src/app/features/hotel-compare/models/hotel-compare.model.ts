@@ -9,6 +9,8 @@ export interface HotelCompareItem {
   roomTypes: HotelCompareRoomType[];
   policies: Record<string, unknown>;
   destinationLabels: string[];
+  latitude: number;
+  longitude: number;
   minNightlyRate?: number;
   minNightlyRateLabel?: string;
   totalEstimated?: number;
@@ -22,6 +24,14 @@ export interface HotelCompareRoomType {
   maxChildren: number;
   baseCapacity: number;
   description?: string;
+}
+
+/** Per-hotel flags showing which attributes are better than the comparison average. */
+export interface ComparisonFlags {
+  betterPrice: boolean;
+  betterScore: boolean;
+  betterStars: boolean;
+  betterRoomTypes: boolean;
 }
 
 export interface HotelCompareData {

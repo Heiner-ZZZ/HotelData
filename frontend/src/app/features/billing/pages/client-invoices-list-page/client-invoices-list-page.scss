@@ -1,0 +1,263 @@
+.billing-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ─── Summary cards ─── */
+.billing-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+
+  .summary-icon {
+    font-size: 1.75rem;
+    font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+  }
+
+  div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .summary-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--app-text);
+  }
+
+  .summary-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    color: var(--muted-text);
+  }
+}
+
+.summary-card--paid {
+  .summary-icon { color: #059669; }
+}
+
+.summary-card--pending {
+  .summary-icon { color: #d97706; }
+}
+
+.summary-card--total {
+  .summary-icon { color: var(--accent); }
+}
+
+/* ─── Billing table ─── */
+.billing-table {
+  padding: 1.25rem;
+  border-radius: 14px;
+  display: grid;
+  gap: 1rem;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h2 { margin: 0 0 2px; font-size: 1rem; }
+  p { margin: 0; color: var(--muted-text); font-size: 0.8rem; }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--app-text);
+  cursor: pointer;
+  transition: all 120ms;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+.page-info {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+thead th {
+  padding: 0.6rem 0.65rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 0.65rem 0.65rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+
+.row-pending {
+  background: color-mix(in srgb, #d97706 3%, transparent);
+}
+
+.invoice-number {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.booking-ref {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+}
+
+.cell-amount {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+}
+
+.cell-date {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: gap 120ms;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    transition: transform 120ms;
+  }
+
+  &:hover {
+    gap: 0.4rem;
+    .material-symbols-outlined { transform: translateX(2px); }
+  }
+}
+
+/* ─── Banking info ─── */
+.banking-info {
+  padding: 1.25rem;
+  border-radius: 14px;
+  display: grid;
+  gap: 1rem;
+  border: 1px dashed var(--app-border);
+  background: color-mix(in srgb, var(--surface) 60%, #f9fafb);
+}
+
+.banking-info-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+
+  h3 { margin: 0 0 2px; font-size: 0.92rem; }
+  p { margin: 0; color: var(--muted-text); font-size: 0.78rem; }
+}
+
+.banking-icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+}
+
+.banking-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.banking-field {
+  display: grid;
+  gap: 2px;
+}
+
+.banking-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+
+.banking-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--app-text);
+}
+
+.banking-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 700px) {
+  .billing-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .banking-details {
+    grid-template-columns: 1fr;
+  }
+}
