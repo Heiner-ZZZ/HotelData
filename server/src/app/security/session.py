@@ -10,9 +10,19 @@ from passlib.context import CryptContext
 from pymongo.database import Database
 from starlette.requests import Request
 
+from src.database.connection import get_database
+
 
 SESSION_COOKIE_NAME = "hoteldata_session"
 SESSION_TTL_HOURS = 8
+
+# Inactivity timeout — if no activity (heartbeat or request) within this window,
+# the session is considered expired even if the absolute TTL hasn't been reached.
+INACTIVITY_TIMEOUT_MINUTES = 60
+
+# Minimum interval between last_activity_at updates (seconds) to avoid DB writes
+# on every single request.
+ACTIVITY_UPDATE_INTERVAL_SECONDS = 120
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -69,6 +79,7 @@ def create_user_session(
             "ip_address": request.client.host if request.client else None,
             "user_agent": request.headers.get("user-agent"),
             "remember_me": remember_me,
+            "last_activity_at": now,
         }
     )
     return token
@@ -105,6 +116,12 @@ def get_session(db: Database, token: str | None) -> dict[str, Any] | None:
             {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": "expired"}},
         )
         return None
+    # Check inactivity timeout
+    session = check_inactivity_timeout(session)
+    if session is None:
+        return None
+    # Touch activity (rate-limited) on every session check
+    touch_session_activity(db, session)
     return session
 
 
@@ -120,6 +137,58 @@ def get_current_user(db: Database, token: str | None) -> tuple[dict[str, Any] | 
             return None, session
     user = db.users.find_one({"_id": user_id, "is_active": True})
     return user, session
+
+
+def check_inactivity_timeout(session: dict[str, Any]) -> dict[str, Any] | None:
+    """Check if the session has exceeded the inactivity timeout.
+
+    If `last_activity_at` is older than INACTIVITY_TIMEOUT_MINUTES,
+    the session is invalidated. Returns None if expired, or the
+    same session dict otherwise.
+    """
+    last_activity = session.get("last_activity_at")
+    if last_activity is None:
+        return session
+    if isinstance(last_activity, str):
+        try:
+            last_activity = datetime.fromisoformat(last_activity.replace("Z", "+00:00"))
+        except Exception:
+            return session
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=timezone.utc)
+    elapsed = (utc_now() - last_activity).total_seconds() / 60
+    if elapsed > INACTIVITY_TIMEOUT_MINUTES:
+        db = get_database()
+        db.user_sessions.update_one(
+            {"_id": session["_id"]},
+            {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": "inactivity_timeout"}},
+        )
+        return None
+    return session
+
+
+def touch_session_activity(db: Database, session: dict[str, Any]) -> None:
+    """Update last_activity_at if enough time has passed since the last update.
+
+    Rate-limited to ACTIVITY_UPDATE_INTERVAL_SECONDS to avoid excessive DB writes.
+    """
+    now = utc_now()
+    last = session.get("last_activity_at")
+    if last:
+        if isinstance(last, str):
+            try:
+                last = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            except Exception:
+                last = None
+        if last and last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        if last and (now - last).total_seconds() < ACTIVITY_UPDATE_INTERVAL_SECONDS:
+            return  # Too soon, skip write
+    db.user_sessions.update_one(
+        {"_id": session["_id"]},
+        {"$set": {"last_activity_at": now}},
+    )
+    session["last_activity_at"] = now
 
 
 def invalidate_session(db: Database, token: str | None, reason: str = "logout") -> dict[str, Any] | None:

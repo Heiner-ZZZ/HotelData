@@ -21,12 +21,15 @@ from src.app.security.rate_limit import limiter
 from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
+    INACTIVITY_TIMEOUT_MINUTES,
     create_user_session,
     find_user_by_identifier,
     get_current_user,
+    get_session,
     invalidate_session,
     invalidate_user_sessions,
     log_user_activity,
+    touch_session_activity,
     verify_password,
     password_context,
 )
@@ -648,6 +651,30 @@ def terminate_other_sessions(request: Request):
         "ok": True,
         "message": f"Se cerraron {count} sesión(es) en otros dispositivos.",
         "terminated_count": count
+    }
+
+
+@api_router.post("/heartbeat")
+def heartbeat(
+    request: Request,
+    current_user: dict = Depends(require_login),
+):
+    """Update the session's last_activity_at timestamp.
+
+    Called periodically by the frontend to keep the session alive
+    while the user is actively using the application.
+    """
+    db = get_database()
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not token:
+        return {"ok": True}
+    session = get_session(db, token)
+    if session:
+        touch_session_activity(db, session)
+        touch_session_activity(db, session)
+    return {
+        "ok": True,
+        "inactivity_timeout_minutes": INACTIVITY_TIMEOUT_MINUTES,
     }
 
 

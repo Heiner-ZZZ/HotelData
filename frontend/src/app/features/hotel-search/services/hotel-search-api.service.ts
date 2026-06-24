@@ -30,7 +30,7 @@ export class HotelSearchApiService {
       price_min: normalized.minPrice ? Number(normalized.minPrice) : undefined,
       price_max: normalized.maxPrice ? Number(normalized.maxPrice) : undefined,
       star_rating: normalized.minStars ? Number(normalized.minStars) : undefined,
-      amenities: normalized.amenities || undefined,
+      amenities: (Array.isArray(normalized.amenities) ? normalized.amenities.join(',') : normalized.amenities) || undefined,
       amenities_mode: normalized.amenitiesMode || undefined,
       sort_by: normalized.sortBy || undefined,
     };

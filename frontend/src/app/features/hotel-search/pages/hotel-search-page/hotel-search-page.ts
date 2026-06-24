@@ -72,7 +72,7 @@ export class HotelSearchPageComponent {
             minPrice: queryParams.get('price_min') ?? '',
             maxPrice: queryParams.get('price_max') ?? '',
             minStars: queryParams.get('star_rating') ?? '',
-            amenities: queryParams.get('amenities') ?? '',
+            amenities: (queryParams.get('amenities') ?? '').split(',').filter(Boolean),
             amenitiesMode: (queryParams.get('amenities_mode') as 'or' | 'and') ?? 'or',
             sortBy: (queryParams.get('sort_by') as 'price' | 'rating' | 'stars' | 'name') ?? 'price',
             page: Number(queryParams.get('page') ?? '1'),

@@ -58,7 +58,7 @@ export function createHotelSearchFilters(
     minPrice: partial.minPrice ?? '',
     maxPrice: partial.maxPrice ?? '',
     minStars: partial.minStars ?? '',
-    amenities: partial.amenities ?? '',
+    amenities: partial.amenities ?? [],
     amenitiesMode: partial.amenitiesMode ?? 'or',
     sortBy: partial.sortBy ?? 'price',
     compareIds: partial.compareIds ?? [],

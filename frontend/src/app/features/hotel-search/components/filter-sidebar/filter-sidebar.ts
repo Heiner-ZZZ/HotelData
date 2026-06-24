@@ -44,7 +44,7 @@ export class FilterSidebarComponent {
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           minStars: filters.minStars,
-          amenities: filters.amenities,
+          amenities: Array.isArray(filters.amenities) ? filters.amenities.join(', ') : filters.amenities,
           amenitiesMode: filters.amenitiesMode,
           sortBy: filters.sortBy,
         },
@@ -54,12 +54,25 @@ export class FilterSidebarComponent {
   }
 
   applyFilters() {
+    const raw = this.form.getRawValue();
+    const amenitiesStr = (raw.amenities || '').trim();
     this.submitted.emit({
       ...this.filters(),
-      ...this.form.getRawValue(),
+      destination: raw.destination,
+      checkIn: raw.checkIn,
+      checkOut: raw.checkOut,
+      adults: raw.adults,
+      children: raw.children,
+      rooms: raw.rooms,
+      minPrice: raw.minPrice,
+      maxPrice: raw.maxPrice,
+      minStars: raw.minStars,
+      amenities: amenitiesStr ? amenitiesStr.split(',').map(a => a.trim()).filter(Boolean) : [],
+      amenitiesMode: raw.amenitiesMode,
+      sortBy: raw.sortBy,
       page: 1,
       compareIds: this.filters().compareIds,
-    } as HotelSearchFilters);
+    });
   }
 
   resetFilters() {
