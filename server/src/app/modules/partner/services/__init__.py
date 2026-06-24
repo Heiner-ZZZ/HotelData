@@ -21,7 +21,7 @@ Content
 
 Rooms
     partner_hotel_rooms, partner_hotel_inventory,
-    create_room_type, save_inventory_entry, create_blackout_block
+    create_room_type, update_room_type, save_inventory_entry, create_blackout_block
 
 Rates
     partner_hotel_rates, create_rate_plan, save_rate_calendar_entry
@@ -46,6 +46,7 @@ from src.app.modules.partner.services.content import (  # type: ignore[assignmen
     partner_hotel_content_editor,
     partner_hotel_edit_profile,
     partner_hotel_images,
+    partner_hotel_per_room_policies,
     partner_hotel_policies,
     partner_hotel_profile,
     save_partner_hotel_amenities,
@@ -74,6 +75,7 @@ from src.app.modules.partner.services.rooms import (
     partner_hotel_inventory,
     partner_hotel_rooms,
     save_inventory_entry,
+    update_room_type,
 )
 
 
@@ -82,6 +84,7 @@ __all__ = [
     "create_blackout_block",
     "create_rate_plan",
     "create_room_type",
+    "update_room_type",
     "delete_partner_hotel_image",
     "ensure_hotel_content_collections",
     "ensure_hotel_profile_collections",
@@ -98,6 +101,7 @@ __all__ = [
     "partner_hotel_images",
     "partner_hotel_inventory",
     "partner_hotel_performance",
+    "partner_hotel_per_room_policies",
     "partner_hotel_policies",
     "partner_hotel_profile",
     "partner_hotel_rates",

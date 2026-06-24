@@ -10,8 +10,10 @@ from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     list_partner_hotels,
     partner_hotel_policies,
+    partner_hotel_per_room_policies,
     save_partner_hotel_policies,
 )
+from src.app.modules.partner.services.rooms import _room_types_for_prop
 from src.app.security.dependencies import require_login
 
 
@@ -47,8 +49,14 @@ def policies_submit(
 
 
 @api_router.get("/policies")
-def policies_api(prop_id: int = Query(..., ge=1)):
-    detail = partner_hotel_policies(require_prop_id(prop_id))
+def policies_api(
+    prop_id: int = Query(..., ge=1),
+    room_type_id: str | None = Query(default=None),
+):
+    if room_type_id:
+        detail = partner_hotel_per_room_policies(require_prop_id(prop_id), room_type_id)
+    else:
+        detail = partner_hotel_policies(require_prop_id(prop_id))
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
@@ -90,8 +98,16 @@ def policies_update_api(payload: dict = Body(...)):
         extra_bed_policy=str(payload.get("extra_bed_policy") or ""),
         payment_policy=str(payload.get("payment_policy") or ""),
         house_rules=str(payload.get("house_rules") or ""),
+        room_type_id=str(payload.get("room_type_id") or ""),
         changed_by="angular_api",
     )
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
+
+
+@api_router.get("/policies/room-types")
+def policies_room_types_api(prop_id: int = Query(..., ge=1)):
+    """Return room types for a property to use in per-room-type policies."""
+    rooms = _room_types_for_prop(require_prop_id(prop_id))
+    return {"room_types": rooms}

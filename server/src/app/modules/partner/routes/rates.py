@@ -12,6 +12,7 @@ from src.app.modules.partner.services import (
     partner_hotel_rates,
     save_rate_calendar_entry,
 )
+from src.app.modules.revenue.services.promotions import create_promotion_campaign
 from src.app.security.dependencies import require_login
 
 
@@ -104,4 +105,22 @@ def rates_calendar_update_api(payload: dict = Body(...)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.post("/rates/promotions", status_code=201)
+def rates_promotion_create_api(payload: dict = Body(...)):
+    try:
+        saved = create_promotion_campaign(
+            prop_id=payload.get("prop_id"),
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            discount_percent=payload.get("discount_percent", 0),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            coupon_code=str(payload.get("coupon_code") or ""),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return saved

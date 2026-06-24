@@ -49,10 +49,17 @@ def _room_types_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
     return items
 
 
-def _inventory_for_prop(prop_id: int, limit: int = 90) -> list[dict[str, Any]]:
+def _inventory_for_prop(prop_id: int, limit: int = 365, start_date: str = "", end_date: str = "") -> list[dict[str, Any]]:
     db = get_database()
+    query: dict[str, Any] = {"prop_id": prop_id}
+    if start_date and end_date:
+        query["date"] = {"$gte": start_date, "$lte": end_date}
+    elif start_date:
+        query["date"] = {"$gte": start_date}
+    elif end_date:
+        query["date"] = {"$lte": end_date}
     items = list(
-        db.room_inventory_calendar.find({"prop_id": prop_id}, {"_id": 0})
+        db.room_inventory_calendar.find(query, {"_id": 0})
         .sort([("date", 1), ("room_type_id", 1)])
         .limit(limit)
     )
@@ -62,8 +69,26 @@ def _inventory_for_prop(prop_id: int, limit: int = 90) -> list[dict[str, Any]]:
     }
     for item in items:
         item["room_type_name"] = room_name_lookup.get(item["room_type_id"], item["room_type_id"])
-        item["occupancy_label"] = f"{item.get('available_rooms', 0)}/{item.get('total_rooms', 0)} disponibles"
+        item["occupancy_label"] = _occupancy_label(item)
+        item["occupancy_pct"] = _occupancy_pct(item)
     return items
+
+
+def _occupancy_label(item: dict[str, Any]) -> str:
+    total = item.get("total_rooms", 0) or 0
+    available = item.get("available_rooms", 0) or 0
+    if total == 0:
+        return "--"
+    return f"{available}/{total} disponibles"
+
+
+def _occupancy_pct(item: dict[str, Any]) -> float:
+    """Return occupancy percentage (0-100). 0 = all available, 100 = fully occupied/blocked."""
+    total = item.get("total_rooms", 0) or 0
+    available = item.get("available_rooms", 0) or 0
+    if total == 0:
+        return 0.0
+    return round((1 - available / total) * 100, 1)
 
 
 def _blackout_blocks_for_prop(prop_id: int, limit: int = 20) -> list[dict[str, Any]]:
@@ -103,13 +128,22 @@ def partner_hotel_rooms(prop_id: int) -> dict[str, Any] | None:
     return detail
 
 
-def partner_hotel_inventory(prop_id: int) -> dict[str, Any] | None:
+def partner_hotel_inventory(prop_id: int, days: int = 90, start_date: str = "", end_date: str = "") -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
     room_types = _room_types_for_prop(prop_id)
     detail["room_types"] = room_types
-    detail["inventory_items"] = _inventory_for_prop(prop_id)
+    
+    # If no explicit date range, default to last {days} days from today
+    if not start_date and not end_date:
+        from datetime import date, timedelta
+        end = date.today() + timedelta(days=days)
+        start = date.today() - timedelta(days=7)
+        start_date = start.isoformat()
+        end_date = end.isoformat()
+    
+    detail["inventory_items"] = _inventory_for_prop(prop_id, limit=days * 20, start_date=start_date, end_date=end_date)
     detail["availability_blocks"] = _availability_blocks_for_prop(prop_id)
     detail["blackout_items"] = _blackout_blocks_for_prop(prop_id)
     return detail
@@ -329,3 +363,54 @@ def create_blackout_block(
         db.blackout_dates.delete_one(blackout_filter)
         raise
     return blackout_doc
+
+
+def update_room_type(
+    room_type_id: str,
+    *,
+    name: str,
+    description: str,
+    max_adults: Any,
+    max_children: Any,
+    base_capacity: Any,
+    is_active: Any = True,
+) -> dict[str, Any] | None:
+    """Update an existing room type by room_type_id."""
+    db = get_database()
+    existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1})
+    if existing is None:
+        return None
+    prop_id = existing["prop_id"]
+    clean_name = clean_text(name)
+    if not clean_name:
+        raise ValueError("Debe ingresar el nombre del tipo de habitación.")
+    max_adults_value = safe_positive_int(max_adults, 1)
+    max_children_value = safe_positive_int(max_children, 0)
+    base_capacity_value = safe_positive_int(base_capacity, max_adults_value or 1)
+    payload = {
+        "name": clean_name,
+        "description": clean_text(description),
+        "max_adults": max_adults_value,
+        "max_children": max_children_value,
+        "base_capacity": base_capacity_value,
+        "is_active": safe_bool(is_active),
+        "updated_at": now_utc(),
+    }
+    document = db.room_types.find_one_and_update(
+        {"room_type_id": room_type_id},
+        {"$set": payload},
+        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+    )
+    # Also update the corresponding hotel_room entry
+    db.hotel_rooms.update_one(
+        {"hotel_room_id": f"HR-{room_type_id}"},
+        {
+            "$set": {
+                "room_label": clean_name,
+                "is_active": payload["is_active"],
+                "updated_at": now_utc(),
+            },
+        },
+    )
+    return document

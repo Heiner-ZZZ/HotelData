@@ -84,8 +84,13 @@ def blackout_dates_submit(
 
 
 @api_router.get("/availability")
-def availability_api(prop_id: int = Query(..., ge=1)):
-    detail = partner_hotel_inventory(require_prop_id(prop_id))
+def availability_api(
+    prop_id: int = Query(..., ge=1),
+    days: int = Query(default=90, ge=1, le=365),
+    start_date: str = Query(default=""),
+    end_date: str = Query(default=""),
+):
+    detail = partner_hotel_inventory(require_prop_id(prop_id), days=days, start_date=start_date, end_date=end_date)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
@@ -142,6 +147,12 @@ def _availability_update(payload: dict):
 
 @api_router.post("/availability")
 def availability_update_api(payload: dict = Body(...)):
+    return _availability_update(payload)
+
+
+@api_router.patch("/availability")
+def availability_patch_api(payload: dict = Body(...)):
+    """Partial update of inventory (used by Angular frontend)."""
     return _availability_update(payload)
 
 

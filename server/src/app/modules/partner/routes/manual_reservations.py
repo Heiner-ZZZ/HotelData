@@ -4,6 +4,7 @@ from fastapi import Body, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from src.app.modules.partner.routes import api_router, web_router
+from src.app.modules.partner.services import list_partner_hotels
 from src.app.modules.reservations.service.lifecycle import create_booking
 from src.app.modules.reservations.service.queries import list_bookings
 from src.app.modules.reservations.service.validation import build_reservation_input
@@ -27,7 +28,12 @@ def manual_reservations_list(
 
 @web_router.get("/manual-reservations/new")
 def manual_reservation_new_form(request: Request):
-    return {"hotel_options": [], "room_type_options": []}
+    hotels = list_partner_hotels("", page=1, page_size=200)
+    hotel_options = [
+        {"prop_id": item["prop_id"], "display_name": item.get("display_name") or f"Hotel {item['prop_id']}"}
+        for item in hotels["items"]
+    ]
+    return {"hotel_options": hotel_options, "room_type_options": []}
 
 
 @web_router.post("/manual-reservations/new")
@@ -68,6 +74,25 @@ def manual_reservation_create(
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
     return JSONResponse({"ok": True, "booking_id": result.get("booking_id")}, status_code=status.HTTP_201_CREATED)
+
+
+@api_router.get("/manual-reservations")
+def manual_reservations_list_api(
+    page: int = Query(default=1, ge=1),
+    status_filter: str | None = Query(default=None, alias="status"),
+    prop_id: int | None = Query(default=None, ge=1),
+):
+    results = list_bookings(
+        page=page,
+        page_size=20,
+        status=status_filter,
+        prop_id=prop_id,
+    )
+    # Filter to manual reservations only
+    items = [b for b in results["items"] if b.get("booking_source") == "partner_manual"]
+    results["items"] = items
+    results["total"] = len(items)
+    return results
 
 
 @api_router.post("/manual-reservations", status_code=status.HTTP_201_CREATED)

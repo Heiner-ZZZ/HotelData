@@ -12,6 +12,7 @@ from src.app.modules.partner.services import (
     list_partner_hotels,
     partner_hotel_detail,
     partner_hotel_rooms,
+    update_room_type,
 )
 from src.app.security.dependencies import require_login
 
@@ -99,4 +100,23 @@ def rooms_create_api(payload: dict = Body(...)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.put("/rooms/{room_type_id}")
+def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
+    try:
+        saved = update_room_type(
+            room_type_id,
+            name=str(payload.get("name") or ""),
+            description=str(payload.get("description") or ""),
+            max_adults=payload.get("max_adults"),
+            max_children=payload.get("max_children"),
+            base_capacity=payload.get("base_capacity"),
+            is_active=payload.get("is_active", True),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
     return saved
