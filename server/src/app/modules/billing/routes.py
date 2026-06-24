@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
@@ -14,6 +14,8 @@ from src.app.modules.billing.service import (
     module_status,
     refund_payment,
 )
+from src.app.security.dependencies import require_login
+from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
@@ -93,3 +95,86 @@ def refund_payment_api(payment_id: str):
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
     return result
+
+
+# --- Client-facing billing endpoints ---
+
+@api_router.get("/my-invoices")
+def my_invoices_api(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_login),
+):
+    """Return invoices associated with the current user's bookings."""
+    db = get_database()
+    user_id = current_user.get("_id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no identificado")
+    # Find all bookings for this user
+    booking_ids = [
+        b["_id"]
+        for b in db.booking_orders.find(
+            {"user_id": user_id},
+            {"_id": 1},
+        )
+    ]
+    if not booking_ids:
+        return {"items": [], "total": 0, "page": page, "page_size": page_size, "has_next": False, "has_prev": False}
+
+    from src.app.modules.billing.service.lifecycle import _enrich_invoice
+    query = {"booking_id": {"$in": booking_ids}}
+    total = db.reservation_invoices.count_documents(query)
+    cursor = (
+        db.reservation_invoices
+        .find(query)
+        .sort("issued_at", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
+    items = [_enrich_invoice(doc) for doc in cursor]
+    import math
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, math.ceil(total / page_size)),
+        "has_next": page * page_size < total,
+        "has_prev": page > 1,
+    }
+
+
+@api_router.post("/my-invoices/{invoice_id}/pay")
+def my_invoice_pay_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Simulate payment for an invoice (client-facing). Generates a realistic payment record."""
+    from src.app.modules.billing.schemas import PaymentCreate
+    db = get_database()
+    from bson import ObjectId
+
+    inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+
+    # Verify the invoice belongs to a booking owned by this user
+    user_id = current_user.get("_id")
+    booking = db.booking_orders.find_one({"_id": inv["booking_id"], "user_id": user_id})
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Esta factura no pertenece al usuario actual")
+
+    if inv.get("status") != "issued":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
+
+    # Create the payment
+    pay_payload = PaymentCreate(
+        booking_id=str(inv["booking_id"]),
+        invoice_id=invoice_id,
+        amount=float(inv.get("total", 0)),
+        method="bank_transfer",
+    )
+    result = create_payment(pay_payload)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+    return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}

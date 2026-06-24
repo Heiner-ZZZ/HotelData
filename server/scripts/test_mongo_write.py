@@ -1,7 +1,7 @@
 import os
 from pymongo import MongoClient
 
-uri = os.environ.get('MONGO_URI', 'mongodb://mongo:27017')
+uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27018')
 db_name = os.environ.get('MONGO_DATABASE', 'hoteldata_hub')
 print(f'Connecting to {uri}/{db_name}')
 

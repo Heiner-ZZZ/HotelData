@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import date, timedelta
 from typing import Any
 
@@ -9,6 +10,19 @@ from ._helpers import _active_fact_collection, _format_number, _hotel_display_na
 from .detail import get_hotel_detail_view
 from .lookups import _hotel_lookup
 from .search import _enrich_hotel_metrics
+
+
+def _synthetic_coords(prop_id: int) -> tuple[float, float]:
+    """Deterministic synthetic coordinates for a prop_id.
+
+    Spreads hotels across a ~Mexico / Caribbean bounding box
+    (19–27°N, 99–84°W) using MD5 so every hotel always gets
+    the same lat/lng across restarts.
+    """
+    h = hashlib.md5(str(prop_id).encode()).hexdigest()
+    lat = 19.0 + (int(h[:4], 16) / 65535) * 8.0
+    lng = -99.0 + (int(h[4:8], 16) / 65535) * 15.0
+    return round(lat, 6), round(lng, 6)
 
 
 def _compare_hotel_rate(prop_id: int, check_in: str, check_out: str) -> float | None:
@@ -81,6 +95,7 @@ def compare_hotels_with_availability(
 
         policy_doc = db.hotel_policies.find_one({"prop_id": prop_id_int}, {"_id": 0})
 
+        lat, lng = _synthetic_coords(prop_id_int)
         item: dict[str, Any] = {
             "prop_id": prop_id_int,
             "hotel_name": _hotel_display_name(hotel, prop_id_int),
@@ -92,6 +107,8 @@ def compare_hotels_with_availability(
             "room_types": room_types,
             "policies": policy_doc or {},
             "destination_labels": [],
+            "latitude": lat,
+            "longitude": lng,
         }
 
         if has_dates:
