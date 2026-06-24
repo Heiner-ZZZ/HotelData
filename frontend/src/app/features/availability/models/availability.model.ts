@@ -60,6 +60,7 @@ export interface CalendarMonth {
 }
 
 export interface AvailabilityBlackoutItem {
+  blackoutId?: string;
   roomTypeId: string;
   rangeLabel: string;
   blockedRooms: number;

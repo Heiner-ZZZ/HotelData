@@ -44,6 +44,32 @@ def _deduct_inventory(
         )
 
 
+def _restore_inventory(
+    prop_id: int,
+    check_in_date: str,
+    check_out_date: str,
+    rooms: int,
+    room_type_id: str,
+) -> None:
+    """Increment available_rooms in room_inventory_calendar for the stay dates.
+
+    Called on check-out to release rooms back to inventory.
+    """
+    try:
+        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
+        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return
+
+    db = get_database()
+    dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
+    for date_str in dates:
+        db.room_inventory_calendar.update_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
+            {"$inc": {"available_rooms": rooms}},
+        )
+
+
 def _transition_status(
     booking_id: str,
     *,

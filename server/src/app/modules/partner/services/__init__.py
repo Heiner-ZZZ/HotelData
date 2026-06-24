@@ -58,6 +58,7 @@ from src.app.modules.partner.services.dashboard import (  # type: ignore[assignm
     management_reports_summary,
     properties_dashboard,
 )
+from src.app.modules.partner.services.history import list_hotel_changes, get_change_detail
 from src.app.modules.partner.services.properties import (
     list_partner_hotels,
     partner_hotel_detail,
@@ -72,6 +73,9 @@ from src.app.modules.partner.services.rates import (
 from src.app.modules.partner.services.rooms import (
     create_blackout_block,
     create_room_type,
+    delete_blackout_block,
+    delete_room_type,
+    list_property_blackouts,
     partner_hotel_inventory,
     partner_hotel_rooms,
     save_inventory_entry,
@@ -82,8 +86,13 @@ from src.app.modules.partner.services.rooms import (
 __all__ = [
     "add_partner_hotel_image",
     "create_blackout_block",
+    "delete_blackout_block",
+    "list_property_blackouts",
+    "get_change_detail",
+    "list_hotel_changes",
     "create_rate_plan",
     "create_room_type",
+    "delete_room_type",
     "update_room_type",
     "delete_partner_hotel_image",
     "ensure_hotel_content_collections",

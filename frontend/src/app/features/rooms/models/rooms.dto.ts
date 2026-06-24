@@ -44,5 +44,6 @@ export interface RoomCreateDto {
   max_adults: number;
   max_children: number;
   base_capacity: number;
+  base_rate?: number;
   is_active: boolean;
 }

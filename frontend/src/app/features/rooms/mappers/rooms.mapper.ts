@@ -43,6 +43,7 @@ export function mapRoomCreatePayload(payload: {
   maxAdults: number;
   maxChildren: number;
   baseCapacity: number;
+  baseRate?: number;
   isActive: boolean;
 }): RoomCreateDto {
   return {
@@ -52,6 +53,7 @@ export function mapRoomCreatePayload(payload: {
     max_adults: payload.maxAdults,
     max_children: payload.maxChildren,
     base_capacity: payload.baseCapacity,
+    base_rate: payload.baseRate,
     is_active: payload.isActive
   };
 }

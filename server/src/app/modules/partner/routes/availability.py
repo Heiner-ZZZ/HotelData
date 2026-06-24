@@ -9,7 +9,9 @@ from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     create_blackout_block,
+    delete_blackout_block,
     list_partner_hotels,
+    list_property_blackouts,
     partner_hotel_inventory,
     partner_hotel_rooms,
     save_inventory_entry,
@@ -156,6 +158,15 @@ def availability_patch_api(payload: dict = Body(...)):
     return _availability_update(payload)
 
 
+@api_router.get("/availability/blackouts")
+def availability_blackouts_list_api(
+    prop_id: int = Query(..., ge=1),
+):
+    """List all blackout blocks for a property."""
+    items = list_property_blackouts(require_prop_id(prop_id))
+    return {"items": items, "total": len(items)}
+
+
 @api_router.post("/availability/blackouts")
 def availability_blackout_api(payload: dict = Body(...)):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
@@ -173,3 +184,15 @@ def availability_blackout_api(payload: dict = Body(...)):
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
+
+
+@api_router.delete("/availability/blackouts/{blackout_id}")
+def availability_blackout_delete_api(blackout_id: str):
+    """Delete a blackout block and reverse its effect on inventory."""
+    try:
+        result = delete_blackout_block(blackout_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blackout not found")
+    return result

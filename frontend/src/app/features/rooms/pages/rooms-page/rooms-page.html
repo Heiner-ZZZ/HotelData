@@ -142,6 +142,13 @@
               </span>
               <input type="number" min="1" formControlName="baseCapacity">
             </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">attach_money</span>
+                Tarifa base ($/noche)
+              </span>
+              <input type="number" min="0" step="0.01" formControlName="baseRate" placeholder="0 = sin tarifa base">
+            </label>
             <label class="field checkbox-field">
               <span class="field-label">
                 <span class="material-symbols-outlined field-icon">toggle_on</span>
@@ -168,7 +175,7 @@
             </div>
           </div>
           @if (vm.roomTypes.length) {
-            <app-room-type-table [items]="vm.roomTypes" (editRoom)="startEdit($event)" />
+            <app-room-type-table [items]="vm.roomTypes" (editRoom)="startEdit($event)" (deleteRoom)="requestDelete($event.id, $event.name)" />
           } @else {
             <app-empty-state
               icon="meeting_room"
@@ -230,6 +237,47 @@
     }
   }
 
+  <!-- ═══ Delete confirmation Modal ═══ -->
+  @if (showDeleteConfirm()) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="modal-panel confirm-panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon" style="color: var(--danger)">warning</span>
+          <div>
+            <h2>¿Eliminar tipo de habitación?</h2>
+            <p>{{ deleteTargetName() }} ({{ deleteTargetId() }})</p>
+          </div>
+          <button type="button" class="modal-close" (click)="cancelDelete()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">
+            Se eliminará el tipo de habitación, sus habitaciones físicas y el inventario asociado.
+            Esta acción no se puede deshacer.
+          </p>
+          @if (errorMessage()) {
+            <div class="toast toast-error" style="margin-bottom: 0.75rem;">
+              <span class="material-symbols-outlined">error</span>
+              {{ errorMessage() }}
+            </div>
+          }
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="cancelDelete()" [disabled]="deleting()">Cancelar</button>
+            <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting()">
+              @if (deleting()) {
+                <span class="material-symbols-outlined spin">progress_activity</span>
+              } @else {
+                <span class="material-symbols-outlined">delete</span>
+              }
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══ Edit Modal ═══ -->
   @if (showEditModal()) {
     <div class="modal-overlay" (click)="cancelEdit()">
@@ -264,6 +312,10 @@
           <label class="field">
             <span class="field-label">Capacidad base</span>
             <input type="number" min="1" formControlName="baseCapacity">
+          </label>
+          <label class="field">
+            <span class="field-label">Tarifa base ($/noche)</span>
+            <input type="number" min="0" step="0.01" formControlName="baseRate" placeholder="0 = sin tarifa base">
           </label>
           <label class="field checkbox-field">
             <span class="field-label">Activo</span>

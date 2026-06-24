@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, computed, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, computed, signal, output, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 
@@ -18,6 +18,9 @@ export class AvailabilityDataTablesComponent {
   readonly inventoryItems = input<AvailabilityInventoryItem[]>([]);
   readonly availabilityBlocks = input<AvailabilityBlackoutItem[]>([]);
   readonly blackoutItems = input<AvailabilityBlackoutItem[]>([]);
+
+  /** Emitted when the user wants to delete a blackout block. */
+  readonly deleteBlackout = output<string>();
 
   readonly DAY_NAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 

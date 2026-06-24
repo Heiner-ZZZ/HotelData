@@ -73,10 +73,15 @@ export class ManagementDashboardPageComponent {
   private startPolling() {
     this.stopPolling();
     this.isPolling.set(true);
-    this.pollTimer = setInterval(() => this.pollKpis(), 30000);
+    this.pollTimer = setInterval(() => this.pollKpis(), 60000);
   }
 
   private pollKpis() {
+    // Don't poll if the view is already in error state (session likely expired)
+    if (this.viewState() === 'error') {
+      this.stopPolling();
+      return;
+    }
     this.dashboardApi.getKpis().subscribe({
       next: (result) => {
         if (result) {
@@ -85,7 +90,10 @@ export class ManagementDashboardPageComponent {
           this.lastUpdated.set(new Date().toISOString());
         }
       },
-      error: () => {},
+      error: () => {
+        // Error polling — stop polling so we don't flood the network
+        this.stopPolling();
+      },
     });
   }
 

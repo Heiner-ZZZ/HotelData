@@ -70,4 +70,10 @@ export class AvailabilityApiService {
       withCredentials: true
     });
   }
+
+  deleteBlackout(blackoutId: string) {
+    return this.http.delete(`${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`, {
+      withCredentials: true
+    });
+  }
 }

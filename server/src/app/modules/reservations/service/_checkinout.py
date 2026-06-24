@@ -8,6 +8,7 @@ from src.database.connection import get_database
 from ..notifications import notify_guest_status_change, notify_staff_check_event
 from ._helpers import CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES, utc_now
 from ._history_lookup import _booking_history_lookup, _derived_stay_status
+from ._transitions import _restore_inventory
 
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,8 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> d
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
-         "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1},
+         "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1,
+         "total_nights": 1, "rooms": 1, "room_type_id": 1},
     )
 
     changed_at = utc_now()
@@ -179,5 +181,19 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> d
             )
         except Exception:
             logger.exception("Failed to notify staff on check-out for booking %s", booking_id)
+
+    # ── Restore inventory on check-out ──
+    if booking:
+        try:
+            _restore_inventory(
+                prop_id=int(booking.get("prop_id", 0)),
+                check_in_date=str(booking.get("check_in_date", "")),
+                check_out_date=str(booking.get("check_out_date", "")),
+                rooms=int(booking.get("rooms", 1)),
+                room_type_id=str(booking.get("room_type_id", "")),
+            )
+            logger.info("Inventory restored for booking %s after check-out", booking_id)
+        except Exception:
+            logger.exception("Failed to restore inventory on check-out for booking %s", booking_id)
 
     return {"booking_id": booking_id, "stay_status": "checked_out"}

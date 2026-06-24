@@ -213,6 +213,9 @@ export class AvailabilityPageComponent {
     handler: () => void;
   } | null>(null);
 
+  /** Confirmation dialog for blackout deletion. */
+  readonly deleteConfirm = signal<{ blackoutId: string } | null>(null);
+
   /** Whether the calendar is refreshing due to property switch — shows skeleton loader. */
   readonly refreshing = signal(false);
   /** Tracks the skeleton exit animation phase — when true, skeleton fades out while content fades in. */
@@ -954,6 +957,43 @@ export class AvailabilityPageComponent {
     }
 
     this.startEdit(cal.days[dayIdx].date, roomTypeNames[rtIdx]);
+  }
+
+  /** Handle delete blackout request — show confirmation dialog. */
+  onDeleteBlackout(blackoutId: string) {
+    this.deleteConfirm.set({ blackoutId });
+  }
+
+  /** Confirm and execute blackout deletion. */
+  confirmDeleteBlackout() {
+    const payload = this.deleteConfirm();
+    if (!payload) return;
+    this.deleteConfirm.set(null);
+    const blackoutId = payload.blackoutId;
+
+    this.saving.set(true);
+    this.errorMessage.set('');
+    this.submitMessage.set('');
+
+    this.api
+      .deleteBlackout(blackoutId)
+      .pipe(
+        switchMap(() => this.api.getAvailability(this.selectedPropId(), 92)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (data) => {
+          this.pageData.set(data);
+          this.submitMessage.set('Bloqueo eliminado correctamente');
+          this._rebuildCalendar();
+          this.saving.set(false);
+        },
+        error: (err: ApiError) => {
+          this.errorMessage.set(err.message || 'Error al eliminar bloqueo.');
+          this.submitMessage.set('');
+          this.saving.set(false);
+        },
+      });
   }
 
   /** Accept the confirmation dialog. */

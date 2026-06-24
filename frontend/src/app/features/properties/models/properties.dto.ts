@@ -178,6 +178,38 @@ export interface EditPropertyResponseDto {
   };
 }
 
+export interface ChangeRecordDto {
+  id: string;
+  field: string;
+  old_value: string;
+  new_value: string;
+  changed_by: string;
+  changed_at: string;
+  source?: string;
+  reason?: string;
+}
+
+export interface PropertyHistoryResponseDto {
+  data: ChangeRecordDto[];
+  pagination: {
+    page: number;
+    per_page: number;
+    total: number;
+    pages: number;
+    has_prev: boolean;
+    has_next: boolean;
+  };
+  filters: {
+    fields: string[];
+    users: string[];
+  };
+}
+
+export interface ChangeDetailDto extends ChangeRecordDto {
+  prop_id?: number;
+  entity_type?: string;
+}
+
 export interface PropertyProfileResponseDto {
   hotel: {
     prop_id: number;

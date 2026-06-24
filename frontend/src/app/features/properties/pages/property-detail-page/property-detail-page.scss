@@ -165,17 +165,16 @@
   gap: 1.25rem;
 }
 
-/* ─── Primary button ─── */
+/* ─── Primary & Secondary buttons ─── */
 
-.btn-primary {
+.btn-primary,
+.btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   padding: 0.45rem 1rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
-  color: #fff;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -183,13 +182,29 @@
   transition: box-shadow 180ms, transform 120ms;
   font-family: inherit;
 
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  color: #fff;
+
   &:hover {
     box-shadow: 0 4px 12px rgba(20, 99, 255, 0.3);
     transform: translateY(-1px);
   }
+}
 
-  .material-symbols-outlined {
-    font-size: 0.95rem;
+.btn-secondary {
+  background: var(--surface-soft);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+
+  &:hover {
+    background: var(--app-border);
+    transform: translateY(-1px);
   }
 }
 

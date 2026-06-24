@@ -38,6 +38,7 @@ export class RoomsApiService {
     maxAdults: number;
     maxChildren: number;
     baseCapacity: number;
+    baseRate?: number;
     isActive: boolean;
   }) {
     return this.http.post(
@@ -53,6 +54,7 @@ export class RoomsApiService {
     maxAdults: number;
     maxChildren: number;
     baseCapacity: number;
+    baseRate?: number;
     isActive: boolean;
   }) {
     return this.http.put(
@@ -63,8 +65,16 @@ export class RoomsApiService {
         max_adults: payload.maxAdults,
         max_children: payload.maxChildren,
         base_capacity: payload.baseCapacity,
+        base_rate: payload.baseRate,
         is_active: payload.isActive,
       },
+      { withCredentials: true }
+    );
+  }
+
+  deleteRoomType(roomTypeId: string) {
+    return this.http.delete(
+      `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
       { withCredentials: true }
     );
   }

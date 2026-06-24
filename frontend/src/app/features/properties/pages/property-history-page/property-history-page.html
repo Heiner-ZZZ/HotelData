@@ -1,0 +1,233 @@
+<div class="history-page">
+  <app-page-header
+    eyebrow="Propiedades"
+    [title]="'Historial de cambios — ID ' + propId()"
+    description="Auditoría de modificaciones de perfil y contenido de la propiedad."
+  />
+
+  <a [routerLink]="['/management/properties', propId()]" class="back-link">
+    <span class="material-symbols-outlined">arrow_back</span>
+    <span>Volver a detalle</span>
+  </a>
+
+  @if (viewState() !== 'loading' && viewState() !== 'error') {
+    <!-- ═══ Filters ═══ -->
+    <form [formGroup]="filterForm" (ngSubmit)="applyFilters()" class="filters-bar">
+      <div class="filter-field">
+        <label>Desde</label>
+        <input type="date" formControlName="from" />
+      </div>
+      <div class="filter-field">
+        <label>Hasta</label>
+        <input type="date" formControlName="to" />
+      </div>
+      <div class="filter-field">
+        <label>Campo</label>
+        <select formControlName="field">
+          <option value="">Todos</option>
+          @for (f of filterOptions().fields; track f) {
+            <option [value]="f">{{ fieldLabel(f) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Usuario</label>
+        <select formControlName="user">
+          <option value="">Todos</option>
+          @for (u of filterOptions().users; track u) {
+            <option [value]="u">{{ u }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary btn-sm">
+          <span class="material-symbols-outlined">search</span>
+          Filtrar
+        </button>
+        <button type="button" class="btn-ghost btn-sm" (click)="clearFilters()">
+          <span class="material-symbols-outlined">clear</span>
+          Limpiar
+        </button>
+      </div>
+    </form>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando historial de cambios..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar historial"
+        description="No se pudieron obtener los registros de auditoría. Verifica la conexión."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin cambios registrados"
+        description="No hay entradas en el historial de auditoría para esta propiedad."
+      />
+    }
+    @default {
+      @if (pagination(); as p) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">history</span>
+              <div>
+                <h2>Registros de auditoría</h2>
+                <p>{{ p.total }} cambio(s) &middot; Página {{ p.page }} de {{ p.pages || 1 }}</p>
+              </div>
+            </div>
+          </div>
+
+          @if (items().length) {
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Campo</th>
+                    <th>Valor anterior</th>
+                    <th>Valor nuevo</th>
+                    <th>Usuario</th>
+                    <th>Fecha</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (change of items(); track change.id) {
+                    <tr class="change-row" (click)="openDetail(change)">
+                      <td>
+                        <span class="field-chip">{{ fieldLabel(change.field) }}</span>
+                      </td>
+                      <td class="cell-value old-value">{{ change.old_value || '—' }}</td>
+                      <td class="cell-value new-value">{{ change.new_value || '—' }}</td>
+                      <td>
+                        <span class="user-badge">{{ change.changed_by }}</span>
+                      </td>
+                      <td class="cell-date">{{ change.changed_at | date:'short' }}</td>
+                      <td>
+                        <button type="button" class="btn-icon-only" (click)="$event.stopPropagation(); openDetail(change)" aria-label="Ver detalle">
+                          <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ═══ Pagination ═══ -->
+            @if (p.total > p.per_page) {
+              <div class="pagination-bar">
+                <button
+                  type="button"
+                  class="page-btn"
+                  [disabled]="!p.has_prev"
+                  (click)="goToPage(p.page - 1)"
+                  aria-label="Anterior"
+                >
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+
+                @for (pg of pages(); track pg) {
+                  <button
+                    type="button"
+                    class="page-btn"
+                    [class.page-btn--active]="pg === p.page"
+                    (click)="goToPage(pg)"
+                  >
+                    {{ pg }}
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="page-btn"
+                  [disabled]="!p.has_next"
+                  (click)="goToPage(p.page + 1)"
+                  aria-label="Siguiente"
+                >
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            }
+          }
+        </section>
+      }
+    }
+  }
+
+  <!-- ═══ Detail modal ═══ -->
+  @if (showDetail() && selectedChange(); as change) {
+    <div class="modal-overlay" (click)="closeDetail()">
+      <div class="modal-panel detail-modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">info</span>
+          <div>
+            <h2>Detalle del cambio</h2>
+            <p>{{ fieldLabel(change.field) }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeDetail()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          @if (detailLoading()) {
+            <div class="detail-loading">
+              <span class="material-symbols-outlined spinning">sync</span>
+              <span>Cargando detalle...</span>
+            </div>
+          } @else if (detailError()) {
+            <div class="detail-error-msg">
+              <span class="material-symbols-outlined">error</span>
+              <span>{{ detailError() }}</span>
+            </div>
+          } @else {
+            <div class="detail-grid">
+              <div class="detail-section">
+                <h3>Valor anterior</h3>
+                <div class="detail-value-box old-box">
+                  <pre>{{ change.old_value || '(vacío)' }}</pre>
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <h3>Valor nuevo</h3>
+                <div class="detail-value-box new-box">
+                  <pre>{{ change.new_value || '(vacío)' }}</pre>
+                </div>
+              </div>
+
+              <div class="detail-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Campo</span>
+                  <span class="meta-value">{{ fieldLabel(change.field) }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Usuario</span>
+                  <span class="meta-value">{{ change.changed_by }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Fecha</span>
+                  <span class="meta-value">{{ change.changed_at | date:'medium' }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Origen</span>
+                  <span class="meta-value">{{ change.source || 'N/D' }}</span>
+                </div>
+                @if (change.reason) {
+                  <div class="meta-item meta-item--full">
+                    <span class="meta-label">Motivo</span>
+                    <span class="meta-value">{{ change.reason }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

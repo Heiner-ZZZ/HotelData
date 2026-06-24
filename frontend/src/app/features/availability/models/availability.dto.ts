@@ -26,6 +26,7 @@ export interface AvailabilityDto {
     occupancy_pct?: number;
   }>;
   blackout_items: Array<{
+    blackout_id?: string;
     room_type_id: string;
     start_date: string;
     end_date: string;
@@ -34,6 +35,7 @@ export interface AvailabilityDto {
     reason: string;
   }>;
   availability_blocks?: Array<{
+    block_id?: string;
     room_type_id: string;
     start_date: string;
     end_date: string;

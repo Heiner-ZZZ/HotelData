@@ -11,8 +11,13 @@ import type { RoomTypeItem } from '../../models/rooms.model';
 export class RoomTypeTableComponent {
   readonly items = input<RoomTypeItem[]>([]);
   readonly editRoom = output<RoomTypeItem>();
+  readonly deleteRoom = output<{ id: string; name: string }>();
 
   onEdit(room: RoomTypeItem) {
     this.editRoom.emit(room);
+  }
+
+  onDelete(room: RoomTypeItem) {
+    this.deleteRoom.emit({ id: room.id, name: room.name });
   }
 }

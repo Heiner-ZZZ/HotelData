@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from src.app.modules.partner.routes import api_router, legacy_admin_api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
+    list_hotel_changes,
+    get_change_detail,
     list_partner_hotels,
     partner_hotel_detail,
     partner_hotel_edit_profile,
@@ -109,6 +111,42 @@ def property_detail_api(prop_id: int, current_user: dict = Depends(require_login
     detail = partner_hotel_detail(prop_id, user=current_user)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return detail
+
+
+@api_router.get("/properties/{prop_id}/history")
+def property_history_api(
+    prop_id: int,
+    from_date: str | None = Query(default=None, alias="from"),
+    to_date: str | None = Query(default=None, alias="to"),
+    field: str | None = Query(default=None),
+    user: str | None = Query(default=None),
+    source: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=200),
+    current_user: dict = Depends(require_login),
+):
+    return list_hotel_changes(
+        prop_id,
+        from_date=from_date,
+        to_date=to_date,
+        field=field,
+        user=user,
+        source=source,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@api_router.get("/properties/{prop_id}/history/{change_id}")
+def property_history_detail_api(
+    prop_id: int,
+    change_id: str,
+    current_user: dict = Depends(require_login),
+):
+    detail = get_change_detail(prop_id, change_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change record not found")
     return detail
 
 

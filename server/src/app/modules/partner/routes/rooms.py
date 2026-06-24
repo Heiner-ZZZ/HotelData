@@ -9,6 +9,7 @@ from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     create_room_type,
+    delete_room_type,
     list_partner_hotels,
     partner_hotel_detail,
     partner_hotel_rooms,
@@ -113,10 +114,22 @@ def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
             max_adults=payload.get("max_adults"),
             max_children=payload.get("max_children"),
             base_capacity=payload.get("base_capacity"),
+            base_rate=payload.get("base_rate"),
             is_active=payload.get("is_active", True),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
+    return saved
+
+
+@api_router.delete("/rooms/{room_type_id}")
+def rooms_delete_api(room_type_id: str):
+    try:
+        saved = delete_room_type(room_type_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
     return saved

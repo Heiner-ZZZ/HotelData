@@ -59,6 +59,7 @@ function mapInventoryItem(item: AvailabilityDto['inventory_items'][number]): Ava
 
 function mapBlackoutItem(item: AvailabilityDto['blackout_items'][number]): AvailabilityBlackoutItem {
   return {
+    blackoutId: item.blackout_id,
     roomTypeId: item.room_type_id,
     rangeLabel: item.range_label,
     blockedRooms: item.blocked_rooms,

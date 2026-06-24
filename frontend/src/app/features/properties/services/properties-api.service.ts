@@ -4,7 +4,7 @@ import { catchError, forkJoin, map, of } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapEditPropertySources, mapPropertiesDashboardResponse, mapPropertyDetailResponse, mapPropertiesListResponse } from '../mappers/properties.mapper';
-import type { PropertiesDashboardResponseDto, PropertyDetailResponseDto, PropertyProfileResponseDto, PropertiesListResponseDto } from '../models/properties.dto';
+import type { PropertiesDashboardResponseDto, PropertyDetailResponseDto, PropertyProfileResponseDto, PropertiesListResponseDto, PropertyHistoryResponseDto, ChangeDetailDto } from '../models/properties.dto';
 import type { PoliciesDto } from '../../policies/models/policies.dto';
 import type { AmenitiesDto } from '../../amenities/models/amenities.dto';
 
@@ -137,6 +137,38 @@ export class PropertiesApiService {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/images`,
       { params: new HttpParams().set('image_url', imageUrl), withCredentials: true }
+    );
+  }
+
+  getPropertyHistory(
+    propId: number,
+    params?: {
+      from?: string;
+      to?: string;
+      field?: string;
+      user?: string;
+      page?: number;
+      perPage?: number;
+    }
+  ) {
+    let httpParams = new HttpParams();
+    if (params?.from) httpParams = httpParams.set('from', params.from);
+    if (params?.to) httpParams = httpParams.set('to', params.to);
+    if (params?.field) httpParams = httpParams.set('field', params.field);
+    if (params?.user) httpParams = httpParams.set('user', params.user);
+    if (params?.page) httpParams = httpParams.set('page', String(params.page));
+    if (params?.perPage) httpParams = httpParams.set('per_page', String(params.perPage));
+
+    return this.http.get<PropertyHistoryResponseDto>(
+      `${this.apiConfig.baseUrl}/management/properties/${propId}/history`,
+      { params: httpParams, withCredentials: true }
+    );
+  }
+
+  getChangeDetail(propId: number, changeId: string) {
+    return this.http.get<ChangeDetailDto>(
+      `${this.apiConfig.baseUrl}/management/properties/${propId}/history/${changeId}`,
+      { withCredentials: true }
     );
   }
 }

@@ -54,6 +54,7 @@ export class RoomsPageComponent {
     maxAdults: [2, [Validators.required, Validators.min(1)]],
     maxChildren: [0, [Validators.required, Validators.min(0)]],
     baseCapacity: [2, [Validators.required, Validators.min(1)]],
+    baseRate: [0, [Validators.min(0)]],
     isActive: [true]
   });
 
@@ -64,11 +65,16 @@ export class RoomsPageComponent {
     maxAdults: [2, [Validators.required, Validators.min(1)]],
     maxChildren: [0, [Validators.required, Validators.min(0)]],
     baseCapacity: [2, [Validators.required, Validators.min(1)]],
+    baseRate: [0, [Validators.min(0)]],
     isActive: [true]
   });
 
   readonly showEditModal = signal(false);
   readonly savingEdit = signal(false);
+  readonly showDeleteConfirm = signal(false);
+  readonly deleteTargetId = signal('');
+  readonly deleteTargetName = signal('');
+  readonly deleting = signal(false);
 
   constructor() {
     this.route.queryParamMap
@@ -106,7 +112,7 @@ export class RoomsPageComponent {
     });
   }
 
-  startEdit(roomType: { id: string; name: string; description: string; capacityLabel: string; activeLabel: string }) {
+  startEdit(roomType: { id: string; name: string; description: string; capacityLabel: string; activeLabel: string; baseRate?: number }) {
     const parts = roomType.capacityLabel.match(/(\d+)/g);
     this.editForm.setValue({
       roomTypeId: roomType.id,
@@ -115,6 +121,7 @@ export class RoomsPageComponent {
       maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
       maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
       baseCapacity: parts ? Number(parts[0]) : 2,
+      baseRate: roomType.baseRate ?? 0,
       isActive: roomType.activeLabel === 'Sí'
     });
     this.showEditModal.set(true);
@@ -123,6 +130,45 @@ export class RoomsPageComponent {
   cancelEdit() {
     this.showEditModal.set(false);
     this.editForm.reset();
+  }
+
+  requestDelete(roomTypeId: string, name: string) {
+    this.deleteTargetId.set(roomTypeId);
+    this.deleteTargetName.set(name);
+    this.showDeleteConfirm.set(true);
+  }
+
+  cancelDelete() {
+    this.showDeleteConfirm.set(false);
+    this.deleteTargetId.set('');
+    this.deleteTargetName.set('');
+  }
+
+  confirmDelete() {
+    const roomTypeId = this.deleteTargetId();
+    if (!roomTypeId) return;
+    this.deleting.set(true);
+    this.errorMessage.set('');
+    this.api.deleteRoomType(roomTypeId).pipe(
+      switchMap(() => {
+        const current = this.viewModel();
+        return current ? this.api.getRooms(current.propId) : of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (rooms) => {
+        this.viewModel.set(rooms);
+        this.message.set('Tipo de habitación eliminado');
+        this.errorMessage.set('');
+        this.deleting.set(false);
+        this.showDeleteConfirm.set(false);
+      },
+      error: (error: ApiError) => {
+        this.errorMessage.set(error.message || 'No se pudo eliminar el tipo de habitación.');
+        this.message.set('');
+        this.deleting.set(false);
+      }
+    });
   }
 
   saveEdit() {
@@ -138,6 +184,7 @@ export class RoomsPageComponent {
       maxAdults: value.maxAdults,
       maxChildren: value.maxChildren,
       baseCapacity: value.baseCapacity,
+      baseRate: value.baseRate || undefined,
       isActive: value.isActive
     }).pipe(
       switchMap(() => {          const current = this.viewModel();
@@ -176,6 +223,7 @@ export class RoomsPageComponent {
         maxAdults: value.maxAdults,
         maxChildren: value.maxChildren,
         baseCapacity: value.baseCapacity,
+        baseRate: value.baseRate || undefined,
         isActive: value.isActive
       })
       .pipe(
@@ -193,6 +241,7 @@ export class RoomsPageComponent {
             maxAdults: 2,
             maxChildren: 0,
             baseCapacity: 2,
+            baseRate: 0,
             isActive: true
           });
         },

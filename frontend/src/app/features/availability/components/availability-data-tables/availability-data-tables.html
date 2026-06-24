@@ -229,6 +229,18 @@
               <td>{{ item.rangeLabel }}</td>
               <td>{{ item.blockedRooms }}</td>
               <td>{{ item.reason }}</td>
+              <td>
+                @if (item.blackoutId) {
+                  <button
+                    type="button"
+                    class="qa-btn delete-btn"
+                    (click)="deleteBlackout.emit(item.blackoutId!)"
+                    title="Eliminar bloqueo"
+                  >
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                }
+              </td>
             </tr>
           }
         </tbody>

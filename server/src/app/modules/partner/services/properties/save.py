@@ -79,6 +79,7 @@ def save_partner_hotel_profile(
                 "name_source": "manual",
                 "updated_by": changed_by,
                 "updated_at": now_utc(),
+                "verified_at": now_utc(),
                 "original_generated_name": generated_name,
             }
         },

@@ -298,12 +298,13 @@
           [inventoryItems]="vm.inventoryItems"
           [availabilityBlocks]="vm.availabilityBlocks"
           [blackoutItems]="vm.blackoutItems"
+          (deleteBlackout)="onDeleteBlackout($event)"
         />
       }
     }
   }
 
-  <!-- Confirmation modal -->
+  <!-- Confirmation modal (quick actions) -->
   @if (confirmAction(); as confirm) {
     <div class="modal-backdrop" (click)="confirmCancel()">
       <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
@@ -312,6 +313,25 @@
         <div class="modal-actions">
           <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+        </div>
+      </article>
+    </div>
+  }
+
+  <!-- Delete blackout confirmation modal -->
+  @if (deleteConfirm(); as dc) {
+    <div class="modal-backdrop" (click)="deleteConfirm.set(null)">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Eliminar bloqueo</h2>
+        <p>¿Estás seguro de eliminar este bloqueo de disponibilidad? Se revertirá el efecto en el inventario y las habitaciones volverán a estar disponibles.</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteBlackout()">
+            @if (saving()) {
+              <span class="material-symbols-outlined spin">progress_activity</span>
+            }
+            Eliminar
+          </button>
         </div>
       </article>
     </div>

@@ -27,6 +27,10 @@
             {{ vm.operationalScore }}/100
           </span>
         </div>
+        <a [routerLink]="['/management/properties', vm.propId, 'history']" class="btn-secondary">
+          <span class="material-symbols-outlined">history</span>
+          Historial
+        </a>
         <a [routerLink]="['/management/properties', vm.propId, 'edit']" class="btn-primary">
           <span class="material-symbols-outlined">edit</span>
           Editar perfil
