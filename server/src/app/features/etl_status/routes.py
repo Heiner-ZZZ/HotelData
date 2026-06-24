@@ -88,7 +88,7 @@ def api_etl_status_ga03_validate(target: int = Query(0, ge=0)):
 
 
 @JSON_API.post("/etl-status/ga03/run")
-def api_etl_status_ga03_run(target: int = Query(0, ge=0)):
+def api_etl_status_ga03_run(target: int = Query(0, ge=0), incremental: bool = Query(False)):
     pb_status = pocketbase_status()
     if pb_status.get("state") != "ready":
         return {
@@ -96,23 +96,27 @@ def api_etl_status_ga03_run(target: int = Query(0, ge=0)):
             "display_message": "Pipeline GA03 fallido.",
             "summary_output": "La fuente GA03 debe estar lista en PocketBase.",
         }
-    result = start_pipeline(target_records=target)
+    result = start_pipeline(target_records=target, incremental=incremental)
+    mode_label = "incremental" if incremental else "full"
     return {
         "ok": result.get("ok", False),
         "target_records": target,
+        "incremental": incremental,
         "pid": result.get("pid"),
-        "display_message": "Pipeline GA03 iniciado." if result.get("ok") else "Pipeline GA03 fallido.",
+        "display_message": f"Pipeline GA03 ({mode_label}) iniciado." if result.get("ok") else "Pipeline GA03 fallido.",
         "summary_output": "Pipeline GA03 iniciado en segundo plano." if result.get("ok") else (result.get("stderr", "") or ""),
     }
 
 
 @JSON_API.post("/etl-status/ga03/seed")
-def api_etl_status_ga03_seed(target: int = Query(0, ge=0)):
-    result = start_seed_source(target_records=target)
+def api_etl_status_ga03_seed(target: int = Query(0, ge=0), incremental: bool = Query(False)):
+    result = start_seed_source(target_records=target, incremental=incremental)
+    mode_label = "incremental" if incremental else "full"
     return {
         "ok": result.get("ok", False),
         "target_records": target,
-        "display_message": "Preparación GA03 iniciada." if result.get("ok") else "Preparación GA03 fallida.",
+        "incremental": incremental,
+        "display_message": f"Preparación GA03 ({mode_label}) iniciada." if result.get("ok") else "Preparación GA03 fallida.",
         "summary_output": result.get("stdout", "") or result.get("stderr", "") or "",
     }
 

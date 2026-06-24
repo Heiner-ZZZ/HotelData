@@ -94,7 +94,7 @@ def prepare_seed_source() -> dict:
     return _run_script("cargar_reservas_hoteleras_03.py")
 
 
-def start_seed_source(target_records: int = 0) -> dict:
+def start_seed_source(target_records: int = 0, incremental: bool = False) -> dict:
     settings = get_settings()
     progress = preparation_progress()
     if progress.get("is_running"):
@@ -108,11 +108,12 @@ def start_seed_source(target_records: int = 0) -> dict:
     _write_progress_seed("Preparación GA03 solicitada desde /etl-status.", target_records=target_records)
     uploaded_csv = settings.project_root / "data" / "uploads" / "ga03_source.csv"
     args = ["--csv", str(uploaded_csv)] if uploaded_csv.exists() else None
-    extra_env = {"META_PB": str(target_records)} if target_records > 0 else None
+    extra_env = {"META_PB": str(target_records)} if target_records > 0 else {}
+    extra_env["GA03_INCREMENTAL_MODE"] = "true" if incremental else "false"
     return _start_script("cargar_reservas_hoteleras_03.py", args=args, env=extra_env)
 
 
-def start_pipeline(target_records: int = 0) -> dict:
+def start_pipeline(target_records: int = 0, incremental: bool = False) -> dict:
     settings = get_settings()
     lock_path = settings.reports_dir / "pipeline_reservas_03.lock"
     if lock_path.exists():
@@ -147,7 +148,8 @@ def start_pipeline(target_records: int = 0) -> dict:
             "ok": False,
         }
     _write_pipeline_progress("Pipeline GA03 solicitado desde /etl-status.", target_records=target_records)
-    extra_env = {"META_MONGO": str(target_records)} if target_records > 0 else None
+    extra_env = {"META_MONGO": str(target_records)} if target_records > 0 else {}
+    extra_env["GA03_INCREMENTAL_MODE"] = "true" if incremental else "false"
     return _start_script("run_reservas_03_pipeline.py", log_name="pipeline_reservas_03.log", env=extra_env)
 
 
@@ -176,6 +178,7 @@ def stop_etl(process: str) -> dict:
 
 def clear_local_evidence() -> dict:
     import subprocess
+    from pathlib import Path
     settings = get_settings()
     try:
         result = subprocess.run(
@@ -200,7 +203,20 @@ def clear_local_evidence() -> dict:
         settings.reports_dir / "pipeline_reservas_03.log",
         settings.reports_dir / "pipeline_reservas_03.lock",
     ]
-    paths = json_paths + other_paths + [p.with_suffix(".json.tmp") for p in json_paths]
+    etl_paths = [
+        settings.staging_dir / "reservas_hoteleras_03_extract.jsonl",
+        settings.staging_dir / "ga03_execution_state.json",
+        settings.processed_dir / "reservas_hoteleras_03.parquet",
+        settings.processed_dir / "reservas_hoteleras_03.parquet.meta.json",
+        settings.processed_dir / "fact_hotel_reservations_ga03.jsonl",
+        settings.processed_dir / "fact_hotel_reservations_ga03.meta.json",
+        settings.processed_dir / "rejected_records_ga03.jsonl",
+    ]
+    paths: list[Path] = json_paths + other_paths + [p.with_suffix(".json.tmp") for p in json_paths] + etl_paths
+    dimension_dir = settings.processed_dir / "ga03_dimensions"
+    if dimension_dir.exists():
+        for f in dimension_dir.iterdir():
+            paths.append(f)
     deleted: list[str] = []
     missing: list[str] = []
     for path in paths:
@@ -209,6 +225,12 @@ def clear_local_evidence() -> dict:
             deleted.append(str(path))
         else:
             missing.append(str(path))
+    if dimension_dir.exists() and not any(dimension_dir.iterdir()):
+        try:
+            dimension_dir.rmdir()
+            deleted.append(str(dimension_dir) + "/")
+        except OSError:
+            pass
     return {
         "command": "clear_ga03_local_evidence",
         "returncode": 0,
