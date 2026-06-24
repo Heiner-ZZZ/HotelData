@@ -17,6 +17,11 @@ export interface PolicySummaryItem {
   detail: string;
 }
 
+export interface PolicyRoomTypeOption {
+  id: string;
+  name: string;
+}
+
 export interface PoliciesViewModel {
   propId: number;
   hotelName: string;
@@ -32,5 +37,7 @@ export interface PoliciesViewModel {
   extraBedPolicy: string;
   paymentPolicy: string;
   houseRules: string;
+  roomTypeId: string;
+  roomTypes: PolicyRoomTypeOption[];
   summary: PolicySummaryItem[];
 }

@@ -21,6 +21,11 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
     extraBedPolicy: dto.policies.extra_bed_policy || '',
     paymentPolicy: dto.policies.payment_policy || '',
     houseRules: dto.policies.house_rules || '',
+    roomTypeId: dto.policies.room_type_id || '',
+    roomTypes: (dto.room_types ?? []).map(r => ({
+      id: r.room_type_id,
+      name: r.name
+    })),
     summary: [
       { label: 'Check-in', value: checkIn, detail: 'Horario de llegada' },
       { label: 'Check-out', value: checkOut, detail: 'Horario de salida' },
@@ -57,6 +62,7 @@ export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {
     children_policy: vm.childrenPolicy,
     extra_bed_policy: vm.extraBedPolicy,
     payment_policy: vm.paymentPolicy,
-    house_rules: vm.houseRules
+    house_rules: vm.houseRules,
+    room_type_id: vm.roomTypeId || undefined
   };
 }

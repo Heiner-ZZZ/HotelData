@@ -12,7 +12,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapPoliciesPayload } from '../../mappers/policies.mapper';
-import type { PoliciesViewModel } from '../../models/policies.model';
+import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import { PoliciesApiService } from '../../services/policies-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 
@@ -46,6 +46,9 @@ export class PoliciesPageComponent {
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
 
+  readonly selectedRoomTypeId = signal('');
+  readonly roomTypeOptions = signal<PolicyRoomTypeOption[]>([]);
+
   readonly policyForm = this.formBuilder.nonNullable.group({
     checkInTime: ['', [Validators.required]],
     checkOutTime: ['', [Validators.required]],
@@ -55,6 +58,7 @@ export class PoliciesPageComponent {
     paymentPolicy: [''],
     petPolicy: [''],
     houseRules: [''],
+    roomTypeId: [''],
   });
 
   constructor() {
@@ -66,40 +70,65 @@ export class PoliciesPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
+          this.selectedRoomTypeId.set('');
           return propId > 0 ? this.api.getPolicies(propId) : of(null);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (policies) => {
-          if (policies) {
-            this.viewModel.set(policies);
-            this.selectedPropId.set(policies.propId);
-            this.selectedLabel.set(policies.hotelName);
-            this.policyForm.setValue({
-              checkInTime: policies.checkInTime,
-              checkOutTime: policies.checkOutTime,
-              cancellationPolicy: policies.cancellationPolicy,
-              childrenPolicy: policies.childrenPolicy,
-              extraBedPolicy: policies.extraBedPolicy,
-              paymentPolicy: policies.paymentPolicy,
-              petPolicy: policies.petPolicy,
-              houseRules: policies.houseRules,
-            });
-            this.viewState.set('success');
-          } else {
-            this.viewModel.set(null);
-            this.viewState.set('empty');
-          }
-        },
+        next: (policies) => this.onPoliciesLoaded(policies),
         error: () => this.viewState.set('error'),
       });
+  }
+
+  private onPoliciesLoaded(policies: PoliciesViewModel | null) {
+    if (policies) {
+      this.viewModel.set(policies);
+      this.selectedPropId.set(policies.propId);
+      this.selectedLabel.set(policies.hotelName);
+      this.roomTypeOptions.set(policies.roomTypes);
+      this.selectedRoomTypeId.set(policies.roomTypeId);
+      this.policyForm.setValue({
+        checkInTime: policies.checkInTime,
+        checkOutTime: policies.checkOutTime,
+        cancellationPolicy: policies.cancellationPolicy,
+        childrenPolicy: policies.childrenPolicy,
+        extraBedPolicy: policies.extraBedPolicy,
+        paymentPolicy: policies.paymentPolicy,
+        petPolicy: policies.petPolicy,
+        houseRules: policies.houseRules,
+        roomTypeId: policies.roomTypeId,
+      });
+      this.viewState.set('success');
+    } else {
+      this.viewModel.set(null);
+      this.viewState.set('empty');
+    }
   }
 
   onPropSelected(propId: number) {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null },
+    });
+  }
+
+  switchRoomType(roomTypeId: string) {
+    if (roomTypeId === this.selectedRoomTypeId()) return;
+    const propId = this.selectedPropId();
+    if (!propId) return;
+
+    this.viewState.set('loading');
+    this.message.set('');
+    this.errorMessage.set('');
+
+    const obs = roomTypeId
+      ? this.api.getPolicies(propId, roomTypeId)
+      : this.api.getPolicies(propId);
+
+    obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (policies) => this.onPoliciesLoaded(policies),
+      error: () => this.viewState.set('error'),
     });
   }
 
@@ -120,21 +149,26 @@ export class PoliciesPageComponent {
       paymentPolicy: raw.paymentPolicy,
       petPolicy: raw.petPolicy,
       houseRules: raw.houseRules,
+      roomTypeId: raw.roomTypeId,
     });
     this.api
       .savePolicies(payload)
       .pipe(
-        switchMap(() => this.api.getPolicies(current.propId)),
+        switchMap(() => {
+          const propId = current.propId;
+          const rtId = this.selectedRoomTypeId();
+          return rtId ? this.api.getPolicies(propId, rtId) : this.api.getPolicies(propId);
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (policies) => {
-          this.viewModel.set(policies);
-          this.message.set('Politicas actualizadas');
+          this.onPoliciesLoaded(policies);
+          this.message.set('Políticas actualizadas');
           this.errorMessage.set('');
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible guardar las politicas.');
+          this.errorMessage.set(error.message || 'No fue posible guardar las políticas.');
           this.message.set('');
         },
       });

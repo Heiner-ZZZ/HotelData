@@ -1,3 +1,8 @@
+export interface PolicyRoomTypeItem {
+  room_type_id: string;
+  name: string;
+}
+
 export interface PoliciesDto {
   hotel: {
     prop_id: number;
@@ -18,7 +23,10 @@ export interface PoliciesDto {
     extra_bed_policy?: string;
     payment_policy?: string;
     house_rules?: string;
+    room_type_id?: string;
   };
+  room_types?: PolicyRoomTypeItem[];
+  per_room_policies?: Array<Record<string, unknown>>;
 }
 
 export interface PoliciesOptionsDto {
@@ -42,4 +50,5 @@ export interface PoliciesSaveDto {
   extra_bed_policy: string;
   payment_policy: string;
   house_rules: string;
+  room_type_id?: string;
 }

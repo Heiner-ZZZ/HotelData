@@ -63,6 +63,35 @@
             </div>
           </div>
 
+          <div class="room-type-scope">
+            <label class="field">
+              <span class="field-label">
+                <span class="field-icon material-symbols-outlined">meeting_room</span>
+                Aplicar políticas a
+              </span>
+              <select
+                [value]="selectedRoomTypeId()"
+                (change)="switchRoomType(($any($event.target)).value)"
+              >
+                <option value="">Todo el hotel (general)</option>
+                @for (rt of roomTypeOptions(); track rt.id) {
+                  <option [value]="rt.id">{{ rt.name }}</option>
+                }
+              </select>
+            </label>
+            @if (selectedRoomTypeId()) {
+              <span class="scope-badge">
+                <span class="material-symbols-outlined">meeting_room</span>
+                Políticas específicas para este tipo de habitación
+              </span>
+            } @else {
+              <span class="scope-badge scope-badge--hotel">
+                <span class="material-symbols-outlined">business</span>
+                Políticas generales del hotel
+              </span>
+            }
+          </div>
+
           <form [formGroup]="policyForm" (ngSubmit)="savePolicies()" class="form-grid">
             <label class="field">
               <span class="field-label">
@@ -83,35 +112,35 @@
                 <span class="field-icon material-symbols-outlined">cancel</span>
                 Cancelacion
               </span>
-              <textarea rows="4" formControlName="cancellationPolicy" placeholder="Politica de cancelacion"></textarea>
+              <textarea rows="4" formControlName="cancellationPolicy" placeholder="Política de cancelación"></textarea>
             </label>
             <label class="field field-span">
               <span class="field-label">
                 <span class="field-icon material-symbols-outlined">family_history</span>
-                Ninos y estancia familiar
+                Niños y estancia familiar
               </span>
-              <textarea rows="4" formControlName="childrenPolicy" placeholder="Politica de ninos y familia"></textarea>
+              <textarea rows="4" formControlName="childrenPolicy" placeholder="Política de niños y familia"></textarea>
             </label>
             <label class="field field-span">
               <span class="field-label">
                 <span class="field-icon material-symbols-outlined">bed</span>
                 Camas extra
               </span>
-              <textarea rows="4" formControlName="extraBedPolicy" placeholder="Politica de camas extra"></textarea>
+              <textarea rows="4" formControlName="extraBedPolicy" placeholder="Política de camas extra"></textarea>
             </label>
             <label class="field field-span">
               <span class="field-label">
                 <span class="field-icon material-symbols-outlined">payments</span>
-                Pagos y garantias
+                Pagos y garantías
               </span>
-              <textarea rows="4" formControlName="paymentPolicy" placeholder="Politica de pagos"></textarea>
+              <textarea rows="4" formControlName="paymentPolicy" placeholder="Política de pagos"></textarea>
             </label>
             <label class="field field-span">
               <span class="field-label">
                 <span class="field-icon material-symbols-outlined">pets</span>
                 Mascotas
               </span>
-              <textarea rows="4" formControlName="petPolicy" placeholder="Politica de mascotas"></textarea>
+              <textarea rows="4" formControlName="petPolicy" placeholder="Política de mascotas"></textarea>
             </label>
             <label class="field field-span">
               <span class="field-label">

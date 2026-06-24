@@ -292,6 +292,65 @@ textarea {
   }
 }
 
+/* ── Room type scope selector ── */
+.room-type-scope {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--app-border);
+
+  .field {
+    min-width: 240px;
+    margin: 0;
+  }
+
+  select {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 0.85rem;
+    color: inherit;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+    appearance: auto;
+
+    &:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+  }
+}
+
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: color-mix(in srgb, #8b5cf6 10%, transparent);
+  color: #7c3aed;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  }
+
+  &--hotel {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
+}
+
 /* Semantic icon color overrides */
 .icon-hotel-warm { color: #d97706; }
 .icon-price-green { color: var(--success); }

@@ -26,8 +26,11 @@ export class PoliciesApiService {
       .pipe(map((dto) => mapPoliciesOptions(dto)));
   }
 
-  getPolicies(propId: number) {
-    const params = new HttpParams().set('prop_id', String(propId));
+  getPolicies(propId: number, roomTypeId?: string) {
+    let params = new HttpParams().set('prop_id', String(propId));
+    if (roomTypeId) {
+      params = params.set('room_type_id', roomTypeId);
+    }
     return this.http
       .get<PoliciesDto>(`${this.apiConfig.baseUrl}/management/policies`, {
         params,
