@@ -28,6 +28,19 @@ export interface AmenitiesDto {
     title: string;
   }>;
   facilities?: string[];
+  room_types?: Array<{
+    room_type_id: string;
+    name: string;
+    max_adults: number;
+    max_children: number;
+    base_capacity: number;
+    is_active: boolean;
+    capacity_label: string;
+  }>;
+  room_amenities?: Record<string, {
+    active_amenities: string[];
+    amenities_text: string;
+  }>;
 }
 
 export interface AmenitiesOptionsDto {
@@ -49,4 +62,5 @@ export interface AmenitiesSaveDto {
   prop_id: number;
   active_amenities: string[];
   amenities_text: string;
+  room_type_id?: string;
 }

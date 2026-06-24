@@ -26,8 +26,11 @@ export class AmenitiesApiService {
       .pipe(map((dto) => mapAmenitiesOptions(dto)));
   }
 
-  getAmenities(propId: number) {
-    const params = new HttpParams().set('prop_id', String(propId));
+  getAmenities(propId: number, roomTypeId = '') {
+    let params = new HttpParams().set('prop_id', String(propId));
+    if (roomTypeId) {
+      params = params.set('room_type_id', roomTypeId);
+    }
     return this.http
       .get<AmenitiesDto>(`${this.apiConfig.baseUrl}/management/amenities`, {
         params,
@@ -37,8 +40,8 @@ export class AmenitiesApiService {
   }
 
   saveAmenities(payload: AmenitiesSaveDto) {
-    return this.http.put(`${this.apiConfig.baseUrl}/management/amenities`, payload, {
+    return this.http.put<AmenitiesDto>(`${this.apiConfig.baseUrl}/management/amenities`, payload, {
       withCredentials: true
-    });
+    }).pipe(map((dto) => mapAmenities(dto)));
   }
 }

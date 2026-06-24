@@ -13,6 +13,12 @@ export interface AmenityCategoryViewModel {
   items: AmenityItemViewModel[];
 }
 
+export interface RoomTypeOption {
+  roomTypeId: string;
+  name: string;
+  capacityLabel: string;
+}
+
 export interface AmenitiesViewModel {
   propId: number;
   hotelName: string;
@@ -25,4 +31,6 @@ export interface AmenitiesViewModel {
   imageCount: number;
   facilityCount: number;
   categories: AmenityCategoryViewModel[];
+  roomTypes: RoomTypeOption[];
+  roomAmenities: Record<string, string[]>;
 }

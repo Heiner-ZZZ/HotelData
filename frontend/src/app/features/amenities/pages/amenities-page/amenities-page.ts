@@ -12,7 +12,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapAmenitiesPayload } from '../../mappers/amenities.mapper';
-import type { AmenityCategoryViewModel, AmenitiesViewModel } from '../../models/amenities.model';
+import type { AmenitiesViewModel } from '../../models/amenities.model';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
@@ -48,6 +48,7 @@ export class AmenitiesPageComponent {
 
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
+  readonly selectedRoomTypeId = signal('');
 
   readonly utilityForm = this.formBuilder.nonNullable.group({
     search: [''],
@@ -60,17 +61,25 @@ export class AmenitiesPageComponent {
     const vm = this.viewModel();
     const search = this.utilityForm.controls.search.value.trim().toLowerCase();
     if (!vm) {
-      return [] as AmenityCategoryViewModel[];
+      return [];
     }
+    const categories = vm.categories;
     if (!search) {
-      return vm.categories;
+      return categories;
     }
-    return vm.categories
+    return categories
       .map((category) => ({
         ...category,
         items: category.items.filter((item) => item.label.toLowerCase().includes(search))
       }))
       .filter((category) => category.items.length);
+  });
+
+  readonly selectedRoomName = computed(() => {
+    const vm = this.viewModel();
+    const rtId = this.selectedRoomTypeId();
+    if (!vm || !rtId) return '';
+    return vm.roomTypes.find((rt) => rt.roomTypeId === rtId)?.name ?? rtId;
   });
 
   constructor() {
@@ -82,6 +91,7 @@ export class AmenitiesPageComponent {
           this.viewState.set('loading');
           this.message.set('');
           this.errorMessage.set('');
+          this.selectedRoomTypeId.set('');
           return propId > 0 ? this.api.getAmenities(propId) : of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
@@ -108,6 +118,22 @@ export class AmenitiesPageComponent {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null }
+    });
+  }
+
+  onRoomTypeChange(event: Event) {
+    const roomTypeId = (event.target as HTMLSelectElement).value;
+    const propId = this.selectedPropId();
+    if (!propId) return;
+    this.selectedRoomTypeId.set(roomTypeId);
+    this.viewState.set('loading');
+    this.api.getAmenities(propId, roomTypeId).subscribe({
+      next: (amenities) => {
+        this.viewModel.set(amenities);
+        this.selectedAmenities.set(amenities.activeAmenities);
+        this.viewState.set('success');
+      },
+      error: () => this.viewState.set('error')
     });
   }
 
@@ -140,15 +166,13 @@ export class AmenitiesPageComponent {
       return;
     }
     this.api
-      .saveAmenities(mapAmenitiesPayload(current.propId, this.selectedAmenities()))
-      .pipe(
-        switchMap(() => this.api.getAmenities(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
+      .saveAmenities(mapAmenitiesPayload(current.propId, this.selectedAmenities(), this.selectedRoomTypeId()))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (amenities) => {
-          this.viewModel.set(amenities);
-          this.selectedAmenities.set(amenities.activeAmenities);
+        next: (fresh) => {
+          this.viewModel.set(fresh);
+          this.selectedAmenities.set(fresh.activeAmenities);
+          this.selectedRoomTypeId.set('');
           this.message.set('Servicios actualizados');
           this.errorMessage.set('');
         },

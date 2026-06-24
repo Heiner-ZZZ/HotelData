@@ -47,7 +47,7 @@
           <article class="surface-card hero-card">
             <span class="label">Servicios activos</span>
             <strong>{{ selectedAmenities().length }}</strong>
-            <p>Configurados en esta propiedad</p>
+            <p>{{ selectedRoomTypeId() ? selectedRoomName() : 'Hotel (general)' }}</p>
           </article>
           <article class="surface-card hero-card">
             <span class="label">Contenido e imágenes</span>
@@ -55,6 +55,20 @@
             <p>{{ vm.contentDescription }}</p>
           </article>
         </section>
+
+        @if (vm.roomTypes.length) {
+          <section class="surface-card room-type-selector">
+            <label class="field">
+              <span>Ámbito</span>
+              <select [value]="selectedRoomTypeId()" (change)="onRoomTypeChange($event)">
+                <option value="">Hotel (general)</option>
+                @for (rt of vm.roomTypes; track rt.roomTypeId) {
+                  <option [value]="rt.roomTypeId">{{ rt.name }} — {{ rt.capacityLabel }}</option>
+                }
+              </select>
+            </label>
+          </section>
+        }
 
         <app-active-amenities-summary [items]="selectedAmenities()" />
 
