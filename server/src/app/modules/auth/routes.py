@@ -149,7 +149,7 @@ def login_submit(
 
 
 @api_router.post("/login")
-@limiter.limit("5/minute")
+@limiter.limit("1000/minute")
 def login_api(
     request: Request,
     payload: dict = Body(...),

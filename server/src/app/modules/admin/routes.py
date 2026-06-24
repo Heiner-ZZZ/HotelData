@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
@@ -215,6 +217,77 @@ def users_delete_api(user_id: str, current_user: dict = Depends(require_permissi
 
 
 # ─── Ownership Management ──────────────────────────────────────────────
+
+@api_router.get("/notifications")
+def notifications_list_api(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=30, ge=1, le=100),
+    notification_type: str | None = Query(default=None),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    from src.database.connection import get_database
+
+    db = get_database()
+    match: dict[str, Any] = {}
+    if notification_type:
+        match["notification_type"] = notification_type
+
+    # Apply date range filter (created_at is stored as BSON Date, so convert ISO strings to datetime)
+    date_filter: dict[str, datetime] = {}
+    if start_date:
+        try:
+            date_filter["$gte"] = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            # Include the full end_date day: set to 23:59:59 UTC
+            dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+            date_filter["$lte"] = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+        except ValueError:
+            pass
+    if date_filter:
+        match["created_at"] = date_filter
+
+    total = db.notification_log.count_documents(match)
+    items = list(
+        db.notification_log.find(match, {"_id": 0})
+        .sort([("created_at", -1)])
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
+
+    # Build stats — when date filter is active, stats reflect the filtered set
+    stats_pipeline: list[dict[str, Any]] = []
+    if match:
+        stats_pipeline.append({"$match": match})
+    stats_pipeline.append({"$group": {"_id": "$notification_type", "count": {"$sum": 1}}})
+    stats_pipeline.append({"$sort": {"count": -1}})
+    stats = list(db.notification_log.aggregate(stats_pipeline))
+    type_counts: dict[str, int] = {r["_id"]: r["count"] for r in stats}
+
+    status_pipeline: list[dict[str, Any]] = []
+    if match:
+        status_pipeline.append({"$match": match})
+    status_pipeline.append({"$group": {"_id": "$status", "count": {"$sum": 1}}})
+    status_stats = list(db.notification_log.aggregate(status_pipeline))
+    status_counts: dict[str, int] = {r["_id"]: r["count"] for r in status_stats}
+
+    return {
+        "items": items,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
+        "stats": {
+            "total": total,
+            "by_type": type_counts,
+            "by_status": status_counts,
+        },
+    }
+
 
 @api_router.get("/ownership/users")
 def ownership_users_list(current_user: dict = Depends(require_permission("users.manage"))):

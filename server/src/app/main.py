@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+from src.app.features.dashboard.kpi_service import refresh_kpis_background
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +55,7 @@ from src.app.modules.partner.services.bootstrap import (
 from src.app.modules.revenue.services import ensure_revenue_collections
 from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.billing.service import ensure_billing_collections
+from src.app.modules.reservations.service import ensure_reservation_collections
 from config.settings import get_settings
 from src.database.connection import get_database
 
@@ -71,7 +75,9 @@ def create_app() -> FastAPI:
     )
     app.middleware("http")(role_access_middleware)
     app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
-    app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
+    uploads_dir = settings.project_root / "data" / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
     app.include_router(dashboard_api_router)
     app.include_router(etl_status_json_router)
     app.include_router(audit_router)
@@ -114,7 +120,9 @@ async def lifespan(app: FastAPI):
     ensure_revenue_collections()
     ensure_reviews_collections()
     ensure_billing_collections()
+    ensure_reservation_collections()
     ensure_auth_collections()
+    threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield
 
 
