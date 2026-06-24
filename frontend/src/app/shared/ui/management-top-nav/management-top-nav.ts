@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, OnInit, OnDestroy, ElementRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
@@ -46,6 +46,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
   private readonly notificationsApi = inject(NotificationsApiService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject(ElementRef);
 
   readonly currentUser = this.authService.currentUser;
   readonly showNotifications = signal(false);
@@ -105,7 +106,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
     return role === 'super_admin' || role === 'admin_sistema';
   });
 
-  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean }>>([]);
+  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }>>([]);
 
   readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
 
@@ -161,7 +162,9 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
             title: item.typeLabel,
             description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
             time: this._timeAgo(item.createdAt),
-            unread: item.status === 'sent'
+            unread: item.status === 'sent',
+            bookingId: item.bookingId || '',
+            propId: item.propId || 0,
           }));
           this.notifications.set(mapped);
         },
@@ -190,6 +193,17 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
     if (hrs < 24) return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
     const days = Math.floor(hrs / 24);
     return `Hace ${days} día${days > 1 ? 's' : ''}`;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (this.showNotifications()) {
+      const target = event.target as HTMLElement;
+      const wrapper = this.elementRef.nativeElement.querySelector('.notif-wrapper');
+      if (wrapper && !wrapper.contains(target)) {
+        this.showNotifications.set(false);
+      }
+    }
   }
 
   toggleNotifications() {

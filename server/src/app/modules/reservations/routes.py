@@ -247,6 +247,7 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
 @management_api_router.get("/check-ins/dates")
 def check_in_dates_api(
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
 ):
     return list_check_in_dates(prop_id=prop_id)
 
@@ -255,12 +256,17 @@ def check_in_dates_api(
 def check_ins_api(
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
 ):
-    return list_check_ins(operation_date=operation_date, prop_id=prop_id)
+    return list_check_ins(operation_date=operation_date, prop_id=prop_id, user=current_user)
 
 
 @management_api_router.post("/check-ins/{booking_id}/complete")
-def check_in_complete_api(booking_id: str, payload: dict = Body(default={})):
+def check_in_complete_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
     try:
         return complete_check_in(
             booking_id,
@@ -273,6 +279,7 @@ def check_in_complete_api(booking_id: str, payload: dict = Body(default={})):
 @management_api_router.get("/check-outs/dates")
 def check_out_dates_api(
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
 ):
     return list_check_out_dates(prop_id=prop_id)
 
@@ -281,12 +288,17 @@ def check_out_dates_api(
 def check_outs_api(
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
 ):
-    return list_check_outs(operation_date=operation_date, prop_id=prop_id)
+    return list_check_outs(operation_date=operation_date, prop_id=prop_id, user=current_user)
 
 
 @management_api_router.post("/check-outs/{booking_id}/complete")
-def check_out_complete_api(booking_id: str, payload: dict = Body(default={})):
+def check_out_complete_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
     try:
         return complete_check_out(
             booking_id,

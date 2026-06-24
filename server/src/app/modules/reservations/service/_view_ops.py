@@ -109,15 +109,18 @@ def list_check_out_dates(*, prop_id: int | None = None) -> list[dict[str, Any]]:
     return _list_operational_dates(flow="check_out", prop_id=prop_id)
 
 
-def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
+def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int | None = None, user: dict[str, Any] | None = None) -> dict[str, Any]:
     db = get_database()
     field = "check_in_date" if flow == "check_in" else "check_out_date"
     filters: dict[str, Any] = {field: operation_date}
     if prop_id:
         filters["prop_id"] = prop_id
-    items = list(
-        db.booking_orders.find(filters, {"_id": 0}).sort([(field, ASCENDING), ("created_at", ASCENDING)])
-    )
+    try:
+        items = list(
+            db.booking_orders.find(filters, {"_id": 0}).sort([(field, ASCENDING), ("created_at", ASCENDING)])
+        )
+    except Exception:
+        items = []
     booking_ids = [item["booking_id"] for item in items]
     guest_lookup = _guest_lookup(booking_ids)
     history_lookup = _booking_history_lookup(booking_ids)
@@ -133,18 +136,22 @@ def _list_operational_bookings(*, flow: str, operation_date: str, prop_id: int |
         "completed": sum(1 for item in view_items if item["stay_status"] == completed_key),
         "cancelled_or_no_show": sum(1 for item in view_items if item["stay_status"] in {"cancelled", "no_show"}),
     }
+    try:
+        property_options = reservation_hotel_options(limit=100, user=user)
+    except Exception:
+        property_options = []
     return {
         "operation_date": operation_date,
         "prop_id": prop_id,
-        "property_options": reservation_hotel_options(limit=100),
+        "property_options": property_options,
         "summary": summary,
         "items": view_items,
     }
 
 
-def list_check_ins(*, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
-    return _list_operational_bookings(flow="check_in", operation_date=operation_date, prop_id=prop_id)
+def list_check_ins(*, operation_date: str, prop_id: int | None = None, user: dict[str, Any] | None = None) -> dict[str, Any]:
+    return _list_operational_bookings(flow="check_in", operation_date=operation_date, prop_id=prop_id, user=user)
 
 
-def list_check_outs(*, operation_date: str, prop_id: int | None = None) -> dict[str, Any]:
-    return _list_operational_bookings(flow="check_out", operation_date=operation_date, prop_id=prop_id)
+def list_check_outs(*, operation_date: str, prop_id: int | None = None, user: dict[str, Any] | None = None) -> dict[str, Any]:
+    return _list_operational_bookings(flow="check_out", operation_date=operation_date, prop_id=prop_id, user=user)
