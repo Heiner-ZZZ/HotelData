@@ -12,9 +12,10 @@ from src.app.modules.partner.services.content.queries import (
 )
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.app.modules.partner.services.properties.metadata import profile_description, profile_payload
+from src.database.connection import get_database
 
 
-def partner_hotel_content(prop_id: int) -> dict[str, Any] | None:
+def partner_hotel_content(prop_id: int, room_type_id: str = "") -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
@@ -26,7 +27,10 @@ def partner_hotel_content(prop_id: int) -> dict[str, Any] | None:
     detail["images"] = images[:4]
     detail["images_count"] = len(images)
     detail["recent_changes"] = recent_content_changes(prop_id)
-    detail["amenities"] = amenities_payload_for_prop(prop_id)
+    detail["amenities"] = amenities_payload_for_prop(prop_id, room_type_id=room_type_id)
+    from src.app.modules.partner.services.rooms import _room_types_for_prop
+    detail["room_types"] = _room_types_for_prop(prop_id)
+    detail["room_amenities"] = content_page.get("room_amenities", {})
     return detail
 
 
@@ -45,6 +49,25 @@ def partner_hotel_policies(prop_id: int) -> dict[str, Any] | None:
         return None
     detail["policies"] = policies_for_prop(prop_id)
     detail["recent_changes"] = recent_content_changes(prop_id)
+    # Include room types so the UI can offer per-room-type policies
+    from src.app.modules.partner.services.rooms import _room_types_for_prop
+    detail["room_types"] = _room_types_for_prop(prop_id)
+    detail["per_room_policies"] = list(
+        get_database().hotel_policies.find(
+            {"prop_id": prop_id, "room_type_id": {"$nin": ["", None]}},
+            {"_id": 0},
+        )
+    )
+    return detail
+
+
+def partner_hotel_per_room_policies(prop_id: int, room_type_id: str) -> dict[str, Any] | None:
+    """Get policies for a specific room type."""
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+    detail["policies"] = policies_for_prop(prop_id, room_type_id=room_type_id)
+    detail["room_type_id"] = room_type_id
     return detail
 
 

@@ -47,6 +47,7 @@ def save_partner_hotel_amenities(
     *,
     active_amenities: list[str],
     amenities_text: str | None = None,
+    room_type_id: str = "",
     changed_by: str = "angular_api",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -63,24 +64,39 @@ def save_partner_hotel_amenities(
             continue
         seen.add(key)
         clean_active.append(label)
-    payload = {
-        "prop_id": prop_id,
-        "description": current.get("description") or "",
-        "highlights": current.get("highlights") or "",
-        "amenities_text": clean_text(amenities_text) or ", ".join(clean_active),
-        "active_amenities": clean_active,
-        "amenities_catalog": [{"category": _amenity_category(label), "label": label} for label in clean_active],
-        "source": current.get("source") or "partner_manual",
-        "updated_at": now_utc(),
-    }
-    document = db.hotel_content_pages.find_one_and_update(
-        {"prop_id": prop_id},
-        {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-        projection={"_id": 0},
-    )
-    register_content_change(prop_id, "hotel_content_pages", "upsert_amenities", payload, changed_by=changed_by)
+
+    if room_type_id:
+        room_amenities = dict(current.get("room_amenities") or {})
+        room_amenities[room_type_id] = {
+            "active_amenities": clean_active,
+            "amenities_text": clean_text(amenities_text) or ", ".join(clean_active),
+        }
+        document = db.hotel_content_pages.find_one_and_update(
+            {"prop_id": prop_id},
+            {"$set": {"room_amenities": room_amenities, "updated_at": now_utc()}, "$setOnInsert": {"created_at": now_utc()}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+            projection={"_id": 0},
+        )
+    else:
+        payload = {
+            "prop_id": prop_id,
+            "description": current.get("description") or "",
+            "highlights": current.get("highlights") or "",
+            "amenities_text": clean_text(amenities_text) or ", ".join(clean_active),
+            "active_amenities": clean_active,
+            "amenities_catalog": [{"category": _amenity_category(label), "label": label} for label in clean_active],
+            "source": current.get("source") or "partner_manual",
+            "updated_at": now_utc(),
+        }
+        document = db.hotel_content_pages.find_one_and_update(
+            {"prop_id": prop_id},
+            {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+            projection={"_id": 0},
+        )
+    register_content_change(prop_id, "hotel_content_pages", "upsert_amenities", {"room_type_id": room_type_id, "count": len(clean_active)}, changed_by=changed_by)
     return document
 
 
@@ -95,14 +111,23 @@ def save_partner_hotel_policies(
     extra_bed_policy: str = "",
     payment_policy: str = "",
     house_rules: str = "",
+    room_type_id: str = "",
     changed_by: str = "partner_web",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
     db = get_database()
+    clean_room_type = clean_text(room_type_id)
+    # Build the filter: hotel-wide (room_type_id="") or per-room-type
+    filter_: dict[str, object] = {"prop_id": prop_id}
+    if clean_room_type:
+        filter_["room_type_id"] = clean_room_type
+    else:
+        filter_["room_type_id"] = {"$in": ["", None]}
     payload = {
         "prop_id": prop_id,
+        "room_type_id": clean_room_type,
         "check_in_time": clean_text(check_in_time),
         "check_out_time": clean_text(check_out_time),
         "cancellation_policy": clean_text(cancellation_policy),
@@ -115,7 +140,7 @@ def save_partner_hotel_policies(
         "updated_at": now_utc(),
     }
     document = db.hotel_policies.find_one_and_update(
-        {"prop_id": prop_id},
+        filter_,
         {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
         upsert=True,
         return_document=ReturnDocument.AFTER,

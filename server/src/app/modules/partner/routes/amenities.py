@@ -15,8 +15,8 @@ from src.app.security.dependencies import require_login
 
 
 @api_router.get("/amenities")
-def amenities_api(prop_id: int = Query(..., ge=1)):
-    detail = partner_hotel_content(require_prop_id(prop_id))
+def amenities_api(prop_id: int = Query(..., ge=1), room_type_id: str = Query(default="")):
+    detail = partner_hotel_content(require_prop_id(prop_id), room_type_id=room_type_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
@@ -44,6 +44,7 @@ def amenities_update_api(payload: dict = Body(...)):
         prop_id,
         active_amenities=[str(item) for item in active_amenities],
         amenities_text=str(payload.get("amenities_text") or ""),
+        room_type_id=str(payload.get("room_type_id") or ""),
         changed_by="angular_api",
     )
     if saved is None:

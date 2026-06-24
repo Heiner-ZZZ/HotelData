@@ -31,12 +31,7 @@ def _amenity_category(label: str) -> str:
     return "General"
 
 
-def amenities_payload_for_prop(prop_id: int) -> dict[str, Any]:
-    page = content_page_for_prop(prop_id)
-    stored_active = [normalize_label(item) for item in page.get("active_amenities", []) if normalize_label(item)]
-    parsed_active = split_multiline_tokens(page.get("amenities_text"))
-    active_items = stored_active or parsed_active
-
+def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[str, Any]]:
     catalog_items: list[dict[str, str]] = []
     for category, labels in DEFAULT_AMENITIES_CATALOG.items():
         for label in labels:
@@ -60,10 +55,28 @@ def amenities_payload_for_prop(prop_id: int) -> dict[str, Any]:
         seen.add(key)
         grouped.setdefault(category, []).append({"label": label, "active": label.lower() in active_lookup})
 
+    return [
+        {"category": category, "items": sorted(items, key=lambda entry: entry["label"].lower())}
+        for category, items in grouped.items()
+    ]
+
+
+def amenities_payload_for_prop(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
+    page = content_page_for_prop(prop_id)
+    active_items: list[str] = []
+
+    if room_type_id:
+        room_amenities = page.get("room_amenities", {})
+        room_data = room_amenities.get(room_type_id, {})
+        active_items = [normalize_label(item) for item in room_data.get("active_amenities", []) if normalize_label(item)]
+        if not active_items:
+            active_items = split_multiline_tokens(room_data.get("amenities_text", ""))
+    else:
+        stored_active = [normalize_label(item) for item in page.get("active_amenities", []) if normalize_label(item)]
+        parsed_active = split_multiline_tokens(page.get("amenities_text"))
+        active_items = stored_active or parsed_active
+
     return {
         "active_amenities": active_items,
-        "catalog": [
-            {"category": category, "items": sorted(items, key=lambda entry: entry["label"].lower())}
-            for category, items in grouped.items()
-        ],
+        "catalog": _build_catalog(active_items, page),
     }

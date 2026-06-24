@@ -20,9 +20,10 @@ def _content_page_defaults(prop_id: int) -> dict[str, Any]:
     }
 
 
-def _policy_defaults(prop_id: int) -> dict[str, Any]:
+def _policy_defaults(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
     return {
         "prop_id": prop_id,
+        "room_type_id": room_type_id,
         "check_in_time": "",
         "check_out_time": "",
         "cancellation_policy": "",
@@ -42,10 +43,15 @@ def content_page_for_prop(prop_id: int) -> dict[str, Any]:
     return page or _content_page_defaults(prop_id)
 
 
-def policies_for_prop(prop_id: int) -> dict[str, Any]:
+def policies_for_prop(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
     db = get_database()
-    policies = db.hotel_policies.find_one({"prop_id": prop_id}, {"_id": 0})
-    return policies or _policy_defaults(prop_id)
+    filter_: dict[str, object] = {"prop_id": prop_id}
+    if room_type_id:
+        filter_["room_type_id"] = room_type_id
+    else:
+        filter_["room_type_id"] = {"$in": ["", None]}
+    policies = db.hotel_policies.find_one(filter_, {"_id": 0})
+    return policies or _policy_defaults(prop_id, room_type_id=room_type_id)
 
 
 def images_for_prop(prop_id: int) -> list[dict[str, Any]]:
