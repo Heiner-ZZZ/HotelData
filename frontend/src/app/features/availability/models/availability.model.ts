@@ -25,6 +25,38 @@ export interface AvailabilityInventoryItem {
   availableRooms: number;
   blockedRooms: number;
   occupancyLabel: string;
+  occupancyPct: number;
+}
+
+/** A single cell in the visual calendar grid. */
+export interface CalendarCell {
+  date: string;
+  day: number;
+  dayName: string;
+  isToday: boolean;
+  isWeekend: boolean;
+  isPast: boolean;
+  /** Whether this day falls in the current calendar week (Mon-Sun). */
+  isCurrentWeek: boolean;
+  /** Aggregated availability info for each room type on this date */
+  roomTypes: CalendarRoomTypeCell[];
+}
+
+export interface CalendarRoomTypeCell {
+  roomTypeId: string;
+  roomTypeName: string;
+  totalRooms: number;
+  availableRooms: number;
+  blockedRooms: number;
+  occupancyPct: number;
+  /** 0-100 how full the room type is */
+}
+
+export interface CalendarMonth {
+  year: number;
+  month: number;
+  monthName: string;
+  days: CalendarCell[];
 }
 
 export interface AvailabilityBlackoutItem {

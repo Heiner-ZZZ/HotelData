@@ -1,0 +1,286 @@
+<section class="surface-card calendar-card" [class.view-mode-week]="viewMode() === 'week'">
+  <!-- Period navigation + view toggle -->
+  <div class="cal-nav">
+    <div class="cal-nav-left">
+      <button type="button" class="cal-nav-btn cal-select-btn"
+              [disabled]="saving()"
+              [class.is-active]="multiSelectMode()"
+              (click)="onToggleMultiSelect(!multiSelectMode())"
+              [title]="selectionCount() > 0 ? selectionCount() + ' celdas seleccionadas' : (multiSelectMode() ? 'Desactivar selección múltiple' : 'Activar selección múltiple')">
+        <span class="material-symbols-outlined">select_check_box</span>
+        @if (selectionCount() > 0) {
+          <span class="select-badge">{{ selectionCount() }}</span>
+        }
+      </button>
+      <button type="button" class="cal-nav-btn" [disabled]="saving() || refreshing()" (click)="onPrev()">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+    </div>
+    <div class="cal-nav-title">
+      <button type="button" class="cal-today-btn" [disabled]="saving() || refreshing()" (click)="onGoToday()" title="Hoy">
+        <span class="material-symbols-outlined">today</span>
+      </button>
+      @if (calendar(); as cal) {
+        <strong>
+          @if (viewMode() === 'month') {
+            {{ cal.monthName }} {{ cal.year }}
+          } @else {
+            Semana del {{ cal.days[0].date }} al {{ cal.days[cal.days.length - 1].date }}
+          }
+        </strong>
+      }
+      @if (selectionCount() > 0) {
+        <span class="cal-nav-badge">{{ selectionCount() }}</span>
+      }
+    </div>
+    <div class="cal-nav-right">
+      <div class="view-toggle" role="group" aria-label="Vista del calendario">
+        <button type="button" class="toggle-btn" [disabled]="saving() || refreshing()" [class.is-active]="viewMode() === 'month'" (click)="onSetView('month')">
+          <span class="material-symbols-outlined">calendar_view_month</span>
+          Mes
+        </button>
+        <button type="button" class="toggle-btn" [disabled]="saving() || refreshing()" [class.is-active]="viewMode() === 'week'" (click)="onSetView('week')">
+          <span class="material-symbols-outlined">calendar_view_week</span>
+          Semana
+        </button>
+      </div>
+      <div class="layout-toggle" role="group" aria-label="Disposición del calendario">
+        <button type="button" class="toggle-btn" [class.is-active]="layoutMode() === 'scroll'" (click)="onToggleLayout('scroll')" title="Scroll horizontal">
+          <span class="material-symbols-outlined">horizontal_distribute</span>
+        </button>
+        <button type="button" class="toggle-btn" [class.is-active]="layoutMode() === 'wrap'" (click)="onToggleLayout('wrap')" title="Multifila">
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+      </div>
+      <button type="button" class="cal-nav-btn" [disabled]="saving() || refreshing()" (click)="onNext()">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="cal-legend">
+    <span class="legend-item"><span class="legend-swatch swatch-good"></span> > 70% libre</span>
+    <span class="legend-item"><span class="legend-swatch swatch-caution"></span> 50-69% libre</span>
+    <span class="legend-item"><span class="legend-swatch swatch-warning"></span> 30-49% libre</span>
+    <span class="legend-item"><span class="legend-swatch swatch-danger"></span> < 30% libre</span>
+    <span class="legend-item"><span class="legend-swatch swatch-na"></span> Sin datos</span>
+    <span class="legend-item"><span class="legend-swatch swatch-selected"></span> Seleccionado</span>
+    @if (viewMode() === 'month') {
+      <span class="legend-item"><span class="legend-swatch swatch-week"></span> Semana actual</span>
+    }
+  </div>
+
+  <div class="cal-animate-wrap">
+    <!-- Skeleton loader while switching properties -->
+    @if (refreshing() || skeletonExiting()) {
+      <div class="cal-skeleton" [class.is-exiting]="skeletonExiting()">
+        <div class="sk-row sk-row-head">
+          <div class="sk-th-room"><div class="sk-line sk-w-60"></div></div>
+          @for (col of skeletonCols(); track col) {
+            <div class="sk-th-date">
+              <div class="sk-line sk-w-20"></div>
+              <div class="sk-line sk-w-16"></div>
+            </div>
+          }
+        </div>
+        @for (row of [1,2,3]; track row) {
+          <div class="sk-row">
+            <div class="sk-td-room">
+              <div class="sk-line sk-w-60"></div>
+              <div class="sk-line sk-w-40"></div>
+            </div>
+            @for (col of skeletonCols(); track col) {
+              <div class="sk-td-cell">
+                <div class="sk-cell-block"></div>
+              </div>
+            }
+          </div>
+        }
+        <div class="sk-footer">
+          <div class="sk-line sk-w-40"></div>
+          <div class="sk-line sk-w-30"></div>
+          <div class="sk-line sk-w-50"></div>
+        </div>
+      </div>
+    }
+
+    <!-- Real calendar content -->
+    @if (!refreshing()) {
+      @if (calendar(); as cal) {
+        <div class="cal-content-real">
+
+          @if (layoutMode() === 'scroll') {
+            <!-- ═══ SCROLL LAYOUT: table with all days in one row ═══ -->
+            <div class="cal-table-wrap">
+              <table class="cal-table">
+                <thead>
+                  <tr>
+                    <th class="cal-th-room">Tipo habitación</th>
+                    @for (day of cal.days; track day.date) {
+                      <th class="cal-th-date"
+                          [class.cal-th-today]="day.isToday"
+                          [class.cal-th-weekend]="day.isWeekend"
+                          [class.cal-th-current-week]="viewMode() === 'month' && day.isCurrentWeek">
+                        <span class="cal-day-name">{{ day.dayName }}</span>
+                        <span class="cal-day-num">{{ day.day }}</span>
+                      </th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (rt of roomTypes(); track rt.id) {
+                    <tr>
+                      <td class="cal-td-room">
+                        <span class="cal-room-name">{{ rt.name }}</span>
+                        <span class="cal-room-capacity">{{ rt.capacityLabel }}</span>
+                      </td>
+                      @for (day of cal.days; track day.date) {
+                        @let cell = day.roomTypes.find(r => r.roomTypeName === rt.name);
+                        @let editing = isEditing(day.date, rt.name);
+                      <td class="cal-td-cell"
+                          [class.cell-good]="cell && !editing && cellClass(cell) === 'cell-good'"
+                          [class.cell-caution]="cell && !editing && cellClass(cell) === 'cell-caution'"
+                          [class.cell-warning]="cell && !editing && cellClass(cell) === 'cell-warning'"
+                          [class.cell-danger]="cell && !editing && cellClass(cell) === 'cell-danger'"
+                          [class.cell-na]="!cell"
+                          [class.cell-selected]="isSelected(day.date, rt.name)"
+                          [class.cell-editing]="editing"
+                          [class.cell-current-week]="viewMode() === 'month' && day.isCurrentWeek && !editing"
+                          [class.cell-clickable]="true"
+                          [class.cell-multi-selected]="multiSelectMode() && isMultiSelected(day.date, rt.name)"
+                          [class.cell-highlight]="!editing && highlightedCell()?.key === (day.date + '|' + rt.name)"
+                          [title]="editing ? '' : (cell ? cellTooltip(cell, day.date) : (day.date + ' — Sin datos'))"
+                          (click)="!editing && !saving() && onCellClick($event, day.date, rt.name)">
+                          @if (editing && cell) {
+                            <div class="cell-editor">
+                              <span class="cell-stat">{{ cell.totalRooms }} hab · {{ cell.blockedRooms }} bloq</span>
+                              <input #inlineInput
+                                     [id]="'cell-input-' + day.date + rt.name"
+                                     type="number"
+                                     class="cell-input"
+                                     [value]="cell.availableRooms"
+                                     [min]="0"
+                                     [max]="cell.totalRooms"
+                                     (keydown.enter)="onCommitEdit(day.date, rt.name, inlineInput)"
+                                     (keydown.escape)="onCancelEdit()"
+                                     (blur)="onCommitEdit(day.date, rt.name, inlineInput)"
+                                     (click)="$event.stopPropagation()"
+                                     autofocus />
+                            </div>
+                          } @else if (savingCell() === (day.date + '|' + rt.name)) {
+                            <span class="cell-val cell-saving">
+                              <span class="material-symbols-outlined spin">progress_activity</span>
+                            </span>
+                          } @else if (cell) {
+                            <span class="cell-val">{{ cellLabel(cell) }}</span>
+                          } @else {
+                            <span class="cell-val cell-val-na">—</span>
+                          }
+                          @if (highlightedCell()?.key === (day.date + '|' + rt.name)) {
+                            <span class="cell-tooltip">
+                              <span class="tooltip-check">✓</span>
+                              {{ highlightedCell()!.label }}
+                            </span>
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <!-- ═══ WRAP LAYOUT: days grouped in weeks, room types per cell ═══ -->
+            <div class="cal-wrap">
+              @for (week of weekChunks(); track week[0].date) {
+                <div class="cal-week-row">
+                  @for (day of week; track day.date) {
+                    <div class="cal-week-cell"
+                         [class.cal-th-today]="day.isToday"
+                         [class.cal-th-weekend]="day.isWeekend"
+                         [class.cal-th-current-week]="viewMode() === 'month' && day.isCurrentWeek">
+                      <div class="cal-week-header">
+                        <span class="cal-day-name">{{ day.dayName }}</span>
+                        <span class="cal-day-num">{{ day.day }}</span>
+                      </div>
+                      <div class="cal-week-rooms">
+                        @for (rt of roomTypes(); track rt.id) {
+                          @let cell = day.roomTypes.find(r => r.roomTypeName === rt.name);
+                          @let editing = isEditing(day.date, rt.name);
+                          <div class="cal-week-room-cell"
+                               [class.cell-good]="cell && !editing && cellClass(cell) === 'cell-good'"
+                               [class.cell-caution]="cell && !editing && cellClass(cell) === 'cell-caution'"
+                               [class.cell-warning]="cell && !editing && cellClass(cell) === 'cell-warning'"
+                               [class.cell-danger]="cell && !editing && cellClass(cell) === 'cell-danger'"
+                               [class.cell-na]="!cell"
+                               [class.cell-selected]="isSelected(day.date, rt.name)"
+                               [class.cell-clickable]="true"
+                               [class.cell-multi-selected]="multiSelectMode() && isMultiSelected(day.date, rt.name)"
+                               [class.cell-highlight]="!editing && highlightedCell()?.key === (day.date + '|' + rt.name)"
+                               [title]="cell ? cellTooltip(cell, day.date) : (day.date + ' — Sin datos')"
+                               (click)="!saving() && onCellClick($event, day.date, rt.name)">
+                            @if (editing && cell) {
+                              <div class="cal-week-editor">
+                                <span class="cell-stat">{{ cell.totalRooms }} hab</span>
+                                <input #inlineInput
+                                       type="number"
+                                       class="cell-input"
+                                       [value]="cell.availableRooms"
+                                       [min]="0"
+                                       [max]="cell.totalRooms"
+                                       (keydown.enter)="onCommitEdit(day.date, rt.name, inlineInput)"
+                                       (keydown.escape)="onCancelEdit()"
+                                       (blur)="onCommitEdit(day.date, rt.name, inlineInput)"
+                                       autofocus />
+                              </div>
+                            } @else {
+                              <span class="cal-week-rt-name">{{ rt.name }}</span>
+                              @if (cell) {
+                                <span class="cal-week-val">{{ cellLabel(cell) }}</span>
+                              } @else {
+                                <span class="cal-week-val cal-week-na">—</span>
+                              }
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Quick summary below calendar -->
+          <div class="cal-summary">
+            @let totalDays = cal.days.length;
+            @let daysWithData = cal.days.filter(d => d.roomTypes.length > 0).length;
+            <span class="cal-summary-item">
+              <span class="material-symbols-outlined cal-summary-icon">calendar_month</span>
+              {{ totalDays }} días · {{ daysWithData }} con datos
+            </span>
+            <span class="cal-summary-divider"></span>
+            <span class="cal-summary-item">
+              <span class="material-symbols-outlined cal-summary-icon">hotel</span>
+              {{ roomTypes().length }} tipos de habitación
+            </span>
+            @if (daysWithData > 0) {
+              <span class="cal-summary-divider"></span>
+              <span class="cal-summary-item">
+                <span class="material-symbols-outlined cal-summary-icon">analytics</span>
+                Ocupación promedio: {{ avgOccupancy().toFixed(1) }}%
+              </span>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  @if (saving()) {
+    <div class="cal-overlay">
+      <span class="material-symbols-outlined cal-overlay-spinner spin">progress_activity</span>
+    </div>
+  }
+</section>

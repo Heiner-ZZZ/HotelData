@@ -1,0 +1,137 @@
+<!-- ═══ Inventory table ═══ -->
+<section class="surface-card data-card">
+  <div class="data-card-head">
+    <div class="data-card-head-left">
+      <span class="material-symbols-outlined icon-inventory-blue">inventory_2</span>
+      <div>
+        <h2>Inventario registrado</h2>
+        <p>{{ inventoryItems().length }} registro(s)</p>
+      </div>
+    </div>
+  </div>
+  @if (inventoryItems().length) {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Total</th>
+            <th>Disponibles</th>
+            <th>Bloqueadas</th>
+            <th>Ocupación</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of inventoryItems(); track item.date + item.roomTypeName) {
+            <tr>
+              <td>{{ item.date }}</td>
+              <td>{{ item.roomTypeName }}</td>
+              <td>{{ item.totalRooms }}</td>
+              <td>{{ item.availableRooms }}</td>
+              <td>{{ item.blockedRooms }}</td>
+              <td>
+                @if (item.occupancyPct >= 0) {
+                  <span [class]="occupancyBadgeClass(item.occupancyPct)">
+                    {{ item.occupancyLabel }}
+                  </span>
+                } @else {
+                  <span class="badge">--</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <app-empty-state
+      title="Sin inventario"
+      description="Aún no hay registros de inventario para esta propiedad."
+    />
+  }
+</section>
+
+<!-- ═══ Operational blocks table ═══ -->
+<section class="surface-card data-card">
+  <div class="data-card-head">
+    <div class="data-card-head-left">
+      <span class="material-symbols-outlined icon-block-red">block</span>
+      <div>
+        <h2>Bloqueos operativos</h2>
+        <p>{{ availabilityBlocks().length }} bloqueo(s)</p>
+      </div>
+    </div>
+  </div>
+  @if (availabilityBlocks().length) {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Rango</th>
+            <th>Bloqueadas</th>
+            <th>Razón</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of availabilityBlocks(); track item.roomTypeId + item.rangeLabel) {
+            <tr>
+              <td>{{ item.roomTypeId }}</td>
+              <td>{{ item.rangeLabel }}</td>
+              <td>{{ item.blockedRooms }}</td>
+              <td>{{ item.reason }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <app-empty-state
+      title="Sin bloqueos"
+      description="No hay bloqueos operativos activos para esta propiedad."
+    />
+  }
+</section>
+
+<!-- ═══ Blackout items table ═══ -->
+<section class="surface-card data-card">
+  <div class="data-card-head">
+    <div class="data-card-head-left">
+      <span class="material-symbols-outlined icon-block-red">event_busy</span>
+      <div>
+        <h2>Bloqueos recientes</h2>
+        <p>{{ blackoutItems().length }} bloqueo(s)</p>
+      </div>
+    </div>
+  </div>
+  @if (blackoutItems().length) {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Rango</th>
+            <th>Bloqueadas</th>
+            <th>Razón</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of blackoutItems(); track item.roomTypeId + item.rangeLabel) {
+            <tr>
+              <td>{{ item.roomTypeId }}</td>
+              <td>{{ item.rangeLabel }}</td>
+              <td>{{ item.blockedRooms }}</td>
+              <td>{{ item.reason }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <app-empty-state
+      title="Sin bloqueos recientes"
+      description="Los bloqueos registrados aparecerán aquí."
+    />
+  }
+</section>

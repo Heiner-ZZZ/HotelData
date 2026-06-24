@@ -1,0 +1,81 @@
+<!-- Multi-select mode quick actions bar -->
+@if (selectionCount() > 0 && multiSelectMode()) {
+  <section class="surface-card quick-actions-card qa-multi">
+    <div class="qa-left">
+      <span class="material-symbols-outlined qa-cursor-icon">select_check_box</span>
+      <div class="qa-info">
+        <span class="qa-info-label">Selección múltiple</span>
+        <span class="qa-info-value">{{ selectionSummary() }}</span>
+      </div>
+    </div>
+    <div class="qa-batch-avail">
+      <label class="batch-label">Dejar disponibles:</label>
+      <input type="number"
+             class="batch-input"
+             [value]="batchAvailableValue()"
+             (input)="batchAvailableChange.emit(+$any($event.target).value < 0 ? 0 : (+$any($event.target).value || 0))"
+             [disabled]="saving()"
+             min="0" />
+    </div>
+    <div class="qa-actions">
+      <button type="button" class="qa-btn qa-btn-unavail" [disabled]="saving()" (click)="onBatchMark()">
+        @if (saving()) {
+          <span class="material-symbols-outlined spin">progress_activity</span>
+        } @else {
+          <span class="material-symbols-outlined">do_not_disturb_alt</span>
+        }
+        Marcar no disponible
+      </button>
+      <button type="button" class="qa-btn qa-btn-block" [disabled]="saving()" (click)="onBlockRange()">
+        @if (saving()) {
+          <span class="material-symbols-outlined spin">progress_activity</span>
+        } @else {
+          <span class="material-symbols-outlined">event_busy</span>
+        }
+        Bloquear selección ({{ selectionCount() }})
+      </button>
+      <button type="button" class="qa-btn" (click)="onSelectAll()">
+        <span class="material-symbols-outlined">select_all</span>
+        Seleccionar todo
+      </button>
+      <button type="button" class="qa-btn" (click)="onClearSelection()">
+        <span class="material-symbols-outlined">deselect</span>
+        Deseleccionar todo
+      </button>
+    </div>
+    <button type="button" class="qa-close" (click)="onClearSelection()" title="Limpiar selección">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </section>
+} @else if (activeCell(); as cell) {
+  <section class="surface-card quick-actions-card">
+    <div class="qa-left">
+      <span class="material-symbols-outlined qa-cursor-icon">touch_app</span>
+      <div class="qa-info">
+        <span class="qa-info-label">Seleccionado</span>
+        <span class="qa-info-value">{{ activeCellLabel() }}</span>
+      </div>
+    </div>
+    <div class="qa-actions">
+      <button type="button" class="qa-btn qa-btn-block" [disabled]="saving()" (click)="onQuickBlock()">
+        @if (saving()) {
+          <span class="material-symbols-outlined spin">progress_activity</span>
+        } @else {
+          <span class="material-symbols-outlined">event_busy</span>
+        }
+        Bloquear esta fecha
+      </button>
+      <button type="button" class="qa-btn qa-btn-unavail" [disabled]="saving()" (click)="onQuickMarkUnavailable()">
+        @if (saving()) {
+          <span class="material-symbols-outlined spin">progress_activity</span>
+        } @else {
+          <span class="material-symbols-outlined">do_not_disturb_alt</span>
+        }
+        Marcar no disponible
+      </button>
+    </div>
+    <button type="button" class="qa-close" (click)="onDismiss()" title="Cerrar">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </section>
+}

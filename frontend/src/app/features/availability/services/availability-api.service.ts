@@ -19,8 +19,10 @@ export class AvailabilityApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getAvailability(propId: number) {
-    const params = new HttpParams().set('prop_id', String(propId));
+  getAvailability(propId: number, days = 90) {
+    let params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('days', String(days));
     return this.http
       .get<AvailabilityDto>(`${this.apiConfig.baseUrl}/management/availability`, {
         params,

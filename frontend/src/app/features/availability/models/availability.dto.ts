@@ -23,6 +23,7 @@ export interface AvailabilityDto {
     available_rooms: number;
     blocked_rooms: number;
     occupancy_label: string;
+    occupancy_pct?: number;
   }>;
   blackout_items: Array<{
     room_type_id: string;

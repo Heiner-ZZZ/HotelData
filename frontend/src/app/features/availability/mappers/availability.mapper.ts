@@ -52,7 +52,8 @@ function mapInventoryItem(item: AvailabilityDto['inventory_items'][number]): Ava
     totalRooms: item.total_rooms,
     availableRooms: item.available_rooms,
     blockedRooms: item.blocked_rooms,
-    occupancyLabel: item.occupancy_label
+    occupancyLabel: item.occupancy_label,
+    occupancyPct: item.occupancy_pct ?? 0
   };
 }
 

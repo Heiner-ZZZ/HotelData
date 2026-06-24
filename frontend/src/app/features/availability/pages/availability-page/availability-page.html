@@ -77,10 +77,82 @@
           </div>
         </div>
 
+        <!-- ═══ Calendar grid ═══ -->
+        <app-availability-calendar
+          [calendar]="displayCalendar()"
+          [roomTypes]="vm.roomTypes"
+          [viewMode]="viewMode()"
+          [multiSelectMode]="multiSelectMode()"
+          [saving]="saving()"
+          [savingCell]="savingCell()"
+          [highlightedCell]="highlightedCell()"
+          [skeletonCols]="skeletonCols()"
+          [editingCell]="editingCell()"
+          [activeCell]="activeCell()"
+          [selectedCells]="selectedCells()"
+          [refreshing]="refreshing()"
+          [skeletonExiting]="skeletonExiting()"
+          [selectionCount]="selectionCount()"
+          [layoutMode]="layoutMode()"
+          (prevPeriod)="prevPeriod()"
+          (nextPeriod)="nextPeriod()"
+          (goToday)="goToday()"
+          (setView)="setView($event)"
+          (toggleMultiSelect)="toggleMultiSelect($event)"
+          (cellClick)="onCellClick($event.event, $event.date, $event.roomTypeName)"
+          (commitEdit)="commitEdit($event.date, $event.roomTypeName, $event.input)"
+          (cancelEditOutput)="cancelEdit()"
+          (toggleLayout)="layoutMode.set($event)"
+        />
+
+        <!-- ═══ Undo bar ═══ -->
+        @if (undoState(); as undo) {
+          <section class="surface-card undo-card">
+            <div class="undo-left">
+              <span class="material-symbols-outlined undo-icon">undo</span>
+              <div class="undo-info">
+                <span class="undo-label">Cambio revertible</span>
+                <span class="undo-value">{{ undo.roomTypeName }} · {{ undo.date }} → {{ undo.availableRooms }}/{{ undo.totalRooms }} disponibles</span>
+              </div>
+            </div>
+            <div class="undo-actions">
+              <button type="button" class="qa-btn undo-btn" [disabled]="saving()" (click)="undoQuickAction()">
+                @if (saving()) {
+                  <span class="material-symbols-outlined spin">progress_activity</span>
+                } @else {
+                  <span class="material-symbols-outlined">restore</span>
+                }
+                Deshacer
+              </button>
+            </div>
+            <button type="button" class="qa-close" (click)="dismissUndo()" title="Descartar">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </section>
+        }
+
+        <!-- ═══ Quick actions bar ═══ -->
+        <app-availability-quick-actions
+          [selectionCount]="selectionCount()"
+          [selectionSummary]="selectionSummary()"
+          [multiSelectMode]="multiSelectMode()"
+          [activeCell]="activeCell()"
+          [saving]="saving()"
+          [batchAvailableValue]="batchAvailableValue()"
+          (batchMarkUnavailable)="batchMarkUnavailable()"
+          (blockSelectedRange)="blockSelectedRange()"
+          (clearSelectionOutput)="clearSelection()"
+          (selectAllCells)="selectAllCells()"
+          (quickBlock)="quickBlock()"
+          (quickMarkUnavailable)="quickMarkUnavailable()"
+          (batchAvailableChange)="batchAvailableValue.set($event < 0 ? 0 : ($event || 0))"
+          (dismissActiveCell)="activeCell.set(null)"
+        />
+
         <!-- ═══ Forms grid ═══ -->
         <div class="forms-grid">
           <!-- Inventory form -->
-          <section class="surface-card form-card">
+          <section id="inventory-form-card" class="surface-card form-card">
             <div class="form-card-head">
               <span class="material-symbols-outlined form-card-icon icon-inventory-blue">edit_note</span>
               <div>
@@ -138,8 +210,12 @@
                 </div>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <span class="material-symbols-outlined">save</span>
+                <button type="submit" class="btn-primary" [disabled]="saving()">
+                  @if (saving()) {
+                    <span class="material-symbols-outlined spin">progress_activity</span>
+                  } @else {
+                    <span class="material-symbols-outlined">save</span>
+                  }
                   Guardar inventario
                 </button>
               </div>
@@ -204,8 +280,12 @@
                 </div>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <span class="material-symbols-outlined">event_busy</span>
+                <button type="submit" class="btn-primary" [disabled]="saving()">
+                  @if (saving()) {
+                    <span class="material-symbols-outlined spin">progress_activity</span>
+                  } @else {
+                    <span class="material-symbols-outlined">event_busy</span>
+                  }
                   Registrar bloqueo
                 </button>
               </div>
@@ -213,144 +293,27 @@
           </section>
         </div>
 
-        <!-- ═══ Inventory table ═══ -->
-        <section class="surface-card data-card">
-          <div class="data-card-head">
-            <div class="data-card-head-left">
-              <span class="material-symbols-outlined icon-inventory-blue">inventory_2</span>
-              <div>
-                <h2>Inventario registrado</h2>
-                <p>{{ vm.inventoryItems.length }} registro(s)</p>
-              </div>
-            </div>
-          </div>
-          @if (vm.inventoryItems.length) {
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Total</th>
-                    <th>Disponibles</th>
-                    <th>Bloqueadas</th>
-                    <th>Ocupación</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of vm.inventoryItems; track item.date + item.roomTypeName) {
-                    <tr>
-                      <td>{{ item.date }}</td>
-                      <td>{{ item.roomTypeName }}</td>
-                      <td>{{ item.totalRooms }}</td>
-                      <td>{{ item.availableRooms }}</td>
-                      <td>{{ item.blockedRooms }}</td>
-                      <td>
-                        @if (item.occupancyLabel) {
-                          <span class="badge" [class.badge-success]="+item.occupancyLabel.replace('%','') < 80" [class.badge-warning]="+item.occupancyLabel.replace('%','') >= 80 && +item.occupancyLabel.replace('%','') < 95" [class.badge-danger]="+item.occupancyLabel.replace('%','') >= 95">
-                            {{ item.occupancyLabel }}
-                          </span>
-                        } @else {
-                          <span class="badge">--</span>
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <app-empty-state
-              title="Sin inventario"
-              description="Aún no hay registros de inventario para esta propiedad."
-            />
-          }
-        </section>
-
-        <!-- ═══ Operational blocks table ═══ -->
-        <section class="surface-card data-card">
-          <div class="data-card-head">
-            <div class="data-card-head-left">
-              <span class="material-symbols-outlined icon-block-red">block</span>
-              <div>
-                <h2>Bloqueos operativos</h2>
-                <p>{{ vm.availabilityBlocks.length }} bloqueo(s)</p>
-              </div>
-            </div>
-          </div>
-          @if (vm.availabilityBlocks.length) {
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Rango</th>
-                    <th>Bloqueadas</th>
-                    <th>Razón</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of vm.availabilityBlocks; track item.roomTypeId + item.rangeLabel) {
-                    <tr>
-                      <td>{{ item.roomTypeId }}</td>
-                      <td>{{ item.rangeLabel }}</td>
-                      <td>{{ item.blockedRooms }}</td>
-                      <td>{{ item.reason }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <app-empty-state
-              title="Sin bloqueos"
-              description="No hay bloqueos operativos activos para esta propiedad."
-            />
-          }
-        </section>
-
-        <!-- ═══ Blackout items table ═══ -->
-        <section class="surface-card data-card">
-          <div class="data-card-head">
-            <div class="data-card-head-left">
-              <span class="material-symbols-outlined icon-block-red">event_busy</span>
-              <div>
-                <h2>Bloqueos recientes</h2>
-                <p>{{ vm.blackoutItems.length }} bloqueo(s)</p>
-              </div>
-            </div>
-          </div>
-          @if (vm.blackoutItems.length) {
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Rango</th>
-                    <th>Bloqueadas</th>
-                    <th>Razón</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of vm.blackoutItems; track item.roomTypeId + item.rangeLabel) {
-                    <tr>
-                      <td>{{ item.roomTypeId }}</td>
-                      <td>{{ item.rangeLabel }}</td>
-                      <td>{{ item.blockedRooms }}</td>
-                      <td>{{ item.reason }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <app-empty-state
-              title="Sin bloqueos recientes"
-              description="Los bloqueos registrados aparecerán aquí."
-            />
-          }
-        </section>
+        <!-- ═══ Data tables ═══ -->
+        <app-availability-data-tables
+          [inventoryItems]="vm.inventoryItems"
+          [availabilityBlocks]="vm.availabilityBlocks"
+          [blackoutItems]="vm.blackoutItems"
+        />
       }
     }
+  }
+
+  <!-- Confirmation modal -->
+  @if (confirmAction(); as confirm) {
+    <div class="modal-backdrop" (click)="confirmCancel()">
+      <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>{{ confirm.title }}</h2>
+        <p>{{ confirm.message }}</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+        </div>
+      </article>
+    </div>
   }
 </div>
