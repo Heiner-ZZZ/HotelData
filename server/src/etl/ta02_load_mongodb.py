@@ -46,20 +46,39 @@ def create_ta02_indexes(db: Database) -> dict[str, list[str]]:
     return created
 
 
-def upsert_dimensions(db: Database, dimensions: dict[str, list[dict[str, Any]]]) -> dict[str, int]:
+def upsert_dimensions(db: Database, dimensions: dict[str, list[dict[str, Any]]], *, full_reload: bool | None = None) -> dict[str, int]:
     counts: dict[str, int] = {}
-    full_reload = os.getenv("GA03_FULL_RELOAD_DIMENSIONS", "true").lower() in {"1", "true", "yes"}
+    if full_reload is None:
+        full_reload = os.getenv("GA03_FULL_RELOAD_DIMENSIONS", "true").lower() in {"1", "true", "yes"}
     for collection_name, documents in dimensions.items():
         if not documents:
             counts[collection_name] = 0
             continue
         if full_reload:
+            # Preserve manual overrides before wiping (e.g. hotel profile edits)
+            preserved_overrides: list[dict[str, Any]] = []
+            if collection_name == "dim_hotels":
+                preserved_overrides = list(
+                    db[collection_name].find(
+                        {"manual_override": True},
+                        {"_id": 0},
+                    )
+                )
             db[collection_name].delete_many({})
             inserted = 0
             for start in range(0, len(documents), INSERT_BATCH_SIZE):
                 batch = documents[start:start + INSERT_BATCH_SIZE]
                 result = db[collection_name].insert_many(batch, ordered=False)
                 inserted += len(result.inserted_ids)
+            # Reapply manual overrides after reload
+            for override in preserved_overrides:
+                prop_id = override.get("prop_id")
+                if prop_id is not None:
+                    db[collection_name].update_one(
+                        {"prop_id": prop_id},
+                        {"$set": override},
+                        upsert=True,
+                    )
             counts[collection_name] = inserted
         else:
             key_field = DIMENSION_KEY_FIELDS[collection_name]

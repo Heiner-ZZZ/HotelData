@@ -109,10 +109,17 @@ def dimension_collection_counts(db) -> dict[str, int]:
     return {collection_name: db[collection_name].count_documents({}) for collection_name in DIMENSION_KEY_FIELDS}
 
 
-def existing_dimensions_ready(db) -> tuple[bool, dict[str, int]]:
-    counts = dimension_collection_counts(db)
-    ready = bool(counts) and all(count > 0 for count in counts.values())
-    return ready, counts
+def dimension_jsonl_counts(all_paths: dict) -> dict[str, int]:
+    dim_dir = all_paths.get("dimension_dir")
+    if not dim_dir:
+        return {}
+    return {name: count_jsonl(dim_dir / f"{name}.jsonl") for name in DIMENSION_KEY_FIELDS}
+
+
+def existing_dimensions_ready(all_paths: dict) -> tuple[bool, dict[str, int]]:
+    jsonl_counts = dimension_jsonl_counts(all_paths)
+    ready = bool(jsonl_counts) and all(count > 0 for count in jsonl_counts.values())
+    return ready, jsonl_counts
 
 
 class AtomicJsonState:

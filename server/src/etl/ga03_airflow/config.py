@@ -53,4 +53,5 @@ def pocketbase_config() -> dict[str, str | int | None]:
         "expected_records": expected,
         "meta_pb": expected,
         "meta_mongo": expected,
+        "incremental_mode": os.environ.get("GA03_INCREMENTAL_MODE", "false").lower() in {"1", "true", "yes"},
     }

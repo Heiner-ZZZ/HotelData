@@ -4,7 +4,6 @@ from typing import Any
 
 import pandas as pd
 
-from src.database.connection import get_database
 from src.etl.ga03_airflow._common import (
     existing_dimensions_ready,
     file_sha256,
@@ -23,8 +22,7 @@ from src.etl.ta02_fact import transform_fact_hotel_reservations
 def transform_dimensions_03() -> dict[str, int]:
     all_paths = paths()
     state = read_state()
-    db = get_database()
-    dimensions_ready, existing_counts = existing_dimensions_ready(db)
+    dimensions_ready, existing_counts = existing_dimensions_ready(all_paths)
     if reuse_existing_dimensions_enabled() and dimensions_ready:
         message = "Dimensiones existentes detectadas; transformación de dimensiones omitida."
         write_pipeline_progress(

@@ -9,6 +9,7 @@ from src.database.connection import get_database
 from src.etl.ga03_airflow._common import (
     count_jsonl,
     dimension_collection_counts,
+    dimension_jsonl_counts,
     iter_jsonl,
 )
 from src.etl.ga03_airflow.config import INSERT_BATCH_SIZE, PHASE, PIPELINE_PROGRESS_STEPS, paths
@@ -73,29 +74,42 @@ def _upsert_fact_jsonl_by_source_record_id(db, path: Path, batch_size: int = INS
 
 def load_dimensions_to_mongodb_03() -> dict[str, int]:
     all_paths = paths()
+    db = get_database()
     state = read_state()
-    if state.get("dimension_transform_skipped"):
-        counts = state.get("dimension_counts") or dimension_collection_counts(get_database())
-        message = "Carga de dimensiones omitida; colecciones existentes reutilizadas."
-        write_pipeline_progress(
-            status="running",
-            section="load_mongodb",
-            percent=72,
-            message=message,
-            detail={"skipped": True, "dimension_counts": counts},
+    incremental = bool(state.get("last_extracted_at"))
+
+    jsonl_counts = dimension_jsonl_counts(all_paths)
+    mongo_counts = dimension_collection_counts(db)
+
+    if not incremental:
+        needs_load = not all(
+            jsonl_counts.get(name, 0) > 0 and mongo_counts.get(name, 0) >= jsonl_counts.get(name, 0)
+            for name in DIMENSION_KEY_FIELDS
         )
-        write_state(
-            {
-                "dimension_load_counts": counts,
-                "dimension_load_skipped": True,
-                "dimension_load_skip_reason": message,
-            }
-        )
-        return counts
+        if not needs_load:
+            message = "Dimensiones en MongoDB ya tienen los registros esperados; carga omitida."
+            write_pipeline_progress(
+                status="running",
+                section="load_mongodb",
+                percent=72,
+                message=message,
+                detail={"skipped": True, "dimension_counts": mongo_counts},
+            )
+            write_state(
+                {
+                    "dimension_load_counts": mongo_counts,
+                    "dimension_load_skipped": True,
+                    "dimension_load_skip_reason": message,
+                }
+            )
+            return mongo_counts
+    else:
+        print(f"GA03 incremental: cargando dimensiones con upsert")
+
     dimensions: dict[str, list[dict[str, Any]]] = {}
     for collection_name in DIMENSION_KEY_FIELDS:
         dimensions[collection_name] = list(iter_jsonl(all_paths["dimension_dir"] / f"{collection_name}.jsonl") or [])
-    counts = upsert_dimensions(get_database(), dimensions)
+    counts = upsert_dimensions(db, dimensions, full_reload=False if incremental else None)
     write_pipeline_progress(
         status="running",
         section="load_mongodb",
@@ -110,8 +124,11 @@ def load_dimensions_to_mongodb_03() -> dict[str, int]:
 def load_fact_to_mongodb_03() -> dict[str, int]:
     all_paths = paths()
     db = get_database()
-    expected = int(read_state()["expected_records"])
-    full_reload = os.getenv("GA03_FULL_RELOAD_FACTS", "true").lower() == "true"
+    state = read_state()
+    expected = int(state["expected_records"])
+    incremental = bool(state.get("last_extracted_at"))
+    full_reload_env = os.getenv("GA03_FULL_RELOAD_FACTS", "true").lower() == "true"
+    full_reload = full_reload_env and not incremental
     previous_count = db.fact_hotel_reservations.count_documents({})
     expected_new_count = count_jsonl(all_paths["fact_jsonl"])
     if expected_new_count != expected:
@@ -140,8 +157,12 @@ def load_fact_to_mongodb_03() -> dict[str, int]:
         if rejected_batch:
             db.rejected_records.insert_many(rejected_batch, ordered=False)
     final_count = db.fact_hotel_reservations.count_documents({})
-    if final_count != expected:
-        raise RuntimeError(f"GA03 conteo final inesperado: esperado={expected}, actual={final_count}")
+    if full_reload:
+        if final_count != expected:
+            raise RuntimeError(f"GA03 conteo final inesperado: esperado={expected}, actual={final_count}")
+    else:
+        if final_count < previous_count:
+            raise RuntimeError(f"GA03 conteo final decrecio: previo={previous_count}, actual={final_count}")
     counts = {
         "previous_fact_hotel_reservations": previous_count,
         "deleted_facts_before_load": deleted,
@@ -149,6 +170,7 @@ def load_fact_to_mongodb_03() -> dict[str, int]:
         "expected_fact_hotel_reservations": expected_new_count,
         "final_fact_hotel_reservations": final_count,
         "rejected_records": rejected_count,
+        "incremental": incremental,
     }
     write_pipeline_progress(
         status="running",

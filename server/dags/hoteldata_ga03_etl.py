@@ -29,14 +29,29 @@ from src.etl.ga03_airflow import (
 )
 
 
-def _run_script(script_name: str) -> None:
+def _load_infra_env() -> dict[str, str]:
+    env_path = PROJECT_ROOT / "infra" / "docker" / ".env"
+    overrides: dict[str, str] = {}
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                overrides[key.strip()] = val.strip()
+    return overrides
+
+
+def _run_script(script_name: str, extra_args: list[str] | None = None) -> None:
     script_path = PROJECT_ROOT / "scripts" / script_name
+    cmd = [sys.executable, str(script_path), *(extra_args or [])]
+    env = {**os.environ, **_load_infra_env()}
     result = subprocess.run(
-        [sys.executable, str(script_path)],
+        cmd,
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
         timeout=7200,
+        env=env,
     )
     if result.returncode != 0:
         msg = (result.stderr or result.stdout or "").strip()
@@ -44,7 +59,31 @@ def _run_script(script_name: str) -> None:
 
 
 def seed_source() -> None:
-    _run_script("cargar_reservas_hoteleras_03.py")
+    import requests
+    env = _load_infra_env()
+    pb_url = env.get("POCKETBASE_URL", "http://pocketbase:8090")
+    pb_email = env.get("POCKETBASE_ADMIN_EMAIL", "hzambranor@uteq.edu.ec")
+    pb_pass = env.get("POCKETBASE_ADMIN_PASSWORD", "Heiner2005*")
+    expected = int(env.get("TARGET_RECORDS", env.get("GA03_EXPECTED_RECORDS", "800000")))
+    try:
+        auth = requests.post(
+            f"{pb_url}/api/collections/_superusers/auth-with-password",
+            json={"identity": pb_email, "password": pb_pass}, timeout=30,
+        )
+        token = auth.json().get("token", "")
+        r = requests.get(
+            f"{pb_url}/api/collections/hotel_reservation_events_03/records?perPage=1",
+            headers={"Authorization": f"Bearer {token}"}, timeout=30,
+        )
+        current = r.json().get("totalItems", 0)
+    except Exception:
+        current = 0
+    if current >= expected:
+        print(f"seed_source: PocketBase ya tiene {current}/{expected} registros. Omitiendo seed.")
+        return
+    csv_path = PROJECT_ROOT / "data" / "uploads" / "ga03_source.csv"
+    print(f"seed_source: PocketBase vacío. Sembrando {expected} registros desde CSV...")
+    _run_script("cargar_reservas_hoteleras_03.py", ["--csv", str(csv_path), "--target", str(expected), "--reload", "--confirm-reload", "hotel_reservation_events_03"])
 
 
 def validate_dataset() -> None:

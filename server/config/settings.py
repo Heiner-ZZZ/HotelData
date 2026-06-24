@@ -73,7 +73,7 @@ def get_settings() -> Settings:
 
     return Settings(
         project_root=root,
-        mongo_uri=os.getenv("MONGO_URI", "mongodb://localhost:27017"),
+        mongo_uri=os.getenv("MONGO_URI", "mongodb://localhost:27018"),
         mongo_database=os.getenv("MONGO_DATABASE", "hoteldata_hub"),
         raw_csv_path=raw_csv,
         staging_dir=root / "data" / "staging",
