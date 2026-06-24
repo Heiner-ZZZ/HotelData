@@ -20,6 +20,10 @@ BOOKING_COLLECTIONS: dict[str, list[IndexModel]] = {
     "booking_guests": [
         IndexModel([("booking_id", ASCENDING)], name="booking_id_1"),
     ],
+    "booking_room_guests": [
+        IndexModel([("booking_id", ASCENDING)], name="booking_id_1"),
+        IndexModel([("booking_id", ASCENDING), ("room_index", ASCENDING)], name="booking_id_room_idx", unique=True),
+    ],
     "booking_status_history": [
         IndexModel([("booking_id", ASCENDING)], name="booking_id_1"),
         IndexModel([("changed_at", DESCENDING)], name="changed_at_-1"),

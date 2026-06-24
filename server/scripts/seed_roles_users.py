@@ -42,7 +42,7 @@ USERS = [
 ]
 
 
-def seed(uri: str = "mongodb://localhost:27017", db_name: str = "hoteldata_hub"):
+def seed(uri: str = "mongodb://localhost:27018", db_name: str = "hoteldata_hub"):
     client = MongoClient(uri)
     db = client[db_name]
 
@@ -113,6 +113,6 @@ def seed(uri: str = "mongodb://localhost:27017", db_name: str = "hoteldata_hub")
 
 if __name__ == "__main__":
     import os
-    uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    uri = os.getenv("MONGO_URI", "mongodb://localhost:27018")
     db_name = os.getenv("MONGO_DATABASE", "hoteldata_hub")
     seed(uri, db_name)

@@ -15,6 +15,7 @@ import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import { RatesApiService } from '../../services/rates-api.service';
 import { RatePlanTableComponent } from '../../components/rate-plan-table/rate-plan-table';
 import { RateCalendarTableComponent } from '../../components/rate-calendar-table/rate-calendar-table';
+import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
 @Component({
   selector: 'app-rates-page',
@@ -26,7 +27,8 @@ import { RateCalendarTableComponent } from '../../components/rate-calendar-table
     PropertySelectorComponent,
     ReactiveFormsModule,
     RatePlanTableComponent,
-    RateCalendarTableComponent
+    RateCalendarTableComponent,
+    AiSuggestDirective
   ],
   templateUrl: './rates-page.html',
   styleUrl: './rates-page.scss',

@@ -6,11 +6,12 @@ services:
     container_name: hoteldata_mongo
     restart: unless-stopped
     ports:
-      - "27018:27017"
+      - "27018:27018"
+    command: mongod --port 27018
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "mongodb://localhost:27017", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongosh", "--quiet", "mongodb://localhost:27018", "--eval", "db.adminCommand('ping').ok"]
       interval: 15s
       timeout: 10s
       retries: 8
@@ -58,7 +59,7 @@ services:
       - docker/.env
     environment:
       HOTELDATA_PROJECT_ROOT: /app
-      MONGO_URI: mongodb://mongo:27017
+      MONGO_URI: mongodb://mongo:27018
       MONGO_DATABASE: hoteldata_hub
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -102,7 +103,7 @@ services:
       _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
       _AIRFLOW_WWW_USER_EMAIL: admin@hoteldata.local
       HOTELDATA_PROJECT_ROOT: /opt/hoteldata
-      MONGO_URI: mongodb://mongo:27017
+      MONGO_URI: mongodb://mongo:27018
       MONGO_DATABASE: hoteldata_hub
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03

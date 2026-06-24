@@ -5,11 +5,10 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import type { AvailabilityInventoryItem, AvailabilityBlackoutItem } from '../../models/availability.model';
 
 const MO_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const DAY_NAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
 @Component({
   selector: 'app-availability-data-tables',
-  imports: [EmptyStateComponent, FormsModule, DatePipe, CurrencyPipe],
+  imports: [EmptyStateComponent, FormsModule],
   templateUrl: './availability-data-tables.html',
   styleUrl: '../../pages/availability-page/availability-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,6 +18,8 @@ export class AvailabilityDataTablesComponent {
   readonly inventoryItems = input<AvailabilityInventoryItem[]>([]);
   readonly availabilityBlocks = input<AvailabilityBlackoutItem[]>([]);
   readonly blackoutItems = input<AvailabilityBlackoutItem[]>([]);
+
+  readonly DAY_NAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
   readonly viewMode = signal<'table' | 'calendar'>('table');
   readonly pageSize = 10;

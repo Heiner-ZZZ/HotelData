@@ -51,13 +51,34 @@ def refresh_kpis_background() -> None:
 def get_kpis() -> dict:
     db = get_database()
     doc = db[CACHE_COLLECTION].find_one({"_id": CACHE_ID})
+    
+    should_refresh = False
     if doc is None:
-        return {
-            "cached_at": None,
-            "payload": None,
-            "message": "Aún no hay KPIs cacheados. Ejecuta el pipeline ETL o refresca desde Monitoreo.",
-        }
+        should_refresh = True
+    else:
+        try:
+            updated_at_str = doc.get("updated_at", "")
+            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - updated_at).total_seconds()
+            if age > 30:
+                should_refresh = True
+        except Exception:
+            should_refresh = True
+            
+    if should_refresh:
+        try:
+            return refresh_kpis()
+        except Exception:
+            logger.exception("Failed to auto-refresh KPIs")
+            if doc is not None:
+                return {
+                    "cached_at": doc.get("updated_at", ""),
+                    "payload": doc.get("payload", {}),
+                }
+            raise
+
     return {
         "cached_at": doc.get("updated_at", ""),
         "payload": doc.get("payload", {}),
     }
+

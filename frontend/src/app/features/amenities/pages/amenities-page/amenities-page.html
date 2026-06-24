@@ -1,8 +1,8 @@
 <div class="amenities-page">
   <app-page-header
-    eyebrow="Gestion comercial"
+    eyebrow="Gestión comercial"
     title="Amenities y servicios"
-    description="Catalogo operativo de servicios activos para la propiedad seleccionada."
+    description="Catálogo operativo de servicios activos para la propiedad seleccionada."
   />
 
   <app-property-selector
@@ -12,10 +12,16 @@
   />
 
   @if (message()) {
-    <section class="surface-card message success">{{ message() }}</section>
+    <section class="notification success">
+      <span class="material-symbols-outlined notif-icon">check_circle</span>
+      <span>{{ message() }}</span>
+    </section>
   }
   @if (errorMessage()) {
-    <section class="surface-card message error">{{ errorMessage() }}</section>
+    <section class="notification error">
+      <span class="material-symbols-outlined notif-icon">error</span>
+      <span>{{ errorMessage() }}</span>
+    </section>
   }
 
   @switch (viewState()) {
@@ -27,67 +33,121 @@
     }
     @case ('empty') {
       <app-empty-state
+        icon="search"
         title="Selecciona una propiedad"
-        description="El catalogo de servicios necesita un hotel activo para cargar sus amenities."
+        description="El catálogo de servicios necesita un hotel activo para cargar sus amenities."
       />
     }
     @default {
       @if (viewModel(); as vm) {
+        <!-- Expedia-inspired Hero Stats -->
         <section class="hero-grid">
           <article class="surface-card hero-card">
-            <span class="label">Hotel</span>
-            <strong>{{ vm.hotelName }}</strong>
-            <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+            <div class="hero-icon-wrap accent">
+              <span class="material-symbols-outlined">business</span>
+            </div>
+            <div class="hero-body">
+              <span class="label">Hotel</span>
+              <strong>{{ vm.hotelName }}</strong>
+              <p>{{ vm.countryLabel }} · Review {{ vm.reviewLabel }}</p>
+            </div>
           </article>
+
           <article class="surface-card hero-card">
-            <span class="label">Precio promedio</span>
-            <strong>${{ vm.avgPriceLabel }}</strong>
-            <p>Fuente {{ vm.sourceCollection }}</p>
+            <div class="hero-icon-wrap success">
+              <span class="material-symbols-outlined">payments</span>
+            </div>
+            <div class="hero-body">
+              <span class="label">Precio promedio</span>
+              <strong>${{ vm.avgPriceLabel }}</strong>
+              <p>Fuente {{ vm.sourceCollection }}</p>
+            </div>
           </article>
+
           <article class="surface-card hero-card">
-            <span class="label">Servicios activos</span>
-            <strong>{{ selectedAmenities().length }}</strong>
-            <p>{{ selectedRoomTypeId() ? selectedRoomName() : 'Hotel (general)' }}</p>
+            <div class="hero-icon-wrap warning">
+              <span class="material-symbols-outlined">verified</span>
+            </div>
+            <div class="hero-body">
+              <span class="label">Servicios activos</span>
+              <strong>{{ selectedAmenities().length }}</strong>
+              <p>{{ selectedRoomTypeId() ? selectedRoomName() : 'Hotel (general)' }}</p>
+            </div>
           </article>
+
           <article class="surface-card hero-card">
-            <span class="label">Contenido e imágenes</span>
-            <strong>{{ vm.imageCount }}</strong>
-            <p>{{ vm.contentDescription }}</p>
+            <div class="hero-icon-wrap info">
+              <span class="material-symbols-outlined">photo_library</span>
+            </div>
+            <div class="hero-body">
+              <span class="label">Contenido e imágenes</span>
+              <strong>{{ vm.imageCount }}</strong>
+              <p>{{ vm.contentDescription }}</p>
+            </div>
           </article>
         </section>
 
+        <!-- Room Type Scope Selector -->
         @if (vm.roomTypes.length) {
-          <section class="surface-card room-type-selector">
-            <label class="field">
-              <span>Ámbito</span>
-              <select [value]="selectedRoomTypeId()" (change)="onRoomTypeChange($event)">
-                <option value="">Hotel (general)</option>
-                @for (rt of vm.roomTypes; track rt.roomTypeId) {
-                  <option [value]="rt.roomTypeId">{{ rt.name }} — {{ rt.capacityLabel }}</option>
-                }
-              </select>
-            </label>
+          <section class="surface-card room-type-selector-card">
+            <div class="selector-header">
+              <span class="material-symbols-outlined selector-icon">meeting_room</span>
+              <div class="selector-copy">
+                <h3>Ámbito de configuración</h3>
+                <p>Elige si deseas ver y guardar los servicios para todo el hotel o para una categoría de habitación específica.</p>
+              </div>
+            </div>
+            <div class="selector-body">
+              <div class="select-wrap">
+                <select [value]="selectedRoomTypeId()" (change)="onRoomTypeChange($event)" aria-label="Seleccionar habitación">
+                  <option value="">Hotel (general)</option>
+                  @for (rt of vm.roomTypes; track rt.roomTypeId) {
+                    <option [value]="rt.roomTypeId">{{ rt.name }} — Capacidad: {{ rt.capacityLabel }}</option>
+                  }
+                </select>
+                <span class="material-symbols-outlined select-arrow">expand_more</span>
+              </div>
+            </div>
           </section>
         }
 
+        <!-- Active Amenities Summary Cards component -->
         <app-active-amenities-summary [items]="selectedAmenities()" />
 
-        <section class="surface-card utility-panel">
+        <!-- Search & Manual Tool Panel -->
+        <section class="surface-card search-utility-panel">
+          <div class="panel-header">
+            <span class="material-symbols-outlined icon-blue">search</span>
+            <div>
+              <h3>Buscador y herramientas</h3>
+              <p>Filtra el catálogo o agrega un servicio personalizado manualmente.</p>
+            </div>
+          </div>
           <form [formGroup]="utilityForm" class="utility-grid">
-            <label class="field">
-              <span>Buscar</span>
-              <input formControlName="search" placeholder="Wi-Fi, piscina, spa..." />
-            </label>
-            <label class="field">
-              <span>Agregar servicio manual</span>
-              <div class="inline-entry">
-                <input formControlName="manualAmenity" placeholder="Late checkout, shuttle..." />
-                <button type="button" (click)="addManualAmenity()">Agregar</button>
+            <div class="field">
+              <span class="field-label">Buscar en catálogo</span>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-prefix">search</span>
+                <input formControlName="search" placeholder="Escribe Wi-Fi, piscina, spa, gimnasio..." />
               </div>
-            </label>
+            </div>
+            <div class="field">
+              <span class="field-label">Agregar servicio personalizado</span>
+              <div class="inline-entry">
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-prefix">add_circle</span>
+                  <input formControlName="manualAmenity" placeholder="Ej: Shuttle gratis, Late check-out..." />
+                </div>
+                <button type="button" class="btn-secondary add-btn" (click)="addManualAmenity()">
+                  <span class="material-symbols-outlined">add</span>
+                  Agregar
+                </button>
+              </div>
+            </div>
           </form>
         </section>
 
+        <!-- Categories Selection Grid -->
         @if (filteredCategories().length) {
           <section class="category-grid">
             @for (category of filteredCategories(); track category.category) {
@@ -100,13 +160,22 @@
           </section>
         } @else {
           <app-empty-state
+            icon="search_off"
             title="Sin resultados para ese filtro"
             description="Prueba con otro término o agrega un servicio manualmente."
           />
         }
 
-        <section class="form-actions">
-          <button type="button" (click)="saveAmenities()">Guardar servicios</button>
+        <!-- Expedia style Action Panel -->
+        <section class="form-actions-panel">
+          <div class="info-text">
+            <span class="material-symbols-outlined">info</span>
+            <span>Tienes <strong>{{ selectedAmenities().length }}</strong> servicio(s) activo(s) para este ámbito.</span>
+          </div>
+          <button type="button" class="btn-primary btn-save" (click)="saveAmenities()">
+            <span class="material-symbols-outlined">save</span>
+            Guardar servicios
+          </button>
         </section>
       }
     }

@@ -119,7 +119,7 @@
                 <span class="material-symbols-outlined field-icon">description</span>
                 Descripción
               </span>
-              <input formControlName="description" placeholder="Opcional">
+                <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
             </label>
             <label class="field">
               <span class="field-label">
@@ -249,10 +249,10 @@
             <span class="field-label">Nombre</span>
             <input formControlName="name" placeholder="Ej: Suite Premium">
           </label>
-          <label class="field">
-            <span class="field-label">Descripción</span>
-            <input formControlName="description" placeholder="Opcional">
-          </label>
+           <label class="field">
+             <span class="field-label">Descripción</span>
+             <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
+           </label>
           <label class="field">
             <span class="field-label">Adultos máx.</span>
             <input type="number" min="1" formControlName="maxAdults">

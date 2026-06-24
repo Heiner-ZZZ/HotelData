@@ -43,7 +43,7 @@
 
         <div class="inline-links">
           <a [routerLink]="['/hotels', hotel().id]">Ver más</a>
-          <a [routerLink]="['/search']" [queryParams]="{ compare_ids: hotel().id }">Comparar</a>
+          <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: hotel().id }">Comparar</a>
         </div>
       </div>
 

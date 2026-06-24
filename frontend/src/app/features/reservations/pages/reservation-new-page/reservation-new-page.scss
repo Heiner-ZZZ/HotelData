@@ -31,7 +31,7 @@
 
 .back-link:hover {
   background: rgba(20, 99, 255, 0.08);
-  color: #244274;
+  color: var(--accent);
 }
 
 .back-link .material-symbols-outlined {
@@ -179,6 +179,21 @@
   align-items: stretch;
 }
 
+@media (max-width: 1024px) and (min-width: 601px) {
+  .planner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .planner-cta {
+    grid-column: span 2;
+    justify-self: stretch;
+    text-align: center;
+  }
+}
+
+.planner-field--dates {
+  min-width: 270px;
+}
+
 .planner-field {
   display: flex;
   align-items: flex-start;
@@ -186,7 +201,7 @@
   padding: 0.9rem 1rem;
   border: 1px solid var(--app-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface);
   min-height: 84px;
 }
 
@@ -197,7 +212,7 @@
 .planner-icon {
   margin-top: 0.15rem;
   font-size: 1.35rem;
-  color: #2e3f61;
+  color: var(--accent);
   font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24;
 }
 
@@ -238,24 +253,33 @@
 .planner-dates {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .planner-dates input {
-  width: 0;
-  flex: 1;
-  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.2rem 0;
+  width: 105px;
+  max-width: 100%;
+  font-size: 0.88rem;
+  color: var(--app-text);
+  font-weight: 500;
+  outline: none;
 }
 
 .planner-dates input::-webkit-calendar-picker-indicator {
   opacity: 0.75;
   cursor: pointer;
+  margin-left: 2px;
 }
 
 .planner-separator {
   color: var(--muted-text);
   font-weight: 600;
+  padding: 0 2px;
 }
 
 .planner-value {
@@ -405,7 +429,8 @@
   padding: 0 0.75rem 0 2.2rem;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
+  color: var(--app-text);
   font-size: 0.88rem;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -441,7 +466,8 @@
   padding: 0 0.75rem;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
+  color: var(--app-text);
   font-size: 0.88rem;
   appearance: none;
   cursor: pointer;
@@ -522,7 +548,7 @@
   border: 1px solid var(--app-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .stepper-btn {
@@ -602,14 +628,14 @@
 
 .btn-secondary {
   border: 1px solid var(--app-border);
-  background: #fff;
+  background: var(--surface);
   color: var(--muted-text);
   text-decoration: none;
 }
 
 .btn-secondary:hover {
-  border-color: #c1c9d6;
-  background: #f8faff;
+  border-color: var(--app-border);
+  background: var(--surface-hover, #f8faff);
 }
 
 .btn-primary .material-symbols-outlined,
@@ -753,3 +779,79 @@
     justify-content: center;
   }
 }
+
+/* ── Dark Mode Form Elements & Guest Dropdown Autocomplete ── */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color-scheme: dark;
+}
+
+.guest-field {
+  position: relative;
+}
+
+.guest-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: var(--shadow-md);
+}
+
+.guest-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--app-text);
+  transition: background 150ms ease;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 50%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--surface-hover, rgba(20, 99, 255, 0.05));
+  }
+}
+
+.guest-option-icon {
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+
+.guest-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+
+  strong {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  span {
+    font-size: 0.72rem;
+    color: var(--muted-text);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+

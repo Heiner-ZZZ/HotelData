@@ -36,6 +36,29 @@ export interface ReservationCreateInput {
   children: number;
   rooms: number;
   comment: string;
+  couponCode?: string;
+  specialRequests?: string[];
+}
+
+export interface ReservationCreateResult {
+  bookingId: string;
+  status: string;
+  totalPrice: number | null;
+  currency: string;
+  totalNights: number;
+  manualReservationId: string | null;
+  hotelLabel: string;
+  hotelPropId: number;
+  roomTypeName: string | null;
+  checkInDate: string;
+  checkOutDate: string;
+  rooms: number;
+  adults: number;
+  children: number;
+  guestName: string;
+  guestEmail: string;
+  discountPercent?: number | null;
+  originalTotalPrice?: number | null;
 }
 
 export interface ReservationPreview {
@@ -59,6 +82,39 @@ export interface ReservationStats {
   lost: number;
 }
 
+export interface NightBreakdown {
+  date: string;
+  rate: number;
+  rooms: number;
+  nightTotal: number;
+}
+
+export interface PriceBreakdown {
+  nights: NightBreakdown[];
+  subtotal: number;
+  taxes: number;
+  ivaRate: number;
+  total: number;
+  currency: string;
+  source: string;
+}
+
+export interface RoomTypeInfo {
+  roomTypeId: string;
+  name: string;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  invoiceNumber: string;
+  subtotal: number;
+  taxes: number;
+  total: number;
+  status: string;
+  issuedAt: string | null;
+  paidAt: string | null;
+}
+
 export interface ReservationDetailViewModel {
   bookingId: string;
   status: string;
@@ -68,6 +124,7 @@ export interface ReservationDetailViewModel {
   checkInDate: string;
   checkOutDate: string;
   occupancyLabel: string;
+  rooms: number;
   comment: string;
   createdAt: string;
   guestName: string;
@@ -76,11 +133,18 @@ export interface ReservationDetailViewModel {
   totalPrice: number | null;
   currency: string;
   totalNights: number;
+  discountPercent?: number | null;
+  originalTotalPrice?: number | null;
+  specialRequests?: string[];
   isManual: boolean;
   manualReservationId: string | null;
   canCancel: boolean;
   canConfirm: boolean;
   canReject: boolean;
+  invoice: InvoiceSummary | null;
+  roomType: RoomTypeInfo | null;
+  priceBreakdown: PriceBreakdown | null;
+  cancellationPolicy: string | null;
   history: Array<{
     status: string;
     changedAt: string;

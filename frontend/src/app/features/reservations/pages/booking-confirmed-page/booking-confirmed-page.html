@@ -1,0 +1,114 @@
+<div class="confirmed-page">
+  @if (booking$ | async; as vm) {
+    <div class="confirmed-card">
+      <div class="success-icon">
+        <span class="material-symbols-outlined">check_circle</span>
+      </div>
+      <h1>Reserva solicitada con éxito</h1>
+      <p class="subtitle">Tu solicitud ha sido registrada y está pendiente de confirmación por el hotel.</p>
+
+      <div class="booking-ref-card">
+        <span class="ref-label">Número de reserva</span>
+        <div class="ref-value">
+          <code>{{ vm.bookingId }}</code>
+          <button type="button" class="btn-copy" (click)="copyRef(vm.bookingId)" title="Copiar referencia">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-item">
+          <span class="detail-icon material-symbols-outlined">hotel</span>
+          <div>
+            <span class="detail-label">Hotel</span>
+            <strong>{{ vm.hotelLabel }}</strong>
+          </div>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon material-symbols-outlined">calendar_month</span>
+          <div>
+            <span class="detail-label">Fechas</span>
+            <strong>{{ vm.checkInDate }} → {{ vm.checkOutDate }}</strong>
+          </div>
+        </div>
+        @if (vm.roomType; as rt) {
+          <div class="detail-item">
+            <span class="detail-icon material-symbols-outlined">bed</span>
+            <div>
+              <span class="detail-label">Habitación</span>
+              <strong>{{ rt.name }}</strong>
+            </div>
+          </div>
+        }
+        <div class="detail-item">
+          <span class="detail-icon material-symbols-outlined">group</span>
+          <div>
+            <span class="detail-label">Ocupación</span>
+            <strong>{{ vm.occupancyLabel }}</strong>
+          </div>
+        </div>
+        @if (vm.totalPrice !== null) {
+          <div class="detail-item">
+            <span class="detail-icon material-symbols-outlined">payments</span>
+            <div>
+              <span class="detail-label">Total estimado</span>
+              <strong>
+                @if (vm.discountPercent) {
+                  <span style="text-decoration: line-through; opacity: 0.7; font-weight: normal; margin-right: 4px;">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
+                  {{ vm.totalPrice | currency:vm.currency }} <span style="font-size: 0.8em; font-weight: normal; color: var(--color-success);">(-{{ vm.discountPercent }}%)</span>
+                } @else {
+                  {{ vm.totalPrice | currency:vm.currency }}
+                }
+              </strong>
+            </div>
+          </div>
+        }
+        <div class="detail-item">
+          <span class="detail-icon material-symbols-outlined">mail</span>
+          <div>
+            <span class="detail-label">Confirmación enviada a</span>
+            <strong>{{ vm.guestEmail }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="next-steps">
+        <h3>Próximos pasos</h3>
+        <ul>
+          <li>
+            <span class="step-number">1</span>
+            <span>El hotel revisará tu solicitud y confirmará la disponibilidad.</span>
+          </li>
+          <li>
+            <span class="step-number">2</span>
+            <span>Recibirás una notificación por correo cuando tu reserva sea confirmada.</span>
+          </li>
+          <li>
+            <span class="step-number">3</span>
+            <span>Podrás completar los datos de los huéspedes por habitación antes del check-in.</span>
+          </li>
+          <li>
+            <span class="step-number">4</span>
+            <span>Realiza el pago desde la sección de facturación para garantizar tu estancia.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="actions">
+        <a [routerLink]="['/account/bookings', vm.bookingId]" class="btn-primary">
+          <span class="material-symbols-outlined">visibility</span>
+          Ver detalle de reserva
+        </a>
+        <a routerLink="/account/bookings" class="btn-secondary">
+          <span class="material-symbols-outlined">list_alt</span>
+          Mis reservas
+        </a>
+      </div>
+    </div>
+  } @else {
+    <div class="loading-center">
+      <app-loading-state label="Cargando detalle de la reserva..." />
+    </div>
+  }
+</div>

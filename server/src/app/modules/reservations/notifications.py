@@ -336,6 +336,11 @@ def notify_guest_status_change(
         if reason and reason not in ("cancelled_by_user", ""):
             body_intro += f" Motivo: {reason}."
         body_intro += " Si necesitas ayuda, contacta al hotel directamente."
+    elif new_status == "modified":
+        subject = f"✏️ Reserva modificada — {booking_id}"
+        badge_html = "<span style=\"display:inline-block;padding:4px 14px;border-radius:12px;background:#fef3c7;color:#92400e;font-size:13px;font-weight:700\">✏️ MODIFICADA</span>"
+        headline = "Tu reserva ha sido modificada"
+        body_intro = "Tu reserva ha sido <strong>modificada</strong> exitosamente. Por favor revisa los nuevos detalles a continuación."
     elif new_status == "checked_in":
         subject = f"🔑 Check-in confirmado — {booking_id}"
         badge_html = "<span style=\"display:inline-block;padding:4px 14px;border-radius:12px;background:#dbeafe;color:#1e40af;font-size:13px;font-weight:700\">🔑 CHECK-IN</span>"
@@ -403,7 +408,7 @@ def notify_guest_status_change(
         logger.exception("Error sending guest notification to %s for booking %s", guest_email, booking_id)
         error_msg = str(exc)
 
-    notification_type = f"guest_{new_status}" if new_status in ("confirmed", "rejected", "cancelled", "checked_in", "checked_out") else "guest_other"
+    notification_type = f"guest_{new_status}" if new_status in ("confirmed", "rejected", "cancelled", "checked_in", "checked_out", "modified") else "guest_other"
     _log_notification(
         notification_type=notification_type,
         recipient_email=guest_email,

@@ -38,14 +38,53 @@ def _generate_invoice_number() -> str:
 
 # --- Invoices ---
 
+# --- Invoices ---
+
+def _find_booking(booking_id: str) -> dict | None:
+    db = get_database()
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    if not booking:
+        try:
+            booking = db.booking_orders.find_one({"_id": ObjectId(booking_id)})
+        except Exception:
+            pass
+    return booking
+
+
+def generate_invoice_for_booking(booking_id: str, total_price: float | None = None, currency: str = "USD", notes: str = "") -> dict | None:
+    """Auto-generate an invoice for a booking when confirmed.
+
+    Calculates subtotal and taxes (IVA 16%) from the total_price.
+    If total_price is None/0, attempts to look it up from the booking.
+    """
+    booking = _find_booking(booking_id)
+    if not booking:
+        return None
+
+    price = total_price if total_price else booking.get("total_price")
+    if not price:
+        price = 0.0
+    price = float(price)
+    subtotal = round(price / 1.16, 2)
+    taxes = round(price - subtotal, 2)
+
+    payload = InvoiceCreate(
+        booking_id=booking.get("booking_id") or booking_id,
+        subtotal=subtotal,
+        taxes=taxes,
+        notes=notes or f"Factura generada automaticamente por confirmacion de reserva {booking.get('booking_id', '')}"
+    )
+    return create_invoice(payload)
+
+
 def create_invoice(payload: InvoiceCreate) -> dict | None:
     db = get_database()
-    booking = db.booking_orders.find_one({"_id": ObjectId(payload.booking_id)})
+    booking = _find_booking(payload.booking_id)
     if not booking:
         return None
     total = round(payload.subtotal + payload.taxes, 2)
     doc = {
-        "booking_id": ObjectId(payload.booking_id),
+        "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
         "invoice_number": _generate_invoice_number(),
         "subtotal": round(payload.subtotal, 2),
@@ -70,7 +109,10 @@ def list_invoices(
     db = get_database()
     query: dict = {}
     if booking_id:
-        query["booking_id"] = ObjectId(booking_id)
+        # Match either string booking_id or check if it matches the object id of booking
+        booking = _find_booking(booking_id)
+        booking_str_id = booking.get("booking_id") if booking else booking_id
+        query["booking_id"] = booking_str_id
     if status:
         query["status"] = status
     total = db[INVOICES].count_documents(query)
@@ -115,7 +157,7 @@ def cancel_invoice(invoice_id: str) -> dict | None:
 
 def create_payment(payload: PaymentCreate) -> dict | None:
     db = get_database()
-    booking = db.booking_orders.find_one({"_id": ObjectId(payload.booking_id)})
+    booking = _find_booking(payload.booking_id)
     if not booking:
         return None
     invoice_id = None
@@ -125,7 +167,7 @@ def create_payment(payload: PaymentCreate) -> dict | None:
             invoice_id = ObjectId(payload.invoice_id)
 
     doc = {
-        "booking_id": ObjectId(payload.booking_id),
+        "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
@@ -152,7 +194,9 @@ def list_payments(
     db = get_database()
     query: dict = {}
     if booking_id:
-        query["booking_id"] = ObjectId(booking_id)
+        booking = _find_booking(booking_id)
+        booking_str_id = booking.get("booking_id") if booking else booking_id
+        query["booking_id"] = booking_str_id
     total = db[PAYMENTS].count_documents(query)
     cursor = (
         db[PAYMENTS]

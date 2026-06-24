@@ -92,7 +92,7 @@ def utc_now() -> datetime:
 
 
 def get_database():
-    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27018")
     mongo_database = os.getenv("MONGO_DATABASE", "hoteldata_hub")
     client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
     client.admin.command("ping")

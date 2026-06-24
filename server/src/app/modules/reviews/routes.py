@@ -8,6 +8,7 @@ from src.app.modules.reviews.schemas import ModuleStatus, ReviewCreate, ReviewMo
 from src.app.modules.reviews.service import (
     create_review,
     create_review_staff,
+    create_review_guest,
     delete_review,
     ensure_reviews_collections,
     get_review,
@@ -42,6 +43,16 @@ def create_review_staff_api(payload: dict = Body(...)):
     """
     parsed = ReviewCreate(**payload)
     result = create_review_staff(parsed)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la reseña (booking inválido o ya reseñado)")
+    return result
+
+
+@api_router.post("/guest", status_code=201)
+def create_review_guest_api(payload: dict = Body(...)):
+    """Create a review on behalf of an unauthenticated guest."""
+    parsed = ReviewCreate(**payload)
+    result = create_review_guest(parsed)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la reseña (booking inválido o ya reseñado)")
     return result

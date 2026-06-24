@@ -14,6 +14,7 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
+import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
 @Component({
   selector: 'app-rooms-page',
@@ -25,7 +26,8 @@ import { RoomTypeTableComponent } from '../../components/room-type-table/room-ty
     PropertySelectorComponent,
     ReactiveFormsModule,
     RoomTypeTableComponent,
-    RouterLink
+    RouterLink,
+    AiSuggestDirective
   ],
   templateUrl: './rooms-page.html',
   styleUrl: './rooms-page.scss',

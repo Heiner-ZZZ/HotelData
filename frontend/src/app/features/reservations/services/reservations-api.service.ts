@@ -27,7 +27,7 @@ import type {
   ReservationStatsDto,
   ReservationsListDto
 } from '../models/reservations.dto';
-import type { ReservationCreateInput, ReservationStats } from '../models/reservations.model';
+import type { ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
 
 @Injectable({
   providedIn: 'root'
@@ -88,7 +88,7 @@ export class ReservationsApiService {
         mapReservationCreatePayload(input),
         { withCredentials: true }
       )
-      .pipe(map((dto) => mapReservationCreateResult(dto)));
+      .pipe(map((dto) => mapReservationCreateResult(dto) as ReservationCreateResult));
   }
 
   getReservationDetail(bookingId: string) {
@@ -134,6 +134,52 @@ export class ReservationsApiService {
     return this.http.post<ReservationConfirmRejectDto>(
       `${this.apiConfig.baseUrl}/reservations/${bookingId}/reject`,
       {},
+      { withCredentials: true }
+    );
+  }
+
+  modifyBooking(bookingId: string, payload: Record<string, unknown>) {
+    return this.http.patch<ReservationConfirmRejectDto>(
+      `${this.apiConfig.baseUrl}/reservations/${bookingId}`,
+      payload,
+      { withCredentials: true }
+    );
+  }
+
+  getRoomGuests(bookingId: string) {
+    return this.http.get<Record<string, unknown>[]>(
+      `${this.apiConfig.baseUrl}/reservations/${bookingId}/room-guests`,
+      { withCredentials: true }
+    );
+  }
+
+  saveRoomGuests(bookingId: string, roomGuests: { room_index: number; guests: Record<string, unknown>[] }[]) {
+    return this.http.put<Record<string, unknown>[]>(
+      `${this.apiConfig.baseUrl}/reservations/${bookingId}/room-guests`,
+      { room_guests: roomGuests },
+      { withCredentials: true }
+    );
+  }
+
+  getCheckInStatus(bookingId: string) {
+    return this.http.get<Record<string, unknown>>(
+      `${this.apiConfig.baseUrl}/reservations/${bookingId}/check-in-status`,
+      { withCredentials: true }
+    );
+  }
+
+  validateCoupon(couponCode: string, propId: number) {
+    return this.http.post<{valid: boolean; message: string; discount_percent: number}>(
+      `${this.apiConfig.baseUrl}/reservations/validate-coupon`,
+      { coupon_code: couponCode, prop_id: propId },
+      { withCredentials: true }
+    );
+  }
+
+  createGuestReview(bookingId: string, propId: number, rating: number, title: string, comment: string) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/reviews/guest`,
+      { booking_id: bookingId, prop_id: propId, rating, title, comment },
       { withCredentials: true }
     );
   }

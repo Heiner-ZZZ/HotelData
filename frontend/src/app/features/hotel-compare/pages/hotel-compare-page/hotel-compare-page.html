@@ -170,20 +170,54 @@
                 }
 
                 <!-- Amenities -->
-                @if (amenityList(hotel.amenitiesText).length) {
+                @if (categorizeAmenities(hotel.amenitiesText).length) {
                   <div class="amenities-section">
                     <h3 class="section-label">Servicios</h3>
-                    <div class="amenities-grid">
-                      @for (a of amenityList(hotel.amenitiesText).slice(0, 6); track a) {
-                        <span class="amenity-chip">
-                          <span class="material-symbols-outlined amenity-icon">{{ amenityIcon(a) }}</span>
-                          {{ a }}
-                        </span>
-                      }
-                      @if (amenityList(hotel.amenitiesText).length > 6) {
-                        <span class="amenity-more">+{{ amenityList(hotel.amenitiesText).length - 6 }} más</span>
+                    <div class="amenities-categorized">
+                      @for (cat of categorizeAmenities(hotel.amenitiesText); track cat.category) {
+                        <div class="amenity-category">
+                          <div class="amenity-category-header">
+                            <span class="material-symbols-outlined cat-icon" [style.color]="cat.color">{{ cat.icon }}</span>
+                            <span class="cat-label">{{ cat.label }}</span>
+                          </div>
+                          <div class="amenity-chips">
+                            @for (a of cat.amenities; track a) {
+                              <span class="amenity-chip" [style.border-color]="cat.color" [style.background]="cat.bgColor">
+                                <span class="material-symbols-outlined amenity-icon" [style.color]="cat.color">{{ amenityIcon(a) }}</span>
+                                {{ a }}
+                              </span>
+                            }
+                          </div>
+                        </div>
                       }
                     </div>
+                  </div>
+                }
+
+                <!-- Policies -->
+                @if (hotel.mappedPolicies.length) {
+                  <div class="policies-section">
+                    <h3 class="section-label">Políticas</h3>
+                    <div class="policies-grid">
+                      @for (policy of hotel.mappedPolicies; track policy.label) {
+                        <div class="policy-chip">
+                          <span class="material-symbols-outlined policy-icon">{{ policyIcon(policy.label) }}</span>
+                          <div class="policy-info">
+                            <span class="policy-label">{{ policy.label }}</span>
+                            <span class="policy-value">{{ policy.value }}</span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    @if (hotel.cancellationPolicy && hotel.cancellationPolicy !== 'N/D') {
+                      <div class="cancellation-chip">
+                        <span class="material-symbols-outlined canc-icon">undo</span>
+                        <div class="canc-info">
+                          <span class="canc-label">Cancelación</span>
+                          <span class="canc-value">{{ hotel.cancellationPolicy }}</span>
+                        </div>
+                      </div>
+                    }
                   </div>
                 }
 

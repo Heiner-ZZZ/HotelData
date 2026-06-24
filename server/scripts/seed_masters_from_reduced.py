@@ -5,7 +5,7 @@ import pandas as pd
 from pymongo import MongoClient, UpdateOne
 from pymongo.errors import BulkWriteError
 
-MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = "mongodb://localhost:27018"
 MONGO_DATABASE = "hoteldata_hub"
 
 INPUT_CSV = Path(r"C:\HotelData\hoteldata_project\data\raw\hotels.csv")

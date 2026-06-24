@@ -1,19 +1,16 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
-import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
-import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [CurrencyPipe, DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, UpperCasePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -33,10 +30,12 @@ export class ReservationNewPageComponent {
   readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review'>('details');
 
-  /** Guest autocomplete: cached recent guests from sessionStorage */
   readonly guestSuggestions = signal<Array<{ name: string; email: string; phone: string }>>([]);
   readonly showGuestDropdown = signal(false);
   readonly guestSearchFocused = signal(false);
+
+  readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
+  readonly couponValidating = signal(false);
 
   readonly selectedHotel = computed(() => {
     const selectedId = this.form.controls.propId.value;
@@ -73,7 +72,9 @@ export class ReservationNewPageComponent {
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
-    comment: ['']
+    comment: [''],
+    couponCode: [''],
+    specialRequests: [[] as string[]]
   });
 
   constructor() {
@@ -140,7 +141,9 @@ export class ReservationNewPageComponent {
       adults: v.adults,
       children: v.children,
       rooms: v.rooms,
-      comment: v.comment
+      comment: v.comment,
+      couponCode: v.couponCode,
+      specialRequests: v.specialRequests
     };
   }
 
@@ -164,7 +167,7 @@ export class ReservationNewPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
-          void this.router.navigate(['..', result.bookingId], { relativeTo: this.activatedRoute });
+          void this.router.navigate(['../confirmed', result.bookingId], { relativeTo: this.activatedRoute });
         },
         error: (error: ApiError) => {
           this.errorMessage.set(error.message || 'No fue posible crear la reserva.');
@@ -234,5 +237,44 @@ export class ReservationNewPageComponent {
 
   trackByPropId(_index: number, item: ReservationHotelOption): number {
     return item.propId;
+  }
+
+  validateCoupon() {
+    const code = this.form.controls.couponCode.value;
+    const propId = this.form.controls.propId.value;
+    if (!code) {
+      this.couponStatus.set(null);
+      return;
+    }
+    if (!propId) {
+      this.couponStatus.set({valid: false, message: 'Selecciona un hotel primero', discountPercent: 0});
+      return;
+    }
+    this.couponValidating.set(true);
+    this.reservationsApi.validateCoupon(code, propId).subscribe({
+      next: (res) => {
+         this.couponStatus.set({
+           valid: res.valid,
+           message: res.message,
+           discountPercent: res.discount_percent
+         });
+         this.couponValidating.set(false);
+      },
+      error: () => {
+         this.couponStatus.set({valid: false, message: 'Error de validación', discountPercent: 0});
+         this.couponValidating.set(false);
+      }
+    });
+  }
+
+  toggleSpecialRequest(request: string, event: Event) {
+    const isChecked = (event.target as HTMLInputElement).checked;
+    const current = this.form.controls.specialRequests.value;
+    if (isChecked && !current.includes(request)) {
+      this.form.controls.specialRequests.setValue([...current, request]);
+    } else if (!isChecked && current.includes(request)) {
+      this.form.controls.specialRequests.setValue(current.filter(r => r !== request));
+    }
+    this.form.controls.specialRequests.markAsDirty();
   }
 }

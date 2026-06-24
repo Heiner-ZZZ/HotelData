@@ -53,6 +53,8 @@ def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: 
         children=_safe_int(form_data.get("children"), 0),
         rooms=_safe_int(form_data.get("rooms"), 1),
         comment=_clean_text(form_data.get("comment")),
+        coupon_code=_clean_text(form_data.get("coupon_code") or form_data.get("promo_code")),
+        special_requests=form_data.get("special_requests", []),
         source=source,
         user_id=_clean_text(form_data.get("user_id")) or None,
         created_by=_clean_text(form_data.get("created_by")) or None,

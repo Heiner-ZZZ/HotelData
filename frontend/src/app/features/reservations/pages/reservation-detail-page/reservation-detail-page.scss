@@ -132,6 +132,250 @@ button:disabled {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
 }
 
+/* ─── Edit mode ─── */
+
+.btn-edit {
+  border: 1px solid var(--primary, #2563eb);
+  background: var(--primary, #2563eb);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.edit-panel {
+  border: 1px solid var(--app-border);
+}
+
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .edit-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edit-field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+
+  span {
+    color: var(--muted-text);
+    font-weight: 500;
+  }
+
+  input {
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+}
+
+.edit-field-wide {
+  grid-column: 1 / -1;
+}
+
+.edit-error {
+  color: var(--danger, #dc2626);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(220, 38, 38, 0.06);
+  border-radius: 8px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-cancel-edit,
+.btn-save-edit {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-cancel-edit {
+  background: #fff;
+  border: 1px solid var(--app-border);
+  color: var(--text-color, #111);
+
+  &:hover {
+    background: var(--hover-bg, #f5f5f5);
+  }
+}
+
+.btn-save-edit {
+  background: var(--primary, #2563eb);
+  border: 1px solid var(--primary, #2563eb);
+  color: #fff;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+/* ─── Room guests ─── */
+
+.guests-panel {
+  border: 1px solid var(--app-border);
+}
+
+.btn-small-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border: 1px solid var(--primary, #2563eb);
+  min-height: auto;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.room-guests-block {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+}
+
+.room-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-color, #111);
+  font-weight: 600;
+}
+
+.guest-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+
+  input {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: inherit;
+  }
+}
+
+.gf-name { flex: 2; min-width: 120px; }
+.gf-email { flex: 2; min-width: 120px; }
+.gf-phone { flex: 1; min-width: 100px; }
+.gf-age { width: 60px; }
+
+.gf-child {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--muted-text);
+
+  input { width: auto; }
+}
+
+.btn-remove-guest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--muted-text);
+  min-height: auto;
+  padding: 0;
+
+  &:hover {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--danger, #dc2626);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+}
+
+.btn-add-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  background: #fff;
+  border: 1px dashed var(--app-border);
+  color: var(--muted-text);
+  min-height: auto;
+
+  &:hover {
+    border-color: var(--primary, #2563eb);
+    color: var(--primary, #2563eb);
+    background: rgba(37, 99, 235, 0.03);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+}
+
+.guests-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.muted-text {
+  color: var(--muted-text);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* ─── Toast ─── */
 
 .toast {
@@ -168,6 +412,210 @@ button:disabled {
   background: #fff;
   text-decoration: none;
 }
+
+/* ─── Invoice Panel ─── */
+
+.invoice-panel {
+  border: 1px solid var(--app-border);
+}
+
+.invoice-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.invoice-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .material-symbols-outlined {
+    color: var(--primary, #2563eb);
+    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  }
+}
+
+.invoice-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.inv-info {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.inv-label {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.inv-value {
+  font-size: 0.95rem;
+}
+
+.inv-info-total {
+  .inv-value {
+    font-size: 1.1rem;
+    color: var(--primary, #2563eb);
+  }
+}
+
+@media (max-width: 600px) {
+  .invoice-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-invoice,
+.btn-pay-invoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--app-border);
+  min-height: 2.5rem;
+}
+
+.btn-invoice {
+  background: #fff;
+  color: var(--text-color, #111);
+
+  &:hover {
+    background: var(--hover-bg, #f5f5f5);
+  }
+}
+
+.btn-pay-invoice {
+  background: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+  color: #fff;
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+/* ─── Panel head (shared) ─── */
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.panel-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.panel-icon {
+  color: var(--primary, #2563eb);
+  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.panel-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary, #2563eb);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+/* ─── Price breakdown table ─── */
+
+.price-panel {
+  border: 1px solid var(--app-border);
+}
+
+.breakdown-table {
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted-text);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 2px solid var(--app-border);
+  }
+
+  .cell-right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .foot-subtotal td,
+  .foot-taxes td {
+    font-size: 0.85rem;
+    color: var(--muted-text);
+    border-bottom: none;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .foot-total td {
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-bottom: none;
+    padding-top: 0.5rem;
+  }
+
+  .total-value {
+    color: var(--primary, #2563eb);
+    font-size: 1.05rem;
+  }
+}
+
+/* ─── Cancellation policy ─── */
+
+.policy-panel {
+  border: 1px solid var(--app-border);
+}
+
+.policy-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-color, #222);
+  padding: 0.25rem 0;
+}
+
+/* ─── Responsive ─── */
 
 @media (max-width: 920px) {
   .hero-grid,

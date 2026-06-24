@@ -8,7 +8,7 @@ export interface HotelSearchFilters {
   minPrice: string;
   maxPrice: string;
   minStars: string;
-  amenities: string;
+  amenities: string[];
   amenitiesMode: 'or' | 'and';
   sortBy: 'price' | 'rating' | 'stars' | 'name';
   compareIds: number[];

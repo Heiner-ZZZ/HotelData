@@ -1,3 +1,8 @@
+export interface PolicyItem {
+  label: string;
+  value: string;
+}
+
 export interface HotelCompareItem {
   propId: number;
   hotelName: string;
@@ -8,6 +13,8 @@ export interface HotelCompareItem {
   amenitiesText: string;
   roomTypes: HotelCompareRoomType[];
   policies: Record<string, unknown>;
+  mappedPolicies: PolicyItem[];
+  cancellationPolicy: string;
   destinationLabels: string[];
   latitude: number;
   longitude: number;

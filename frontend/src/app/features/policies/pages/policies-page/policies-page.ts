@@ -15,6 +15,7 @@ import { mapPoliciesPayload } from '../../mappers/policies.mapper';
 import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import { PoliciesApiService } from '../../services/policies-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
+import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
 @Component({
   selector: 'app-policies-page',
@@ -26,6 +27,7 @@ import { PolicySummaryCardsComponent } from '../../components/policy-summary-car
     PolicySummaryCardsComponent,
     PropertySelectorComponent,
     ReactiveFormsModule,
+    AiSuggestDirective,
   ],
   templateUrl: './policies-page.html',
   styleUrl: './policies-page.scss',

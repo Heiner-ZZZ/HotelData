@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.app.modules.billing.service import generate_invoice_for_booking
 from src.database.connection import get_database
 
 from ..notifications import notify_guest_status_change
@@ -134,6 +135,29 @@ def _transition_status(
                 "Cannot check inventory for booking %s: missing dates, prop_id=%s",
                 booking_id, prop_id,
             )
+
+    # ── Auto-generate invoice on confirm ──
+    if target_status == "confirmed":
+        try:
+            booking_id_for_inv = booking.get("_id", booking.get("booking_id"))
+            if booking_id_for_inv:
+                inv_result = generate_invoice_for_booking(
+                    booking_id=str(booking_id_for_inv),
+                    total_price=booking.get("total_price"),
+                    currency=booking.get("currency", "USD"),
+                )
+                if inv_result:
+                    result["invoice"] = {
+                        "id": inv_result.get("id", inv_result.get("_id", "")),
+                        "invoice_number": inv_result.get("invoice_number", ""),
+                        "total": inv_result.get("total", 0),
+                        "status": inv_result.get("status", "issued"),
+                    }
+                    logger.info("Invoice %s auto-generated for booking %s", inv_result.get("invoice_number"), booking_id)
+                else:
+                    logger.warning("Could not generate invoice for booking %s", booking_id)
+        except Exception:
+            logger.exception("Failed to auto-generate invoice for booking %s", booking_id)
 
     # ── Notify guest on confirmed / rejected ──
     if target_status in ("confirmed", "rejected"):

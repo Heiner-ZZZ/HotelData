@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 from pymongo import ASCENDING, DESCENDING
@@ -7,7 +9,9 @@ from pymongo import ASCENDING, DESCENDING
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database
 from src.app.modules.hotels.service import hotel_detail
-from src.app.modules.partner.services import partner_hotel_detail
+from src.app.modules.partner.services import partner_hotel_detail, partner_hotel_policies
+
+logger = logging.getLogger(__name__)
 
 
 def hotel_booking_context(prop_id: int) -> dict[str, Any]:
@@ -181,19 +185,171 @@ def get_reservation_stats(user: dict[str, Any] | None = None) -> dict[str, int]:
     return stats
 
 
+def _lookup_room_type(db: Any, room_type_id: str, prop_id: int) -> dict | None:
+    """Look up room type name from room_type_id."""
+    if not room_type_id:
+        return None
+    rt = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "name": 1})
+    if rt:
+        return {"room_type_id": room_type_id, "name": rt.get("name", room_type_id)}
+    return {"room_type_id": room_type_id, "name": room_type_id}
+
+
+def _build_price_breakdown(
+    db: Any,
+    prop_id: int,
+    room_type_id: str,
+    check_in_date: str,
+    check_out_date: str,
+    rooms: int,
+    total_price: float | None,
+    total_nights: int,
+) -> dict | None:
+    """Build per-night price breakdown.
+
+    1. Attempts to fetch actual per-night rates from hotel_rate_calendar.
+    2. Falls back to deriving from total_price / total_nights.
+    Returns None if no pricing data is available.
+    """
+    if not check_in_date or not check_out_date or not total_nights:
+        return None
+
+    try:
+        cin = datetime.strptime(check_in_date, "%Y-%m-%d")
+        cout = datetime.strptime(check_out_date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+    date_list = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((cout - cin).days)]
+
+    # Try to get actual per-night rates from calendar
+    rate_query = {"prop_id": prop_id, "date": {"$in": date_list}}
+    if room_type_id:
+        rate_query["room_type_id"] = room_type_id
+    calendar_rates = list(
+        db.hotel_rate_calendar.find(rate_query, {"_id": 0, "date": 1, "rate_amount": 1}).sort("date", 1)
+    )
+
+    if calendar_rates and len(calendar_rates) == len(date_list):
+        # All rates found in calendar
+        nights = []
+        subtotal = 0.0
+        for cr in calendar_rates:
+            night_total = float(cr["rate_amount"]) * rooms
+            nights.append({"date": cr["date"], "rate": float(cr["rate_amount"]), "rooms": rooms, "night_total": round(night_total, 2)})
+            subtotal += night_total
+        subtotal = round(subtotal, 2)
+        taxes = round(subtotal * 0.16, 2)
+        total = round(subtotal + taxes, 2)
+        return {
+            "nights": nights,
+            "subtotal": subtotal,
+            "taxes": taxes,
+            "iva_rate": 0.16,
+            "total": total,
+            "currency": "USD",
+            "source": "calendar",
+        }
+    elif total_price and total_price > 0:
+        # Derive from total_price
+        rate_per_night = round(total_price / total_nights, 2)
+        nights = []
+        subtotal = 0.0
+        for d in date_list:
+            night_total = rate_per_night
+            nights.append({"date": d, "rate": rate_per_night, "rooms": rooms, "night_total": round(night_total, 2)})
+            subtotal += night_total
+        subtotal = round(subtotal, 2)
+        taxes = round(subtotal * 0.16, 2)
+        total = round(subtotal + taxes, 2)
+        return {
+            "nights": nights,
+            "subtotal": subtotal,
+            "taxes": taxes,
+            "iva_rate": 0.16,
+            "total": total,
+            "currency": "USD",
+            "source": "derived",
+        }
+
+    return None
+
+
+def _get_cancellation_policy(db: Any, prop_id: int) -> str | None:
+    """Get the hotel-wide cancellation policy text."""
+    try:
+        policies_data = partner_hotel_policies(prop_id)
+        if policies_data:
+            policy = policies_data.get("policies", {})
+            text = policy.get("cancellation_policy", "")
+            return text if text else None
+    except Exception:
+        logger.exception("Failed to fetch cancellation policy for prop_id %s", prop_id)
+    return None
+
+
 def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
+    from bson import ObjectId
+
     db = get_database()
+
+    booking_doc = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 1})
+    if booking_doc is None:
+        return None
+    booking_oid = booking_doc["_id"]
+
     booking = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0})
     if booking is None:
         return None
     guest = db.booking_guests.find_one({"booking_id": booking_id, "is_primary": True}, {"_id": 0})
     history = list(db.booking_status_history.find({"booking_id": booking_id}, {"_id": 0}).sort([("changed_at", ASCENDING)]))
     manual = db.manual_reservations.find_one({"booking_id": booking_id}, {"_id": 0})
+
+    # Invoice
+    invoice = db.reservation_invoices.find_one(
+        {"booking_id": booking_oid},
+        {"_id": 1, "invoice_number": 1, "subtotal": 1, "taxes": 1, "total": 1, "status": 1, "issued_at": 1, "paid_at": 1},
+    )
+    invoice_data = None
+    if invoice:
+        invoice_data = {
+            "id": str(invoice["_id"]),
+            "invoice_number": invoice.get("invoice_number"),
+            "subtotal": invoice.get("subtotal"),
+            "taxes": invoice.get("taxes"),
+            "total": invoice.get("total"),
+            "status": invoice.get("status"),
+            "issued_at": invoice.get("issued_at").isoformat() if invoice.get("issued_at") else None,
+            "paid_at": invoice.get("paid_at").isoformat() if invoice.get("paid_at") else None,
+        }
+
+    # Room type
+    room_type = _lookup_room_type(db, booking.get("room_type_id", ""), int(booking.get("prop_id", 0)))
+
+    # Price breakdown
+    price_breakdown = _build_price_breakdown(
+        db=db,
+        prop_id=int(booking.get("prop_id", 0)),
+        room_type_id=booking.get("room_type_id", ""),
+        check_in_date=booking.get("check_in_date", ""),
+        check_out_date=booking.get("check_out_date", ""),
+        rooms=int(booking.get("rooms", 1)),
+        total_price=booking.get("total_price"),
+        total_nights=int(booking.get("total_nights", 0)),
+    )
+
+    # Cancellation policy
+    cancellation_policy = _get_cancellation_policy(db, int(booking.get("prop_id", 0)))
+
     return {
         "booking": booking,
         "guest": guest,
         "history": history,
         "manual": manual,
         "hotel": hotel_booking_context(int(booking["prop_id"])) if booking.get("prop_id") is not None else None,
+        "invoice": invoice_data,
+        "room_type": room_type,
+        "price_breakdown": price_breakdown,
+        "cancellation_policy": cancellation_policy,
         "can_cancel": booking.get("status") in {"pending", "confirmed"},
     }

@@ -2,6 +2,7 @@ from src.app.modules.reviews.service.collections import ensure_reviews_collectio
 from src.app.modules.reviews.service.lifecycle import (
     create_review,
     create_review_staff,
+    create_review_guest,
     list_reviews,
     get_review,
     moderate_review,
@@ -13,6 +14,7 @@ from src.app.modules.reviews.service.notifications import notify_review_created,
 __all__ = [
     "create_review",
     "create_review_staff",
+    "create_review_guest",
     "list_reviews",
     "get_review",
     "moderate_review",

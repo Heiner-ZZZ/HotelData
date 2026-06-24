@@ -43,5 +43,7 @@ def test_airflow_dag_has_core_tasks():
     dag_path = _dag_paths()
     assert dag_path
     dag_text = dag_path[0].read_text(encoding="utf-8")
-    for task_id in ["validate_environment", "load_mongodb", "create_indexes", "save_execution_report"]:
+    for task_id in ["validate_environment", "create_indexes", "save_execution_report"]:
         assert task_id in dag_text
+    assert ("load_mongodb" in dag_text) or ("to_mongodb" in dag_text)
+

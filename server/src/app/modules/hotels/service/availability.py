@@ -280,7 +280,7 @@ def search_available_hotels(
 
     result: dict[str, Any] = {
         "items": items,
-        "total": total_candidates,
+        "total": total_candidates if items else 0,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,

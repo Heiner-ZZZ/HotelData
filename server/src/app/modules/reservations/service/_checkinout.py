@@ -82,7 +82,33 @@ def complete_check_in(booking_id: str, *, changed_by: str = "angular_api") -> di
         except Exception:
             logger.exception("Failed to notify staff on check-in for booking %s", booking_id)
 
-    return {"booking_id": booking_id, "stay_status": "checked_in"}
+    # ── Auto-create or retrieve invoice on check-in ──
+    invoice_id: str | None = None
+    if result and not result.get("is_test"):
+        existing_inv = db.reservation_invoices.find_one({"booking_id": booking_id})
+        if existing_inv:
+            invoice_id = str(existing_inv["_id"])
+        else:
+            total = booking.get("total_price") if booking else None
+            if total is not None and float(total) > 0:
+                try:
+                    from src.app.modules.billing.schemas import InvoiceCreate
+                    from src.app.modules.billing.service import create_invoice
+                    subtotal = float(total)
+                    taxes = round(subtotal * 0.10, 2)
+                    inv = create_invoice(InvoiceCreate(
+                        booking_id=booking_id,
+                        subtotal=subtotal,
+                        taxes=taxes,
+                        notes=f"Auto-generated invoice for booking {booking_id} at check-in",
+                    ))
+                    if inv:
+                        invoice_id = inv.get("id")
+                except Exception:
+                    # Invoice failure must never block check-in
+                    logger.exception("Failed to auto-create invoice at check-in for booking %s", booking_id)
+
+    return {"booking_id": booking_id, "stay_status": "checked_in", "invoice_id": invoice_id}
 
 
 def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:

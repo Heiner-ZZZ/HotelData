@@ -17,6 +17,7 @@ from src.app.security.rate_limit import limiter
 
 from src.app.features.catalogs.service import ensure_default_catalogs
 from src.app.features.dashboard.routes import api_router as dashboard_api_router
+from src.app.ai.routes import api_router as ai_api_router
 from src.app.features.etl_status.routes import JSON_API as etl_status_json_router
 from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.modules.account.routes import api_router as account_api_router
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     uploads_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
     app.include_router(dashboard_api_router)
+    app.include_router(ai_api_router)
     app.include_router(etl_status_json_router)
     app.include_router(audit_router)
     app.include_router(admin_api_router)

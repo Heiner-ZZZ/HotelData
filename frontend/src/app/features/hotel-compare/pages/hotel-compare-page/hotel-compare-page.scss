@@ -575,6 +575,170 @@
   align-self: center;
 }
 
+/* ── Amenities Categorized ── */
+
+.amenities-categorized {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.amenity-category {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+
+.amenity-category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.cat-icon {
+  font-size: 0.85rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.cat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.amenity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.amenity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+  transition: all 160ms ease;
+}
+
+.amenity-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.amenity-icon {
+  font-size: 0.8rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+/* ── Policies ── */
+
+.policies-section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.policies-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.policy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
+  background: rgba(20, 99, 255, 0.04);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+}
+
+.policy-icon {
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  flex-shrink: 0;
+}
+
+.policy-info {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.policy-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.policy-value {
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.cancellation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+
+.canc-icon {
+  font-size: 0.9rem;
+  color: #ef4444;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  flex-shrink: 0;
+}
+
+.canc-info {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.canc-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.canc-value {
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
 /* ── Room Types ── */
 
 .rooms-section {

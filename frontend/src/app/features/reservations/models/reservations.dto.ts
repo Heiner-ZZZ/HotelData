@@ -46,6 +46,18 @@ export interface ReservationCreateDto {
   currency: string;
   total_nights: number;
   manual_reservation_id: string | null;
+  hotel_label: string;
+  hotel_prop_id: number;
+  room_type_name: string | null;
+  check_in_date: string;
+  check_out_date: string;
+  rooms: number;
+  adults: number;
+  children: number;
+  guest_name: string;
+  guest_email: string;
+  discount_percent?: number | null;
+  original_total_price?: number | null;
 }
 
 export interface ReservationPreviewDto {
@@ -54,6 +66,28 @@ export interface ReservationPreviewDto {
   total_price: number | null;
   currency: string;
   total_nights: number;
+}
+
+export interface NightBreakdownDto {
+  date: string;
+  rate: number;
+  rooms: number;
+  night_total: number;
+}
+
+export interface PriceBreakdownDto {
+  nights: NightBreakdownDto[];
+  subtotal: number;
+  taxes: number;
+  iva_rate: number;
+  total: number;
+  currency: string;
+  source: string;
+}
+
+export interface RoomTypeInfoDto {
+  room_type_id: string;
+  name: string;
 }
 
 export interface ReservationDetailDto {
@@ -76,6 +110,9 @@ export interface ReservationDetailDto {
     currency: string;
     total_nights: number;
     created_at: string;
+    discount_percent?: number | null;
+    original_total_price?: number | null;
+    special_requests?: string[];
   };
   guest: {
     guest_name: string;
@@ -92,6 +129,19 @@ export interface ReservationDetailDto {
     manual_reservation_id: string;
   } | null;
   hotel: ReservationHotelContextDto | null;
+  invoice: {
+    id: string;
+    invoice_number: string;
+    subtotal: number;
+    taxes: number;
+    total: number;
+    status: string;
+    issued_at: string | null;
+    paid_at: string | null;
+  } | null;
+  room_type: RoomTypeInfoDto | null;
+  price_breakdown: PriceBreakdownDto | null;
+  cancellation_policy: string | null;
   can_cancel: boolean;
 }
 

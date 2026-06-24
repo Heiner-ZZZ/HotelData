@@ -1,0 +1,233 @@
+.confirmed-page {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.loading-center {
+  padding: 4rem 0;
+}
+
+.confirmed-card {
+  max-width: 640px;
+  width: 100%;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--app-border);
+  padding: 2.5rem 2rem;
+  display: grid;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.success-icon {
+  .material-symbols-outlined {
+    font-size: 4rem;
+    color: #16a34a;
+    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 48;
+    animation: pop-in 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #111;
+}
+
+.subtitle {
+  margin: -0.5rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.booking-ref-card {
+  background: #f8faff;
+  border: 1px dashed var(--app-border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ref-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.ref-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+
+  code {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111;
+    letter-spacing: 0.02em;
+  }
+}
+
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--muted-text);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #111;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  }
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  text-align: left;
+}
+
+@media (max-width: 500px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+}
+
+.detail-icon {
+  font-size: 1.3rem;
+  color: var(--primary, #2563eb);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  margin-bottom: 0.15rem;
+}
+
+strong {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.next-steps {
+  text-align: left;
+  padding: 1rem 0;
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--muted-text);
+  }
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border: 1px solid var(--primary, #2563eb);
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--text-color, #111);
+  border: 1px solid var(--app-border);
+
+  &:hover {
+    background: var(--hover-bg, #f5f5f5);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  }
+}

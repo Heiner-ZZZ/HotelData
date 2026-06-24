@@ -15,6 +15,8 @@ from src.app.modules.reservations.service import (
     complete_check_out,
     create_booking,
     get_booking_detail,
+    get_check_in_status,
+    get_room_guests,
     hotel_booking_context,
     list_bookings,
     list_check_ins,
@@ -23,13 +25,15 @@ from src.app.modules.reservations.service import (
     list_check_out_dates,
     list_reservation_dates,
     module_status,
+    modify_booking,
     reservation_hotel_options,
+    save_room_guests,
     validate_reservation_input,
     confirm_booking,
     reject_booking,
     get_reservation_stats,
 )
-from src.app.modules.reservations.service.lifecycle import _check_availability, _calculate_total_price
+from src.app.modules.reservations.service.lifecycle import _check_availability, _calculate_total_price, validate_coupon_code
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -119,6 +123,20 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+
+@api_router.post("/validate-coupon")
+def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
+    coupon_code = payload.get("coupon_code") or payload.get("promo_code")
+    prop_id = payload.get("prop_id")
+    if not coupon_code:
+        raise HTTPException(status_code=400, detail="coupon_code is required")
+    if not prop_id:
+        raise HTTPException(status_code=400, detail="prop_id is required")
+    
+    error, discount = validate_coupon_code(coupon_code, int(prop_id))
+    if error:
+        return {"valid": False, "message": error, "discount_percent": 0}
+    return {"valid": True, "message": "Código válido", "discount_percent": discount}
 
 # ── Static routes (must be before /{booking_id}) ──
 
@@ -242,6 +260,59 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ── Booking Modification ──
+
+
+@api_router.patch("/{booking_id}")
+def reservation_modify_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Modify a booking's dates, room type, room count, or comment."""
+    try:
+        return modify_booking(
+            booking_id,
+            check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
+            check_out_date=str(payload["check_out_date"]) if payload.get("check_out_date") else None,
+            room_type_id=str(payload["room_type_id"]) if payload.get("room_type_id") else None,
+            rooms=int(payload["rooms"]) if payload.get("rooms") is not None else None,
+            comment=str(payload["comment"]) if payload.get("comment") is not None else None,
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ── Room Guests (per-room passenger manifest) ──
+
+
+@api_router.get("/{booking_id}/room-guests")
+def room_guests_get_api(booking_id: str, current_user: dict = Depends(require_login)):
+    return get_room_guests(booking_id)
+
+
+@api_router.put("/{booking_id}/room-guests")
+def room_guests_put_api(
+    booking_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Save per-room guest data for a booking.
+    Body: {room_guests: [{room_index, guests: [{guest_name, guest_email, ...}]}]}
+    """
+    try:
+        return save_room_guests(booking_id, payload.get("room_guests", []))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.get("/{booking_id}/check-in-status")
+def check_in_status_api(booking_id: str, current_user: dict = Depends(require_login)):
+    """Get check-in readiness status (per-room guest data completeness)."""
+    return get_check_in_status(booking_id)
 
 
 @management_api_router.get("/check-ins/dates")

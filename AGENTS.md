@@ -20,6 +20,7 @@ shell commands, and other important information, read the current plan
 - Confirmar con el usuario antes de reiniciar servicios que puedan afectar la disponibilidad.
 - Informar claramente qué va a hacer antes de ejecutar comandos potencialmente destructivos.
 - Para reconstruir contenedores usar SIEMPRE `docker compose up -d --build <servicio>` (NUNCA `docker compose down`).
+- **NUNCA** usar datos hardcodeados (`standard`, `deluxe`, `suite`, etc.) en seed scripts o queries — siempre leer dinámicamente de la BD.
 
 ## ⚙️ ETL (Incremental)
 

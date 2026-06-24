@@ -24,10 +24,16 @@ class ReservationInput:
     comment: str
     guest_phone: str = ""
     room_type_id: str = ""
+    coupon_code: str = ""
+    special_requests: list[str] = None
     source: str = "web_request"
     user_id: str | None = None
     created_by: str | None = None
     is_test: bool = False
+
+    def __post_init__(self):
+        if self.special_requests is None:
+            self.special_requests = []
 
 
 def utc_now() -> datetime:

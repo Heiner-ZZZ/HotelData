@@ -142,6 +142,46 @@ def create_review_staff(payload: ReviewCreate) -> dict | None:
     return result
 
 
+def create_review_guest(payload: ReviewCreate) -> dict | None:
+    """Create a review as an unauthenticated guest."""
+    validated = _validate_booking(payload)
+    if not validated:
+        return None
+    _, user_id_obj, _ = validated
+
+    sentiment = analyze_review_sentiment(payload.rating, payload.title, payload.comment)
+    doc = {
+        "booking_id": ObjectId(payload.booking_id),
+        "prop_id": payload.prop_id,
+        "user_id": user_id_obj,
+        "rating": payload.rating,
+        "title": payload.title,
+        "comment": payload.comment,
+        "moderation_status": "pending",
+        "staff_response": None,
+        "staff_response_at": None,
+        "created_at": _now(),
+        "updated_at": _now(),
+        "sentiment_label": sentiment["sentiment_label"],
+        "sentiment_score": sentiment["sentiment_score"],
+        "sentiment_confidence": sentiment["confidence"],
+        "sentiment_analyzed_at": _now().isoformat(),
+    }
+    _write_both(COLLECTION, FACT_COLLECTION, doc)
+    result = _enrich(doc)
+    # Notify staff about the new review
+    _notify_async(
+        notify_review_created,
+        prop_id=payload.prop_id,
+        review_id=result["id"],
+        rating=payload.rating,
+        title=payload.title,
+        comment=payload.comment,
+        guest_name=result.get("user_display_name", "Huésped"),
+    )
+    return result
+
+
 def list_reviews(
     hotel_filter: dict | None = None,
     prop_id: int | None = None,

@@ -208,6 +208,42 @@
 
         <section class="surface-card form-section">
           <div class="section-head">
+            <span class="material-symbols-outlined section-icon">room_service</span>
+            <div>
+              <h2>Peticiones especiales</h2>
+              <p>Opciones comunes requeridas por el huésped (sujetas a disponibilidad)</p>
+            </div>
+          </div>
+          <div class="field-group checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Cama extra', $event)" />
+              <span>Cama extra</span>
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Cuna para bebé', $event)" />
+              <span>Cuna para bebé</span>
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Accesibilidad (silla de ruedas)', $event)" />
+              <span>Accesibilidad</span>
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Mascotas (Pet friendly)', $event)" />
+              <span>Pet friendly</span>
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Piso alto', $event)" />
+              <span>Piso alto</span>
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" (change)="toggleSpecialRequest('Llegada tarde', $event)" />
+              <span>Llegada tarde</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
             <span class="material-symbols-outlined section-icon">notes</span>
             <div>
               <h2>Comentario</h2>
@@ -220,6 +256,38 @@
               <div class="input-wrap">
                 <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
               </div>
+            </label>
+          </div>
+        </section>
+
+        <section class="surface-card form-section">
+          <div class="section-head">
+            <span class="material-symbols-outlined section-icon">local_activity</span>
+            <div>
+              <h2>Código Promocional</h2>
+              <p>¿Tienes un cupón de descuento?</p>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field">
+              <div class="input-wrap promo-wrap" style="display: flex; gap: 8px; border: none; background: transparent; padding: 0;">
+                <input formControlName="couponCode" placeholder="Ej: VERANO20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
+                <button type="button" class="btn-secondary" (click)="validateCoupon()" [disabled]="couponValidating()">
+                  @if (couponValidating()) {
+                    <span class="material-symbols-outlined loading-spin">sync</span>
+                  } @else {
+                    Aplicar
+                  }
+                </button>
+              </div>
+              @if (couponStatus(); as status) {
+                <span class="field-message" [class.field-error-msg]="!status.valid" style="margin-top: 8px; display: block; font-weight: 500;" [style.color]="status.valid ? 'var(--color-success)' : ''">
+                  {{ status.message }}
+                  @if (status.valid) {
+                    (-{{ status.discountPercent }}%)
+                  }
+                </span>
+              }
             </label>
           </div>
         </section>
@@ -286,13 +354,33 @@
                 <strong>{{ form.controls.comment.value }}</strong>
               </div>
             }
+            @if (form.controls.specialRequests.value.length > 0) {
+              <div class="review-item review-item-span">
+                <span class="review-label">Peticiones Especiales</span>
+                <strong>{{ form.controls.specialRequests.value.join(', ') }}</strong>
+              </div>
+            }
+            @if (form.controls.couponCode.value) {
+              <div class="review-item">
+                <span class="review-label">Cupón</span>
+                <strong>{{ form.controls.couponCode.value | uppercase }}</strong>
+              </div>
+            }
           </div>
 
           @if (preview(); as p) {
             @if (p.available && p.totalPrice !== null) {
               <div class="review-total">
                 <span>Total estimado</span>
-                <strong>{{ p.totalPrice | currency:p.currency }} ({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</strong>
+                <strong>
+                  @if (couponStatus()?.valid) {
+                    <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
+                    <span>{{ p.totalPrice * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                  } @else {
+                    {{ p.totalPrice | currency:p.currency }}
+                  }
+                  <span style="font-size: 0.8em; font-weight: normal; margin-left: 4px;">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
+                </strong>
               </div>
             } @else if (!p.available) {
               <div class="review-total review-total-error">

@@ -24,7 +24,7 @@ from typing import Any
 
 # IMPORTANT: set MONGO_DATABASE BEFORE any `src.app.*` import so the
 # frozen Settings dataclass picks it up via `get_settings()`.
-os.environ.setdefault("MONGO_DATABASE", "hoteldata_hub_test")
+os.environ["MONGO_DATABASE"] = "hoteldata_hub_test"
 
 import pytest
 import pytest_asyncio
@@ -104,6 +104,16 @@ TEST_COLLECTIONS = [
     "coupon_codes",
     # --- Reservas --------------------------------------------------------
     "booking_orders",
+    "booking_status_history",
+    "booking_guests",
+    "manual_reservations",
+    # --- Billing and invoices -------------------------------------------
+    "reservation_invoices",
+    "reservation_payments",
+    "fact_reservation_invoices",
+    "fact_reservation_payments",
+    # --- Reviews --------------------------------------------------------
+    "reviews",
 ]
 
 
