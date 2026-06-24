@@ -63,3 +63,8 @@ export interface DashboardKpiDto {
   direction: 'up' | 'down';
   icon: string;
 }
+
+export interface DashboardKpisResponseDto {
+  cached_at: string;
+  payload: DashboardApiResponseDto;
+}

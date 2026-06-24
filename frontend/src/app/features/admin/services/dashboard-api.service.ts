@@ -4,7 +4,7 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapDashboardResponse } from '../mappers/dashboard.mapper';
-import type { DashboardApiResponseDto } from '../models/dashboard.dto';
+import type { DashboardApiResponseDto, DashboardKpisResponseDto } from '../models/dashboard.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -19,5 +19,21 @@ export class DashboardApiService {
         withCredentials: true
       })
       .pipe(map((dto) => mapDashboardResponse(dto)));
+  }
+
+  getKpis() {
+    return this.http
+      .get<DashboardKpisResponseDto>(`${this.apiConfig.baseUrl}/dashboard/kpis`, {
+        withCredentials: true
+      })
+      .pipe(map((dto) => dto.payload ? mapDashboardResponse(dto.payload) : null));
+  }
+
+  refreshKpis() {
+    return this.http.post<{ ok: boolean; display_message: string }>(
+      `${this.apiConfig.baseUrl}/dashboard/kpis/refresh`,
+      {},
+      { withCredentials: true }
+    );
   }
 }

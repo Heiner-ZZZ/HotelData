@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -47,6 +47,10 @@ export class MonitoringPageComponent implements OnInit {
     const val = (i + 1) * 100000;
     return { value: val, label: val.toLocaleString('es') };
   });
+
+  readonly incrementalMode = signal(false);
+  readonly etlModeLabel = computed(() => this.incrementalMode() ? 'Incremental' : 'Completo');
+  readonly showInfoTip = signal(false);
 
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
@@ -105,25 +109,29 @@ export class MonitoringPageComponent implements OnInit {
   }
 
   triggerRunPipeline() {
+    const mode = this.incrementalMode();
+    const modeLabel = mode ? 'incremental' : 'completo (full reload)';
     this.confirmAction.set({
       title: 'Ejecutar pipeline GA03',
-      message: 'Esta acción ejecutará el ETL principal PocketBase → JSONL → Parquet → MongoDB. Puede reemplazar la carga vigente en fact_hotel_reservations. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerRunPipeline(this.targetMongodb())),
+      message: `Esta acción ejecutará el ETL principal PocketBase → JSONL → Parquet → MongoDB en modo ${modeLabel}. ¿Desea continuar?`,
+      handler: () => this.execAction(this.api.triggerRunPipeline(this.targetMongodb(), mode)),
     });
   }
 
   triggerSeed() {
+    const mode = this.incrementalMode();
+    const modeLabel = mode ? 'incremental' : 'completo (full reload)';
     this.confirmAction.set({
       title: 'Preparar fuente GA03',
-      message: 'Esta acción cargará registros desde CSV hacia PocketBase hotel_reservation_events_03. No carga directo a MongoDB. ¿Desea continuar?',
-      handler: () => this.execAction(this.api.triggerSeed(this.targetPocketbase())),
+      message: `Esta acción cargará registros desde CSV hacia PocketBase hotel_reservation_events_03 en modo ${modeLabel}. No carga directo a MongoDB. ¿Desea continuar?`,
+      handler: () => this.execAction(this.api.triggerSeed(this.targetPocketbase(), mode)),
     });
   }
 
   triggerClearEvidence() {
     this.confirmAction.set({
       title: 'Limpiar evidencia local GA03',
-      message: 'Esta acción eliminará los reportes locales GA03 de progreso, validación, calidad, ejecución y log de preparación. No toca PocketBase ni MongoDB. ¿Desea continuar?',
+      message: 'Esta acción eliminará reportes, logs, .parquet, .jsonl y .json generados por el ETL GA03. Los datos en MongoDB se conservan y solo se sobrescriben al re-ejecutar el pipeline. No toca PocketBase. ¿Desea continuar?',
       handler: () => this.execAction(this.api.triggerClearEvidence()),
     });
   }
@@ -135,6 +143,11 @@ export class MonitoringPageComponent implements OnInit {
       message: `Esta acción detendrá el proceso de ${label} GA03 en ejecución. ¿Desea continuar?`,
       handler: () => this.execAction(this.api.triggerStop(process)),
     });
+  }
+
+  toggleInfoTip(event: MouseEvent) {
+    event.stopPropagation();
+    this.showInfoTip.update(v => !v);
   }
 
   toggleSection(key: string) {

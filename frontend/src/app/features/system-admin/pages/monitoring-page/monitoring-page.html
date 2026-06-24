@@ -229,6 +229,38 @@
                 </div>
               </div>
 
+              <!-- ETL mode toggle -->
+              <div class="etl-mode-row">
+                <span class="etl-mode-label">Modo ETL:</span>
+                <button
+                  type="button"
+                  class="mode-toggle"
+                  [class.active]="incrementalMode()"
+                  (click)="incrementalMode.set(!incrementalMode())"
+                  [disabled]="vm.progress.isRunning"
+                >
+                  <span class="mode-toggle-track">
+                    <span class="mode-toggle-thumb"></span>
+                  </span>
+                  <span class="mode-toggle-text">{{ etlModeLabel() }}</span>
+                </button>
+                <span
+                  class="info-icon"
+                  (click)="toggleInfoTip($event)"
+                  title="¿Qué significa cada modo?"
+                >i</span>
+                @if (showInfoTip()) {
+                  <div class="info-tooltip" (click)="showInfoTip.set(false)">
+                    <strong>Completo (full reload):</strong>
+                    Extrae <em>todos</em> los registros de PocketBase, borra y reescribe las colecciones en MongoDB.
+                    Útil para recargar todo desde cero.<br><br>
+                    <strong>Incremental:</strong>
+                    Extrae solo los registros <em>nuevos</em> (desde la última ejecución) y los agrega con
+                    <em>upsert</em> sin borrar lo existente. Más rápido cuando ya hay datos cargados.
+                  </div>
+                }
+              </div>
+
               <!-- Action buttons -->
               <div class="action-row">
                 <button type="button" class="action-btn" (click)="triggerSeed()" [disabled]="actionBusy() || vm.progress.isRunning">

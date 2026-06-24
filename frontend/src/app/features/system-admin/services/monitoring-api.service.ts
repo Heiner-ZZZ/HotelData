@@ -46,17 +46,17 @@ export class MonitoringApiService {
     );
   }
 
-  triggerRunPipeline(target = 0) {
+  triggerRunPipeline(target = 0, incremental = false) {
     return this.http.post<ActionResponseDto>(
-      `${this.apiConfig.baseUrl}/etl-status/ga03/run?target=${target}`,
+      `${this.apiConfig.baseUrl}/etl-status/ga03/run?target=${target}&incremental=${incremental}`,
       {},
       { withCredentials: true },
     );
   }
 
-  triggerSeed(target = 0) {
+  triggerSeed(target = 0, incremental = false) {
     return this.http.post<ActionResponseDto>(
-      `${this.apiConfig.baseUrl}/etl-status/ga03/seed?target=${target}`,
+      `${this.apiConfig.baseUrl}/etl-status/ga03/seed?target=${target}&incremental=${incremental}`,
       {},
       { withCredentials: true },
     );

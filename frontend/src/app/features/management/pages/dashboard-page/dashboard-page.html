@@ -2,7 +2,7 @@
   <app-page-header
     eyebrow="Vision operativa"
     title="Management Overview"
-    description="Gestión hotelera: propiedades, reservas y desempeño comercial."
+    description="Gestion hotelera: propiedades, reservas y desempeno comercial."
   />
 
   @switch (viewState()) {
@@ -23,6 +23,19 @@
     }
     @default {
       @if (viewModel(); as vm) {
+        <div class="refresh-bar">
+          <span class="refresh-info">
+            @if (isPolling()) {
+              <span class="refresh-dot"></span>
+              Actualizado {{ lastUpdatedDisplay() }}
+            }
+          </span>
+          <app-status-badge
+            tone="success"
+            [label]="isPolling() ? 'Auto 30s' : 'Estatico'"
+          />
+        </div>
+
         <section class="hero-pillars">
           <article>
             <span class="pillar-label">Indicadores</span>
@@ -92,7 +105,7 @@
             <section class="surface-card list-card emphasis-card">
               <div class="list-card-head">
                 <span class="material-symbols-outlined list-card-icon" aria-hidden="true">home_work</span>
-                <h3>Operación conectada</h3>
+                <h3>Operacion conectada</h3>
               </div>
               <ul>
                 @for (item of vm.operationalCounts; track item.label) {
