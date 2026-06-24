@@ -6,7 +6,14 @@ export interface RatesViewModel {
   ratePlans: RatePlanItem[];
   calendar: RateCalendarItem[];
   rateRules: Array<{ label: string; detail: string }>;
-  promotions: Array<{ name: string; activeLabel: string }>;
+  promotions: Array<{
+    campaignId: string;
+    name: string;
+    description: string;
+    discountPercent: number;
+    dateRange: string;
+    activeLabel: string;
+  }>;
   coupons: Array<{ code: string; activeLabel: string }>;
 }
 

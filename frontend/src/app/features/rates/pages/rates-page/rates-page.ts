@@ -65,6 +65,16 @@ export class RatesPageComponent {
     isClosed: [false]
   });
 
+  readonly promoForm = this.formBuilder.nonNullable.group({
+    name: ['', [Validators.required]],
+    description: [''],
+    discountPercent: [10, [Validators.required, Validators.min(0), Validators.max(100)]],
+    startDate: ['', [Validators.required]],
+    endDate: ['', [Validators.required]],
+    couponCode: [''],
+    isActive: [true]
+  });
+
   constructor() {
     this.route.queryParamMap
       .pipe(
@@ -192,6 +202,55 @@ export class RatesPageComponent {
         },
         error: (error: ApiError) => {
           this.errorMessage.set(error.message || 'No fue posible actualizar la tarifa.');
+          this.message.set('');
+        }
+      });
+  }
+
+  createPromotion() {
+    const current = this.viewModel();
+    if (!current || this.promoForm.invalid) {
+      this.promoForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.promoForm.getRawValue();
+    this.api
+      .createPromotion({
+        propId: current.propId,
+        name: value.name,
+        description: value.description,
+        discountPercent: value.discountPercent,
+        startDate: value.startDate,
+        endDate: value.endDate,
+        couponCode: value.couponCode,
+        isActive: value.isActive
+      })
+      .pipe(
+        switchMap(() => forkJoin({
+          rates: this.api.getRates(current.propId),
+          plans: this.api.getRatePlanOptions(current.propId)
+        })),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: ({ rates, plans }) => {
+          this.viewModel.set(rates);
+          this.ratePlanOptions.set(plans);
+          this.message.set('Promoción creada');
+          this.errorMessage.set('');
+          this.promoForm.reset({
+            name: '',
+            description: '',
+            discountPercent: 10,
+            startDate: '',
+            endDate: '',
+            couponCode: '',
+            isActive: true
+          });
+        },
+        error: (error: ApiError) => {
+          this.errorMessage.set(error.message || 'No fue posible crear la promoción.');
           this.message.set('');
         }
       });

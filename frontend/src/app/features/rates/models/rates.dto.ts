@@ -31,6 +31,10 @@ export interface RatesDto {
   promotions?: Array<{
     campaign_id: string;
     name: string;
+    description?: string;
+    discount_percent?: number;
+    start_date?: string;
+    end_date?: string;
     is_active: boolean;
   }>;
   coupon_codes?: Array<{

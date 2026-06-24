@@ -205,6 +205,73 @@
               </div>
             </form>
           </article>
+
+          <article class="surface-card form-panel">
+            <div class="panel-head">
+              <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
+              <div>
+                <h2>Nueva promoción</h2>
+                <p>Crea una campaña promocional con descuento.</p>
+              </div>
+            </div>
+            <form [formGroup]="promoForm" (ngSubmit)="createPromotion()" class="panel-form">
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">badge</span>
+                  Nombre
+                </span>
+                <input formControlName="name" placeholder="Ej: Descuento verano">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">description</span>
+                  Descripción
+                </span>
+                <input formControlName="description" placeholder="Opcional">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">percent</span>
+                  Descuento (%)
+                </span>
+                <input type="number" min="0" max="100" formControlName="discountPercent" placeholder="10">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">calendar_today</span>
+                  Fecha inicio
+                </span>
+                <input type="date" formControlName="startDate">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">calendar_today</span>
+                  Fecha fin
+                </span>
+                <input type="date" formControlName="endDate">
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">confirmation_number</span>
+                  Cupón (opcional)
+                </span>
+                <input formControlName="couponCode" placeholder="Ej: VERANO2024">
+              </label>
+              <label class="field checkbox-field">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">toggle_on</span>
+                  Activo
+                </span>
+                <input type="checkbox" formControlName="isActive">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <span class="material-symbols-outlined btn-icon">add</span>
+                  Crear promoción
+                </button>
+              </div>
+            </form>
+          </article>
         </section>
 
         <!-- Rate Plans Table -->
@@ -263,17 +330,26 @@
                   <tr>
                     <th>Tipo</th>
                     <th>Nombre / código</th>
+                    <th>Dto.</th>
+                    <th>Vigencia</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (promo of vm.promotions; track promo.name) {
+                  @for (promo of vm.promotions; track promo.campaignId) {
                     <tr>
                       <td>
                         <span class="material-symbols-outlined table-icon icon-promo-amber">campaign</span>
                         Campaña
                       </td>
-                      <td>{{ promo.name }}</td>
+                      <td>
+                        <strong>{{ promo.name }}</strong>
+                        @if (promo.description) {
+                          <br><small>{{ promo.description }}</small>
+                        }
+                      </td>
+                      <td>{{ promo.discountPercent }}%</td>
+                      <td><small>{{ promo.dateRange }}</small></td>
                       <td>
                         <span class="status-badge" [class.active]="promo.activeLabel === 'Sí'" [class.inactive]="promo.activeLabel !== 'Sí'">
                           <span class="material-symbols-outlined badge-icon">{{ promo.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
@@ -289,6 +365,8 @@
                         Cupón
                       </td>
                       <td><code>{{ coupon.code }}</code></td>
+                      <td>—</td>
+                      <td><small>—</small></td>
                       <td>
                         <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
                           <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>

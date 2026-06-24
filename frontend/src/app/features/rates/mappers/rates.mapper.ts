@@ -27,7 +27,11 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       detail: rule.description || 'Sin detalle'
     })),
     promotions: (dto.promotions || []).map((promo) => ({
+      campaignId: promo.campaign_id,
       name: promo.name || promo.campaign_id,
+      description: promo.description || '',
+      discountPercent: promo.discount_percent ?? 0,
+      dateRange: [promo.start_date, promo.end_date].filter(Boolean).join(' → ') || '',
       activeLabel: promo.is_active ? 'Sí' : 'No'
     })),
     coupons: (dto.coupon_codes || []).map((coupon) => ({

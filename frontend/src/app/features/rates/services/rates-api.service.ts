@@ -90,4 +90,30 @@ export class RatesApiService {
       { withCredentials: true }
     );
   }
+
+  createPromotion(payload: {
+    propId: number;
+    name: string;
+    description: string;
+    discountPercent: number;
+    startDate: string;
+    endDate: string;
+    couponCode: string;
+    isActive: boolean;
+  }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/management/rates/promotions`,
+      {
+        prop_id: payload.propId,
+        name: payload.name,
+        description: payload.description,
+        discount_percent: payload.discountPercent,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        coupon_code: payload.couponCode,
+        is_active: payload.isActive
+      },
+      { withCredentials: true }
+    );
+  }
 }
