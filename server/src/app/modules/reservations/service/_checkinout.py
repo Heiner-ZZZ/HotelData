@@ -1,15 +1,28 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from src.database.connection import get_database
 
+from ..notifications import notify_guest_status_change, notify_staff_check_event
 from ._helpers import CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES, utc_now
 from ._history_lookup import _booking_history_lookup, _derived_stay_status
 
 
+logger = logging.getLogger(__name__)
+
+
 def complete_check_in(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:
     db = get_database()
+
+    # Fetch booking before update (need data for notification)
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
+         "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1},
+    )
+
     changed_at = utc_now()
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": {"$ne": "checked_in"}},
@@ -33,11 +46,55 @@ def complete_check_in(booking_id: str, *, changed_by: str = "angular_api") -> di
             "is_test": bool(result.get("is_test")),
         }
     )
+
+    # ── Notify guest on check-in ──
+    if booking:
+        try:
+            guest_email = (booking.get("guest_email") or "").strip()
+            if guest_email and not booking.get("is_test"):
+                notify_guest_status_change(
+                    booking_id=booking_id,
+                    guest_name=booking.get("guest_name", ""),
+                    guest_email=guest_email,
+                    new_status="checked_in",
+                    prop_id=int(booking.get("prop_id", 0)),
+                    check_in_date=booking.get("check_in_date", ""),
+                    check_out_date=booking.get("check_out_date", ""),
+                    total_price=booking.get("total_price"),
+                    currency=booking.get("currency", "USD"),
+                    total_nights=int(booking.get("total_nights", 0)),
+                )
+        except Exception:
+            logger.exception("Failed to notify guest on check-in for booking %s", booking_id)
+
+    # ── Notify staff on check-in ──
+    if booking and not booking.get("is_test"):
+        try:
+            notify_staff_check_event(
+                event_type="check_in",
+                prop_id=int(booking.get("prop_id", 0)),
+                booking_id=booking_id,
+                guest_name=booking.get("guest_name", ""),
+                check_in_date=booking.get("check_in_date", ""),
+                check_out_date=booking.get("check_out_date", ""),
+                total_nights=int(booking.get("total_nights", 0)),
+            )
+        except Exception:
+            logger.exception("Failed to notify staff on check-in for booking %s", booking_id)
+
     return {"booking_id": booking_id, "stay_status": "checked_in"}
 
 
 def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:
     db = get_database()
+
+    # Fetch booking before update (need data for notification)
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
+         "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1, "total_nights": 1},
+    )
+
     changed_at = utc_now()
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": "checked_in"},
@@ -61,4 +118,40 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> d
             "is_test": bool(result.get("is_test")),
         }
     )
+
+    # ── Notify guest on check-out ──
+    if booking:
+        try:
+            guest_email = (booking.get("guest_email") or "").strip()
+            if guest_email and not booking.get("is_test"):
+                notify_guest_status_change(
+                    booking_id=booking_id,
+                    guest_name=booking.get("guest_name", ""),
+                    guest_email=guest_email,
+                    new_status="checked_out",
+                    prop_id=int(booking.get("prop_id", 0)),
+                    check_in_date=booking.get("check_in_date", ""),
+                    check_out_date=booking.get("check_out_date", ""),
+                    total_price=booking.get("total_price"),
+                    currency=booking.get("currency", "USD"),
+                    total_nights=int(booking.get("total_nights", 0)),
+                )
+        except Exception:
+            logger.exception("Failed to notify guest on check-out for booking %s", booking_id)
+
+    # ── Notify staff on check-out ──
+    if booking and not booking.get("is_test"):
+        try:
+            notify_staff_check_event(
+                event_type="check_out",
+                prop_id=int(booking.get("prop_id", 0)),
+                booking_id=booking_id,
+                guest_name=booking.get("guest_name", ""),
+                check_in_date=booking.get("check_in_date", ""),
+                check_out_date=booking.get("check_out_date", ""),
+                total_nights=int(booking.get("total_nights", 0)),
+            )
+        except Exception:
+            logger.exception("Failed to notify staff on check-out for booking %s", booking_id)
+
     return {"booking_id": booking_id, "stay_status": "checked_out"}

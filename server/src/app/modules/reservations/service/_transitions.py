@@ -6,11 +6,41 @@ Completes the status lifecycle:
 """
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 from src.database.connection import get_database
 
+from ..notifications import notify_guest_status_change
 from ._helpers import utc_now
+from .lifecycle import _check_availability
+
+
+logger = logging.getLogger(__name__)
+
+
+def _deduct_inventory(
+    prop_id: int,
+    check_in_date: str,
+    check_out_date: str,
+    rooms: int,
+    room_type_id: str,
+) -> None:
+    """Decrement available_rooms in room_inventory_calendar for the stay dates."""
+    try:
+        check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
+        check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return
+
+    db = get_database()
+    dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
+    for date_str in dates:
+        db.room_inventory_calendar.update_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
+            {"$inc": {"available_rooms": -rooms}},
+        )
 
 
 def _transition_status(
@@ -70,7 +100,63 @@ def _transition_status(
             {"booking_id": booking_id},
             {"$set": {"status": target_status, "updated_at": changed_at}},
         )
-    return {"booking_id": booking_id, "status": target_status}
+
+    result: dict[str, Any] = {"booking_id": booking_id, "status": target_status}
+
+    # ── On confirm: check inventory + deduct ──
+    if target_status == "confirmed":
+        prop_id = int(booking.get("prop_id", 0))
+        check_in = (booking.get("check_in_date") or "").strip()
+        check_out = (booking.get("check_out_date") or "").strip()
+        rooms = int(booking.get("rooms", 1))
+        room_type = (booking.get("room_type_id") or "").strip()
+
+        if check_in and check_out and prop_id > 0:
+            avail_error = _check_availability(prop_id, check_in, check_out, rooms, room_type)
+            if avail_error:
+                result["inventory_conflict"] = True
+                result["inventory_warning"] = avail_error
+                logger.warning(
+                    "Inventory conflict when confirming %s: %s", booking_id, avail_error
+                )
+            else:
+                # Inventory available → deduct
+                try:
+                    _deduct_inventory(prop_id, check_in, check_out, rooms, room_type)
+                    logger.info(
+                        "Inventory deducted for booking %s (%d rooms from %s to %s)",
+                        booking_id, rooms, check_in, check_out,
+                    )
+                except Exception:
+                    logger.exception("Failed to deduct inventory for booking %s", booking_id)
+        else:
+            logger.warning(
+                "Cannot check inventory for booking %s: missing dates, prop_id=%s",
+                booking_id, prop_id,
+            )
+
+    # ── Notify guest on confirmed / rejected ──
+    if target_status in ("confirmed", "rejected"):
+        try:
+            guest_email = (booking.get("guest_email") or "").strip()
+            if guest_email and not booking.get("is_test"):
+                notify_guest_status_change(
+                    booking_id=booking_id,
+                    guest_name=booking.get("guest_name", ""),
+                    guest_email=guest_email,
+                    new_status=target_status,
+                    prop_id=int(booking.get("prop_id", 0)),
+                    check_in_date=booking.get("check_in_date", ""),
+                    check_out_date=booking.get("check_out_date", ""),
+                    total_price=booking.get("total_price"),
+                    currency=booking.get("currency", "USD"),
+                    total_nights=int(booking.get("total_nights", 0)),
+                    reason=reason,
+                )
+        except Exception:
+            logger.exception("Failed to notify guest for booking %s", booking_id)
+
+    return result
 
 
 def confirm_booking(

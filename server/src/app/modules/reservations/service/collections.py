@@ -6,6 +6,9 @@ from pymongo import IndexModel, ASCENDING, DESCENDING
 
 from src.database.collections import ensure_collection
 
+# TTL: 90 days in seconds
+NOTIFICATION_LOG_TTL_SECONDS = 90 * 24 * 60 * 60
+
 BOOKING_COLLECTIONS: dict[str, list[IndexModel]] = {
     "booking_orders": [
         IndexModel([("booking_id", ASCENDING)], name="booking_id_1", unique=True),
@@ -26,6 +29,12 @@ BOOKING_COLLECTIONS: dict[str, list[IndexModel]] = {
         IndexModel([("booking_id", ASCENDING)], name="booking_id_1"),
         IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
         IndexModel([("created_at", DESCENDING)], name="created_at_-1"),
+    ],
+    "notification_log": [
+        IndexModel([("booking_id", ASCENDING)], name="idx_notif_booking"),
+        IndexModel([("notification_type", ASCENDING)], name="idx_notif_type"),
+        IndexModel([("status", ASCENDING)], name="idx_notif_status"),
+        IndexModel([("created_at", ASCENDING)], name="idx_notif_ttl", expireAfterSeconds=NOTIFICATION_LOG_TTL_SECONDS),
     ],
 }
 
