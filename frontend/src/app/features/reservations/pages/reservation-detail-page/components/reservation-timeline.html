@@ -1,0 +1,103 @@
+<!-- ═══ Room guests management ═══ -->
+@if (canManageGuests() && !guestsEditMode()) {
+  <section class="surface-card panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <span class="material-symbols-outlined panel-icon">group</span>
+        <h2>Huéspedes por habitación</h2>
+      </div>
+      <button type="button" class="btn-small-primary" (click)="enterGuestsMode()">
+        <span class="material-symbols-outlined">edit_note</span>
+        Completar datos
+      </button>
+    </div>
+    <p class="muted-text">Registra los datos de cada huésped por habitación antes del check-in para agilizar tu llegada.</p>
+  </section>
+}
+
+@if (guestsEditMode()) {
+  <section class="surface-card panel guests-panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <span class="material-symbols-outlined panel-icon">group</span>
+        <h2>Huéspedes por habitación</h2>
+      </div>
+    </div>
+    @if (guestsLoading()) {
+      <app-loading-state label="Cargando datos de huéspedes..." />
+    } @else {
+      @for (ri of [].constructor(totalRooms()); track ri; let idx = $index) {
+        @let roomEntry = getRoomGuestsForIndex(idx);
+        <div class="room-guests-block">
+          <h3 class="room-title">Habitación {{ idx + 1 }}</h3>
+          @for (g of roomEntry.guests; track $index; let gi = $index) {
+            <div class="guest-form-row">
+              <input type="text" placeholder="Nombre completo" [value]="g.guestName" (input)="updateGuestField(idx, gi, 'guestName', $any($event.target).value)" class="gf-name" />
+              <input type="email" placeholder="Email" [value]="g.guestEmail" (input)="updateGuestField(idx, gi, 'guestEmail', $any($event.target).value)" class="gf-email" />
+              <input type="tel" placeholder="Teléfono" [value]="g.guestPhone" (input)="updateGuestField(idx, gi, 'guestPhone', $any($event.target).value)" class="gf-phone" />
+              <input type="number" placeholder="Edad" [value]="g.age" (input)="updateGuestField(idx, gi, 'age', parseAge($any($event.target).value))" class="gf-age" />
+              <label class="gf-child">
+                <input type="checkbox" [checked]="g.isChild" (change)="updateGuestField(idx, gi, 'isChild', $any($event.target).checked)" />
+                Niño
+              </label>
+              <button type="button" class="btn-remove-guest" (click)="removeGuestFromRoom(idx, gi)" title="Quitar huésped">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          }
+          <button type="button" class="btn-add-guest" (click)="addGuestToRoom(idx)">
+            <span class="material-symbols-outlined">person_add</span>
+            Agregar huésped
+          </button>
+        </div>
+      }
+      <div class="guests-actions">
+        <button type="button" class="btn-cancel-edit" (click)="cancelGuestEdit()">Cancelar</button>
+        <button type="button" class="btn-save-edit" (click)="saveRoomGuests()" [disabled]="guestsSaving()">
+          {{ guestsSaving() ? 'Guardando...' : 'Guardar huéspedes' }}
+        </button>
+      </div>
+    }
+  </section>
+}
+
+<!-- ═══ Review form ═══ -->
+@if (showReviewForm()) {
+  <section class="surface-card panel review-panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <span class="material-symbols-outlined panel-icon" style="color: var(--color-warning);">star</span>
+        <h2>Califica tu experiencia</h2>
+      </div>
+    </div>
+    <div class="review-form">
+      <div class="star-rating">
+        @for (star of [1, 2, 3, 4, 5]; track star) {
+          <span class="material-symbols-outlined star-icon"
+                [class.filled]="star <= reviewForm().rating"
+                (click)="setReviewRating(star)"
+                style="cursor: pointer; font-size: 40px; color: var(--color-warning); user-select: none; transition: transform 0.2s;">
+            {{ star <= reviewForm().rating ? 'star' : 'star_border' }}
+          </span>
+        }
+      </div>
+      <div class="review-fields">
+        <input type="text" placeholder="Título de tu reseña"
+               [ngModel]="reviewForm().title"
+               (ngModelChange)="reviewForm.update(f => ({...f, title: $event}))"
+               class="form-input" />
+        <textarea rows="4" placeholder="Cuéntanos más sobre tu estancia..."
+                  [ngModel]="reviewForm().comment"
+                  (ngModelChange)="reviewForm.update(f => ({...f, comment: $event}))"
+                  class="form-input"></textarea>
+        <div class="review-submit-row">
+          <button type="button" class="btn-primary"
+                  (click)="submitReview()"
+                  [disabled]="reviewForm().rating === 0 || reviewSubmitting()">
+            {{ reviewSubmitting() ? 'Enviando...' : 'Enviar reseña' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+}
