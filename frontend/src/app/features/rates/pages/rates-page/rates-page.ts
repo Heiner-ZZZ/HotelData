@@ -142,7 +142,24 @@ export class RatesPageComponent {
     }
   ] as const;
 
-  readonly activeForm = signal<typeof this.formPanels[number]['id']>('plan');
+  readonly expandedSections = signal<Set<string>>(new Set(['plan']));
+
+  toggleSection(id: string): void {
+    const current = this.expandedSections();
+    const next = new Set(current);
+    // Accordion: only one section open at a time
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.clear();
+      next.add(id);
+    }
+    this.expandedSections.set(next);
+  }
+
+  isExpanded(id: string): boolean {
+    return this.expandedSections().has(id);
+  }
 
   /* ── State ── */
   readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; roomTypeId: string; isActive: boolean } | null>(null);

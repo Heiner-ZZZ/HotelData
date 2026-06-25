@@ -19,14 +19,6 @@ function isCredentialedUrl(url: string): boolean {
     url.includes('/api/') || url.includes('/auth/') || url.includes('/system/');
 }
 
-function isPublicJsonUrl(url: string): boolean {
-  return url.startsWith('/api/hotels');
-}
-
-function isAuthProbe(url: string): boolean {
-  return url.startsWith('/api/auth/me') || url.startsWith('/api/auth/login');
-}
-
 function isAlreadyOnLogin(): boolean {
   return window.location.pathname === '/login';
 }
@@ -41,26 +33,22 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   return next(credentialedRequest).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
-        // ── Auth-probe 401 → session truly expired ──
-        //   Invalidate auth state and redirect to login.
-        // ── Non-auth-probe 401 → resource not found or insufficient access ──
-        //   Do NOT invalidate the session. The user is still authenticated;
-        //   a missing endpoint or a permission-gated resource should not kill
-        //   the entire session and trigger a redirect storm.
-        if (isAuthProbe(request.url)) {
-          authService.invalidateSession();
-          const now = Date.now();
-          if (
-            !redirectingToLogin &&
-            now - lastRedirectTime > REDIRECT_COOLDOWN_MS &&
-            !isAlreadyOnLogin()
-          ) {
-            redirectingToLogin = true;
-            lastRedirectTime = now;
-            const nextUrl = `${window.location.pathname}${window.location.search}`;
-            void router.navigate(['/login'], { queryParams: { next: nextUrl } });
-            setTimeout(() => { redirectingToLogin = false; }, 5000);
-          }
+        // ── ANY 401 means unauthenticated ──
+        //   REST semantics: 401 = no autenticado, 403 = sin permisos.
+        //   Invalidate session and redirect to login with cooldown
+        //   to prevent redirect storms when multiple API calls fail.
+        authService.invalidateSession();
+        const now = Date.now();
+        if (
+          !redirectingToLogin &&
+          now - lastRedirectTime > REDIRECT_COOLDOWN_MS &&
+          !isAlreadyOnLogin()
+        ) {
+          redirectingToLogin = true;
+          lastRedirectTime = now;
+          const nextUrl = `${window.location.pathname}${window.location.search}`;
+          void router.navigate(['/login'], { queryParams: { next: nextUrl } });
+          setTimeout(() => { redirectingToLogin = false; }, 5000);
         }
       }
       return throwError(() => error);
