@@ -1,3 +1,4 @@
+import { KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -10,7 +11,7 @@ import { HousekeepingApiService, type HousekeepingDashboard } from '../../servic
 
 @Component({
   selector: 'app-housekeeping-dashboard-page',
-  imports: [RouterLink, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [RouterLink, ErrorStateComponent, KeyValuePipe, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './housekeeping-dashboard-page.html',
   styleUrl: './housekeeping-dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,6 +22,10 @@ export class HousekeepingDashboardPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly dashboard = signal<HousekeepingDashboard | null>(null);
+
+  readonly hasRoomStatuses = (obj: Record<string, number> | undefined | null): boolean => {
+    return obj != null && Object.keys(obj).length > 0;
+  };
 
   constructor() {
     this.api

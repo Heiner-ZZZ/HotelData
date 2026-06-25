@@ -61,7 +61,7 @@
         </section>
 
         <!-- Room status breakdown -->
-        @if (d.roomStatuses && Object.keys(d.roomStatuses).length) {
+        @if (hasRoomStatuses(d.roomStatuses)) {
           <section class="surface-card status-breakdown">
             <h2 class="section-title">Estado de habitaciones</h2>
             <div class="status-chips">
