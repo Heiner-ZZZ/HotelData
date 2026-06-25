@@ -31,6 +31,16 @@ export class ReviewDetailPageComponent {
   readonly actionError = signal<string | null>(null);
   readonly staffResponseText = signal('');
 
+  // RF-005: RBAC state — will be populated from auth context
+  readonly userRole = signal<string | null>(null);
+  readonly userPermissions = signal<Set<string>>(new Set());
+
+  // Rejection reason input
+  readonly rejectionReason = signal('');
+
+  // Confirmation dialog
+  readonly confirmAction = signal<{ type: 'approve' | 'reject'; label: string; status: string } | null>(null);
+
   constructor() {
     this.activatedRoute.paramMap
       .pipe(
@@ -45,22 +55,83 @@ export class ReviewDetailPageComponent {
           this.review.set(data);
           this.staffResponseText.set(data.staffResponse || '');
           this.viewState.set('success');
+          // Resolve user role from auth context (set by middleware)
+          this.resolveUserRole();
         },
         error: () => this.viewState.set('error'),
       });
   }
 
-  moderate(status: string) {
+  private resolveUserRole() {
+    // Read user info from a global auth signal if available,
+    // otherwise default to allowing all actions (fallback — backend enforces)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const win = window as any;
+      if (win.__hoteldata_user) {
+        this.userRole.set(win.__hoteldata_user.primary_role || null);
+        if (win.__hoteldata_user.permissions) {
+          this.userPermissions.set(new Set(win.__hoteldata_user.permissions));
+        }
+      }
+    } catch {
+      // fallback: backend enforces RBAC
+    }
+  }
+
+  // RF-005: Check if user can moderate
+  get canModerate(): boolean {
+    const role = this.userRole();
+    if (!role) return true; // fallback: backend enforces
+    return role === 'super_admin' || role === 'marketing_hotelero' || this.userPermissions().has('reviews.moderate');
+  }
+
+  // RF-006: Check if user can respond
+  get canRespond(): boolean {
+    const role = this.userRole();
+    if (!role) return true; // fallback: backend enforces
+    return role === 'hotel_partner' || role === 'super_admin' || role === 'admin_sistema';
+  }
+
+  // Ask confirmation before moderating
+  requestModerate(status: string) {
+    const r = this.review();
+    if (!r) return;
+    // If already moderated and not pending, block (idempotent)
+    if (r.moderationStatus !== 'pending') return;
+    if (status === 'rejected' && !this.rejectionReason().trim()) {
+      this.actionError.set('Debes ingresar un motivo para rechazar la reseña.');
+      return;
+    }
+    this.confirmAction.set({
+      type: status === 'approved' ? 'approve' : 'reject',
+      label: status === 'approved' ? 'aprobar' : 'rechazar',
+      status,
+    });
+  }
+
+  confirmModerate() {
+    const action = this.confirmAction();
+    if (!action) return;
+    this.confirmAction.set(null);
     this.actionError.set(null);
     this.actionMessage.set(null);
-    const reason = status === 'rejected' ? 'Incumple políticas de contenido' : '';
-    this.reviewsApi.moderateReview(this.review()!.id, status, reason).subscribe({
+    const reason = action.status === 'rejected' ? this.rejectionReason().trim() : '';
+    this.reviewsApi.moderateReview(this.review()!.id, action.status, reason).subscribe({
       next: () => {
-        this.actionMessage.set(`Reseña ${status === 'approved' ? 'aprobada' : 'rechazada'} correctamente.`);
-        this.review.update(r => r ? { ...r, moderationStatus: status } : r);
+        this.actionMessage.set(`Reseña ${action.label}da correctamente.`);
+        this.review.update(r => r ? { ...r, moderationStatus: action.status } : r);
+        this.rejectionReason.set('');
       },
-      error: () => this.actionError.set('No se pudo moderar la reseña. Intenta nuevamente.'),
+      error: (err) => {
+        const detail = err?.error?.detail || 'No se pudo moderar la reseña. Intenta nuevamente.';
+        this.actionError.set(detail);
+      },
     });
+  }
+
+  cancelModerate() {
+    this.confirmAction.set(null);
   }
 
   respond() {
@@ -71,7 +142,10 @@ export class ReviewDetailPageComponent {
       next: () => {
         this.actionMessage.set('Respuesta guardada correctamente.');
       },
-      error: () => this.actionError.set('No se pudo guardar la respuesta. Intenta nuevamente.'),
+      error: (err) => {
+        const detail = err?.error?.detail || 'No se pudo guardar la respuesta. Intenta nuevamente.';
+        this.actionError.set(detail);
+      },
     });
   }
 

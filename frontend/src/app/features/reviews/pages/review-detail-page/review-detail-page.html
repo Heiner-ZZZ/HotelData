@@ -35,6 +35,10 @@
               <div class="review-user">{{ r.userName }}</div>
               <div class="stars">{{ r.rating }}/5 estrellas</div>
               <div class="muted-text">{{ r.createdAt }}</div>
+              <div class="hotel-tag">
+                <span class="material-symbols-outlined">business</span>
+                Hotel ID {{ r.propId }}
+              </div>
             </div>
             <div class="review-badges">
               @if (r.sentimentLabel) {
@@ -59,45 +63,97 @@
             </div>
           </div>
 
-          <h3>{{ r.title }}</h3>
-          <p class="review-comment">{{ r.comment }}</p>
+          <h3>{{ r.title || 'Sin título' }}</h3>
+          <p class="review-comment">{{ r.comment || 'Sin comentario' }}</p>
         </section>
 
-        <section class="surface-card panel moderate-section">
-          <h4>Moderación</h4>
-          <p class="muted-text">Define si esta reseña es visible en el perfil del hotel.</p>
-          <div class="action-row">
-            <button type="button" class="btn-approve" (click)="moderate('approved')" [disabled]="r.moderationStatus === 'approved'">
-              <span class="material-symbols-outlined btn-icon">check_circle</span>
-              Aprobar
-            </button>
-            <button type="button" class="btn-reject" (click)="moderate('rejected')" [disabled]="r.moderationStatus === 'rejected'">
-              <span class="material-symbols-outlined btn-icon">cancel</span>
-              Rechazar
-            </button>
-          </div>
-        </section>
+        <!-- RF-005: Moderation section (only for marketing_hotelero / super_admin) -->
+        @if (canModerate) {
+          <section class="surface-card panel moderate-section">
+            <h4>Moderación</h4>
+            <p class="muted-text">Define si esta reseña es visible en el perfil del hotel.</p>
 
-        <section class="surface-card panel respond-section">
-          <h4>Respuesta del hotel</h4>
-          <p class="muted-text">Responde públicamente a la reseña del huésped.</p>
-          <textarea
-            [(ngModel)]="staffResponseText"
-            rows="4"
-            placeholder="Escribe tu respuesta aquí..."
-            class="response-textarea"
-          ></textarea>
-          <button type="button" class="btn-respond" (click)="respond()" [disabled]="!staffResponseText().trim()">
-            <span class="material-symbols-outlined btn-icon">reply</span>
-            Guardar respuesta
-          </button>
-          @if (r.staffResponse) {
-            <div class="existing-response">
-              <strong>Respuesta actual:</strong>
-              <p>{{ r.staffResponse }}</p>
+            @if (r.moderationStatus !== 'pending') {
+              <div class="already-moderated">
+                <span class="material-symbols-outlined">info</span>
+                <span>Esta reseña ya fue {{ r.moderationStatus === 'approved' ? 'aprobada' : 'rechazada' }} y no puede modificarse.</span>
+              </div>
+            } @else {
+              <!-- Rejection reason field -->
+              <label class="rejection-field">
+                <span class="field-label">Motivo de rechazo <small>(requerido para rechazar)</small></span>
+                <textarea
+                  [(ngModel)]="rejectionReason"
+                  rows="2"
+                  placeholder="Indica por qué se rechaza esta reseña..."
+                  class="rejection-textarea"
+                ></textarea>
+              </label>
+
+              <div class="action-row">
+                <button type="button" class="btn-approve" (click)="requestModerate('approved')">
+                  <span class="material-symbols-outlined btn-icon">check_circle</span>
+                  Aprobar
+                </button>
+                <button type="button" class="btn-reject" (click)="requestModerate('rejected')">
+                  <span class="material-symbols-outlined btn-icon">cancel</span>
+                  Rechazar
+                </button>
+              </div>
+            }
+          </section>
+        }
+
+        <!-- RF-006: Response section (only for hotel_partner / super_admin) -->
+        @if (canRespond && r.moderationStatus === 'approved') {
+          <section class="surface-card panel respond-section">
+            <h4>Respuesta del hotel</h4>
+            <p class="muted-text">Responde públicamente a la reseña del huésped.</p>
+            <textarea
+              [(ngModel)]="staffResponseText"
+              rows="4"
+              placeholder="Escribe tu respuesta aquí..."
+              class="response-textarea"
+            ></textarea>
+            <button type="button" class="btn-respond" (click)="respond()" [disabled]="!staffResponseText().trim()">
+              <span class="material-symbols-outlined btn-icon">reply</span>
+              Guardar respuesta
+            </button>
+            @if (r.staffResponse) {
+              <div class="existing-response">
+                <strong>Respuesta actual:</strong>
+                <p>{{ r.staffResponse }}</p>
+              </div>
+            }
+          </section>
+        }
+
+        <!-- ═══ Confirmation dialog overlay ═══ -->
+        @if (confirmAction(); as action) {
+          <div class="confirm-overlay" (click)="cancelModerate()">
+            <div class="confirm-dialog" (click)="$event.stopPropagation()">
+              <div class="confirm-icon">
+                <span class="material-symbols-outlined">
+                  {{ action.type === 'approve' ? 'check_circle' : 'warning' }}
+                </span>
+              </div>
+              <h4>¿{{ action.type === 'approve' ? 'Aprobar' : 'Rechazar' }} esta reseña?</h4>
+              <p>
+                @if (action.type === 'approve') {
+                  La reseña será visible en el perfil público del hotel.
+                } @else {
+                  La reseña no será visible. Motivo: {{ rejectionReason() }}
+                }
+              </p>
+              <div class="confirm-actions">
+                <button type="button" class="btn-cancel" (click)="cancelModerate()">Cancelar</button>
+                <button type="button" class="btn-confirm" [class.btn-confirm-approve]="action.type === 'approve'" [class.btn-confirm-reject]="action.type === 'reject'" (click)="confirmModerate()">
+                  {{ action.type === 'approve' ? 'Sí, aprobar' : 'Sí, rechazar' }}
+                </button>
+              </div>
             </div>
-          }
-        </section>
+          </div>
+        }
       }
     }
   }

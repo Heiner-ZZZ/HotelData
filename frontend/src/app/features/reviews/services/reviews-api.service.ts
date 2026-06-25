@@ -40,4 +40,20 @@ export class ReviewsApiService {
       { withCredentials: true },
     );
   }
+
+  // RF-001: Create a review as an unauthenticated guest (post-stay)
+  createGuestReview(payload: { booking_id: string; prop_id: number; rating: number; title?: string; comment?: string }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/reviews/guest`,
+      payload,
+      { withCredentials: true },
+    );
+  }
+
+  // RF-006: Get top approved reviews for a hotel (public, no auth)
+  getHotelReviews(propId: number) {
+    return this.http.get<ReviewDetailDto[]>(
+      `${this.apiConfig.baseUrl}/hotels/${propId}/reviews`,
+    );
+  }
 }
