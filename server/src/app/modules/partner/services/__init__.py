@@ -42,6 +42,7 @@ from src.app.modules.partner.services.bootstrap import (
 from src.app.modules.partner.services.content import (  # type: ignore[assignment]
     add_partner_hotel_image,
     delete_partner_hotel_image,
+    reorder_partner_hotel_images,
     partner_hotel_content,
     partner_hotel_content_editor,
     partner_hotel_edit_profile,
@@ -66,10 +67,12 @@ from src.app.modules.partner.services.properties import (
     save_partner_hotel_profile,
 )  # type: ignore[assignment]
 from src.app.modules.partner.services.rates import (
+    batch_update_rate_calendar,
     create_rate_plan,
     create_seasonal_rule,
     delete_rate_plan,
     delete_seasonal_rule,
+    generate_calendar_from_rules,
     list_rate_plans_for_prop,
     list_seasonal_rules,
     partner_hotel_rates,
@@ -92,6 +95,7 @@ from src.app.modules.partner.services.rooms import (
 __all__ = [
     "add_partner_hotel_image",
     "create_blackout_block",
+    "reorder_partner_hotel_images",
     "delete_blackout_block",
     "list_property_blackouts",
     "get_change_detail",
