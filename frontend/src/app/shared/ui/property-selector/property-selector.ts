@@ -39,6 +39,8 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
   readonly filterText = signal('');
   readonly propertyOptions = signal<PropertyOption[]>([]);
   readonly propertyLoading = signal(false);
+  /** When true, the API returned 401 — session expired. Show login prompt. */
+  readonly authRequired = signal(false);
 
   private page = 1;
   private hasNext = false;
@@ -58,6 +60,13 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (result) => {
+              if (result.authRequired) {
+                this.authRequired.set(true);
+                this.propertyLoading.set(false);
+                this.dropdownOpen.set(false);
+                return;
+              }
+              this.authRequired.set(false);
               this.propertyOptions.set(result.items);
               this.hasNext = result.hasNext;
               this.page = 1;
@@ -82,6 +91,12 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          if (result.authRequired) {
+            this.authRequired.set(true);
+            this.propertyLoading.set(false);
+            return;
+          }
+          this.authRequired.set(false);
           this.propertyOptions.set(result.items);
           this.hasNext = result.hasNext;
           this.propertyLoading.set(false);

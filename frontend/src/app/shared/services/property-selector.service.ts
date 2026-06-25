@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
+import { map, catchError, of } from 'rxjs';
 
 import { API_CONFIG } from '../../core/api/api.config';
 import type { PropertyOption, PropertyOptionsPage } from '../models/property-option.model';
@@ -41,6 +41,29 @@ export class PropertySelectorService {
             hasNext: dto.has_next,
           }),
         ),
+        catchError((err: unknown) => {
+          if (err instanceof HttpErrorResponse && err.status === 401) {
+            // Session expired — signal to the component so it can show
+            // a login prompt instead of a broken dropdown.
+            return of({
+              items: [] as PropertyOption[],
+              total: 0,
+              page: 1,
+              pageSize: 10,
+              hasNext: false,
+              authRequired: true,
+            });
+          }
+          // Any other error: return empty results gracefully
+          return of({
+            items: [] as PropertyOption[],
+            total: 0,
+            page: 1,
+            pageSize: 10,
+            hasNext: false,
+            authRequired: false,
+          });
+        }),
       );
   }
 }

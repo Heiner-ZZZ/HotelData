@@ -17,7 +17,12 @@
 
   @if (dropdownOpen()) {
     <ul class="ps-dropdown" (scroll)="onScroll($event)">
-      @if (propertyLoading() && !propertyOptions().length) {
+      @if (authRequired()) {
+        <li class="ps-auth-required">
+          <span class="material-symbols-outlined">lock</span>
+          <span>Sesión expirada. <a href="/login" class="ps-login-link">Inicia sesión</a></span>
+        </li>
+      } @else if (propertyLoading() && !propertyOptions().length) {
         <li class="ps-loading-item">
           <span class="ps-spinner"></span>
           Cargando...

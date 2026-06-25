@@ -9,4 +9,6 @@ export interface PropertyOptionsPage {
   page: number;
   pageSize: number;
   hasNext: boolean;
+  /** When true, the server returned 401 — user should log in. */
+  authRequired?: boolean;
 }
