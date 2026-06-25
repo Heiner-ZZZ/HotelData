@@ -40,6 +40,7 @@ from src.app.modules.reservations.routes import router as reservations_module_ro
 from src.app.modules.revenue.routes import api_router as revenue_api_router
 from src.app.modules.revenue.routes import router as revenue_module_router
 from src.app.modules.reviews.routes import api_router as reviews_api_router
+from src.app.modules.reviews.routes import public_router as reviews_public_router
 from src.app.modules.reviews.routes import router as reviews_module_router
 from src.app.modules.billing.routes import api_router as billing_api_router
 from src.app.modules.billing.routes import router as billing_module_router
@@ -97,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(partner_legacy_admin_api_router)
     app.include_router(revenue_api_router)
     app.include_router(reviews_api_router)
+    app.include_router(reviews_public_router)
     app.include_router(reviews_module_router)
     app.include_router(billing_api_router)
     app.include_router(billing_module_router)
