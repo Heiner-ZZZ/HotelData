@@ -76,12 +76,13 @@ export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {
     payment_policy: vm.paymentPolicy,
     house_rules: vm.houseRules,
     room_type_id: vm.roomTypeId || undefined,
-    cancellation_hours: vm.cancellationHours || undefined,
-    pets_allowed: vm.petsAllowed || undefined,
-    pet_fee: vm.petFee || undefined,
-    children_allowed: vm.childrenAllowed || undefined,
-    extra_bed_fee: vm.extraBedFee || undefined,
-    min_stay: vm.minStay || undefined,
-    max_stay: vm.maxStay || undefined
+    // Always send numeric/boolean fields; backend handles via default=None
+    cancellation_hours: vm.cancellationHours,
+    pets_allowed: vm.petsAllowed,
+    pet_fee: vm.petFee,
+    children_allowed: vm.childrenAllowed,
+    extra_bed_fee: vm.extraBedFee,
+    min_stay: vm.minStay,
+    max_stay: vm.maxStay
   };
 }
