@@ -124,6 +124,178 @@
             <app-property-facts-panel title="Perfil de propiedad" [facts]="vm.profileFacts" />
             <app-property-facts-panel title="Dato maestro" [facts]="vm.masterFacts" />
           </div>
+
+          <!-- ═══ Approved reviews (RF-006) ═══ -->
+          @if (reviewsLoaded()) {
+            <section class="surface-card reviews-card">
+              <div class="card-head">
+                <span class="material-symbols-outlined card-icon icon-reviews">star</span>
+                <div>
+                  <h2>Reseñas de huéspedes</h2>
+                  <p>Las reseñas aprobadas más recientes de esta propiedad.</p>
+                </div>
+              </div>
+              <div class="card-body">
+                @if (reviewsError()) {
+                  <div class="reviews-error">
+                    <span class="material-symbols-outlined">error_outline</span>
+                    <p>No se pudieron cargar las reseñas. Intenta de nuevo más tarde.</p>
+                  </div>
+                } @else if (reviews().length) {
+                  <div class="reviews-list">
+                    @for (review of reviews(); track review.id) {
+                      <article class="review-entry">
+                        <div class="review-entry-header">
+                          <div class="review-entry-meta">
+                            <span class="review-entry-author">{{ review.userName }}</span>
+                            <span class="review-entry-date">{{ review.createdAt }}</span>
+                          </div>
+                          <div class="review-entry-rating">
+                            @for (star of [1,2,3,4,5]; track star) {
+                              <span class="material-symbols-outlined star-icon" [class.star-filled]="star <= review.rating">
+                                {{ star <= review.rating ? 'star' : 'star_border' }}
+                              </span>
+                            }
+                          </div>
+                        </div>
+                        @if (review.title) {
+                          <h4 class="review-entry-title">{{ review.title }}</h4>
+                        }
+                        <p class="review-entry-comment">{{ review.comment }}</p>
+                        @if (review.staffResponse) {
+                          <div class="staff-response">
+                            <span class="material-symbols-outlined">reply</span>
+                            <div>
+                              <span class="staff-response-label">Respuesta del hotel:</span>
+                              <p>{{ review.staffResponse }}</p>
+                            </div>
+                          </div>
+                        }
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="empty-hint">Esta propiedad aún no tiene reseñas aprobadas.</p>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- ═══ Guest review form (RF-001) ═══ -->
+          <section class="surface-card review-form-card">
+            <div class="card-head">
+              <span class="material-symbols-outlined card-icon icon-reviews">rate_review</span>
+              <div>
+                <h2>Escribe tu reseña</h2>
+                <p>Comparte tu experiencia como huésped.</p>
+              </div>
+              <button type="button" class="card-toggle-btn" (click)="toggleReviewForm()">
+                <span class="material-symbols-outlined">{{ showReviewForm() ? 'expand_less' : 'expand_more' }}</span>
+              </button>
+            </div>
+
+            @if (showReviewForm()) {
+              <div class="card-body">
+                @if (reviewSubmitSuccess()) {
+                  <div class="reviews-success">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <p>¡Gracias! Tu reseña ha sido enviada y está pendiente de moderación.</p>
+                  </div>
+                } @else {
+                  <div class="review-form-fields">
+                    <!-- Booking ID -->
+                    <label class="review-field">
+                      <span class="field-label">ID de tu reserva</span>
+                      <input
+                        type="text"
+                        class="field-input"
+                        placeholder="Ej: 60f7b1c2d4e5f6a7b8c9d0e1"
+                        [ngModel]="reviewFormData().bookingId"
+                        (ngModelChange)="reviewFormData.set({...reviewFormData(), bookingId: $event})"
+                      />
+                    </label>
+
+                    <!-- Rating -->
+                    <label class="review-field">
+                      <span class="field-label">Tu puntuación</span>
+                      <div class="star-selector">
+                        @for (star of stars; track star) {
+                          <span
+                            class="material-symbols-outlined star-pick"
+                            [class.star-pick--filled]="star <= (hoverRating() || reviewFormData().rating)"
+                            (click)="setRating(star)"
+                            (mouseenter)="hoverRating.set(star)"
+                            (mouseleave)="hoverRating.set(0)"
+                          >
+                            {{ star <= (hoverRating() || reviewFormData().rating) ? 'star' : 'star_border' }}
+                          </span>
+                        }
+                        <span class="star-label">
+                          @switch (reviewFormData().rating) {
+                            @case (1) { Muy malo }
+                            @case (2) { Malo }
+                            @case (3) { Regular }
+                            @case (4) { Bueno }
+                            @case (5) { Excelente }
+                          }
+                        </span>
+                      </div>
+                    </label>
+
+                    <!-- Title -->
+                    <label class="review-field">
+                      <span class="field-label">Título <small>(opcional)</small></span>
+                      <input
+                        type="text"
+                        class="field-input"
+                        placeholder="Resume tu experiencia en una frase"
+                        [ngModel]="reviewFormData().title"
+                        (ngModelChange)="reviewFormData.set({...reviewFormData(), title: $event})"
+                      />
+                    </label>
+
+                    <!-- Comment -->
+                    <label class="review-field">
+                      <span class="field-label">Comentario <small>(opcional)</small></span>
+                      <textarea
+                        class="field-textarea"
+                        rows="4"
+                        placeholder="Cuenta tu experiencia..."
+                        [ngModel]="reviewFormData().comment"
+                        (ngModelChange)="reviewFormData.set({...reviewFormData(), comment: $event})"
+                      ></textarea>
+                    </label>
+
+                    <!-- Error state -->
+                    @if (reviewSubmitError()) {
+                      <div class="reviews-error">
+                        <span class="material-symbols-outlined">error_outline</span>
+                        <p>{{ reviewSubmitError() }}</p>
+                      </div>
+                    }
+
+                    <!-- Submit button -->
+                    <div class="review-form-actions">
+                      <button
+                        type="button"
+                        class="btn-primary submit-btn"
+                        [disabled]="reviewSubmitting()"
+                        (click)="submitReview()"
+                      >
+                        @if (reviewSubmitting()) {
+                          <span class="spinner"></span>
+                          Enviando...
+                        } @else {
+                          <span class="material-symbols-outlined">send</span>
+                          Enviar reseña
+                        }
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </section>
         </div>
       }
     }
