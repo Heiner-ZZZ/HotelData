@@ -1,0 +1,35 @@
+"""Rates sub-domain package — split into focused submodules."""
+
+from __future__ import annotations
+
+from .plans import (
+    create_rate_plan,
+    delete_rate_plan,
+    list_rate_plans_for_prop,
+    partner_hotel_rates,
+    update_rate_plan,
+)
+from .calendar import (
+    batch_update_rate_calendar,
+    save_rate_calendar_entry,
+)
+from .rules import (
+    create_seasonal_rule,
+    delete_seasonal_rule,
+    generate_calendar_from_rules,
+    list_seasonal_rules,
+)
+
+__all__ = [
+    "partner_hotel_rates",
+    "create_rate_plan",
+    "update_rate_plan",
+    "delete_rate_plan",
+    "list_rate_plans_for_prop",
+    "save_rate_calendar_entry",
+    "batch_update_rate_calendar",
+    "create_seasonal_rule",
+    "delete_seasonal_rule",
+    "list_seasonal_rules",
+    "generate_calendar_from_rules",
+]
