@@ -207,7 +207,7 @@ def save_partner_hotel_policies(
     }
 
     # Add structured fields only if provided
-    if parsed_cancel_hours > 0:
+    if cancellation_hours is not None:
         payload["cancellation_hours"] = parsed_cancel_hours
     if parsed_pets_allowed is not None:
         payload["pets_allowed"] = parsed_pets_allowed

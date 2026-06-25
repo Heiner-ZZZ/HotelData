@@ -14,6 +14,7 @@ from src.app.modules.partner.services import (
     partner_hotel_content_editor,
     partner_hotel_detail,
     partner_hotel_images,
+    reorder_partner_hotel_images,
     save_partner_hotel_content,
 )
 
@@ -121,3 +122,20 @@ async def property_image_upload_api(prop_id: int, file: UploadFile):
 def property_image_delete_api(prop_id: int, image_url: str = Query(...)):
     deleted = delete_partner_hotel_image(prop_id, image_url=image_url, changed_by="angular_api")
     return {"deleted": deleted}
+
+
+@api_router.put("/properties/{prop_id}/images/reorder")
+def property_image_reorder_api(prop_id: int, payload: dict = Body(...)):
+    """RF-004: Reorder images. First image becomes primary (portada)."""
+    image_order = payload.get("image_order")
+    if not isinstance(image_order, list) or not image_order:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_order must be a non-empty list of image URLs.")
+    try:
+        result = reorder_partner_hotel_images(
+            prop_id,
+            image_order=[str(url) for url in image_order],
+            changed_by="angular_api",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"images": result, "primary_image": result[0]["image_url"] if result else None}

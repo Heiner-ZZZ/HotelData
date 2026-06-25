@@ -58,7 +58,7 @@ def images_for_prop(prop_id: int) -> list[dict[str, Any]]:
     db = get_database()
     images = list(
         db.hotel_images.find({"prop_id": prop_id}, {"_id": 0})
-        .sort([("created_at", -1)])
+        .sort([("sort_order", 1), ("created_at", -1)])
         .limit(24)
     )
     for image in images:
