@@ -1,0 +1,66 @@
+"""Shared helpers for reviews lifecycle package."""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+from typing import Any
+
+from bson import ObjectId
+
+from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
+
+COLLECTION = "reviews"
+FACT_COLLECTION = "fact_reviews"
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _write_both(collection: str, fact_collection: str, doc: dict) -> ObjectId:
+    db = get_database()
+    result = db[collection].insert_one(doc)
+    fact_doc = {**doc, "operational_id": result.inserted_id}
+    db[fact_collection].insert_one(fact_doc)
+    doc["_id"] = result.inserted_id
+    return result.inserted_id
+
+
+def _update_both(collection: str, fact_collection: str, doc_id: ObjectId, update: dict) -> None:
+    db = get_database()
+    db[collection].update_one({"_id": doc_id}, update)
+    db[fact_collection].update_one({"_id": doc_id}, update)
+
+
+def _enrich(doc: dict) -> dict:
+    doc["id"] = str(doc.pop("_id", doc.get("_id", "")))
+    doc["booking_id"] = str(doc.get("booking_id", ""))
+    doc["user_id"] = str(doc.get("user_id", ""))
+    for field in ("created_at", "updated_at", "staff_response_at"):
+        val = doc.get(field)
+        if isinstance(val, datetime):
+            doc[field] = val.isoformat()
+    _add_user_name(doc)
+    return doc
+
+
+def _add_user_name(doc: dict) -> None:
+    if not doc.get("user_id"):
+        doc["user_display_name"] = "Huésped"
+        return
+    try:
+        db = get_database()
+        user = db.users.find_one({"_id": ObjectId(doc["user_id"])}, {"display_name": 1, "username": 1})
+        doc["user_display_name"] = (user or {}).get("display_name") or (user or {}).get("username", "Huésped")
+    except Exception:
+        doc["user_display_name"] = "Huésped"
+
+
+def _notify_async(func, **kwargs) -> None:
+    try:
+        func(**kwargs)
+    except Exception:
+        logger.exception("Notification failed for review: %s", kwargs.get("review_id", "?"))

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
-from src.app.security.dependencies import get_current_user
+from src.app.security.dependencies import get_current_user, require_permission
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.app.modules.reviews.schemas import ModuleStatus, ReviewCreate, ReviewModeration, ReviewStaffResponse
 from src.app.modules.reviews.service import (
@@ -11,6 +11,7 @@ from src.app.modules.reviews.service import (
     create_review_guest,
     delete_review,
     ensure_reviews_collections,
+    get_hotel_reviews,
     get_review,
     list_reviews,
     moderate_review,
@@ -20,11 +21,19 @@ from src.app.modules.reviews.service import (
 
 router = APIRouter(prefix="/modules/reviews", tags=["modules-reviews"])
 api_router = APIRouter(prefix="/api/reviews", tags=["reviews-api"])
+public_router = APIRouter(prefix="/api/hotels", tags=["hotels-public"])
 
 
 @router.get("/status", response_model=ModuleStatus)
 def reviews_module_status():
     return module_status()
+
+
+# RF-006: Public endpoint — top 5 approved reviews for a hotel
+@public_router.get("/{prop_id}/reviews")
+def hotel_reviews_api(prop_id: int = Path(..., ge=1)):
+    """Return top 5 approved reviews for a hotel (public, no auth required)."""
+    return get_hotel_reviews(prop_id, limit=5)
 
 
 @api_router.post("", status_code=201)
@@ -92,18 +101,38 @@ def get_review_api(review_id: str):
 
 
 @api_router.patch("/{review_id}/moderate")
-def moderate_review_api(review_id: str, payload: ReviewModeration = Body(...)):
-    result = moderate_review(review_id, payload)
+def moderate_review_api(
+    review_id: str,
+    payload: ReviewModeration = Body(...),
+    current_user: dict = Depends(require_permission("reviews.moderate")),
+):
+    """RF-005: Moderate a review. Only marketing_hotelero and super_admin can moderate."""
+    result = moderate_review(review_id, payload, current_user)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo moderar la reseña")
     return result
 
 
 @api_router.patch("/{review_id}/respond")
-def respond_review_api(review_id: str, payload: ReviewStaffResponse = Body(...)):
+def respond_review_api(
+    review_id: str,
+    payload: ReviewStaffResponse = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """RF-006: Respond to an approved review. Only hotel_partner of that hotel can respond."""
+    # First check user is logged in
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Debe iniciar sesión")
+    # Verify the user is a hotel_partner or super_admin
+    role = current_user.get("primary_role", "")
+    if role not in ("hotel_partner", "super_admin", "admin_sistema"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo hotel_partner puede responder reseñas",
+        )
     result = respond_to_review(review_id, payload)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada o no se puede responder (solo reseñas aprobadas)")
     return result
 
 

@@ -3,6 +3,7 @@ from src.app.modules.reviews.service.lifecycle import (
     create_review,
     create_review_staff,
     create_review_guest,
+    get_hotel_reviews,
     list_reviews,
     get_review,
     moderate_review,
