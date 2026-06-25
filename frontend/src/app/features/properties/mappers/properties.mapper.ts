@@ -180,6 +180,7 @@ export function mapEditPropertyResponse(dto: EditPropertyResponseDto): EditPrope
     updatedBy: profile.updated_by ?? '',
     updatedAt: profile.updated_at ?? '',
     description: profile.description ?? cp.description ?? dto.hotel.description ?? '',
+    highlights: cp.highlights ?? '',
     policies: {
       checkInTime: pol['check_in_time'] ?? '',
       checkOutTime: pol['check_out_time'] ?? '',
@@ -213,6 +214,7 @@ export function mapEditPropertySources(
   amenitiesDto: {
     content_page?: {
       description?: string;
+      highlights?: string;
     };
     images?: Array<{ image_url: string; title: string }>;
     amenities?: {
@@ -237,6 +239,7 @@ export function mapEditPropertySources(
     updatedBy: profile.updated_by ?? '',
     updatedAt: profile.updated_at ?? '',
     description: profile.description || amenitiesDto?.content_page?.description || '',
+    highlights: amenitiesDto?.content_page?.highlights ?? '',
     policies: {
       checkInTime: policies.check_in_time ?? '',
       checkOutTime: policies.check_out_time ?? '',

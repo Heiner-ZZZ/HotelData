@@ -91,10 +91,10 @@ export class PropertiesApiService {
     );
   }
 
-  saveContent(propId: number, description: string) {
+  saveContent(propId: number, description: string, highlights: string = '') {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/content`,
-      { description },
+      { description, highlights },
       { withCredentials: true }
     );
   }
@@ -129,6 +129,14 @@ export class PropertiesApiService {
     return this.http.post<{ image_url: string; title: string }>(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/images/upload`,
       formData,
+      { withCredentials: true }
+    );
+  }
+
+  reorderImages(propId: number, imageOrder: string[]) {
+    return this.http.put<{ images: Array<{ image_url: string; title: string }>; primary_image: string | null }>(
+      `${this.apiConfig.baseUrl}/management/properties/${propId}/images/reorder`,
+      { image_order: imageOrder },
       { withCredentials: true }
     );
   }

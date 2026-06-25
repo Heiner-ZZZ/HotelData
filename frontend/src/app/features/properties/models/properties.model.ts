@@ -91,6 +91,7 @@ export interface EditPropertyViewModel {
   updatedBy: string;
   updatedAt: string;
   description: string;
+  highlights: string;
   policies: {
     checkInTime: string;
     checkOutTime: string;
