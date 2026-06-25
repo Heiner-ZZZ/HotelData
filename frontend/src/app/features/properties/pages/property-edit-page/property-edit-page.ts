@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, signal, ElementRef, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -7,13 +7,15 @@ import { filter, map, switchMap } from 'rxjs';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ImageGalleryComponent } from './components/image-gallery';
+import { AmenitiesPanelComponent } from './components/amenities-panel';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { EditPropertyViewModel } from '../../models/properties.model';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
 @Component({
   selector: 'app-property-edit-page',
-  imports: [ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [ErrorStateComponent, ImageGalleryComponent, AmenitiesPanelComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
   templateUrl: './property-edit-page.html',
   styleUrl: './property-edit-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,11 +30,6 @@ export class PropertyEditPageComponent {
   readonly saving = signal<'idle' | 'saving' | 'done'>('idle');
   readonly saveError = signal('');
   readonly vm = signal<EditPropertyViewModel | null>(null);
-  readonly newImageUrl = signal('');
-  readonly newImageTitle = signal('');
-  readonly selectedFile = signal<File | null>(null);
-  readonly imagePreviewUrl = signal<string | null>(null);
-  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   readonly hasUnsavedChanges = signal(false);
   private readonly formInitialized = signal(false);
 
@@ -41,6 +38,7 @@ export class PropertyEditPageComponent {
     displayName: ['', Validators.required],
     displayCountryLabel: [''],
     description: ['', Validators.required],
+    highlights: [''],
     checkInTime: [''],
     checkOutTime: [''],
     cancellationPolicy: [''],
@@ -82,6 +80,7 @@ export class PropertyEditPageComponent {
             displayName: vm.displayName,
             displayCountryLabel: vm.countryDisplayName,
             description: vm.description,
+            highlights: vm.highlights,
             checkInTime: vm.policies.checkInTime,
             checkOutTime: vm.policies.checkOutTime,
             cancellationPolicy: vm.policies.cancellationPolicy,
@@ -123,6 +122,14 @@ export class PropertyEditPageComponent {
         .catch(() => false)
     );
 
+    // RF-005: Save content (description + highlights)
+    checks.push(
+      this.propertiesApi.saveContent(propId, fv.description, fv.highlights)
+        .toPromise()
+        .then(() => true)
+        .catch(() => false)
+    );
+
     checks.push(this.propertiesApi.savePolicies(propId, {
       check_in_time: fv.checkInTime,
       check_out_time: fv.checkOutTime,
@@ -144,6 +151,7 @@ export class PropertyEditPageComponent {
           displayName: fv.displayName,
           countryDisplayName: fv.displayCountryLabel,
           description: fv.description,
+          highlights: fv.highlights ?? '',
           manualOverride: true,
           profileBadge: 'Nombre editado manualmente'
         });
@@ -165,6 +173,7 @@ export class PropertyEditPageComponent {
       displayName: currentVm.displayName,
       displayCountryLabel: currentVm.countryDisplayName,
       description: currentVm.description,
+      highlights: currentVm.highlights,
       checkInTime: currentVm.policies.checkInTime,
       checkOutTime: currentVm.policies.checkOutTime,
       cancellationPolicy: currentVm.policies.cancellationPolicy,
@@ -174,92 +183,22 @@ export class PropertyEditPageComponent {
     this.saveError.set('');
   }
 
-  removeAmenity(label: string) {
+  onAmenityChange(amenities: string[]) {
     const current = this.vm();
-    if (!current) return;
-    this.vm.set({ ...current, amenities: current.amenities.filter(a => a !== label) });
-  }
-
-  triggerFileInput() {
-    this.fileInput()?.nativeElement.click();
-  }
-
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      this.saveError.set('Solo se permiten archivos de imagen.');
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      this.saveError.set('La imagen no puede superar los 10 MB.');
-      return;
-    }
-
-    this.selectedFile.set(file);
-    this.saveError.set('');
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.imagePreviewUrl.set(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  clearSelectedFile() {
-    this.selectedFile.set(null);
-    this.imagePreviewUrl.set(null);
-    if (this.fileInput()?.nativeElement) {
-      this.fileInput()!.nativeElement.value = '';
+    if (current) {
+      this.vm.set({ ...current, amenities });
     }
   }
 
-  addImage() {
-    const file = this.selectedFile();
-    if (!file) return;
+  onImagesChange(images: { imageUrl: string; title: string }[]) {
     const current = this.vm();
-    if (!current) return;
-
-    this.propertiesApi.uploadImage(this.propId(), file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (result: any) => {
-        this.saveError.set('');
-        this.vm.set({
-          ...current,
-          images: [...current.images, { imageUrl: result.image_url, title: result.title || '' }]
-        });
-        this.clearSelectedFile();
-      },
-      error: (err) => {
-        if (isDevMode()) {
-          console.error('Error uploading image', err);
-        }
-        this.saveError.set('Error al subir la imagen. Intenta de nuevo.');
-      }
-    });
+    if (current) {
+      this.vm.set({ ...current, images });
+    }
   }
 
-  removeImage(imageUrl: string) {
-    const current = this.vm();
-    if (!current) return;
-    this.propertiesApi.deleteImage(this.propId(), imageUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.saveError.set('');
-        this.vm.set({ ...current, images: current.images.filter(i => i.imageUrl !== imageUrl) });
-      },
-      error: (err) => {
-        if (isDevMode()) {
-          console.error('Error removing image', err);
-        }
-        this.saveError.set('Error al eliminar imagen. Intenta de nuevo.');
-      }
-    });
-  }
-
-  onImageTitleInput(event: Event) {
-    this.newImageTitle.set((event.target as HTMLInputElement).value);
+  onGalleryError(msg: string) {
+    this.saveError.set(msg);
   }
 
   unsavedCount(): number {
@@ -271,6 +210,7 @@ export class PropertyEditPageComponent {
     if (fv.displayName !== current.displayName) count++;
     if (fv.displayCountryLabel !== current.countryDisplayName) count++;
     if (fv.description !== current.description) count++;
+    if ((fv.highlights ?? '') !== (current.highlights ?? '')) count++;
     if (fv.checkInTime !== current.policies.checkInTime) count++;
     if (fv.checkOutTime !== current.policies.checkOutTime) count++;
     if (fv.cancellationPolicy !== current.policies.cancellationPolicy) count++;

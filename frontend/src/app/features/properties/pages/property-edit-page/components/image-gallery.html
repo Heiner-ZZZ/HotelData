@@ -1,0 +1,68 @@
+<section class="surface-card edit-card">
+  <div class="card-head">
+    <span class="material-symbols-outlined card-icon icon-gallery-purple">photo_library</span>
+    <div>
+      <h2>Galería de imágenes</h2>
+      <p>{{ imageCountLabel() }}</p>
+    </div>
+  </div>
+  <div class="card-body">
+    @if (images().length) {
+      @if (showReorderHint()) {
+        <div class="gallery-reorder-bar">
+          <span class="reorder-hint">Arrastra las imágenes para reordenar. La primera es la portada. El orden se guarda automáticamente.</span>
+        </div>
+      }
+      <div cdkDropList class="gallery-grid" (cdkDropListDropped)="onDrop($event)">
+        @for (img of images(); track img.imageUrl; let i = $index) {
+          <div cdkDrag class="gallery-item" [class.gallery-item--hero]="i === 0">
+            <img [src]="img.imageUrl" [alt]="img.title || 'Imagen de propiedad'" class="gallery-img" loading="lazy" />
+            @if (i === 0) {
+              <span class="gallery-hero-badge">Principal</span>
+            }
+            <span class="gallery-order-badge">{{ i + 1 }}</span>
+            <div class="gallery-drag-handle">
+              <span class="material-symbols-outlined">drag_indicator</span>
+            </div>
+            <div class="gallery-overlay">
+              <div class="gallery-overlay-actions">
+                <button type="button" class="gallery-del-btn" (click)="removeImage(img.imageUrl)" aria-label="Eliminar imagen">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-gallery">
+        <span class="material-symbols-outlined">add_photo_alternate</span>
+        <p>Sin imágenes aún</p>
+      </div>
+    }
+    <div class="gallery-add-form">
+      <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display: none" />
+      @if (imagePreviewUrl(); as preview) {
+        <div class="image-preview">
+          <img [src]="preview" alt="Preview" class="preview-img" />
+          <button type="button" class="preview-clear" (click)="clearSelectedFile()" aria-label="Cancelar selección">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      }
+      <div class="add-img-actions">
+        @if (!selectedFile()) {
+          <button type="button" class="btn-outline" (click)="triggerFileInput()" [disabled]="images().length >= maxImages()">
+            <span class="material-symbols-outlined">folder_open</span>
+            Seleccionar imagen
+          </button>
+        } @else {
+          <button type="button" class="btn-primary" (click)="addImage()">
+            <span class="material-symbols-outlined">cloud_upload</span>
+            Subir imagen
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</section>

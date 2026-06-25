@@ -1,0 +1,66 @@
+<section class="surface-card edit-card">
+  <div class="card-head">
+    <span class="material-symbols-outlined card-icon icon-star-gold">star</span>
+    <div>
+      <h2>Amenidades</h2>
+      <p>Servicios destacados de la propiedad — {{ catalogCount() }} activo(s)</p>
+    </div>
+    <button type="button" class="btn-catalog-toggle" (click)="toggleCatalog()" aria-label="Abrir catálogo">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+  </div>
+  <div class="card-body">
+    @if (amenities().length) {
+      <div class="amenities-wrap">
+        @for (amenity of amenities(); track amenity) {
+          <span class="amenity-chip">
+            <span class="material-symbols-outlined">check</span>
+            {{ amenity }}
+            <button type="button" class="chip-remove" (click)="removeAmenity(amenity)" aria-label="Eliminar {{ amenity }}">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </span>
+        }
+      </div>
+    } @else {
+      <p class="empty-hint">No hay amenidades configuradas para esta propiedad.</p>
+    }
+
+    @if (showCatalog()) {
+      <div class="amenity-catalog-panel">
+        <div class="catalog-search">
+          <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">search</span>
+            <input
+              type="text"
+              [value]="catalogSearch()"
+              (input)="catalogSearch.set($any($event.target).value)"
+              placeholder="Buscar en catálogo..."
+            />
+          </div>
+        </div>
+        @if (amenityCatalog().length) {
+          @for (category of filteredCatalog(); track category.category) {
+            <div class="catalog-category">
+              <span class="catalog-category-name">{{ category.category }}</span>
+              <div class="catalog-items">
+                @for (item of category.items; track item.label) {
+                  <label class="catalog-item" [class.is-active]="isAmenitySelected(item.label)">
+                    <input
+                      type="checkbox"
+                      [checked]="isAmenitySelected(item.label)"
+                      (change)="toggleAmenityFromCatalog(item.label)"
+                    />
+                    <span>{{ item.label }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+        } @else {
+          <p class="empty-hint">No se encontraron servicios en el catálogo.</p>
+        }
+      </div>
+    }
+  </div>
+</section>

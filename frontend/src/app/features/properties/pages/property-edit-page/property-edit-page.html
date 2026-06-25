@@ -97,6 +97,17 @@
                 <textarea id="description" formControlName="description" rows="4" placeholder="Describe la propiedad..."></textarea>
               </div>
             </div>
+            <div class="field">
+              <label for="highlights">Highlights (destacados)</label>
+              <div class="input-wrap input-wrap--area">
+                <span class="material-symbols-outlined input-icon">star</span>
+                <textarea id="highlights" formControlName="highlights" rows="2" placeholder="Vista al mar, Desayuno incluido, Piscina climatizada..." class="highlights-area"></textarea>
+              </div>
+              <div class="field-hint">
+                <span class="material-symbols-outlined">info</span>
+                <span>Escribe separado por comas los aspectos destacados de la propiedad.</span>
+              </div>
+            </div>
             @if (vm.originalGeneratedName && vm.originalGeneratedName !== vm.displayName) {
               <div class="field-hint">
                 <span class="material-symbols-outlined">info</span>
@@ -177,100 +188,18 @@
           </div>
         </section>
 
-        <!-- ═══ Amenities section ═══ -->
-        <section class="surface-card edit-card">
-          <div class="card-head">
-            <span class="material-symbols-outlined card-icon icon-star-gold">star</span>
-            <div>
-              <h2>Amenidades</h2>
-              <p>Servicios destacados de la propiedad</p>
-            </div>
-          </div>
-          <div class="card-body">
-            @if (vm.amenities.length) {
-              <div class="amenities-wrap">
-                @for (amenity of vm.amenities; track amenity) {
-                  <span class="amenity-chip">
-                    <span class="material-symbols-outlined">check</span>
-                    {{ amenity }}
-                    <button type="button" class="chip-remove" (click)="removeAmenity(amenity)" aria-label="Eliminar {{ amenity }}">
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
-                  </span>
-                }
-              </div>
-            } @else {
-              <p class="empty-hint">No hay amenidades configuradas para esta propiedad.</p>
-            }
-          </div>
-        </section>
+        <app-amenities-panel
+          [amenities]="vm.amenities"
+          [amenityCatalog]="vm.amenityCatalog"
+          (amenitiesChange)="onAmenityChange($event)"
+        />
 
-        <!-- ═══ Images section ═══ -->
-        <section class="surface-card edit-card">
-          <div class="card-head">
-            <span class="material-symbols-outlined card-icon icon-gallery-purple">photo_library</span>
-            <div>
-              <h2>Galería de imágenes</h2>
-              <p>{{ vm.images.length }} imagen(es) registrada(s)</p>
-            </div>
-          </div>
-          <div class="card-body">
-            @if (vm.images.length) {
-              <div class="gallery-grid">
-                @for (img of vm.images; track img.imageUrl) {
-                  <div class="gallery-item" [class.gallery-item--hero]="$index === 0">
-                    <img [src]="img.imageUrl" [alt]="img.title || 'Imagen de propiedad'" class="gallery-img" loading="lazy" />
-                    @if ($index === 0) {
-                      <span class="gallery-hero-badge">Principal</span>
-                    }
-                    <div class="gallery-overlay">
-                      <button type="button" class="gallery-del-btn" (click)="removeImage(img.imageUrl)" aria-label="Eliminar imagen">
-                        <span class="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="empty-gallery">
-                <span class="material-symbols-outlined">add_photo_alternate</span>
-                <p>Sin imágenes aún</p>
-              </div>
-            }
-            <div class="gallery-add-form">
-              <input
-                #fileInput
-                type="file"
-                accept="image/*"
-                (change)="onFileSelected($event)"
-                style="display: none"
-              />
-
-              @if (imagePreviewUrl(); as preview) {
-                <div class="image-preview">
-                  <img [src]="preview" alt="Preview" class="preview-img" />
-                  <button type="button" class="preview-clear" (click)="clearSelectedFile()" aria-label="Cancelar selección">
-                    <span class="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-              }
-
-              <div class="add-img-actions">
-                @if (!selectedFile()) {
-                  <button type="button" class="btn-outline" (click)="triggerFileInput()">
-                    <span class="material-symbols-outlined">folder_open</span>
-                    Seleccionar imagen
-                  </button>
-                } @else {
-                  <button type="button" class="btn-primary" (click)="addImage()">
-                    <span class="material-symbols-outlined">cloud_upload</span>
-                    Subir imagen
-                  </button>
-                }
-              </div>
-            </div>
-          </div>
-        </section>
+        <app-image-gallery
+          [propId]="propId()"
+          [images]="vm.images"
+          (imagesChange)="onImagesChange($event)"
+          (errorChange)="onGalleryError($event)"
+        />
         </form>
       }
     }
