@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -101,6 +101,48 @@ export class RatesPageComponent {
     couponCode: [''],
     isActive: [true]
   });
+
+  /* ── Form panel configuration ── */
+  readonly formPanels = [
+    {
+      id: 'plan',
+      label: 'Nuevo plan tarifario',
+      icon: 'add_card',
+      tooltip: 'Configura un plan tarifario base para la propiedad.'
+    },
+    {
+      id: 'calendar',
+      label: 'Actualizar tarifa',
+      icon: 'edit_calendar',
+      tooltip: 'Upsert por plan y fecha.'
+    },
+    {
+      id: 'batch',
+      label: 'Actualizar por lote',
+      icon: 'date_range',
+      tooltip: 'Aplica un precio a todo un rango de fechas.'
+    },
+    {
+      id: 'generate',
+      label: 'Generar calendario',
+      icon: 'auto_awesome',
+      tooltip: 'Genera entradas desde tarifa base y reglas de temporada.'
+    },
+    {
+      id: 'seasonal',
+      label: 'Regla de temporada',
+      icon: 'event',
+      tooltip: 'Define un precio override por rango de fechas.'
+    },
+    {
+      id: 'promo',
+      label: 'Promoción',
+      icon: 'campaign',
+      tooltip: 'Crea una campaña promocional con descuento y cupones.'
+    }
+  ] as const;
+
+  readonly activeForm = signal<typeof this.formPanels[number]['id']>('plan');
 
   /* ── State ── */
   readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; roomTypeId: string; isActive: boolean } | null>(null);

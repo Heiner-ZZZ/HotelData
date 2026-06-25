@@ -95,6 +95,23 @@
 
         <!-- Forms -->
         <section class="form-grid">
+          <!-- Tab Navigation -->
+          <div class="rate-tabs">
+            @for (panel of formPanels; track panel.id) {
+              <button
+                type="button"
+                class="rate-tab"
+                [class.active]="activeForm() === panel.id"
+                (click)="activeForm.set(panel.id)"
+              >
+                <span class="material-symbols-outlined rate-tab-icon">{{ panel.icon }}</span>
+                <span class="rate-tab-label">{{ panel.label }}</span>
+                <span class="rate-tab-info material-symbols-outlined" [title]="panel.tooltip">info</span>
+              </button>
+            }
+          </div>
+
+          @if (activeForm() === 'plan') {
           <article class="surface-card form-panel">
             <div class="panel-head">
               <span class="material-symbols-outlined panel-head-icon icon-create-green">add_card</span>
@@ -168,7 +185,9 @@
               </div>
             </form>
           </article>
+          }
 
+          @if (activeForm() === 'calendar') {
           <article class="surface-card form-panel">
             <div class="panel-head">
               <span class="material-symbols-outlined panel-head-icon">edit_calendar</span>
@@ -206,7 +225,7 @@
               </label>
               <label class="field">
                 <span class="field-label">
-                  <span class="material-symbols-outlined field-icon">night_stay</span>
+                  <span class="material-symbols-outlined field-icon">nights_stay</span>
                   Min stay nights
                 </span>
                 <input type="number" min="1" formControlName="minStayNights">
@@ -226,7 +245,9 @@
               </div>
             </form>
           </article>
+          }
 
+          @if (activeForm() === 'batch') {
           <!-- Batch Calendar Update -->
           <article class="surface-card form-panel">
             <div class="panel-head">
@@ -275,7 +296,7 @@
                 </label>
                 <label class="field">
                   <span class="field-label">
-                    <span class="material-symbols-outlined field-icon">night_stay</span>
+                    <span class="material-symbols-outlined field-icon">nights_stay</span>
                     Min stay
                   </span>
                   <input type="number" min="1" formControlName="minStayNights">
@@ -296,11 +317,13 @@
               </div>
             </form>
           </article>
+          }
 
+          @if (activeForm() === 'generate') {
           <!-- Generate Calendar from Rules -->
           <article class="surface-card form-panel">
             <div class="panel-head">
-              <span class="material-symbols-outlined panel-head-icon" style="color: #16a34a">auto_generated</span>
+              <span class="material-symbols-outlined panel-head-icon" style="color: #16a34a">auto_awesome</span>
               <div>
                 <h2>Generar calendario</h2>
                 <p>Genera entradas desde tarifa base y reglas de temporada.</p>
@@ -337,13 +360,15 @@
               </div>
               <div class="form-actions">
                 <button type="submit" class="btn-primary" style="background: #16a34a">
-                  <span class="material-symbols-outlined btn-icon">auto_generated</span>
+                  <span class="material-symbols-outlined btn-icon">auto_awesome</span>
                   Generar
                 </button>
               </div>
             </form>
           </article>
+          }
 
+          @if (activeForm() === 'seasonal') {
           <!-- Seasonal Rules Form -->
           <article class="surface-card form-panel">
             <div class="panel-head">
@@ -402,7 +427,9 @@
               </div>
             </form>
           </article>
+          }
 
+          @if (activeForm() === 'promo') {
           <article class="surface-card form-panel">
             <div class="panel-head">
               <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
@@ -489,6 +516,7 @@
               </div>
             </form>
           </article>
+          }
         </section>
 
         <!-- Rate Plans Table -->
