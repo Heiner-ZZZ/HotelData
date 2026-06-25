@@ -15,7 +15,7 @@ from src.database.connection import get_database
 
 from ..notifications import notify_guest_status_change
 from ._helpers import utc_now
-from .lifecycle import _check_availability
+
 
 
 logger = logging.getLogger(__name__)
@@ -139,6 +139,7 @@ def _transition_status(
         room_type = (booking.get("room_type_id") or "").strip()
 
         if check_in and check_out and prop_id > 0:
+            from .lifecycle.create import _check_availability
             avail_error = _check_availability(prop_id, check_in, check_out, rooms, room_type)
             if avail_error:
                 result["inventory_conflict"] = True
