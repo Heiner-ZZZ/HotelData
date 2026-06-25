@@ -35,6 +35,21 @@ export class ProfileApiService {
       .pipe(map((dto) => mapProfileDtoToViewModel(dto)));
   }
 
+  getSessions() {
+    return this.http.get<{ items: unknown[]; total: number }>(
+      `${this.apiConfig.baseUrl}/auth/sessions`,
+      { withCredentials: true },
+    );
+  }
+
+  terminateOtherSessions() {
+    return this.http.post<{ ok: boolean; message: string; terminated_count: number }>(
+      `${this.apiConfig.baseUrl}/auth/sessions/terminate-others`,
+      {},
+      { withCredentials: true },
+    );
+  }
+
   uploadAvatar(file: File): Observable<HttpEvent<AvatarUploadResponse>> {
     const formData = new FormData();
     formData.append('file', file);

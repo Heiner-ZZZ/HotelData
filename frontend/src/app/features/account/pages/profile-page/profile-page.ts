@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { HttpClient, HttpEventType } from '@angular/common/http';
+import { HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,12 +12,12 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { API_CONFIG } from '../../../../core/api/api.config';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ProfileSecurityComponent } from './components/profile-security';
 import type { ProfileViewModel } from '../../models/profile.model';
 import type { SelectOption } from '../../models/profile.model';
 import {
@@ -34,7 +34,7 @@ import { ProfileApiService } from '../../services/profile-api.service';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ProfileSecurityComponent, ReactiveFormsModule],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,9 +48,6 @@ export class ProfilePageComponent {
 
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
-  private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(API_CONFIG);
-
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly uploading = signal(false);
@@ -61,14 +58,6 @@ export class ProfilePageComponent {
   readonly previewUrl = signal<string | null>(null);
   readonly dragOver = signal(false);
   readonly activeTab = signal<'personal' | 'contact' | 'preferences' | 'social'>('personal');
-
-  // ── Session management ──
-  readonly totalSessions = signal(0);
-  readonly loadingSessions = signal(false);
-  readonly sessionsMessage = signal('');
-  readonly sessionsError = signal('');
-  readonly confirmingTerminate = signal(false);
-  readonly terminating = signal(false);
 
   readonly tabs = [
     { key: 'personal' as const, label: 'Personal', icon: 'badge' },
@@ -174,70 +163,10 @@ export class ProfilePageComponent {
           this.profile.set(profile);
           this.patchForm(profile);
           this.loading.set(false);
-          this.loadSessions();
         },
         error: () => {
           this.errorMessage.set('No fue posible cargar tu perfil.');
           this.loading.set(false);
-        },
-      });
-  }
-
-  // ── Session management ──
-
-  private loadSessions(): void {
-    this.loadingSessions.set(true);
-    this.http
-      .get<{ items: unknown[]; total: number }>(
-        `${this.apiConfig.baseUrl}/auth/sessions`,
-        { withCredentials: true }
-      )
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.totalSessions.set(response.total);
-          this.loadingSessions.set(false);
-        },
-        error: () => {
-          this.loadingSessions.set(false);
-        },
-      });
-  }
-
-  requestTerminate(): void {
-    this.confirmingTerminate.set(true);
-    this.sessionsMessage.set('');
-    this.sessionsError.set('');
-  }
-
-  cancelTerminate(): void {
-    this.confirmingTerminate.set(false);
-  }
-
-  terminateOtherSessions(): void {
-    this.terminating.set(true);
-    this.sessionsMessage.set('');
-    this.sessionsError.set('');
-
-    this.http
-      .post<{ ok: boolean; message: string; terminated_count: number }>(
-        `${this.apiConfig.baseUrl}/auth/sessions/terminate-others`,
-        {},
-        { withCredentials: true }
-      )
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.terminating.set(false);
-          this.confirmingTerminate.set(false);
-          this.sessionsMessage.set(response.message);
-          this.totalSessions.update(v => Math.max(1, v - response.terminated_count));
-          setTimeout(() => this.sessionsMessage.set(''), 4000);
-        },
-        error: (error) => {
-          this.terminating.set(false);
-          this.sessionsError.set(error?.error?.detail || 'Error al cerrar sesiones.');
-          setTimeout(() => this.sessionsError.set(''), 4000);
         },
       });
   }

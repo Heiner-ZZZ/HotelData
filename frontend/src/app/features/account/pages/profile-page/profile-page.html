@@ -663,63 +663,7 @@
           </div>
         </section>
 
-        <!-- ── Seguridad / Sesiones ── -->
-        <section class="form-section">
-          <div class="section-header">
-            <span class="material-symbols-outlined section-icon">security</span>
-            <div>
-              <h2>Seguridad</h2>
-              <p>Gestiona tus sesiones activas en otros dispositivos.</p>
-            </div>
-          </div>
-
-          <div class="security-section">
-            @if (sessionsError()) {
-              <div class="toast toast-error">
-                <span class="material-symbols-outlined">error</span>
-                {{ sessionsError() }}
-              </div>
-            }
-            @if (sessionsMessage()) {
-              <div class="toast toast-success">
-                <span class="material-symbols-outlined">check_circle</span>
-                {{ sessionsMessage() }}
-              </div>
-            }
-
-            <div class="session-info">
-              <div class="session-info-row">
-                <span class="material-symbols-outlined session-icon">devices</span>
-                <div>
-                  <strong>{{ totalSessions() }} sesión(es) activa(s)</strong>
-                  <p>Tu sesión actual está incluida en este conteo.</p>
-                </div>
-              </div>
-            </div>
-
-            @if (totalSessions() > 1) {
-              @if (confirmingTerminate()) {
-                <div class="session-confirm">
-                  <p class="confirm-warning">
-                    <span class="material-symbols-outlined">warning</span>
-                    Se cerrarán todas las sesiones en otros dispositivos. ¿Continuar?
-                  </p>
-                  <div class="confirm-actions">
-                    <button class="btn-danger" (click)="terminateOtherSessions()" [disabled]="terminating()">
-                      {{ terminating() ? 'Cerrando...' : 'Sí, cerrar otras sesiones' }}
-                    </button>
-                    <button class="btn-cancel" (click)="cancelTerminate()">Cancelar</button>
-                  </div>
-                </div>
-              } @else {
-                <button class="btn-outline" (click)="requestTerminate()" [disabled]="loadingSessions()">
-                  <span class="material-symbols-outlined">logout</span>
-                  Cerrar sesiones en otros dispositivos
-                </button>
-              }
-            }
-          </div>
-        </section>
+        <app-profile-security />
       }
 
       <!-- Form footer -->
