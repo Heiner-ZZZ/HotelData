@@ -1,5 +1,16 @@
-import type { InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
-import type { InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+import type { InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
+import type { InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+
+function mapLineItem(dto: LineItemDto): LineItem {
+  return {
+    itemId: dto.item_id,
+    productId: dto.product_id,
+    name: dto.name,
+    quantity: dto.quantity,
+    unitPrice: dto.unit_price,
+    total: dto.total,
+  };
+}
 
 function mapInvoiceItem(item: InvoiceItemDto): InvoiceListItem {
   return {
@@ -32,13 +43,17 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto): InvoiceDetailViewModel 
     id: dto._id,
     bookingId: dto.booking_id,
     invoiceNumber: dto.invoice_number,
+    propId: dto.prop_id,
     subtotal: dto.subtotal,
+    roomSubtotal: dto.room_subtotal,
+    extrasTotal: dto.extras_total,
     taxes: dto.taxes,
     total: dto.total,
     status: dto.status,
     issuedAt: dto.issued_at,
     paidAt: dto.paid_at,
     notes: dto.notes,
+    lineItems: (dto.line_items || []).map(mapLineItem),
   };
 }
 

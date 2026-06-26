@@ -30,6 +30,76 @@
       @if (viewModel(); as vm) {
         <app-occupancy-summary [items]="vm.occupancySummary" />
 
+        <!-- Weekly earnings chart + date filter -->
+        <section class="chart-section surface-card">
+          <div class="chart-header">
+            <h3 class="chart-header-title">Ganancias semanales</h3>
+            <div class="chart-header-actions">
+              <button type="button" class="export-btn" (click)="exportChart()" title="Exportar gráfico como PNG">
+                <span class="material-symbols-outlined">download</span>
+                Exportar
+              </button>
+            </div>
+            <div class="date-filter-bar">
+              @for (p of presets; track p.id) {
+                <button
+                  type="button"
+                  class="filter-pill"
+                  [class.active]="!isCustomRange() && activePreset() === p.id"
+                  (click)="setPreset(p.id)"
+                >{{ p.label }}</button>
+              }
+              <button
+                type="button"
+                class="filter-pill"
+                [class.active]="isCustomRange()"
+                (click)="isCustomRange() ? clearCustomRange() : isCustomRange.set(true)"
+              >
+                {{ isCustomRange() ? 'Cancelar' : 'Personalizar' }}
+              </button>
+            </div>
+          </div>
+
+          @if (isCustomRange()) {
+            <div class="custom-date-row">
+              <label class="date-field">
+                <span>Desde</span>
+                <input type="date" [ngModel]="customStartDate()" (ngModelChange)="customStartDate.set($event)" />
+              </label>
+              <label class="date-field">
+                <span>Hasta</span>
+                <input type="date" [ngModel]="customEndDate()" (ngModelChange)="customEndDate.set($event)" />
+              </label>
+              <button type="button" class="apply-btn" (click)="applyCustomRange()" [disabled]="!customStartDate() || !customEndDate()">
+                <span class="material-symbols-outlined">search</span>
+                Aplicar
+              </button>
+            </div>
+          }
+
+          <div class="dashboard-chart-row">
+            <app-kpi-chart
+              #earningsChart
+              [title]="chartTitle()"
+              [labels]="chartLabels()"
+              [datasets]="chartDatasets()"
+              type="bar"
+              [showLegend]="true"
+              formatValue="currency"
+              [height]="220"
+            />
+            @if (totalCommission() > 0) {
+              <div class="chart-side-summary">
+                <div class="chart-side-label">{{ rangeLabel() }}</div>
+                <div class="chart-side-value">{{ totalCommission() | currency:'USD' }}</div>
+                <div class="chart-side-sub">
+                  {{ totalBookings() }} reservas
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
         <section class="kpi-grid">
           @for (kpi of vm.kpis; track kpi.label) {
             <app-metric-card

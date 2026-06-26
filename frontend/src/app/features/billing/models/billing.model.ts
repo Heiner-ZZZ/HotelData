@@ -20,17 +20,30 @@ export interface InvoiceListItem {
   paidAt: string | null;
 }
 
+export interface LineItem {
+  itemId: string;
+  productId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 export interface InvoiceDetailViewModel {
   id: string;
   bookingId: string;
   invoiceNumber: string;
+  propId: number;
   subtotal: number;
+  roomSubtotal: number;
+  extrasTotal: number;
   taxes: number;
   total: number;
   status: string;
   issuedAt: string;
   paidAt: string | null;
   notes: string | null;
+  lineItems: LineItem[];
 }
 
 export interface PaymentsListViewModel {

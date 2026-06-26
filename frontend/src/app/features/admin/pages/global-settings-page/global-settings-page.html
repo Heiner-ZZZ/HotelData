@@ -60,7 +60,7 @@
             <app-error-state />
           }
           @case ('empty') {
-            <app-empty-state message="No se encontraron hoteles." />
+            <app-empty-state title="Sin hoteles" message="No se encontraron hoteles." />
           }
           @case ('success') {
             <div class="data-table-wrap">
@@ -161,7 +161,7 @@
         @switch (taxState()) {
           @case ('loading') { <app-loading-state /> }
           @case ('error') { <app-error-state /> }
-          @case ('empty') { <app-empty-state message="No hay tasas de IVA configuradas. Añade una arriba." /> }
+          @case ('empty') { <app-empty-state title="Sin tasas" message="No hay tasas de IVA configuradas. Añade una arriba." /> }
           @case ('success') {
             <div class="data-table-wrap">
               <table class="data-table">
@@ -227,7 +227,7 @@
         @switch (commissionState()) {
           @case ('loading') { <app-loading-state /> }
           @case ('error') { <app-error-state /> }
-          @case ('empty') { <app-empty-state message="No hay comisiones personalizadas. Se usa el % global." /> }
+          @case ('empty') { <app-empty-state title="Sin comisiones" message="No hay comisiones personalizadas. Se usa el % global." /> }
           @case ('success') {
             <div class="data-table-wrap">
               <table class="data-table">

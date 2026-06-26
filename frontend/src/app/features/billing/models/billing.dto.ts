@@ -21,17 +21,30 @@ export interface InvoiceItemDto {
   notes: string | null;
 }
 
+export interface LineItemDto {
+  item_id: string;
+  product_id?: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
 export interface InvoiceDetailDto {
   _id: string;
   booking_id: string;
   invoice_number: string;
+  prop_id: number;
   subtotal: number;
+  room_subtotal: number;
+  extras_total: number;
   taxes: number;
   total: number;
   status: string;
   issued_at: string;
   paid_at: string | null;
   notes: string | null;
+  line_items: LineItemDto[];
 }
 
 export interface PaymentsListDto {
