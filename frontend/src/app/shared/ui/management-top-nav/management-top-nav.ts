@@ -95,13 +95,13 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const url = this.currentUrl();
     const qp = this.currentQueryParams();
-    const qs = qp['prop_id'] ? `?prop_id=${qp['prop_id']}` : '';
+    const propQp = qp['prop_id'] ? { prop_id: qp['prop_id'] } : undefined;
     const segments = url.split('/').filter(Boolean);
     const rootIdx = segments.findIndex(s => s === 'management' || s === 'system' || s === 'ownership');
-    if (rootIdx === -1) return [{ label: 'Gestión', path: '/management' + qs }];
+    if (rootIdx === -1) return [{ label: 'Gestión', path: '/management', queryParams: propQp }];
     const crumbs = segments.slice(rootIdx).map((seg, i) => {
       const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');
-      return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/') + qs };
+      return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/'), queryParams: propQp };
     });
     const propLabel = this.propertyCtx.currentPropLabel();
     if (propLabel) {

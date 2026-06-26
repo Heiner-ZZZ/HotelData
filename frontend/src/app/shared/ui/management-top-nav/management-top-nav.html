@@ -3,7 +3,7 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
       @for (crumb of breadcrumbs(); track crumb.path; let last = $last) {
         @if (!last) {
-          <a [routerLink]="crumb.path" class="crumb-link">{{ crumb.label }}</a>
+          <a [routerLink]="crumb.path" [queryParams]="crumb.queryParams" class="crumb-link">{{ crumb.label }}</a>
           <span class="crumb-sep material-symbols-outlined">chevron_right</span>
         } @else {
           <span class="crumb-current">{{ crumb.label }}</span>

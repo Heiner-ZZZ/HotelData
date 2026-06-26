@@ -9,6 +9,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type PaginatedResponse, type RoomStatusItem } from '../../services/housekeeping-api.service';
 
