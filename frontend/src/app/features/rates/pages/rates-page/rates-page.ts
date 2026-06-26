@@ -140,6 +140,20 @@ export class RatesPageComponent {
   readonly seasonalStartDate = signal('');
   readonly seasonalEndDate = signal('');
   readonly seasonalPriceOverride = signal(0);
+  readonly seasonalPriceTouched = signal(false);
+
+  // Collapsible sections (collapsed by default)
+  readonly planFormCollapsed = signal(true);
+  readonly existingPlansCollapsed = signal(true);
+  readonly newSeasonalCollapsed = signal(true);
+  readonly existingSeasonsCollapsed = signal(true);
+
+  toggleCollapse(section: 'planForm' | 'existingPlans' | 'newSeasonal' | 'existingSeasons'): void {
+    if (section === 'planForm') this.planFormCollapsed.update(v => !v);
+    else if (section === 'existingPlans') this.existingPlansCollapsed.update(v => !v);
+    else if (section === 'newSeasonal') this.newSeasonalCollapsed.update(v => !v);
+    else if (section === 'existingSeasons') this.existingSeasonsCollapsed.update(v => !v);
+  }
 
   /* ── Sidebar sections ── */
 readonly sidebarSections: SidebarSection[] = [
@@ -436,7 +450,15 @@ readonly sidebarSections: SidebarSection[] = [
   /* ── Seasonal Rules ── */
   createSeasonalRule(): void {
     const current = this.viewModel();
-    if (!current || !this.seasonalRatePlanId() || !this.seasonalName() || !this.seasonalStartDate() || !this.seasonalEndDate() || this.seasonalPriceOverride() <= 0) { return; }
+    this.seasonalPriceTouched.set(true);
+    if (!current || !this.seasonalRatePlanId() || !this.seasonalName() || !this.seasonalStartDate() || !this.seasonalEndDate()) {
+      this.errorMessage.set('Completa todos los campos requeridos.');
+      return;
+    }
+    if (this.seasonalPriceOverride() <= 0) {
+      this.errorMessage.set('El precio override debe ser mayor a 0.');
+      return;
+    }
     this.api.createSeasonalRule({
       propId: current.propId, ratePlanId: this.seasonalRatePlanId(), name: this.seasonalName(),
       startDate: this.seasonalStartDate(), endDate: this.seasonalEndDate(), priceOverride: this.seasonalPriceOverride(),

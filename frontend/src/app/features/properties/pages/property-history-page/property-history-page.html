@@ -79,9 +79,19 @@
                 <p>{{ p.total }} cambio(s) &middot; Página {{ p.page }} de {{ p.pages || 1 }}</p>
               </div>
             </div>
+            <button type="button" class="btn-ghost btn-sm" (click)="exportPdf()" [disabled]="exportingPdf()">
+              @if (exportingPdf()) {
+                <span class="material-symbols-outlined spinning">sync</span>
+                Exportando...
+              } @else {
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+                Exportar PDF
+              }
+            </button>
           </div>
 
           @if (items().length) {
+            <div class="history-export-area">
             <div class="table-wrap">
               <table>
                 <thead>
@@ -152,6 +162,7 @@
                 </button>
               </div>
             }
+          </div>
           }
         </section>
       }

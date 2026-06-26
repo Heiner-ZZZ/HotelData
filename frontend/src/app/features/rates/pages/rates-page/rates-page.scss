@@ -261,3 +261,22 @@ select option {
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
   }
 }
+
+.collapsible-section .panel-head.collapsible-trigger {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapse-icon {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: var(--muted-text);
+  transition: transform 200ms;
+}
+
+.field-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}

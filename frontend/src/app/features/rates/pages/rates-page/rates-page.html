@@ -232,14 +232,16 @@
                 </section>
 
                 <!-- Rate Plans Section -->
-                <section class="surface-card data-panel plan-form-section">
-                  <div class="panel-head">
+                <section class="surface-card data-panel plan-form-section collapsible-section">
+                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('planForm')">
                     <span class="material-symbols-outlined panel-head-icon">add_card</span>
                     <div>
                       <h2>{{ editingPlan() ? 'Editar plan' : 'Nuevo plan tarifario' }}</h2>
                       <p>Configura un plan tarifario base para la propiedad.</p>
                     </div>
+                    <span class="material-symbols-outlined collapse-icon">{{ planFormCollapsed() ? 'expand_more' : 'expand_less' }}</span>
                   </div>
+                  @if (!planFormCollapsed()) {
                   <form (submit)="$event.preventDefault(); createRatePlan()" class="panel-form">
                     @if (editingPlan(); as edit) {
                       <div class="editing-banner">
@@ -284,34 +286,40 @@
                       </button>
                     </div>
                   </form>
+                  }
                 </section>
 
-                <section class="surface-card data-panel">
-                  <div class="panel-head">
+                <section class="surface-card data-panel collapsible-section">
+                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('existingPlans')">
                     <span class="material-symbols-outlined panel-head-icon">table</span>
                     <div>
                       <h2>Planes existentes</h2>
                       <p>{{ vm.ratePlans.length }} plan(es).</p>
                     </div>
+                    <span class="material-symbols-outlined collapse-icon">{{ existingPlansCollapsed() ? 'expand_more' : 'expand_less' }}</span>
                   </div>
+                  @if (!existingPlansCollapsed()) {
                   @if (vm.ratePlans.length) {
                     <app-rate-plan-table [items]="vm.ratePlans" (editPlan)="onEditPlan($event)" (deletePlan)="onDeletePlan($event)" />
                   } @else {
                     <app-empty-state icon="attach_money" title="Sin planes" description="Crea el primer plan tarifario." />
+                  }
                   }
                 </section>
               }
 
               @case ('seasons') {
                 <!-- Seasons Section -->
-                <section class="surface-card data-panel">
-                  <div class="panel-head">
+                <section class="surface-card data-panel collapsible-section">
+                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('newSeasonal')">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
                     <div>
                       <h2>Nueva regla de temporada</h2>
                       <p>Define un precio override por rango de fechas.</p>
                     </div>
+                    <span class="material-symbols-outlined collapse-icon">{{ newSeasonalCollapsed() ? 'expand_more' : 'expand_less' }}</span>
                   </div>
+                  @if (!newSeasonalCollapsed()) {
                   <form (submit)="$event.preventDefault(); createSeasonalRule()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
@@ -336,7 +344,10 @@
                     </div>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Precio override</span>
-                      <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(+$any($event.target).value)" placeholder="0.00">
+                      <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(+$any($event.target).value); seasonalPriceTouched.set(true)" placeholder="0.00">
+                      @if (seasonalPriceTouched() && seasonalPriceOverride() <= 0) {
+                        <span class="field-error">Debe ser mayor a 0.</span>
+                      }
                     </label>
                     <div class="form-actions">
                       <button type="submit" class="btn-primary">
@@ -344,20 +355,24 @@
                       </button>
                     </div>
                   </form>
+                  }
                 </section>
 
-                <section class="surface-card data-panel">
-                  <div class="panel-head">
+                <section class="surface-card data-panel collapsible-section">
+                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('existingSeasons')">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
                     <div>
                       <h2>Reglas de temporada</h2>
                       <p>{{ seasonalRuleRows().length }} regla(s) configurada(s).</p>
                     </div>
+                    <span class="material-symbols-outlined collapse-icon">{{ existingSeasonsCollapsed() ? 'expand_more' : 'expand_less' }}</span>
                   </div>
+                  @if (!existingSeasonsCollapsed()) {
                   @if (seasonalRuleRows().length) {
                     <app-seasonal-rules-table [rules]="seasonalRuleRows()" (deleteRule)="deleteSeasonalRule($event)" />
                   } @else {
                     <app-empty-state icon="event" title="Sin reglas de temporada" description="Crea reglas por temporada." />
+                  }
                   }
                 </section>
               }

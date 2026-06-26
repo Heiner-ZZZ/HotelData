@@ -4,6 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { filter, map, switchMap } from 'rxjs';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -36,6 +38,7 @@ export class PropertyHistoryPageComponent {
   readonly showDetail = signal(false);
   readonly detailLoading = signal(false);
   readonly detailError = signal('');
+  readonly exportingPdf = signal(false);
 
   readonly filterForm = this.fb.nonNullable.group({
     from: [''],
@@ -45,7 +48,6 @@ export class PropertyHistoryPageComponent {
   });
 
   constructor() {
-    // Watch route param for propId
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('propertyId'))),
@@ -57,7 +59,6 @@ export class PropertyHistoryPageComponent {
         this.loadHistory();
       });
 
-    // Reload when query params change (pagination / filters from URL)
     this.route.queryParamMap
       .pipe(
         filter(() => this.propId() > 0),
@@ -95,7 +96,6 @@ export class PropertyHistoryPageComponent {
         this.items.set(res.data);
         this.pagination.set(res.pagination);
         this.filterOptions.set(res.filters);
-        // Sync form from URL on first load
         const qp = this.route.snapshot.queryParamMap;
         this.filterForm.patchValue({
           from: qp.get('from') ?? '',
@@ -117,9 +117,6 @@ export class PropertyHistoryPageComponent {
     if (fv.field) params.set('field', fv.field);
     if (fv.user) params.set('user', fv.user);
     const qs = params.toString();
-    const base = this.route.snapshot.url.map((s) => s.path).join('/');
-    void this.route.snapshot.data;
-    // Navigate with new filters (reset page to 1)
     const url = `/management/properties/${this.propId()}/history${qs ? '?' + qs : ''}`;
     window.history.replaceState(null, '', url);
     this.loadHistory();
@@ -166,6 +163,45 @@ export class PropertyHistoryPageComponent {
   closeDetail(): void {
     this.showDetail.set(false);
     this.selectedChange.set(null);
+  }
+
+  async exportPdf(): Promise<void> {
+    this.exportingPdf.set(true);
+    const el = document.querySelector('.history-export-area');
+    if (!el) {
+      this.exportingPdf.set(false);
+      return;
+    }
+    try {
+      const canvas = await html2canvas(el as HTMLElement, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      let heightLeft = pdfH;
+      let position = 0;
+      const pageH = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
+      heightLeft -= pageH;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
+        heightLeft -= pageH;
+      }
+
+      pdf.save(`historial-propiedad-${this.propId()}.pdf`);
+    } catch {
+      // Silently fail
+    } finally {
+      this.exportingPdf.set(false);
+    }
   }
 
   readonly pages = computed(() => {
