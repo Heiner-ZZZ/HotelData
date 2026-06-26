@@ -75,9 +75,9 @@ def _previous_period_keys() -> tuple[int, int, int, int]:
     """Return (current_start_key, current_end_key, prev_start_key, prev_end_key) as YYYYMMDD integers."""
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     current_end = today - timedelta(days=1)
-    current_start = today - timedelta(days=31)
-    prev_end = today - timedelta(days=32)
-    prev_start = today - timedelta(days=62)
+    current_start = today - timedelta(days=30)
+    prev_end = today - timedelta(days=31)
+    prev_start = today - timedelta(days=60)
     return (
         int(current_start.strftime("%Y%m%d")),
         int(current_end.strftime("%Y%m%d")),

@@ -14,7 +14,6 @@ import { BscApiService } from '../../services/bsc-api.service';
 @Component({
   selector: 'app-bsc-page',
   imports: [
-    CurrencyPipe,
     EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
