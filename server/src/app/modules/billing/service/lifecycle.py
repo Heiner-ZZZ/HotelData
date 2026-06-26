@@ -82,12 +82,22 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
     booking = _find_booking(payload.booking_id)
     if not booking:
         return None
-    total = round(payload.subtotal + payload.taxes, 2)
+
+    # Include add-on products (line_items) from the booking
+    line_items = booking.get("line_items", [])
+    extras_total = sum(float(item.get("total", 0)) for item in line_items)
+    room_subtotal = round(payload.subtotal, 2)
+    total_subtotal = round(room_subtotal + extras_total, 2)
+    total = round(total_subtotal + payload.taxes, 2)
+
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
         "invoice_number": _generate_invoice_number(),
-        "subtotal": round(payload.subtotal, 2),
+        "subtotal": total_subtotal,
+        "room_subtotal": room_subtotal,
+        "extras_total": extras_total,
+        "line_items": line_items,
         "taxes": round(payload.taxes, 2),
         "total": total,
         "status": "issued",
@@ -96,8 +106,41 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
         "paid_at": None,
     }
     _write_both(INVOICES, FACT_INVOICES, doc)
+
+    # Record platform earnings (commission) based on global settings
+    try:
+        _record_earnings(booking, total)
+    except Exception:
+        pass
+
     doc["_id"] = doc.pop("_id", None)
     return _enrich_invoice(doc)
+
+
+def _record_earnings(booking: dict, invoice_total: float) -> None:
+    """Calculate and record platform commission earnings."""
+    db = get_database()
+    prop_id = booking.get("prop_id", 0)
+    booking_id = booking.get("booking_id", "")
+
+    # Get commission rate: check per-hotel override first, then global default
+    commission_cfg = db.commission_rates.find_one({"prop_id": prop_id}, {"commission_pct": 1, "_id": 0})
+    if commission_cfg:
+        commission_pct = commission_cfg.get("commission_pct", 5.0)
+    else:
+        sys_config = db.system_config.find_one({"_id": "global"}, {"default_commission_pct": 1, "_id": 0})
+        commission_pct = sys_config.get("default_commission_pct", 5.0) if sys_config else 5.0
+
+    commission_amount = round(invoice_total * commission_pct / 100, 2)
+
+    from src.app.modules.partner.services.hotel_products import record_platform_earnings
+    record_platform_earnings(
+        booking_id=booking_id,
+        prop_id=prop_id,
+        commission_pct=commission_pct,
+        booking_total=invoice_total,
+        commission_amount=commission_amount,
+    )
 
 
 def list_invoices(

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from pymongo import ASCENDING
+
 from src.database.connection import get_database
 
 

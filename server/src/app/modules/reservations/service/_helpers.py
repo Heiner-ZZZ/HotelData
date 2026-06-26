@@ -23,6 +23,7 @@ class ReservationInput:
     rooms: int
     comment: str
     guest_phone: str = ""
+    cedula: str = ""
     room_type_id: str = ""
     coupon_code: str = ""
     special_requests: list[str] = None

@@ -162,6 +162,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     db.booking_guests.insert_one({
         "booking_id": booking_id, "guest_name": payload.guest_name,
         "guest_email": payload.guest_email, "guest_phone": payload.guest_phone,
+        "cedula": payload.cedula,
         "is_primary": True, "created_at": created_at, "is_test": payload.is_test,
     })
     db.booking_status_history.insert_one({
