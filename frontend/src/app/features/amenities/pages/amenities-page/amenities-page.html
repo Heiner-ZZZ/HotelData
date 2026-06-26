@@ -175,7 +175,9 @@
                 [category]="category"
                 [selectedLabels]="selectedLookup()"
                 [searchTerm]="search()"
+                [amenityPrices]="amenityPrices()"
                 (toggleAmenity)="toggleAmenity($event)"
+                (updatePrice)="updateAmenityPrice($event.label, $event.value)"
               />
             }
           </section>

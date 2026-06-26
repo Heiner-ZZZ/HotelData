@@ -71,16 +71,19 @@ def _money(val: float) -> str:
     return f"${val:,.2f}"
 
 
-def _previous_period_dates() -> tuple[str, str, str, str]:
-    """Return (current_start, current_end, prev_start, prev_end) as ISO strings."""
+def _previous_period_keys() -> tuple[int, int, int, int]:
+    """Return (current_start_key, current_end_key, prev_start_key, prev_end_key) as YYYYMMDD integers."""
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    # Current period: last 30 days
-    current_end = today.isoformat()
-    current_start = (today - timedelta(days=30)).isoformat()
-    # Previous period: 30 days before that
-    prev_end = (today - timedelta(days=30)).isoformat()
-    prev_start = (today - timedelta(days=60)).isoformat()
-    return current_start, current_end, prev_start, prev_end
+    current_end = today - timedelta(days=1)
+    current_start = today - timedelta(days=31)
+    prev_end = today - timedelta(days=32)
+    prev_start = today - timedelta(days=62)
+    return (
+        int(current_start.strftime("%Y%m%d")),
+        int(current_end.strftime("%Y%m%d")),
+        int(prev_start.strftime("%Y%m%d")),
+        int(prev_end.strftime("%Y%m%d")),
+    )
 
 
 def _fact_aggregate(db, match_filter: dict | None = None, group_id: Any = None) -> dict[str, Any]:
@@ -161,8 +164,9 @@ def _financiera() -> list[dict[str, Any]]:
     db = get_database()
     cs, ce, ps, pe = _previous_period_dates()
 
-    current = _fact_aggregate(db)
-    prev = _fact_aggregate(db)
+    cs_key, ce_key, ps_key, pe_key = _previous_period_keys()
+    current = _fact_aggregate(db, match_filter={"date_key": {"$gte": cs_key, "$lte": ce_key}})
+    prev = _fact_aggregate(db, match_filter={"date_key": {"$gte": ps_key, "$lte": pe_key}})
 
     revenue_curr = current["gross_revenue"]
     revenue_prev = prev["gross_revenue"]
@@ -191,8 +195,9 @@ def _financiera() -> list[dict[str, Any]]:
 def _cliente() -> list[dict[str, Any]]:
     """Perspective 2: Customer KPIs."""
     db = get_database()
-    current = _fact_aggregate(db)
-    prev = _fact_aggregate(db)
+    cs_key, ce_key, ps_key, pe_key = _previous_period_keys()
+    current = _fact_aggregate(db, match_filter={"date_key": {"$gte": cs_key, "$lte": ce_key}})
+    prev = _fact_aggregate(db, match_filter={"date_key": {"$gte": ps_key, "$lte": pe_key}})
 
     events_curr = current["total_events"]
     events_prev = prev["total_events"]

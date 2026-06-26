@@ -76,8 +76,37 @@ export class AmenitiesPageComponent {
 
   // ── Mutable state ──
   readonly selectedAmenities = signal<string[]>([]);
+  readonly amenityPrices = signal<Map<string, number>>(new Map());
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  /** Initialize prices map from catalog when amenities data loads. */
+  private _initPricesFromCatalog() {
+    const vm = this.viewModel();
+    if (!vm) return;
+    const prices = new Map<string, number>();
+    for (const cat of vm.categories) {
+      for (const item of cat.items) {
+        if (item.unitPrice && item.unitPrice > 0) {
+          prices.set(item.label, item.unitPrice);
+        }
+      }
+    }
+    this.amenityPrices.set(prices);
+  }
+
+  /** Update price for an amenity label. $0 = incluido en tarifa. */
+  updateAmenityPrice(label: string, value: string) {
+    const num = parseFloat(value);
+    const prices = new Map(this.amenityPrices());
+    prices.set(label, isNaN(num) ? 0 : num);
+    this.amenityPrices.set(prices);
+  }
+
+  /** Get price for an amenity, returns 0 if not in price map (incluido). */
+  getAmenityPrice(label: string): number {
+    return this.amenityPrices().get(label) ?? 0;
+  }
 
   // ── Form fields as plain signals (no FormBuilder) ──
   readonly search = signal('');
@@ -117,6 +146,7 @@ export class AmenitiesPageComponent {
         this.errorMessage.set('');
         const label = this.selectedLabel();
         if (label) this.propertyCtx.setProperty(this.selectedPropId(), label);
+        this._initPricesFromCatalog();
       }
     });
     effect(() => {
@@ -162,7 +192,12 @@ export class AmenitiesPageComponent {
     const current = this.viewModel();
     if (!current) return;
     this.api
-      .saveAmenities(mapAmenitiesPayload(current.propId, this.selectedAmenities(), this.selectedRoomTypeId()))
+      .saveAmenities(mapAmenitiesPayload(
+        current.propId,
+        this.selectedAmenities(),
+        this.selectedRoomTypeId(),
+        this.amenityPrices(),
+      ))
       .subscribe({
         next: (fresh) => {
           this.selectedAmenities.set(fresh.activeAmenities);

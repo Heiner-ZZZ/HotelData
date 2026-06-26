@@ -63,5 +63,6 @@ export interface AmenitiesSaveDto {
   prop_id: number;
   active_amenities: string[];
   amenities_text: string;
+  amenity_prices?: Record<string, number>;
   room_type_id?: string;
 }
