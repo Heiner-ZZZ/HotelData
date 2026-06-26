@@ -88,9 +88,16 @@ export class NotificationsPageComponent {
   typeLabel(type: string): string {
     const labels: Record<string, string> = {
       staff_new_booking: 'Staff — Nueva reserva',
+      staff_check_in: 'Staff — Check-in',
+      staff_check_out: 'Staff — Check-out',
       guest_confirmed: 'Cliente — Confirmada',
       guest_rejected: 'Cliente — Rechazada',
-      guest_other: 'Cliente — Otro'
+      guest_cancelled: 'Cliente — Cancelada',
+      guest_modified: 'Cliente — Modificada',
+      guest_checked_in: 'Cliente — Check-in',
+      guest_checked_out: 'Cliente — Check-out',
+      guest_invoice_issued: 'Cliente — Factura emitida',
+      guest_other: 'Cliente — Otro',
     };
     return labels[type] || type;
   }

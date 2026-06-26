@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, ViewChild } from '@angular/core';
 import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 
@@ -46,6 +46,8 @@ import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class KpiChartComponent {
+  @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective;
+
   readonly title = input<string>('');
   readonly labels = input<string[]>([]);
   readonly datasets = input<{ label: string; data: number[]; color?: string }[]>([]);
@@ -136,4 +138,21 @@ export class KpiChartComponent {
       },
     };
   });
+
+  /** Download the chart as a PNG image. */
+  exportImage(filename = 'chart'): void {
+    const chart = this.chartDirective?.chart;
+    if (!chart) return;
+
+    const canvas = chart.canvas;
+    if (!canvas) return;
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
