@@ -23,6 +23,9 @@ export function mapCheckIns(dto: CheckInsDto): CheckInsViewModel {
       reservationStatusLabel: item.reservation_status_label,
       stayStatusLabel: item.stay_status_label,
       roomsLabel: item.rooms_label,
+      assignedRooms: item.assigned_rooms || [],
+      assignedRoomNumbers: item.assigned_room_numbers || [],
+      roomNumbersLabel: item.room_numbers_label || [],
       estimatedTime: item.estimated_time,
       notes: item.notes,
       canComplete: item.can_complete

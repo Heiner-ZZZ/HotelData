@@ -238,7 +238,20 @@
                         <span class="cell-code">{{ item.bookingId }}</span>
                         <span class="cell-muted">{{ item.hotelLabel }}</span>
                       </td>
-                      <td>{{ item.roomsLabel }}</td>
+                      <td>
+                        @if (item.assignedRoomNumbers && item.assignedRoomNumbers.length > 0) {
+                          <div class="room-numbers">
+                            @for (rn of item.assignedRoomNumbers; track rn) {
+                              <span class="room-badge">
+                                <span class="material-symbols-outlined">door_front</span>
+                                {{ rn }}
+                              </span>
+                            }
+                          </div>
+                        } @else {
+                          <span class="cell-muted">{{ item.roomsLabel }}</span>
+                        }
+                      </td>
                       <td>
                         @if (item.stayStatusLabel === 'checked_in') {
                           <span class="badge badge-success">Completado</span>

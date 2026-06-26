@@ -13,6 +13,9 @@ export interface CheckInRowViewModel {
   reservationStatusLabel: string;
   stayStatusLabel: string;
   roomsLabel: string;
+  assignedRooms: string[];
+  assignedRoomNumbers: string[];
+  roomNumbersLabel: string[];
   estimatedTime: string;
   notes: string;
   canComplete: boolean;

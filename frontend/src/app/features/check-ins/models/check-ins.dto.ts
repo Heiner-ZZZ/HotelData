@@ -18,6 +18,9 @@ export interface CheckInsDto {
     reservation_status_label: string;
     stay_status_label: string;
     rooms_label: string;
+    assigned_rooms: string[];
+    assigned_room_numbers: string[];
+    room_numbers_label: string[];
     estimated_time: string;
     notes: string;
     can_complete: boolean;
