@@ -149,6 +149,7 @@ export class MaintenancePageComponent {
       description: item.description || '',
       priority: item.priority,
       scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : todayIso(),
+      autoBlock: item.autoBlock,
     });
   }
 
@@ -170,6 +171,7 @@ export class MaintenancePageComponent {
           description: val.description || undefined,
           priority: val.priority,
           scheduled_date: val.scheduledDate || undefined,
+          auto_block: val.autoBlock,
         })
       : this.api.createMaintenance({
           prop_id: this.selectedPropId() || 0,
