@@ -59,6 +59,7 @@
               <th>Disponibles</th>
               <th>Bloqueadas</th>
               <th>Ocupación</th>
+              <th class="actions-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +78,24 @@
                   } @else {
                     <span class="badge">--</span>
                   }
+                </td>
+                <td class="actions-col">
+                  <button
+                    type="button"
+                    class="qa-btn action-btn"
+                    (click)="editInventory.emit({ date: item.date, roomTypeName: item.roomTypeName, roomTypeId: item.roomTypeName, totalRooms: item.totalRooms, availableRooms: item.availableRooms, blockedRooms: item.blockedRooms })"
+                    title="Editar"
+                  >
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="qa-btn action-btn action-btn-danger"
+                    (click)="deleteInventory.emit({ date: item.date, roomTypeName: item.roomTypeName })"
+                    title="Eliminar"
+                  >
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
                 </td>
               </tr>
             }

@@ -299,6 +299,8 @@
           [availabilityBlocks]="vm.availabilityBlocks"
           [blackoutItems]="vm.blackoutItems"
           (deleteBlackout)="onDeleteBlackout($event)"
+          (editInventory)="onEditInventoryFromTable($event)"
+          (deleteInventory)="onDeleteInventoryFromTable($event)"
         />
       }
     }
@@ -313,6 +315,25 @@
         <div class="modal-actions">
           <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+        </div>
+      </article>
+    </div>
+  }
+
+  <!-- Delete inventory confirmation modal -->
+  @if (inventoryDeleteConfirm(); as idc) {
+    <div class="modal-backdrop" (click)="inventoryDeleteConfirm.set(null)">
+      <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Eliminar registro de inventario</h2>
+        <p>¿Estás seguro de eliminar el inventario para <strong>{{ idc.roomTypeName }}</strong> el <strong>{{ idc.date }}</strong>? El registro se marcará como eliminado y no aparecerá en las consultas.</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="inventoryDeleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteInventory()">
+            @if (saving()) {
+              <span class="material-symbols-outlined spin">progress_activity</span>
+            }
+            Eliminar
+          </button>
         </div>
       </article>
     </div>

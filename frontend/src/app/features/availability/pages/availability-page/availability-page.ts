@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -15,7 +16,9 @@ import { AvailabilityQuickActionsComponent } from '../../components/availability
 import { AvailabilityDataTablesComponent } from '../../components/availability-data-tables/availability-data-tables';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { AvailabilityInventoryItem, AvailabilityViewModel, CalendarMonth, CalendarRoomTypeCell } from '../../models/availability.model';
+import type { AvailabilityDto } from '../../models/availability.dto';
 import { AvailabilityApiService } from '../../services/availability-api.service';
+import { mapAvailability } from '../../mappers/availability.mapper';
 
 /** Snapshot of cell state before a quick action, so we can undo. */
 interface UndoState {
@@ -169,13 +172,31 @@ export class AvailabilityPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
 
+  /** Prop ID from route query params — source of truth for current selection. */
+  private readonly routePropId = toSignal(
+    this.activatedRoute.queryParamMap.pipe(
+      map((params) => Number(params.get('prop_id') ?? '0')),
+      distinctUntilChanged(),
+    ),
+    { initialValue: 0 }
+  );
+
+  /** Declarative data fetching — auto-fetches when routePropId changes. */
+  private readonly availabilityResource = httpResource<AvailabilityDto>(() => {
+    const propId = this.routePropId();
+    return propId > 0 ? `/api/management/availability?prop_id=${propId}&days=92` : undefined;
+  });
+
   readonly viewState = signal<ViewState>('loading');
   readonly pageData = signal<AvailabilityViewModel | null>(null);
   readonly errorMessage = signal('');
   readonly submitMessage = signal('');
 
-  readonly selectedPropId = signal(0);
-  readonly selectedLabel = signal('');
+  /** Current property ID — derived from URL (source of truth). */
+  readonly selectedPropId = computed(() => this.routePropId());
+
+  /** Current property name — derived from loaded data. */
+  readonly selectedLabel = computed(() => this.pageData()?.hotelName ?? '');
 
   // Calendar state
   readonly viewMode = signal<ViewMode>('week');
@@ -215,6 +236,9 @@ export class AvailabilityPageComponent {
 
   /** Confirmation dialog for blackout deletion. */
   readonly deleteConfirm = signal<{ blackoutId: string } | null>(null);
+
+  /** Confirmation dialog for inventory deletion. */
+  readonly inventoryDeleteConfirm = signal<{ date: string; roomTypeName: string } | null>(null);
 
   /** Whether the calendar is refreshing due to property switch — shows skeleton loader. */
   readonly refreshing = signal(false);
@@ -328,37 +352,43 @@ export class AvailabilityPageComponent {
   readonly today = new Date();
 
   constructor() {
-    this.activatedRoute.queryParamMap
-      .pipe(
-        map((params) => Number(params.get('prop_id') ?? '0')),
-        distinctUntilChanged(),
-        switchMap((propId) => {
-          if (!propId) {
-            this.viewState.set('empty');
-            return of(null);
-          }
-          this.viewState.set('loading');
-          this.errorMessage.set('');
-          this.submitMessage.set('');
-          return this.api.getAvailability(propId, 92);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          if (data) {
-            this.pageData.set(data);
-            this.selectedPropId.set(data.propId);
-            this.selectedLabel.set(data.hotelName);
-            this.viewState.set('success');
-            this._rebuildCalendar();
-          }
-        },
-        error: () => {
-          this.viewState.set('error');
-          this.errorMessage.set('No se pudo cargar la información.');
-        },
-      });
+    // ── Sync httpResource → pageData + viewState ──
+    effect(() => {
+      const propId = this.selectedPropId();
+
+      if (!propId) {
+        this.viewState.set('empty');
+        this.pageData.set(null);
+        this.errorMessage.set('');
+        this.submitMessage.set('');
+        this.refreshing.set(false);
+        return;
+      }
+
+      if (this.availabilityResource.isLoading()) {
+        this.viewState.set(this.pageData() ? 'success' : 'loading');
+        return;
+      }
+
+      if (this.availabilityResource.error()) {
+        this.viewState.set('error');
+        this.errorMessage.set('No se pudo cargar la información.');
+        this.refreshing.set(false);
+        return;
+      }
+
+      const dto = this.availabilityResource.value();
+      if (dto) {
+        const data = mapAvailability(dto);
+        this.pageData.set(data);
+        this.viewState.set('success');
+        this.errorMessage.set('');
+        this._rebuildCalendar();
+        this.refreshing.set(false);
+        this.skeletonExiting.set(true);
+        setTimeout(() => this.skeletonExiting.set(false), 300);
+      }
+    }, { allowSignalWrites: true });
   }
 
   /** Switch to a different property without a full page reload.
@@ -367,7 +397,6 @@ export class AvailabilityPageComponent {
   onPropSelected(propId: number) {
     if (!propId || propId === this.selectedPropId()) return;
 
-    // Update the URL query param so the route reflects which hotel we're on
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
       queryParams: { prop_id: propId },
@@ -386,30 +415,6 @@ export class AvailabilityPageComponent {
     this.editingCell.set(null);
     this.savingCell.set(null);
     this._clearHighlight();
-
-    this.api.getAvailability(propId, 92)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          if (data) {
-            this.pageData.set(data);
-            this.selectedPropId.set(data.propId);
-            this.selectedLabel.set(data.hotelName);
-            this.viewState.set('success');
-            this._rebuildCalendar();
-            // Cross-fade: skeleton starts exiting, content fades in
-            this.skeletonExiting.set(true);
-            this.refreshing.set(false);
-            setTimeout(() => this.skeletonExiting.set(false), 300);
-          }
-        },
-        error: () => {
-          this.refreshing.set(false);
-          this.skeletonExiting.set(false);
-          this.viewState.set('error');
-          this.errorMessage.set('No se pudo cargar la información de la propiedad.');
-        },
-      });
   }
 
   /** Set view mode (month or week) */
@@ -957,6 +962,63 @@ export class AvailabilityPageComponent {
     }
 
     this.startEdit(cal.days[dayIdx].date, roomTypeNames[rtIdx]);
+  }
+
+  /** Edit inventory from the data table — pre-fills the inventory form and scrolls to it. */
+  onEditInventoryFromTable(item: { date: string; roomTypeName: string; roomTypeId: string; totalRooms: number; availableRooms: number; blockedRooms: number }) {
+    const vm = this.pageData();
+    const rt = vm?.roomTypes.find((r) => r.name === item.roomTypeName);
+    this.inventoryForm.patchValue({
+      roomTypeId: rt?.id ?? item.roomTypeId,
+      date: item.date,
+      totalRooms: item.totalRooms,
+      availableRooms: item.availableRooms,
+      blockedRooms: item.blockedRooms,
+    });
+    setTimeout(() => {
+      const el = document.getElementById('inventory-form-card');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
+  /** Handle delete inventory request — show confirmation dialog. */
+  onDeleteInventoryFromTable(item: { date: string; roomTypeName: string }) {
+    this.inventoryDeleteConfirm.set({ date: item.date, roomTypeName: item.roomTypeName });
+  }
+
+  /** Confirm and execute inventory soft-delete. */
+  confirmDeleteInventory() {
+    const payload = this.inventoryDeleteConfirm();
+    if (!payload) return;
+    this.inventoryDeleteConfirm.set(null);
+
+    const propId = this.selectedPropId();
+    if (!propId) return;
+
+    const vm = this.pageData();
+    const rt = vm?.roomTypes.find((r) => r.name === payload.roomTypeName);
+    if (!rt) return;
+
+    this.saving.set(true);
+    this.errorMessage.set('');
+    this.submitMessage.set('');
+
+    this.api.deleteInventory(propId, rt.id, payload.date).pipe(
+      switchMap(() => this.api.getAvailability(propId, 92)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (data) => {
+        this.pageData.set(data);
+        this.submitMessage.set('Registro de inventario eliminado');
+        this._rebuildCalendar();
+        this.saving.set(false);
+      },
+      error: (err: ApiError) => {
+        this.errorMessage.set(err.message || 'Error al eliminar registro de inventario.');
+        this.submitMessage.set('');
+        this.saving.set(false);
+      },
+    });
   }
 
   /** Handle delete blackout request — show confirmation dialog. */
