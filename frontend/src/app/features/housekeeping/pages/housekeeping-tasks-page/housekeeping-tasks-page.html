@@ -18,63 +18,76 @@
     </div>
   }
 
-  <!-- ═══ Filters + Create ═══ -->
-  <div class="bar-actions">
-    <div class="status-filter-chips">
-      <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
-      @for (s of statusOptions; track s) {
-        <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s }}</button>
-      }
-    </div>
-    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
-      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
-      {{ showCreateForm() ? 'Cancelar' : 'Nueva tarea' }}
-    </button>
-  </div>
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
 
-  <!-- ═══ Create form ═══ -->
-  @if (showCreateForm()) {
-    <section class="surface-card form-card">
-      <h3>Crear tarea de limpieza</h3>
-      <form [formGroup]="createForm" (ngSubmit)="submitTask()" class="task-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="roomLabel">Habitación *</label>
-            <input id="roomLabel" type="text" formControlName="roomLabel" placeholder="Ej: 101" />
+  @if (selectedPropId()) {
+    <!-- ═══ Filters + Create ═══ -->
+    <div class="bar-actions">
+      <div class="status-filter-chips">
+        <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
+        @for (s of statusOptions; track s) {
+          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'pending' ? 'Pendiente' : 'Completada' }}</button>
+        }
+      </div>
+      <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+        <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+        {{ showCreateForm() ? 'Cancelar' : 'Nueva tarea' }}
+      </button>
+    </div>
+
+    <!-- ═══ Create form ═══ -->
+    @if (showCreateForm()) {
+      <section class="surface-card form-card">
+        <h3>Crear tarea de limpieza</h3>
+        <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitTask()" class="task-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="roomLabel">Habitación *</label>
+              <select id="roomLabel" formControlName="roomLabel">
+                <option value="">Selecciona una habitación...</option>
+                @for (r of roomLabels(); track r) {
+                  <option [value]="r">{{ r }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="taskType">Tipo</label>
+              <select id="taskType" formControlName="taskType">
+                @for (t of taskTypes; track t) {
+                  <option [value]="t">{{ t === 'deep_clean' ? 'Limpieza profunda' : t === 'turnover' ? 'Rotación' : t === 'inspection' ? 'Inspección' : 'Limpieza' }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="priority">Prioridad</label>
+              <select id="priority" formControlName="priority">
+                @for (p of priorities; track p) {
+                  <option [value]="p">{{ p }}</option>
+                }
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="taskType">Tipo</label>
-            <select id="taskType" formControlName="taskType">
-              @for (t of taskTypes; track t) {
-                <option [value]="t">{{ t === 'deep_clean' ? 'Limpieza profunda' : t === 'turnover' ? 'Rotación' : t === 'inspection' ? 'Inspección' : 'Limpieza' }}</option>
-              }
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="assignedTo">Asignar a</label>
+              <input id="assignedTo" type="text" formControlName="assignedTo" placeholder="Nombre del personal" />
+            </div>
+            <div class="form-group">
+              <label for="note">Nota</label>
+              <input id="note" type="text" formControlName="note" placeholder="Instrucciones adicionales" />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="priority">Prioridad</label>
-            <select id="priority" formControlName="priority">
-              @for (p of priorities; track p) {
-                <option [value]="p">{{ p }}</option>
-              }
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="assignedTo">Asignar a</label>
-            <input id="assignedTo" type="text" formControlName="assignedTo" placeholder="Nombre del personal" />
-          </div>
-          <div class="form-group">
-            <label for="note">Nota</label>
-            <input id="note" type="text" formControlName="note" placeholder="Instrucciones adicionales" />
-          </div>
-        </div>
-        <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
-          <span class="material-symbols-outlined">add_task</span>
-          Crear tarea
-        </button>
-      </form>
-    </section>
+          <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+            <span class="material-symbols-outlined">add_task</span>
+            Crear tarea
+          </button>
+        </form>
+      </section>
+    }
   }
 
   @switch (viewState()) {
