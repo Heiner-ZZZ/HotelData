@@ -104,11 +104,32 @@ def _get_feature_category(label: str) -> str:
     return "Otros"
 
 
+def _feature_unit_price(label: str) -> float:
+    """Return a default unit_price for a feature label.
+    Features with special pricing, others are included in room price."""
+    paid_features = {
+        "cama extra": 25.0,
+        "cuna disponible": 15.0,
+        "trona disponible": 10.0,
+        "desayuno en habitación": 18.0,
+        "servicio a la habitación": 12.0,
+        "caja fuerte": 5.0,
+        "minibar": 15.0,
+        "netflix": 8.0,
+        "altavoz bluetooth": 5.0,
+        "estacionamiento": 20.0,
+        "parking": 20.0,
+        "mascotas": 30.0,
+        "pet fee": 30.0,
+    }
+    return paid_features.get(label.lower(), 0.0)
+
+
 def get_all_features() -> list[dict[str, Any]]:
     """Return the master catalog of available features, grouped by category."""
     db = get_database()
     custom = list(
-        db.room_features.find({}, {"_id": 0, "label": 1, "category": 1, "icon": 1})
+        db.room_features.find({}, {"_id": 0, "label": 1, "category": 1, "icon": 1, "unit_price": 1})
         .sort([("category", 1), ("label", 1)])
     )
     seen_labels: set[str] = set()
@@ -119,7 +140,13 @@ def get_all_features() -> list[dict[str, Any]]:
     merged: dict[str, list[dict[str, Any]]] = {}
     for category, labels in FEATURE_CATEGORIES.items():
         merged[category] = [
-            {"label": label, "category": category, "icon": _feature_icon(label), "custom": False}
+            {
+                "label": label,
+                "category": category,
+                "icon": _feature_icon(label),
+                "custom": False,
+                "unit_price": _feature_unit_price(label),
+            }
             for label in labels
             if label.lower() not in seen_labels
         ]
@@ -130,6 +157,7 @@ def get_all_features() -> list[dict[str, Any]]:
             "category": cat,
             "icon": feat.get("icon", ""),
             "custom": True,
+            "unit_price": float(feat.get("unit_price", 0) or 0),
         })
 
     result = []

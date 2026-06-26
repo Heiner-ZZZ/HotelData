@@ -3,8 +3,13 @@ import { Routes } from '@angular/router';
 export const ADMIN_ROUTES: Routes = [
   {
     path: '',
-    redirectTo: 'global-settings',
+    redirectTo: 'earnings',
     pathMatch: 'full',
+  },
+  {
+    path: 'earnings',
+    loadComponent: () =>
+      import('./pages/earnings-page/earnings-page').then((m) => m.EarningsPageComponent),
   },
   {
     path: 'global-settings',

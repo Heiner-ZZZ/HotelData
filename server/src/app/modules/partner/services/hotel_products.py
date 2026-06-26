@@ -8,6 +8,7 @@ to active reservations as line items during the guest's stay.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from src.app.modules.partner.services._common import clean_text, now_utc

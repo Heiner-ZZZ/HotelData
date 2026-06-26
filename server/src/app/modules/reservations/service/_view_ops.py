@@ -31,7 +31,23 @@ def _operational_item(
         else policy_data.get("check_out_time")
     ) or "N/D"
     rooms = _safe_int(booking.get("rooms"), 1)
-    room_label = f"{rooms} habitacion(es)" if rooms > 0 else "Sin asignar"
+    db = get_database()
+    assigned = booking.get("assigned_rooms") or []
+    # Look up room numbers from hotel_rooms
+    assigned_room_numbers: list[str] = []
+    if assigned:
+        room_docs = list(
+            db.hotel_rooms.find(
+                {"hotel_room_id": {"$in": assigned}},
+                {"_id": 0, "room_number": 1}
+            ).sort([("room_number", ASCENDING)])
+        )
+        assigned_room_numbers = [r.get("room_number", "?") for r in room_docs]
+    room_label = (
+        f"{', '.join(assigned_room_numbers)}" if assigned_room_numbers
+        else f"{rooms} habitacion(es)" if rooms > 0
+        else "Sin asignar"
+    )
     comment = _clean_text(booking.get("comment"))
     return {
         "booking_id": booking["booking_id"],
@@ -44,7 +60,10 @@ def _operational_item(
 "reservation_status_label": _reservation_status_label(str(booking.get("status") or "pending")),
         "stay_status": stay_status,
         "stay_status_label": _reservation_status_label(stay_status),
+        "assigned_rooms": assigned,
+        "assigned_room_numbers": assigned_room_numbers,
         "rooms_label": room_label,
+        "room_numbers_label": assigned_room_numbers,
         "estimated_time": reference_time,
         "notes": comment or "Sin notas",
         "balance_label": "N/D",

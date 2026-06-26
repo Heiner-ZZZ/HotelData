@@ -21,13 +21,13 @@ from src.app.modules.partner.services.hotel_products import (
 )
 from src.app.security.dependencies import require_login, require_permission
 
-router = APIRouter(prefix="/api/products", tags=["products"])
+router = APIRouter(prefix="/api/management", tags=["products"])
 
 
 # ─── Hotel Products CRUD ───────────────────────────────────────────────
 
 
-@router.get("/hotels/{prop_id}")
+@router.get("/products/hotels/{prop_id}")
 def list_products(
     prop_id: int,
     current_user: dict = Depends(require_login),
@@ -35,7 +35,7 @@ def list_products(
     return {"items": list_hotel_products(require_prop_id(prop_id))}
 
 
-@router.post("/hotels/{prop_id}")
+@router.post("/products/hotels/{prop_id}")
 def create_product(
     prop_id: int,
     payload: dict[str, Any] = Body(...),
@@ -57,7 +57,7 @@ def create_product(
     return result
 
 
-@router.put("/hotels/{prop_id}/{product_id}")
+@router.put("/products/hotels/{prop_id}/{product_id}")
 def update_product(
     prop_id: int,
     product_id: str,
@@ -80,7 +80,7 @@ def update_product(
     return result
 
 
-@router.delete("/hotels/{prop_id}/{product_id}")
+@router.delete("/products/hotels/{prop_id}/{product_id}")
 def delete_product(
     prop_id: int,
     product_id: str,
@@ -95,7 +95,7 @@ def delete_product(
 # ─── Booking Line Items (add-on products) ──────────────────────────────
 
 
-@router.get("/bookings/{booking_id}/line-items")
+@router.get("/products/bookings/{booking_id}/line-items")
 def get_line_items(
     booking_id: str,
     current_user: dict = Depends(require_login),
@@ -103,7 +103,7 @@ def get_line_items(
     return {"items": list_booking_line_items(booking_id)}
 
 
-@router.post("/bookings/{booking_id}/line-items")
+@router.post("/products/bookings/{booking_id}/line-items")
 def add_line_item(
     booking_id: str,
     payload: dict[str, Any] = Body(...),
@@ -130,7 +130,7 @@ def add_line_item(
     return result
 
 
-@router.delete("/bookings/{booking_id}/line-items/{item_id}")
+@router.delete("/products/bookings/{booking_id}/line-items/{item_id}")
 def remove_line_item(
     booking_id: str,
     item_id: str,
@@ -149,12 +149,12 @@ def remove_line_item(
 # ─── Platform Earnings ─────────────────────────────────────────────────
 
 
-@router.get("/earnings/summary")
+@router.get("/products/earnings/summary")
 def earnings_summary(current_user: dict = Depends(require_permission("users.manage"))):
     return get_platform_earnings_summary()
 
 
-@router.get("/earnings")
+@router.get("/products/earnings")
 def earnings_list(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
