@@ -15,6 +15,7 @@ export interface CalendarDayRate {
 export interface RoomTypeCalendarRow {
   roomTypeId: string;
   roomTypeName: string;
+  roomTypeNumber: string;
   days: CalendarDayRate[];
 }
 
@@ -32,9 +33,15 @@ export class RateMonthlyCalendarComponent {
   readonly month = input(0);
   /** Currently viewed year */
   readonly year = input(0);
+  /** Display mode: 'month' (full month) or 'week' (7 days) */
+  readonly displayMode = input<'month' | 'week'>('week');
+  /** Events per date — shown as colored indicators on cells */
+  readonly events = input<Array<{ date: string; type: string; label: string; color: string }>>([]);
 
   /** Emit when month changes */
   readonly monthChange = output<{ month: number; year: number }>();
+  /** Emit when display mode changes */
+  readonly displayModeChange = output<'month' | 'week'>();
 
   readonly monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -109,9 +116,20 @@ export class RateMonthlyCalendarComponent {
     }
   }
 
+  readonly showEvents = computed(() => this.events().length > 0);
+
   getRateForDay(row: RoomTypeCalendarRow, day: number): CalendarDayRate | undefined {
     const dateStr = `${this.year()}-${String(this.month() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return row.days.find((d) => d.date === dateStr);
+  }
+
+  getEventsForDate(dateStr: string): Array<{ type: string; label: string; color: string }> {
+    return this.events().filter((e) => e.date === dateStr);
+  }
+
+  /** Build a full date string from year + month (0-11) + day. */
+  dateStrFromDay(day: number): string {
+    return `${this.year()}-${String(this.month() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   isToday(day: number): boolean {
@@ -121,5 +139,9 @@ export class RateMonthlyCalendarComponent {
       today.getMonth() === this.month() &&
       today.getFullYear() === this.year()
     );
+  }
+
+  onToggleDisplayMode(): void {
+    this.displayModeChange.emit(this.displayMode() === 'month' ? 'week' : 'month');
   }
 }

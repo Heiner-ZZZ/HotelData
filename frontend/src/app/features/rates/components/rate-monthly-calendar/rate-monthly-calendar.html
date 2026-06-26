@@ -1,13 +1,31 @@
 <div class="monthly-calendar">
-  <!-- Month Navigation -->
+  <!-- Navigation + Display Mode Toggle -->
   <div class="cal-header">
-    <button type="button" class="cal-nav-btn" (click)="prevMonth()" title="Mes anterior">
+    <button type="button" class="cal-nav-btn" (click)="prevMonth()" title="Anterior">
       <span class="material-symbols-outlined">chevron_left</span>
     </button>
-    <h3 class="cal-month-title">{{ monthLabel() }}</h3>
-    <button type="button" class="cal-nav-btn" (click)="nextMonth()" title="Mes siguiente">
-      <span class="material-symbols-outlined">chevron_right</span>
-    </button>
+    <h3 class="cal-month-title">
+      @if (displayMode() === 'week') {
+        {{ monthLabel() }} (7 días)
+      } @else {
+        {{ monthLabel() }}
+      }
+    </h3>
+    <div class="cal-header-right">
+      <div class="view-toggle" role="group" aria-label="Vista">
+        <button type="button" class="toggle-btn" [class.is-active]="displayMode() === 'week'" (click)="displayModeChange.emit('week')" title="7 días">
+          <span class="material-symbols-outlined">calendar_view_week</span>
+          7 días
+        </button>
+        <button type="button" class="toggle-btn" [class.is-active]="displayMode() === 'month'" (click)="displayModeChange.emit('month')" title="Mes completo">
+          <span class="material-symbols-outlined">calendar_view_month</span>
+          Mes
+        </button>
+      </div>
+      <button type="button" class="cal-nav-btn" (click)="nextMonth()" title="Siguiente">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
   </div>
 
   <!-- Day Labels -->
@@ -23,7 +41,9 @@
       <div class="cal-room-row">
         <div class="cal-room-label">
           <span class="material-symbols-outlined cal-room-icon">bed</span>
-          <span class="cal-room-name">{{ row.roomTypeName }}</span>
+          <span class="cal-room-name" [title]="row.roomTypeName">
+            <span class="room-number">{{ row.roomTypeNumber }}</span>
+          </span>
         </div>
         @for (week of weekRows(); track $index) {
           <div class="cal-week">
@@ -45,7 +65,24 @@
                       {{ rate.rateAmount | currency:'':'symbol-narrow':'1.0-0' }}
                     </span>
                   }
+                  @let cellEvents = getEventsForDate(dateStrFromDay(day));
+                  @if (cellEvents.length > 0) {
+                    <div class="cal-cell-events">
+                      @for (ev of cellEvents.slice(0, 2); track $index) {
+                        <span class="cal-event-dot" [style.background]="ev.color" [title]="ev.label"></span>
+                      }
+                      @if (cellEvents.length > 2) {
+                        <span class="cal-event-more">+{{ cellEvents.length - 2 }}</span>
+                      }
+                    </div>
+                  }
                 </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
               }
             }
           </div>

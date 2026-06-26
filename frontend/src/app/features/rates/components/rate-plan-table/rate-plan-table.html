@@ -19,7 +19,13 @@
             {{ item.name }}
           </td>
           <td class="desc-cell">{{ item.description }}</td>
-          <td class="desc-cell">{{ item.roomTypeId || '—' }}</td>
+          <td class="desc-cell">
+            @if (item.roomTypeId && roomTypeNumbers()[item.roomTypeId]) {
+              {{ roomTypeNumbers()[item.roomTypeId] }}
+            } @else {
+              {{ item.roomTypeId || '—' }}
+            }
+          </td>
           <td><strong>${{ item.baseRateLabel }}</strong></td>
           <td>
             <span class="currency-pill">

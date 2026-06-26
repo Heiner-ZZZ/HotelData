@@ -71,6 +71,7 @@
                   @if (vm.ratePlans.length) {
                     <app-rate-plan-table
                       [items]="vm.ratePlans"
+                      [roomTypeNumbers]="roomTypeNumberMap()"
                       (editPlan)="onEditPlan($event)"
                       (deletePlan)="onDeletePlan($event)"
                     />
@@ -194,6 +195,9 @@
                   [rows]="calendarRows()"
                   [month]="calendarMonth()"
                   [year]="calendarYear()"
+                  [displayMode]="calendarDisplayMode()"
+                  [events]="calendarEvents()"
+                  (displayModeChange)="calendarDisplayMode.set($event)"
                   (monthChange)="onMonthChange($event.month, $event.year)"
                 />
               }
@@ -270,7 +274,7 @@
                       <span class="field-label"><span class="material-symbols-outlined field-icon">bed</span>Tipo de habitación</span>
                       <select [value]="planRoomTypeId()" (change)="planRoomTypeId.set($any($event.target).value)">
                         <option value="">Sin asignar</option>
-                        @for (rt of roomTypes; track rt.id) { <option [value]="rt.id">{{ rt.name }}</option> }
+                        @for (rt of roomTypes; track rt.id) { <option [value]="rt.id">{{ rt.name }} ({{ _roomNumber(rt.id) }})</option> }
                       </select>
                     </label>
                     <label class="field">

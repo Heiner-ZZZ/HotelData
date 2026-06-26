@@ -28,6 +28,16 @@ import { SeasonalRulesTableComponent, type SeasonalRuleRow } from '../../compone
 
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
+/** Return the Monday of the week containing the given date. */
+function _mondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 @Component({
   selector: 'app-rates-page',
   imports: [
@@ -185,12 +195,42 @@ readonly sidebarSections: SidebarSection[] = [
   readonly calendarMonth = signal(new Date().getMonth());
   readonly calendarYear = signal(new Date().getFullYear());
 
+  /** Display mode for calendar: 'month' (full month) or 'week' (7 days). */
+  readonly calendarDisplayMode = signal<'month' | 'week'>('week');
+  /** Week anchor: Monday Date for week view. */
+  readonly weekAnchor = signal<Date>(_mondayOfWeek(new Date()));
+
+  /** Extract short room "number" from room_type_id (strip 'RT-{prop_id}-' prefix). */
+  _roomNumber(rtId: string): string {
+    const vm = this.viewModel();
+    if (!vm) return rtId;
+    const prefix = `RT-${vm.propId}-`;
+    return rtId.startsWith(prefix) ? rtId.slice(prefix.length) : rtId;
+  }
+
   readonly calendarRows = computed((): RoomTypeCalendarRow[] => {
     const vm = this.viewModel();
     if (!vm) return [];
     const month = this.calendarMonth();
     const year = this.calendarYear();
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const mode = this.calendarDisplayMode();
+
+    // Date filter based on mode
+    let dateFilter: (dateStr: string) => boolean;
+    if (mode === 'month') {
+      const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+      dateFilter = (d) => d.startsWith(monthStr);
+    } else {
+      // Week view: get the Monday anchor and create 7-day window
+      const anchor = this.weekAnchor();
+      const dates: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(anchor);
+        d.setDate(anchor.getDate() + i);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      dateFilter = (d) => dates.includes(d);
+    }
 
     // Rate plan → room type mapping
     const planToRoomType = new Map<string, string>();
@@ -203,8 +243,9 @@ readonly sidebarSections: SidebarSection[] = [
     return vm.roomTypes.map((rt) => ({
       roomTypeId: rt.id,
       roomTypeName: rt.name,
+      roomTypeNumber: this._roomNumber(rt.id),
       days: vm.calendar
-        .filter((c) => planToRoomType.get(c.ratePlanId) === rt.id && c.date.startsWith(monthStr))
+        .filter((c) => planToRoomType.get(c.ratePlanId) === rt.id && dateFilter(c.date))
         .map((c) => {
           const amount = c.rateAmount;
           let tier: 'low' | 'medium' | 'high' | 'premium' = 'medium';
@@ -223,6 +264,54 @@ readonly sidebarSections: SidebarSection[] = [
           };
         }),
     }));
+  });
+
+  /** Events derived from seasonal rules and promotions for the displayed dates. */
+  readonly calendarEvents = computed(() => {
+    const vm = this.viewModel();
+    if (!vm) return [];
+    const events: Array<{ date: string; type: 'season' | 'promo' | 'batch' | 'rate_entry'; label: string; color: string }> = [];
+
+    // Seasonal rules → events per date in range
+    for (const rule of vm.seasonalRules) {
+      if (rule.startDate && rule.endDate) {
+        const start = new Date(rule.startDate);
+        const end = new Date(rule.endDate);
+        const cur = new Date(start);
+        while (cur <= end) {
+          const dateStr = cur.toISOString().slice(0, 10);
+          events.push({
+            date: dateStr,
+            type: 'season',
+            label: rule.name,
+            color: '#8b5cf6',
+          });
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    }
+
+    // Promotions → events per date in range
+    for (const promo of vm.promotions) {
+      const parts = promo.dateRange.split(' → ');
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        const start = new Date(parts[0]);
+        const end = new Date(parts[1]);
+        const cur = new Date(start);
+        while (cur <= end) {
+          const dateStr = cur.toISOString().slice(0, 10);
+          events.push({
+            date: dateStr,
+            type: 'promo',
+            label: promo.name || 'Promoción',
+            color: '#d97706',
+          });
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    }
+
+    return events;
   });
 
   /* ── Derived data for tables ── */
@@ -277,6 +366,17 @@ readonly sidebarSections: SidebarSection[] = [
 
 
   get roomTypes() { return this.viewModel()?.roomTypes ?? []; }
+
+  /** Map of room_type_id → short room number for the plan table. */
+  readonly roomTypeNumberMap = computed<Record<string, string>>(() => {
+    const vm = this.viewModel();
+    if (!vm) return {};
+    const map: Record<string, string> = {};
+    for (const rt of vm.roomTypes) {
+      map[rt.id] = this._roomNumber(rt.id);
+    }
+    return map;
+  });
 
   constructor() {
     // ── Sync httpResource → viewModel + viewState ──
@@ -337,8 +437,20 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   onMonthChange(month: number, year: number): void {
-    this.calendarMonth.set(month);
-    this.calendarYear.set(year);
+    if (this.calendarDisplayMode() === 'week') {
+      // In week mode: navigate by 7 days based on direction
+      const oldTotal = this.calendarYear() * 12 + this.calendarMonth();
+      const newTotal = year * 12 + month;
+      const direction = newTotal > oldTotal ? 1 : -1;
+      const anchor = new Date(this.weekAnchor());
+      anchor.setDate(anchor.getDate() + 7 * direction);
+      this.weekAnchor.set(anchor);
+      this.calendarMonth.set(anchor.getMonth());
+      this.calendarYear.set(anchor.getFullYear());
+    } else {
+      this.calendarMonth.set(month);
+      this.calendarYear.set(year);
+    }
   }
 
   /* ── Rate Plan CRUD ── */
