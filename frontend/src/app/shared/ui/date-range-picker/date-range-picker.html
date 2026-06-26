@@ -1,53 +1,78 @@
-<div class="date-range-picker">
-  <div class="picker-header">
-    <button type="button" class="nav-btn" (click)="prevMonth()">
-      <span class="material-symbols-outlined">chevron_left</span>
-    </button>
-    <span class="month-label">{{ monthNames[currentMonth()] }} {{ currentYear() }}</span>
-    <button type="button" class="nav-btn" (click)="nextMonth()">
-      <span class="material-symbols-outlined">chevron_right</span>
-    </button>
-  </div>
+<div class="date-range-picker-wrapper">
+  <!-- Trigger button -->
+  <button type="button" class="dp-trigger" (click)="toggleOpen()">
+    <span class="material-symbols-outlined dp-trigger-icon">calendar_month</span>
+    <span class="dp-trigger-label">{{ dateLabel() }}</span>
+    <span class="material-symbols-outlined dp-chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
+  </button>
 
-  <div class="day-names">
-    @for (name of dayNames; track name) {
-      <span class="day-name">{{ name }}</span>
-    }
-  </div>
+  <!-- Popover overlay -->
+  @if (isOpen()) {
+    <!-- Backdrop for click-outside -->
+    <div class="dp-backdrop" (click)="close()"></div>
 
-  <div class="calendar-grid">
-    @for (day of calendarDays(); track $index) {
-      <button
-        type="button"
-        class="calendar-day"
-        [class.other-month]="!day.isCurrentMonth"
-        [class.is-today]="day.isToday"
-        [class.is-start]="day.isStart"
-        [class.is-end]="day.isEnd"
-        [class.is-in-range]="day.isInRange"
-        [class.is-disabled]="day.isDisabled"
-        [disabled]="day.isDisabled"
-        (click)="selectDay(day)"
-      >
-        {{ day.day }}
-      </button>
-    }
-  </div>
+    <div class="dp-popover">
+      <div class="dp-popover-header">
+        <button type="button" class="dp-nav-btn" (click)="prevMonth()">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <span class="dp-month-label">{{ monthNames[currentMonth()] }} {{ currentYear() }}</span>
+        <button type="button" class="dp-nav-btn" (click)="nextMonth()">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
 
-  <div class="picker-footer">
-    <div class="selected-dates">
-      @if (startDate()) {
-        <span class="date-badge start-badge">
-          <span class="material-symbols-outlined">login</span>
-          {{ startDate() }}
-        </span>
-      }
-      @if (endDate()) {
-        <span class="date-badge end-badge">
-          <span class="material-symbols-outlined">logout</span>
-          {{ endDate() }}
-        </span>
-      }
+      <div class="dp-day-names">
+        @for (name of dayNames; track name) {
+          <span class="dp-day-name">{{ name }}</span>
+        }
+      </div>
+
+      <div class="dp-grid">
+        @for (day of calendarDays(); track $index) {
+          <button
+            type="button"
+            class="dp-day"
+            [class.dp-other-month]="!day.isCurrentMonth"
+            [class.dp-today]="day.isToday"
+            [class.dp-start]="day.isStart"
+            [class.dp-end]="day.isEnd"
+            [class.dp-range]="day.isInRange"
+            [class.dp-same]="day.isSameStartEnd"
+            [class.dp-disabled]="day.isDisabled"
+            [disabled]="day.isDisabled"
+            (click)="selectDay(day)"
+          >
+            {{ day.day }}
+          </button>
+        }
+      </div>
+
+      <div class="dp-footer">
+        @if (startDate() || endDate()) {
+          <div class="dp-selected">
+            @if (startDate()) {
+              <span class="dp-badge dp-badge-start">
+                <span class="material-symbols-outlined">login</span>
+                {{ startDate() }}
+              </span>
+            }
+            @if (endDate() && endDate() !== startDate()) {
+              <span class="dp-badge dp-badge-end">
+                <span class="material-symbols-outlined">logout</span>
+                {{ endDate() }}
+              </span>
+            }
+            @if (startDate() && !endDate()) {
+              <span class="dp-hint">Selecciona la fecha de salida</span>
+            }
+            @if (startDate() && endDate() && startDate() === endDate()) {
+              <span class="dp-hint">Misma fecha de entrada y salida</span>
+            }
+          </div>
+        }
+        <button type="button" class="dp-done-btn" (click)="close()">Hecho</button>
+      </div>
     </div>
-  </div>
+  }
 </div>

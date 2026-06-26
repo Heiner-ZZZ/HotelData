@@ -1,71 +1,150 @@
-.date-range-picker {
+/* ── Wrapper ── */
+.date-range-picker-wrapper {
+  position: relative;
+  display: inline-block;
   width: 100%;
-  max-width: 320px;
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-.picker-header {
+/* ── Trigger button ── */
+.dp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.dp-trigger-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.dp-trigger-label {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dp-chevron {
+  font-size: 1rem;
+  color: var(--muted-text);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  transition: transform 0.2s;
+}
+
+/* ── Backdrop (captures click-outside) ── */
+.dp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: transparent;
+}
+
+/* ── Popover overlay ── */
+.dp-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  animation: dp-fade-in 0.15s ease-out;
+}
+
+@keyframes dp-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Header ── */
+.dp-popover-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.nav-btn {
+.dp-nav-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--muted-text);
   cursor: pointer;
-  transition: background 120ms;
+  transition: background 0.12s;
 
   &:hover {
     background: var(--surface-soft, #f0f0f0);
+    color: var(--app-text);
   }
 
   .material-symbols-outlined {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
 }
 
-.month-label {
-  font-size: 0.88rem;
-  font-weight: 600;
+.dp-month-label {
+  font-size: 0.9rem;
+  font-weight: 700;
   color: var(--app-text);
 }
 
-.day-names {
+/* ── Day names row ── */
+.dp-day-names {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
-.day-name {
+.dp-day-name {
   text-align: center;
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 700;
   color: var(--muted-text);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   padding: 4px 0;
 }
 
-.calendar-grid {
+/* ── Calendar grid ── */
+.dp-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
-.calendar-day {
+.dp-day {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -78,85 +157,140 @@
   font-weight: 500;
   color: var(--app-text);
   cursor: pointer;
-  transition: background 120ms, color 120ms;
+  transition: background 0.1s, color 0.1s, transform 0.1s;
 
-  &:hover:not(.is-disabled) {
-    background: var(--surface-soft, #f0f0f0);
+  &:hover:not(.dp-disabled) {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    transform: scale(1.05);
   }
 
-  &.other-month {
+  &:active:not(.dp-disabled) {
+    transform: scale(0.95);
+  }
+
+  /* Other month */
+  &.dp-other-month {
     color: var(--muted-text);
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
-  &.is-today {
-    font-weight: 700;
+  /* Today */
+  &.dp-today {
+    font-weight: 800;
     color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  &.is-start,
-  &.is-end {
+  /* Start or end date */
+  &.dp-start,
+  &.dp-end {
     background: var(--accent);
     color: #fff;
-    font-weight: 700;
+    font-weight: 800;
+    z-index: 1;
   }
 
-  &.is-in-range {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  /* Range between start and end */
+  &.dp-range {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
     color: var(--accent);
     border-radius: 0;
+    font-weight: 600;
   }
 
-  &.is-start {
-    border-radius: 8px 0 0 8px;
+  /* Same date for start and end */
+  &.dp-same {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
-  &.is-end {
-    border-radius: 0 8px 8px 0;
+  /* Rounded corners for start/end */
+  &.dp-start {
+    border-radius: 10px 0 0 10px;
   }
 
-  &.is-start.is-end {
-    border-radius: 8px;
+  &.dp-end {
+    border-radius: 0 10px 10px 0;
   }
 
-  &.is-disabled {
-    opacity: 0.35;
+  &.dp-start.dp-end {
+    border-radius: 10px;
+  }
+
+  /* Disabled */
+  &.dp-disabled {
+    opacity: 0.3;
     cursor: not-allowed;
   }
 }
 
-.picker-footer {
-  margin-top: 12px;
+/* ── Footer ── */
+.dp-footer {
+  margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--app-border);
-}
-
-.selected-dates {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.date-badge {
+.dp-selected {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.dp-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 3px;
+  padding: 3px 8px;
   border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 500;
+  font-size: 0.7rem;
+  font-weight: 600;
 
   .material-symbols-outlined {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 }
 
-.start-badge {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.dp-badge-start {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
 
-.end-badge {
-  background: color-mix(in srgb, #16a34a 10%, transparent);
+.dp-badge-end {
+  background: color-mix(in srgb, #16a34a 14%, transparent);
   color: #16a34a;
+}
+
+.dp-hint {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+  font-style: italic;
+}
+
+.dp-done-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+
+  &:hover {
+    opacity: 0.88;
+  }
 }

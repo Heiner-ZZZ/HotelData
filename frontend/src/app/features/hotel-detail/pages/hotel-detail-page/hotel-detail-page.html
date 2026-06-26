@@ -303,31 +303,81 @@
         <!-- Rooms -->
         <section id="rooms" class="detail-section">
           <h2 class="section-title">Habitaciones Disponibles</h2>
+          <p class="section-subtitle">Tipos de habitación y habitaciones físicas registradas.</p>
+
           @if (vm.roomTypes.length) {
-            <div class="table-wrap">
-              <table class="data-table rooms-table">
-                <thead>
-                  <tr><th>Habitación</th><th>Capacidad</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                  @for (item of vm.roomTypes; track item.id) {
-                    <tr>
-                      <td>
-                        <span class="material-symbols-outlined table-icon">meeting_room</span>
-                        <strong>{{ item.name }}</strong>
-                        <div class="record-sub">{{ item.id }}</div>
-                      </td>
-                      <td>{{ item.capacityLabel }}</td>
-                      <td>
-                        <span class="status-badge" [class.active]="item.statusLabel === 'Activa'" [class.inactive]="item.statusLabel !== 'Activa'">
-                          <span class="material-symbols-outlined badge-icon">{{ item.statusLabel === 'Activa' ? 'check_circle' : 'cancel' }}</span>
-                          {{ item.statusLabel }}
-                        </span>
-                      </td>
-                    </tr>
+            <div class="room-type-cards">
+              @for (item of vm.roomTypes; track item.id) {
+                <article class="surface-card room-type-card">
+                  <div class="room-type-head">
+                    <div class="room-type-head-left">
+                      <span class="material-symbols-outlined room-type-icon">meeting_room</span>
+                      <div>
+                        <strong class="room-type-name">{{ item.name }}</strong>
+                        <span class="room-type-id">{{ item.id }}</span>
+                      </div>
+                    </div>
+                    <span class="status-badge" [class.active]="item.statusLabel === 'Activa'" [class.inactive]="item.statusLabel !== 'Activa'">
+                      <span class="material-symbols-outlined badge-icon">{{ item.statusLabel === 'Activa' ? 'check_circle' : 'cancel' }}</span>
+                      {{ item.statusLabel }}
+                    </span>
+                  </div>
+
+                  <div class="room-type-details">
+                    <div class="room-type-detail-chip">
+                      <span class="material-symbols-outlined chip-icon">group</span>
+                      <span>{{ item.capacityLabel }}</span>
+                    </div>
+                    @if (item.description) {
+                      <p class="room-type-desc">{{ item.description }}</p>
+                    }
+                    @if (item.features.length) {
+                      <div class="room-type-features">
+                        @for (feat of item.features; track feat) {
+                          <span class="feature-tag">{{ feat }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  @let roomsOfType = vm.hotelRooms.filter(r => r.roomTypeId === item.id);
+                  @if (roomsOfType.length) {
+                    <div class="hotel-rooms-list">
+                      <span class="hotel-rooms-title">
+                        <span class="material-symbols-outlined">door_front</span>
+                        {{ roomsOfType.length }} habitación(es) física(s)
+                      </span>
+                      <div class="hotel-rooms-grid">
+                        @for (room of roomsOfType; track room.hotelRoomId) {
+                          <div class="hotel-room-card" [class.inactive]="!room.isActive">
+                            <div class="hotel-room-head">
+                              <span class="material-symbols-outlined hotel-room-icon">door_front</span>
+                              <strong class="hotel-room-number">{{ room.roomNumber || '—' }}</strong>
+                            </div>
+                            <div class="hotel-room-meta">
+                              @if (room.floor) {
+                                <span class="hotel-room-floor">Piso {{ room.floor }}</span>
+                              }
+                              @if (room.roomLabel !== room.roomNumber && room.roomLabel) {
+                                <span class="hotel-room-label">{{ room.roomLabel }}</span>
+                              }
+                            </div>
+                            <div class="hotel-room-status">
+                              <span class="status-dot" [class.active]="room.isActive" [class.inactive]="!room.isActive"></span>
+                              {{ room.isActive ? 'Disponible' : 'Inactiva' }}
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="no-rooms-msg">
+                      <span class="material-symbols-outlined">info</span>
+                      <span>Sin habitaciones físicas registradas para este tipo.</span>
+                    </div>
                   }
-                </tbody>
-              </table>
+                </article>
+              }
             </div>
           } @else {
             <app-empty-state icon="meeting_room" title="Sin habitaciones" description="No hay habitaciones configuradas para esta propiedad." />
