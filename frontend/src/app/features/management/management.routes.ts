@@ -81,6 +81,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)
   },
   {
+    path: 'audit-log',
+    loadComponent: () =>
+      import('./pages/audit-log-page/audit-log-page').then((m) => m.AuditLogPageComponent)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)
