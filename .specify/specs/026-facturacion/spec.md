@@ -102,4 +102,10 @@ Entonces el sistema cambia status a cancelled
 
 - Facturacion electronica (DFE, SAT, etc.)
 - Multiples monedas
+- Exportacion de facturas a PDF o XML
+- Historico de facturas
+- Log de cambios de facturas
+- Auditoria de facturas
+- Envio de facturas por email (no dañarse si no tiene email registrado)
+- notificaciones de facturas
 - Notas de credito

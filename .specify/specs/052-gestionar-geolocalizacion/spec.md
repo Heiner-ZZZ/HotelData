@@ -80,4 +80,4 @@ Mapa mundial interactivo con marcadores, formularios de edición, confirmación 
 ## 13. Fuera de alcance
 
 - Modo offline completo sin internet
-- Edición de prop_id
+- Edición de su descripcion o nombre basandonos que si apunta a ejemplo pais 219, el id es 219 pero nosotros editamos otros campos y mantenemos relacion que todos los 219 docs json pertenecen a ese pais especifco 
