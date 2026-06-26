@@ -1,6 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API_CONFIG } from '../api/api.config';
@@ -16,7 +14,6 @@ export class VerifyEmailPageComponent {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly success = signal(false);
@@ -32,7 +29,7 @@ export class VerifyEmailPageComponent {
     this.http.get<{ ok: boolean; message: string }>(
       `${this.apiConfig.baseUrl}/account/verify-email`,
       { params: { token }, withCredentials: true }
-    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    ).subscribe({
       next: (res) => {
         this.loading.set(false);
         this.success.set(true);

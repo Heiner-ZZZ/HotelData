@@ -26,12 +26,12 @@
       <div class="notice notice-error">Enlace inválido. No se encontró el token de recuperación.</div>
       <a routerLink="/recover" class="back-link">Solicitar nuevo enlace</a>
     } @else if (!successMessage()) {
-      <form class="reset-form" [formGroup]="resetForm" (ngSubmit)="submit()">
+      <form class="reset-form" (ngSubmit)="submit()">
         <label class="input-field">
           <span class="material-symbols-outlined input-icon">lock</span>
           <span class="input-label">Nueva contraseña</span>
           <div class="password-field">
-            <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+            <input [type]="passwordVisible() ? 'text' : 'password'" [value]="password()" (input)="password.set($any($event.target).value)" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
             <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" aria-label="Mostrar u ocultar">
               <svg viewBox="0 0 24 24" aria-hidden="true" class="password-toggle-icon">
                 @if (passwordVisible()) {
@@ -43,20 +43,14 @@
               </svg>
             </button>
           </div>
-          @if (resetForm.controls.password.touched && resetForm.controls.password.invalid) {
-            <span class="field-error">Mínimo 8 caracteres</span>
-          }
         </label>
 
         <label class="input-field">
           <span class="material-symbols-outlined input-icon">lock</span>
           <span class="input-label">Confirmar contraseña</span>
           <div class="password-field">
-            <input [type]="passwordVisible() ? 'text' : 'password'" formControlName="confirm_password" placeholder="Repite la contraseña" autocomplete="new-password">
+            <input [type]="passwordVisible() ? 'text' : 'password'" [value]="confirmPassword()" (input)="confirmPassword.set($any($event.target).value)" placeholder="Repite la contraseña" autocomplete="new-password">
           </div>
-          @if (resetForm.controls.confirm_password.touched && resetForm.getError('mismatch')) {
-            <span class="field-error">Las contraseñas no coinciden</span>
-          }
         </label>
 
         <button type="submit" [disabled]="submitting()">

@@ -1,46 +1,36 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { API_CONFIG } from '../api/api.config';
 
 @Component({
   selector: 'app-reset-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [RouterLink],
   templateUrl: './reset-page.html',
   styleUrl: './reset-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResetPageComponent {
-  private readonly formBuilder = inject(FormBuilder);
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
 
+  readonly password = signal('');
+  readonly confirmPassword = signal('');
   readonly submitting = signal(false);
   readonly successMessage = signal('');
   readonly errorMessage = signal('');
   readonly passwordVisible = signal(false);
   readonly token = this.route.snapshot.queryParamMap.get('token') || '';
 
-  readonly resetForm = this.formBuilder.nonNullable.group({
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    confirm_password: ['', [Validators.required]]
-  });
+  submit(): void {
+    const pw = this.password();
+    const confirm = this.confirmPassword();
+    if (!pw || !confirm || this.submitting() || !this.token) return;
 
-  submit() {
-    if (this.resetForm.invalid || this.submitting() || !this.token) {
-      this.resetForm.markAllAsTouched();
-      return;
-    }
-
-    const { password, confirm_password } = this.resetForm.getRawValue();
-
-    if (password !== confirm_password) {
+    if (pw !== confirm) {
       this.errorMessage.set('Las contraseñas no coinciden.');
       return;
     }
@@ -50,9 +40,9 @@ export class ResetPageComponent {
 
     this.http.post<{ ok: boolean; message: string }>(
       `${this.apiConfig.baseUrl}/auth/recover/reset`,
-      { token: this.token, password },
+      { token: this.token, password: pw },
       { withCredentials: true }
-    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    ).subscribe({
       next: () => {
         this.submitting.set(false);
         this.successMessage.set('Contraseña restablecida exitosamente.');
@@ -69,7 +59,7 @@ export class ResetPageComponent {
     });
   }
 
-  togglePasswordVisibility() {
+  togglePasswordVisibility(): void {
     this.passwordVisible.update((v) => !v);
   }
 }
