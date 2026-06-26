@@ -1,18 +1,31 @@
-<section class="surface-card category-panel">
-  <div class="panel-head">
+<section class="surface-card category-panel" [class.is-collapsed]="!expanded()">
+  <button type="button" class="panel-head" (click)="toggleCollapse()" [attr.aria-expanded]="expanded()">
     <span class="material-symbols-outlined category-icon">{{ getCategoryIcon(category().category) }}</span>
     <h2>{{ category().category }}</h2>
-  </div>
-  <div class="item-grid">
-    @for (item of category().items; track item.label) {
-      <label class="amenity-item">
-        <input
-          type="checkbox"
-          [checked]="selectedLabels().has(item.label.toLowerCase())"
-          (change)="onToggle(item.label)"
-        >
-        <span>{{ item.label }}</span>
-      </label>
-    }
+    <span class="collapse-spacer"></span>
+    <span class="material-symbols-outlined chevron-icon">expand_more</span>
+  </button>
+  <div class="collapse-body">
+    <div class="item-grid">
+      @for (item of category().items; track item.label) {
+        <label class="amenity-item" [class.is-checked]="selectedLabels().has(item.label.toLowerCase())">
+          <span class="material-symbols-outlined amenity-item-icon">{{ getAmenityIcon(item.label) }}</span>
+          <input
+            type="checkbox"
+            [checked]="selectedLabels().has(item.label.toLowerCase())"
+            (change)="onToggle(item.label)"
+          >
+          <span class="amenity-label">
+            @for (seg of highlightLabel(item.label); track $index) {
+              @if (seg.highlighted) {
+                <mark class="search-highlight">{{ seg.text }}</mark>
+              } @else {
+                {{ seg.text }}
+              }
+            }
+          </span>
+        </label>
+      }
+    </div>
   </div>
 </section>
