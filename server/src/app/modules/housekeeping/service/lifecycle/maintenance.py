@@ -34,7 +34,7 @@ def list_maintenance_tasks(
     page: int = 1, page_size: int = 20,
 ) -> dict[str, Any]:
     db = get_database()
-    query: dict[str, Any] = {}
+    query: dict[str, Any] = {"status": {"$ne": "deleted"}}
     if prop_id:
         query["prop_id"] = prop_id
     if status_filter:
@@ -77,6 +77,17 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id), "status": {"$in": ["scheduled", "in_progress"]}},
         update, return_document=True,
+    )
+    return _enrich_mt_task(doc) if doc else None
+
+
+def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
+    db = get_database()
+    now = now_iso()
+    doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
+        {"_id": ObjectId(task_id), "status": {"$ne": "deleted"}},
+        {"$set": {"status": "deleted", "deleted_at": now}},
+        return_document=True,
     )
     return _enrich_mt_task(doc) if doc else None
 

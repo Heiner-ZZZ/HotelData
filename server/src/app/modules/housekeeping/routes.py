@@ -15,6 +15,8 @@ from src.app.modules.housekeeping.service import (
     create_additional_charge,
     create_housekeeping_task,
     create_maintenance_task,
+    delete_housekeeping_task,
+    delete_maintenance_task,
     get_housekeeping_dashboard,
     get_room_status,
     list_additional_charges,
@@ -23,6 +25,7 @@ from src.app.modules.housekeeping.service import (
     list_room_status,
     module_status,
     sync_room_status_from_hotel_rooms,
+    update_housekeeping_task,
     update_maintenance_task,
     update_room_status_bulk,
     upsert_room_status,
@@ -155,6 +158,31 @@ def hk_task_complete_api(
     return result
 
 
+@api_router.put("/tasks/{task_id}")
+def hk_task_update_api(
+    task_id: str,
+    payload: HousekeepingTaskCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Update a housekeeping task."""
+    result = update_housekeeping_task(task_id, payload)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    return result
+
+
+@api_router.delete("/tasks/{task_id}")
+def hk_task_delete_api(
+    task_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Logically delete a housekeeping task."""
+    result = delete_housekeeping_task(task_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
+    return result
+
+
 # ═══════════════════════════════════════════════
 # Maintenance
 # ═══════════════════════════════════════════════
@@ -209,6 +237,18 @@ def mt_task_complete_api(
     result = complete_maintenance_task(task_id, note=str(payload.get("note", "")))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
+    return result
+
+
+@api_router.delete("/maintenance/{task_id}")
+def mt_task_delete_api(
+    task_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Logically delete a maintenance task."""
+    result = delete_maintenance_task(task_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
     return result
 
 

@@ -38,6 +38,7 @@ class HousekeepingTaskCreate(BaseModel):
     assigned_to: str = ""
     priority: str = "normal"  # low, normal, high, urgent
     note: str = ""
+    scheduled_date: str = ""
 
 
 class HousekeepingTaskResponse(BaseModel):

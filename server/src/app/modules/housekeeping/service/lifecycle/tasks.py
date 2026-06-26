@@ -6,6 +6,7 @@ from math import ceil
 from typing import Any
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from src.database.connection import get_database
 from ..collections import HOUSEKEEPING_COLLECTION
@@ -31,7 +32,7 @@ def list_housekeeping_tasks(
     assigned_to: str | None = None, page: int = 1, page_size: int = 20,
 ) -> dict[str, Any]:
     db = get_database()
-    query: dict[str, Any] = {}
+    query: dict[str, Any] = {"status": {"$ne": "deleted"}}
     if prop_id:
         query["prop_id"] = prop_id
     if status_filter:
@@ -56,6 +57,36 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
         update["$set"]["note"] = note
     doc = db[HOUSEKEEPING_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id), "status": "pending"}, update, return_document=True,
+    )
+    return _enrich_hk_task(doc) if doc else None
+
+
+def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> dict[str, Any] | None:
+    db = get_database()
+    now = now_iso()
+    doc = db[HOUSEKEEPING_COLLECTION].find_one_and_update(
+        {"_id": ObjectId(task_id)},
+        {"$set": {
+            "room_label": payload.room_label,
+            "task_type": payload.task_type,
+            "assigned_to": payload.assigned_to or "",
+            "priority": payload.priority,
+            "note": payload.note or "",
+            "scheduled_date": payload.scheduled_date or "",
+            "updated_at": now,
+        }},
+        return_document=ReturnDocument.AFTER,
+    )
+    return _enrich_hk_task(doc) if doc else None
+
+
+def delete_housekeeping_task(task_id: str) -> dict[str, Any] | None:
+    db = get_database()
+    now = now_iso()
+    doc = db[HOUSEKEEPING_COLLECTION].find_one_and_update(
+        {"_id": ObjectId(task_id), "status": {"$ne": "deleted"}},
+        {"$set": {"status": "deleted", "deleted_at": now}},
+        return_document=True,
     )
     return _enrich_hk_task(doc) if doc else None
 
