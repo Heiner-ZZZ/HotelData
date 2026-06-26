@@ -728,13 +728,31 @@ textarea:focus {
   gap: 0.3rem;
 }
 
+.feature-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--app-border);
+  border-radius: 100px;
+  overflow: hidden;
+  transition: border-color 140ms;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  &.is-selected {
+    border-color: var(--accent);
+  }
+}
+
 .feature-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--app-border);
-  border-radius: 100px;
+  padding: 0.3rem 0.5rem 0.3rem 0.6rem;
+  border: 0;
+  border-radius: 100px 0 0 100px;
   background: var(--surface);
   color: var(--app-text);
   font-size: 0.72rem;
@@ -745,29 +763,75 @@ textarea:focus {
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 6%, transparent);
   }
 
   &.is-selected {
     background: var(--accent);
     color: #fff;
-    border-color: var(--accent);
     font-weight: 600;
-    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  .feature-chip-icon {
+    font-size: 0.85rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
   }
 }
 
-.feature-chip-icon {
-  font-size: 0.85rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+.feature-price-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px 0 2px;
+  background: var(--surface);
+  border-left: 1px solid var(--app-border);
+  height: 100%;
+  transition: opacity 140ms;
+
+  &.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
 }
 
-.feature-chip-price {
-  font-size: 0.65rem;
+.feature-price-symbol {
+  font-size: 0.6rem;
   font-weight: 700;
   color: #4ade80;
-  margin-left: 2px;
+  line-height: 1;
+}
+
+.feature-price-input {
+  width: 40px;
+  min-height: unset;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4ade80;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: inherit;
+  outline: none;
+  text-align: right;
+  line-height: 1;
+
+  &:focus {
+    box-shadow: none;
+    border-color: transparent;
+  }
+
+  &::placeholder {
+    color: #4ade80;
+    opacity: 0.4;
+  }
+
+  /* Hide number spinners */
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
 }
 
 .features-loading {

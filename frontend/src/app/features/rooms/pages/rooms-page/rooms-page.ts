@@ -251,17 +251,13 @@ export class RoomsPageComponent {
     }
   }
 
-  /** Sum of unit prices for all selected features (extras cost). */
+  /** Sum of unit prices for all selected features (uses editable prices). */
   readonly selectedFeaturesTotal = computed(() => {
-    const catalog = this.featureCatalog();
+    const prices = this.featurePrices();
     const selected = this.selectedFeatures();
     let total = 0;
-    for (const cat of catalog) {
-      for (const feat of cat.items) {
-        if (selected.has(feat.label) && feat.unitPrice) {
-          total += feat.unitPrice;
-        }
-      }
+    for (const label of selected) {
+      total += prices.get(label) ?? 0;
     }
     return total;
   });

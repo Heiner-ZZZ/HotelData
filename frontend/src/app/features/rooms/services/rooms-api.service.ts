@@ -112,11 +112,11 @@ export class RoomsApiService {
     }));
   }
 
-  /** Get features for a specific room type. */
+  /** Get features (with prices) for a specific room type. */
   getRoomTypeFeatures(propId: number, roomTypeId: string) {
     const params = new HttpParams().set('prop_id', String(propId));
     return this.http
-      .get<{ room_type_id: string; features: string[] }>(
+      .get<{ room_type_id: string; features: Array<{ label: string; unit_price: number }> }>(
         `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
         { params, withCredentials: true }
       )

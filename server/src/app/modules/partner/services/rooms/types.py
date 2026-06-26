@@ -16,11 +16,17 @@ from src.app.modules.partner.services._common import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
+from src.app.modules.partner.services.rooms.features import _feature_unit_price
 from src.database.connection import get_database
 
 
 def _normalize_features(raw: Any) -> list[dict[str, Any]]:
-    """Normalize features from DB (strings or objects) to a list of dicts."""
+    """Normalize features from DB (strings or objects) to a list of dicts.
+
+    Legacy string features get their unit_price from the catalog defaults
+    (via ``_feature_unit_price``) so prices like "Cama extra" → $25 are
+    preserved even for old data.
+    """
     if not isinstance(raw, list):
         return []
     result: list[dict[str, Any]] = []
@@ -33,7 +39,7 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
         elif isinstance(f, str):
             result.append({
                 "label": f,
-                "unit_price": 0.0,
+                "unit_price": _feature_unit_price(f),
             })
     return result
 
