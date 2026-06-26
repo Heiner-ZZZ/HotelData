@@ -15,6 +15,7 @@ from src.app.modules.partner.services import (
     partner_hotel_inventory,
     partner_hotel_rooms,
     save_inventory_entry,
+    soft_delete_inventory_entry,
 )
 from src.app.security.dependencies import require_login
 
@@ -184,6 +185,22 @@ def availability_blackout_api(payload: dict = Body(...)):
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
+
+
+@api_router.delete("/availability/inventory")
+def availability_inventory_delete_api(
+    prop_id: int = Query(..., ge=1),
+    room_type_id: str = Query(...),
+    date: str = Query(...),
+):
+    """Soft-delete an inventory entry."""
+    try:
+        result = soft_delete_inventory_entry(prop_id, room_type_id=room_type_id, date=date)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory entry not found")
+    return result
 
 
 @api_router.delete("/availability/blackouts/{blackout_id}")

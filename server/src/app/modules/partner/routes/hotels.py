@@ -43,7 +43,7 @@ def performance(request: Request, prop_id: int):
 
 @api_router.get("/properties")
 def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
-    return list_partner_hotels(q, page=page, page_size=20, user=current_user)
+    return list_partner_hotels(q, page=page, page_size=10, user=current_user)
 
 
 @api_router.get("/properties/options")
@@ -71,7 +71,7 @@ def properties_options_api(
 
 @api_router.get("/properties/dashboard")
 def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
-    return properties_dashboard(q, page=page, page_size=20, user=current_user)
+    return properties_dashboard(q, page=page, page_size=10, user=current_user)
 
 
 @api_router.get("/properties/{prop_id}/edit")

@@ -11,12 +11,10 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from src.app.security.dependencies import require_login
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
-    INACTIVITY_TIMEOUT_MINUTES,
     create_user_session,
     get_current_user,
     get_session,
     log_user_activity,
-    touch_session_activity,
 )
 from src.database.connection import get_database
 
@@ -31,12 +29,70 @@ api_router = APIRouter(prefix="/api/auth", tags=["auth-profile"])
 web_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@api_router.get("/status")
+def auth_status_api(request: Request):
+    """Return health/status of the auth module.
+
+    Public endpoint (no auth required). Returns:
+    - MongoDB connectivity (ping + server info)
+    - Session configuration (TTL, inactivity timeout)
+    - Active session counts
+    - Server UTC time
+    """
+    from src.app.security.session import (
+        SESSION_TTL_HOURS,
+        utc_now,
+    )
+    from config.settings import get_settings
+
+    status: dict[str, object] = {
+        "server": {
+            "utc_time": utc_now().isoformat(),
+            "timezone": "UTC",
+        },
+        "config": {
+            "session_ttl_hours": SESSION_TTL_HOURS,
+            "mongo_database": get_settings().mongo_database,
+        },
+    }
+
+    # MongoDB connectivity
+    try:
+        db = get_database()
+        # Ping the server to verify connectivity
+        db.command("ping")
+        # Count active sessions
+        active_sessions = db.user_sessions.count_documents({"is_active": True})
+        # Count expired/inactive sessions
+        inactive_sessions = db.user_sessions.count_documents({"is_active": False})
+        status["database"] = {
+            "connected": True,
+            "active_sessions": active_sessions,
+            "inactive_sessions": inactive_sessions,
+            "total_sessions": active_sessions + inactive_sessions,
+        }
+    except Exception as exc:
+        status["database"] = {
+            "connected": False,
+            "error": str(exc),
+        }
+
+    return status
+
+
 @api_router.get("/me")
 def me_api(request: Request):
     db = get_database()
     user, session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
     if not user or not session:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail={"authenticated": False, "login_url": "/login"})
+        from src.app.security.navigation import get_navigation_for_user
+        return {
+            "authenticated": False,
+            "user": None,
+            "session": None,
+            "home_href": None,
+            "navigation": get_navigation_for_user(None),
+        }
     from src.app.security.navigation import get_default_redirect_for_role
     home_href = get_default_redirect_for_role(user.get("primary_role"))
     return _auth_payload(user, session, home_href)
@@ -59,12 +115,7 @@ def heartbeat(
     if not token:
         return {"ok": True}
     session = get_session(db, token)
-    if session:
-        touch_session_activity(db, session)
-    return {
-        "ok": True,
-        "inactivity_timeout_minutes": INACTIVITY_TIMEOUT_MINUTES,
-    }
+    return {"ok": True}
 
 
 @api_router.post("/refresh")

@@ -40,13 +40,16 @@ def amenities_update_api(payload: dict = Body(...)):
     active_amenities = payload.get("active_amenities") or []
     if not isinstance(active_amenities, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="active_amenities must be a list")
+    room_type_id = str(payload.get("room_type_id") or "")
     saved = save_partner_hotel_amenities(
         prop_id,
         active_amenities=[str(item) for item in active_amenities],
         amenities_text=str(payload.get("amenities_text") or ""),
-        room_type_id=str(payload.get("room_type_id") or ""),
+        room_type_id=room_type_id,
         changed_by="angular_api",
     )
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    return saved
+    # Return the full detail format (same as GET) so the frontend mapper
+    # can parse it as AmenitiesDto without crashing.
+    return partner_hotel_content(prop_id, room_type_id=room_type_id)
