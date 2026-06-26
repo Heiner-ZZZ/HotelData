@@ -16,7 +16,7 @@ from src.app.modules.partner.services.properties.metadata import (
 )
 from src.app.modules.partner.services.properties.performance import performance_for_prop
 from src.cache.cache_service import get_cache, set_cache, delete_cache
-from src.security.hotel_filter import user_can_access_hotel
+from src.app.security.hotel_filter import user_can_access_hotel
 from src.database.connection import get_database
 
 

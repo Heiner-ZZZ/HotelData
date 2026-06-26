@@ -110,10 +110,21 @@ def _room_types_for_detail(prop_id: int, limit: int = 12) -> list[dict[str, Any]
     return list(
         db.room_types.find(
             {"prop_id": prop_id},
-            {"_id": 0, "room_type_id": 1, "name": 1, "base_capacity": 1, "max_adults": 1, "max_children": 1, "is_active": 1},
+            {"_id": 0, "room_type_id": 1, "name": 1, "base_capacity": 1, "max_adults": 1, "max_children": 1, "is_active": 1, "description": 1, "features": 1},
         )
         .sort([("is_active", -1), ("name", 1)])
         .limit(limit)
+    )
+
+
+def _hotel_rooms_for_detail(prop_id: int) -> list[dict[str, Any]]:
+    db = get_database()
+    return list(
+        db.hotel_rooms.find(
+            {"prop_id": prop_id},
+            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_id": 1, "floor": 1, "is_active": 1},
+        )
+        .sort([("room_number", 1)])
     )
 
 
@@ -164,6 +175,7 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     item["top_sites"] = _top_sites_for_hotel(prop_id)
     item["hotel_rates"] = _hotel_rates_for_detail(prop_id)
     item["room_types"] = _room_types_for_detail(prop_id)
+    item["hotel_rooms"] = _hotel_rooms_for_detail(prop_id)
     item["hotel_policies"] = _hotel_policies_for_detail(prop_id)
     item["hotel_images"] = _hotel_images_for_detail(prop_id)
     item["hotel_content"] = _hotel_content_for_detail(prop_id)
