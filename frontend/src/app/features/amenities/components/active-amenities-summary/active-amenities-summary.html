@@ -8,7 +8,10 @@
   @if (items().length) {
     <div class="pill-wrap">
       @for (item of items(); track item) {
-        <span class="pill">{{ item }}</span>
+        <span class="pill">
+          <span class="material-symbols-outlined pill-icon">{{ getIcon(item) }}</span>
+          <span>{{ item }}</span>
+        </span>
       }
     </div>
   } @else {
