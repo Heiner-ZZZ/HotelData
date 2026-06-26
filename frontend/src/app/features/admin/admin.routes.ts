@@ -30,4 +30,11 @@ export const ADMIN_ROUTES: Routes = [
     loadChildren: () =>
       import('../../features/billing/billing.routes').then((m) => m.BILLING_ROUTES),
   },
+
+  // Geographic Catalog
+  {
+    path: 'geo-catalog',
+    loadChildren: () =>
+      import('../../features/geo-catalog/geo-catalog.routes').then((m) => m.GEO_CATALOG_ROUTES),
+  },
 ];

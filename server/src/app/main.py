@@ -48,6 +48,7 @@ from src.app.modules.housekeeping.routes import api_router as housekeeping_api_r
 from src.app.modules.housekeeping.routes import router as housekeeping_module_router
 from src.app.modules.tracking.routes import tracking_api_router
 from src.app.modules.global_settings.routes import api_router as global_settings_api_router
+from src.app.modules.geo_catalog.routes import api_router as geo_catalog_api_router
 from src.app.modules.partner.routes.hotel_products import router as products_api_router
 from src.app.modules.kpi.routes import router as kpi_api_router
 from src.app.modules.map.routes import router as map_api_router
@@ -69,6 +70,7 @@ from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.housekeeping.service import ensure_housekeeping_collections
 from src.app.modules.reservations.service import ensure_reservation_collections
 from src.app.modules.global_settings.service import ensure_global_settings_collections
+from src.app.modules.geo_catalog.service import ensure_geo_collections
 import logging
 
 from config.settings import get_settings
@@ -128,6 +130,7 @@ def create_app() -> FastAPI:
     app.include_router(tracking_api_router)
     app.include_router(products_api_router)
     app.include_router(global_settings_api_router)
+    app.include_router(geo_catalog_api_router)
     app.include_router(crud_router)
     app.include_router(kpi_api_router)
     app.include_router(map_api_router)
@@ -150,6 +153,7 @@ async def lifespan(app: FastAPI):
     ensure_housekeeping_collections()
     ensure_reservation_collections()
     ensure_global_settings_collections()
+    ensure_geo_collections()
     ensure_auth_collections()
     ensure_room_features_collections()
     ensure_audit_indexes()
