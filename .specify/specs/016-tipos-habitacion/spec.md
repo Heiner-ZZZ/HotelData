@@ -39,7 +39,7 @@ Cada propiedad hotelera tiene uno o mas tipos de habitacion (ej. Simple, Doble, 
 
 ## 6. Reglas de negocio
 
-- Un tipo de habitacion pertenece a una sola propiedad
+- Un tipo de habitacion pertenece a una sola propiedad (ya hemos hablado de esto y tenemos que un tipo de habitacion no es unico , por que lo unico es el numero de la habitacion fisica, pero el tipo de habitacion puede repetirse en diferentes propiedades)
 - No se puede eliminar un tipo de habitacion con reservas activas o futuras
 - max_guests debe ser mayor o igual a 1 (adultos maximo)
 - base_rate debe ser > 0 (tarifa base por noche en USD)
