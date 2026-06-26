@@ -142,13 +142,14 @@ export class RatesPageComponent {
   readonly seasonalPriceOverride = signal(0);
 
   /* ── Sidebar sections ── */
-  readonly sidebarSections: SidebarSection[] = [
-    { id: 'overview', label: 'Panel', icon: 'dashboard' },
-    { id: 'calendar', label: 'Calendario Global', icon: 'calendar_month' },
-    { id: 'plans', label: 'Planes Tarifarios', icon: 'table' },
-    { id: 'seasons', label: 'Temporadas', icon: 'event' },
-    { id: 'promos', label: 'Promociones', icon: 'campaign' },
-  ];
+readonly sidebarSections: SidebarSection[] = [
+  { id: 'overview', label: 'Panel', icon: 'dashboard' },
+  { id: 'rate-entry', label: 'Entrada Individual', icon: 'edit_calendar' },
+  { id: 'calendar', label: 'Calendario Global', icon: 'calendar_month' },
+  { id: 'plans', label: 'Planes Tarifarios', icon: 'table' },
+  { id: 'seasons', label: 'Temporadas', icon: 'event' },
+  { id: 'promos', label: 'Promociones', icon: 'campaign' },
+];
 
   /* ── KPI data derived from viewModel ── */
   readonly kpiData = computed((): KpiData | null => {

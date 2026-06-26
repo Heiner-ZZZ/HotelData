@@ -1,48 +1,53 @@
 <section class="kpi-grid">
-  <article class="kpi-card">
+  <article class="kpi-card glass">
     <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
       <span class="material-symbols-outlined kpi-icon">business</span>
     </div>
     <div class="kpi-body">
       <p class="kpi-label">Hotel</p>
       <h3 class="kpi-value">{{ data().hotelLabel }}</h3>
-      <p class="kpi-desc">Operación comercial de tarifas</p>
-      @if (data().profileBadge) {
-        <p class="kpi-badge-text">{{ data().profileBadge }}</p>
-      }
     </div>
+    <span class="kpi-info" title="Operación comercial de tarifas{{ data().profileBadge ? '. ' + data().profileBadge : '' }}">
+      <span class="material-symbols-outlined info-icon">info</span>
+    </span>
   </article>
 
-  <article class="kpi-card">
+  <article class="kpi-card glass">
     <div class="kpi-icon-wrap" style="--card-accent: var(--success)">
       <span class="material-symbols-outlined kpi-icon">attach_money</span>
     </div>
     <div class="kpi-body">
       <p class="kpi-label">Planes Tarifarios</p>
       <h3 class="kpi-value">{{ data().ratePlansCount }}</h3>
-      <p class="kpi-desc">Planes configurados</p>
     </div>
+    <span class="kpi-info" title="Planes tarifarios configurados para esta propiedad">
+      <span class="material-symbols-outlined info-icon">info</span>
+    </span>
   </article>
 
-  <article class="kpi-card">
+  <article class="kpi-card glass">
     <div class="kpi-icon-wrap" style="--card-accent: var(--warning)">
       <span class="material-symbols-outlined kpi-icon">calendar_month</span>
     </div>
     <div class="kpi-body">
       <p class="kpi-label">Calendario</p>
       <h3 class="kpi-value">{{ data().calendarCount }}</h3>
-      <p class="kpi-desc">Filas recientes de tarifa por fecha</p>
     </div>
+    <span class="kpi-info" title="Filas recientes de tarifa por fecha">
+      <span class="material-symbols-outlined info-icon">info</span>
+    </span>
   </article>
 
-  <article class="kpi-card">
+  <article class="kpi-card glass">
     <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
       <span class="material-symbols-outlined kpi-icon">campaign</span>
     </div>
     <div class="kpi-body">
       <p class="kpi-label">Promociones y Cupones</p>
       <h3 class="kpi-value">{{ data().promotionsCount + data().couponsCount }}</h3>
-      <p class="kpi-desc">{{ data().promotionsCount }} campañas · {{ data().couponsCount }} cupones</p>
     </div>
+    <span class="kpi-info" title="{{ data().promotionsCount }} campañas · {{ data().couponsCount }} cupones">
+      <span class="material-symbols-outlined info-icon">info</span>
+    </span>
   </article>
 </section>
