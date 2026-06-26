@@ -253,6 +253,77 @@
           </section>
         }
 
+        <!-- ═══ Products / Add-on Services ═══ -->
+        @if (canAddProducts() && productsState() !== 'loading') {
+          <section class="surface-card panel products-panel">
+            <div class="panel-head">
+              <div class="panel-head-left">
+                <span class="material-symbols-outlined panel-icon">shopping_cart</span>
+                <h2>Servicios adicionales</h2>
+              </div>
+              @if (productsState() === 'success' || productsState() === 'empty') {
+                <button type="button" class="btn-add-product" (click)="openProductModal()">
+                  <span class="material-symbols-outlined">add</span>
+                  Agregar servicio
+                </button>
+              }
+            </div>
+
+            <!-- Line items list -->
+            @switch (lineItemsState()) {
+              @case ('loading') {
+                <div class="products-loading">
+                  <span class="material-symbols-outlined loading-spin">sync</span>
+                  <span>Cargando servicios...</span>
+                </div>
+              }
+              @case ('error') {
+                <div class="products-error">Error al cargar servicios adicionales.</div>
+              }
+              @case ('empty') {
+                <p class="products-empty">No hay servicios adicionales registrados en esta reserva.</p>
+              }
+              @case ('success') {
+                <div class="line-items-list">
+                  @for (item of lineItems(); track item.itemId) {
+                    <div class="line-item-row">
+                      <div class="line-item-info">
+                        <div class="line-item-head">
+                          <strong>{{ item.name }}</strong>
+                          <span class="line-item-qty">x{{ item.quantity }}</span>
+                        </div>
+                        <div class="line-item-meta">
+                          <span>{{ item.unitPrice | currency:'USD' }} c/u</span>
+                          <span class="line-item-added">añadido {{ item.addedAt | date:'dd/MM HH:mm' }}</span>
+                        </div>
+                      </div>
+                      <div class="line-item-total-wrap">
+                        <span class="line-item-total">{{ item.total | currency:'USD' }}</span>
+                        <button type="button" class="btn-remove-li"
+                          (click)="removeLineItem(item.itemId)"
+                          [disabled]="removeItemSaving() === item.itemId"
+                          aria-label="Eliminar servicio">
+                          @if (removeItemSaving() === item.itemId) {
+                            <span class="material-symbols-outlined loading-spin">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined">close</span>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+                @if (lineItemsTotal() > 0) {
+                  <div class="line-items-summary">
+                    <span>Total servicios adicionales</span>
+                    <strong>{{ lineItemsTotal() | currency:'USD' }}</strong>
+                  </div>
+                }
+              }
+            }
+          </section>
+        }
+
         @if (vm.cancellationPolicy; as policy) {
           <section class="surface-card panel policy-panel">
             <div class="panel-head">
@@ -278,6 +349,126 @@
             </table>
           </div>
         </section>
+
+        <!-- ═══ Products Modal ═══ -->
+        @if (showProductModal()) {
+          <div class="modal-overlay" (click)="closeProductModal()">
+            <div class="modal-panel product-modal" (click)="$event.stopPropagation()">
+              <div class="modal-head">
+                <span class="material-symbols-outlined modal-head-icon">shopping_cart</span>
+                <div>
+                  <h2>Agregar servicio</h2>
+                  <p>Seleccioná un producto para agregar a la reserva</p>
+                </div>
+                <button type="button" class="modal-close" (click)="closeProductModal()" aria-label="Cerrar">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                @switch (productsState()) {
+                  @case ('loading') {
+                    <div class="loading-shade-sm">
+                      <span class="material-symbols-outlined loading-spin">sync</span>
+                      <span>Cargando productos disponibles...</span>
+                    </div>
+                  }
+                  @case ('error') {
+                    <div class="error-msg">
+                      <span class="material-symbols-outlined">error</span>
+                      <span>No se pudieron cargar los productos del hotel.</span>
+                    </div>
+                  }
+                  @case ('empty') {
+                    <div class="empty-rooms">
+                      <span class="material-symbols-outlined">inventory_2</span>
+                      <p>No hay productos disponibles para este hotel.</p>
+                      <p class="hint">Configurá los productos en Gestión &gt; Productos.</p>
+                    </div>
+                  }
+                  @case ('success') {
+                    <!-- Product selector -->
+                    <div class="product-selector">
+                      <button type="button" class="product-dropdown" (click)="toggleProductSelect()">
+                        @if (selectedProduct(); as sp) {
+                          <div class="product-dropdown-selected">
+                            <strong>{{ sp.name }}</strong>
+                            <span class="product-price">{{ sp.unitPrice | currency:'USD' }}</span>
+                          </div>
+                        } @else {
+                          <span class="product-placeholder">Seleccionar producto...</span>
+                        }
+                        <span class="material-symbols-outlined dropdown-arrow">
+                          {{ showProductSelect() ? 'expand_less' : 'expand_more' }}
+                        </span>
+                      </button>
+
+                      @if (showProductSelect()) {
+                        <div class="product-options">
+                          @for (group of productsGrouped(); track group.category) {
+                            <div class="product-group">
+                              <div class="product-group-label">{{ group.category }}</div>
+                              @for (prod of group.items; track prod.productId) {
+                                <button type="button" class="product-option"
+                                  (click)="selectProduct(prod)"
+                                  [class.is-selected]="addProductId() === prod.productId">
+                                  <div class="product-option-info">
+                                    <strong>{{ prod.name }}</strong>
+                                    @if (prod.description) {
+                                      <span class="product-desc">{{ prod.description }}</span>
+                                    }
+                                  </div>
+                                  <span class="product-option-price">{{ prod.unitPrice | currency:'USD' }}</span>
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Quantity selector -->
+                    @if (selectedProduct()) {
+                      <div class="qty-selector">
+                        <label>
+                          <span>Cantidad</span>
+                          <div class="qty-controls">
+                            <button type="button" (click)="addProductQty.update(q => Math.max(1, q - 1))" [disabled]="addProductQty() <= 1">
+                              <span class="material-symbols-outlined">remove</span>
+                            </button>
+                            <input type="number" [ngModel]="addProductQty()" (ngModelChange)="addProductQty.set(Math.max(1, $event))" min="1" />
+                            <button type="button" (click)="addProductQty.update(q => q + 1)">
+                              <span class="material-symbols-outlined">add</span>
+                            </button>
+                          </div>
+                        </label>
+                        @if (selectedProduct(); as sp) {
+                          <div class="qty-total">
+                            <span>Total:</span>
+                            <strong>{{ sp.unitPrice * addProductQty() | currency:'USD' }}</strong>
+                          </div>
+                        }
+                      </div>
+                    }
+                  }
+                }
+              </div>
+              <div class="modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeProductModal()">Cancelar</button>
+                <button type="button" class="btn-primary"
+                  (click)="addProductToBooking()"
+                  [disabled]="addProductSaving() || !selectedProduct()">
+                  @if (addProductSaving()) {
+                    <span class="material-symbols-outlined loading-spin">sync</span>
+                    Agregando...
+                  } @else {
+                    <span class="material-symbols-outlined">add_shopping_cart</span>
+                    Agregar a la reserva
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- ═══ Room Assignment Modal ═══ -->
         @if (showRoomModal()) {

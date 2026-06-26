@@ -89,14 +89,27 @@ export class RoomsApiService {
 
   /* ── Room Features API ── */
 
-  /** Get the master feature catalog, grouped by category. */
+  /** Get the master feature catalog, grouped by category (maps unit_price → unitPrice). */
   getFeatureCatalog() {
     return this.http
-      .get<{ features: FeatureCategory[] }>(
+      .get<{ features: any[] }>(
         `${this.apiConfig.baseUrl}/management/room-features`,
         { withCredentials: true }
       )
-      .pipe(map((res) => res.features));
+      .pipe(map((res) => this._mapFeatureCatalog(res.features)));
+  }
+
+  private _mapFeatureCatalog(raw: any[]): FeatureCategory[] {
+    return raw.map((cat: any) => ({
+      category: cat.category,
+      items: (cat.items || []).map((item: any) => ({
+        label: item.label,
+        category: item.category,
+        icon: item.icon,
+        custom: item.custom,
+        unitPrice: typeof item.unit_price === 'number' ? item.unit_price : 0,
+      })),
+    }));
   }
 
   /** Get features for a specific room type. */

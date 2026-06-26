@@ -15,6 +15,8 @@ import { ReservationTimelineComponent } from './components/reservation-timeline'
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationDetailViewModel } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
+import { ProductsApiService } from '../../../admin/services/products-api.service';
+import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
 
 interface EditForm {
   checkInDate: string;
@@ -35,6 +37,7 @@ export class ReservationDetailPageComponent {
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reservationsApi = inject(ReservationsApiService);
+  private readonly productsApi = inject(ProductsApiService);
   private readonly router = inject(Router);
 
   readonly viewState = signal<ViewState>('loading');
@@ -49,6 +52,38 @@ export class ReservationDetailPageComponent {
   readonly editForm = signal<EditForm>({ checkInDate: '', checkOutDate: '', rooms: 1, comment: '' });
   readonly editSaving = signal(false);
   readonly editError = signal('');
+
+  // Products (add-on services)
+  readonly productsState = signal<ViewState>('idle');
+  readonly lineItemsState = signal<ViewState>('idle');
+  readonly hotelProducts = signal<HotelProduct[]>([]);
+  readonly lineItems = signal<BookingLineItem[]>([]);
+  readonly lineItemsTotal = computed(() => this.lineItems().reduce((sum, li) => sum + li.total, 0));
+  readonly productsGrouped = computed(() => {
+    const groups = new Map<string, HotelProduct[]>();
+    for (const p of this.hotelProducts()) {
+      if (!groups.has(p.category)) groups.set(p.category, []);
+      groups.get(p.category)!.push(p);
+    }
+    return [...groups.entries()].map(([category, items]) => ({ category, items }));
+  });
+  readonly addProductId = signal('');
+  readonly addProductQty = signal(1);
+  readonly addProductSaving = signal(false);
+  readonly removeItemSaving = signal<string | null>(null);
+  readonly showProductModal = signal(false);
+  readonly showProductSelect = signal(false);
+
+  readonly selectedProduct = computed(() => {
+    const pid = this.addProductId();
+    if (!pid) return null;
+    return this.hotelProducts().find((p) => p.productId === pid) ?? null;
+  });
+
+  readonly canAddProducts = computed(() => {
+    const vm = this.data();
+    return vm && ['confirmed', 'checked_in'].includes(vm.status) && this.isStaff();
+  });
 
   // Room assignment modal
   readonly showRoomModal = signal(false);
@@ -79,6 +114,98 @@ export class ReservationDetailPageComponent {
 
   constructor() {
     this.loadDetail();
+  }
+
+  // ── Products (Add-on Services) ──
+
+  loadProducts() {
+    const vm = this.data();
+    if (!vm) return;
+    this.productsState.set('loading');
+    this.lineItemsState.set('loading');
+
+    this.productsApi.listHotelProducts(vm.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (products) => {
+        this.hotelProducts.set(products);
+        this.productsState.set(products.length ? 'success' : 'empty');
+      },
+      error: () => this.productsState.set('error'),
+    });
+
+    this.productsApi.getLineItems(vm.bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (items) => {
+        this.lineItems.set(items);
+        this.lineItemsState.set(items.length ? 'success' : 'empty');
+      },
+      error: () => this.lineItemsState.set('error'),
+    });
+  }
+
+  openProductModal() {
+    this.showProductModal.set(true);
+    this.addProductId.set('');
+    this.addProductQty.set(1);
+  }
+
+  closeProductModal() {
+    this.showProductModal.set(false);
+    this.showProductSelect.set(false);
+  }
+
+  toggleProductSelect() {
+    this.showProductSelect.set(!this.showProductSelect());
+  }
+
+  selectProduct(product: HotelProduct) {
+    this.addProductId.set(product.productId);
+    this.addProductQty.set(1);
+    this.showProductSelect.set(false);
+  }
+
+  addProductToBooking() {
+    const vm = this.data();
+    const product = this.selectedProduct();
+    if (!vm || !product || this.addProductSaving()) return;
+
+    this.addProductSaving.set(true);
+    this.productsApi.addLineItem(vm.bookingId, {
+      product_id: product.productId,
+      name: product.name,
+      unit_price: product.unitPrice,
+      quantity: this.addProductQty(),
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.addProductSaving.set(false);
+        this.closeProductModal();
+        this.onTimelineMessage('Producto agregado a la reserva.');
+        this.loadProducts();
+      },
+      error: () => {
+        this.addProductSaving.set(false);
+        this.editError.set('Error al agregar el producto.');
+      },
+    });
+  }
+
+  removeLineItem(itemId: string) {
+    const vm = this.data();
+    if (!vm) return;
+    this.removeItemSaving.set(itemId);
+    this.productsApi.removeLineItem(vm.bookingId, itemId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.removeItemSaving.set(null);
+        this.onTimelineMessage('Producto eliminado de la reserva.');
+        this.loadProducts();
+      },
+      error: () => {
+        this.removeItemSaving.set(null);
+        this.editError.set('Error al eliminar el producto.');
+      },
+    });
   }
 
   toggleEdit() {
@@ -279,7 +406,11 @@ export class ReservationDetailPageComponent {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (detail) => { this.data.set(detail); this.viewState.set('success'); },
+        next: (detail) => {
+          this.data.set(detail);
+          this.viewState.set('success');
+          this.loadProducts();
+        },
         error: (error: ApiError) => { this.viewState.set(error.status === 404 ? 'empty' : 'error'); }
       });
   }

@@ -31,6 +31,35 @@ def _amenity_category(label: str) -> str:
     return "General"
 
 
+def _amenity_unit_price(label: str) -> float:
+    """Return a default unit price for paid amenities."""
+    paid = {
+        "desayuno incluido": 15.0,
+        "desayuno": 15.0,
+        "camas extra": 25.0,
+        "cama extra": 25.0,
+        "cunas": 15.0,
+        "cuna": 15.0,
+        "parking": 20.0,
+        "estacionamiento": 20.0,
+        "minibar": 15.0,
+        "caja fuerte": 5.0,
+        "spa": 40.0,
+        "masajes": 50.0,
+        "sauna": 25.0,
+        "servicio a la habitacion": 12.0,
+        "servicio a la habitación": 12.0,
+        "cafe": 5.0,
+        "café": 5.0,
+        "bar": 8.0,
+        "restaurante": 0.0,
+        "gimnasio": 10.0,
+        "mascotas": 30.0,
+        "pet friendly": 30.0,
+    }
+    return paid.get(label.lower(), 0.0)
+
+
 def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[str, Any]]:
     catalog_items: list[dict[str, str]] = []
     for category, labels in DEFAULT_AMENITIES_CATALOG.items():
@@ -53,7 +82,11 @@ def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[s
         if not label or key in seen:
             continue
         seen.add(key)
-        grouped.setdefault(category, []).append({"label": label, "active": label.lower() in active_lookup})
+        grouped.setdefault(category, []).append({
+            "label": label,
+            "active": label.lower() in active_lookup,
+            "unit_price": _amenity_unit_price(label),
+        })
 
     return [
         {"category": category, "items": sorted(items, key=lambda entry: entry["label"].lower())}
