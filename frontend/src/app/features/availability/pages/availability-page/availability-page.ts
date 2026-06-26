@@ -394,7 +394,8 @@ export class AvailabilityPageComponent {
   /** Switch to a different property without a full page reload.
    *  Fetches fresh data directly and updates all signals in-place.
    *  Shows a skeleton loader on the calendar while loading. */
-  onPropSelected(propId: number) {
+  onPropSelected(event: { propId: number; label: string }) {
+    const propId = event.propId;
     if (!propId || propId === this.selectedPropId()) return;
 
     void this.router.navigate([], {

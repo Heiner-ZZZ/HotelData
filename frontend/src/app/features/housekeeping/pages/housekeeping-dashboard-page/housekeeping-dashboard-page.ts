@@ -96,11 +96,11 @@ export class HousekeepingDashboardPageComponent {
       });
   }
 
-  onPropSelected(propId: number): void {
-    const label = propId ? (this.selectedLabel() || `Propiedad #${propId}`) : '';
+  onPropSelected(event: { propId: number; label: string }): void {
+    const label = event.label || `Propiedad #${event.propId}`;
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null, prop_label: label || null },
+      queryParams: { prop_id: event.propId || null, prop_label: label || null },
     });
   }
 }

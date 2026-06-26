@@ -29,6 +29,7 @@ export class RoomStatusPageComponent {
   private readonly api = inject(HousekeepingApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<PaginatedResponse<RoomStatusItem> | null>(null);
@@ -61,8 +62,10 @@ export class RoomStatusPageComponent {
           this.statusFilter.set(status);
           this.propFilter.set(propId);
           if (!propId) {
+            this.propertyCtx.clear();
             return this.api.getRoomStatus(undefined, status || undefined, page);
           }
+          this.propertyCtx.setProperty(propId, `Propiedad #${propId}`);
           return this.api.syncRoomStatus(propId).pipe(
             switchMap(() => this.api.getRoomStatus(propId, status || undefined, page)),
           );
