@@ -59,7 +59,12 @@ export class RoomStatusPageComponent {
           this.viewState.set('loading');
           this.statusFilter.set(status);
           this.propFilter.set(propId);
-          return this.api.getRoomStatus(propId || undefined, status || undefined, page);
+          if (!propId) {
+            return this.api.getRoomStatus(undefined, status || undefined, page);
+          }
+          return this.api.syncRoomStatus(propId).pipe(
+            switchMap(() => this.api.getRoomStatus(propId, status || undefined, page)),
+          );
         }),
         takeUntilDestroyed(this.destroyRef),
       )

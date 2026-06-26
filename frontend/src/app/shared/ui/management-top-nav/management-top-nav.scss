@@ -2,8 +2,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 0 1.5rem;
+  height: 52px;
+  padding: 0 1rem;
   background: color-mix(in srgb, var(--surface) 85%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid color-mix(in srgb, var(--app-border) 30%, transparent);
@@ -56,7 +56,7 @@
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 /* ── Notifications ── */
@@ -69,8 +69,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2rem;
+  height: 2rem;
   border: none;
   border-radius: 999px;
   background: transparent;
@@ -97,7 +97,7 @@
 }
 
 .notif-icon {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-variation-settings: 'FILL' 0;
 }
 
@@ -257,8 +257,8 @@
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.35rem 0.75rem 0.35rem 0.5rem;
+  gap: 0.5rem;
+  padding: 0;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s;
@@ -269,15 +269,15 @@
 }
 
 .user-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 999px;
   background: var(--accent);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 700;
   flex-shrink: 0;
   letter-spacing: 0.03em;
@@ -286,26 +286,24 @@
 .user-info {
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .user-name {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--app-text);
 }
 
 .user-surname {
-  font-size: 0.75rem;
-  color: var(--muted-text);
+  display: none;
 }
 
 .user-role {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: var(--muted-text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.7;
-  margin-top: 0.05rem;
 }

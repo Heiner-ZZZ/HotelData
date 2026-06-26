@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
+import { PropertyContextService } from '../../services/property-context.service';
 
 interface BreadcrumbItem {
   label: string;
@@ -47,10 +48,12 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly elementRef = inject(ElementRef);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly currentUser = this.authService.currentUser;
   readonly showNotifications = signal(false);
   readonly currentUrl = signal(this.router.url.split('?')[0]);
+  readonly currentQueryParams = signal<Record<string, string>>({});
 
   readonly initials = computed(() => {
     const name = this.currentUser()?.displayName || this.currentUser()?.username || 'U';
@@ -90,13 +93,20 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const url = this.currentUrl();
+    const qp = this.currentQueryParams();
+    const qs = qp['prop_id'] ? `?prop_id=${qp['prop_id']}` : '';
     const segments = url.split('/').filter(Boolean);
     const rootIdx = segments.findIndex(s => s === 'management' || s === 'system' || s === 'ownership');
-    if (rootIdx === -1) return [{ label: 'Gestión', path: '/management' }];
-    return segments.slice(rootIdx).map((seg, i) => {
+    if (rootIdx === -1) return [{ label: 'Gestión', path: '/management' + qs }];
+    const crumbs = segments.slice(rootIdx).map((seg, i) => {
       const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');
-      return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/') };
+      return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/') + qs };
     });
+    const propLabel = this.propertyCtx.currentPropLabel();
+    if (propLabel) {
+      crumbs.push({ label: propLabel, path: '' });
+    }
+    return crumbs;
   });
 
   readonly pollingError = signal(false);
@@ -120,7 +130,18 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(e => this.currentUrl.set(e.urlAfterRedirects.split('?')[0]));
+      .subscribe(e => {
+        const [urlPath, qs] = e.urlAfterRedirects.split('?');
+        this.currentUrl.set(urlPath);
+        const params: Record<string, string> = {};
+        if (qs) {
+          qs.split('&').forEach(pair => {
+            const [k, v] = pair.split('=');
+            if (k) params[decodeURIComponent(k)] = v ? decodeURIComponent(v) : '';
+          });
+        }
+        this.currentQueryParams.set(params);
+      });
   }
 
   ngOnInit() {
