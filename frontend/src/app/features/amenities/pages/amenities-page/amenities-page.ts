@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -10,9 +10,8 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { mapAmenitiesPayload } from '../../mappers/amenities.mapper';
-import type { AmenitiesViewModel } from '../../models/amenities.model';
+import { mapAmenities, mapAmenitiesPayload } from '../../mappers/amenities.mapper';
+import type { AmenitiesDto } from '../../models/amenities.dto';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
@@ -27,7 +26,6 @@ import { AmenityCategoryPanelComponent } from '../../components/amenity-category
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
-    ReactiveFormsModule
   ],
   templateUrl: './amenities-page.html',
   styleUrl: './amenities-page.scss',
@@ -37,42 +35,67 @@ export class AmenitiesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AmenitiesApiService);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<AmenitiesViewModel | null>(null);
+  // ── Route params as signals ──
+  readonly selectedPropId = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => Number(params.get('prop_id') ?? '0')),
+      distinctUntilChanged(),
+    ),
+    { initialValue: 0 }
+  );
+
+  readonly selectedRoomTypeId = signal('');
+
+  // ── Declarative data fetching with httpResource ──
+  // Auto-fetches when prop_id or room_type changes.
+  // Returns undefined URL = skip fetch (empty state).
+  private readonly amenitiesResource = httpResource<AmenitiesDto>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    return `/api/management/amenities?prop_id=${propId}&room_type_id=${this.selectedRoomTypeId()}`;
+  });
+
+  // ── Derived state ──
+  readonly viewState = computed(() => {
+    if (!this.selectedPropId()) return 'empty' as const;
+    if (this.amenitiesResource.isLoading()) return 'loading' as const;
+    if (this.amenitiesResource.error()) return 'error' as const;
+    if (!this.amenitiesResource.hasValue()) return 'loading' as const;
+    return 'success' as const;
+  });
+
+  readonly viewModel = computed(() => {
+    const dto = this.amenitiesResource.value();
+    return dto ? mapAmenities(dto) : null;
+  });
+
+  readonly selectedLabel = computed(() => this.viewModel()?.hotelName ?? '');
+
+  // ── Mutable state ──
   readonly selectedAmenities = signal<string[]>([]);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectedPropId = signal(0);
-  readonly selectedLabel = signal('');
-  readonly selectedRoomTypeId = signal('');
+  // ── Form fields as plain signals (no FormBuilder) ──
+  readonly search = signal('');
+  readonly manualAmenity = signal('');
 
-  readonly utilityForm = this.formBuilder.nonNullable.group({
-    search: [''],
-    manualAmenity: ['']
-  });
-
+  // ── Derived computations ──
   readonly selectedLookup = computed(() => new Set(this.selectedAmenities().map((item) => item.toLowerCase())));
 
   readonly filteredCategories = computed(() => {
     const vm = this.viewModel();
-    const search = this.utilityForm.controls.search.value.trim().toLowerCase();
-    if (!vm) {
-      return [];
-    }
+    const q = this.search().trim().toLowerCase();
+    if (!vm) return [];
     const categories = vm.categories;
-    if (!search) {
-      return categories;
-    }
+    if (!q) return categories;
     return categories
-      .map((category) => ({
-        ...category,
-        items: category.items.filter((item) => item.label.toLowerCase().includes(search))
+      .map((cat) => ({
+        ...cat,
+        items: cat.items.filter((item) => item.label.toLowerCase().includes(q))
       }))
-      .filter((category) => category.items.length);
+      .filter((cat) => cat.items.length);
   });
 
   readonly selectedRoomName = computed(() => {
@@ -83,35 +106,15 @@ export class AmenitiesPageComponent {
   });
 
   constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => Number(params.get('prop_id') ?? '0')),
-        distinctUntilChanged(),
-        switchMap((propId) => {
-          this.viewState.set('loading');
-          this.message.set('');
-          this.errorMessage.set('');
-          this.selectedRoomTypeId.set('');
-          return propId > 0 ? this.api.getAmenities(propId) : of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (amenities) => {
-          if (amenities) {
-            this.viewModel.set(amenities);
-            this.selectedAmenities.set(amenities.activeAmenities);
-            this.selectedPropId.set(amenities.propId);
-            this.selectedLabel.set(amenities.hotelName);
-            this.viewState.set('success');
-          } else {
-            this.viewModel.set(null);
-            this.selectedAmenities.set([]);
-            this.viewState.set('empty');
-          }
-        },
-        error: () => this.viewState.set('error')
-      });
+    // Sync active amenities when fresh data arrives from httpResource
+    effect(() => {
+      const dto = this.amenitiesResource.value();
+      if (dto) {
+        this.selectedAmenities.set(dto.amenities.active_amenities ?? []);
+        this.message.set('');
+        this.errorMessage.set('');
+      }
+    });
   }
 
   onPropSelected(propId: number) {
@@ -121,20 +124,8 @@ export class AmenitiesPageComponent {
     });
   }
 
-  onRoomTypeChange(event: Event) {
-    const roomTypeId = (event.target as HTMLSelectElement).value;
-    const propId = this.selectedPropId();
-    if (!propId) return;
-    this.selectedRoomTypeId.set(roomTypeId);
-    this.viewState.set('loading');
-    this.api.getAmenities(propId, roomTypeId).subscribe({
-      next: (amenities) => {
-        this.viewModel.set(amenities);
-        this.selectedAmenities.set(amenities.activeAmenities);
-        this.viewState.set('success');
-      },
-      error: () => this.viewState.set('error')
-    });
+  onRoomTypeChange(event: Event): void {
+    this.selectedRoomTypeId.set((event.target as HTMLSelectElement).value);
   }
 
   toggleAmenity(label: string) {
@@ -151,26 +142,20 @@ export class AmenitiesPageComponent {
     }
   }
 
-  addManualAmenity() {
-    const value = this.utilityForm.controls.manualAmenity.value.trim();
-    if (!value) {
-      return;
-    }
+  addManualAmenity(): void {
+    const value = this.manualAmenity().trim();
+    if (!value) return;
     this.toggleAmenity(value);
-    this.utilityForm.controls.manualAmenity.setValue('');
+    this.manualAmenity.set('');
   }
 
-  saveAmenities() {
+  saveAmenities(): void {
     const current = this.viewModel();
-    if (!current) {
-      return;
-    }
+    if (!current) return;
     this.api
       .saveAmenities(mapAmenitiesPayload(current.propId, this.selectedAmenities(), this.selectedRoomTypeId()))
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (fresh) => {
-          this.viewModel.set(fresh);
           this.selectedAmenities.set(fresh.activeAmenities);
           this.selectedRoomTypeId.set('');
           this.message.set('Servicios actualizados');

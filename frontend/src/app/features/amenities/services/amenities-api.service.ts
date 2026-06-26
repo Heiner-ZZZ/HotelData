@@ -1,14 +1,13 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapAmenities, mapAmenitiesOptions } from '../mappers/amenities.mapper';
 import type { AmenitiesDto, AmenitiesOptionsDto, AmenitiesSaveDto } from '../models/amenities.dto';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Service()
 export class AmenitiesApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
@@ -23,7 +22,7 @@ export class AmenitiesApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapAmenitiesOptions(dto)));
+      .pipe(catchAuthError(), map((dto) => mapAmenitiesOptions(dto)));
   }
 
   getAmenities(propId: number, roomTypeId = '') {
@@ -36,12 +35,12 @@ export class AmenitiesApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapAmenities(dto)));
+      .pipe(catchAuthError(), map((dto) => mapAmenities(dto)));
   }
 
   saveAmenities(payload: AmenitiesSaveDto) {
     return this.http.put<AmenitiesDto>(`${this.apiConfig.baseUrl}/management/amenities`, payload, {
       withCredentials: true
-    }).pipe(map((dto) => mapAmenities(dto)));
+    }).pipe(catchAuthError(), map((dto) => mapAmenities(dto)));
   }
 }

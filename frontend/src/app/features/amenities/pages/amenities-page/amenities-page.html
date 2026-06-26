@@ -123,12 +123,17 @@
               <p>Filtra el catálogo o agrega un servicio personalizado manualmente.</p>
             </div>
           </div>
-          <form [formGroup]="utilityForm" class="utility-grid">
+          <div class="utility-grid">
             <div class="field">
               <span class="field-label">Buscar en catálogo</span>
               <div class="input-wrap">
                 <span class="material-symbols-outlined input-prefix">search</span>
-                <input formControlName="search" placeholder="Escribe Wi-Fi, piscina, spa, gimnasio..." />
+                <input [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Escribe Wi-Fi, piscina, spa, gimnasio..." />
+                @if (search()) {
+                  <button type="button" class="search-clear" (click)="search.set('')">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                }
               </div>
             </div>
             <div class="field">
@@ -136,7 +141,7 @@
               <div class="inline-entry">
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-prefix">add_circle</span>
-                  <input formControlName="manualAmenity" placeholder="Ej: Shuttle gratis, Late check-out..." />
+                  <input [value]="manualAmenity()" (input)="manualAmenity.set($any($event.target).value)" placeholder="Ej: Shuttle gratis, Late check-out..." />
                 </div>
                 <button type="button" class="btn-secondary add-btn" (click)="addManualAmenity()">
                   <span class="material-symbols-outlined">add</span>
@@ -144,8 +149,23 @@
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </section>
+
+        <!-- Search results counter -->
+        @if (viewModel(); as vm) {
+          @let totalServices = vm.categories.reduce((acc, cat) => acc + cat.items.length, 0);
+          @let filteredServices = filteredCategories().reduce((acc, cat) => acc + cat.items.length, 0);
+          @let searchActive = !!search();
+
+          <div class="search-meta">
+            @if (searchActive) {
+              <span class="search-meta-count">
+                <strong>{{ filteredServices }}</strong> de <strong>{{ totalServices }}</strong> servicios
+              </span>
+            }
+          </div>
+        }
 
         <!-- Categories Selection Grid -->
         @if (filteredCategories().length) {
@@ -154,6 +174,7 @@
               <app-amenity-category-panel
                 [category]="category"
                 [selectedLabels]="selectedLookup()"
+                [searchTerm]="search()"
                 (toggleAmenity)="toggleAmenity($event)"
               />
             }

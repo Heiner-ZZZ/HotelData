@@ -4,6 +4,33 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 0 2rem;
+
+  /* ── Fade-in entrance animations ── */
+  > * {
+    animation: amenities-fade-in 420ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
+  }
+
+  > *:nth-child(1) { animation-delay: 0.0s; }
+  > *:nth-child(2) { animation-delay: 0.06s; }
+  > *:nth-child(3) { animation-delay: 0.12s; }
+  > *:nth-child(4) { animation-delay: 0.18s; }
+  > *:nth-child(5) { animation-delay: 0.24s; }
+  > *:nth-child(6) { animation-delay: 0.30s; }
+  > *:nth-child(7) { animation-delay: 0.36s; }
+  > *:nth-child(8) { animation-delay: 0.42s; }
+  > *:nth-child(9) { animation-delay: 0.48s; }
+  > *:nth-child(10) { animation-delay: 0.54s; }
+}
+
+@keyframes amenities-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Hero Stats Cards ── */
@@ -179,11 +206,62 @@
   pointer-events: none;
 }
 
+.search-clear {
+  position: absolute;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: color-mix(in srgb, var(--muted-text) 12%, transparent);
+  border-radius: 50%;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: all 150ms ease;
+
+  span {
+    font-size: 1.05rem;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--muted-text) 20%, transparent);
+    color: var(--app-text);
+  }
+}
+
+/* ── Search results counter ── */
+.search-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 1.5rem;
+  margin-top: -0.75rem;
+}
+
+.search-meta-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  strong {
+    font-weight: 700;
+    color: var(--accent);
+  }
+}
+
 .input-wrap input,
 .select-wrap select {
   width: 100%;
   min-height: 2.6rem;
-  padding: 0 1rem 0 2.4rem;
+  padding: 0 2.8rem 0 2.4rem;
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--surface);
