@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapPolicies, mapPoliciesOptions } from '../mappers/policies.mapper';
 import type { PoliciesDto, PoliciesOptionsDto, PoliciesSaveDto } from '../models/policies.dto';
 
@@ -23,7 +24,7 @@ export class PoliciesApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapPoliciesOptions(dto)));
+      .pipe(catchAuthError(), map((dto) => mapPoliciesOptions(dto)));
   }
 
   getPolicies(propId: number, roomTypeId?: string) {
@@ -36,7 +37,7 @@ export class PoliciesApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapPolicies(dto)));
+      .pipe(catchAuthError(), map((dto) => mapPolicies(dto)));
   }
 
   savePolicies(payload: PoliciesSaveDto) {

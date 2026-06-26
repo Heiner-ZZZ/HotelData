@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapAvailability, mapAvailabilityPropertyOptions } from '../mappers/availability.mapper';
 import type {
   AvailabilityDto,
@@ -28,7 +29,7 @@ export class AvailabilityApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapAvailability(dto)));
+      .pipe(catchAuthError(), map((dto) => mapAvailability(dto)));
   }
 
   getPropertyOptions(q = '', page = 1, pageSize = 10) {
@@ -41,7 +42,7 @@ export class AvailabilityApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapAvailabilityPropertyOptions(dto)));
+      .pipe(catchAuthError(), map((dto) => mapAvailabilityPropertyOptions(dto)));
   }
 
   getPropertyOptionsWithRooms(propId: number) {
@@ -53,7 +54,7 @@ export class AvailabilityApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => ({
+      .pipe(catchAuthError(), map((dto) => ({
         page: mapAvailabilityPropertyOptions(dto),
         roomTypes: dto.room_types ?? []
       })));
@@ -73,6 +74,13 @@ export class AvailabilityApiService {
 
   deleteBlackout(blackoutId: string) {
     return this.http.delete(`${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`, {
+      withCredentials: true
+    });
+  }
+
+  deleteInventory(propId: number, roomTypeId: string, date: string) {
+    return this.http.delete(`${this.apiConfig.baseUrl}/management/availability/inventory`, {
+      params: { prop_id: String(propId), room_type_id: roomTypeId, date },
       withCredentials: true
     });
   }
