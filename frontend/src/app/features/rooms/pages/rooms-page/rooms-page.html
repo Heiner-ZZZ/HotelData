@@ -415,6 +415,13 @@
             <div class="features-section-head" (click)="featurePanelOpen.set(!featurePanelOpen())">
               <span class="material-symbols-outlined features-head-icon">stars</span>
               <span class="features-head-title">Características</span>
+              @if (selectedFeatureCount() > 0) {
+                <span class="features-total">
+                  Extras:
+                  <strong>${{ selectedFeaturesTotal() }}</strong>
+                  total
+                </span>
+              }
               <span class="features-count-badge" [class.has-selection]="selectedFeatureCount() > 0">
                 {{ selectedFeatureCount() }} seleccionadas
               </span>
