@@ -248,11 +248,19 @@
               <td>{{ item.rangeLabel }}</td>
               <td>{{ item.blockedRooms }}</td>
               <td>{{ item.reason }}</td>
-              <td>
+              <td class="actions-col">
                 @if (item.blackoutId) {
                   <button
                     type="button"
-                    class="qa-btn delete-btn"
+                    class="qa-btn action-btn"
+                    (click)="editBlackout.emit(item.blackoutId!)"
+                    title="Editar bloqueo"
+                  >
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="qa-btn action-btn action-btn-danger"
                     (click)="deleteBlackout.emit(item.blackoutId!)"
                     title="Eliminar bloqueo"
                   >

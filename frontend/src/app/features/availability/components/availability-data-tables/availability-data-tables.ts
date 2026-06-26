@@ -22,6 +22,9 @@ export class AvailabilityDataTablesComponent {
   /** Emitted when the user wants to delete a blackout block. */
   readonly deleteBlackout = output<string>();
 
+  /** Emitted when the user wants to edit a blackout block. */
+  readonly editBlackout = output<string>();
+
   /** Emitted when the user wants to edit an inventory entry. */
   readonly editInventory = output<{ date: string; roomTypeName: string; roomTypeId: string; totalRooms: number; availableRooms: number; blockedRooms: number }>();
 

@@ -335,6 +335,25 @@ export class AvailabilityPageComponent {
     }, 0) / daysWithData;
   });
 
+  /** Rooms fetched for the selected room type (multi-select). */
+  readonly hotelRoomsForType = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; is_active: boolean }>>([]);
+  /** Set of room numbers selected as 'available' in the inventory form. */
+  readonly selectedAvailableRooms = signal<Set<string>>(new Set());
+  /** Set of room numbers selected as 'blocked' in the inventory form. */
+  readonly selectedBlockedRooms = signal<Set<string>>(new Set());
+
+  /** For blackout: set of room numbers selected to block. */
+  readonly blackoutSelectedRooms = signal<Set<string>>(new Set());
+  /** Blackout being edited (null = creating new). */
+  readonly editingBlackout = signal<{
+    blackoutId: string;
+    roomTypeId: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+    roomNumbers: string[];
+  } | null>(null);
+
   readonly inventoryForm = this.formBuilder.nonNullable.group({
     roomTypeId: ['', [Validators.required]],
     date: ['', [Validators.required]],
@@ -350,6 +369,79 @@ export class AvailabilityPageComponent {
     blockedRooms: [0, [Validators.required, Validators.min(0)]],
     reason: [''],
   });
+
+  /** Computed: auto-calculate totals from selected rooms. */
+  readonly computedInventoryTotals = computed(() => {
+    const available = this.selectedAvailableRooms();
+    const blocked = this.selectedBlockedRooms();
+    const total = available.size + blocked.size;
+    return { total, available: available.size, blocked: blocked.size };
+  });
+
+  /** Fetch hotel rooms when room type changes in inventory form. */
+  onInventoryRoomTypeChange() {
+    const roomTypeId = this.inventoryForm.controls.roomTypeId.value;
+    const propId = this.selectedPropId();
+    if (!roomTypeId || !propId) {
+      this.hotelRoomsForType.set([]);
+      this.selectedAvailableRooms.set(new Set());
+      this.selectedBlockedRooms.set(new Set());
+      return;
+    }
+    this.api.getHotelRooms(propId, roomTypeId).subscribe({
+      next: (res) => {
+        this.hotelRoomsForType.set(res.items);
+        // Pre-populate: all rooms as available by default
+        this.selectedAvailableRooms.set(new Set(res.items.map(r => r.room_number)));
+        this.selectedBlockedRooms.set(new Set());
+      },
+      error: () => this.hotelRoomsForType.set([]),
+    });
+  }
+
+  /** Toggle a room between available/blocked in inventory form. */
+  toggleInventoryRoom(roomNumber: string) {
+    const available = new Set(this.selectedAvailableRooms());
+    const blocked = new Set(this.selectedBlockedRooms());
+    if (available.has(roomNumber)) {
+      available.delete(roomNumber);
+      blocked.add(roomNumber);
+    } else if (blocked.has(roomNumber)) {
+      blocked.delete(roomNumber);
+      available.add(roomNumber);
+    } else {
+      available.add(roomNumber);
+    }
+    this.selectedAvailableRooms.set(available);
+    this.selectedBlockedRooms.set(blocked);
+  }
+
+  /** Toggle a room for blackout multi-select. */
+  toggleBlackoutRoom(roomNumber: string) {
+    const selected = new Set(this.blackoutSelectedRooms());
+    if (selected.has(roomNumber)) {
+      selected.delete(roomNumber);
+    } else {
+      selected.add(roomNumber);
+    }
+    this.blackoutSelectedRooms.set(selected);
+  }
+
+  /** Fetch hotel rooms when room type changes in blackout form. */
+  onBlackoutRoomTypeChange() {
+    const roomTypeId = this.blackoutForm.controls.roomTypeId.value;
+    const propId = this.selectedPropId();
+    if (!roomTypeId || !propId) {
+      this.blackoutSelectedRooms.set(new Set());
+      return;
+    }
+    this.api.getHotelRooms(propId, roomTypeId).subscribe({
+      next: (res) => {
+        this.blackoutSelectedRooms.set(new Set());
+      },
+      error: () => {},
+    });
+  }
 
   readonly today = new Date();
 
@@ -1027,6 +1119,34 @@ export class AvailabilityPageComponent {
     });
   }
 
+  /** Handle edit blackout request — pre-fill the blackout form for editing. */
+  onEditBlackout(blackoutId: string) {
+    const vm = this.pageData();
+    if (!vm) return;
+    const item = vm.blackoutItems.find(b => b.blackoutId === blackoutId);
+    if (!item) return;
+    this.blackoutForm.patchValue({
+      roomTypeId: item.roomTypeId,
+      startDate: item.rangeLabel.split(' -> ')[0],
+      endDate: item.rangeLabel.split(' -> ')[1],
+      blockedRooms: item.blockedRooms,
+      reason: item.reason,
+    });
+    this.editingBlackout.set({
+      blackoutId,
+      roomTypeId: item.roomTypeId,
+      startDate: item.rangeLabel.split(' -> ')[0],
+      endDate: item.rangeLabel.split(' -> ')[1],
+      reason: item.reason,
+      roomNumbers: [],
+    });
+    // Scroll to blackout form
+    setTimeout(() => {
+      const el = document.querySelector('.form-card:has(#blk-start)');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
   /** Handle delete blackout request — show confirmation dialog. */
   onDeleteBlackout(blackoutId: string) {
     this.deleteConfirm.set({ blackoutId });
@@ -1129,9 +1249,17 @@ export class AvailabilityPageComponent {
     const propId = this.selectedPropId();
     if (!propId || this.inventoryForm.invalid) {
       this.inventoryForm.markAllAsTouched();
-      this.savingCell.set(null); // clear any inline save spinner if form is invalid
+      this.savingCell.set(null);
       return;
     }
+
+    const totals = this.computedInventoryTotals();
+    // Sync form values from room selections
+    this.inventoryForm.patchValue({
+      totalRooms: totals.total,
+      availableRooms: totals.available,
+      blockedRooms: totals.blocked,
+    });
 
     this.saving.set(true);
 
@@ -1140,9 +1268,9 @@ export class AvailabilityPageComponent {
         prop_id: propId,
         room_type_id: this.inventoryForm.controls.roomTypeId.value,
         date: this.inventoryForm.controls.date.value,
-        total_rooms: this.inventoryForm.controls.totalRooms.value,
-        available_rooms: this.inventoryForm.controls.availableRooms.value,
-        blocked_rooms: this.inventoryForm.controls.blockedRooms.value,
+        total_rooms: totals.total,
+        available_rooms: totals.available,
+        blocked_rooms: totals.blocked,
       })
       .pipe(
         switchMap(() => this.api.getAvailability(propId, 92)),
@@ -1212,17 +1340,33 @@ export class AvailabilityPageComponent {
       return;
     }
 
+    const roomNumbers = [...this.blackoutSelectedRooms()];
+    if (roomNumbers.length > 0) {
+      this.blackoutForm.patchValue({ blockedRooms: roomNumbers.length });
+    }
+
     this.saving.set(true);
 
-    this.api
-      .createBlackout({
-        prop_id: propId,
-        room_type_id: this.blackoutForm.controls.roomTypeId.value,
-        start_date: this.blackoutForm.controls.startDate.value,
-        end_date: this.blackoutForm.controls.endDate.value,
-        blocked_rooms: this.blackoutForm.controls.blockedRooms.value,
-        reason: this.blackoutForm.controls.reason.value,
-      })
+    const editing = this.editingBlackout();
+    const payload: Record<string, unknown> = {
+      prop_id: propId,
+      room_type_id: this.blackoutForm.controls.roomTypeId.value,
+      start_date: this.blackoutForm.controls.startDate.value,
+      end_date: this.blackoutForm.controls.endDate.value,
+      reason: this.blackoutForm.controls.reason.value,
+    };
+
+    if (roomNumbers.length > 0) {
+      payload['room_numbers'] = roomNumbers;
+    } else {
+      payload['blocked_rooms'] = this.blackoutForm.controls.blockedRooms.value;
+    }
+
+    const request$ = editing
+      ? this.api.updateBlackout(editing.blackoutId, payload)
+      : this.api.createBlackout(payload as any);
+
+    request$
       .pipe(
         switchMap(() => this.api.getAvailability(propId, 92)),
         takeUntilDestroyed(this.destroyRef),
@@ -1240,6 +1384,8 @@ export class AvailabilityPageComponent {
             blockedRooms: 0,
             reason: '',
           });
+          this.editingBlackout.set(null);
+          this.blackoutSelectedRooms.set(new Set());
           this.saving.set(false);
         },
         error: (err: ApiError) => {

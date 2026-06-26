@@ -42,7 +42,7 @@
     }
     @default {
       @if (pageData(); as vm) {
-        <!-- ═══ Info bar ═══ -->
+        <!-- Info bar -->
         <div class="info-bar">
           <div class="info-item">
             <span class="material-symbols-outlined info-icon icon-hotel-warm">hotel</span>
@@ -77,7 +77,7 @@
           </div>
         </div>
 
-        <!-- ═══ Calendar grid ═══ -->
+        <!-- Calendar grid -->
         <app-availability-calendar
           [calendar]="displayCalendar()"
           [roomTypes]="vm.roomTypes"
@@ -105,7 +105,7 @@
           (toggleLayout)="layoutMode.set($event)"
         />
 
-        <!-- ═══ Undo bar ═══ -->
+        <!-- Undo bar -->
         @if (undoState(); as undo) {
           <section class="surface-card undo-card">
             <div class="undo-left">
@@ -131,7 +131,7 @@
           </section>
         }
 
-        <!-- ═══ Quick actions bar ═══ -->
+        <!-- Quick actions bar -->
         <app-availability-quick-actions
           [selectionCount]="selectionCount()"
           [selectionSummary]="selectionSummary()"
@@ -149,7 +149,7 @@
           (dismissActiveCell)="activeCell.set(null)"
         />
 
-        <!-- ═══ Forms grid ═══ -->
+        <!-- Forms grid -->
         <div class="forms-grid">
           <!-- Inventory form -->
           <section id="inventory-form-card" class="surface-card form-card">
@@ -157,7 +157,7 @@
               <span class="material-symbols-outlined form-card-icon icon-inventory-blue">edit_note</span>
               <div>
                 <h2>Actualizar inventario</h2>
-                <p>Registra la disponibilidad por tipo de habitación y fecha</p>
+                <p>Selecciona habitaciones disponibles / bloqueadas</p>
               </div>
             </div>
             <form [formGroup]="inventoryForm" (ngSubmit)="saveInventory()" class="form-body">
@@ -165,7 +165,7 @@
                 <label for="inv-roomType">Tipo de habitación</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">bed</span>
-                  <select id="inv-roomType" formControlName="roomTypeId">
+                  <select id="inv-roomType" formControlName="roomTypeId" (change)="onInventoryRoomTypeChange()">
                     <option value="">Seleccionar</option>
                     @for (room of vm.roomTypes; track room.id) {
                       <option [value]="room.id">{{ room.name }}</option>
@@ -186,29 +186,45 @@
                   <span class="field-error">Campo obligatorio</span>
                 }
               </div>
-              <div class="field-row">
-                <div class="field">
-                  <label for="inv-total">Total habitaciones</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">door_front</span>
-                    <input id="inv-total" type="number" min="0" formControlName="totalRooms" />
+
+              <!-- Room checkboxes (multi-select) -->
+              @if (hotelRoomsForType().length > 0) {
+                <div class="room-selector">
+                  <div class="room-selector-head">
+                    <span class="room-selector-title">Habitaciones</span>
+                    <span class="room-selector-summary">
+                      {{ computedInventoryTotals().available }} disponibles ·
+                      {{ computedInventoryTotals().blocked }} bloqueadas
+                    </span>
+                  </div>
+                  <div class="room-selector-grid">
+                    @for (room of hotelRoomsForType(); track room.hotel_room_id) {
+                      <button
+                        type="button"
+                        class="room-chip"
+                        [class.is-available]="selectedAvailableRooms().has(room.room_number)"
+                        [class.is-blocked]="selectedBlockedRooms().has(room.room_number)"
+                        (click)="toggleInventoryRoom(room.room_number)"
+                        title="{{ room.room_label }} ({{ room.floor }})"
+                      >
+                        <span class="material-symbols-outlined room-chip-icon">door_front</span>
+                        <span class="room-chip-label">{{ room.room_number }}</span>
+                        @if (selectedAvailableRooms().has(room.room_number)) {
+                          <span class="room-chip-status material-symbols-outlined">check_circle</span>
+                        } @else {
+                          <span class="material-symbols-outlined room-chip-status room-chip-blocked">block</span>
+                        }
+                      </button>
+                    }
                   </div>
                 </div>
-                <div class="field">
-                  <label for="inv-available">Disponibles</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">check_circle</span>
-                    <input id="inv-available" type="number" min="0" formControlName="availableRooms" />
-                  </div>
+              } @else if (inventoryForm.controls.roomTypeId.value) {
+                <div class="room-selector-empty">
+                  <span class="material-symbols-outlined">info</span>
+                  <span>No hay habitaciones físicas registradas para este tipo.</span>
                 </div>
-                <div class="field">
-                  <label for="inv-blocked">Bloqueadas</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">block</span>
-                    <input id="inv-blocked" type="number" min="0" formControlName="blockedRooms" />
-                  </div>
-                </div>
-              </div>
+              }
+
               <div class="form-actions">
                 <button type="submit" class="btn-primary" [disabled]="saving()">
                   @if (saving()) {
@@ -227,8 +243,8 @@
             <div class="form-card-head">
               <span class="material-symbols-outlined form-card-icon icon-block-red">event_busy</span>
               <div>
-                <h2>Bloquear fechas</h2>
-                <p>Registra bloqueos operativos por mantenimiento o eventos</p>
+                <h2>{{ editingBlackout() ? 'Editar bloqueo' : 'Bloquear fechas' }}</h2>
+                <p>{{ editingBlackout() ? 'Modifica el bloqueo existente' : 'Registra bloqueos operativos' }}</p>
               </div>
             </div>
             <form [formGroup]="blackoutForm" (ngSubmit)="saveBlackout()" class="form-body">
@@ -236,16 +252,13 @@
                 <label for="blk-roomType">Tipo de habitación</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">bed</span>
-                  <select id="blk-roomType" formControlName="roomTypeId">
+                  <select id="blk-roomType" formControlName="roomTypeId" (change)="onBlackoutRoomTypeChange()">
                     <option value="">Seleccionar</option>
                     @for (room of vm.roomTypes; track room.id) {
                       <option [value]="room.id">{{ room.name }}</option>
                     }
                   </select>
                 </div>
-                @if (blackoutForm.controls.roomTypeId.invalid && blackoutForm.controls.roomTypeId.touched) {
-                  <span class="field-error">Campo obligatorio</span>
-                }
               </div>
               <div class="field-row">
                 <div class="field">
@@ -263,42 +276,68 @@
                   </div>
                 </div>
               </div>
-              <div class="field-row">
-                <div class="field">
-                  <label for="blk-blocked">Habitaciones a bloquear</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">block</span>
-                    <input id="blk-blocked" type="number" min="0" formControlName="blockedRooms" />
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="blk-reason">Motivo</label>
-                  <div class="input-wrap">
-                    <span class="material-symbols-outlined input-icon">description</span>
-                    <input id="blk-reason" type="text" formControlName="reason" placeholder="Ej: Mantenimiento" />
-                  </div>
+              <div class="field">
+                <label for="blk-reason">Motivo</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">description</span>
+                  <input id="blk-reason" type="text" formControlName="reason" placeholder="Ej: Mantenimiento" />
                 </div>
               </div>
+
+              <!-- Blackout room checkboxes -->
+              @if (hotelRoomsForType().length > 0 && blackoutForm.controls.roomTypeId.value) {
+                <div class="room-selector">
+                  <div class="room-selector-head">
+                    <span class="room-selector-title">Habitaciones a bloquear</span>
+                    <span class="room-selector-summary">{{ blackoutSelectedRooms().size }} seleccionadas</span>
+                  </div>
+                  <div class="room-selector-grid">
+                    @for (room of hotelRoomsForType(); track room.hotel_room_id) {
+                      <button
+                        type="button"
+                        class="room-chip"
+                        [class.is-blocked]="blackoutSelectedRooms().has(room.room_number)"
+                        (click)="toggleBlackoutRoom(room.room_number)"
+                        title="{{ room.room_label }}"
+                      >
+                        <span class="material-symbols-outlined room-chip-icon">door_front</span>
+                        <span class="room-chip-label">{{ room.room_number }}</span>
+                        @if (blackoutSelectedRooms().has(room.room_number)) {
+                          <span class="material-symbols-outlined room-chip-status">block</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+
               <div class="form-actions">
+                @if (editingBlackout()) {
+                  <button type="button" class="btn-secondary" (click)="editingBlackout.set(null); blackoutForm.reset({ roomTypeId: '', startDate: '', endDate: '', blockedRooms: 0, reason: '' }); blackoutSelectedRooms.set(new Set())">
+                    <span class="material-symbols-outlined">close</span>
+                    Cancelar edición
+                  </button>
+                }
                 <button type="submit" class="btn-primary" [disabled]="saving()">
                   @if (saving()) {
                     <span class="material-symbols-outlined spin">progress_activity</span>
                   } @else {
-                    <span class="material-symbols-outlined">event_busy</span>
+                    <span class="material-symbols-outlined">{{ editingBlackout() ? 'save' : 'event_busy' }}</span>
                   }
-                  Registrar bloqueo
+                  {{ editingBlackout() ? 'Guardar cambios' : 'Registrar bloqueo' }}
                 </button>
               </div>
             </form>
           </section>
         </div>
 
-        <!-- ═══ Data tables ═══ -->
+        <!-- Data tables -->
         <app-availability-data-tables
           [inventoryItems]="vm.inventoryItems"
           [availabilityBlocks]="vm.availabilityBlocks"
           [blackoutItems]="vm.blackoutItems"
           (deleteBlackout)="onDeleteBlackout($event)"
+          (editBlackout)="onEditBlackout($event)"
           (editInventory)="onEditInventoryFromTable($event)"
           (deleteInventory)="onDeleteInventoryFromTable($event)"
         />
@@ -325,7 +364,7 @@
     <div class="modal-backdrop" (click)="inventoryDeleteConfirm.set(null)">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar registro de inventario</h2>
-        <p>¿Estás seguro de eliminar el inventario para <strong>{{ idc.roomTypeName }}</strong> el <strong>{{ idc.date }}</strong>? El registro se marcará como eliminado y no aparecerá en las consultas.</p>
+        <p>¿Estás seguro de eliminar el inventario para <strong>{{ idc.roomTypeName }}</strong> el <strong>{{ idc.date }}</strong>?</p>
         <div class="modal-actions">
           <button type="button" class="modal-btn modal-btn-secondary" (click)="inventoryDeleteConfirm.set(null)">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteInventory()">
@@ -344,7 +383,7 @@
     <div class="modal-backdrop" (click)="deleteConfirm.set(null)">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar bloqueo</h2>
-        <p>¿Estás seguro de eliminar este bloqueo de disponibilidad? Se revertirá el efecto en el inventario y las habitaciones volverán a estar disponibles.</p>
+        <p>¿Estás seguro de eliminar este bloqueo de disponibilidad?</p>
         <div class="modal-actions">
           <button type="button" class="modal-btn modal-btn-secondary" (click)="deleteConfirm.set(null)">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteBlackout()">
