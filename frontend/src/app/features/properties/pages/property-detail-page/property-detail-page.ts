@@ -51,21 +51,6 @@ export class PropertyDetailPageComponent {
   readonly reviewsLoaded = signal(false);
   readonly reviewsError = signal(false);
 
-  // RF-001: Guest review form
-  readonly showReviewForm = signal(false);
-  readonly reviewFormData = signal<{
-    bookingId: string;
-    rating: number;
-    title: string;
-    comment: string;
-  }>({ bookingId: '', rating: 5, title: '', comment: '' });
-  readonly reviewSubmitting = signal(false);
-  readonly reviewSubmitSuccess = signal(false);
-  readonly reviewSubmitError = signal('');
-  readonly hoverRating = signal(0);
-
-  readonly stars = [1, 2, 3, 4, 5];
-
   constructor() {
     this.route.paramMap
       .pipe(
@@ -106,56 +91,5 @@ export class PropertyDetailPageComponent {
         this.reviewsError.set(true);
       },
     });
-  }
-
-  // RF-001: Toggle review form
-  toggleReviewForm() {
-    this.showReviewForm.update(v => !v);
-    if (!this.showReviewForm()) {
-      // Reset on close
-      this.reviewSubmitSuccess.set(false);
-      this.reviewSubmitError.set('');
-    }
-  }
-
-  setRating(star: number) {
-    this.reviewFormData.update(d => ({ ...d, rating: star }));
-  }
-
-  submitReview() {
-    const vm = this.viewModel();
-    if (!vm) return;
-    const data = this.reviewFormData();
-
-    // Validate
-    if (!data.bookingId.trim()) {
-      this.reviewSubmitError.set('Ingresa el ID de tu reserva.');
-      return;
-    }
-
-    this.reviewSubmitting.set(true);
-    this.reviewSubmitError.set('');
-    this.reviewSubmitSuccess.set(false);
-
-    this.reviewsApi.createGuestReview({
-      booking_id: data.bookingId.trim(),
-      prop_id: vm.propId,
-      rating: data.rating,
-      title: data.title.trim() || undefined,
-      comment: data.comment.trim() || undefined,
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.reviewSubmitting.set(false);
-          this.reviewSubmitSuccess.set(true);
-          this.reviewFormData.set({ bookingId: '', rating: 5, title: '', comment: '' });
-        },
-        error: (err) => {
-          this.reviewSubmitting.set(false);
-          const msg = err?.error?.detail || 'No se pudo enviar la reseña. Verifica tu ID de reserva e intenta de nuevo.';
-          this.reviewSubmitError.set(msg);
-        },
-      });
   }
 }

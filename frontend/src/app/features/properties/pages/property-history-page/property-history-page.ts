@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { filter, map, switchMap } from 'rxjs';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -167,36 +167,205 @@ export class PropertyHistoryPageComponent {
 
   async exportPdf(): Promise<void> {
     this.exportingPdf.set(true);
-    const el = document.querySelector('.history-export-area');
-    if (!el) {
-      this.exportingPdf.set(false);
-      return;
-    }
     try {
-      const canvas = await html2canvas(el as HTMLElement, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      let heightLeft = pdfH;
-      let position = 0;
-      const pageH = pdf.internal.pageSize.getHeight();
+      const pid = this.propId();
+      const items = this.items();
+      const pag = this.pagination();
+      const fv = this.filterForm.getRawValue();
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
-      heightLeft -= pageH;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 18;
+      const contentW = pageW - margin * 2;
+      let y = 0;
 
-      while (heightLeft > 0) {
-        position = heightLeft - pdfH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
-        heightLeft -= pageH;
+      const addFooter = (pdf: jsPDF, pageNum: number, totalPages: number) => {
+        const h = pdf.internal.pageSize.getHeight();
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(margin, h - 22, pageW - margin, h - 22);
+        pdf.setFontSize(7);
+        pdf.setTextColor(140, 140, 140);
+        pdf.text('CONFIDENCIAL — Este documento contiene información sensible del sistema HotelData.', margin, h - 16);
+        pdf.text(`Generado: ${dateStr} ${timeStr}`, margin, h - 12);
+        pdf.text(`Página ${pageNum} de ${totalPages}`, pageW - margin, h - 12, { align: 'right' });
+        pdf.text('HotelData — Sistema de Gestión Hotelera', margin, h - 8);
+      };
+
+      // ─── HEADER ───
+      doc.setFillColor(25, 60, 120);
+      doc.rect(0, 0, pageW, 38, 'F');
+      doc.setFontSize(18);
+      doc.setTextColor(255, 255, 255);
+      doc.text('HotelData', margin, 16);
+      doc.setFontSize(9);
+      doc.setTextColor(200, 215, 240);
+      doc.text('Sistema de Gestión Hotelera', margin, 22);
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text('INFORME DE AUDITORÍA', pageW - margin, 16, { align: 'right' });
+      doc.setFontSize(8);
+      doc.setTextColor(200, 215, 240);
+      doc.text('Historial de Cambios — Propiedad', pageW - margin, 22, { align: 'right' });
+
+      // Accent line
+      doc.setFillColor(45, 120, 220);
+      doc.rect(0, 38, pageW, 2, 'F');
+
+      y = 50;
+
+      // ─── PROPERTY INFO ───
+      doc.setFillColor(245, 247, 250);
+      doc.roundedRect(margin, y, contentW, 20, 3, 3, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 110, 130);
+      doc.text('PROPIEDAD', margin + 6, y + 6);
+      doc.text('ID', margin + 6, y + 13);
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 30);
+      doc.text(String(pid), margin + 30, y + 13);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 110, 130);
+      doc.text('FECHA DE GENERACIÓN', pageW / 2 + 10, y + 6);
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 30);
+      doc.text(`${dateStr} ${timeStr}`, pageW / 2 + 10, y + 13);
+
+      y += 28;
+
+      // ─── FILTERS APPLIED ───
+      const hasFilters = fv.from || fv.to || fv.field || fv.user;
+      if (hasFilters) {
+        doc.setFontSize(7);
+        doc.setTextColor(100, 110, 130);
+        doc.text('FILTROS APLICADOS:', margin, y);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+        const filters: string[] = [];
+        if (fv.from) filters.push(`Desde: ${fv.from}`);
+        if (fv.to) filters.push(`Hasta: ${fv.to}`);
+        if (fv.field) filters.push(`Campo: ${this.fieldLabel(fv.field)}`);
+        if (fv.user) filters.push(`Usuario: ${fv.user}`);
+        doc.text(filters.join('  |  '), margin, y);
+        y += 8;
       }
 
-      pdf.save(`historial-propiedad-${this.propId()}.pdf`);
+      // ─── SUMMARY ───
+      doc.setFontSize(7);
+      doc.setTextColor(100, 110, 130);
+      doc.text('RESUMEN', margin, y);
+      y += 5;
+
+      const summaryItems: [string, string][] = [
+        ['Total de cambios', String(pag?.total ?? items.length)],
+        ['Registros en esta página', String(items.length)],
+        ['Página', `${pag?.page ?? 1} de ${pag?.pages ?? 1}`],
+      ];
+
+      const fieldsModified = [...new Set(items.map(i => i.field))];
+      if (fieldsModified.length) {
+        summaryItems.push(['Campos modificados', fieldsModified.map(f => this.fieldLabel(f)).join(', ')]);
+      }
+      const usersInvolved = [...new Set(items.map(i => i.changed_by))];
+      if (usersInvolved.length) {
+        summaryItems.push(['Usuarios involucrados', usersInvolved.join(', ')]);
+      }
+
+      const colW = contentW / 3;
+      let sx = margin;
+      let sy = y;
+      summaryItems.forEach((item, idx) => {
+        if (idx > 0 && idx % 3 === 0) { sx = margin; sy += 10; }
+        doc.setFontSize(7);
+        doc.setTextColor(100, 110, 130);
+        doc.text(item[0], sx, sy);
+        doc.setFontSize(9);
+        doc.setTextColor(30, 30, 30);
+        doc.text(item[1], sx, sy + 4);
+        sx += colW;
+      });
+
+      y = sy + 14;
+
+      // ─── TABLE ───
+      doc.setFontSize(7);
+      doc.setTextColor(100, 110, 130);
+      doc.text('DETALLE DE CAMBIOS', margin, y);
+      y += 3;
+
+      const tableData = items.map(c => [
+        this.fieldLabel(c.field),
+        (c.old_value || '—').substring(0, 60),
+        (c.new_value || '—').substring(0, 60),
+        c.changed_by,
+        new Date(c.changed_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Campo', 'Valor anterior', 'Valor nuevo', 'Usuario', 'Fecha']],
+        body: tableData,
+        styles: {
+          fontSize: 7.5,
+          cellPadding: 3,
+          textColor: [40, 40, 40],
+          lineColor: [220, 225, 235],
+          lineWidth: 0.3,
+        },
+        headStyles: {
+          fillColor: [25, 60, 120],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+        },
+        alternateRowStyles: {
+          fillColor: [248, 249, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: 32, fontStyle: 'bold' },
+          1: { cellWidth: 'auto', textColor: [180, 50, 50] },
+          2: { cellWidth: 'auto', textColor: [22, 130, 60] },
+          3: { cellWidth: 28 },
+          4: { cellWidth: 38, halign: 'right' },
+        },
+        didDrawPage: (data) => {
+          addFooter(doc, data.pageNumber, doc.getNumberOfPages());
+        },
+      });
+
+      // ─── SIGNATURE SECTION ───
+      const afterTable = (doc as any).lastAutoTable?.finalY ?? y + 20;
+      if (afterTable < 240) {
+        let sigY = afterTable + 15;
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.3);
+
+        const sigLeft = margin;
+        const sigRight = pageW / 2 + 10;
+        const sigWidth = 60;
+
+        doc.line(sigLeft, sigY, sigLeft + sigWidth, sigY);
+        doc.line(sigRight, sigY, sigRight + sigWidth, sigY);
+
+        sigY += 5;
+        doc.setFontSize(7);
+        doc.setTextColor(100, 110, 130);
+        doc.text('Responsable de Auditoría', sigLeft + sigWidth / 2, sigY, { align: 'center' });
+        doc.text('Director de Operaciones', sigRight + sigWidth / 2, sigY, { align: 'center' });
+      }
+
+      // Final footer on last page
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        addFooter(doc, i, totalPages);
+      }
+
+      doc.save(`auditoria-propiedad-${pid}-${now.toISOString().slice(0, 10)}.pdf`);
     } catch {
       // Silently fail
     } finally {
