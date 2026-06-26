@@ -5,13 +5,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SettingsApiService } from '../../settings/services/settings-api.service';
 import type { SettingsViewModel } from '../../settings/models/settings.model';
 import {
-  SESSION_TIMEOUT_OPTIONS,
   DASHBOARD_OPTIONS,
   THEME_OPTIONS,
 } from '../../settings/models/settings.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ThemeService } from '../../../../core/theme/theme.service';
-import { SessionTimeoutService } from '../../../../core/auth/session-timeout.service';
+import { toast } from '../../../../core/toast/toast.service';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 
 @Component({
@@ -27,7 +26,6 @@ export class SettingsPageComponent {
   private readonly settingsApi = inject(SettingsApiService);
   private readonly authService = inject(AuthService);
   private readonly themeService = inject(ThemeService);
-  private readonly sessionTimeout = inject(SessionTimeoutService);
 
   readonly currentUser = this.authService.currentUser;
 
@@ -43,12 +41,10 @@ export class SettingsPageComponent {
     { key: 'preferences' as const, label: 'Preferencias', icon: 'tune' },
   ];
 
-  readonly timeoutOptions = SESSION_TIMEOUT_OPTIONS;
   readonly dashboardOptions = DASHBOARD_OPTIONS;
   readonly themeOptions = THEME_OPTIONS;
 
   readonly form = this.formBuilder.nonNullable.group({
-    sessionTimeoutMinutes: ['60'],
     defaultDashboard: ['/management'],
     theme: ['system'],
   });
@@ -76,13 +72,10 @@ export class SettingsPageComponent {
         next: (s: SettingsViewModel) => {
           this.settings.set(s);
           this.form.patchValue({
-            sessionTimeoutMinutes: String(s.sessionTimeoutMinutes),
             defaultDashboard: s.defaultDashboard,
             theme: s.theme,
           });
           this.applyTheme(s.theme);
-          this.sessionTimeout.setDuration(s.sessionTimeoutMinutes);
-          this.sessionTimeout.start();
           this.loading.set(false);
         },
         error: () => {
@@ -103,13 +96,11 @@ export class SettingsPageComponent {
     this.successMessage.set('');
     this.errorMessage.set('');
 
-    const timeout = Number(this.form.controls.sessionTimeoutMinutes.value);
     const dashboard = this.form.controls.defaultDashboard.value;
     const theme = this.form.controls.theme.value;
 
     this.settingsApi
       .updateSettings({
-        session_timeout_minutes: timeout,
         default_dashboard: dashboard,
         theme,
       })
@@ -117,10 +108,10 @@ export class SettingsPageComponent {
       .subscribe({
         next: (updated: SettingsViewModel) => {
           this.settings.set(updated);
-          this.sessionTimeout.setDuration(updated.sessionTimeoutMinutes);
           localStorage.setItem('hoteldata-default-dashboard', updated.defaultDashboard);
           this.applyTheme(updated.theme);
           this.successMessage.set('Configuración guardada correctamente.');
+          toast('Configuración guardada correctamente.', 'success', 3000);
           this.saving.set(false);
           setTimeout(() => this.successMessage.set(''), 3000);
         },

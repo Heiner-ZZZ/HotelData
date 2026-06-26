@@ -112,41 +112,7 @@
         </form>
       </section>
 
-      <form [formGroup]="form">
-        <section class="surface-card settings-card">
-          <div class="card-head">
-            <span class="material-symbols-outlined card-icon">timer</span>
-            <div>
-              <h2>Tiempo de sesión</h2>
-              <p>La sesión expirará automáticamente tras este período de inactividad</p>
-            </div>
-          </div>
 
-          <div class="field">
-            <label for="sessionTimeoutMinutes">Tiempo de inactividad máximo</label>
-            <div class="input-wrap">
-              <span class="material-symbols-outlined input-icon">hourglass_empty</span>
-              <select id="sessionTimeoutMinutes" formControlName="sessionTimeoutMinutes">
-                @for (opt of timeoutOptions; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-            </div>
-          </div>
-
-          <div class="card-actions">
-            <button type="button" class="btn-primary" (click)="save()" [disabled]="saving()">
-              @if (saving()) {
-                <span class="material-symbols-outlined spin">sync</span>
-                Guardando...
-              } @else {
-                <span class="material-symbols-outlined">save</span>
-                Guardar cambios
-              }
-            </button>
-          </div>
-        </section>
-      </form>
     }
 
     <!-- ════════════════ PREFERENCIAS ════════════════ -->
