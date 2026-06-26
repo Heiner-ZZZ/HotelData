@@ -1,0 +1,136 @@
+<div class="earnings-page">
+  <app-page-header
+    title="Ganancias del Sistema"
+    subtitle="Comisiones generadas por reservas en la plataforma — calculadas según la configuración global o por hotel."
+  />
+
+  <!-- KPI Cards -->
+  @switch (summaryState()) {
+    @case ('loading') { <app-loading-state /> }
+    @case ('error') { <app-error-state /> }
+    @case ('success') {
+      @if (summary(); as s) {
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: #22c55e">
+              <span class="material-symbols-outlined kpi-icon">payments</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Comisiones totales</p>
+              <h3 class="kpi-value">{{ s.totalCommission | currency:'USD' }}</h3>
+              <p class="kpi-desc">Acumulado histórico de comisiones</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: #1463ff">
+              <span class="material-symbols-outlined kpi-icon">receipt_long</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Reservas comisionadas</p>
+              <h3 class="kpi-value">{{ s.totalBookings }}</h3>
+              <p class="kpi-desc">Total de reservas que generaron comisión</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: #a78bfa">
+              <span class="material-symbols-outlined kpi-icon">trending_up</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Comisión promedio</p>
+              <h3 class="kpi-value">{{ s.avgCommission | currency:'USD' }}</h3>
+              <p class="kpi-desc">Promedio por reserva</p>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon-wrap" style="--card-accent: #f59e0b">
+              <span class="material-symbols-outlined kpi-icon">pending_actions</span>
+            </div>
+            <div class="kpi-body">
+              <p class="kpi-label">Pendientes / Pagadas</p>
+              <h3 class="kpi-value">{{ s.pendingCount }} / {{ s.paidCount }}</h3>
+              <p class="kpi-desc">Comisiones pendientes vs pagadas</p>
+            </div>
+          </article>
+        </section>
+      }
+    }
+  }
+
+  <!-- Table -->
+  <section class="surface-card table-section">
+    <div class="section-head">
+      <span class="material-symbols-outlined section-icon">format_list_bulleted</span>
+      <div>
+        <h2>Detalle de comisiones</h2>
+        <p>Historial de comisiones generadas por cada reserva</p>
+      </div>
+    </div>
+
+    @switch (listState()) {
+      @case ('loading') { <app-loading-state /> }
+      @case ('error') { <app-error-state /> }
+      @case ('empty') { <app-empty-state message="No hay comisiones registradas aún. Aparecerán cuando se generen facturas." /> }
+      @case ('success') {
+        @if (list(); as l) {
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Reserva</th>
+                  <th>Hotel</th>
+                  <th>Total reserva</th>
+                  <th>Comisión %</th>
+                  <th>Comisión $</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of l.items; track item.bookingId) {
+                  <tr>
+                    <td class="cell-mono">{{ item.bookingId | slice:0:12 }}...</td>
+                    <td>{{ item.hotelName }}</td>
+                    <td class="cell-right">{{ item.bookingTotal | currency:'USD' }}</td>
+                    <td class="cell-pct">{{ item.commissionPct }}%</td>
+                    <td class="cell-right cell-commission">{{ item.commissionAmount | currency:'USD' }}</td>
+                    <td>
+                      <span class="status-badge" [class.pending]="item.status === 'pending'" [class.paid]="item.status === 'paid'">
+                        {{ item.status === 'pending' ? 'Pendiente' : 'Pagada' }}
+                      </span>
+                    </td>
+                    <td class="cell-date">{{ item.createdAt | date:'dd/MM/yyyy' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (l.totalPages > 1) {
+            <div class="pagination">
+              <button [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              @for (p of pagesArray(); track p) {
+                <button [class.active]="currentPage() === p" (click)="goToPage(p)">{{ p }}</button>
+              }
+              <button [disabled]="currentPage() >= l.totalPages" (click)="goToPage(currentPage() + 1)">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          }
+
+          <p class="table-footer">{{ l.total }} registro(s) en total</p>
+        }
+      }
+    }
+  </section>
+
+  <!-- Info footer -->
+  <div class="info-footer">
+    <span class="material-symbols-outlined">info</span>
+    <p>Las comisiones se calculan automáticamente al generar facturas usando el % configurado en Configuración Global o por hotel. Solo visible para super_admin y admin_sistema.</p>
+  </div>
+</div>
