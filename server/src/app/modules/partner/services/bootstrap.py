@@ -125,6 +125,16 @@ ROOM_FEATURES_COLLECTIONS: dict[str, list[IndexModel]] = {
         IndexModel([("label", ASCENDING)], name="label_1", unique=True),
         IndexModel([("category", ASCENDING)], name="category_1"),
     ],
+    "hotel_products": [
+        IndexModel([("prop_id", ASCENDING), ("product_id", ASCENDING)], name="prop_product", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("category", ASCENDING)], name="category_1"),
+    ],
+    "platform_earnings": [
+        IndexModel([("booking_id", ASCENDING)], name="booking_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("created_at", DESCENDING)], name="created_at_-1"),
+    ],
 }
 
 

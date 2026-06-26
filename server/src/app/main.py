@@ -46,6 +46,8 @@ from src.app.modules.billing.routes import api_router as billing_api_router
 from src.app.modules.billing.routes import router as billing_module_router
 from src.app.modules.housekeeping.routes import api_router as housekeeping_api_router
 from src.app.modules.housekeeping.routes import router as housekeeping_module_router
+from src.app.modules.tracking.routes import tracking_api_router
+from src.app.modules.global_settings.routes import api_router as global_settings_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -63,6 +65,7 @@ from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.housekeeping.service import ensure_housekeeping_collections
 from src.app.modules.reservations.service import ensure_reservation_collections
+from src.app.modules.global_settings.service import ensure_global_settings_collections
 import logging
 
 from config.settings import get_settings
@@ -119,6 +122,8 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(housekeeping_api_router)
     app.include_router(housekeeping_module_router)
+    app.include_router(tracking_api_router)
+    app.include_router(global_settings_api_router)
     app.include_router(crud_router)
     return app
 
@@ -138,6 +143,7 @@ async def lifespan(app: FastAPI):
     ensure_billing_collections()
     ensure_housekeeping_collections()
     ensure_reservation_collections()
+    ensure_global_settings_collections()
     ensure_auth_collections()
     ensure_room_features_collections()
     ensure_audit_indexes()
