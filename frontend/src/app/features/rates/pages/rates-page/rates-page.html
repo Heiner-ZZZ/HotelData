@@ -103,7 +103,7 @@
                       <p>Agrega o actualiza una tarifa para una fecha concreta.</p>
                     </div>
                   </div>
-                  <form (ngSubmit)="saveRate()" class="panel-form">
+                  <form (submit)="$event.preventDefault(); saveRate()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
                       <select [value]="calendarRatePlanId()" (change)="calendarRatePlanId.set($any($event.target).value)">
@@ -117,11 +117,11 @@
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa</span>
-                      <input type="number" min="0" step="0.01" [value]="calendarRateAmount()" (input)="calendarRateAmount.set(Number($any($event.target).value))" placeholder="0.00" />
+                      <input type="number" min="0" step="0.01" [value]="calendarRateAmount()" (input)="calendarRateAmount.set(+$any($event.target).value)" placeholder="0.00" />
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">nights_stay</span>Estancia mínima (noches)</span>
-                      <input type="number" min="1" [value]="calendarMinStayNights()" (input)="calendarMinStayNights.set(Number($any($event.target).value))" />
+                      <input type="number" min="1" [value]="calendarMinStayNights()" (input)="calendarMinStayNights.set(+$any($event.target).value)" />
                     </label>
                     <label class="field checkbox-field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">lock</span>Cerrado (sin venta)</span>
@@ -146,7 +146,7 @@
                       <p>Aplica una tarifa a un rango de fechas de una sola vez.</p>
                     </div>
                   </div>
-                  <form (ngSubmit)="batchUpdateCalendar()" class="panel-form">
+                  <form (submit)="$event.preventDefault(); batchUpdateCalendar()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
                       <select [value]="batchRatePlanId()" (change)="batchRatePlanId.set($any($event.target).value)">
@@ -166,11 +166,11 @@
                     </div>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa</span>
-                      <input type="number" min="0.01" step="0.01" [value]="batchRateAmount()" (input)="batchRateAmount.set(Number($any($event.target).value))" placeholder="0.00" />
+                      <input type="number" min="0.01" step="0.01" [value]="batchRateAmount()" (input)="batchRateAmount.set(+$any($event.target).value)" placeholder="0.00" />
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">nights_stay</span>Estancia mínima (opcional)</span>
-                      <input type="number" min="1" [value]="batchMinStayNights()" (input)="batchMinStayNights.set(Number($any($event.target).value))" />
+                      <input type="number" min="1" [value]="batchMinStayNights()" (input)="batchMinStayNights.set(+$any($event.target).value)" />
                     </label>
                     <label class="field checkbox-field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">weekend</span>Solo fines de semana</span>
@@ -203,7 +203,7 @@
                       <p>Genera automáticamente entradas de calendario aplicando la tarifa base del plan a un rango de fechas.</p>
                     </div>
                   </div>
-                  <form (ngSubmit)="generateCalendar()" class="panel-form">
+                  <form (submit)="$event.preventDefault(); generateCalendar()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario (opcional)</span>
                       <select [value]="generateRatePlanId()" (change)="generateRatePlanId.set($any($event.target).value)">
@@ -238,7 +238,7 @@
                       <p>Configura un plan tarifario base para la propiedad.</p>
                     </div>
                   </div>
-                  <form (ngSubmit)="createRatePlan()" class="panel-form">
+                  <form (submit)="$event.preventDefault(); createRatePlan()" class="panel-form">
                     @if (editingPlan(); as edit) {
                       <div class="editing-banner">
                         <span class="material-symbols-outlined">edit</span>
@@ -265,7 +265,7 @@
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa base</span>
-                      <input type="number" min="0" step="0.01" [value]="planBaseRate()" (input)="planBaseRate.set(Number($any($event.target).value))" placeholder="0.00">
+                      <input type="number" min="0" step="0.01" [value]="planBaseRate()" (input)="planBaseRate.set(+$any($event.target).value)" placeholder="0.00">
                     </label>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">currency_exchange</span>Moneda</span>
@@ -310,7 +310,7 @@
                       <p>Define un precio override por rango de fechas.</p>
                     </div>
                   </div>
-                  <form (ngSubmit)="createSeasonalRule()" class="panel-form">
+                  <form (submit)="$event.preventDefault(); createSeasonalRule()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
                       <select [value]="seasonalRatePlanId()" (change)="seasonalRatePlanId.set($any($event.target).value)">
@@ -334,7 +334,7 @@
                     </div>
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Precio override</span>
-                      <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(Number($any($event.target).value))" placeholder="0.00">
+                      <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(+$any($event.target).value)" placeholder="0.00">
                     </label>
                     <div class="form-actions">
                       <button type="submit" class="btn-primary">

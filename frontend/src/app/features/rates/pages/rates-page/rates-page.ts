@@ -12,6 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import type { RatesDto } from '../../models/rates.dto';
 import { RatesApiService } from '../../services/rates-api.service';
@@ -53,6 +54,7 @@ export class RatesPageComponent {
   private readonly router = inject(Router);
   private readonly api = inject(RatesApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   /** Prop ID from route — source of truth for current property. */
   private readonly routePropId = toSignal(
@@ -270,6 +272,7 @@ export class RatesPageComponent {
         this.editingPlan.set(null);
         this.editingPromo.set(null);
         this.deleteConfirm.set(null);
+        this.propertyCtx.clear();
         return;
       }
 
@@ -291,11 +294,13 @@ export class RatesPageComponent {
         this.viewState.set('success');
         this.message.set('');
         this.errorMessage.set('');
+        this.propertyCtx.setProperty(data.propId, data.hotelLabel);
       }
     }, { allowSignalWrites: true });
   }
 
   onPropSelected(propId: number): void {
+    if (!propId) this.propertyCtx.clear();
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: propId || null },
@@ -495,6 +500,7 @@ export class RatesPageComponent {
       name: promo.name,
       description: promo.description || '',
       discountPercent: promo.discountPercent,
+      couponCount: promo.couponTotal ?? 0,
       startDate: promo.startDate || '',
       endDate: promo.endDate || '',
       isActive: promo.isActive,

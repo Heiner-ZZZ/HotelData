@@ -227,6 +227,7 @@ export class RatesApiService {
     name?: string;
     description?: string;
     discountPercent?: number;
+    couponCount?: number;
     startDate?: string;
     endDate?: string;
     isActive?: boolean;
@@ -237,6 +238,7 @@ export class RatesApiService {
         name: payload.name,
         description: payload.description,
         discount_percent: payload.discountPercent,
+        coupon_count: payload.couponCount,
         start_date: payload.startDate,
         end_date: payload.endDate,
         is_active: payload.isActive
