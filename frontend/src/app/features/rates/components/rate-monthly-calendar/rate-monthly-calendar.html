@@ -1,0 +1,72 @@
+<div class="monthly-calendar">
+  <!-- Month Navigation -->
+  <div class="cal-header">
+    <button type="button" class="cal-nav-btn" (click)="prevMonth()" title="Mes anterior">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    <h3 class="cal-month-title">{{ monthLabel() }}</h3>
+    <button type="button" class="cal-nav-btn" (click)="nextMonth()" title="Mes siguiente">
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+  </div>
+
+  <!-- Day Labels -->
+  <div class="cal-day-labels">
+    @for (label of dayLabels; track label) {
+      <span class="cal-day-label">{{ label }}</span>
+    }
+  </div>
+
+  <!-- Room Type Rows -->
+  <div class="cal-body">
+    @for (row of rows(); track row.roomTypeId) {
+      <div class="cal-room-row">
+        <div class="cal-room-label">
+          <span class="material-symbols-outlined cal-room-icon">bed</span>
+          <span class="cal-room-name">{{ row.roomTypeName }}</span>
+        </div>
+        @for (week of weekRows(); track $index) {
+          <div class="cal-week">
+            @for (day of week; track $index) {
+              @if (day === 0) {
+                <div class="cal-cell cal-cell-empty"></div>
+              } @else {
+                @let rate = getRateForDay(row, day);
+                <div
+                  class="cal-cell"
+                  [class.is-today]="isToday(day)"
+                  [class.has-rate]="!!rate"
+                  [class.is-closed]="rate?.isClosed"
+                  [title]="rate ? (rate.rateAmount | currency) + ' - ' + rate.ratePlanName : 'Sin tarifa'"
+                >
+                  <span class="cal-day-num">{{ day }}</span>
+                  @if (rate) {
+                    <span class="cal-rate-amount" [class]="'tier-' + rate.tier">
+                      {{ rate.rateAmount | currency:'':'symbol-narrow':'1.0-0' }}
+                    </span>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Empty State -->
+  @if (!rows().length) {
+    <div class="cal-empty">
+      <span class="material-symbols-outlined cal-empty-icon">calendar_month</span>
+      <p>No hay datos de calendario para este mes.</p>
+    </div>
+  }
+
+  <!-- Legend -->
+  <div class="cal-legend">
+    <span class="legend-item"><span class="legend-swatch tier-low"></span> Bajo</span>
+    <span class="legend-item"><span class="legend-swatch tier-medium"></span> Medio</span>
+    <span class="legend-item"><span class="legend-swatch tier-high"></span> Alto</span>
+    <span class="legend-item"><span class="legend-swatch tier-premium"></span> Premium</span>
+  </div>
+</div>
