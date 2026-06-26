@@ -62,6 +62,7 @@ class MaintenanceTaskCreate(BaseModel):
     description: str = ""
     priority: str = "normal"
     scheduled_date: str = ""
+    auto_block: bool = True  # RF-002: block room availability during maintenance
 
 
 class MaintenanceTaskResponse(BaseModel):

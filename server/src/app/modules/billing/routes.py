@@ -26,10 +26,13 @@ def billing_module_status():
     return module_status()
 
 
-# --- Invoices ---
+# --- Invoices (admin/staff) ---
 
 @api_router.post("/invoices", status_code=201)
-def create_invoice_api(payload: InvoiceCreate = Body(...)):
+def create_invoice_api(
+    payload: InvoiceCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     result = create_invoice(payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la factura (booking inválido)")
@@ -42,12 +45,16 @@ def list_invoices_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_login),
 ):
     return list_invoices(booking_id=booking_id, status=status_filter, page=page, page_size=page_size)
 
 
 @api_router.get("/invoices/{invoice_id}")
-def get_invoice_api(invoice_id: str):
+def get_invoice_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_login),
+):
     result = get_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
@@ -55,17 +62,23 @@ def get_invoice_api(invoice_id: str):
 
 
 @api_router.post("/invoices/{invoice_id}/cancel")
-def cancel_invoice_api(invoice_id: str):
+def cancel_invoice_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_login),
+):
     result = cancel_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cancelar la factura")
     return result
 
 
-# --- Payments ---
+# --- Payments (admin/staff) ---
 
 @api_router.post("/payments", status_code=201)
-def create_payment_api(payload: PaymentCreate = Body(...)):
+def create_payment_api(
+    payload: PaymentCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     result = create_payment(payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el pago (booking inválido)")
@@ -77,12 +90,16 @@ def list_payments_api(
     booking_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_login),
 ):
     return list_payments(booking_id=booking_id, page=page, page_size=page_size)
 
 
 @api_router.get("/payments/{payment_id}")
-def get_payment_api(payment_id: str):
+def get_payment_api(
+    payment_id: str,
+    current_user: dict = Depends(require_login),
+):
     result = get_payment(payment_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado")
@@ -90,7 +107,10 @@ def get_payment_api(payment_id: str):
 
 
 @api_router.post("/payments/{payment_id}/refund")
-def refund_payment_api(payment_id: str):
+def refund_payment_api(
+    payment_id: str,
+    current_user: dict = Depends(require_login),
+):
     result = refund_payment(payment_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")

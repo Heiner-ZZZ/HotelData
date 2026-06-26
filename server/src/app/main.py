@@ -50,6 +50,7 @@ from src.app.modules.tracking.routes import tracking_api_router
 from src.app.modules.global_settings.routes import api_router as global_settings_api_router
 from src.app.modules.partner.routes.hotel_products import router as products_api_router
 from src.app.modules.kpi.routes import router as kpi_api_router
+from src.app.modules.map.routes import router as map_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -129,6 +130,7 @@ def create_app() -> FastAPI:
     app.include_router(global_settings_api_router)
     app.include_router(crud_router)
     app.include_router(kpi_api_router)
+    app.include_router(map_api_router)
     return app
 
 
