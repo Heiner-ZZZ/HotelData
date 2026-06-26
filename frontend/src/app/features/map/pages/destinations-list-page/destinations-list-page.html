@@ -1,0 +1,121 @@
+<div class="dests-list-page">
+  <app-page-header
+    eyebrow="Catálogo de Destinos"
+    title="Administrar Destinos"
+    description="Edita nombres, coordenadas geográficas, país y ciudad de los destinos turísticos."
+  >
+    <a routerLink="/admin/map" slot="actions" class="header-action-btn">
+      <span class="material-symbols-outlined">map</span>
+      Ver mapa mundial
+    </a>
+  </app-page-header>
+
+  <!-- Search & filters -->
+  <div class="filters-bar">
+    <form [formGroup]="searchForm" (ngSubmit)="onSearch()" class="search-form">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input type="text" formControlName="search" placeholder="Buscar por nombre, país o ciudad..." class="search-input" />
+      <button type="submit" class="search-btn">Buscar</button>
+    </form>
+    <div class="geo-filters">
+      <button
+        type="button"
+        class="geo-btn"
+        [class.active]="geoFilter() === 'all'"
+        (click)="setGeoFilter('all')"
+      >Todos</button>
+      <button
+        type="button"
+        class="geo-btn"
+        [class.active]="geoFilter() === 'no'"
+        (click)="setGeoFilter('no')"
+      >Sin coordenadas</button>
+      <button
+        type="button"
+        class="geo-btn"
+        [class.active]="geoFilter() === 'yes'"
+        (click)="setGeoFilter('yes')"
+      >Con coordenadas</button>
+    </div>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando destinos..." />
+    }
+    @case ('error') {
+      <app-error-state
+        description="No se pudieron cargar los destinos."
+        (retry)="onSearch()"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin resultados"
+        description="No se encontraron destinos con los filtros actuales."
+      />
+    }
+    @default {
+      @if (data(); as data) {
+        <section class="surface-card table-card">
+          <div class="table-header">
+            <span class="total-badge">{{ data.total }} destinos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="dests-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre visible</th>
+                  <th>Nombre interno</th>
+                  <th>País</th>
+                  <th>Ciudad</th>
+                  <th>Coordenadas</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (d of data.items; track d.srchDestinationId) {
+                  <tr>
+                    <td class="id-cell">{{ d.srchDestinationId }}</td>
+                    <td class="name-cell">{{ d.visibleName || d.destinationDisplayName }}</td>
+                    <td class="muted">{{ d.destinationName }}</td>
+                    <td>{{ d.country || '—' }}</td>
+                    <td>{{ d.city || '—' }}</td>
+                    <td class="coords-cell">
+                      @if (d.latitude !== null && d.longitude !== null) {
+                        <span class="has-geo" title="Con coordenadas">📍</span>
+                        {{ d.latitude.toFixed(4) }}, {{ d.longitude.toFixed(4) }}
+                      } @else {
+                        <span class="no-geo">Sin coordenadas</span>
+                      }
+                    </td>
+                    <td class="action-cell">
+                      <a [routerLink]="['/admin/destinations', d.srchDestinationId]" class="edit-btn" title="Editar destino">
+                        <span class="material-symbols-outlined">edit</span>
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          @if (data.totalPages > 1) {
+            <div class="pagination">
+              <button [disabled]="!data.hasPrev" (click)="goToPage(data.page - 1)">‹ Anterior</button>
+              @for (p of pagesArray(data.totalPages); track p) {
+                <button
+                  [class.active]="p === data.page"
+                  (click)="goToPage(p)"
+                >{{ p }}</button>
+              }
+              <button [disabled]="!data.hasNext" (click)="goToPage(data.page + 1)">Siguiente ›</button>
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>
