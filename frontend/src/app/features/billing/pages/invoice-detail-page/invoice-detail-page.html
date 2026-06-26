@@ -43,11 +43,17 @@
 
           <div class="amount-grid">
             <div class="amount-item">
-              <span class="label">Subtotal</span>
-              <span class="value">{{ inv.subtotal | currency:'USD' }}</span>
+              <span class="label">Subtotal habitación</span>
+              <span class="value">{{ roomSubtotal() | currency:'USD' }}</span>
             </div>
+            @if (hasLineItems()) {
+              <div class="amount-item extras">
+                <span class="label">Extras / servicios</span>
+                <span class="value">{{ extrasTotal() | currency:'USD' }}</span>
+              </div>
+            }
             <div class="amount-item">
-              <span class="label">Impuestos</span>
+              <span class="label">Impuestos (IVA)</span>
               <span class="value">{{ inv.taxes | currency:'USD' }}</span>
             </div>
             <div class="amount-item total">
@@ -55,6 +61,21 @@
               <span class="value">{{ inv.total | currency:'USD' }}</span>
             </div>
           </div>
+
+          @if (hasLineItems()) {
+            <details class="line-items-details">
+              <summary>Ver detalle de extras ({{ lineItems().length }})</summary>
+              <div class="line-items-table">                  @for (li of lineItems(); track li.itemId) {
+                  <div class="line-item-row">
+                    <span class="li-name">{{ li.name }}</span>
+                    <span class="li-qty">x{{ li.quantity }}</span>
+                    <span class="li-price">{{ li.unit_price | currency:'USD' }}</span>
+                    <span class="li-total">{{ li.total | currency:'USD' }}</span>
+                  </div>
+                }
+              </div>
+            </details>
+          }
 
           <div class="dates">
             <div><strong>Emisión:</strong> {{ inv.issuedAt }}</div>

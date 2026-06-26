@@ -43,6 +43,14 @@ export class BillingApiService {
       .pipe(map(dto => mapInvoicesList(dto)));
   }
 
+  refundPayment(paymentId: string) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/billing/payments/${paymentId}/refund`,
+      {},
+      { withCredentials: true },
+    );
+  }
+
   /** Client-facing: simulate payment for an invoice. */
   payMyInvoice(invoiceId: string) {
     return this.http.post<{ ok: boolean; message: string; payment: Record<string, unknown> }>(

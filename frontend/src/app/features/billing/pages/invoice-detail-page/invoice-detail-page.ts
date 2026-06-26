@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 
 import { CurrencyPipe } from '@angular/common';
@@ -14,7 +14,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-invoice-detail-page',
-  imports: [CurrencyPipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
+  imports: [CurrencyPipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent, RouterLink],
   templateUrl: './invoice-detail-page.html',
   styleUrl: './invoice-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,6 +29,14 @@ export class InvoiceDetailPageComponent {
   readonly invoice = signal<InvoiceDetailViewModel | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
+
+  readonly hasLineItems = computed(() => {
+    const inv = this.invoice();
+    return inv !== null && inv.lineItems.length > 0;
+  });
+  readonly roomSubtotal = computed(() => this.invoice()?.roomSubtotal ?? this.invoice()?.subtotal ?? 0);
+  readonly extrasTotal = computed(() => this.invoice()?.extrasTotal ?? 0);
+  readonly lineItems = computed(() => this.invoice()?.lineItems ?? []);
 
   constructor() {
     this.activatedRoute.paramMap
