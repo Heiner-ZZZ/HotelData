@@ -19,6 +19,8 @@ export interface RoomTypeItem {
   description: string;
   capacityLabel: string;
   activeLabel: string;
+  roomNumber: string;
+  floor: string;
 }
 
 export interface HotelRoomItem {
@@ -26,6 +28,8 @@ export interface HotelRoomItem {
   roomTypeName: string;
   roomLabel: string;
   activeLabel: string;
+  roomNumber: string;
+  floor: string;
 }
 
 export interface RoomPropertyOption {

@@ -41,6 +41,8 @@ export class RoomsApiService {
     baseCapacity: number;
     baseRate?: number;
     isActive: boolean;
+    roomNumber?: string;
+    floor?: string;
   }) {
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rooms`,

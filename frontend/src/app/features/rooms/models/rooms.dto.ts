@@ -17,6 +17,8 @@ export interface RoomsDto {
     description: string;
     capacity_label: string;
     is_active: boolean;
+    room_number?: string;
+    floor?: string;
   }>;
   hotel_rooms?: Array<{
     hotel_room_id: string;
@@ -24,6 +26,8 @@ export interface RoomsDto {
     room_type_name?: string;
     room_label: string;
     is_active: boolean;
+    room_number?: string;
+    floor?: string;
   }>;
   room_type_count: number;
   hotel_room_count?: number;
@@ -46,4 +50,6 @@ export interface RoomCreateDto {
   base_capacity: number;
   base_rate?: number;
   is_active: boolean;
+  room_number?: string;
+  floor?: string;
 }

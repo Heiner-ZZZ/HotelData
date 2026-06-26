@@ -96,6 +96,8 @@ def rooms_create_api(payload: dict = Body(...)):
             max_children=payload.get("max_children"),
             base_capacity=payload.get("base_capacity"),
             is_active=payload.get("is_active", True),
+            room_number=str(payload.get("room_number") or ""),
+            floor=str(payload.get("floor") or ""),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -116,6 +118,8 @@ def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
             base_capacity=payload.get("base_capacity"),
             base_rate=payload.get("base_rate"),
             is_active=payload.get("is_active", True),
+            room_number=str(payload.get("room_number") or ""),
+            floor=str(payload.get("floor") or ""),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

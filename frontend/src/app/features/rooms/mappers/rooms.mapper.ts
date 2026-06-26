@@ -18,13 +18,17 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       name: room.name,
       description: room.description || 'Sin descripción',
       capacityLabel: room.capacity_label,
-      activeLabel: room.is_active ? 'Sí' : 'No'
+      activeLabel: room.is_active ? 'Sí' : 'No',
+      roomNumber: room.room_number || '',
+      floor: room.floor || '',
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,
       roomTypeName: room.room_type_name || room.room_type_id,
       roomLabel: room.room_label,
-      activeLabel: room.is_active ? 'Sí' : 'No'
+      activeLabel: room.is_active ? 'Sí' : 'No',
+      roomNumber: room.room_number || '',
+      floor: room.floor || '',
     }))
   };
 }
@@ -45,6 +49,8 @@ export function mapRoomCreatePayload(payload: {
   baseCapacity: number;
   baseRate?: number;
   isActive: boolean;
+  roomNumber?: string;
+  floor?: string;
 }): RoomCreateDto {
   return {
     prop_id: payload.propId,
@@ -54,6 +60,8 @@ export function mapRoomCreatePayload(payload: {
     max_children: payload.maxChildren,
     base_capacity: payload.baseCapacity,
     base_rate: payload.baseRate,
-    is_active: payload.isActive
+    is_active: payload.isActive,
+    room_number: payload.roomNumber || '',
+    floor: payload.floor || '',
   };
 }
