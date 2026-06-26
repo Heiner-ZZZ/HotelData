@@ -61,8 +61,13 @@ from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.housekeeping.service import ensure_housekeeping_collections
 from src.app.modules.reservations.service import ensure_reservation_collections
+import logging
+
 from config.settings import get_settings
 from src.database.connection import get_database
+
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:

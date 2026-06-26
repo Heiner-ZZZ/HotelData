@@ -17,7 +17,6 @@ from src.app.security.navigation import get_default_redirect_for_role
 from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
-    INACTIVITY_TIMEOUT_MINUTES,
     create_user_session,
     find_user_by_identifier,
     get_current_user,
@@ -25,7 +24,6 @@ from src.app.security.session import (
     invalidate_session,
     invalidate_user_sessions,
     log_user_activity,
-    touch_session_activity,
     verify_password,
     password_context,
 )

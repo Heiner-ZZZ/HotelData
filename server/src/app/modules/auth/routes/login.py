@@ -17,7 +17,6 @@ from src.app.security.session import (
     invalidate_session,
     invalidate_user_sessions,
     log_user_activity,
-    touch_session_activity,
 )
 from src.database.connection import get_database
 
