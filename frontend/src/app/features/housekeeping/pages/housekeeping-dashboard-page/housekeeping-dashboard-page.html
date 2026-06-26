@@ -5,6 +5,12 @@
     description="Monitoreo de eficiencia operativa hotelera (CU-E09)"
   />
 
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
+
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando indicadores..." />
@@ -12,72 +18,150 @@
     @case ('error') {
       <app-error-state title="Error al cargar" description="No se pudieron obtener los indicadores de housekeeping." />
     }
+    @case ('empty') {
+      <app-empty-state
+        title="Selecciona una propiedad"
+        description="Usa el selector de arriba para elegir un hotel y ver su panel de operaciones."
+      />
+    }
     @default {
       @if (dashboard(); as d) {
-        <section class="kpi-grid">
-          <article class="kpi-card">
-            <span class="material-symbols-outlined kpi-icon">meeting_room</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Habitaciones totales</span>
-              <strong class="kpi-value">{{ d.totalRooms }}</strong>
-            </div>
-          </article>
-          <article class="kpi-card">
-            <span class="material-symbols-outlined kpi-icon">bed</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Ocupadas</span>
-              <strong class="kpi-value">{{ d.occupied }}</strong>
-              <span class="kpi-sub">{{ d.occupancyRate }}% ocupación</span>
-            </div>
-          </article>
-          <article class="kpi-card kpi-warning">
-            <span class="material-symbols-outlined kpi-icon">cleaning_services</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Limpieza pendiente</span>
-              <strong class="kpi-value">{{ d.pendingHousekeepingTasks }}</strong>
-            </div>
-          </article>
-          <article class="kpi-card kpi-success">
-            <span class="material-symbols-outlined kpi-icon">task_alt</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Completadas hoy</span>
-              <strong class="kpi-value">{{ d.completedToday }}</strong>
-            </div>
-          </article>
-          <article class="kpi-card kpi-accent">
-            <span class="material-symbols-outlined kpi-icon">build</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Mantenimiento próximo</span>
-              <strong class="kpi-value">{{ d.upcomingMaintenance }}</strong>
-            </div>
-          </article>
-          <article class="kpi-card">
-            <span class="material-symbols-outlined kpi-icon">receipt_long</span>
-            <div class="kpi-body">
-              <span class="kpi-label">Cargos pendientes</span>
-              <strong class="kpi-value">{{ d.pendingCharges }}</strong>
-            </div>
-          </article>
-        </section>
 
-        <!-- Room status breakdown -->
-        @if (hasRoomStatuses(d.roomStatuses)) {
-          <section class="surface-card status-breakdown">
+        <!-- ═══ Quick Actions ═══ -->
+        <div class="quick-actions">
+          <a class="quick-action-btn" routerLink="tasks">
+            <span class="material-symbols-outlined">add_task</span>
+            Nueva tarea
+          </a>
+          <a class="quick-action-btn" routerLink="rooms">
+            <span class="material-symbols-outlined">meeting_room</span>
+            Estado de habitaciones
+          </a>
+          <a class="quick-action-btn" routerLink="maintenance">
+            <span class="material-symbols-outlined">build</span>
+            Programar mantenimiento
+          </a>
+          <a class="quick-action-btn" routerLink="charges">
+            <span class="material-symbols-outlined">receipt_long</span>
+            Nuevo cargo
+          </a>
+        </div>
+
+        <!-- ═══ Top Row: Occupancy Gauge + Key Stats ═══ -->
+        <div class="top-row">
+          <article class="surface-card occupancy-card">
+            <h3 class="card-label">Ocupación</h3>
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 120 120">
+                <circle class="gauge-bg" cx="60" cy="60" r="54" fill="none" stroke-width="10" />
+                <circle class="gauge-fill" cx="60" cy="60" r="54" fill="none" stroke-width="10"
+                  [attr.stroke-dasharray]="occupancyCircumference()"
+                  [attr.stroke-dashoffset]="occupancyOffset()"
+                  stroke-linecap="round"
+                  transform="rotate(-90 60 60)"
+                />
+              </svg>
+              <div class="gauge-center">
+                <strong class="gauge-pct">{{ d.occupancyRate }}%</strong>
+                <span class="gauge-sub">ocupado</span>
+              </div>
+            </div>
+            <div class="occupancy-stats">
+              <div class="occ-stat">
+                <span class="occ-dot occ-dot--occupied"></span>
+                <span>{{ d.occupied }} ocupadas</span>
+              </div>
+              <div class="occ-stat">
+                <span class="occ-dot occ-dot--free"></span>
+                <span>{{ availableRooms() }} libres</span>
+              </div>
+            </div>
+          </article>
+
+          <div class="stat-cards-grid">
+            <article class="surface-card stat-card">
+              <span class="stat-card-icon material-symbols-outlined">cleaning_services</span>
+              <div class="stat-card-body">
+                <span class="stat-card-label">Limpieza pendiente</span>
+                <strong class="stat-card-value">{{ d.pendingHousekeepingTasks }}</strong>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill cleaning-fill" [style.width.%]="cleaningCompletionPct() * 100"></div>
+                </div>
+                <span class="stat-card-sub">{{ d.completedToday }} completadas hoy</span>
+              </div>
+            </article>
+
+            <article class="surface-card stat-card">
+              <span class="stat-card-icon material-symbols-outlined">build</span>
+              <div class="stat-card-body">
+                <span class="stat-card-label">Mantenimiento próximo</span>
+                <strong class="stat-card-value">{{ d.upcomingMaintenance }}</strong>
+                <span class="stat-card-sub">tareas programadas</span>
+              </div>
+            </article>
+
+            <article class="surface-card stat-card">
+              <span class="stat-card-icon material-symbols-outlined">receipt_long</span>
+              <div class="stat-card-body">
+                <span class="stat-card-label">Cargos pendientes</span>
+                <strong class="stat-card-value">{{ d.pendingCharges }}</strong>
+                <span class="stat-card-sub">por registrar</span>
+              </div>
+            </article>
+
+            <article class="surface-card stat-card">
+              <span class="stat-card-icon material-symbols-outlined">task_alt</span>
+              <div class="stat-card-body">
+                <span class="stat-card-label">Hoy completadas</span>
+                <strong class="stat-card-value">{{ d.completedToday }}</strong>
+                <span class="stat-card-sub">de {{ d.totalRooms }} habitaciones</span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══ Room Status Board ═══ -->
+        @if (statusEntries().length) {
+          <section class="surface-card status-board">
             <h2 class="section-title">Estado de habitaciones</h2>
-            <div class="status-chips">
-              @for (entry of d.roomStatuses | keyvalue; track entry.key) {
-                <span class="status-chip" [class.chip-available]="entry.key === 'available'"
-                      [class.chip-occupied]="entry.key === 'occupied'"
-                      [class.chip-cleaning]="entry.key === 'cleaning'"
-                      [class.chip-maintenance]="entry.key === 'maintenance'">
-                  {{ entry.key }}: <strong>{{ entry.value }}</strong>
-                </span>
+            <div class="status-grid">
+              @for (entry of statusEntries(); track entry[0]) {
+                @let statusKey = entry[0];
+                @let statusCount = entry[1];
+                <div class="status-block"
+                  [class.block-available]="statusKey === 'available'"
+                  [class.block-occupied]="statusKey === 'occupied'"
+                  [class.block-cleaning]="statusKey === 'cleaning'"
+                  [class.block-maintenance]="statusKey === 'maintenance'"
+                  [class.block-out]="statusKey === 'out_of_order'"
+                >
+                  <span class="status-block-icon material-symbols-outlined">
+                    @switch (statusKey) {
+                      @case ('available') { check_circle }
+                      @case ('occupied') { bed }
+                      @case ('cleaning') { cleaning_services }
+                      @case ('maintenance') { build }
+                      @default { help }
+                    }
+                  </span>
+                  <strong class="status-block-count">{{ statusCount }}</strong>
+                  <span class="status-block-label">
+                    @switch (statusKey) {
+                      @case ('available') { Disponible }
+                      @case ('occupied') { Ocupada }
+                      @case ('cleaning') { Limpieza }
+                      @case ('maintenance') { Mantenimiento }
+                      @case ('out_of_order') { Fuera de servicio }
+                      @default { {{ statusKey }} }
+                    }
+                  </span>
+                </div>
               }
             </div>
           </section>
         }
 
-        <!-- Navigation modules -->
+        <!-- ═══ Module Navigation ═══ -->
         <section class="module-grid">
           <a class="module-card surface-card" routerLink="rooms">
             <span class="material-symbols-outlined module-icon">meeting_room</span>

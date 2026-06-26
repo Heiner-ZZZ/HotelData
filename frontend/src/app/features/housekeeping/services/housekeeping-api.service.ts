@@ -159,4 +159,12 @@ export class HousekeepingApiService {
     const params = propId ? new HttpParams().set('prop_id', String(propId)) : undefined;
     return this.http.get<HousekeepingDashboard>(`${this.baseUrl}/dashboard`, { params, withCredentials: true });
   }
+
+  syncRoomStatus(propId: number) {
+    return this.http.post<{ synced: boolean; prop_id: number; created: number; total_rooms: number }>(
+      `${this.baseUrl}/room-status/sync`,
+      { prop_id: propId },
+      { withCredentials: true },
+    );
+  }
 }
