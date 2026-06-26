@@ -81,7 +81,7 @@ export class HousekeepingTasksPageComponent {
           return this.api.syncRoomStatus(propId).pipe(
             switchMap(() => this.api.getRoomStatus(propId, undefined, 1)),
             switchMap((roomData) => {
-              this.roomLabels.set(roomData.items.map(r => r.roomLabel));
+              this.roomLabels.set(roomData.items.map(r => r.roomNumber || r.roomLabel));
               this.selectedLabel.set(label);
               this.propertyCtx.setProperty(propId, label);
               return this.api.getTasks(propId, status || undefined, undefined, page);

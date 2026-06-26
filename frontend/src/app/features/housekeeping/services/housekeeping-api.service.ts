@@ -9,6 +9,8 @@ export interface RoomStatusItem {
   propId: number;
   roomTypeId: string;
   roomLabel: string;
+  roomNumber: string;
+  hotelRoomId: string;
   status: string;
   note: string;
   createdAt: string;

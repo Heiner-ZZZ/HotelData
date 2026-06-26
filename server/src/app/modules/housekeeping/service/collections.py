@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pymongo import ASCENDING, IndexModel
 
-from src.database.collections import ensure_collection
+from src.database.collections import drop_index_safe, ensure_collection
 
 ROOM_STATUS_COLLECTION = "room_status_log"
 HOUSEKEEPING_COLLECTION = "housekeeping_tasks"
@@ -13,7 +13,7 @@ ROOM_STATUS_INDEXES = [
     IndexModel([("prop_id", ASCENDING)], name="idx_rs_prop"),
     IndexModel([("room_label", ASCENDING)], name="idx_rs_room"),
     IndexModel([("status", ASCENDING)], name="idx_rs_status"),
-    IndexModel([("prop_id", ASCENDING), ("room_label", ASCENDING)], name="idx_rs_prop_room", unique=True),
+    IndexModel([("prop_id", ASCENDING), ("hotel_room_id", ASCENDING)], name="idx_rs_prop_room", unique=True),
 ]
 
 HOUSEKEEPING_INDEXES = [
@@ -37,6 +37,8 @@ CHARGES_INDEXES = [
 
 
 def ensure_housekeeping_collections() -> None:
+    # Drop old unique index on (prop_id, room_label) — replaced by (prop_id, hotel_room_id)
+    drop_index_safe(ROOM_STATUS_COLLECTION, "idx_rs_prop_room")
     ensure_collection(ROOM_STATUS_COLLECTION, ROOM_STATUS_INDEXES)
     ensure_collection(HOUSEKEEPING_COLLECTION, HOUSEKEEPING_INDEXES)
     ensure_collection(MAINTENANCE_COLLECTION, MAINTENANCE_INDEXES)
