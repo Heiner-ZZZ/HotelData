@@ -11,17 +11,20 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
+import { KpiApiService, type TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
 
 @Component({
   selector: 'app-rooms-page',
   imports: [
     EmptyStateComponent,
     ErrorStateComponent,
+    KpiChartComponent,
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
@@ -38,9 +41,14 @@ export class RoomsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(RoomsApiService);
+  private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+
+  // ── KPI data (top 5 hotels by rooms) ──
+  readonly topHotels = signal<TopHotelRoomsItem[]>([]);
+  readonly topHotelsState = signal<'loading' | 'success' | 'error'>('loading');
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<RoomsViewModel | null>(null);
@@ -180,6 +188,12 @@ export class RoomsPageComponent {
         },
         error: () => this.viewState.set('error')
       });
+
+    // Load top hotels KPI
+    this.kpiApi.getTopHotelsByRooms(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
+      error: () => this.topHotelsState.set('error'),
+    });
   }
 
   onPropSelected(event: { propId: number; label: string }) {

@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
@@ -7,12 +7,13 @@ import type {
   AddLineItemPayload,
   BookingLineItemDto,
   BookingLineItemListDto,
+  HotelProductDto,
   HotelProductListDto,
   RemoveLineItemResponse,
 } from '../models/products.dto';
 import type { BookingLineItem, HotelProduct } from '../models/products.model';
 
-function mapProduct(dto: any): HotelProduct {
+function mapProduct(dto: HotelProductDto): HotelProduct {
   return {
     productId: dto.product_id,
     propId: dto.prop_id,
@@ -70,16 +71,5 @@ export class ProductsApiService {
     return this.http
       .delete<RemoveLineItemResponse>(`${this.base}/bookings/${bookingId}/line-items/${itemId}`, { withCredentials: true })
       .pipe(map((res) => res.ok));
-  }
-
-  /** List all products (for admin CRUD) — with pagination and category filter */
-  listAll(page = 1, pageSize = 20, category?: string): Observable<HotelProduct[]> {
-    let params = new HttpParams().set('page', String(page)).set('page_size', String(pageSize));
-    if (category) {
-      params = params.set('category', category);
-    }
-    return this.http
-      .get<HotelProductListDto>(`${this.base}`, { params, withCredentials: true })
-      .pipe(map((dto) => (dto.items ?? []).map(mapProduct)));
   }
 }

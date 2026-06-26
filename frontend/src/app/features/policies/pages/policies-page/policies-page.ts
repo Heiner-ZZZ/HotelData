@@ -11,10 +11,12 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapPoliciesPayload } from '../../mappers/policies.mapper';
 import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import { PoliciesApiService } from '../../services/policies-api.service';
+import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
@@ -23,6 +25,7 @@ import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.direc
   imports: [
     EmptyStateComponent,
     ErrorStateComponent,
+    KpiChartComponent,
     LoadingStateComponent,
     PageHeaderComponent,
     PolicySummaryCardsComponent,
@@ -38,9 +41,14 @@ export class PoliciesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PoliciesApiService);
+  private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+
+  // ── KPI: Operational stats ──
+  readonly opStats = signal<OperationalStatsResponse | null>(null);
+  readonly opStatsState = signal<'loading' | 'success' | 'error'>('loading');
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<PoliciesViewModel | null>(null);
