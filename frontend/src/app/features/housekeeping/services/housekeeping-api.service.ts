@@ -51,6 +51,7 @@ export interface MaintenanceTaskItem {
   status: string;
   priority: string;
   scheduledDate: string;
+  autoBlock: boolean;
   createdAt: string;
   completedAt: string | null;
 }
@@ -75,6 +76,8 @@ export interface HousekeepingDashboard {
   pendingHousekeepingTasks: number;
   completedToday: number;
   upcomingMaintenance: number;
+  maintenanceCompliancePct: number;
+  totalMaintenanceCompleted: number;
   pendingCharges: number;
 }
 

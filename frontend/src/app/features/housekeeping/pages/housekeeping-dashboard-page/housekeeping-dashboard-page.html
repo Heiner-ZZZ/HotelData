@@ -97,6 +97,12 @@
                 <span class="stat-card-label">Mantenimiento próximo</span>
                 <strong class="stat-card-value">{{ d.upcomingMaintenance }}</strong>
                 <span class="stat-card-sub">tareas programadas</span>
+                @if (d.totalMaintenanceCompleted > 0) {
+                  <div class="stat-bar">
+                    <div class="stat-bar-fill maintenance-fill" [style.width.%]="maintenanceCompliancePct()"></div>
+                  </div>
+                  <span class="stat-card-sub">{{ maintenanceCompliancePct() }}% completadas a tiempo</span>
+                }
               </div>
             </article>
 
