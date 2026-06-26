@@ -165,6 +165,58 @@
     </div>
   }
 
+  <!-- ═══ Edit check-in datetime modal ═══ -->
+  @if (editTarget(); as target) {
+    <div class="modal-overlay" (click)="closeEditDateTime()">
+      <div class="modal-panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">edit_calendar</span>
+          <div>
+            <h2>Editar check-in</h2>
+            <p>Reserva: {{ target.bookingId }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeEditDateTime()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (editError()) {
+            <div class="toast toast-error" style="margin-bottom: 12px;">
+              <span class="material-symbols-outlined">error</span>
+              {{ editError() }}
+            </div>
+          }
+          <div class="edit-datetime-form">
+            <label class="edit-field">
+              <span class="edit-field-label">Fecha de check-in</span>
+              <input type="date" class="edit-field-input" [value]="editDateValue()" (input)="editDateValue.set($any($event.target).value)" />
+            </label>
+            <label class="edit-field">
+              <span class="edit-field-label">Hora de check-in (opcional)</span>
+              <input type="time" class="edit-field-input" [value]="editTimeValue()" (input)="editTimeValue.set($any($event.target).value)" />
+            </label>
+            <p class="edit-note">
+              <span class="material-symbols-outlined">info</span>
+              Solo se modificará la fecha/hora de check-in. La fecha de check-out y otros detalles no se ven afectados.
+            </p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeEditDateTime()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="saveEditDateTime()" [disabled]="editSaving()">
+            @if (editSaving()) {
+              <span class="material-symbols-outlined spinning">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined">save</span>
+              Guardar cambios
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando check-ins..." />
@@ -241,6 +293,7 @@
                     <th>Hora</th>
                     <th>Notas</th>
                     <th></th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,6 +338,11 @@
                             <span class="material-symbols-outlined">login</span>
                           </button>
                         }
+                      </td>
+                      <td class="cell-action">
+                        <button type="button" class="btn-icon-only btn-edit-time" (click)="openEditDateTime(item)" aria-label="Editar fecha/hora">
+                          <span class="material-symbols-outlined">edit_calendar</span>
+                        </button>
                       </td>
                     </tr>
                   }

@@ -10,6 +10,9 @@ export interface CheckInRowViewModel {
   guestName: string;
   guestEmail: string;
   date: string;
+  checkInDate: string;
+  checkInTime: string;
+  checkOutDate: string;
   reservationStatusLabel: string;
   stayStatusLabel: string;
   roomsLabel: string;

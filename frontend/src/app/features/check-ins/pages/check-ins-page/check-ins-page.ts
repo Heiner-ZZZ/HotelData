@@ -13,7 +13,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
-import type { CheckInsViewModel } from '../../models/check-ins.model';
+import type { CheckInRowViewModel, CheckInsViewModel } from '../../models/check-ins.model';
 import type { CheckInsDto } from '../../models/check-ins.dto';
 import { CheckInsApiService, type DateHistoryEntry } from '../../services/check-ins-api.service';
 import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
@@ -100,6 +100,13 @@ export class CheckInsPageComponent {
   readonly filter = signal('');
   readonly propertyOptions = computed(() => this.viewModel()?.propertyOptions ?? []);
   readonly dropdownOpen = signal(false);
+
+  // Edit check-in date/time modal
+  readonly editTarget = signal<{ bookingId: string; checkInDate: string; checkInTime: string } | null>(null);
+  readonly editDateValue = signal('');
+  readonly editTimeValue = signal('');
+  readonly editSaving = signal(false);
+  readonly editError = signal('');
 
   // More menu (⋮)
   readonly showMenu = signal(false);
@@ -233,6 +240,70 @@ export class CheckInsPageComponent {
         this.errorMessage.set(err.message || 'Error al completar check-in.');
         this.message.set('');
       }
+    });
+  }
+
+  // ── Edit check-in date/time ──
+
+  openEditDateTime(item: CheckInRowViewModel) {
+    this.editTarget.set({
+      bookingId: item.bookingId,
+      checkInDate: item.checkInDate,
+      checkInTime: item.checkInTime || '',
+    });
+    this.editDateValue.set(item.checkInDate);
+    this.editTimeValue.set(item.checkInTime || '');
+    this.editError.set('');
+  }
+
+  closeEditDateTime() {
+    this.editTarget.set(null);
+    this.editDateValue.set('');
+    this.editTimeValue.set('');
+    this.editSaving.set(false);
+    this.editError.set('');
+  }
+
+  saveEditDateTime() {
+    const target = this.editTarget();
+    if (!target) return;
+
+    const newDate = this.editDateValue();
+    const newTime = this.editTimeValue();
+
+    if (!newDate) {
+      this.editError.set('La fecha es obligatoria.');
+      return;
+    }
+
+    this.editSaving.set(true);
+    this.editError.set('');
+
+    const dateChanged = newDate !== target.checkInDate;
+    const timeChanged = newTime !== target.checkInTime;
+
+    if (!dateChanged && !timeChanged) {
+      this.closeEditDateTime();
+      return;
+    }
+
+    this.api.updateCheckInDateTime(
+      target.bookingId,
+      dateChanged ? newDate : undefined,
+      timeChanged ? newTime : undefined,
+    ).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.closeEditDateTime();
+        this.message.set('Fecha/hora de check-in actualizada.');
+        this.errorMessage.set('');
+        // Refresh the view
+        this.applyFilters();
+      },
+      error: (err: any) => {
+        this.editSaving.set(false);
+        this.editError.set(err?.error?.detail || err?.message || 'Error al actualizar fecha/hora.');
+      },
     });
   }
 }

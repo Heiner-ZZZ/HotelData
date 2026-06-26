@@ -486,6 +486,127 @@ tbody tr:hover {
   color: var(--muted-text);
 }
 
+/* ─── Edit time button ─── */
+.btn-edit-time {
+  color: #8b5cf6;
+
+  &:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: #8b5cf6;
+  }
+}
+
+/* ─── Edit datetime modal ─── */
+.edit-datetime-form {
+  display: grid;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+
+.edit-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.edit-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.edit-field-input {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.12);
+  }
+}
+
+.edit-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+
+  .material-symbols-outlined {
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Modal actions ─── */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover {
+    background: var(--surface-soft);
+  }
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 85%, black);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+  }
+
+  .spinning {
+    animation: spin 800ms linear infinite;
+  }
+}
+
 /* ─── Action button ─── */
 
 .btn-icon-only {

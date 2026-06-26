@@ -15,6 +15,9 @@ export interface CheckInsDto {
     guest_name: string;
     guest_email: string;
     date: string;
+    check_in_date: string;
+    check_in_time: string;
+    check_out_date: string;
     reservation_status_label: string;
     stay_status_label: string;
     rooms_label: string;
