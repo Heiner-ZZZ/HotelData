@@ -136,6 +136,10 @@ export class HousekeepingApiService {
     return this.http.post<MaintenanceTaskItem>(`${this.baseUrl}/maintenance`, payload, { withCredentials: true });
   }
 
+  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string }) {
+    return this.http.put<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}`, payload, { withCredentials: true });
+  }
+
   completeMaintenance(taskId: string, note = '') {
     return this.http.post<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}/complete`, { note }, { withCredentials: true });
   }
