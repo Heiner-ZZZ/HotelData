@@ -106,7 +106,7 @@
               <p>Crea un tipo de habitación operativo para inventario y disponibilidad.</p>
             </div>
           </div>
-          <form [formGroup]="createForm" (ngSubmit)="createRoomType()" class="form-grid">
+          <form [formGroup]="createForm" (submit)="$event.preventDefault(); createRoomType()" class="form-grid">
             <label class="field">
               <span class="field-label">
                 <span class="material-symbols-outlined field-icon">badge</span>
@@ -120,6 +120,20 @@
                 Descripción
               </span>
                 <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">tag</span>
+                N° Habitación
+              </span>
+              <input formControlName="roomNumber" placeholder="Ej: 101">
+            </label>
+            <label class="field">
+              <span class="field-label">
+                <span class="material-symbols-outlined field-icon">floor</span>
+                Piso / PB
+              </span>
+              <input formControlName="floor" placeholder="Ej: 1, 2, PB">
             </label>
             <label class="field">
               <span class="field-label">
@@ -201,6 +215,8 @@
                   <tr>
                     <th>ID</th>
                     <th>Etiqueta</th>
+                    <th>N°</th>
+                    <th>Piso</th>
                     <th>Tipo</th>
                     <th>Estado</th>
                   </tr>
@@ -213,6 +229,8 @@
                         <span class="material-symbols-outlined table-icon icon-data-blue">door_front</span>
                         {{ room.roomLabel }}
                       </td>
+                      <td>{{ room.roomNumber || '--' }}</td>
+                      <td>{{ room.floor || '--' }}</td>
                       <td>{{ room.roomTypeName }}</td>
                       <td>
                         <span class="status-badge" [class.active]="room.activeLabel === 'Sí'" [class.inactive]="room.activeLabel !== 'Sí'">
@@ -292,7 +310,7 @@
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
-        <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="form-grid">
+        <form [formGroup]="editForm" (submit)="$event.preventDefault(); saveEdit()" class="form-grid">
           <label class="field">
             <span class="field-label">Nombre</span>
             <input formControlName="name" placeholder="Ej: Suite Premium">
@@ -301,6 +319,14 @@
              <span class="field-label">Descripción</span>
              <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
            </label>
+          <label class="field">
+            <span class="field-label">N° Habitación</span>
+            <input formControlName="roomNumber" placeholder="Ej: 101">
+          </label>
+          <label class="field">
+            <span class="field-label">Piso / PB</span>
+            <input formControlName="floor" placeholder="Ej: 1, 2, PB">
+          </label>
           <label class="field">
             <span class="field-label">Adultos máx.</span>
             <input type="number" min="1" formControlName="maxAdults">

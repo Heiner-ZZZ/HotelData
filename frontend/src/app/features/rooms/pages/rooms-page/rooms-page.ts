@@ -12,7 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { RoomsViewModel } from '../../models/rooms.model';
+import type { RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
@@ -57,7 +57,9 @@ export class RoomsPageComponent {
     maxChildren: [0, [Validators.required, Validators.min(0)]],
     baseCapacity: [2, [Validators.required, Validators.min(1)]],
     baseRate: [0, [Validators.min(0)]],
-    isActive: [true]
+    isActive: [true],
+    roomNumber: [''],
+    floor: [''],
   });
 
   readonly editForm = this.formBuilder.nonNullable.group({
@@ -68,7 +70,9 @@ export class RoomsPageComponent {
     maxChildren: [0, [Validators.required, Validators.min(0)]],
     baseCapacity: [2, [Validators.required, Validators.min(1)]],
     baseRate: [0, [Validators.min(0)]],
-    isActive: [true]
+    isActive: [true],
+    roomNumber: [''],
+    floor: [''],
   });
 
   readonly showEditModal = signal(false);
@@ -118,7 +122,7 @@ export class RoomsPageComponent {
     });
   }
 
-  startEdit(roomType: { id: string; name: string; description: string; capacityLabel: string; activeLabel: string; baseRate?: number }) {
+  startEdit(roomType: RoomTypeItem) {
     const parts = roomType.capacityLabel.match(/(\d+)/g);
     this.editForm.setValue({
       roomTypeId: roomType.id,
@@ -127,8 +131,10 @@ export class RoomsPageComponent {
       maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
       maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
       baseCapacity: parts ? Number(parts[0]) : 2,
-      baseRate: roomType.baseRate ?? 0,
-      isActive: roomType.activeLabel === 'Sí'
+      baseRate: 0,
+      isActive: roomType.activeLabel === 'Sí',
+      roomNumber: roomType.roomNumber,
+      floor: roomType.floor,
     });
     this.showEditModal.set(true);
   }
@@ -191,7 +197,9 @@ export class RoomsPageComponent {
       maxChildren: value.maxChildren,
       baseCapacity: value.baseCapacity,
       baseRate: value.baseRate || undefined,
-      isActive: value.isActive
+      isActive: value.isActive,
+      roomNumber: value.roomNumber,
+      floor: value.floor,
     }).pipe(
       switchMap(() => {          const current = this.viewModel();
           return current ? this.api.getRooms(current.propId) : of(null);
@@ -230,7 +238,9 @@ export class RoomsPageComponent {
         maxChildren: value.maxChildren,
         baseCapacity: value.baseCapacity,
         baseRate: value.baseRate || undefined,
-        isActive: value.isActive
+        isActive: value.isActive,
+        roomNumber: value.roomNumber,
+        floor: value.floor,
       })
       .pipe(
         switchMap(() => this.api.getRooms(current.propId)),
@@ -248,7 +258,9 @@ export class RoomsPageComponent {
             maxChildren: 0,
             baseCapacity: 2,
             baseRate: 0,
-            isActive: true
+            isActive: true,
+            roomNumber: '',
+            floor: '',
           });
         },
         error: (error: ApiError) => {

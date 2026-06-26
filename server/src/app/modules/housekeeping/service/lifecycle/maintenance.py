@@ -7,6 +7,8 @@ from typing import Any
 
 from bson import ObjectId
 
+from bson import ReturnDocument
+
 from src.database.connection import get_database
 from ..collections import MAINTENANCE_COLLECTION
 from ...schemas import MaintenanceTaskCreate, now_iso
@@ -45,6 +47,25 @@ def list_maintenance_tasks(
         "total_pages": max(1, ceil(total / page_size)),
         "has_next": page * page_size < total, "has_prev": page > 1,
     }
+
+
+def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dict[str, Any] | None:
+    db = get_database()
+    now = now_iso()
+    doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
+        {"_id": ObjectId(task_id)},
+        {"$set": {
+            "room_label": payload.room_label,
+            "task_type": payload.task_type,
+            "title": payload.title,
+            "description": payload.description or "",
+            "priority": payload.priority,
+            "scheduled_date": payload.scheduled_date,
+            "updated_at": now,
+        }},
+        return_document=ReturnDocument.AFTER,
+    )
+    return _enrich_mt_task(doc) if doc else None
 
 
 def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | None:

@@ -4,6 +4,8 @@
       <tr>
         <th>ID</th>
         <th>Nombre</th>
+        <th>N°</th>
+        <th>Piso</th>
         <th>Descripción</th>
         <th>Capacidad</th>
         <th>Estado</th>
@@ -18,6 +20,8 @@
             <span class="material-symbols-outlined table-icon">meeting_room</span>
             {{ room.name }}
           </td>
+          <td>{{ room.roomNumber || '--' }}</td>
+          <td>{{ room.floor || '--' }}</td>
           <td class="desc-cell">{{ room.description }}</td>
           <td>
             <span class="capacity-pill">
