@@ -122,6 +122,26 @@ export class RatesApiService {
     );
   }
 
+  updateSeasonalRule(ruleId: string, payload: {
+    ratePlanId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    priceOverride: number;
+  }) {
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/management/rates/seasonal-rules/${ruleId}`,
+      {
+        rate_plan_id: payload.ratePlanId,
+        name: payload.name,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        price_override: payload.priceOverride
+      },
+      { withCredentials: true }
+    );
+  }
+
   deleteSeasonalRule(ruleId: string) {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rates/seasonal-rules/${ruleId}`,

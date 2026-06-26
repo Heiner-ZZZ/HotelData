@@ -25,6 +25,7 @@ import { RateMonthlyCalendarComponent, type RoomTypeCalendarRow } from '../../co
 import { PromotionFormComponent } from '../../components/promotion-form/promotion-form';
 import { PromotionsTableComponent, type CampaignRow, type CouponRow } from '../../components/promotions-table/promotions-table';
 import { SeasonalRulesTableComponent, type SeasonalRuleRow } from '../../components/seasonal-rules-table/seasonal-rules-table';
+
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
 @Component({
@@ -99,6 +100,7 @@ export class RatesPageComponent {
   /** Current section — derived from URL query param. */
   readonly activeSection = computed(() => this.routeSection());
   readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; roomTypeId: string; isActive: boolean } | null>(null);
+  readonly editingSeason = signal<{ ruleId: string; ratePlanId: string; name: string; startDate: string; endDate: string; priceOverride: number } | null>(null);
   readonly deleteConfirm = signal<string | null>(null);
   readonly promoDeleteConfirm = signal<string | null>(null);
   readonly promotionsData = signal<{ campaigns: Array<any>; total: number } | null>(null);
@@ -143,10 +145,10 @@ export class RatesPageComponent {
   readonly seasonalPriceTouched = signal(false);
 
   // Collapsible sections (collapsed by default)
-  readonly planFormCollapsed = signal(true);
-  readonly existingPlansCollapsed = signal(true);
-  readonly newSeasonalCollapsed = signal(true);
-  readonly existingSeasonsCollapsed = signal(true);
+  readonly planFormCollapsed = signal(false);
+  readonly existingPlansCollapsed = signal(false);
+  readonly newSeasonalCollapsed = signal(false);
+  readonly existingSeasonsCollapsed = signal(false);
 
   toggleCollapse(section: 'planForm' | 'existingPlans' | 'newSeasonal' | 'existingSeasons'): void {
     if (section === 'planForm') this.planFormCollapsed.update(v => !v);
@@ -419,6 +421,10 @@ readonly sidebarSections: SidebarSection[] = [
   batchUpdateCalendar(): void {
     const current = this.viewModel();
     if (!current || !this.batchRatePlanId() || !this.batchStartDate() || !this.batchEndDate() || this.batchRateAmount() <= 0) { return; }
+    if (this.batchStartDate() > this.batchEndDate()) {
+      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      return;
+    }
     this.api.batchUpdateCalendar({
       propId: current.propId, ratePlanId: this.batchRatePlanId(), startDate: this.batchStartDate(),
       endDate: this.batchEndDate(), rateAmount: this.batchRateAmount(), minStayNights: this.batchMinStayNights() || undefined, onlyWeekends: this.batchOnlyWeekends(),
@@ -435,6 +441,10 @@ readonly sidebarSections: SidebarSection[] = [
   generateCalendar(): void {
     const current = this.viewModel();
     if (!current) return;
+    if (this.generateStartDate() && this.generateEndDate() && this.generateStartDate() > this.generateEndDate()) {
+      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      return;
+    }
     this.api.generateCalendar({
       propId: current.propId, ratePlanId: this.generateRatePlanId() || undefined,
       startDate: this.generateStartDate() || undefined, endDate: this.generateEndDate() || undefined,
@@ -448,6 +458,32 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   /* ── Seasonal Rules ── */
+  onEditSeason(rule: SeasonalRuleRow): void {
+    this.editingSeason.set({
+      ruleId: rule.ruleId,
+      ratePlanId: rule.ratePlanId,
+      name: rule.name,
+      startDate: rule.startDate,
+      endDate: rule.endDate,
+      priceOverride: rule.priceOverride,
+    });
+    this.seasonalRatePlanId.set(rule.ratePlanId);
+    this.seasonalName.set(rule.name);
+    this.seasonalStartDate.set(rule.startDate);
+    this.seasonalEndDate.set(rule.endDate);
+    this.seasonalPriceOverride.set(rule.priceOverride);
+    this.newSeasonalCollapsed.set(false);
+  }
+
+  cancelEditSeason(): void {
+    this.editingSeason.set(null);
+    this.seasonalRatePlanId.set('');
+    this.seasonalName.set('');
+    this.seasonalStartDate.set('');
+    this.seasonalEndDate.set('');
+    this.seasonalPriceOverride.set(0);
+  }
+
   createSeasonalRule(): void {
     const current = this.viewModel();
     this.seasonalPriceTouched.set(true);
@@ -459,15 +495,41 @@ readonly sidebarSections: SidebarSection[] = [
       this.errorMessage.set('El precio override debe ser mayor a 0.');
       return;
     }
-    this.api.createSeasonalRule({
-      propId: current.propId, ratePlanId: this.seasonalRatePlanId(), name: this.seasonalName(),
-      startDate: this.seasonalStartDate(), endDate: this.seasonalEndDate(), priceOverride: this.seasonalPriceOverride(),
-    }).pipe(
+    if (this.seasonalStartDate() > this.seasonalEndDate()) {
+      this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
+      return;
+    }
+
+    const edit = this.editingSeason();
+
+    const obs = edit
+      ? this.api.updateSeasonalRule(edit.ruleId, {
+          ratePlanId: this.seasonalRatePlanId(),
+          name: this.seasonalName(),
+          startDate: this.seasonalStartDate(),
+          endDate: this.seasonalEndDate(),
+          priceOverride: this.seasonalPriceOverride(),
+        })
+      : this.api.createSeasonalRule({
+          propId: current.propId,
+          ratePlanId: this.seasonalRatePlanId(),
+          name: this.seasonalName(),
+          startDate: this.seasonalStartDate(),
+          endDate: this.seasonalEndDate(),
+          priceOverride: this.seasonalPriceOverride(),
+        });
+
+    obs.pipe(
       switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.message.set('Regla de temporada creada'); this.errorMessage.set(''); this.seasonalRatePlanId.set(''); this.seasonalName.set(''); this.seasonalStartDate.set(''); this.seasonalEndDate.set(''); this.seasonalPriceOverride.set(0); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al crear regla de temporada.'); this.message.set(''); },
+      next: (rates) => {
+        this.viewModel.set(rates);
+        this.message.set(edit ? 'Regla de temporada actualizada' : 'Regla de temporada creada');
+        this.errorMessage.set('');
+        this.cancelEditSeason();
+      },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al guardar regla de temporada.'); this.message.set(''); },
     });
   }
 

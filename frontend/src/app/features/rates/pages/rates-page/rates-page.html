@@ -166,6 +166,9 @@
                         <input type="date" [value]="batchEndDate()" (input)="batchEndDate.set($any($event.target).value)" />
                       </label>
                     </div>
+                    @if (batchStartDate() && batchEndDate() && batchStartDate() > batchEndDate()) {
+                      <span class="field-error">La fecha de inicio no puede ser mayor a la fecha de fin.</span>
+                    }
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa</span>
                       <input type="number" min="0.01" step="0.01" [value]="batchRateAmount()" (input)="batchRateAmount.set(+$any($event.target).value)" placeholder="0.00" />
@@ -223,6 +226,9 @@
                         <input type="date" [value]="generateEndDate()" (input)="generateEndDate.set($any($event.target).value)" />
                       </label>
                     </div>
+                    @if (generateStartDate() && generateEndDate() && generateStartDate() > generateEndDate()) {
+                      <span class="field-error">La fecha de inicio no puede ser mayor a la fecha de fin.</span>
+                    }
                     <div class="form-actions">
                       <button type="submit" class="btn-primary">
                         <span class="material-symbols-outlined btn-icon">auto_awesome</span>Generar
@@ -321,6 +327,15 @@
                   </div>
                   @if (!newSeasonalCollapsed()) {
                   <form (submit)="$event.preventDefault(); createSeasonalRule()" class="panel-form">
+                    @if (editingSeason(); as edit) {
+                      <div class="editing-banner">
+                        <span class="material-symbols-outlined">edit</span>
+                        Editando: {{ edit.name }}
+                        <button type="button" class="cancel-edit-btn" (click)="cancelEditSeason()">
+                          <span class="material-symbols-outlined">close</span>
+                        </button>
+                      </div>
+                    }
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
                       <select [value]="seasonalRatePlanId()" (change)="seasonalRatePlanId.set($any($event.target).value)">
@@ -342,6 +357,9 @@
                         <input type="date" [value]="seasonalEndDate()" (input)="seasonalEndDate.set($any($event.target).value)">
                       </label>
                     </div>
+                    @if (seasonalStartDate() && seasonalEndDate() && seasonalStartDate() > seasonalEndDate()) {
+                      <span class="field-error">La fecha de inicio no puede ser mayor a la fecha de fin.</span>
+                    }
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Precio override</span>
                       <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(+$any($event.target).value); seasonalPriceTouched.set(true)" placeholder="0.00">
@@ -351,7 +369,8 @@
                     </label>
                     <div class="form-actions">
                       <button type="submit" class="btn-primary">
-                        <span class="material-symbols-outlined btn-icon">add</span>Crear regla
+                        <span class="material-symbols-outlined btn-icon">{{ editingSeason() ? 'save' : 'add' }}</span>
+                        {{ editingSeason() ? 'Actualizar regla' : 'Crear regla' }}
                       </button>
                     </div>
                   </form>
@@ -369,7 +388,7 @@
                   </div>
                   @if (!existingSeasonsCollapsed()) {
                   @if (seasonalRuleRows().length) {
-                    <app-seasonal-rules-table [rules]="seasonalRuleRows()" (deleteRule)="deleteSeasonalRule($event)" />
+                    <app-seasonal-rules-table [rules]="seasonalRuleRows()" (editRule)="onEditSeason($event)" (deleteRule)="deleteSeasonalRule($event)" />
                   } @else {
                     <app-empty-state icon="event" title="Sin reglas de temporada" description="Crea reglas por temporada." />
                   }

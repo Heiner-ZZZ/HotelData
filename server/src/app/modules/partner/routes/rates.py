@@ -18,6 +18,7 @@ from src.app.modules.partner.services import (
     partner_hotel_rates,
     save_rate_calendar_entry,
     update_rate_plan,
+    update_seasonal_rule,
 )
 from src.app.modules.revenue.services.promotions import create_promotion_campaign
 from src.app.security.dependencies import require_login
@@ -153,6 +154,24 @@ def rates_seasonal_rule_create_api(payload: dict = Body(...)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.put("/rates/seasonal-rules/{rule_id}")
+def rates_seasonal_rule_update_api(rule_id: str, payload: dict = Body(...)):
+    try:
+        saved = update_seasonal_rule(
+            rule_id,
+            rate_plan_id=str(payload.get("rate_plan_id") or ""),
+            name=str(payload.get("name") or ""),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            price_override=payload.get("price_override"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seasonal rule not found")
     return saved
 
 
