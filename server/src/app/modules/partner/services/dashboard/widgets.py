@@ -6,9 +6,15 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 from src.app.modules.partner.services._common import active_fact_collection, now_utc
+from src.cache.cache_service import get_cache, set_cache
 
 
 def _dashboard_quick_stats(db) -> dict[str, Any]:
+    # Try Redis cache first
+    cached = get_cache("dashboard:quick_stats")
+    if cached is not None:
+        return cached
+
     collection, _ = active_fact_collection()
     now = now_utc()
     booked = {"$or": [{"$eq": ["$reserva_bool", 1]}, {"$eq": ["$reserva_bool", True]}]}
@@ -85,7 +91,7 @@ def _dashboard_quick_stats(db) -> dict[str, Any]:
             health = int(last["overall_score"])
     except Exception:
         logger.exception("Error reading data health score")
-    return {
+    result = {
         "occupancy_rate": occupancy_rate,
         "occupancy_trend": occupancy_trend,
         "total_revenue_mtd": round(revenue_mtd, 2),
@@ -93,9 +99,15 @@ def _dashboard_quick_stats(db) -> dict[str, Any]:
         "pending_checkins": pending,
         "data_health_score": health,
     }
+    set_cache("dashboard:quick_stats", result, ttl_seconds=60)
+    return result
 
 
 def _dashboard_revenue_chart(db) -> list[dict[str, Any]]:
+    cached = get_cache("dashboard:revenue_chart")
+    if cached is not None:
+        return cached
+
     collection, _ = active_fact_collection()
     results = list(collection.aggregate([
         {"$match": {"reserva_bool": True}},
@@ -103,10 +115,16 @@ def _dashboard_revenue_chart(db) -> list[dict[str, Any]]:
         {"$sort": {"_id": 1}},
         {"$limit": 8},
     ], allowDiskUse=True))
-    return [{"period": str(r["_id"]), "revenue": round(float(r["revenue"]), 2)} for r in results]
+    result = [{"period": str(r["_id"]), "revenue": round(float(r["revenue"]), 2)} for r in results]
+    set_cache("dashboard:revenue_chart", result, ttl_seconds=120)
+    return result
 
 
 def _dashboard_arrivals_today(db) -> list[dict[str, Any]]:
+    cached = get_cache("dashboard:arrivals")
+    if cached is not None:
+        return cached
+
     try:
         today = now_utc().strftime("%Y-%m-%d")
         rows = list(db.booking_orders.find({"check_in_date": today, "status": {"$in": ["confirmed", "pending"]}}, {"_id": 0}).limit(20))
@@ -123,6 +141,7 @@ def _dashboard_arrivals_today(db) -> list[dict[str, Any]]:
                 "arrival_time": r.get("arrival_time", "15:00"),
                 "status_tag": r.get("booking_source", "standard"),
             })
+        set_cache("dashboard:arrivals", out, ttl_seconds=30)
         return out
     except Exception:
         logger.exception("Error fetching arrivals today")

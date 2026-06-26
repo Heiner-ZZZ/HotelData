@@ -10,7 +10,8 @@ from src.app.modules.partner.services.properties.builders import (
 )
 from src.app.modules.partner.services.properties.metadata import ensure_hotel_profile_metadata
 from src.app.modules.partner.services.properties.performance import performance_for_prop
-from src.app.security.hotel_filter import hotel_filter_from_user
+from src.cache.cache_service import get_cache, set_cache
+from src.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database
 
 
@@ -31,6 +32,12 @@ def _paginate(page: int, page_size: int, total: int) -> dict[str, Any]:
 
 
 def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20, user: dict[str, Any] | None = None) -> dict[str, Any]:
+    # Cache common queries (empty query, page 1) for 30 seconds
+    if not query.strip() and page == 1 and page_size <= 20 and user is None:
+        cached = get_cache("partner:hotels:list:default")
+        if cached is not None:
+            return cached
+
     db = get_database()
     page = max(page, 1)
     page_size = min(max(page_size, 1), 200)
@@ -131,4 +138,9 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20, use
     result["query"] = query
     result["start_index"] = ((result["page"] - 1) * page_size) + 1 if total else 0
     result["end_index"] = ((result["page"] - 1) * page_size) + len(result["items"]) if result["items"] else 0
+
+    # Cache default (no query, page 1) for 30 seconds
+    if not query and page == 1 and page_size <= 20 and user is None:
+        set_cache("partner:hotels:list:default", result, ttl_seconds=30)
+
     return result

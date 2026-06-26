@@ -7,6 +7,7 @@ from pymongo import ReturnDocument
 from src.app.modules.partner.services._common import clean_text, hotel_display_name, now_utc
 from src.app.modules.partner.services.properties.builders import build_fact_backed_hotel
 from src.app.modules.partner.services.properties.metadata import ensure_hotel_profile_metadata
+from src.cache.cache_service import delete_cache
 from src.database.connection import get_database
 
 
@@ -124,5 +125,9 @@ def save_partner_hotel_profile(
         )
     if changes:
         db.hotel_profile_changes.insert_many(changes)
+
+    # Invalidate Redis caches for this property so fresh data loads next request
+    delete_cache(f"partner:hotel:detail:{prop_id}")
+    delete_cache("partner:hotels:list:default")
 
     return partner_hotel_profile(prop_id)

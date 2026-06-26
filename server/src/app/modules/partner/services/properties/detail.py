@@ -15,7 +15,8 @@ from src.app.modules.partner.services.properties.metadata import (
     profile_badge,
 )
 from src.app.modules.partner.services.properties.performance import performance_for_prop
-from src.app.security.hotel_filter import user_can_access_hotel
+from src.cache.cache_service import get_cache, set_cache, delete_cache
+from src.security.hotel_filter import user_can_access_hotel
 from src.database.connection import get_database
 
 
@@ -23,6 +24,13 @@ def partner_hotel_detail(prop_id: int, user: dict[str, Any] | None = None) -> di
     # Enforce assigned_hotels access control
     if user is not None and not user_can_access_hotel(user, prop_id):
         return None
+
+    # Try Redis cache first (only when no user-specific filtering is applied)
+    if user is None:
+        cached = get_cache(f"partner:hotel:detail:{prop_id}")
+        if cached is not None:
+            return cached
+
     ensure_hotel_profile_metadata(prop_id)
     db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0})
@@ -35,7 +43,7 @@ def partner_hotel_detail(prop_id: int, user: dict[str, Any] | None = None) -> di
     from src.app.modules.partner.services.dashboard.operations import _operational_flags
 
     operational = _operational_flags(prop_id)
-    return {
+    result = {
         "hotel": {
             **hotel,
             "prop_id": prop_id,
@@ -51,6 +59,10 @@ def partner_hotel_detail(prop_id: int, user: dict[str, Any] | None = None) -> di
         "performance": perf,
         "master_hotel": master_hotel,
     }
+    # Cache for 120 seconds when no user-specific filtering
+    if user is None:
+        set_cache(f"partner:hotel:detail:{prop_id}", result, ttl_seconds=120)
+    return result
 
 
 def partner_hotel_performance(prop_id: int) -> dict[str, Any] | None:
