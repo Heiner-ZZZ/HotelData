@@ -212,6 +212,23 @@ export class MaintenancePageComponent {
       });
   }
 
+  deleteMaintenanceItem(taskId: string): void {
+    this.api
+      .deleteMaintenance(taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set('Mantenimiento eliminado');
+          this.errorMessage.set('');
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.message || 'Error al eliminar mantenimiento');
+          this.message.set('');
+        },
+      });
+  }
+
   private refresh(): void {
     const current = this.data();
     if (!current) return;

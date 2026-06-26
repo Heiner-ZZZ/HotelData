@@ -184,6 +184,45 @@
             <p>Registrar cargos extra a reservas: room service, daños, extras (CU-O34)</p>
           </a>
         </section>
+
+        <!-- ═══ Upcoming Events Calendar ═══ -->
+        @if (upcomingEvents().length) {
+          <section class="surface-card events-section">
+            <div class="events-header">
+              <span class="material-symbols-outlined">calendar_month</span>
+              <h2>Próximos eventos</h2>
+            </div>
+            <div class="events-list">
+              @for (evt of upcomingEvents(); track evt.id) {
+                <div class="event-row"
+                  [class.event-maintenance]="evt.event_type === 'maintenance'"
+                  [class.event-task]="evt.event_type === 'task'">
+                  <div class="event-date">
+                    <span class="event-day">{{ (evt.scheduled_date || evt.created_at) | slice:8:10 }}</span>
+                    <span class="event-month">{{ (evt.scheduled_date || evt.created_at) | slice:5:7 }}</span>
+                  </div>
+                  <div class="event-info">
+                    <strong class="event-title">
+                      {{ evt.title || (evt.task_type === 'deep_clean' ? 'Limpieza profunda' : evt.task_type === 'turnover' ? 'Rotación' : evt.task_type === 'inspection' ? 'Inspección' : evt.task_type === 'preventive' ? 'Preventivo' : evt.task_type === 'corrective' ? 'Correctivo' : evt.task_type) }}
+                      <span class="badge badge-sm"
+                        [class.badge-pending]="evt.status === 'pending'"
+                        [class.badge-scheduled]="evt.status === 'scheduled'"
+                        [class.badge-progress]="evt.status === 'in_progress'"
+                      >{{ evt.status === 'pending' ? 'Pendiente' : evt.status === 'scheduled' ? 'Programado' : evt.status === 'in_progress' ? 'En progreso' : evt.status }}</span>
+                    </strong>
+                    <span class="event-room">Hab. {{ evt.room_label }}{{ evt.assigned_to ? ' · ' + evt.assigned_to : '' }}</span>
+                  </div>
+                  <span class="priority-badge event-priority"
+                    [class.prio-low]="evt.priority === 'low'"
+                    [class.prio-normal]="evt.priority === 'normal'"
+                    [class.prio-high]="evt.priority === 'high'"
+                    [class.prio-urgent]="evt.priority === 'urgent'"
+                  >{{ evt.priority }}</span>
+                </div>
+              }
+            </div>
+          </section>
+        }
       }
     }
   }

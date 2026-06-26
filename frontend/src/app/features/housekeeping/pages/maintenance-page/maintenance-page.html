@@ -170,14 +170,17 @@
                       </td>
                       <td class="cell-time">{{ item.scheduledDate | slice:0:10 }}</td>
                       <td class="cell-action">
+                        <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
+                          <span class="material-symbols-outlined">edit</span>
+                        </button>
                         @if (item.status !== 'completed') {
-                          <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
-                            <span class="material-symbols-outlined">edit</span>
-                          </button>
                           <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
                             <span class="material-symbols-outlined">check</span>
                           </button>
                         }
+                        <button type="button" class="btn-icon-only danger" (click)="deleteMaintenanceItem(item.id)" aria-label="Eliminar">
+                          <span class="material-symbols-outlined">delete</span>
+                        </button>
                       </td>
                     </tr>
                   }

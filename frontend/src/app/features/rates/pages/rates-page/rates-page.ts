@@ -231,6 +231,8 @@ readonly sidebarSections: SidebarSection[] = [
       ruleId: r.ruleId,
       name: r.name,
       ratePlanId: r.ratePlanId,
+      startDate: r.startDate,
+      endDate: r.endDate,
       rangeLabel: r.rangeLabel,
       priceOverride: r.priceOverride,
     }));
