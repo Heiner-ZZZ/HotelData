@@ -428,7 +428,7 @@
             <span class="material-symbols-outlined">arrow_back</span>
             Editar datos
           </button>
-          <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting() || (preview() && !preview().available)">
+          <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting() || !(preview()?.available ?? true)">
             @if (submitting()) {
               <span class="material-symbols-outlined loading-spin">sync</span>
               Enviando...
