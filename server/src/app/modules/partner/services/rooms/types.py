@@ -83,6 +83,8 @@ def create_room_type(
     base_capacity: Any,
     base_rate: Any = None,
     is_active: Any = True,
+    room_number: str = "",
+    floor: str = "",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -100,6 +102,8 @@ def create_room_type(
     base_capacity_value = safe_positive_int(base_capacity, max_adults_value or 1)
     base_rate_value = float(base_rate) if base_rate is not None and float(base_rate) > 0 else None
 
+    clean_room_number = clean_text(room_number)
+    clean_floor = clean_text(floor)
     payload = {
         "room_type_id": room_type_id,
         "prop_id": prop_id,
@@ -110,6 +114,8 @@ def create_room_type(
         "base_capacity": base_capacity_value,
         "base_rate": base_rate_value,
         "is_active": safe_bool(is_active),
+        "room_number": clean_room_number,
+        "floor": clean_floor,
         "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
@@ -128,6 +134,8 @@ def create_room_type(
                 "room_type_id": room_type_id,
                 "room_label": clean_name,
                 "is_active": payload["is_active"],
+                "room_number": clean_room_number,
+                "floor": clean_floor,
                 "updated_at": now_utc(),
             },
             "$setOnInsert": {"created_at": now_utc()},
@@ -148,6 +156,8 @@ def update_room_type(
     base_capacity: Any,
     base_rate: Any = None,
     is_active: Any = True,
+    room_number: str = "",
+    floor: str = "",
 ) -> dict[str, Any] | None:
     db = get_database()
     existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1})
@@ -160,6 +170,8 @@ def update_room_type(
         raise ValueError(error)
 
     clean_name = clean_text(name)
+    clean_room_number = clean_text(room_number)
+    clean_floor = clean_text(floor)
     payload = {
         "name": clean_name,
         "description": clean_text(description),
@@ -168,6 +180,8 @@ def update_room_type(
         "base_capacity": safe_positive_int(base_capacity, safe_positive_int(max_adults, 1) or 1),
         "base_rate": float(base_rate) if base_rate is not None and float(base_rate) > 0 else None,
         "is_active": safe_bool(is_active),
+        "room_number": clean_room_number,
+        "floor": clean_floor,
         "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
@@ -178,7 +192,13 @@ def update_room_type(
     )
     db.hotel_rooms.update_one(
         {"hotel_room_id": f"HR-{room_type_id}"},
-        {"$set": {"room_label": clean_name, "is_active": payload["is_active"], "updated_at": now_utc()}},
+        {"$set": {
+            "room_label": clean_name,
+            "is_active": payload["is_active"],
+            "room_number": clean_room_number,
+            "floor": clean_floor,
+            "updated_at": now_utc(),
+        }},
     )
     return document
 

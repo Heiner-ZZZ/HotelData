@@ -15,9 +15,10 @@ from .tasks import (
     complete_housekeeping_task,
 )
 from .maintenance import (
+    complete_maintenance_task,
     create_maintenance_task,
     list_maintenance_tasks,
-    complete_maintenance_task,
+    update_maintenance_task,
 )
 from .charges import (
     create_additional_charge,
@@ -34,9 +35,10 @@ __all__ = [
     "create_housekeeping_task",
     "list_housekeeping_tasks",
     "complete_housekeeping_task",
+    "complete_maintenance_task",
     "create_maintenance_task",
     "list_maintenance_tasks",
-    "complete_maintenance_task",
+    "update_maintenance_task",
     "create_additional_charge",
     "list_additional_charges",
     "get_housekeeping_dashboard",
