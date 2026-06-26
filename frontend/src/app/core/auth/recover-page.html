@@ -25,14 +25,11 @@
         <div class="notice notice-error">{{ errorMessage() }}</div>
       }
 
-      <form class="recover-form" [formGroup]="recoverForm" (ngSubmit)="submit()">
+      <form class="recover-form" (ngSubmit)="submit()">
         <label class="input-field">
           <span class="material-symbols-outlined input-icon">mail</span>
           <span class="input-label">Correo electrónico</span>
-          <input type="email" formControlName="email" placeholder="ej: usuario@correo.com" autocomplete="email">
-          @if (recoverForm.controls.email.touched && recoverForm.controls.email.invalid) {
-            <span class="field-error">Ingresa un correo válido</span>
-          }
+          <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" placeholder="ej: usuario@correo.com" autocomplete="email">
         </label>
 
         <button type="submit" [disabled]="submitting()">

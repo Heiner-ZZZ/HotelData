@@ -29,13 +29,14 @@
       <div class="notice notice-error">{{ errorMessage() }}</div>
     }
 
-    <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
+    <form class="login-form" (ngSubmit)="submit()">
       <label class="input-field">
         <span class="material-symbols-outlined input-icon">person</span>
         <span class="input-label">Usuario o correo</span>
         <input
           type="text"
-          formControlName="identifier"
+          [value]="identifier()"
+          (input)="identifier.set($any($event.target).value)"
           placeholder="superadmin o admin@hoteldata.local"
           autocomplete="username"
         >
@@ -47,7 +48,8 @@
         <div class="password-field">
           <input
             [type]="passwordVisible() ? 'text' : 'password'"
-            formControlName="password"
+            [value]="password()"
+            (input)="password.set($any($event.target).value)"
             placeholder="Tu contraseña"
             autocomplete="current-password"
           >
@@ -96,7 +98,7 @@
       </label>
 
       <label class="checkbox-field remember-me">
-        <input type="checkbox" formControlName="rememberMe">
+        <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)">
         <span class="checkbox-label">Recordarme</span>
       </label>
 

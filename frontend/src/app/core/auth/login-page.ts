@@ -1,36 +1,33 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from './auth.service';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [RouterLink],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoginPageComponent {
-  private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  // ── Form fields as signals (no FormBuilder) ──
+  readonly identifier = signal('');
+  readonly password = signal('');
+  readonly rememberMe = signal(false);
+
   readonly submitting = signal(false);
   readonly errorMessage = signal('');
   readonly passwordVisible = signal(false);
 
-  readonly loginForm = this.formBuilder.nonNullable.group({
-    identifier: ['', [Validators.required]],
-    password: ['', [Validators.required]],
-    rememberMe: [false]
-  });
-
   constructor() {
+    // Remove theme attributes for login page styling, restore on destroy
     const previousTheme = document.documentElement.getAttribute('data-theme');
     document.documentElement.removeAttribute('data-theme');
     this.destroyRef.onDestroy(() => {
@@ -39,45 +36,38 @@ export class LoginPageComponent {
       }
     });
 
-    this.authService
-      .ensureSessionLoaded()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((state) => {
-        if (state.authenticated) {
-          void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
-        }
-      });
+    // Redirect if already authenticated
+    this.authService.ensureSessionLoaded().subscribe((state) => {
+      if (state.authenticated) {
+        void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
+      }
+    });
   }
 
-  submit() {
-    if (this.loginForm.invalid || this.submitting()) {
-      this.loginForm.markAllAsTouched();
-      return;
-    }
+  submit(): void {
+    const id = this.identifier().trim();
+    const pw = this.password();
+    if (!id || !pw || this.submitting()) return;
 
     this.submitting.set(true);
     this.errorMessage.set('');
 
     const nextUrl = this.route.snapshot.queryParamMap.get('next');
-    const { identifier, password, rememberMe } = this.loginForm.getRawValue();
 
-    this.authService
-      .login(identifier.trim(), password, nextUrl, rememberMe)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (state) => {
-          this.submitting.set(false);
-          void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
-        },
-        error: (error: unknown) => {
-          this.submitting.set(false);
-          this.errorMessage.set(this.resolveErrorMessage(error));
-        }
-      });
+    this.authService.login(id, pw, nextUrl, this.rememberMe()).subscribe({
+      next: (state) => {
+        this.submitting.set(false);
+        void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
+      },
+      error: (error: unknown) => {
+        this.submitting.set(false);
+        this.errorMessage.set(this.resolveErrorMessage(error));
+      }
+    });
   }
 
-  togglePasswordVisibility() {
-    this.passwordVisible.update((value) => !value);
+  togglePasswordVisibility(): void {
+    this.passwordVisible.update((v) => !v);
   }
 
   private resolveHomeHref(defaultHref: string | null): string {
