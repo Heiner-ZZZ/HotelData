@@ -150,7 +150,8 @@ export class SidebarNavComponent {
         { label: 'Permisos', href: '/system/permissions', icon: 'verified_user', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
-        { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' }
+        { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' },
+        { label: 'Geográfico', href: '/admin/geo-catalog', icon: 'map', allowedRoles: ['super_admin', 'admin_sistema'] }
       ]
     }
   ];
