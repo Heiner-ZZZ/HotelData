@@ -1,0 +1,106 @@
+.rate-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  min-width: 180px;
+  max-width: 200px;
+  height: fit-content;
+  position: sticky;
+  top: 1rem;
+}
+
+.rate-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: left;
+  font-family: inherit;
+  position: relative;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    color: var(--app-text);
+  }
+
+  &.is-active {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+  }
+}
+
+.sidebar-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+.sidebar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .rate-sidebar {
+    flex-direction: row;
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+    overflow-x: auto;
+    position: static;
+    padding: 0.4rem;
+  }
+
+  .rate-sidebar-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+  }
+
+  .rate-sidebar-btn.is-active::before {
+    display: none;
+  }
+}

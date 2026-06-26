@@ -1,0 +1,16 @@
+<nav class="rate-sidebar" aria-label="Secciones de tarifas">
+  @for (section of sections(); track section.id) {
+    <button
+      class="rate-sidebar-btn"
+      [class.is-active]="section.id === activeSection()"
+      (click)="select(section.id)"
+      [attr.aria-current]="section.id === activeSection() ? 'page' : null"
+    >
+      <span class="material-symbols-outlined sidebar-icon">{{ section.icon }}</span>
+      <span class="sidebar-label">{{ section.label }}</span>
+      @if (section.badge != null && section.badge > 0) {
+        <span class="sidebar-badge">{{ section.badge }}</span>
+      }
+    </button>
+  }
+</nav>
