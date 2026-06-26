@@ -1,4 +1,4 @@
-<form [formGroup]="form" (ngSubmit)="submit()" class="panel-form">
+<form [formGroup]="form" (submit)="$event.preventDefault(); submit()" class="panel-form">
   @if (isEditing) {
     <div class="editing-banner">
       <span class="material-symbols-outlined">edit</span>
@@ -33,15 +33,13 @@
     <input type="number" min="1" max="100" formControlName="discountPercent" placeholder="10">
   </label>
 
-  @if (!isEditing) {
-    <label class="field">
-      <span class="field-label">
-        <span class="material-symbols-outlined field-icon">numbers</span>
-        Cantidad de cupones
-      </span>
-      <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
-    </label>
-  }
+  <label class="field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">numbers</span>
+      Cantidad de cupones
+    </span>
+    <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
+  </label>
 
   <div class="field-row">
     <label class="field">

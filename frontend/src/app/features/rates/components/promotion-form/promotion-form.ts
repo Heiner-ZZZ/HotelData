@@ -12,6 +12,7 @@ export interface PromoEditState {
   name: string;
   description: string;
   discountPercent: number;
+  couponCount: number;
   startDate: string;
   endDate: string;
   isActive: boolean;
@@ -63,6 +64,7 @@ export class PromotionFormComponent {
           name: promo.name,
           description: promo.description,
           discountPercent: promo.discountPercent,
+          couponCount: promo.couponCount,
           startDate: promo.startDate,
           endDate: promo.endDate,
           isActive: promo.isActive,
@@ -99,6 +101,7 @@ export class PromotionFormComponent {
           name: value.name,
           description: value.description,
           discountPercent: value.discountPercent,
+          couponCount: value.couponCount,
           startDate: value.startDate,
           endDate: value.endDate,
           isActive: value.isActive,
