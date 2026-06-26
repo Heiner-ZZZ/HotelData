@@ -23,4 +23,11 @@ export const ADMIN_ROUTES: Routes = [
   },
   // Map & Geo-localization (CU-O35 to CU-O38)
   ...(await import('../../features/map/map.routes')).MAP_ROUTES,
+
+  // Billing (CU-O24, CU-O25)
+  {
+    path: 'billing',
+    loadChildren: () =>
+      import('../../features/billing/billing.routes').then((m) => m.BILLING_ROUTES),
+  },
 ];
