@@ -4,13 +4,11 @@ from pydantic import BaseModel, field_validator
 
 
 class SettingsResponse(BaseModel):
-    session_timeout_minutes: int = 60
     default_dashboard: str = "/management"
     theme: str = "system"
 
 
 class SettingsUpdate(BaseModel):
-    session_timeout_minutes: int | None = None
     default_dashboard: str | None = None
     theme: str | None = None
 

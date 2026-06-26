@@ -28,7 +28,6 @@ _COMMON_PASSWORDS = {
 api_router = APIRouter(prefix="/api/settings", tags=["settings-api"])
 
 _DEFAULT_SETTINGS = {
-    "session_timeout_minutes": 60,
     "default_dashboard": "/management",
     "theme": "system",
 }
@@ -38,7 +37,6 @@ def _serialize_settings(user: dict[str, Any]) -> dict[str, Any]:
     raw = user.get("settings", {})
     merged = {**_DEFAULT_SETTINGS, **raw}
     return {
-        "session_timeout_minutes": merged["session_timeout_minutes"],
         "default_dashboard": merged["default_dashboard"],
         "theme": merged["theme"],
     }
