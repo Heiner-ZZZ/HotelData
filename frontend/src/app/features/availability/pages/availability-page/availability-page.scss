@@ -1813,6 +1813,14 @@ tbody tr:hover {
   }
 }
 
+.qa-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 700px) {
   .quick-actions-card {
     flex-wrap: wrap;

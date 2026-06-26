@@ -100,6 +100,111 @@
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
+/* ── Feature badges ── */
+.features-cell {
+  max-width: 250px;
+}
+
+.features-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: default;
+}
+
+.features-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: transform 120ms;
+
+  &.count-single {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  &.count-few {
+    background: color-mix(in srgb, #06b6d4 10%, transparent);
+    color: #06b6d4;
+    border: 1px solid color-mix(in srgb, #06b6d4 20%, transparent);
+  }
+
+  &.count-many {
+    background: color-mix(in srgb, #8b5cf6 10%, transparent);
+    color: #8b5cf6;
+    border: 1px solid color-mix(in srgb, #8b5cf6 20%, transparent);
+  }
+
+  &:hover {
+    transform: scale(1.08);
+  }
+}
+
+.features-count-icon {
+  font-size: 0.8rem;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+}
+
+.features-count-num {
+  line-height: 1;
+}
+
+.features-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+
+.feature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 100px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--feat-color, var(--accent)) 10%, transparent);
+  color: var(--feat-color, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--feat-color, var(--accent)) 18%, transparent);
+  white-space: nowrap;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform 120ms, box-shadow 120ms;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--feat-color, var(--accent)) 20%, transparent);
+  }
+}
+
+.features-more {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  white-space: nowrap;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted-text) 6%, transparent);
+  transition: background 120ms;
+
+  &:hover {
+    background: color-mix(in srgb, var(--muted-text) 12%, transparent);
+  }
+}
+
+.no-features {
+  color: var(--muted-text);
+  font-size: 0.82rem;
+}
+
 /* ── Action Buttons ── */
 .cell-action {
   display: flex;

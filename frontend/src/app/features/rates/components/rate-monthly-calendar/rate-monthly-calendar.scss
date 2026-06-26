@@ -46,6 +46,55 @@
   text-align: center;
 }
 
+.cal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── View Toggle ── */
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+  font-family: inherit;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+
+  &.is-active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  & + .toggle-btn {
+    border-left: 1px solid var(--app-border);
+  }
+}
+
 /* ── Day Labels ── */
 .cal-day-labels {
   display: grid;
@@ -91,8 +140,8 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  min-width: 100px;
-  max-width: 100px;
+  min-width: 70px;
+  max-width: 70px;
   padding: 0.4rem 0.5rem;
   border-right: 1px solid var(--app-border);
   font-size: 0.78rem;
@@ -114,6 +163,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.room-number {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cal-week {
@@ -248,12 +306,36 @@
   &.tier-premium { background: #dc2626; }
 }
 
+/* ── Event indicators ── */
+.cal-cell-events {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 1px;
+}
+
+.cal-event-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.cal-event-more {
+  font-size: 0.5rem;
+  color: var(--muted-text);
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .cal-room-label {
-    min-width: 70px;
-    max-width: 70px;
+    min-width: 60px;
+    max-width: 60px;
     font-size: 0.7rem;
+    padding: 0.4rem 0.35rem;
   }
 
   .cal-rate-amount {
