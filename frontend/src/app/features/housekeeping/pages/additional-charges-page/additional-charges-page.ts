@@ -11,6 +11,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type AdditionalChargeItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
+import { ReservationsApiService } from '../../../reservations/services/reservations-api.service';
 
 @Component({
   selector: 'app-additional-charges-page',
@@ -24,6 +25,7 @@ export class AdditionalChargesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
+  private readonly reservationsApi = inject(ReservationsApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
 
@@ -34,6 +36,10 @@ export class AdditionalChargesPageComponent {
 
   readonly filterBookingId = signal('');
   readonly showCreateForm = signal(false);
+
+  readonly reservations = signal<Array<{ bookingId: string; guestName: string; propId: number; status: string }>>([]);
+  readonly reservationsLoading = signal(false);
+  readonly selectedPropId = signal(0);
 
   readonly createForm = this.formBuilder.nonNullable.group({
     bookingId: ['', Validators.required],
@@ -77,6 +83,15 @@ export class AdditionalChargesPageComponent {
     this.showCreateForm.update((v) => !v);
     if (this.showCreateForm()) {
       this.createForm.reset({ bookingId: '', concept: '', amount: 0, quantity: 1, note: '' });
+      this.selectedPropId.set(0);
+      this.loadReservations();
+    }
+  }
+
+  onReservationSelect(bookingId: string): void {
+    const r = this.reservations().find(res => res.bookingId === bookingId);
+    if (r) {
+      this.selectedPropId.set(r.propId);
     }
   }
 
@@ -86,7 +101,7 @@ export class AdditionalChargesPageComponent {
     this.api
       .createCharge({
         booking_id: val.bookingId,
-        prop_id: 0,
+        prop_id: this.selectedPropId(),
         concept: val.concept,
         amount: val.amount,
         quantity: val.quantity,
@@ -127,6 +142,28 @@ export class AdditionalChargesPageComponent {
           this.viewState.set(data.items.length ? 'success' : 'empty');
         },
         error: () => this.viewState.set('error'),
+      });
+  }
+
+  private loadReservations(): void {
+    this.reservationsLoading.set(true);
+    this.reservationsApi.getReservations(1)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.reservations.set(
+            res.items.map((r: any) => ({
+              bookingId: r.bookingId,
+              guestName: r.guestName || r.guest_name || 'Sin nombre',
+              propId: r.propId || r.prop_id || 0,
+              status: r.status,
+            }))
+          );
+          this.reservationsLoading.set(false);
+        },
+        error: () => {
+          this.reservationsLoading.set(false);
+        },
       });
   }
 }

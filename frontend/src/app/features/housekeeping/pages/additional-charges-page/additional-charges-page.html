@@ -43,7 +43,21 @@
         <div class="form-row">
           <div class="form-group">
             <label for="bookingId">Reserva *</label>
-            <input id="bookingId" type="text" formControlName="bookingId" placeholder="booking_id" />
+            @if (reservationsLoading()) {
+              <div class="select-loading">
+                <span class="material-symbols-outlined spinning">sync</span>
+                Cargando reservas...
+              </div>
+            } @else {
+              <select id="bookingId" formControlName="bookingId" (change)="onReservationSelect($any($event.target).value)">
+                <option value="">Selecciona una reserva...</option>
+                @for (r of reservations(); track r.bookingId) {
+                  <option [value]="r.bookingId">
+                    {{ r.guestName }} — {{ r.bookingId | slice:0:12 }}... ({{ r.status }})
+                  </option>
+                }
+              </select>
+            }
           </div>
           <div class="form-group">
             <label for="concept">Concepto *</label>

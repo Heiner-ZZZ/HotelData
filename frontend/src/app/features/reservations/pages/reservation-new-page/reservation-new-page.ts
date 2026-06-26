@@ -12,7 +12,7 @@ import { ReservationsApiService } from '../../services/reservations-api.service'
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, UpperCasePipe, DateRangePickerComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
