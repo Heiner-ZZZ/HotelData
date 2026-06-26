@@ -1,0 +1,85 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="panel-form">
+  @if (isEditing) {
+    <div class="editing-banner">
+      <span class="material-symbols-outlined">edit</span>
+      Editando: {{ editing()!.name }}
+      <button type="button" class="cancel-edit-btn" (click)="cancelEdit()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  <label class="field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">badge</span>
+      Nombre
+    </span>
+    <input formControlName="name" placeholder="Ej: Descuento verano">
+  </label>
+
+  <label class="field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">description</span>
+      Descripción
+    </span>
+    <input formControlName="description" placeholder="Opcional">
+  </label>
+
+  <label class="field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">percent</span>
+      Descuento (%)
+    </span>
+    <input type="number" min="1" max="100" formControlName="discountPercent" placeholder="10">
+  </label>
+
+  @if (!isEditing) {
+    <label class="field">
+      <span class="field-label">
+        <span class="material-symbols-outlined field-icon">numbers</span>
+        Cantidad de cupones
+      </span>
+      <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
+    </label>
+  }
+
+  <div class="field-row">
+    <label class="field">
+      <span class="field-label">
+        <span class="material-symbols-outlined field-icon">calendar_today</span>
+        Fecha inicio
+      </span>
+      <input type="date" formControlName="startDate">
+    </label>
+    <label class="field">
+      <span class="field-label">
+        <span class="material-symbols-outlined field-icon">calendar_today</span>
+        Fecha fin
+      </span>
+      <input type="date" formControlName="endDate">
+    </label>
+  </div>
+
+  <label class="field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">confirmation_number</span>
+      Cupón adicional (opcional)
+    </span>
+    <input formControlName="couponCode" placeholder="Ej: VERANO2024">
+  </label>
+
+  <label class="field checkbox-field">
+    <span class="field-label">
+      <span class="material-symbols-outlined field-icon">toggle_on</span>
+      Activo
+    </span>
+    <input type="checkbox" formControlName="isActive">
+  </label>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-primary" style="background: var(--warning)">
+      <span class="material-symbols-outlined btn-icon">{{ isEditing ? 'save' : 'add' }}</span>
+      {{ isEditing ? 'Guardar cambios' : 'Crear promoción' }}
+    </button>
+  </div>
+</form>
