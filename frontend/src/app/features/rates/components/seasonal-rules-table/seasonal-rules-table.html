@@ -1,0 +1,28 @@
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Plan</th>
+        <th>Rango</th>
+        <th>Precio override</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (rule of rules(); track rule.ruleId) {
+        <tr>
+          <td><strong>{{ rule.name }}</strong></td>
+          <td>{{ rule.ratePlanId }}</td>
+          <td>{{ rule.rangeLabel }}</td>
+          <td><strong>${{ rule.priceOverride }}</strong></td>
+          <td>
+            <button type="button" class="delete-btn" (click)="deleteRule.emit(rule.ruleId)" title="Eliminar regla">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
