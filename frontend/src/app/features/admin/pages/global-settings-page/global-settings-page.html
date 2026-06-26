@@ -1,0 +1,335 @@
+<div class="global-settings-page">
+  <app-page-header
+    title="Configuración Global"
+    subtitle="Administra datos compartidos de hoteles, tasas de IVA y comisiones del sistema"
+  />
+
+  <!-- Tabs -->
+  <div class="tabs-bar">
+    <button class="tab-btn" [class.active]="activeTab() === 'hotels'" (click)="setTab('hotels')">
+      <span class="material-symbols-outlined">business</span>
+      Hoteles
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'taxes'" (click)="setTab('taxes')">
+      <span class="material-symbols-outlined">receipt_long</span>
+      IVA / Impuestos
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'commissions'" (click)="setTab('commissions')">
+      <span class="material-symbols-outlined">payments</span>
+      Comisiones
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'config'" (click)="setTab('config')">
+      <span class="material-symbols-outlined">settings</span>
+      Config. General
+    </button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- ═══════════ HOTELS TAB ═══════════ -->
+    @if (activeTab() === 'hotels') {
+      <div class="section hotels-section">
+        <div class="section-header">
+          <h3>Datos de hoteles</h3>
+          <p class="section-desc">Edita país, ciudad, provincia y grupo empresarial de cada hotel.</p>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input
+            type="text"
+            placeholder="Buscar hotel por nombre, ciudad, provincia..."
+            [ngModel]="hotelSearch()"
+            (ngModelChange)="hotelSearch.set($event); searchHotels()"
+          />
+        </div>
+
+        <!-- Messages -->
+        @if (hotelMessage()) {
+          <div class="message" [class.error]="hotelMessage().includes('Error')">{{ hotelMessage() }}</div>
+        }
+
+        <!-- Hotels table -->
+        @switch (hotelsState()) {
+          @case ('loading') {
+            <app-loading-state />
+          }
+          @case ('error') {
+            <app-error-state />
+          }
+          @case ('empty') {
+            <app-empty-state message="No se encontraron hoteles." />
+          }
+          @case ('success') {
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>País</th>
+                    <th>Ciudad</th>
+                    <th>Provincia</th>
+                    <th>Grupo</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (hotel of hotels(); track hotel.propId) {
+                    <tr>
+                      @if (editingHotel() === hotel.propId) {
+                        <td class="cell-id">{{ hotel.propId }}</td>
+                        <td class="cell-name">{{ hotel.hotelName }}</td>
+                        <td>
+                          <input class="edit-input" [ngModel]="editCountry()" (ngModelChange)="editCountry.set($event)" placeholder="País" />
+                        </td>
+                        <td>
+                          <input class="edit-input" [ngModel]="editCity()" (ngModelChange)="editCity.set($event)" placeholder="Ciudad" />
+                        </td>
+                        <td>
+                          <input class="edit-input" [ngModel]="editProvince()" (ngModelChange)="editProvince.set($event)" placeholder="Provincia" />
+                        </td>
+                        <td>
+                          <input class="edit-input" [ngModel]="editGroup()" (ngModelChange)="editGroup.set($event)" placeholder="Grupo empresarial" />
+                        </td>
+                        <td class="cell-actions">
+                          <button class="btn-save" (click)="saveHotel(hotel.propId)" [disabled]="hotelSaving()">
+                            <span class="material-symbols-outlined">check</span>
+                          </button>
+                          <button class="btn-cancel" (click)="cancelEditHotel()">
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
+                        </td>
+                      } @else {
+                        <td class="cell-id">{{ hotel.propId }}</td>
+                        <td class="cell-name">{{ hotel.hotelName }}</td>
+                        <td>{{ hotel.countryName || '—' }}</td>
+                        <td>{{ hotel.city || '—' }}</td>
+                        <td>{{ hotel.province || '—' }}</td>
+                        <td>{{ hotel.hotelGroup || '—' }}</td>
+                        <td class="cell-actions">
+                          <button class="btn-edit" (click)="startEditHotel(hotel)">
+                            <span class="material-symbols-outlined">edit</span>
+                          </button>
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (hotelsPages() > 1) {
+              <div class="pagination">
+                <button [disabled]="hotelsPage() <= 1" (click)="goToHotelPage(hotelsPage() - 1)"><span class="material-symbols-outlined">chevron_left</span></button>
+                @for (p of pagesArray(); track p) {
+                  <button [class.active]="hotelsPage() === p" (click)="goToHotelPage(p)">{{ p }}</button>
+                }
+                <button [disabled]="hotelsPage() >= hotelsPages()" (click)="goToHotelPage(hotelsPage() + 1)"><span class="material-symbols-outlined">chevron_right</span></button>
+              </div>
+            }
+
+            <p class="table-footer">{{ hotelsTotal() }} hoteles en total</p>
+          }
+        }
+      </div>
+    }
+
+    <!-- ═══════════ TAX RATES TAB ═══════════ -->
+    @if (activeTab() === 'taxes') {
+      <div class="section taxes-section">
+        <div class="section-header">
+          <h3>Tasas de IVA por país</h3>
+          <p class="section-desc">Define la tasa de IVA aplicable por país. Se usará al generar facturas de reservas.</p>
+        </div>
+
+        @if (taxMessage()) {
+          <div class="message" [class.error]="taxMessage().includes('Error')">{{ taxMessage() }}</div>
+        }
+
+        <!-- Add new tax rate -->
+        <div class="inline-form">
+          <input type="number" class="form-input" placeholder="ID del país" [ngModel]="newTaxCountryId()" (ngModelChange)="newTaxCountryId.set($event)" />
+          <input type="text" class="form-input" placeholder="Nombre del país" [ngModel]="newTaxCountryName()" (ngModelChange)="newTaxCountryName.set($event)" />
+          <input type="number" class="form-input small" placeholder="IVA %" [ngModel]="newTaxIva()" (ngModelChange)="newTaxIva.set($event)" />
+          <button class="btn-primary" (click)="addTaxRate()" [disabled]="taxSaving() || newTaxCountryId() === null">Añadir</button>
+        </div>
+
+        @switch (taxState()) {
+          @case ('loading') { <app-loading-state /> }
+          @case ('error') { <app-error-state /> }
+          @case ('empty') { <app-empty-state message="No hay tasas de IVA configuradas. Añade una arriba." /> }
+          @case ('success') {
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr><th>ID País</th><th>País</th><th>IVA %</th><th>Última actualización</th><th>Acción</th></tr>
+                </thead>
+                <tbody>
+                  @for (rate of taxRates(); track rate.countryId) {
+                    <tr>
+                      @if (editingTax() === rate.countryId) {
+                        <td>{{ rate.countryId }}</td>
+                        <td>{{ rate.countryName }}</td>
+                        <td>
+                          <input type="number" class="edit-input small" [ngModel]="editTaxIva()" (ngModelChange)="editTaxIva.set($event)" />
+                        </td>
+                        <td>{{ rate.updatedAt | date:'short' }}</td>
+                        <td class="cell-actions">
+                          <button class="btn-save" (click)="saveTaxRate(rate.countryId)"><span class="material-symbols-outlined">check</span></button>
+                          <button class="btn-cancel" (click)="cancelEditTax()"><span class="material-symbols-outlined">close</span></button>
+                        </td>
+                      } @else {
+                        <td>{{ rate.countryId }}</td>
+                        <td>{{ rate.countryName }}</td>
+                        <td><strong>{{ rate.ivaPct }}%</strong></td>
+                        <td>{{ rate.updatedAt | date:'short' }}</td>
+                        <td class="cell-actions">
+                          <button class="btn-edit" (click)="startEditTax(rate)"><span class="material-symbols-outlined">edit</span></button>
+                          <button class="btn-delete" (click)="deleteTaxRate(rate.countryId)"><span class="material-symbols-outlined">delete</span></button>
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <!-- ═══════════ COMMISSIONS TAB ═══════════ -->
+    @if (activeTab() === 'commissions') {
+      <div class="section commissions-section">
+        <div class="section-header">
+          <h3>Comisiones del sistema por reserva</h3>
+          <p class="section-desc">
+            Configura la comisión que la plataforma cobra por cada reserva.
+            Si un hotel no tiene comisión personalizada, se usa el % global (Config. General).
+          </p>
+        </div>
+
+        @if (commissionMessage()) {
+          <div class="message" [class.error]="commissionMessage().includes('Error')">{{ commissionMessage() }}</div>
+        }
+
+        <!-- Add new commission rate -->
+        <div class="inline-form">
+          <input type="number" class="form-input" placeholder="ID del hotel" [ngModel]="newCommissionPropId()" (ngModelChange)="newCommissionPropId.set($event)" />
+          <input type="number" class="form-input small" placeholder="Comisión %" [ngModel]="newCommissionPct()" (ngModelChange)="newCommissionPct.set($event)" />
+          <button class="btn-primary" (click)="addCommissionRate()" [disabled]="commissionSaving() || newCommissionPropId() === null">Añadir</button>
+        </div>
+
+        @switch (commissionState()) {
+          @case ('loading') { <app-loading-state /> }
+          @case ('error') { <app-error-state /> }
+          @case ('empty') { <app-empty-state message="No hay comisiones personalizadas. Se usa el % global." /> }
+          @case ('success') {
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr><th>ID Hotel</th><th>Hotel</th><th>Comisión %</th><th>Última actualización</th><th>Acción</th></tr>
+                </thead>
+                <tbody>
+                  @for (rate of commissionRates(); track rate.propId) {
+                    <tr>
+                      @if (editingCommission() === rate.propId) {
+                        <td>{{ rate.propId }}</td>
+                        <td>{{ rate.hotelName }}</td>
+                        <td>
+                          <input type="number" class="edit-input small" [ngModel]="editCommissionPct()" (ngModelChange)="editCommissionPct.set($event)" />
+                        </td>
+                        <td>{{ rate.updatedAt | date:'short' }}</td>
+                        <td class="cell-actions">
+                          <button class="btn-save" (click)="saveCommissionRate(rate.propId)"><span class="material-symbols-outlined">check</span></button>
+                          <button class="btn-cancel" (click)="cancelEditCommission()"><span class="material-symbols-outlined">close</span></button>
+                        </td>
+                      } @else {
+                        <td>{{ rate.propId }}</td>
+                        <td>{{ rate.hotelName }}</td>
+                        <td><strong>{{ rate.commissionPct }}%</strong></td>
+                        <td>{{ rate.updatedAt | date:'short' }}</td>
+                        <td class="cell-actions">
+                          <button class="btn-edit" (click)="startEditCommission(rate)"><span class="material-symbols-outlined">edit</span></button>
+                          <button class="btn-delete" (click)="deleteCommissionRate(rate.propId)"><span class="material-symbols-outlined">delete</span></button>
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <!-- ═══════════ CONFIG TAB ═══════════ -->
+    @if (activeTab() === 'config') {
+      <div class="section config-section">
+        <div class="section-header">
+          <h3>Configuración general del sistema</h3>
+          <p class="section-desc">Valores por defecto para IVA y comisión de plataforma.</p>
+        </div>
+
+        @switch (configState()) {
+          @case ('loading') { <app-loading-state /> }
+          @case ('error') { <app-error-state /> }
+          @case ('success') {
+            @if (configMessage()) {
+              <div class="message" [class.error]="configMessage().includes('Error')">{{ configMessage() }}</div>
+            }
+            <div class="config-form">
+              <div class="config-field">
+                <label>IVA por defecto (%)</label>
+                <p class="field-desc">Tasa de IVA global aplicada cuando no hay una tasa configurada para el país del hotel.</p>
+                <input type="number" class="form-input" [ngModel]="editIva()" (ngModelChange)="editIva.set($event)" />
+              </div>
+              <div class="config-field">
+                <label>Comisión por defecto (%)</label>
+                <p class="field-desc">Porcentaje que la plataforma retiene por cada reserva cuando el hotel no tiene una comisión personalizada.</p>
+                <input type="number" class="form-input" [ngModel]="editCommission()" (ngModelChange)="editCommission.set($event)" />
+              </div>
+              <button class="btn-primary" (click)="saveConfig()" [disabled]="configSaving()">
+                {{ configSaving() ? 'Guardando...' : 'Guardar configuración' }}
+              </button>
+
+              <div class="current-values">
+                <h4>Valores actuales</h4>
+                <div class="value-row">
+                  <span>IVA por defecto:</span>
+                  <strong>{{ config()?.defaultIvaPct ?? 16 }}%</strong>
+                </div>
+                <div class="value-row">
+                  <span>Comisión por defecto:</span>
+                  <strong>{{ config()?.defaultCommissionPct ?? 5 }}%</strong>
+                </div>
+                <div class="value-row muted">
+                  <span>Última actualización:</span>
+                  <span>{{ (config()?.updatedAt | date:'medium') || 'Nunca' }}</span>
+                </div>
+                <div class="value-row muted">
+                  <span>Actualizado por:</span>
+                  <span>{{ config()?.updatedBy || '—' }}</span>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Info footer -->
+  <div class="info-footer">
+    <p>
+      <span class="material-symbols-outlined">info</span>
+      Los cambios en ciudad, provincia y país se reflejan en las tarjetas de hotel y reportes.
+      Las tasas de IVA y comisiones se aplican al generar facturas de reservas.
+    </p>
+  </div>
+</div>
