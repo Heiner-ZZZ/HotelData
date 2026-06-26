@@ -1,5 +1,5 @@
 <article class="hotel-card surface-card">
-  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!imgError()" aria-label="Abrir detalle del hotel">
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!imgError()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
     @if (!imgError()) {
       <img class="card-bg-img" [src]="picsumUrl()" alt="" loading="lazy" (error)="onImgError()" />
     }
@@ -16,7 +16,7 @@
       <div class="copy-column">
         <div class="copy-header">
           <h2>
-            <a [routerLink]="['/hotels', hotel().id]">{{ hotel().name }}</a>
+            <a [routerLink]="['/hotels', hotel().id]" (click)="trackClick()">{{ hotel().name }}</a>
           </h2>
           @if (compareMode()) {
             <label class="compare-check" [class.selected]="hotel().selected">
@@ -42,7 +42,7 @@
         </div>
 
         <div class="inline-links">
-          <a [routerLink]="['/hotels', hotel().id]">Ver más</a>
+          <a [routerLink]="['/hotels', hotel().id]" (click)="trackClick()">Ver más</a>
           <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: hotel().id }">Comparar</a>
         </div>
       </div>
@@ -66,7 +66,7 @@
           </div>
         }
 
-        <a [routerLink]="['/hotels', hotel().id]" class="primary-link">Ver disponibilidad</a>
+        <a [routerLink]="['/hotels', hotel().id]" class="primary-link" (click)="trackClick()">Ver disponibilidad</a>
       </div>
     </div>
   </div>

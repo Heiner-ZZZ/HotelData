@@ -192,7 +192,8 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
         { label: 'Permisos', href: '/system/permissions', icon: 'verified_user', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
-        { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' }
+        { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' },
+        { label: 'Config. Global', href: '/admin/global-settings', icon: 'tune', allowedRoles: ['super_admin', 'admin_sistema'] }
       ]
     }
   ];

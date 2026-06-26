@@ -52,7 +52,7 @@
   <div class="nav-actions">
     @if (authState().authenticated) {
       <div class="menu-shell notif-wrapper">
-        <button type="button" class="icon-btn notif-bell" (click)="toggleNotifications()" aria-label="Notificaciones">
+        <button type="button" class="icon-btn notif-bell" [class.has-unread]="notifBookingCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
           <span class="material-symbols-outlined">notifications</span>
           @if (notifBookingCount() > 0) {
             <span class="notif-badge-sm">{{ notifBookingCount() }}</span>

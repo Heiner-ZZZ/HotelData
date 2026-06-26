@@ -1,6 +1,7 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { TrackingService } from '../../../../core/tracking/tracking.service';
 import type { HotelSearchResult } from '../../models/hotel-search.model';
 
 @Component({
@@ -10,6 +11,8 @@ import type { HotelSearchResult } from '../../models/hotel-search.model';
   styleUrl: './hotel-card.scss'
 })
 export class HotelCardComponent {
+  private readonly tracking = inject(TrackingService);
+
   readonly hotel = input.required<HotelSearchResult>();
   readonly compareMode = input(false);
   readonly compareSelected = output<number>();
@@ -70,6 +73,10 @@ export class HotelCardComponent {
     const rt = this.hotel().matchedRoomType;
     if (!rt) return '';
     return `${rt.name} · ${rt.maxAdults} adulto${rt.maxAdults !== 1 ? 's' : ''} · ${rt.baseCapacity} capacidad`;
+  }
+
+  trackClick(): void {
+    this.tracking.trackHotelClick(this.hotel().id, 'search');
   }
 
   toggleCompare(): void {
