@@ -1,0 +1,53 @@
+<div class="date-range-picker">
+  <div class="picker-header">
+    <button type="button" class="nav-btn" (click)="prevMonth()">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    <span class="month-label">{{ monthNames[currentMonth()] }} {{ currentYear() }}</span>
+    <button type="button" class="nav-btn" (click)="nextMonth()">
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+  </div>
+
+  <div class="day-names">
+    @for (name of dayNames; track name) {
+      <span class="day-name">{{ name }}</span>
+    }
+  </div>
+
+  <div class="calendar-grid">
+    @for (day of calendarDays(); track $index) {
+      <button
+        type="button"
+        class="calendar-day"
+        [class.other-month]="!day.isCurrentMonth"
+        [class.is-today]="day.isToday"
+        [class.is-start]="day.isStart"
+        [class.is-end]="day.isEnd"
+        [class.is-in-range]="day.isInRange"
+        [class.is-disabled]="day.isDisabled"
+        [disabled]="day.isDisabled"
+        (click)="selectDay(day)"
+      >
+        {{ day.day }}
+      </button>
+    }
+  </div>
+
+  <div class="picker-footer">
+    <div class="selected-dates">
+      @if (startDate()) {
+        <span class="date-badge start-badge">
+          <span class="material-symbols-outlined">login</span>
+          {{ startDate() }}
+        </span>
+      }
+      @if (endDate()) {
+        <span class="date-badge end-badge">
+          <span class="material-symbols-outlined">logout</span>
+          {{ endDate() }}
+        </span>
+      }
+    </div>
+  </div>
+</div>
