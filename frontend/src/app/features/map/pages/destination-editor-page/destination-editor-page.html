@@ -1,0 +1,102 @@
+<div class="dest-editor-page">
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando destino..." />
+    }
+    @case ('error') {
+      <app-error-state
+        description="No se pudo cargar el destino solicitado."
+        (retry)="router.navigate(['/admin/destinations'])"
+      />
+    }
+    @default {
+      @if (destination(); as dest) {
+        <app-page-header
+          eyebrow="Editar Destino"
+          [title]="'Destino #' + dest.srchDestinationId"
+          [description]="dest.visibleName || dest.destinationDisplayName"
+        >
+          <div slot="actions" class="header-actions">
+            <a routerLink="/admin/map" class="header-action-btn">
+              <span class="material-symbols-outlined">map</span>
+              Ver en mapa
+            </a>
+            <a routerLink="/admin/destinations" class="header-action-btn">
+              <span class="material-symbols-outlined">list</span>
+              Todos los destinos
+            </a>
+            <button type="button" class="header-action-btn primary" (click)="save()">
+              <span class="material-symbols-outlined">save</span>
+              Guardar cambios
+            </button>
+          </div>
+        </app-page-header>
+
+        @if (saved()) {
+          <div class="success-banner">✓ Cambios guardados correctamente.</div>
+        }
+
+        @if (errorMessage()) {
+          <div class="error-banner">✗ {{ errorMessage() }}</div>
+        }
+
+        <div class="editor-grid">
+          <!-- Form -->
+          <section class="surface-card form-section">
+            <h3>Información del destino</h3>
+            <form [formGroup]="editForm" class="edit-form">
+              <div class="form-group">
+                <label for="visibleName">Nombre visible</label>
+                <input id="visibleName" type="text" formControlName="visibleName" />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="country">País</label>
+                  <input id="country" type="text" formControlName="country" placeholder="Ej: México" />
+                </div>
+                <div class="form-group">
+                  <label for="city">Ciudad</label>
+                  <input id="city" type="text" formControlName="city" placeholder="Ej: Ciudad de México" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="description">Descripción</label>
+                <textarea id="description" formControlName="description" rows="3" placeholder="Descripción del destino..."></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="latitude">Latitud</label>
+                  <input id="latitude" type="number" step="0.000001" formControlName="latitude" placeholder="19.4326" />
+                </div>
+                <div class="form-group">
+                  <label for="longitude">Longitud</label>
+                  <input id="longitude" type="number" step="0.000001" formControlName="longitude" placeholder="-99.1332" />
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <!-- Location picker -->
+          <section class="surface-card map-section">
+            <h3>Seleccionar ubicación en el mapa</h3>
+            <p class="map-hint">Haz clic en el mapa o arrastra el marcador para ajustar las coordenadas.</p>
+            <app-location-picker
+              [lat]="editForm.controls.latitude.value ?? null"
+              [lng]="editForm.controls.longitude.value ?? null"
+              (locationChange)="onLocationChange($event)"
+            />
+          </section>
+        </div>
+
+        <!-- Raw data -->
+        <details class="surface-card raw-data">
+          <summary>Ver datos completos</summary>
+          <pre>{{ dest | json }}</pre>
+        </details>
+      }
+    }
+  }
+</div>
