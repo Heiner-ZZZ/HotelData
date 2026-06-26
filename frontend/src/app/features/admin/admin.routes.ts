@@ -21,4 +21,6 @@ export const ADMIN_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/global-settings-page/global-settings-page').then((m) => m.GlobalSettingsPageComponent),
   },
+  // Map & Geo-localization (CU-O35 to CU-O38)
+  ...(await import('../../features/map/map.routes')).MAP_ROUTES,
 ];
