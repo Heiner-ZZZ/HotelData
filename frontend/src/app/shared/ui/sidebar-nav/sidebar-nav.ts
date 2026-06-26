@@ -122,6 +122,12 @@ export class SidebarNavComponent {
           href: '/management/reports',
           icon: 'bar_chart',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos', 'operador_datos']
+        },
+        {
+          label: 'Auditoría',
+          href: '/management/audit-log',
+          icon: 'history_toggle_off',
+          allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos']
         }
       ]
     },
