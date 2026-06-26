@@ -176,81 +176,43 @@ export class AuditLogPageComponent {
     );
   }
 
-  applyFilters(): void {
+  /** Navigate via Angular Router — this triggers the route.queryParamMap subscription
+   *  that already exists in the constructor, making filters truly reactive. */
+  private navigateWithFilters(extraParams?: Record<string, string | number | null>): void {
     const fv = this.filterForm.getRawValue();
-    const qp = new URLSearchParams();
-    if (fv.entityType) qp.set('entity_type', fv.entityType);
-    if (fv.action) qp.set('action', fv.action);
-    if (fv.propId && fv.propId > 0) qp.set('prop_id', String(fv.propId));
-    if (fv.fromDate) qp.set('from_date', fv.fromDate);
-    if (fv.toDate) qp.set('to_date', fv.toDate);
-    const qs = qp.toString();
-    const url = `/management/audit-log${qs ? '?' + qs : ''}`;
-    window.history.replaceState(null, '', url);
-    this.refresh();
+    const qp: Record<string, string | number | null> = {
+      entity_type: fv.entityType || null,
+      action: fv.action || null,
+      prop_id: (fv.propId && fv.propId > 0) ? fv.propId : null,
+      from_date: fv.fromDate || null,
+      to_date: fv.toDate || null,
+      page: null,
+      ...extraParams,
+    };
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: qp,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  applyFilters(): void {
+    this.navigateWithFilters();
   }
 
   clearFilters(): void {
     this.filterForm.reset();
-    const url = '/management/audit-log';
-    window.history.replaceState(null, '', url);
-    this.refresh();
-  }
-
-  private refresh(): void {
-    const qp = this.route.snapshot.queryParamMap;
-    const params = new URLSearchParams();
-    if (qp.get('entity_type')) params.set('entity_type', qp.get('entity_type')!);
-    if (qp.get('action')) params.set('action', qp.get('action')!);
-    if (qp.get('prop_id')) params.set('prop_id', qp.get('prop_id')!);
-    if (qp.get('from_date')) params.set('from_date', qp.get('from_date')!);
-    if (qp.get('to_date')) params.set('to_date', qp.get('to_date')!);
-    if (qp.get('page')) params.set('page', qp.get('page')!);
-    const qs = params.toString();
-    const url = `/management/audit-log${qs ? '?' + qs : ''}`;
-    window.history.replaceState(null, '', url);
-    this.loadFromParams(qp);
-  }
-
-  private loadFromParams(qp: { get(name: string): string | null }): void {
-    this.viewState.set('loading');
-    const params: Record<string, string | number> = {};
-    const page = Number(qp.get('page') || '1');
-    if (page > 1) params['page'] = page;
-    const entityType = qp.get('entity_type');
-    if (entityType) params['entity_type'] = entityType;
-    const action = qp.get('action');
-    if (action) params['action'] = action;
-    const propId = qp.get('prop_id');
-    if (propId) params['prop_id'] = Number(propId);
-    const fromDate = qp.get('from_date');
-    if (fromDate) params['from_date'] = fromDate;
-    const toDate = qp.get('to_date');
-    if (toDate) params['to_date'] = toDate;
-    this.fetchAuditLog(params)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          this.data.set(res);
-          this.viewState.set(res.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      queryParamsHandling: '',
+      replaceUrl: true,
+    });
   }
 
   goToPage(page: number): void {
-    const qp = this.route.snapshot.queryParamMap;
-    const params = new URLSearchParams();
-    if (qp.get('entity_type')) params.set('entity_type', qp.get('entity_type')!);
-    if (qp.get('action')) params.set('action', qp.get('action')!);
-    if (qp.get('prop_id')) params.set('prop_id', qp.get('prop_id')!);
-    if (qp.get('from_date')) params.set('from_date', qp.get('from_date')!);
-    if (qp.get('to_date')) params.set('to_date', qp.get('to_date')!);
-    if (page > 1) params.set('page', String(page));
-    const qs = params.toString();
-    const url = `/management/audit-log${qs ? '?' + qs : ''}`;
-    window.history.replaceState(null, '', url);
-    this.loadFromParams(new URLSearchParams(qs));
+    this.navigateWithFilters({ page: page > 1 ? page : null });
   }
 
   openDetail(entry: AuditEntry): void {

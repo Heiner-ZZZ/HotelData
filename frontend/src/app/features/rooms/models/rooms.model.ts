@@ -29,6 +29,7 @@ export interface RoomFeature {
   category: string;
   icon: string;
   custom: boolean;
+  unitPrice?: number;
 }
 
 export interface FeatureCategory {
