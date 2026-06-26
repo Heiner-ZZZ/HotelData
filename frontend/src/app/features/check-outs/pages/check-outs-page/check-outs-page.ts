@@ -1,9 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { API_CONFIG } from '../../../../core/api/api.config';
 
@@ -12,9 +12,10 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { CheckOutsViewModel } from '../../models/check-outs.model';
+import type { CheckOutsDto } from '../../models/check-outs.dto';
 import { CheckOutsApiService, type DateHistoryEntry } from '../../services/check-outs-api.service';
+import { mapCheckOuts } from '../../mappers/check-outs.mapper';
 
 function todayIso(): string {
   const d = new Date();
@@ -29,7 +30,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-outs-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, FormsModule],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-outs-page.html',
   styleUrl: './check-outs-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -40,11 +41,39 @@ export class CheckOutsPageComponent {
   private readonly api = inject(CheckOutsApiService);
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<CheckOutsViewModel | null>(null);
+  // ── Route params as signals ──
+  private readonly routeParams = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => ({
+        propId: Number(params.get('prop_id') ?? '0'),
+        operationDate: params.get('date') || todayIso(),
+      })),
+      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
+    ),
+    { initialValue: { propId: 0, operationDate: todayIso() } }
+  );
+
+  // ── Declarative data fetching ──
+  private readonly checkOutsResource = httpResource<CheckOutsDto>(() => {
+    const { propId, operationDate } = this.routeParams();
+    return `/api/management/check-outs?date=${operationDate}${propId ? `&prop_id=${propId}` : ''}`;
+  });
+
+  // ── Derived state ──
+  readonly viewState = computed(() => {
+    if (this.checkOutsResource.isLoading()) return 'loading' as const;
+    if (this.checkOutsResource.error()) return 'error' as const;
+    const vm = this.viewModel();
+    if (!vm) return 'loading' as const;
+    return vm.items.length ? 'success' as const : 'empty' as const;
+  });
+
+  readonly viewModel = computed<CheckOutsViewModel | null>(() => {
+    const dto = this.checkOutsResource.value();
+    return dto ? mapCheckOuts(dto) : null;
+  });
+
   readonly message = signal('');
   readonly errorMessage = signal('');
 
@@ -60,14 +89,18 @@ export class CheckOutsPageComponent {
   readonly reviewError = signal('');
   readonly reviewSuccess = signal(false);
 
-  readonly dateForm = this.formBuilder.nonNullable.group({
-    operationDate: [todayIso(), [Validators.required]]
-  });
+  readonly operationDate = signal(todayIso());
 
-  readonly selectedPropId = signal(0);
-  readonly selectedPropName = signal('');
+  readonly selectedPropId = computed(() => this.routeParams().propId);
+  readonly selectedPropName = computed(() => {
+    const vm = this.viewModel();
+    const pid = this.selectedPropId();
+    if (!vm) return '';
+    const opt = vm.propertyOptions.find(p => p.propId === pid);
+    return opt?.label ?? '';
+  });
   readonly filter = signal('');
-  readonly propertyOptions = signal<Array<{ propId: number; label: string }>>([]);
+  readonly propertyOptions = computed(() => this.viewModel()?.propertyOptions ?? []);
   readonly dropdownOpen = signal(false);
 
   // More menu (⋮)
@@ -86,64 +119,47 @@ export class CheckOutsPageComponent {
   });
 
   constructor() {
-    this.route.queryParamMap.pipe(
-      map((params) => ({
-        propId: Number(params.get('prop_id') ?? '0'),
-        operationDate: params.get('date') || todayIso()
-      })),
-      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
-      switchMap(({ propId, operationDate }) => {
-        this.viewState.set('loading');
-        this.message.set('');
-        this.errorMessage.set('');
-        return this.api.getCheckOuts(operationDate, propId || undefined);
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vm) => {
-        this.viewModel.set(vm);
-        this.dateForm.controls.operationDate.setValue(vm.operationDate, { emitEvent: false });
-        this.propertyOptions.set(vm.propertyOptions);
-        const selected = vm.propertyOptions.find(p => p.propId === vm.propId);
-        this.selectedPropId.set(vm.propId ?? 0);
-        this.selectedPropName.set(selected?.label || '');
-        this.viewState.set(vm.items.length ? 'success' : 'empty');
-      },
-      error: () => this.viewState.set('error')
-    });
+    // Data fetching is handled declaratively via httpResource above
   }
 
   navigateDate(days: number): void {
-    const current = this.dateForm.controls.operationDate.value;
-    this.dateForm.controls.operationDate.setValue(shiftDate(current, days));
+    const current = this.operationDate();
+    const next = shiftDate(current, days);
+    this.operationDate.set(next);
     this.applyFilters();
   }
 
   goToday(): void {
-    this.dateForm.controls.operationDate.setValue(todayIso());
+    this.operationDate.set(todayIso());
     this.applyFilters();
   }
 
   applyFilters(): void {
-    const date = this.dateForm.controls.operationDate.value;
+    const date = this.operationDate();
     const propId = this.selectedPropId();
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null, date }
+      queryParams: { prop_id: propId || null, date },
     });
   }
 
   selectProperty(propId: number, label: string): void {
     this.dropdownOpen.set(false);
-    this.selectedPropId.set(propId);
-    this.selectedPropName.set(label);
     if (propId) this.filter.set(label);
     else this.filter.set('');
-    this.applyFilters();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: propId || null, date: this.operationDate() },
+    });
   }
 
   clearProperty(): void {
-    this.selectProperty(0, '');
+    this.dropdownOpen.set(false);
+    this.filter.set('');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: null, date: this.operationDate() },
+    });
   }
 
   toggleMenu(): void {
@@ -162,7 +178,7 @@ export class CheckOutsPageComponent {
     this.showHistory.set(true);
     this.historyLoading.set(true);
     this.errorMessage.set('');
-    this.api.getCheckOutDates(propId || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.getCheckOutDates(propId || undefined).subscribe({
       next: (dates) => {
         this.historyDates.set(dates);
         this.historyLoading.set(false);
@@ -182,14 +198,7 @@ export class CheckOutsPageComponent {
 
   goToDate(date: string, entryPropId?: number): void {
     this.closeHistory();
-    if (entryPropId) {
-      const opt = this.propertyOptions().find(p => p.propId === entryPropId);
-      if (opt) {
-        this.selectedPropId.set(entryPropId);
-        this.selectedPropName.set(opt.label);
-      }
-    }
-    this.dateForm.controls.operationDate.setValue(date);
+    this.operationDate.set(date);
     this.applyFilters();
   }
 
@@ -204,13 +213,8 @@ export class CheckOutsPageComponent {
   completeCheckOut(bookingId: string): void {
     const current = this.viewModel();
     if (!current) return;
-    this.api.completeCheckOut(bookingId).pipe(
-      switchMap(() => this.api.getCheckOuts(current.operationDate, current.propId || undefined)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vm) => {
-        this.viewModel.set(vm);
-        this.viewState.set(vm.items.length ? 'success' : 'empty');
+    this.api.completeCheckOut(bookingId).subscribe({
+      next: () => {
         this.message.set('Check-out completado');
         this.errorMessage.set('');
       },

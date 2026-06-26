@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapCheckIns } from '../mappers/check-ins.mapper';
 import type { CheckInsDto } from '../models/check-ins.dto';
 
@@ -25,7 +26,7 @@ export class CheckInsApiService {
     }
     return this.http
       .get<CheckInsDto>(`${this.apiConfig.baseUrl}/management/check-ins`, { params, withCredentials: true })
-      .pipe(map((dto) => mapCheckIns(dto)));
+      .pipe(catchAuthError(), map((dto) => mapCheckIns(dto)));
   }
 
   getCheckInDates(propId?: number) {
@@ -36,7 +37,7 @@ export class CheckInsApiService {
     return this.http.get<DateHistoryEntry[]>(`${this.apiConfig.baseUrl}/management/check-ins/dates`, {
       params,
       withCredentials: true
-    });
+    }).pipe(catchAuthError());
   }
 
   completeCheckIn(bookingId: string) {

@@ -1,18 +1,19 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { CheckInsViewModel } from '../../models/check-ins.model';
+import type { CheckInsDto } from '../../models/check-ins.dto';
 import { CheckInsApiService, type DateHistoryEntry } from '../../services/check-ins-api.service';
+import { mapCheckIns } from '../../mappers/check-ins.mapper';
 
 function todayIso(): string {
   const d = new Date();
@@ -27,7 +28,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-ins-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-ins-page.html',
   styleUrl: './check-ins-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,22 +37,54 @@ export class CheckInsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckInsApiService);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<CheckInsViewModel | null>(null);
+  // ── Route params as signals ──
+  private readonly routeParams = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => ({
+        propId: Number(params.get('prop_id') ?? '0'),
+        operationDate: params.get('date') || todayIso(),
+      })),
+      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
+    ),
+    { initialValue: { propId: 0, operationDate: todayIso() } }
+  );
+
+  // ── Declarative data fetching ──
+  private readonly checkInsResource = httpResource<CheckInsDto>(() => {
+    const { propId, operationDate } = this.routeParams();
+    return `/api/management/check-ins?date=${operationDate}${propId ? `&prop_id=${propId}` : ''}`;
+  });
+
+  // ── Derived state ──
+  readonly viewState = computed(() => {
+    if (this.checkInsResource.isLoading()) return 'loading' as const;
+    if (this.checkInsResource.error()) return 'error' as const;
+    const vm = this.viewModel();
+    if (!vm) return 'loading' as const;
+    return vm.items.length ? 'success' as const : 'empty' as const;
+  });
+
+  readonly viewModel = computed<CheckInsViewModel | null>(() => {
+    const dto = this.checkInsResource.value();
+    return dto ? mapCheckIns(dto) : null;
+  });
+
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly dateForm = this.formBuilder.nonNullable.group({
-    operationDate: [todayIso(), [Validators.required]]
-  });
+  readonly operationDate = signal(todayIso());
 
-  readonly selectedPropId = signal(0);
-  readonly selectedPropName = signal('');
+  readonly selectedPropId = computed(() => this.routeParams().propId);
+  readonly selectedPropName = computed(() => {
+    const vm = this.viewModel();
+    const pid = this.selectedPropId();
+    if (!vm) return '';
+    const opt = vm.propertyOptions.find(p => p.propId === pid);
+    return opt?.label ?? '';
+  });
   readonly filter = signal('');
-  readonly propertyOptions = signal<Array<{ propId: number; label: string }>>([]);
+  readonly propertyOptions = computed(() => this.viewModel()?.propertyOptions ?? []);
   readonly dropdownOpen = signal(false);
 
   // More menu (⋮)
@@ -70,64 +103,49 @@ export class CheckInsPageComponent {
   });
 
   constructor() {
-    this.route.queryParamMap.pipe(
-      map((params) => ({
-        propId: Number(params.get('prop_id') ?? '0'),
-        operationDate: params.get('date') || todayIso()
-      })),
-      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
-      switchMap(({ propId, operationDate }) => {
-        this.viewState.set('loading');
-        this.message.set('');
-        this.errorMessage.set('');
-        return this.api.getCheckIns(operationDate, propId || undefined);
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vm) => {
-        this.viewModel.set(vm);
-        this.dateForm.controls.operationDate.setValue(vm.operationDate, { emitEvent: false });
-        this.propertyOptions.set(vm.propertyOptions);
-        const selected = vm.propertyOptions.find(p => p.propId === vm.propId);
-        this.selectedPropId.set(vm.propId ?? 0);
-        this.selectedPropName.set(selected?.label || '');
-        this.viewState.set(vm.items.length ? 'success' : 'empty');
-      },
-      error: () => this.viewState.set('error')
-    });
+    // Sync operationDate signal from route params when they change
+    // This is needed because the date navigation buttons modify the URL
+    this.routeParams(); // consume the signal to track reactivity
   }
 
   navigateDate(days: number): void {
-    const current = this.dateForm.controls.operationDate.value;
-    this.dateForm.controls.operationDate.setValue(shiftDate(current, days));
+    const current = this.operationDate();
+    const next = shiftDate(current, days);
+    this.operationDate.set(next);
     this.applyFilters();
   }
 
   goToday(): void {
-    this.dateForm.controls.operationDate.setValue(todayIso());
+    this.operationDate.set(todayIso());
     this.applyFilters();
   }
 
   applyFilters(): void {
-    const date = this.dateForm.controls.operationDate.value;
+    const date = this.operationDate();
     const propId = this.selectedPropId();
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null, date }
+      queryParams: { prop_id: propId || null, date },
     });
   }
 
   selectProperty(propId: number, label: string): void {
     this.dropdownOpen.set(false);
-    this.selectedPropId.set(propId);
-    this.selectedPropName.set(label);
     if (propId) this.filter.set(label);
     else this.filter.set('');
-    this.applyFilters();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: propId || null, date: this.operationDate() },
+    });
   }
 
   clearProperty(): void {
-    this.selectProperty(0, '');
+    this.dropdownOpen.set(false);
+    this.filter.set('');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: null, date: this.operationDate() },
+    });
   }
 
   toggleMenu(): void {
@@ -146,7 +164,7 @@ export class CheckInsPageComponent {
     this.showHistory.set(true);
     this.historyLoading.set(true);
     this.errorMessage.set('');
-    this.api.getCheckInDates(propId || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.getCheckInDates(propId || undefined).subscribe({
       next: (dates) => {
         this.historyDates.set(dates);
         this.historyLoading.set(false);
@@ -166,14 +184,13 @@ export class CheckInsPageComponent {
 
   goToDate(date: string, entryPropId?: number): void {
     this.closeHistory();
+    this.operationDate.set(date);
     if (entryPropId) {
       const opt = this.propertyOptions().find(p => p.propId === entryPropId);
       if (opt) {
-        this.selectedPropId.set(entryPropId);
-        this.selectedPropName.set(opt.label);
+        this.applyFilters();
       }
     }
-    this.dateForm.controls.operationDate.setValue(date);
     this.applyFilters();
   }
 
@@ -188,13 +205,8 @@ export class CheckInsPageComponent {
   completeCheckIn(bookingId: string): void {
     const current = this.viewModel();
     if (!current) return;
-    this.api.completeCheckIn(bookingId).pipe(
-      switchMap(() => this.api.getCheckIns(current.operationDate, current.propId || undefined)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vm) => {
-        this.viewModel.set(vm);
-        this.viewState.set(vm.items.length ? 'success' : 'empty');
+    this.api.completeCheckIn(bookingId).subscribe({
+      next: () => {
         this.message.set('Check-in completado');
         this.errorMessage.set('');
       },
