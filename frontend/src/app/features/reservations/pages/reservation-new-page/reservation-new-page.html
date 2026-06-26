@@ -64,9 +64,13 @@
               <div class="planner-copy">
                 <span class="planner-label">Fechas</span>
                 <div class="planner-dates">
-                  <input formControlName="checkInDate" type="date" [attr.min]="today" aria-label="Fecha de entrada" />
-                  <span class="planner-separator">-</span>
-                  <input formControlName="checkOutDate" type="date" [attr.min]="form.controls.checkInDate.value || today" aria-label="Fecha de salida" />
+                  <app-date-range-picker
+                    [minDate]="today"
+                    [startDate]="form.controls.checkInDate.value || ''"
+                    [endDate]="form.controls.checkOutDate.value || ''"
+                    (startChange)="onStartDateChange($event)"
+                    (endChange)="onEndDateChange($event)"
+                  />
                 </div>
               </div>
             </div>

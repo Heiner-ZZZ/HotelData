@@ -300,4 +300,12 @@ export class ReservationNewPageComponent {
     }
     this.form.controls.specialRequests.markAsDirty();
   }
+
+  onStartDateChange(date: string): void {
+    this.form.controls.checkInDate.setValue(date);
+  }
+
+  onEndDateChange(date: string): void {
+    this.form.controls.checkOutDate.setValue(date);
+  }
 }
