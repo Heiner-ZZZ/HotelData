@@ -1,0 +1,101 @@
+<div class="bsc-page">
+  <app-page-header
+    eyebrow="Balanced Scorecard"
+    title="Tablero de Control Estratégico"
+    [description]="(viewModel()?.periodLabel) ?? 'Indicadores clave por perspectiva'"
+  >
+    <button type="button" class="header-action-btn" slot="actions" (click)="exportReport()">
+      <span class="material-symbols-outlined" aria-hidden="true">download</span>
+      Exportar reporte
+    </button>
+  </app-page-header>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Calculando Balanced Scorecard..." />
+    }
+    @case ('error') {
+      <app-error-state
+        [description]="errorMessage()"
+        (retry)="onRetry()"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin datos para el BSC"
+        description="No hay suficientes datos procesados para generar el Balanced Scorecard. Ejecuta el pipeline ETL primero."
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- Summary bar -->
+        <div class="bsc-summary">
+          <div class="summary-score" [class]="summaryScoreClass()">
+            <span class="score-value">{{ vm.summary.score }}%</span>
+            <span class="score-label">{{ vm.summary.label }}</span>
+          </div>
+          <div class="summary-legend">
+            <span class="legend-item">
+              <span class="legend-dot green"></span>
+              {{ vm.summary.green }} saludables
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot yellow"></span>
+              {{ vm.summary.yellow }} en alerta
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot red"></span>
+              {{ vm.summary.red }} críticos
+            </span>
+            <span class="legend-total">{{ vm.summary.total }} indicadores</span>
+          </div>
+        </div>
+
+        <!-- Perspectives grid -->
+        <div class="perspectives-grid">
+          @for (perspective of vm.perspectives; track perspective.id) {
+            <section class="perspective-card surface-card">
+              <div class="perspective-header">
+                <span class="material-symbols-outlined perspective-icon" aria-hidden="true">{{ perspective.icon }}</span>
+                <div class="perspective-head-text">
+                  <h2>{{ perspective.label }}</h2>
+                  <p class="perspective-desc">{{ perspective.description }}</p>
+                </div>
+              </div>
+
+              <div class="kpi-list">
+                @for (kpi of perspective.kpis; track kpi.label) {
+                  <div class="kpi-item">
+                    <div class="kpi-left">
+                      <span class="kpi-semaforo" [class]="'semaforo-' + kpi.semaforo" [title]="'Estado: ' + kpi.semaforo"></span>
+                      <div class="kpi-info">
+                        <span class="kpi-label">{{ kpi.label }}</span>
+                        <span class="kpi-detail">{{ kpi.detail }}</span>
+                      </div>
+                    </div>
+                    <div class="kpi-right">
+                      <span class="kpi-value">{{ kpi.value }}</span>
+                      <span class="kpi-target">Meta: {{ kpi.target }}</span>
+                      <div class="kpi-trend">
+                        @if (kpi.trend === 'up') {
+                          <span class="trend-up material-symbols-outlined" title="Mejorando">trending_up</span>
+                        } @else if (kpi.trend === 'down') {
+                          <span class="trend-down material-symbols-outlined" title="Empeorando">trending_down</span>
+                        } @else {
+                          <span class="trend-stable material-symbols-outlined" title="Estable">trending_flat</span>
+                        }
+                        <span class="trend-pct" [class.trend-pct-up]="kpi.trend === 'up'" [class.trend-pct-down]="kpi.trend === 'down'">
+                          {{ kpi.pctChange }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</div>
