@@ -122,10 +122,10 @@ export class PoliciesPageComponent {
     }
   }
 
-  onPropSelected(propId: number) {
+  onPropSelected(event: { propId: number; label: string }) {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null },
+      queryParams: { prop_id: event.propId || null },
     });
   }
 

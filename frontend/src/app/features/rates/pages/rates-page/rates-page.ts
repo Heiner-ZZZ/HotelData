@@ -299,11 +299,13 @@ export class RatesPageComponent {
     }, { allowSignalWrites: true });
   }
 
-  onPropSelected(propId: number): void {
-    if (!propId) this.propertyCtx.clear();
+  onPropSelected(event: { propId: number; label: string }): void {
+    if (!event.propId) this.propertyCtx.clear();
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.propertyCtx.setProperty(event.propId, label);
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null },
+      queryParams: { prop_id: event.propId || null, prop_label: label || null },
     });
   }
 

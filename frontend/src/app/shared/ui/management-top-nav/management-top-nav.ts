@@ -105,7 +105,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
     });
     const propLabel = this.propertyCtx.currentPropLabel();
     if (propLabel) {
-      crumbs.push({ label: propLabel, path: '' });
+      crumbs.push({ label: propLabel, path: '', queryParams: undefined });
     }
     return crumbs;
   });

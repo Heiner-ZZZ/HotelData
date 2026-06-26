@@ -33,7 +33,7 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
   @Input() selectedPropId = 0;
   @Input() selectedLabel = '';
 
-  @Output() propIdChange = new EventEmitter<number>();
+  @Output() propIdChange = new EventEmitter<{ propId: number; label: string }>();
 
   readonly dropdownOpen = signal(false);
   readonly filterText = signal('');
@@ -113,7 +113,7 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
   selectProperty(option: PropertyOption) {
     this.filterText.set(option.label);
     this.dropdownOpen.set(false);
-    this.propIdChange.emit(option.propId);
+    this.propIdChange.emit({ propId: option.propId, label: option.label });
   }
 
   @HostListener('document:click', ['$event'])
