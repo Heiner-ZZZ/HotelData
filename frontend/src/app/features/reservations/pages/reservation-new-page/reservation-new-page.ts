@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { distinctUntilChanged } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -32,6 +33,9 @@ export class ReservationNewPageComponent {
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
   readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review'>('details');
+
+  /** Availability status per hotel: 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types' */
+  readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
 
   readonly guestSuggestions = signal<Array<{ name: string; email: string; phone: string }>>([]);
   readonly showGuestDropdown = signal(false);
@@ -73,6 +77,43 @@ export class ReservationNewPageComponent {
     return { adults, children, rooms, nights };
   });
 
+  /** Check inventory availability for a given hotel and date range */
+  checkHotelAvailability(propId: number): void {
+    if (!propId) return;
+    const checkIn = this.form.controls.checkInDate.value;
+    const checkOut = this.form.controls.checkOutDate.value;
+    if (!checkIn || !checkOut) return;
+
+    this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: 'checking' }));
+
+    this.reservationsApi.getHotelAvailability(propId, checkIn, checkOut).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (result) => {
+        const status = result.hasRoomTypes
+          ? (result.hasInventory ? 'has_inventory' : 'no_inventory')
+          : 'no_room_types';
+        this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: status }));
+      },
+      error: () => {
+        this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: 'unknown' }));
+      },
+    });
+  }
+
+  /** Availability label and icon for a given hotel */
+  getHotelAvailabilityInfo(propId: number): { label: string; icon: string; color: string } | null {
+    const status = this.hotelAvailabilityStatus()[propId];
+    if (!status || status === 'unknown') return null;
+    switch (status) {
+      case 'checking': return { label: 'Verificando...', icon: 'sync', color: 'var(--muted-text)' };
+      case 'has_inventory': return { label: 'Disponible', icon: 'check_circle', color: 'var(--success)' };
+      case 'no_inventory': return { label: 'Sin disponibilidad', icon: 'error', color: 'var(--danger)' };
+      case 'no_room_types': return { label: 'Sin tipos de habitación', icon: 'warning', color: 'var(--warning)' };
+      default: return null;
+    }
+  }
+
   readonly today = new Date().toISOString().split('T')[0];
 
   readonly form = this.formBuilder.nonNullable.group({
@@ -113,10 +154,55 @@ export class ReservationNewPageComponent {
             this.form.controls.propId.setValue(prefixedPropId);
           }
           this.loading.set(false);
+          
+          // Trigger initial availability check if hotel and dates are already selected
+          if (prefixedPropId > 0 && this.form.controls.checkInDate.value && this.form.controls.checkOutDate.value) {
+            this.checkHotelAvailability(prefixedPropId);
+          }
         },
         error: () => {
           this.errorMessage.set('No fue posible cargar el formulario de reservas.');
           this.loading.set(false);
+        }
+      });
+
+    // Reactively check availability when hotel or dates change
+    this.form.controls.propId.valueChanges
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        distinctUntilChanged(),
+      )
+      .subscribe(() => {
+        if (this.form.controls.checkInDate.value && this.form.controls.checkOutDate.value) {
+          this.checkHotelAvailability(this.form.controls.propId.value);
+        } else {
+          this.hotelAvailabilityStatus.set({});
+        }
+      });
+
+    this.form.controls.checkInDate.valueChanges
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        distinctUntilChanged(),
+      )
+      .subscribe(() => {
+        const propId = this.form.controls.propId.value;
+        const checkOut = this.form.controls.checkOutDate.value;
+        if (propId && checkOut) {
+          this.checkHotelAvailability(propId);
+        }
+      });
+
+    this.form.controls.checkOutDate.valueChanges
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        distinctUntilChanged(),
+      )
+      .subscribe(() => {
+        const propId = this.form.controls.propId.value;
+        const checkIn = this.form.controls.checkInDate.value;
+        if (propId && checkIn) {
+          this.checkHotelAvailability(propId);
         }
       });
   }
@@ -176,6 +262,14 @@ export class ReservationNewPageComponent {
       return;
     }
 
+    // ═══ GUARD: Verificar disponibilidad antes de enviar ═══
+    const previewData = this.preview();
+    if (previewData && !previewData.available) {
+      this.errorMessage.set('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.');
+      this.step.set('details');
+      return;
+    }
+
     // Save guest data for future autocomplete
     const v = this.form.getRawValue();
     this._saveGuestSuggestion(v.guestName, v.guestEmail, v.guestPhone);
@@ -193,7 +287,15 @@ export class ReservationNewPageComponent {
           void this.router.navigate(['../confirmed', result.bookingId], { relativeTo: this.activatedRoute });
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible crear la reserva.');
+          // Mensaje amigable para el usuario, no el error técnico del backend
+          const msg = error.message || '';
+          if (msg.includes('No inventory data') || msg.includes('inventory')) {
+            this.errorMessage.set('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.');
+          } else if (msg.includes('available')) {
+            this.errorMessage.set('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.');
+          } else {
+            this.errorMessage.set(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.');
+          }
           this.submitting.set(false);
         }
       });

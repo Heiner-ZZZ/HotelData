@@ -138,6 +138,14 @@
                 <span>{{ hotel.label }}</span>
               </div>
 
+              @let avail = getHotelAvailabilityInfo(hotel.propId);
+              @if (avail) {
+                <div class="avail-badge" [style.--avail-color]="avail.color">
+                  <span class="material-symbols-outlined avail-icon">{{ avail.icon }}</span>
+                  <span>{{ avail.label }}</span>
+                </div>
+              }
+
               @if (computedNights() > 0) {
                 <div class="nights-badge">
                   <span class="material-symbols-outlined">nightstay</span>
@@ -420,7 +428,7 @@
             <span class="material-symbols-outlined">arrow_back</span>
             Editar datos
           </button>
-          <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting()">
+          <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting() || (preview() && !preview().available)">
             @if (submitting()) {
               <span class="material-symbols-outlined loading-spin">sync</span>
               Enviando...

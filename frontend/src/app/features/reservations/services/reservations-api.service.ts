@@ -183,4 +183,22 @@ export class ReservationsApiService {
       { withCredentials: true }
     );
   }
+
+  /** Check if a hotel has inventory/availability for a given date range */
+  getHotelAvailability(propId: number, checkIn: string, checkOut: string) {
+    const params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('check_in', checkIn)
+      .set('check_out', checkOut);
+    return this.http.get<{
+      hasInventory: boolean;
+      hasRoomTypes: boolean;
+      totalRooms: number;
+      availableRooms: number;
+      message: string;
+    }>(`${this.apiConfig.baseUrl}/reservations/availability-check`, {
+      params,
+      withCredentials: true,
+    });
+  }
 }
