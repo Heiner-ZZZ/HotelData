@@ -11,6 +11,21 @@
     (propIdChange)="onPropSelected($event)"
   />
 
+  <!-- KPI Chart: Top 5 Hotels by Room Count -->
+  <section class="surface-card kpi-chart-section">
+    <app-kpi-chart
+      title="Top 5 Hoteles con más habitaciones"
+      [labels]="topHotels().map(h => h.label)"
+      [datasets]="[
+        { label: 'Tipos de habitación', data: topHotels().map(h => h.room_types) },
+        { label: 'Habitaciones físicas', data: topHotels().map(h => h.physical_rooms) }
+      ]"
+      [showLegend]="true"
+      [height]="220"
+      type="bar"
+    />
+  </section>
+
   @if (message()) {
     <section class="notification success">
       <span class="material-symbols-outlined notif-icon">check_circle</span>

@@ -365,6 +365,9 @@
                 </button>
               </div>
               <div class="modal-body">
+                @if (productError()) {
+                  <div class="toast toast-error" style="margin-bottom: 12px;">{{ productError() }}</div>
+                }
                 @switch (productsState()) {
                   @case ('loading') {
                     <div class="loading-shade-sm">

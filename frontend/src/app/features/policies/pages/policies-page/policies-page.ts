@@ -81,6 +81,12 @@ export class PoliciesPageComponent {
   });
 
   constructor() {
+    // Load operational stats KPI
+    this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (stats) => { this.opStats.set(stats); this.opStatsState.set('success'); },
+      error: () => this.opStatsState.set('error'),
+    });
+
     this.route.queryParamMap
       .pipe(
         map((params) => Number(params.get('prop_id') ?? '0')),

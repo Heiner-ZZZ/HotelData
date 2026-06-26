@@ -11,9 +11,11 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { CheckInsViewModel } from '../../models/check-ins.model';
 import type { CheckInsDto } from '../../models/check-ins.dto';
 import { CheckInsApiService, type DateHistoryEntry } from '../../services/check-ins-api.service';
+import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { mapCheckIns } from '../../mappers/check-ins.mapper';
 
 function todayIso(): string {

@@ -11,12 +11,14 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
 import type { RatesDto } from '../../models/rates.dto';
 import { RatesApiService } from '../../services/rates-api.service';
 import { mapRatesResponse } from '../../mappers/rates.mapper';
+import { KpiApiService, type RateTrendResponse } from '../../../../shared/services/kpi-api.service';
 import { RatePlanTableComponent } from '../../components/rate-plan-table/rate-plan-table';
 import { RateCalendarTableComponent } from '../../components/rate-calendar-table/rate-calendar-table';
 import { RateSidebarComponent, type SidebarSection } from '../../components/rate-sidebar/rate-sidebar';
@@ -43,6 +45,7 @@ function _mondayOfWeek(date: Date): Date {
   imports: [
     EmptyStateComponent,
     ErrorStateComponent,
+    KpiChartComponent,
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
@@ -64,8 +67,13 @@ export class RatesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(RatesApiService);
+  private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly propertyCtx = inject(PropertyContextService);
+
+  // ── KPI: 7-day rate trend ──
+  readonly rateTrend = signal<RateTrendResponse | null>(null);
+  readonly rateTrendState = signal<'loading' | 'success' | 'error'>('loading');
 
   /** Prop ID from route — source of truth for current property. */
   private readonly routePropId = toSignal(
@@ -379,6 +387,12 @@ readonly sidebarSections: SidebarSection[] = [
   });
 
   constructor() {
+    // Load 7-day rate trend
+    this.kpiApi.getRateTrend(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => { this.rateTrend.set(res); this.rateTrendState.set('success'); },
+      error: () => this.rateTrendState.set('error'),
+    });
+
     // ── Sync httpResource → viewModel + viewState ──
     effect(() => {
       const propId = this.selectedPropId();

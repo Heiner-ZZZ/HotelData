@@ -54,6 +54,7 @@ export class ReservationDetailPageComponent {
   readonly editError = signal('');
 
   // Products (add-on services)
+  readonly Math = Math; // Expose Math for template expressions
   readonly productsState = signal<ViewState>('idle');
   readonly lineItemsState = signal<ViewState>('idle');
   readonly hotelProducts = signal<HotelProduct[]>([]);
@@ -71,6 +72,7 @@ export class ReservationDetailPageComponent {
   readonly addProductQty = signal(1);
   readonly addProductSaving = signal(false);
   readonly removeItemSaving = signal<string | null>(null);
+  readonly productError = signal('');
   readonly showProductModal = signal(false);
   readonly showProductSelect = signal(false);
 
@@ -167,6 +169,7 @@ export class ReservationDetailPageComponent {
     const product = this.selectedProduct();
     if (!vm || !product || this.addProductSaving()) return;
 
+    this.productError.set('');
     this.addProductSaving.set(true);
     this.productsApi.addLineItem(vm.bookingId, {
       product_id: product.productId,
@@ -184,7 +187,7 @@ export class ReservationDetailPageComponent {
       },
       error: () => {
         this.addProductSaving.set(false);
-        this.editError.set('Error al agregar el producto.');
+        this.productError.set('Error al agregar el producto.');
       },
     });
   }
@@ -192,6 +195,7 @@ export class ReservationDetailPageComponent {
   removeLineItem(itemId: string) {
     const vm = this.data();
     if (!vm) return;
+    this.productError.set('');
     this.removeItemSaving.set(itemId);
     this.productsApi.removeLineItem(vm.bookingId, itemId).pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -203,7 +207,7 @@ export class ReservationDetailPageComponent {
       },
       error: () => {
         this.removeItemSaving.set(null);
-        this.editError.set('Error al eliminar el producto.');
+        this.productError.set('Error al eliminar el producto.');
       },
     });
   }
