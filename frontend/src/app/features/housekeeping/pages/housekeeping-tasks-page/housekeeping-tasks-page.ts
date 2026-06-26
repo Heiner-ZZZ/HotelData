@@ -14,6 +14,10 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type HousekeepingTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const TASK_TYPES = ['cleaning', 'deep_clean', 'turnover', 'inspection'] as const;
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 const STATUS_OPTIONS = ['pending', 'completed'] as const;
@@ -39,6 +43,7 @@ export class HousekeepingTasksPageComponent {
   readonly message = signal('');
   readonly errorMessage = signal('');
   readonly showCreateForm = signal(false);
+  readonly editingId = signal<string | null>(null);
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
   readonly roomLabels = signal<string[]>([]);
@@ -50,6 +55,7 @@ export class HousekeepingTasksPageComponent {
     priority: ['normal'],
     assignedTo: [''],
     note: [''],
+    scheduledDate: [todayIso()],
   });
 
   readonly taskTypes = [...TASK_TYPES];
@@ -116,8 +122,9 @@ export class HousekeepingTasksPageComponent {
 
   toggleCreateForm(): void {
     this.showCreateForm.update((v) => !v);
+    this.editingId.set(null);
     if (this.showCreateForm()) {
-      this.createForm.reset({ roomLabel: '', taskType: 'cleaning', priority: 'normal', assignedTo: '', note: '' });
+      this.createForm.reset({ roomLabel: '', taskType: 'cleaning', priority: 'normal', assignedTo: '', note: '', scheduledDate: todayIso() });
     }
   }
 
@@ -132,28 +139,69 @@ export class HousekeepingTasksPageComponent {
     });
   }
 
+  startEdit(item: HousekeepingTaskItem): void {
+    this.editingId.set(item.id);
+    this.showCreateForm.set(true);
+    this.createForm.setValue({
+      roomLabel: item.roomLabel,
+      taskType: item.taskType,
+      priority: item.priority,
+      assignedTo: item.assignedTo || '',
+      note: item.note || '',
+      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : todayIso(),
+    });
+  }
+
+  cancelForm(): void {
+    this.showCreateForm.set(false);
+    this.editingId.set(null);
+  }
+
   submitTask(): void {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
-    this.api
-      .createTask({
-        prop_id: this.selectedPropId() || 0,
-        room_label: val.roomLabel,
-        task_type: val.taskType,
-        assigned_to: val.assignedTo || undefined,
-        priority: val.priority,
-        note: val.note || undefined,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    const editId = this.editingId();
+    const payload = {
+      prop_id: this.selectedPropId() || 0,
+      room_label: val.roomLabel,
+      task_type: val.taskType,
+      assigned_to: val.assignedTo || undefined,
+      priority: val.priority,
+      note: val.note || undefined,
+      scheduled_date: val.scheduledDate || undefined,
+    };
+    const obs = editId
+      ? this.api.updateTask(editId, payload)
+      : this.api.createTask(payload);
+
+    obs.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.message.set('Tarea creada exitosamente');
+          this.message.set(editId ? 'Tarea actualizada' : 'Tarea creada exitosamente');
           this.errorMessage.set('');
           this.showCreateForm.set(false);
+          this.editingId.set(null);
           this.refresh();
         },
         error: (err) => {
-          this.errorMessage.set(err.message || 'Error al crear tarea');
+          this.errorMessage.set(err.message || 'Error al guardar tarea');
+          this.message.set('');
+        },
+      });
+  }
+
+  deleteTask(taskId: string): void {
+    this.api
+      .deleteTask(taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set('Tarea eliminada');
+          this.errorMessage.set('');
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.message || 'Error al eliminar tarea');
           this.message.set('');
         },
       });
