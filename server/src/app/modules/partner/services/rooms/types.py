@@ -19,6 +19,25 @@ from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
 
+def _normalize_features(raw: Any) -> list[dict[str, Any]]:
+    """Normalize features from DB (strings or objects) to a list of dicts."""
+    if not isinstance(raw, list):
+        return []
+    result: list[dict[str, Any]] = []
+    for f in raw:
+        if isinstance(f, dict):
+            result.append({
+                "label": str(f.get("label", "")),
+                "unit_price": float(f.get("unit_price", 0) or 0),
+            })
+        elif isinstance(f, str):
+            result.append({
+                "label": f,
+                "unit_price": 0.0,
+            })
+    return result
+
+
 def _room_types_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
     db = get_database()
     items = list(
@@ -32,6 +51,7 @@ def _room_types_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
             f"{item.get('max_adults', 0)} adultos · "
             f"{item.get('max_children', 0)} niños"
         )
+        item["features"] = _normalize_features(item.get("features", []))
     return items
 
 

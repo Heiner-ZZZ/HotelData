@@ -230,8 +230,27 @@ def _feature_icon(label: str) -> str:
     return icon_map.get(label.lower(), "check")
 
 
-def get_room_type_features(prop_id: int, room_type_id: str) -> list[str]:
-    """Return the feature tags for a specific room type."""
+def _normalize_features(raw: Any) -> list[dict[str, Any]]:
+    """Normalize features from DB (strings or objects) to a list of dicts."""
+    if not isinstance(raw, list):
+        return []
+    result: list[dict[str, Any]] = []
+    for f in raw:
+        if isinstance(f, dict):
+            result.append({
+                "label": str(f.get("label", "")),
+                "unit_price": float(f.get("unit_price", 0) or 0),
+            })
+        elif isinstance(f, str):
+            result.append({
+                "label": f,
+                "unit_price": _feature_unit_price(f),
+            })
+    return result
+
+
+def get_room_type_features(prop_id: int, room_type_id: str) -> list[dict[str, Any]]:
+    """Return the feature tags (with prices) for a specific room type."""
     db = get_database()
     room = db.room_types.find_one(
         {"prop_id": prop_id, "room_type_id": room_type_id},
@@ -239,18 +258,24 @@ def get_room_type_features(prop_id: int, room_type_id: str) -> list[str]:
     )
     if room is None:
         return []
-    return room.get("features", [])
+    return _normalize_features(room.get("features", []))
 
 
 def update_room_type_features(
     prop_id: int,
     room_type_id: str,
     *,
-    features: list[str],
+    features: list[str] | list[dict[str, Any]],
     changed_by: str = "angular_api",
 ) -> dict[str, Any] | None:
-    """Set the feature tags for a room type."""
+    """Set the feature tags (with optional unit_price) for a room type.
+
+    Accepts either:
+      - list of strings: legacy format, prices from catalog defaults
+      - list of dicts with ``label`` and optional ``unit_price``
+    """
     db = get_database()
+    from pydantic import BaseModel, Field
     room = db.room_types.find_one(
         {"prop_id": prop_id, "room_type_id": room_type_id},
         {"_id": 0, "name": 1},
@@ -258,18 +283,23 @@ def update_room_type_features(
     if room is None:
         return None
 
-    clean_features = []
+    clean_objects: list[dict[str, Any]] = []
     seen: set[str] = set()
     for feat in features:
-        label = clean_text(feat)
+        if isinstance(feat, dict):
+            label = clean_text(str(feat.get("label", "")))
+            unit_price = float(feat.get("unit_price", 0) or 0)
+        else:
+            label = clean_text(str(feat))
+            unit_price = _feature_unit_price(label)
         key = label.lower()
         if label and key not in seen:
             seen.add(key)
-            clean_features.append(label)
+            clean_objects.append({"label": label, "unit_price": unit_price})
 
     result = db.room_types.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": room_type_id},
-        {"$set": {"features": clean_features, "updated_at": now_utc()}},
+        {"$set": {"features": clean_objects, "updated_at": now_utc()}},
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
     )
@@ -280,9 +310,9 @@ def update_room_type_features(
         entity_type="room_type",
         entity_id=room_type_id,
         action="update",
-        summary=f"Características de '{room_name}' actualizadas: {len(clean_features)} atributos",
+        summary=f"Características de '{room_name}' actualizadas: {len(clean_objects)} atributos",
         changed_by=changed_by,
-        metadata={"features_count": len(clean_features)},
+        metadata={"features_count": len(clean_objects)},
     )
     return result
 
