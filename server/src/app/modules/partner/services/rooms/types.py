@@ -14,6 +14,7 @@ from src.app.modules.partner.services._common import (
     safe_positive_int,
     slugify,
 )
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
@@ -95,6 +96,7 @@ def create_room_type(
     is_active: Any = True,
     room_number: str = "",
     floor: str = "",
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -153,6 +155,15 @@ def create_room_type(
         upsert=True,
         return_document=ReturnDocument.AFTER,
     )
+    register_action(
+        prop_id=prop_id,
+        entity_type="room_type",
+        entity_id=room_type_id,
+        action="create",
+        summary=f"Tipo de habitación '{clean_name}' creado",
+        changed_by=changed_by,
+        metadata={"name": clean_name, "room_number": clean_room_number, "floor": clean_floor, "max_adults": max_adults_value},
+    )
     return document
 
 
@@ -168,6 +179,7 @@ def update_room_type(
     is_active: Any = True,
     room_number: str = "",
     floor: str = "",
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
     existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1})
@@ -210,10 +222,19 @@ def update_room_type(
             "updated_at": now_utc(),
         }},
     )
+    register_action(
+        prop_id=prop_id,
+        entity_type="room_type",
+        entity_id=room_type_id,
+        action="update",
+        summary=f"Tipo de habitación '{clean_name}' actualizado",
+        changed_by=changed_by,
+        metadata={"name": clean_name},
+    )
     return document
 
 
-def delete_room_type(room_type_id: str) -> dict[str, Any] | None:
+def delete_room_type(room_type_id: str, changed_by: str = "system") -> dict[str, Any] | None:
     db = get_database()
     existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1, "name": 1})
     if existing is None:
@@ -233,7 +254,17 @@ def delete_room_type(room_type_id: str) -> dict[str, Any] | None:
             f"tiene {active_bookings} reserva(s) activa(s) o futura(s)."
         )
 
+    room_name = existing.get("name", room_type_id)
     db.room_types.delete_one({"room_type_id": room_type_id})
     db.hotel_rooms.delete_many({"room_type_id": room_type_id})
     db.room_inventory_calendar.delete_many({"room_type_id": room_type_id})
+    register_action(
+        prop_id=prop_id,
+        entity_type="room_type",
+        entity_id=room_type_id,
+        action="delete",
+        summary=f"Tipo de habitación '{room_name}' eliminado",
+        changed_by=changed_by,
+        metadata={"name": room_name},
+    )
     return {"room_type_id": room_type_id, "prop_id": prop_id, "deleted": True}

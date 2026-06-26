@@ -91,14 +91,18 @@ def property_profile_api(prop_id: int):
 
 
 @api_router.put("/properties/{prop_id}/profile")
-def property_profile_update_api(prop_id: int, payload: dict = Body(...)):
+def property_profile_update_api(
+    prop_id: int,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     saved = save_partner_hotel_profile(
         prop_id,
         hotel_name=str(payload.get("hotel_name") or ""),
         display_name=str(payload.get("display_name") or ""),
         description=str(payload.get("description") or ""),
         display_country_label=str(payload.get("display_country_label") or ""),
-        changed_by=str(payload.get("changed_by") or "angular_api"),
+        changed_by=str(payload.get("changed_by") or current_user.get("username", "system")),
         reason=str(payload.get("reason") or "Actualización manual de perfil hotelero"),
     )
     if saved is None:

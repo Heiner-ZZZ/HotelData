@@ -86,7 +86,10 @@ def policies_options_api(
 
 
 @api_router.put("/policies")
-def policies_update_api(payload: dict = Body(...)):
+def policies_update_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = save_partner_hotel_policies(
@@ -108,7 +111,7 @@ def policies_update_api(payload: dict = Body(...)):
             extra_bed_fee=payload.get("extra_bed_fee"),
             min_stay=payload.get("min_stay"),
             max_stay=payload.get("max_stay"),
-            changed_by="angular_api",
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

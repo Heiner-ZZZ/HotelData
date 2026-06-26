@@ -85,7 +85,10 @@ def rooms_options_api(current_user: dict = Depends(require_login)):
 
 
 @api_router.post("/rooms", status_code=201)
-def rooms_create_api(payload: dict = Body(...)):
+def rooms_create_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = create_room_type(
@@ -98,6 +101,7 @@ def rooms_create_api(payload: dict = Body(...)):
             is_active=payload.get("is_active", True),
             room_number=str(payload.get("room_number") or ""),
             floor=str(payload.get("floor") or ""),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -107,7 +111,11 @@ def rooms_create_api(payload: dict = Body(...)):
 
 
 @api_router.put("/rooms/{room_type_id}")
-def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
+def rooms_update_api(
+    room_type_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     try:
         saved = update_room_type(
             room_type_id,
@@ -120,6 +128,7 @@ def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
             is_active=payload.get("is_active", True),
             room_number=str(payload.get("room_number") or ""),
             floor=str(payload.get("floor") or ""),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -129,9 +138,12 @@ def rooms_update_api(room_type_id: str, payload: dict = Body(...)):
 
 
 @api_router.delete("/rooms/{room_type_id}")
-def rooms_delete_api(room_type_id: str):
+def rooms_delete_api(
+    room_type_id: str,
+    current_user: dict = Depends(require_login),
+):
     try:
-        saved = delete_room_type(room_type_id)
+        saved = delete_room_type(room_type_id, changed_by=current_user.get("username", "system"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if saved is None:

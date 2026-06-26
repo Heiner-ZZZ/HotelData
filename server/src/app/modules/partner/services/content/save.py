@@ -5,6 +5,7 @@ from typing import Any
 from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, normalize_label, now_utc, register_content_change
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.content.amenities import _amenity_category
 from src.app.modules.partner.services.content.queries import content_page_for_prop
 from src.app.modules.partner.services.properties import partner_hotel_detail
@@ -39,6 +40,15 @@ def save_partner_hotel_content(
         projection={"_id": 0},
     )
     register_content_change(prop_id, "hotel_content_pages", "upsert", payload, changed_by=changed_by)
+    register_action(
+        prop_id=prop_id,
+        entity_type="content",
+        entity_id=f"page_{prop_id}",
+        action="update",
+        summary="Contenido de propiedad actualizado",
+        changed_by=changed_by,
+        metadata={"has_description": bool(description), "has_highlights": bool(highlights)},
+    )
     return document
 
 
@@ -97,6 +107,16 @@ def save_partner_hotel_amenities(
             projection={"_id": 0},
         )
     register_content_change(prop_id, "hotel_content_pages", "upsert_amenities", {"room_type_id": room_type_id, "count": len(clean_active)}, changed_by=changed_by)
+    scope = f" para tipo de habitación '{room_type_id}'" if room_type_id else ""
+    register_action(
+        prop_id=prop_id,
+        entity_type="amenity",
+        entity_id=f"amenities_{prop_id}{'_'+room_type_id if room_type_id else ''}",
+        action="update",
+        summary=f"Amenidades actualizadas{scope}: {len(clean_active)} activas",
+        changed_by=changed_by,
+        metadata={"room_type_id": room_type_id, "count": len(clean_active)},
+    )
     return document
 
 
@@ -228,6 +248,16 @@ def save_partner_hotel_policies(
         upsert=True,
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
+    )
+    scope = f" para tipo de habitación '{clean_room_type}'" if clean_room_type else ""
+    register_action(
+        prop_id=prop_id,
+        entity_type="policy",
+        entity_id=f"policies_{prop_id}{'_'+clean_room_type if clean_room_type else ''}",
+        action="update",
+        summary=f"Políticas actualizadas{scope}",
+        changed_by=changed_by,
+        metadata={"room_type_id": clean_room_type},
     )
     register_content_change(prop_id, "hotel_policies", "upsert", payload, changed_by=changed_by)
     return document

@@ -50,11 +50,13 @@ from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
 from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
+from src.app.modules.partner.services.audit import ensure_audit_indexes
 from src.app.modules.partner.services.bootstrap import (
     ensure_hotel_content_collections,
     ensure_hotel_profile_collections,
     ensure_inventory_collections,
     ensure_rate_collections,
+    ensure_room_features_collections,
 )
 from src.app.modules.revenue.services import ensure_revenue_collections
 from src.app.modules.reviews.service import ensure_reviews_collections
@@ -137,6 +139,8 @@ async def lifespan(app: FastAPI):
     ensure_housekeeping_collections()
     ensure_reservation_collections()
     ensure_auth_collections()
+    ensure_room_features_collections()
+    ensure_audit_indexes()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield
 

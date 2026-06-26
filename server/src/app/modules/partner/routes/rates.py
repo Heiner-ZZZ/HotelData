@@ -80,7 +80,10 @@ def rates_options_api(
 
 
 @api_router.post("/rates/plans", status_code=201)
-def rates_plan_create_api(payload: dict = Body(...)):
+def rates_plan_create_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = create_rate_plan(
@@ -91,6 +94,7 @@ def rates_plan_create_api(payload: dict = Body(...)):
             currency=str(payload.get("currency") or "USD"),
             room_type_id=str(payload.get("room_type_id") or ""),
             is_active=payload.get("is_active", True),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -100,7 +104,11 @@ def rates_plan_create_api(payload: dict = Body(...)):
 
 
 @api_router.put("/rates/plans/{plan_id}")
-def rates_plan_update_api(plan_id: str, payload: dict = Body(...)):
+def rates_plan_update_api(
+    plan_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     try:
         saved = update_rate_plan(
             plan_id,
@@ -110,6 +118,7 @@ def rates_plan_update_api(plan_id: str, payload: dict = Body(...)):
             currency=str(payload.get("currency") or "USD"),
             room_type_id=str(payload.get("room_type_id") or ""),
             is_active=payload.get("is_active", True),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -119,9 +128,12 @@ def rates_plan_update_api(plan_id: str, payload: dict = Body(...)):
 
 
 @api_router.delete("/rates/plans/{plan_id}")
-def rates_plan_delete_api(plan_id: str):
+def rates_plan_delete_api(
+    plan_id: str,
+    current_user: dict = Depends(require_login),
+):
     try:
-        result = delete_rate_plan(plan_id)
+        result = delete_rate_plan(plan_id, changed_by=current_user.get("username", "system"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if result is None:
@@ -184,7 +196,10 @@ def rates_seasonal_rule_delete_api(rule_id: str):
 
 
 @api_router.post("/rates/calendar")
-def rates_calendar_update_api(payload: dict = Body(...)):
+def rates_calendar_update_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = save_rate_calendar_entry(
@@ -194,6 +209,7 @@ def rates_calendar_update_api(payload: dict = Body(...)):
             rate_amount=payload.get("rate_amount"),
             min_stay_nights=payload.get("min_stay_nights"),
             is_closed=payload.get("is_closed", False),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -203,7 +219,10 @@ def rates_calendar_update_api(payload: dict = Body(...)):
 
 
 @api_router.post("/rates/calendar/batch")
-def rates_calendar_batch_api(payload: dict = Body(...)):
+def rates_calendar_batch_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     """Batch update rate calendar for a date range."""
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
@@ -216,6 +235,7 @@ def rates_calendar_batch_api(payload: dict = Body(...)):
             min_stay_nights=payload.get("min_stay_nights"),
             is_closed=payload.get("is_closed"),
             only_weekends=bool(payload.get("only_weekends", False)),
+            changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

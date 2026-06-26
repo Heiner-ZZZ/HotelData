@@ -16,6 +16,7 @@ from src.app.modules.partner.services._common import (
     safe_positive_int,
     slugify,
 )
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
@@ -71,6 +72,7 @@ def create_rate_plan(
     currency: str,
     room_type_id: str = "",
     is_active: Any = True,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -96,6 +98,15 @@ def create_rate_plan(
         "is_active": safe_bool(is_active),
         "updated_at": now_utc(),
     }
+    register_action(
+        prop_id=prop_id,
+        entity_type="rate_plan",
+        entity_id=rate_plan_id,
+        action="create",
+        summary=f"Plan tarifario '{clean_name}' creado — ${base_rate_value:.2f}",
+        changed_by=changed_by,
+        metadata={"name": clean_name, "base_rate": base_rate_value, "currency": payload.get("currency", "USD")},
+    )
     return db.rate_plans.find_one_and_update(
         {"rate_plan_id": rate_plan_id},
         {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
@@ -112,6 +123,7 @@ def update_rate_plan(
     currency: str,
     room_type_id: str = "",
     is_active: Any = True,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
     existing = db.rate_plans.find_one({"rate_plan_id": rate_plan_id}, {"_id": 0, "prop_id": 1})
@@ -132,6 +144,15 @@ def update_rate_plan(
         "is_active": safe_bool(is_active),
         "updated_at": now_utc(),
     }
+    register_action(
+        prop_id=prop_id,
+        entity_type="rate_plan",
+        entity_id=rate_plan_id,
+        action="update",
+        summary=f"Plan tarifario '{clean_name}' actualizado — ${payload.get('base_rate', 0):.2f}",
+        changed_by=changed_by,
+        metadata={"name": clean_name},
+    )
     return db.rate_plans.find_one_and_update(
         {"rate_plan_id": rate_plan_id},
         {"$set": payload},
@@ -139,7 +160,7 @@ def update_rate_plan(
     )
 
 
-def delete_rate_plan(rate_plan_id: str) -> dict[str, Any] | None:
+def delete_rate_plan(rate_plan_id: str, changed_by: str = "system") -> dict[str, Any] | None:
     db = get_database()
     existing = db.rate_plans.find_one(
         {"rate_plan_id": rate_plan_id},
@@ -162,9 +183,18 @@ def delete_rate_plan(rate_plan_id: str) -> dict[str, Any] | None:
             f"tiene {active_bookings} reserva(s) activa(s) o futura(s)."
         )
 
+    plan_name = existing.get("name", rate_plan_id)
     db.rate_plans.delete_one({"rate_plan_id": rate_plan_id})
     db.hotel_rate_calendar.delete_many({"rate_plan_id": rate_plan_id})
     db.rate_rules.delete_many({"rate_plan_id": rate_plan_id})
+    register_action(
+        prop_id=prop_id,
+        entity_type="rate_plan",
+        entity_id=rate_plan_id,
+        action="delete",
+        summary=f"Plan tarifario '{plan_name}' eliminado",
+        changed_by=changed_by,
+    )
     return {"rate_plan_id": rate_plan_id, "prop_id": prop_id, "deleted": True}
 
 

@@ -8,6 +8,7 @@ from typing import Any
 from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, now_utc, safe_bool, safe_positive_int
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 
@@ -20,6 +21,7 @@ def save_rate_calendar_entry(
     rate_amount: Any,
     min_stay_nights: Any,
     is_closed: Any = False,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -50,6 +52,17 @@ def save_rate_calendar_entry(
         "is_closed": safe_bool(is_closed),
         "updated_at": now_utc(),
     }
+    plan_doc = db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_rate_plan_id}, {"_id": 0, "name": 1})
+    plan_name = plan_doc.get("name", clean_rate_plan_id) if plan_doc else clean_rate_plan_id
+    register_action(
+        prop_id=prop_id,
+        entity_type="rate_calendar",
+        entity_id=f"{clean_rate_plan_id}_{clean_date}",
+        action="update",
+        summary=f"Tarifa '{plan_name}' para {clean_date}: ${rate_amount_value:.2f}",
+        changed_by=changed_by,
+        metadata={"rate_plan_id": clean_rate_plan_id, "date": clean_date, "rate_amount": rate_amount_value},
+    )
     return db.hotel_rate_calendar.find_one_and_update(
         {"prop_id": prop_id, "rate_plan_id": clean_rate_plan_id, "date": clean_date},
         {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
@@ -67,6 +80,7 @@ def batch_update_rate_calendar(
     min_stay_nights: Any | None = None,
     is_closed: Any | None = None,
     only_weekends: bool = False,
+    changed_by: str = "system",
 ) -> dict[str, Any]:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -127,4 +141,15 @@ def batch_update_rate_calendar(
         affected += 1
         cur += timedelta(days=1)
 
+    plan_doc = db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_plan_id}, {"_id": 0, "name": 1})
+    plan_name = plan_doc.get("name", clean_plan_id) if plan_doc else clean_plan_id
+    register_action(
+        prop_id=prop_id,
+        entity_type="rate_calendar",
+        entity_id=f"{clean_plan_id}_batch_{clean_start}_{clean_end}",
+        action="batch_update",
+        summary=f"Actualización masiva de tarifas '{plan_name}': {affected} días ({clean_start} → {clean_end})",
+        changed_by=changed_by,
+        metadata={"rate_plan_id": clean_plan_id, "start_date": clean_start, "end_date": clean_end, "affected_days": affected, "rate_amount": round(rate_value, 2)},
+    )
     return {"affected_days": affected, "start_date": clean_start, "end_date": clean_end, "rate_plan_id": clean_plan_id}

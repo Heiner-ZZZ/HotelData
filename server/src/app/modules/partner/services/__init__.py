@@ -91,6 +91,9 @@ from src.app.modules.partner.services.rooms import (
     save_inventory_entry,
     soft_delete_inventory_entry,
     update_room_type,
+    get_all_features,
+    get_room_type_features,
+    update_room_type_features,
 )
 
 
@@ -135,4 +138,7 @@ __all__ = [
     "save_partner_hotel_policies",
     "save_partner_hotel_profile",
     "save_rate_calendar_entry",
+    "get_all_features",
+    "get_room_type_features",
+    "update_room_type_features",
 ]

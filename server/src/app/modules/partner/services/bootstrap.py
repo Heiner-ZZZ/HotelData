@@ -17,6 +17,7 @@ import logging
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
 from src.app.modules.partner.schemas import ModuleStatus
+from src.app.modules.partner.services.audit import ensure_audit_indexes
 from src.database.collections import ensure_collection, drop_index_safe
 
 logger = logging.getLogger(__name__)
@@ -105,11 +106,31 @@ PROFILE_COLLECTIONS: dict[str, list[IndexModel]] = {
     ],
 }
 
+AUDIT_INDEXES = [
+    IndexModel([("timestamp", DESCENDING)], name="timestamp_-1"),
+    IndexModel([("prop_id", ASCENDING), ("timestamp", DESCENDING)], name="prop_id_1_timestamp_-1"),
+    IndexModel([("entity_type", ASCENDING), ("timestamp", DESCENDING)], name="entity_type_1_timestamp_-1"),
+]
+
 DIM_HOTELS_INDEXES = [
     IndexModel([("prop_id", ASCENDING)], name="prop_id_1", unique=True),
     IndexModel([("display_name", ASCENDING)], name="display_name_1"),
     IndexModel([("manual_override", ASCENDING)], name="manual_override_1"),
 ]
+
+
+# ── Room features collection ──
+ROOM_FEATURES_COLLECTIONS: dict[str, list[IndexModel]] = {
+    "room_features": [
+        IndexModel([("label", ASCENDING)], name="label_1", unique=True),
+        IndexModel([("category", ASCENDING)], name="category_1"),
+    ],
+}
+
+
+def ensure_room_features_collections() -> dict[str, list[str]]:
+    reports = [_ensure_with_report(name, idxs) for name, idxs in ROOM_FEATURES_COLLECTIONS.items()]
+    return _merge_reports(reports)
 
 
 def module_status() -> ModuleStatus:

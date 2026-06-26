@@ -8,6 +8,7 @@ from typing import Any
 from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, now_utc, safe_positive_int
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.app.modules.partner.services.rooms.availability import _availability_blocks_for_prop, _blackout_blocks_for_prop
 from src.app.modules.partner.services.rooms.types import _room_types_for_prop
@@ -64,6 +65,7 @@ def save_inventory_entry(
     available_rooms: Any,
     blocked_rooms: Any,
     expected_version: int | None = None,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -128,6 +130,19 @@ def save_inventory_entry(
         "available_rooms": available_value, "blocked_rooms": blocked_value,
         "version": 1, "updated_at": now,
     }
+    room_name = ""
+    room_doc = db.room_types.find_one({"prop_id": prop_id, "room_type_id": clean_room_type_id}, {"_id": 0, "name": 1})
+    if room_doc:
+        room_name = room_doc.get("name", "")
+    register_action(
+        prop_id=prop_id,
+        entity_type="inventory_entry",
+        entity_id=f"{clean_room_type_id}_{clean_date}",
+        action="create" if db.room_inventory_calendar.count_documents({"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date}) <= 1 else "update",
+        summary=f"Inventario '{room_name}' para {clean_date}: {total_value} total, {available_value} disponibles",
+        changed_by=changed_by,
+        metadata={"room_type_id": clean_room_type_id, "date": clean_date, "total_rooms": total_value, "available_rooms": available_value},
+    )
     return db.room_inventory_calendar.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date},
         {"$set": payload, "$setOnInsert": {"created_at": now}},
@@ -135,7 +150,7 @@ def save_inventory_entry(
     )
 
 
-def soft_delete_inventory_entry(prop_id: int, *, room_type_id: str, date: str) -> dict[str, Any] | None:
+def soft_delete_inventory_entry(prop_id: int, *, room_type_id: str, date: str, changed_by: str = "system") -> dict[str, Any] | None:
     """Soft-delete an inventory entry by setting is_deleted=True."""
     db = get_database()
     now = now_utc()
@@ -143,6 +158,18 @@ def soft_delete_inventory_entry(prop_id: int, *, room_type_id: str, date: str) -
         {"prop_id": prop_id, "room_type_id": room_type_id, "date": date},
         {"$set": {"is_deleted": True, "deleted_at": now}},
         return_document=ReturnDocument.AFTER, projection={"_id": 0},
+    )
+    room_name = ""
+    room_doc = db.room_types.find_one({"prop_id": prop_id, "room_type_id": room_type_id}, {"_id": 0, "name": 1})
+    if room_doc:
+        room_name = room_doc.get("name", "")
+    register_action(
+        prop_id=prop_id,
+        entity_type="inventory_entry",
+        entity_id=f"{room_type_id}_{date}",
+        action="soft_delete",
+        summary=f"Inventario '{room_name}' del {date} eliminado (borrado lógico)",
+        changed_by=changed_by,
     )
     return result
 

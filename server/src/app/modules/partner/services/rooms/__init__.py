@@ -25,6 +25,12 @@ from .availability import (
 from .queries import (
     partner_hotel_rooms,
 )
+from .features import (
+    add_custom_feature,
+    get_all_features,
+    get_room_type_features,
+    update_room_type_features,
+)
 
 __all__ = [
     "partner_hotel_rooms",
@@ -37,4 +43,8 @@ __all__ = [
     "create_blackout_block",
     "delete_blackout_block",
     "list_property_blackouts",
+    "add_custom_feature",
+    "get_all_features",
+    "get_room_type_features",
+    "update_room_type_features",
 ]

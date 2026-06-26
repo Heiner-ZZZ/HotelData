@@ -129,7 +129,7 @@ def availability_options_api(
     return response
 
 
-def _availability_update(payload: dict):
+def _availability_update(payload: dict, changed_by: str = "system"):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
         saved = save_inventory_entry(
@@ -140,6 +140,7 @@ def _availability_update(payload: dict):
             available_rooms=payload.get("available_rooms"),
             blocked_rooms=payload.get("blocked_rooms"),
             expected_version=payload.get("version") or None,
+            changed_by=changed_by,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -149,14 +150,20 @@ def _availability_update(payload: dict):
 
 
 @api_router.post("/availability")
-def availability_update_api(payload: dict = Body(...)):
-    return _availability_update(payload)
+def availability_update_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    return _availability_update(payload, changed_by=current_user.get("username", "system"))
 
 
 @api_router.patch("/availability")
-def availability_patch_api(payload: dict = Body(...)):
+def availability_patch_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     """Partial update of inventory (used by Angular frontend)."""
-    return _availability_update(payload)
+    return _availability_update(payload, changed_by=current_user.get("username", "system"))
 
 
 @api_router.get("/availability/blackouts")
@@ -192,10 +199,11 @@ def availability_inventory_delete_api(
     prop_id: int = Query(..., ge=1),
     room_type_id: str = Query(...),
     date: str = Query(...),
+    current_user: dict = Depends(require_login),
 ):
     """Soft-delete an inventory entry."""
     try:
-        result = soft_delete_inventory_entry(prop_id, room_type_id=room_type_id, date=date)
+        result = soft_delete_inventory_entry(prop_id, room_type_id=room_type_id, date=date, changed_by=current_user.get("username", "system"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:

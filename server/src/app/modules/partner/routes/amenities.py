@@ -35,7 +35,10 @@ def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), curre
 
 
 @api_router.put("/amenities")
-def amenities_update_api(payload: dict = Body(...)):
+def amenities_update_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     active_amenities = payload.get("active_amenities") or []
     if not isinstance(active_amenities, list):
@@ -46,7 +49,7 @@ def amenities_update_api(payload: dict = Body(...)):
         active_amenities=[str(item) for item in active_amenities],
         amenities_text=str(payload.get("amenities_text") or ""),
         room_type_id=room_type_id,
-        changed_by="angular_api",
+        changed_by=current_user.get("username", "system"),
     )
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
