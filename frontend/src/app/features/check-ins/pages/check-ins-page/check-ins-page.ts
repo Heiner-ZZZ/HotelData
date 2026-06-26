@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -28,7 +29,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-ins-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [DatePipe, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-ins-page.html',
   styleUrl: './check-ins-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -37,6 +38,11 @@ export class CheckInsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckInsApiService);
+  private readonly formBuilder = inject(FormBuilder);
+
+  readonly dateForm = this.formBuilder.nonNullable.group({
+    operationDate: [todayIso(), Validators.required],
+  });
 
   // ── Route params as signals ──
   private readonly routeParams = toSignal(
