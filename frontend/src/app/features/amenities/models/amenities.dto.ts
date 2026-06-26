@@ -16,6 +16,7 @@ export interface AmenitiesDto {
       items: Array<{
         label: string;
         active: boolean;
+        unit_price?: number;
       }>;
     }>;
   };

@@ -6,6 +6,7 @@ export interface AmenitiesPropertyOption {
 export interface AmenityItemViewModel {
   label: string;
   active: boolean;
+  unitPrice?: number;
 }
 
 export interface AmenityCategoryViewModel {

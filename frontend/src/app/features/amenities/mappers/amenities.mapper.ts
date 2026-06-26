@@ -43,7 +43,8 @@ export function mapAmenityCategory(item: AmenitiesDto['amenities']['catalog'][nu
     category: item.category,
     items: item.items.map((entry) => ({
       label: entry.label,
-      active: entry.active
+      active: entry.active,
+      unitPrice: typeof entry.unit_price === 'number' ? entry.unit_price : 0,
     }))
   };
 }

@@ -24,6 +24,9 @@
               }
             }
           </span>
+          @if (item.unitPrice && item.unitPrice > 0) {
+            <span class="amenity-price">+${{ item.unitPrice }}</span>
+          }
         </label>
       }
     </div>
