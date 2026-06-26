@@ -17,7 +17,15 @@ export interface HotelDetailViewModel {
   topVisitorCountries: Array<{ id: number; label: string; events: number; reservations: number }>;
   topSites: Array<{ id: number; label: string; events: number; clicks: number; reservations: number }>;
   hotelRates: Array<{ date: string; plan: string; amountLabel: string; minStayLabel: string }>;
-  roomTypes: Array<{ id: string; name: string; capacityLabel: string; statusLabel: string }>;
+  hotelRooms: Array<{
+    hotelRoomId: string;
+    roomNumber: string;
+    roomLabel: string;
+    roomTypeId: string;
+    floor: string;
+    isActive: boolean;
+  }>;
+  roomTypes: Array<{ id: string; name: string; capacityLabel: string; statusLabel: string; description: string; features: string[] }>;
   policies: Array<{ label: string; value: string }>;
   cancellationPolicy: string;
   galleryImages: string[];

@@ -37,6 +37,14 @@ export interface HotelDetailDto {
     rate_amount_label: string;
     min_stay_nights: number | null;
   }>;
+  hotel_rooms?: Array<{
+    hotel_room_id: string;
+    room_number?: string;
+    room_label: string;
+    room_type_id: string;
+    floor?: string;
+    is_active: boolean;
+  }>;
   room_types: Array<{
     room_type_id: string;
     name: string;
@@ -44,6 +52,8 @@ export interface HotelDetailDto {
     max_adults: number | null;
     max_children: number | null;
     is_active: boolean;
+    description?: string;
+    features?: string[];
   }>;
   hotel_policies: {
     check_in_time?: string | null;

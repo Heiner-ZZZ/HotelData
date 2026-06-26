@@ -55,11 +55,21 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       amountLabel: item.rate_amount_label,
       minStayLabel: displayValue(item.min_stay_nights)
     })),
+    hotelRooms: (dto.hotel_rooms || []).map((item) => ({
+      hotelRoomId: item.hotel_room_id,
+      roomNumber: item.room_number || '',
+      roomLabel: item.room_label,
+      roomTypeId: item.room_type_id,
+      floor: item.floor || '',
+      isActive: item.is_active,
+    })),
     roomTypes: dto.room_types.map((item) => ({
       id: item.room_type_id,
       name: item.name,
       capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
-      statusLabel: item.is_active ? 'Activa' : 'Inactiva'
+      statusLabel: item.is_active ? 'Activa' : 'Inactiva',
+      description: item.description || '',
+      features: item.features || [],
     })),
     policies: dto.hotel_policies
       ? [

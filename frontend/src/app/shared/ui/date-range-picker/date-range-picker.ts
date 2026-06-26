@@ -1,5 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, EventEmitter, input, output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 
 interface CalendarDay {
   date: Date;
@@ -12,11 +18,12 @@ interface CalendarDay {
   isStart: boolean;
   isEnd: boolean;
   isInRange: boolean;
+  isSameStartEnd: boolean;
 }
 
 @Component({
   selector: 'app-date-range-picker',
-  imports: [FormsModule],
+  imports: [],
   templateUrl: './date-range-picker.html',
   styleUrl: './date-range-picker.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,6 +34,8 @@ export class DateRangePickerComponent {
   readonly endDate = input<string>('');
   readonly startChange = output<string>();
   readonly endChange = output<string>();
+
+  readonly isOpen = signal(false);
 
   readonly currentMonth = signal(new Date().getMonth());
   readonly currentYear = signal(new Date().getFullYear());
@@ -39,12 +48,30 @@ export class DateRangePickerComponent {
 
   readonly dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+  readonly dateLabel = computed(() => {
+    const s = this.startDate();
+    const e = this.endDate();
+    if (!s && !e) return 'Seleccionar fechas';
+    if (s && !e) return this._formatDisplay(s) + ' — ?';
+    if (s && e) {
+      if (s === e) return this._formatDisplay(s) + ' (misma fecha)';
+      return this._formatDisplay(s) + ' — ' + this._formatDisplay(e);
+    }
+    return 'Seleccionar fechas';
+  });
+
+  private _formatDisplay(dateStr: string): string {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
   readonly calendarDays = computed(() => {
     const month = this.currentMonth();
     const year = this.currentYear();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
+    const startOffset = (firstDay.getDay() + 6) % 7;
     const totalDays = lastDay.getDate();
 
     const today = new Date();
@@ -56,7 +83,6 @@ export class DateRangePickerComponent {
 
     const days: CalendarDay[] = [];
 
-    // Previous month days
     const prevMonth = new Date(year, month, 0);
     for (let i = startOffset - 1; i >= 0; i--) {
       const d = prevMonth.getDate() - i;
@@ -64,13 +90,11 @@ export class DateRangePickerComponent {
       days.push(this._makeDay(date, false, today, minD, startD, endD));
     }
 
-    // Current month days
     for (let d = 1; d <= totalDays; d++) {
       const date = new Date(year, month, d);
       days.push(this._makeDay(date, true, today, minD, startD, endD));
     }
 
-    // Next month days
     const remaining = 42 - days.length;
     for (let d = 1; d <= remaining; d++) {
       const date = new Date(year, month + 1, d);
@@ -92,7 +116,8 @@ export class DateRangePickerComponent {
     const isDisabled = minD ? date < minD : false;
     const isStart = startD ? date.getTime() === startD.getTime() : false;
     const isEnd = endD ? date.getTime() === endD.getTime() : false;
-    const isInRange = startD && endD ? date > startD && date < endD : false;
+    const isSameStartEnd = isStart && isEnd;
+    const isInRange = startD && endD && !isSameStartEnd ? date > startD && date < endD : false;
 
     return {
       date,
@@ -105,6 +130,7 @@ export class DateRangePickerComponent {
       isStart,
       isEnd,
       isInRange,
+      isSameStartEnd,
     };
   }
 
@@ -128,26 +154,33 @@ export class DateRangePickerComponent {
     }
   }
 
+  toggleOpen(): void {
+    this.isOpen.update(v => !v);
+  }
+
+  close(): void {
+    this.isOpen.set(false);
+  }
+
   selectDay(day: CalendarDay): void {
     if (day.isDisabled) return;
 
     const dateStr = this._formatDate(day.date);
 
     if (!this.selectingEnd() || !this.startDate()) {
-      // Start selection
       this.startChange.emit(dateStr);
       this.endChange.emit('');
       this.selectingEnd.set(true);
     } else {
-      // End selection
       const startD = new Date(this.startDate() + 'T00:00:00');
       if (day.date < startD) {
-        // If end is before start, swap
         this.startChange.emit(dateStr);
         this.endChange.emit('');
+        this.selectingEnd.set(true);
       } else {
         this.endChange.emit(dateStr);
         this.selectingEnd.set(false);
+        this.close();
       }
     }
   }
