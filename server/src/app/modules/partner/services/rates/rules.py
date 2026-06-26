@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date as date_type, timedelta
 from typing import Any
 
+from pymongo import ReturnDocument
+
 from src.app.modules.partner.services._common import clean_text, iso_label, now_utc, safe_bool, safe_positive_int, slugify
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
@@ -30,6 +32,8 @@ def create_seasonal_rule(
 
     if not clean_name or not clean_start or not clean_end or not clean_plan_id:
         raise ValueError("Debe indicar nombre, fechas y plan tarifario.")
+    if clean_start > clean_end:
+        raise ValueError("La fecha de inicio no puede ser mayor a la fecha de fin.")
     if db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_plan_id}, {"_id": 1}) is None:
         raise ValueError("El rate_plan_id no existe para este hotel.")
     try:
@@ -50,6 +54,50 @@ def create_seasonal_rule(
         {"rule_id": rule_id},
         {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
         upsert=True, return_document=ReturnDocument.AFTER, projection={"_id": 0},
+    )
+
+
+def update_seasonal_rule(
+    rule_id: str,
+    *,
+    rate_plan_id: str,
+    name: str,
+    start_date: str,
+    end_date: str,
+    price_override: Any,
+) -> dict[str, Any] | None:
+    db = get_database()
+    existing = db.rate_rules.find_one({"rule_id": rule_id}, {"_id": 0, "prop_id": 1})
+    if existing is None:
+        return None
+    prop_id = existing["prop_id"]
+    clean_name = clean_text(name)
+    clean_start = clean_text(start_date)
+    clean_end = clean_text(end_date)
+    clean_plan_id = clean_text(rate_plan_id)
+
+    if not clean_name or not clean_start or not clean_end or not clean_plan_id:
+        raise ValueError("Debe indicar nombre, fechas y plan tarifario.")
+    if clean_start > clean_end:
+        raise ValueError("La fecha de inicio no puede ser mayor a la fecha de fin.")
+    if db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_plan_id}, {"_id": 1}) is None:
+        raise ValueError("El rate_plan_id no existe para este hotel.")
+    try:
+        override_value = round(float(price_override or 0), 2)
+        if override_value <= 0:
+            raise ValueError("price_override debe ser mayor que 0.")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(str(exc) if "price_override" in str(exc) else "Debe indicar un precio override válido.") from None
+
+    payload = {
+        "rate_plan_id": clean_plan_id, "name": clean_name,
+        "start_date": clean_start, "end_date": clean_end,
+        "price_override": override_value, "updated_at": now_utc(),
+    }
+    return db.rate_rules.find_one_and_update(
+        {"rule_id": rule_id},
+        {"$set": payload},
+        return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
 
 

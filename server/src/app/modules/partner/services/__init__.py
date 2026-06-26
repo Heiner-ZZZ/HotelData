@@ -72,6 +72,7 @@ from src.app.modules.partner.services.rates import (
     create_seasonal_rule,
     delete_rate_plan,
     delete_seasonal_rule,
+    update_seasonal_rule,
     generate_calendar_from_rules,
     list_rate_plans_for_prop,
     list_seasonal_rules,

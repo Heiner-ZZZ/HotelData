@@ -40,6 +40,7 @@ def _validate_room_type(
     room_type_id: str | None = None,
     max_adults: Any = None,
     base_rate: Any = None,
+    room_number: str = "",
 ) -> str:
     """Validate room type business rules. Returns error message or empty string."""
     clean_name = clean_text(name)
@@ -70,6 +71,15 @@ def _validate_room_type(
     if existing is not None:
         return "Ya existe un tipo de habitación con ese nombre en esta propiedad."
 
+    clean_rn = clean_text(room_number)
+    if clean_rn:
+        rn_query: dict[str, Any] = {"prop_id": prop_id, "room_number": clean_rn}
+        if room_type_id:
+            rn_query["room_type_id"] = {"$ne": room_type_id}
+        dup = db.room_types.find_one(rn_query, {"_id": 1})
+        if dup is not None:
+            return f"El número de habitación '{clean_rn}' ya existe en esta propiedad."
+
     return ""
 
 
@@ -90,7 +100,8 @@ def create_room_type(
     if detail is None:
         return None
 
-    error = _validate_room_type(prop_id, name, max_adults=max_adults, base_rate=base_rate)
+    clean_room_number = clean_text(room_number)
+    error = _validate_room_type(prop_id, name, max_adults=max_adults, base_rate=base_rate, room_number=clean_room_number)
     if error:
         raise ValueError(error)
 
@@ -102,7 +113,6 @@ def create_room_type(
     base_capacity_value = safe_positive_int(base_capacity, max_adults_value or 1)
     base_rate_value = float(base_rate) if base_rate is not None and float(base_rate) > 0 else None
 
-    clean_room_number = clean_text(room_number)
     clean_floor = clean_text(floor)
     payload = {
         "room_type_id": room_type_id,
@@ -165,12 +175,12 @@ def update_room_type(
         return None
     prop_id = existing["prop_id"]
 
-    error = _validate_room_type(prop_id, name, room_type_id=room_type_id, max_adults=max_adults, base_rate=base_rate)
+    clean_room_number = clean_text(room_number)
+    error = _validate_room_type(prop_id, name, room_type_id=room_type_id, max_adults=max_adults, base_rate=base_rate, room_number=clean_room_number)
     if error:
         raise ValueError(error)
 
     clean_name = clean_text(name)
-    clean_room_number = clean_text(room_number)
     clean_floor = clean_text(floor)
     payload = {
         "name": clean_name,

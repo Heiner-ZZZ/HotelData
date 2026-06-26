@@ -7,7 +7,7 @@ from typing import Any
 
 from bson import ObjectId
 
-from bson import ReturnDocument
+from pymongo import ReturnDocument
 
 from src.database.connection import get_database
 from ..collections import MAINTENANCE_COLLECTION
