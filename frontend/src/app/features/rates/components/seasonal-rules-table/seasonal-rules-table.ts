@@ -4,6 +4,8 @@ export interface SeasonalRuleRow {
   ruleId: string;
   name: string;
   ratePlanId: string;
+  startDate: string;
+  endDate: string;
   rangeLabel: string;
   priceOverride: number;
 }
@@ -17,5 +19,6 @@ export interface SeasonalRuleRow {
 })
 export class SeasonalRulesTableComponent {
   readonly rules = input<SeasonalRuleRow[]>([]);
+  readonly editRule = output<SeasonalRuleRow>();
   readonly deleteRule = output<string>();
 }

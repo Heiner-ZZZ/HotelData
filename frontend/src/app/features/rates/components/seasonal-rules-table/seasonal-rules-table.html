@@ -17,6 +17,9 @@
           <td>{{ rule.rangeLabel }}</td>
           <td><strong>${{ rule.priceOverride }}</strong></td>
           <td>
+            <button type="button" class="edit-btn" (click)="editRule.emit(rule)" title="Editar regla">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
             <button type="button" class="delete-btn" (click)="deleteRule.emit(rule.ruleId)" title="Eliminar regla">
               <span class="material-symbols-outlined">delete</span>
             </button>
