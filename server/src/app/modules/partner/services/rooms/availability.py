@@ -226,5 +226,81 @@ def delete_blackout_block(blackout_id: str) -> dict[str, Any] | None:
     return {"blackout_id": blackout_id, "deleted": True, "prop_id": prop_id}
 
 
+def update_blackout_block(
+    blackout_id: str,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    reason: str | None = None,
+    blocked_rooms: Any = None,
+    room_numbers: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Update a blackout block. Only future blocks can be edited.
+    Reverses the original block effect, then applies the new one."""
+    from bson.objectid import ObjectId
+
+    db = get_database()
+    try:
+        obj_id = ObjectId(blackout_id)
+    except Exception:
+        raise ValueError("ID de bloqueo inválido.")
+
+    existing = db.blackout_dates.find_one({"_id": obj_id})
+    if existing is None:
+        return None
+
+    # Only allow editing future blocks
+    today = date_type.today().isoformat()
+    if existing.get("start_date", "") < today:
+        raise ValueError("No se puede editar un bloqueo cuya fecha ya comenzó.")
+
+    prop_id = existing["prop_id"]
+    room_type_id = existing["room_type_id"]
+    orig_blocked = existing.get("blocked_rooms", 0) or 0
+    orig_start = existing.get("start_date", "")
+    orig_end = existing.get("end_date", "")
+
+    new_start = start_date or orig_start
+    new_end = end_date or orig_end
+    new_reason = clean_text(reason) if reason is not None else existing.get("reason", "")
+    
+    if room_numbers is not None:
+        new_blocked = len(room_numbers)
+    elif blocked_rooms is not None:
+        new_blocked = safe_positive_int(blocked_rooms, 1)
+    else:
+        new_blocked = orig_blocked
+
+    if new_blocked < 1:
+        raise ValueError("Debe bloquear al menos 1 habitación.")
+
+    # 1. Reverse original block effect
+    if orig_blocked > 0 and orig_start and orig_end:
+        _apply_blackout_to_calendar(db, prop_id, room_type_id, orig_start, orig_end, orig_blocked, increment=-1)
+
+    # 2. Apply new block
+    _apply_blackout_to_calendar(db, prop_id, room_type_id, new_start, new_end, new_blocked, increment=1)
+
+    now = now_utc()
+    update_payload: dict[str, Any] = {
+        "start_date": new_start, "end_date": new_end,
+        "reason": new_reason, "blocked_rooms": new_blocked,
+        "room_numbers": room_numbers or [],
+        "updated_at": now,
+    }
+
+    db.blackout_dates.update_one({"_id": obj_id}, {"$set": update_payload})
+    db.room_availability_blocks.update_one(
+        {"prop_id": prop_id, "room_type_id": room_type_id,
+         "start_date": orig_start, "end_date": orig_end},
+        {"$set": update_payload},
+    )
+
+    updated = db.blackout_dates.find_one({"_id": obj_id}, {"_id": 0})
+    if updated:
+        updated["blackout_id"] = blackout_id
+    return updated
+
+
 def list_property_blackouts(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
     return _blackout_blocks_for_prop(prop_id, limit=limit)

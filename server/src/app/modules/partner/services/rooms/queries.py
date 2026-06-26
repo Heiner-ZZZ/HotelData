@@ -9,6 +9,19 @@ from src.app.modules.partner.services.rooms.types import _room_types_for_prop
 from src.database.connection import get_database
 
 
+def hotel_rooms_by_type(prop_id: int, room_type_id: str) -> list[dict[str, Any]]:
+    """Return individual hotel rooms for a specific room type."""
+    db = get_database()
+    items = list(
+        db.hotel_rooms.find(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "is_deleted": {"$ne": True}},
+            {"_id": 0},
+        )
+        .sort([("room_number", 1)])
+    )
+    return items
+
+
 def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]:
     db = get_database()
     items = list(

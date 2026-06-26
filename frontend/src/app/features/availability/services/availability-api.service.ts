@@ -84,4 +84,25 @@ export class AvailabilityApiService {
       withCredentials: true
     });
   }
+
+  /** Fetch individual hotel rooms for a room type (multi-select support) */
+  getHotelRooms(propId: number, roomTypeId: string) {
+    return this.http.get<{ items: Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; is_active: boolean }>; total: number }>(
+      `${this.apiConfig.baseUrl}/management/availability/hotel-rooms`,
+      { params: { prop_id: String(propId), room_type_id: roomTypeId }, withCredentials: true }
+    );
+  }
+
+  /** Update a future blackout block */
+  updateBlackout(blackoutId: string, payload: {
+    start_date?: string;
+    end_date?: string;
+    reason?: string;
+    room_numbers?: string[];
+    blocked_rooms?: number;
+  }) {
+    return this.http.put(`${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`, payload, {
+      withCredentials: true
+    });
+  }
 }

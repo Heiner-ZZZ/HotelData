@@ -17,6 +17,8 @@ from src.app.modules.partner.services import (
     save_inventory_entry,
     soft_delete_inventory_entry,
 )
+from src.app.modules.partner.services.rooms.queries import hotel_rooms_by_type
+from src.app.modules.partner.services.rooms.availability import update_blackout_block
 from src.app.security.dependencies import require_login
 
 
@@ -175,9 +177,25 @@ def availability_blackouts_list_api(
     return {"items": items, "total": len(items)}
 
 
+@api_router.get("/availability/hotel-rooms")
+def availability_hotel_rooms_api(
+    prop_id: int = Query(..., ge=1),
+    room_type_id: str = Query(...),
+):
+    """Return individual hotel rooms for a given room type (used by multi-select in frontend)."""
+    items = hotel_rooms_by_type(require_prop_id(prop_id), room_type_id)
+    return {"items": items, "total": len(items)}
+
+
 @api_router.post("/availability/blackouts")
 def availability_blackout_api(payload: dict = Body(...)):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    # Accept room_numbers array or blocked_rooms count
+    room_numbers = payload.get("room_numbers")
+    if room_numbers is not None and isinstance(room_numbers, list) and len(room_numbers) > 0:
+        blocked_rooms = len(room_numbers)
+    else:
+        blocked_rooms = payload.get("blocked_rooms")
     try:
         saved = create_blackout_block(
             prop_id,
@@ -185,12 +203,45 @@ def availability_blackout_api(payload: dict = Body(...)):
             start_date=str(payload.get("start_date") or ""),
             end_date=str(payload.get("end_date") or ""),
             reason=str(payload.get("reason") or ""),
-            blocked_rooms=payload.get("blocked_rooms"),
+            blocked_rooms=blocked_rooms,
         )
+        # Store room_numbers in the blackout record for future editing
+        if saved and room_numbers:
+            from src.database.connection import get_database as _get_db
+            _get_db().blackout_dates.update_one(
+                {"prop_id": prop_id, "room_type_id": saved.get("room_type_id"),
+                 "start_date": saved.get("start_date"), "end_date": saved.get("end_date")},
+                {"$set": {"room_numbers": room_numbers}},
+            )
+            saved["room_numbers"] = room_numbers
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.put("/availability/blackouts/{blackout_id}")
+def availability_blackout_update_api(
+    blackout_id: str,
+    payload: dict = Body(...),
+):
+    """Update a future blackout block (dates, reason, room numbers)."""
+    try:
+        room_numbers = payload.get("room_numbers")
+        blocked_rooms = len(room_numbers) if (room_numbers and isinstance(room_numbers, list)) else payload.get("blocked_rooms")
+        saved = update_blackout_block(
+            blackout_id,
+            start_date=str(payload.get("start_date")) if payload.get("start_date") else None,
+            end_date=str(payload.get("end_date")) if payload.get("end_date") else None,
+            reason=str(payload.get("reason")) if payload.get("reason") else None,
+            blocked_rooms=blocked_rooms,
+            room_numbers=room_numbers if (room_numbers and isinstance(room_numbers, list)) else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blackout not found")
     return saved
 
 
