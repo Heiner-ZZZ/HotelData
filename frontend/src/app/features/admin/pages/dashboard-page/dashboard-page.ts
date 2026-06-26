@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { toast } from '../../../../core/toast/toast.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -42,6 +43,25 @@ export class DashboardPageComponent {
 
   onRetry() {
     this.loadDashboard();
+  }
+
+  refreshKpis(): void {
+    this.dashboardApi
+      .refreshKpis()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          if (result.ok) {
+            toast(result.display_message, 'dark', 5000);
+            this.loadDashboard();
+          } else {
+            toast('No se pudieron actualizar los indicadores.', 'error', 5000);
+          }
+        },
+        error: (err: ApiError) => {
+          toast(err.message || 'Error al refrescar los indicadores del panel.', 'error', 5000);
+        },
+      });
   }
 
   private loadDashboard() {

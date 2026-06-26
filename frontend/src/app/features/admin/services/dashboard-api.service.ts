@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapDashboardResponse } from '../mappers/dashboard.mapper';
 import type { DashboardApiResponseDto, DashboardKpisResponseDto } from '../models/dashboard.dto';
 
@@ -18,7 +19,7 @@ export class DashboardApiService {
       .get<DashboardApiResponseDto>(`${this.apiConfig.baseUrl}/dashboard/overview`, {
         withCredentials: true
       })
-      .pipe(map((dto) => mapDashboardResponse(dto)));
+      .pipe(catchAuthError(), map((dto) => mapDashboardResponse(dto)));
   }
 
   getKpis() {
@@ -26,7 +27,7 @@ export class DashboardApiService {
       .get<DashboardKpisResponseDto>(`${this.apiConfig.baseUrl}/dashboard/kpis`, {
         withCredentials: true
       })
-      .pipe(map((dto) => dto.payload ? mapDashboardResponse(dto.payload) : null));
+      .pipe(catchAuthError(), map((dto) => dto.payload ? mapDashboardResponse(dto.payload) : null));
   }
 
   refreshKpis() {

@@ -3,6 +3,33 @@
   gap: 1.5rem;
 }
 
+.header-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-color, #1e293b);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+  white-space: nowrap;
+}
+
+.header-action-btn:hover {
+  background: var(--hover-bg, #f1f5f9);
+  border-color: var(--accent, #1463ff);
+}
+
+.header-action-btn .material-symbols-outlined {
+  font-size: 1.1rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

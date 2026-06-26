@@ -3,7 +3,12 @@
     eyebrow="Vision ejecutiva"
     title="HotelData Dashboard"
     description="Panel administrativo con métricas operativas del sistema."
-  />
+  >
+    <button type="button" class="header-action-btn" (click)="refreshKpis()" slot="actions">
+      <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+      Refrescar KPIs
+    </button>
+  </app-page-header>
 
   @switch (viewState()) {
     @case ('loading') {
