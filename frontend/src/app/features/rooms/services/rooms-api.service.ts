@@ -59,6 +59,8 @@ export class RoomsApiService {
     baseCapacity: number;
     baseRate?: number;
     isActive: boolean;
+    roomNumber?: string;
+    floor?: string;
   }) {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
@@ -70,6 +72,8 @@ export class RoomsApiService {
         base_capacity: payload.baseCapacity,
         base_rate: payload.baseRate,
         is_active: payload.isActive,
+        room_number: payload.roomNumber || '',
+        floor: payload.floor || '',
       },
       { withCredentials: true }
     );

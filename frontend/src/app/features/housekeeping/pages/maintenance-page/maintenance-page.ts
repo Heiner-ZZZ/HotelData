@@ -12,7 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { HousekeepingApiService, type MaintenanceTaskItem, type PaginatedResponse, type RoomStatusItem } from '../../services/housekeeping-api.service';
+import { HousekeepingApiService, type MaintenanceTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -46,6 +46,7 @@ export class MaintenancePageComponent {
   readonly selectedLabel = signal('');
   readonly roomLabels = signal<string[]>([]);
   readonly showCreateForm = signal(false);
+  readonly editingId = signal<string | null>(null);
 
   readonly statusFilter = signal<string>('');
   readonly createForm = this.formBuilder.nonNullable.group({
@@ -67,9 +68,10 @@ export class MaintenancePageComponent {
           page: Number(params.get('page') ?? '1'),
           status: params.get('status') ?? '',
           propId: Number(params.get('prop_id') ?? '0'),
+          propLabel: params.get('prop_label') ?? '',
         })),
         distinctUntilChanged((a, b) => a.page === b.page && a.status === b.status && a.propId === b.propId),
-        switchMap(({ page, status, propId }) => {
+        switchMap(({ page, status, propId, propLabel }) => {
           this.viewState.set('loading');
           this.statusFilter.set(status);
           this.selectedPropId.set(propId);
@@ -78,12 +80,15 @@ export class MaintenancePageComponent {
             this.roomLabels.set([]);
             return this.api.getMaintenance(undefined, status || undefined, page);
           }
-          this.propertyCtx.setProperty(propId, `Propiedad #${propId}`);
+          const label = propLabel || this.propertyCtx.currentPropLabel() || `Propiedad #${propId}`;
+          this.selectedLabel.set(label);
+          this.propertyCtx.setProperty(propId, label);
           return this.api.syncRoomStatus(propId).pipe(
             switchMap(() => this.api.getRoomStatus(propId, undefined, 1)),
             switchMap((roomData) => {
               this.roomLabels.set(roomData.items.map(r => r.roomLabel));
-              this.propertyCtx.setProperty(propId, `Propiedad #${propId}`);
+              this.selectedLabel.set(label);
+              this.propertyCtx.setProperty(propId, label);
               return this.api.getMaintenance(propId, status || undefined, page);
             }),
           );
@@ -116,6 +121,7 @@ export class MaintenancePageComponent {
 
   toggleCreateForm(): void {
     this.showCreateForm.update((v) => !v);
+    this.editingId.set(null);
     if (this.showCreateForm()) {
       this.createForm.reset({ roomLabel: '', taskType: 'preventive', title: '', description: '', priority: 'normal', scheduledDate: todayIso() });
     }
@@ -123,39 +129,70 @@ export class MaintenancePageComponent {
 
   onPropSelected(event: { propId: number; label: string }): void {
     if (!event.propId) this.propertyCtx.clear();
-    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.selectedLabel.set(label);
+    this.propertyCtx.setProperty(event.propId, label);
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: event.propId || null },
+      queryParams: { prop_id: event.propId || null, prop_label: label || null },
     });
+  }
+
+  startEdit(item: MaintenanceTaskItem): void {
+    this.editingId.set(item.id);
+    this.showCreateForm.set(true);
+    this.createForm.setValue({
+      roomLabel: item.roomLabel,
+      taskType: item.taskType,
+      title: item.title,
+      description: item.description || '',
+      priority: item.priority,
+      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : todayIso(),
+    });
+  }
+
+  cancelForm(): void {
+    this.showCreateForm.set(false);
+    this.editingId.set(null);
   }
 
   submitTask(): void {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
-    this.api
-      .createMaintenance({
-        prop_id: this.selectedPropId() || 0,
-        room_label: val.roomLabel,
-        task_type: val.taskType,
-        title: val.title,
-        description: val.description || undefined,
-        priority: val.priority,
-        scheduled_date: val.scheduledDate || undefined,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.message.set('Mantenimiento programado exitosamente');
-          this.errorMessage.set('');
-          this.showCreateForm.set(false);
-          this.refresh();
-        },
-        error: (err) => {
-          this.errorMessage.set(err.message || 'Error al programar mantenimiento');
-          this.message.set('');
-        },
-      });
+    const editId = this.editingId();
+    const obs = editId
+      ? this.api.updateMaintenance(editId, {
+          prop_id: this.selectedPropId() || 0,
+          room_label: val.roomLabel,
+          task_type: val.taskType,
+          title: val.title,
+          description: val.description || undefined,
+          priority: val.priority,
+          scheduled_date: val.scheduledDate || undefined,
+        })
+      : this.api.createMaintenance({
+          prop_id: this.selectedPropId() || 0,
+          room_label: val.roomLabel,
+          task_type: val.taskType,
+          title: val.title,
+          description: val.description || undefined,
+          priority: val.priority,
+          scheduled_date: val.scheduledDate || undefined,
+        });
+
+    obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.message.set(editId ? 'Mantenimiento actualizado' : 'Mantenimiento programado exitosamente');
+        this.errorMessage.set('');
+        this.showCreateForm.set(false);
+        this.editingId.set(null);
+        this.refresh();
+      },
+      error: (err) => {
+        this.errorMessage.set(err.message || 'Error al programar mantenimiento');
+        this.message.set('');
+      },
+    });
   }
 
   completeTask(taskId: string): void {

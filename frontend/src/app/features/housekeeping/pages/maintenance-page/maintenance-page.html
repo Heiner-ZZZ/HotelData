@@ -40,8 +40,8 @@
 
     @if (showCreateForm()) {
       <section class="surface-card form-card">
-        <h3>Programar mantenimiento</h3>
-        <form [formGroup]="createForm" (submit)="submitTask(); $event.preventDefault()" class="task-form">
+        <h3>{{ editingId() ? 'Editar mantenimiento' : 'Programar mantenimiento' }}</h3>
+        <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitTask()" class="task-form">
           <div class="form-row">
             <div class="form-group">
               <label for="roomLabel">Habitación/Área *</label>
@@ -83,10 +83,18 @@
             <label for="description">Descripción</label>
             <textarea id="description" formControlName="description" rows="2" placeholder="Detalles del mantenimiento..."></textarea>
           </div>
-          <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
-            <span class="material-symbols-outlined">build</span>
-            Programar
-          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+              <span class="material-symbols-outlined">build</span>
+              {{ editingId() ? 'Guardar cambios' : 'Programar' }}
+            </button>
+            @if (editingId()) {
+              <button type="button" class="btn-primary" style="background: var(--muted-text);" (click)="cancelForm()">
+                <span class="material-symbols-outlined">close</span>
+                Cancelar
+              </button>
+            }
+          </div>
         </form>
       </section>
     }
@@ -163,6 +171,9 @@
                       <td class="cell-time">{{ item.scheduledDate | slice:0:10 }}</td>
                       <td class="cell-action">
                         @if (item.status !== 'completed') {
+                          <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
+                            <span class="material-symbols-outlined">edit</span>
+                          </button>
                           <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
                             <span class="material-symbols-outlined">check</span>
                           </button>
