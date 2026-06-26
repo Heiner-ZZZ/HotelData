@@ -1,0 +1,270 @@
+<div class="audit-log-page">
+  <app-page-header
+    eyebrow="Sistema"
+    title="Registro de Auditoría"
+    description="Historial centralizado de todas las acciones CRUD en el sistema — habitaciones, inventario, tarifas, políticas, amenidades y contenido."
+  />
+
+  @if (viewState() !== 'loading' && viewState() !== 'error') {
+    <form [formGroup]="filterForm" (ngSubmit)="applyFilters()" class="filters-bar">
+      <div class="filter-field">
+        <label>Entidad</label>
+        <select formControlName="entityType">
+          <option value="">Todas</option>
+          @for (et of filterOptions().entity_types; track et) {
+            <option [value]="et">{{ getEntityLabel(et) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Acción</label>
+        <select formControlName="action">
+          <option value="">Todas</option>
+          @for (a of filterOptions().actions; track a) {
+            <option [value]="a">{{ getActionLabel(a) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Propiedad ID</label>
+        <input type="number" min="0" formControlName="propId" placeholder="0 = todas" />
+      </div>
+      <div class="filter-field">
+        <label>Desde</label>
+        <input type="date" formControlName="fromDate" />
+      </div>
+      <div class="filter-field">
+        <label>Hasta</label>
+        <input type="date" formControlName="toDate" />
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary btn-sm">
+          <span class="material-symbols-outlined">search</span>
+          Filtrar
+        </button>
+        <button type="button" class="btn-ghost btn-sm" (click)="clearFilters()">
+          <span class="material-symbols-outlined">clear</span>
+          Limpiar
+        </button>
+      </div>
+    </form>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando registro de auditoría..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar auditoría"
+        description="No se pudieron obtener los registros. Verifica la conexión con la API."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        icon="history"
+        title="Sin registros de auditoría"
+        description="No hay acciones registradas todavía o los filtros no produjeron resultados."
+      />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">history_toggle_off</span>
+              <div>
+                <h2>Línea de tiempo de acciones</h2>
+                <p>{{ d.total }} registro(s) &middot; Página {{ d.page }} de {{ d.pages || 1 }}</p>
+              </div>
+            </div>
+            <button type="button" class="btn-ghost btn-sm" (click)="exportPdf()" [disabled]="exportingPdf()">
+              @if (exportingPdf()) {
+                <span class="material-symbols-outlined spinning">sync</span>
+                Generando...
+              } @else {
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+                Exportar Auditoría
+              }
+            </button>
+          </div>
+
+          @if (d.items.length) {
+            <div class="timeline">
+              @for (entry of d.items; track entry.timestamp + entry.entity_id) {
+                <div class="timeline-entry" (click)="openDetail(entry)">
+                  <div class="timeline-marker" [style.--marker-color]="getActionColor(entry.action)">
+                    <span class="material-symbols-outlined">{{ getActionIcon(entry.action) }}</span>
+                  </div>
+                  <div class="timeline-body">
+                    <div class="timeline-head">
+                      <span class="entity-badge" [class]="'entity-' + entry.entity_type">
+                        {{ getEntityLabel(entry.entity_type) }}
+                      </span>
+                      <span class="action-badge" [style.--badge-color]="getActionColor(entry.action)">
+                        {{ getActionLabel(entry.action) }}
+                      </span>
+                      <span class="timeline-prop" [routerLink]="['/management/properties', entry.prop_id]">
+                        <span class="material-symbols-outlined">business</span>
+                        Prop #{{ entry.prop_id }}
+                      </span>
+                    </div>
+                    <p class="timeline-summary">{{ entry.summary }}</p>
+                    <div class="timeline-meta">
+                      <span class="meta-user">
+                        <span class="material-symbols-outlined">person</span>
+                        {{ entry.changed_by }}
+                      </span>
+                      <span class="meta-date">
+                        <span class="material-symbols-outlined">schedule</span>
+                        {{ entry.timestamp | date:'medium' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Pagination -->
+            @if (d.total > d.per_page) {
+              <div class="pagination-bar">
+                <button
+                  type="button"
+                  class="page-btn"
+                  [disabled]="!d.has_prev"
+                  (click)="goToPage(d.page - 1)"
+                  aria-label="Anterior"
+                >
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+
+                @for (pg of pages(); track pg) {
+                  <button
+                    type="button"
+                    class="page-btn"
+                    [class.page-btn--active]="pg === d.page"
+                    (click)="goToPage(pg)"
+                  >
+                    {{ pg }}
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="page-btn"
+                  [disabled]="!d.has_next"
+                  (click)="goToPage(d.page + 1)"
+                  aria-label="Siguiente"
+                >
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            }
+          }
+        </section>
+      }
+    }
+  }
+
+  <!-- ═══ Detail Modal ═══ -->
+  @if (showDetail() && selectedEntry(); as entry) {
+    <div class="modal-overlay" (click)="closeDetail()">
+      <div class="modal-panel detail-modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span
+            class="material-symbols-outlined modal-head-icon"
+            [style.color]="getActionColor(entry.action)"
+          >
+            {{ getActionIcon(entry.action) }}
+          </span>
+          <div>
+            <h2>Detalle de acción</h2>
+            <p>{{ getEntityLabel(entry.entity_type) }} · {{ getActionLabel(entry.action) }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeDetail()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-summary-card">
+            <p>{{ entry.summary }}</p>
+          </div>
+
+          <div class="detail-meta">
+            <div class="meta-item">
+              <span class="meta-label">Entidad</span>
+              <span class="meta-value">{{ getEntityLabel(entry.entity_type) }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">ID Entidad</span>
+              <span class="meta-value"><code>{{ entry.entity_id }}</code></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Acción</span>
+              <span class="meta-value">
+                <span class="action-badge" [style.--badge-color]="getActionColor(entry.action)">
+                  {{ getActionLabel(entry.action) }}
+                </span>
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Propiedad</span>
+              <span class="meta-value">
+                <a [routerLink]="['/management/properties', entry.prop_id]">Prop #{{ entry.prop_id }}</a>
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Usuario</span>
+              <span class="meta-value">{{ entry.changed_by }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Fecha</span>
+              <span class="meta-value">{{ entry.timestamp | date:'medium' }}</span>
+            </div>
+          </div>
+
+          @if (entry.metadata && getKeys(entry.metadata).length) {
+            <div class="detail-section">
+              <h3>Metadatos adicionales</h3>
+              <div class="metadata-grid">
+                @for (key of getKeys(entry.metadata); track key) {
+                  <div class="meta-chip">
+                    <span class="meta-chip-key">{{ key }}</span>
+                    <span class="meta-chip-value">{{ entry.metadata[key] }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (entry.diff && getKeys(entry.diff).length) {
+            <div class="detail-section">
+              <h3>Cambios detectados</h3>
+              <div class="diff-table-wrap">
+                <table class="diff-table">
+                  <thead>
+                    <tr>
+                      <th>Campo</th>
+                      <th>Valor anterior</th>
+                      <th>Valor nuevo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (key of getKeys(entry.diff); track key) {
+                      <tr>
+                        <td><code>{{ key }}</code></td>
+                        <td class="diff-old">{{ entry.diff[key].old ?? '—' }}</td>
+                        <td class="diff-new">{{ entry.diff[key].new ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
