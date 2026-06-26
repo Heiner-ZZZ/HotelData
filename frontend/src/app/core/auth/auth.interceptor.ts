@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
-import { AuthService } from './auth.service';
+import { toast } from '../toast/toast.service';
 
 /**
  * Prevent redirect loops when multiple API calls fail with 401 simultaneously.
@@ -29,34 +29,31 @@ function isAuthProbe(url: string): boolean {
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const router = inject(Router);
-  const authService = inject(AuthService);
-  const credentialedRequest = isCredentialedUrl(request.url)
+  const credentialUrl = isCredentialedUrl(request.url);
+  const credentialedRequest = credentialUrl
     ? request.clone({ withCredentials: true })
     : request;
 
   return next(credentialedRequest).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        // ── Auth-probe 401 → session truly expired ──
-        //   Invalidate auth state and redirect to login.
-        // ── Non-auth-probe 401 → permission or resource issue ──
-        //   Components should handle these individually (show login prompt).
-        //   Do NOT invalidate the session — the user may still be authenticated
-        //   and a single endpoint's 401 should not kill the entire session.
-        if (isAuthProbe(request.url)) {
-          authService.invalidateSession();
-          const now = Date.now();
-          if (
-            !redirectingToLogin &&
-            now - lastRedirectTime > REDIRECT_COOLDOWN_MS &&
-            !isAlreadyOnLogin()
-          ) {
-            redirectingToLogin = true;
-            lastRedirectTime = now;
-            const nextUrl = `${window.location.pathname}${window.location.search}`;
-            void router.navigate(['/login'], { queryParams: { next: nextUrl } });
-            setTimeout(() => { redirectingToLogin = false; }, 5000);
-          }
+      if (error instanceof HttpErrorResponse && error.status === 401 && credentialUrl) {
+        // ── Cualquier 401 en endpoint credentialed → sesión inválida ──
+        //   El middleware solo retorna 401 cuando `not user`, es decir,
+        //   cuando la cookie de sesión no es válida o no existe.
+        //   Redirigimos al login SIN limpiar localStorage para que
+        //   el flag persista y el próximo page load pueda reintentar.
+        const now = Date.now();
+        if (
+          !redirectingToLogin &&
+          now - lastRedirectTime > REDIRECT_COOLDOWN_MS &&
+          !isAlreadyOnLogin()
+        ) {
+          redirectingToLogin = true;
+          lastRedirectTime = now;
+          toast('Sesión expirada. Redirigiendo al inicio de sesión…', 'error', 2500);
+          const nextUrl = `${window.location.pathname}${window.location.search}`;
+          void router.navigate(['/login'], { queryParams: { next: nextUrl } });
+          setTimeout(() => { redirectingToLogin = false; }, 5000);
         }
       }
       return throwError(() => error);

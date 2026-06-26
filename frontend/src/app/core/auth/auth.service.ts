@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { catchError, map, of, tap } from 'rxjs';
 
+import { toast } from '../toast/toast.service';
 import { API_CONFIG } from '../api/api.config';
 import type { AuthMeDto, AuthState } from './auth.models';
 
@@ -82,11 +83,18 @@ export class AuthService {
       .pipe(
         map((dto) => this.mapAuthState(dto)),
         tap((state) => {
+          // If the flag exists but the backend says unauthenticated,
+          // the session expired — show a brief notification before
+          // the guard redirects to /login.
+          if (!state.authenticated) {
+            toast('Sesión expirada. Redirigiendo al inicio de sesión…', 'error', 2500);
+          }
           this.authStateSignal.set(state);
           this.sessionLoadedSignal.set(true);
         }),
         catchError(() => {
           // Session flag was stale — session expired or invalidated
+          toast('Sesión expirada. Redirigiendo al inicio de sesión…', 'error', 2500);
           this._clearSessionFlag();
           const anonymousState: AuthState = {
             authenticated: false,
