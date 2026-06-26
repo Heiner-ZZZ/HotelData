@@ -5,7 +5,7 @@ from typing import Any
 
 from src.database.connection import get_database
 
-from ..notifications import notify_guest_status_change, notify_staff_check_event
+from ..notifications import notify_guest_invoice, notify_guest_status_change, notify_staff_check_event
 from ._helpers import CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES, utc_now
 from ._history_lookup import _booking_history_lookup, _derived_stay_status
 from ._transitions import _restore_inventory
@@ -250,5 +250,31 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api") -> d
             logger.info("Inventory restored for booking %s after check-out", booking_id)
         except Exception:
             logger.exception("Failed to restore inventory on check-out for booking %s", booking_id)
+
+    # ── Notify guest about invoice on check-out ──
+    if booking and not booking.get("is_test"):
+        try:
+            guest_email = (booking.get("guest_email") or "").strip()
+            if guest_email:
+                inv = db.reservation_invoices.find_one(
+                    {"booking_id": booking_id},
+                    {"_id": 1, "invoice_number": 1, "total": 1},
+                )
+                if inv:
+                    notify_guest_invoice(
+                        booking_id=booking_id,
+                        guest_name=booking.get("guest_name", ""),
+                        guest_email=guest_email,
+                        prop_id=int(booking.get("prop_id", 0)),
+                        check_in_date=booking.get("check_in_date", ""),
+                        check_out_date=booking.get("check_out_date", ""),
+                        total_nights=int(booking.get("total_nights", 0)),
+                        invoice_id=str(inv["_id"]),
+                        invoice_number=inv.get("invoice_number", ""),
+                        invoice_total=float(inv.get("total", 0)),
+                        currency=booking.get("currency", "USD"),
+                    )
+        except Exception:
+            logger.exception("Failed to notify guest about invoice on check-out for booking %s", booking_id)
 
     return {"booking_id": booking_id, "stay_status": "checked_out"}

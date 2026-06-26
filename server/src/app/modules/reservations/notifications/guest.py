@@ -9,7 +9,7 @@ from typing import Any
 from config.settings import get_settings
 from src.app.email.service import send_email
 from src.database.connection import get_database
-from ..email_templates import guest_status_change_html
+from ..email_templates import guest_invoice_html, guest_status_change_html
 
 logger = logging.getLogger(__name__)
 
@@ -143,3 +143,79 @@ def notify_guest_status_change(
         recipient_name=guest_name, booking_id=booking_id, prop_id=prop_id,
         status=status, error_message=error_msg,
     )
+
+
+def notify_guest_invoice(
+    booking_id: str,
+    guest_name: str,
+    guest_email: str,
+    prop_id: int,
+    check_in_date: str,
+    check_out_date: str,
+    total_nights: int,
+    invoice_id: str,
+    invoice_number: str,
+    invoice_total: float,
+    currency: str = "USD",
+) -> None:
+    """Notify a guest about an invoice issued after check-out."""
+    if not guest_email:
+        logger.warning("No guest email for booking %s — skipping invoice notification", booking_id)
+        return
+
+    settings = get_settings()
+    invoice_url = f"{settings.app_base_url}/account/billing/invoices/{invoice_id}"
+
+    db = get_database()
+    hotel = db.dim_hotels.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+    )
+    hotel_label = (
+        (hotel or {}).get("display_label")
+        or (hotel or {}).get("display_name")
+        or (hotel or {}).get("hotel_name")
+        or f"Propiedad #{prop_id}"
+    )
+
+    nights_label = f"{total_nights} {'noche' if total_nights == 1 else 'noches'}"
+    invoice_total_str = f"${invoice_total:.2f} {currency}"
+
+    html = guest_invoice_html(
+        hotel_label=hotel_label,
+        booking_id=booking_id,
+        guest_name=guest_name,
+        check_in_date=check_in_date,
+        check_out_date=check_out_date,
+        nights_label=nights_label,
+        invoice_number=invoice_number,
+        invoice_total=invoice_total_str,
+        invoice_url=invoice_url,
+    )
+
+    status = "error"
+    error_msg = ""
+    subject = f"🧾 Tu factura {invoice_number} ya está disponible"
+    try:
+        ok = send_email(guest_email, subject, html)
+        if ok:
+            logger.info("Invoice notification sent to %s for booking %s", guest_email, booking_id)
+            status = "sent"
+        else:
+            logger.warning("Failed to send invoice notification to %s for booking %s", guest_email, booking_id)
+            status = "failed"
+            error_msg = "send_email returned False"
+    except Exception as exc:
+        logger.exception("Error sending invoice notification to %s for booking %s", guest_email, booking_id)
+        error_msg = str(exc)
+
+    _log_notification(
+        notification_type="guest_invoice_issued",
+        recipient_email=guest_email,
+        recipient_name=guest_name,
+        booking_id=booking_id,
+        prop_id=prop_id,
+        status=status,
+        error_message=error_msg,
+    )
+
