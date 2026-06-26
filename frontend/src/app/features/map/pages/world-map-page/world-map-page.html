@@ -1,0 +1,82 @@
+<div class="map-page">
+  <app-page-header
+    eyebrow="Mapa Mundial"
+    title="Destinos y Hoteles Geolocalizados"
+    description="Visualiza destinos turísticos y propiedades hoteleras en un mapa interactivo."
+  >
+    <div slot="actions" class="map-controls">
+      <button type="button" class="layer-btn" (click)="toggleDestinations()" title="Mostrar/ocultar destinos">
+        <span class="material-symbols-outlined">location_on</span>
+        Destinos
+      </button>
+      <button type="button" class="layer-btn" (click)="toggleHotels()" title="Mostrar/ocultar hoteles">
+        <span class="material-symbols-outlined">hotel</span>
+        Hoteles
+      </button>
+      <a routerLink="/admin/destinations" class="header-action-btn">
+        <span class="material-symbols-outlined">edit</span>
+        Editar destinos
+      </a>
+    </div>
+  </app-page-header>
+
+  @if (!loaded()) {
+    <app-loading-state label="Cargando mapa mundial..." />
+  }
+
+  <div class="map-wrapper">
+    <div #mapContainer class="map-container"></div>
+  </div>
+
+  <div class="map-legend surface-card">
+    <span class="legend-item">
+      <span class="legend-icon">📍</span> Destinos turísticos
+      <span class="legend-count">({{ destinations().length }})</span>
+    </span>
+    <span class="legend-item">
+      <span class="legend-icon">🏨</span> Hoteles
+      <span class="legend-count">({{ hotels().length }})</span>
+    </span>
+  </div>
+
+  <div class="destinations-panel surface-card">
+    <div class="panel-head">
+      <span class="material-symbols-outlined">list</span>
+      <h3>Destinos con coordenadas ({{ destinations().length }})</h3>
+    </div>
+    <div class="panel-table-wrap">
+      <table class="dest-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>País</th>
+            <th>Coordenadas</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of destinations(); track d.srchDestinationId) {
+            <tr>
+              <td>{{ d.srchDestinationId }}</td>
+              <td>{{ d.visibleName || d.destinationDisplayName }}</td>
+              <td>{{ d.country || '—' }}</td>
+              <td class="coords-cell">
+                @if (d.latitude !== null && d.longitude !== null) {
+                  {{ d.latitude.toFixed(4) }}, {{ d.longitude.toFixed(4) }}
+                } @else {
+                  <span class="no-coords">Sin coordenadas</span>
+                }
+              </td>
+              <td>
+                <a [routerLink]="['/admin/destinations', d.srchDestinationId]" class="edit-link">
+                  <span class="material-symbols-outlined">edit</span>
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
