@@ -14,7 +14,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
-import { SessionTimeoutService } from '../../../core/auth/session-timeout.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
 
@@ -47,8 +46,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
-
-  readonly sessionTimeout = inject(SessionTimeoutService);
 
   readonly theme = this.themeService;
   readonly authState = this.authService.authState;

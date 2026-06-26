@@ -1,4 +1,4 @@
-<div class="top-nav" [class.has-expiry-warning]="sessionTimeout.sessionExpiringSoon()" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
+<div class="top-nav" [style.transform]="navTransform()" [style.opacity]="navOpacity()">
   <div class="nav-leading">
     <button type="button" class="back-btn" (click)="navigateBack()" aria-label="Volver atrás">
       <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
@@ -135,12 +135,3 @@
     </div>
   </div>
 </div>
-
-@if (sessionTimeout.sessionExpiringSoon() && authState().authenticated) {
-  <div class="session-expiry-banner">
-    <div class="expiry-banner-content">
-      <span class="material-symbols-outlined expiry-icon">timer</span>
-      <span>Tu sesión está por expirar por inactividad. <a href="/auth/logout" class="expiry-link">Cerrar sesión</a> o continúa usando la aplicación para mantenerla activa.</span>
-    </div>
-  </div>
-}

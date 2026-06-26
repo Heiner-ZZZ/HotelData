@@ -1,9 +1,14 @@
 <header class="page-header">
-  @if (eyebrow()) {
-    <p class="eyebrow">{{ eyebrow() }}</p>
-  }
-  <h1>{{ title() }}</h1>
-  @if (description()) {
-    <p class="description">{{ description() }}</p>
-  }
+  <div class="page-header-text">
+    @if (eyebrow()) {
+      <p class="eyebrow">{{ eyebrow() }}</p>
+    }
+    <h1>{{ title() }}</h1>
+    @if (description()) {
+      <p class="description">{{ description() }}</p>
+    }
+  </div>
+  <div class="page-header-actions">
+    <ng-content select="[slot=actions]" />
+  </div>
 </header>
