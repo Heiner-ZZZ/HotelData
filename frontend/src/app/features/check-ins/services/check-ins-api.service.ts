@@ -43,4 +43,16 @@ export class CheckInsApiService {
   completeCheckIn(bookingId: string) {
     return this.http.post(`${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/complete`, {}, { withCredentials: true });
   }
+
+  /** Update check-in date/time using the shared PATCH /api/reservations/{id} endpoint */
+  updateCheckInDateTime(bookingId: string, checkInDate?: string, checkInTime?: string) {
+    const payload: Record<string, string> = {};
+    if (checkInDate !== undefined) payload['check_in_date'] = checkInDate;
+    if (checkInTime !== undefined) payload['check_in_time'] = checkInTime;
+    return this.http.patch<{ booking_id: string; updated: boolean }>(
+      `${this.apiConfig.baseUrl}/reservations/${bookingId}`,
+      payload,
+      { withCredentials: true }
+    );
+  }
 }

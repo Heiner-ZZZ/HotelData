@@ -14,6 +14,61 @@ from ._transitions import _restore_inventory
 logger = logging.getLogger(__name__)
 
 
+def update_check_in_datetime(
+    booking_id: str,
+    *,
+    check_in_date: str | None = None,
+    check_in_time: str | None = None,
+    changed_by: str = "angular_api",
+) -> dict[str, Any]:
+    """
+    Update check-in date and/or time for an active booking.
+
+    Unlike modify_booking, this works for both confirmed and checked_in bookings.
+    """
+    db = get_database()
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "status": 1, "stay_status": 1, "is_test": 1},
+    )
+    if not booking:
+        raise ValueError("Booking not found")
+
+    if booking.get("status") in ("cancelled", "rejected"):
+        raise ValueError("Cannot modify a cancelled or rejected booking")
+
+    now = utc_now()
+    update_fields: dict[str, Any] = {"updated_at": now}
+    reason_parts = []
+
+    if check_in_date is not None:
+        update_fields["check_in_date"] = check_in_date
+        reason_parts.append(f"fecha: {check_in_date}")
+    if check_in_time is not None:
+        update_fields["check_in_time"] = check_in_time
+        reason_parts.append(f"hora: {check_in_time}")
+
+    if len(update_fields) == 1:
+        return {"booking_id": booking_id, "updated": False, "detail": "No changes provided"}
+
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {"$set": update_fields},
+    )
+
+    reason = f"check-in actualizado: {', '.join(reason_parts)}"
+    db.booking_status_history.insert_one({
+        "booking_id": booking_id,
+        "status": booking.get("status", "unknown"),
+        "changed_at": now,
+        "reason": reason,
+        "changed_by": changed_by,
+        "is_test": bool(booking.get("is_test", False)),
+    })
+
+    return {"booking_id": booking_id, "updated": True}
+
+
 def complete_check_in(booking_id: str, *, changed_by: str = "angular_api") -> dict[str, Any]:
     db = get_database()
 
