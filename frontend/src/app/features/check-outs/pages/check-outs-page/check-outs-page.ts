@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -13,9 +14,11 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { CheckOutsViewModel } from '../../models/check-outs.model';
 import type { CheckOutsDto } from '../../models/check-outs.dto';
 import { CheckOutsApiService, type DateHistoryEntry } from '../../services/check-outs-api.service';
+import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { mapCheckOuts } from '../../mappers/check-outs.mapper';
 
 function todayIso(): string {
@@ -31,7 +34,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-outs-page',
-  imports: [DatePipe, FormsModule, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [DatePipe, FormsModule, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-outs-page.html',
   styleUrl: './check-outs-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -40,9 +43,14 @@ export class CheckOutsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckOutsApiService);
+  private readonly kpiApi = inject(KpiApiService);
   private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly formBuilder = inject(FormBuilder);
+
+  // ── KPI: Operational stats ──
+  readonly opStats = signal<OperationalStatsResponse | null>(null);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     operationDate: [todayIso(), Validators.required],
@@ -125,6 +133,11 @@ export class CheckOutsPageComponent {
   });
 
   constructor() {
+    // Load KPI data
+    this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (stats) => this.opStats.set(stats),
+    });
+
     // Data fetching is handled declaratively via httpResource above
   }
 

@@ -5,6 +5,22 @@
     description="Gestiona las llegadas del día y registra entradas de huéspedes."
   />
 
+  <!-- KPI Chart: Check-ins by hotel today -->
+  @if (opStats(); as stats) {
+    <section class="surface-card kpi-chart-section">
+      @if (stats.check_ins_by_hotel.length > 0) {
+        <app-kpi-chart
+          title="Check-ins del día por hotel"
+          [labels]="stats.check_ins_by_hotel.map(h => h.label)"
+          [datasets]="[{ label: 'Check-ins hoy', data: stats.check_ins_by_hotel.map(h => h.count) }]"
+          [showLegend]="false"
+          [height]="200"
+          type="bar"
+        />
+      }
+    </section>
+  }
+
   @if (message()) {
     <div class="toast toast-success">
       <span class="material-symbols-outlined">check_circle</span>

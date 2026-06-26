@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -31,7 +32,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-ins-page',
-  imports: [DatePipe, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [DatePipe, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-ins-page.html',
   styleUrl: './check-ins-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -40,7 +41,12 @@ export class CheckInsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckInsApiService);
+  private readonly kpiApi = inject(KpiApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+
+  // ── KPI: Operational stats ──
+  readonly opStats = signal<OperationalStatsResponse | null>(null);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     operationDate: [todayIso(), Validators.required],
@@ -111,6 +117,11 @@ export class CheckInsPageComponent {
   });
 
   constructor() {
+    // Load KPI data
+    this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (stats) => this.opStats.set(stats),
+    });
+
     // Sync operationDate signal from route params when they change
     // This is needed because the date navigation buttons modify the URL
     this.routeParams(); // consume the signal to track reactivity
