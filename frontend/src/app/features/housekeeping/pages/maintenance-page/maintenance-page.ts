@@ -5,12 +5,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { HousekeepingApiService, type MaintenanceTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
+import { HousekeepingApiService, type MaintenanceTaskItem, type PaginatedResponse, type RoomStatusItem } from '../../services/housekeeping-api.service';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -21,7 +23,7 @@ const STATUS_OPTIONS = ['scheduled', 'in_progress', 'completed'] as const;
 
 @Component({
   selector: 'app-maintenance-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, SlicePipe],
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, ReactiveFormsModule, SlicePipe],
 
   templateUrl: './maintenance-page.html',
   styleUrl: './maintenance-page.scss',
@@ -33,11 +35,16 @@ export class MaintenancePageComponent {
   private readonly api = inject(HousekeepingApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<PaginatedResponse<MaintenanceTaskItem> | null>(null);
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  readonly selectedPropId = signal(0);
+  readonly selectedLabel = signal('');
+  readonly roomLabels = signal<string[]>([]);
   readonly showCreateForm = signal(false);
 
   readonly statusFilter = signal<string>('');
@@ -59,12 +66,27 @@ export class MaintenancePageComponent {
         map((params) => ({
           page: Number(params.get('page') ?? '1'),
           status: params.get('status') ?? '',
+          propId: Number(params.get('prop_id') ?? '0'),
         })),
-        distinctUntilChanged((a, b) => a.page === b.page && a.status === b.status),
-        switchMap(({ page, status }) => {
+        distinctUntilChanged((a, b) => a.page === b.page && a.status === b.status && a.propId === b.propId),
+        switchMap(({ page, status, propId }) => {
           this.viewState.set('loading');
           this.statusFilter.set(status);
-          return this.api.getMaintenance(undefined, status || undefined, page);
+          this.selectedPropId.set(propId);
+          if (!propId) {
+            this.propertyCtx.clear();
+            this.roomLabels.set([]);
+            return this.api.getMaintenance(undefined, status || undefined, page);
+          }
+          this.propertyCtx.setProperty(propId, `Propiedad #${propId}`);
+          return this.api.syncRoomStatus(propId).pipe(
+            switchMap(() => this.api.getRoomStatus(propId, undefined, 1)),
+            switchMap((roomData) => {
+              this.roomLabels.set(roomData.items.map(r => r.roomLabel));
+              this.propertyCtx.setProperty(propId, `Propiedad #${propId}`);
+              return this.api.getMaintenance(propId, status || undefined, page);
+            }),
+          );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -99,12 +121,21 @@ export class MaintenancePageComponent {
     }
   }
 
+  onPropSelected(event: { propId: number; label: string }): void {
+    if (!event.propId) this.propertyCtx.clear();
+    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: event.propId || null },
+    });
+  }
+
   submitTask(): void {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     this.api
       .createMaintenance({
-        prop_id: 0,
+        prop_id: this.selectedPropId() || 0,
         room_label: val.roomLabel,
         task_type: val.taskType,
         title: val.title,
@@ -149,7 +180,7 @@ export class MaintenancePageComponent {
     if (!current) return;
     this.viewState.set('loading');
     this.api
-      .getMaintenance(undefined, this.statusFilter() || undefined, current.page)
+      .getMaintenance(this.selectedPropId() || undefined, this.statusFilter() || undefined, current.page)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {

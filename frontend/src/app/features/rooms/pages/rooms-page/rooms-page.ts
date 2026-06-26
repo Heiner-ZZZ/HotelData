@@ -6,6 +6,7 @@ import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -39,6 +40,7 @@ export class RoomsPageComponent {
   private readonly api = inject(RoomsApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<RoomsViewModel | null>(null);
@@ -96,9 +98,11 @@ export class RoomsPageComponent {
             this.selectedPropId.set(rooms.propId);
             this.selectedLabel.set(rooms.hotelName);
             this.viewState.set('success');
+            this.propertyCtx.setProperty(rooms.propId, rooms.hotelName);
           } else {
             this.viewModel.set(null);
             this.viewState.set('empty');
+            this.propertyCtx.clear();
           }
         },
         error: () => this.viewState.set('error')
@@ -106,6 +110,8 @@ export class RoomsPageComponent {
   }
 
   onPropSelected(event: { propId: number; label: string }) {
+    if (!event.propId) this.propertyCtx.clear();
+    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: event.propId || null }

@@ -6,6 +6,7 @@ import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -39,6 +40,7 @@ export class PoliciesPageComponent {
   private readonly api = inject(PoliciesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<PoliciesViewModel | null>(null);
@@ -97,6 +99,7 @@ export class PoliciesPageComponent {
       this.selectedLabel.set(policies.hotelName);
       this.roomTypeOptions.set(policies.roomTypes);
       this.selectedRoomTypeId.set(policies.roomTypeId);
+      this.propertyCtx.setProperty(policies.propId, policies.hotelName);
       this.policyForm.setValue({
         checkInTime: policies.checkInTime,
         checkOutTime: policies.checkOutTime,
@@ -119,10 +122,13 @@ export class PoliciesPageComponent {
     } else {
       this.viewModel.set(null);
       this.viewState.set('empty');
+      this.propertyCtx.clear();
     }
   }
 
   onPropSelected(event: { propId: number; label: string }) {
+    if (!event.propId) this.propertyCtx.clear();
+    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: event.propId || null },

@@ -7,6 +7,7 @@ import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -170,6 +171,7 @@ export class AvailabilityPageComponent {
   private readonly api = inject(AvailabilityApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
   private readonly router = inject(Router);
 
   /** Prop ID from route query params — source of truth for current selection. */
@@ -362,6 +364,7 @@ export class AvailabilityPageComponent {
         this.errorMessage.set('');
         this.submitMessage.set('');
         this.refreshing.set(false);
+        this.propertyCtx.clear();
         return;
       }
 
@@ -383,6 +386,7 @@ export class AvailabilityPageComponent {
         this.pageData.set(data);
         this.viewState.set('success');
         this.errorMessage.set('');
+        this.propertyCtx.setProperty(data.propId, data.hotelName);
         this._rebuildCalendar();
         this.refreshing.set(false);
         this.skeletonExiting.set(true);
@@ -398,6 +402,7 @@ export class AvailabilityPageComponent {
     const propId = event.propId;
     if (!propId || propId === this.selectedPropId()) return;
 
+    this.propertyCtx.setProperty(propId, event.label || `Propiedad #${propId}`);
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
       queryParams: { prop_id: propId },

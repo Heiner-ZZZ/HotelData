@@ -6,6 +6,7 @@ import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -35,6 +36,7 @@ export class AmenitiesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AmenitiesApiService);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   // ── Route params as signals ──
   readonly selectedPropId = toSignal(
@@ -113,11 +115,18 @@ export class AmenitiesPageComponent {
         this.selectedAmenities.set(dto.amenities.active_amenities ?? []);
         this.message.set('');
         this.errorMessage.set('');
+        const label = this.selectedLabel();
+        if (label) this.propertyCtx.setProperty(this.selectedPropId(), label);
       }
+    });
+    effect(() => {
+      if (!this.selectedPropId()) this.propertyCtx.clear();
     });
   }
 
   onPropSelected(event: { propId: number; label: string }) {
+    if (!event.propId) this.propertyCtx.clear();
+    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: event.propId || null }
