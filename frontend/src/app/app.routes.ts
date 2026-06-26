@@ -125,7 +125,23 @@ export const routes: Routes = [
   {
     path: 'admin',
     pathMatch: 'full',
-    redirectTo: 'management'
+    redirectTo: 'admin/global-settings'
+  },
+  {
+    path: 'admin',
+    loadComponent: () =>
+      import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
+    canActivate: [authGuard, roleGuard],
+    data: {
+      allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos']
+    },
+    children: [
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES)
+      }
+    ]
   },
   {
     // Legacy compatibility aliases preserved while /management is the primary experience.
