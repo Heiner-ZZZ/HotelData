@@ -133,6 +133,10 @@
                     <tr>
                       <td class="cal-td-room">
                         <span class="cal-room-name">{{ rt.name }}</span>
+                        @let roomNums = roomNumbersByType().get(rt.id);
+                        @if (roomNums && roomNums.length > 0) {
+                          <span class="cal-room-numbers">{{ roomNums.join(', ') }}</span>
+                        }
                         <span class="cal-room-capacity">{{ rt.capacityLabel }}</span>
                       </td>
                       @for (day of cal.days; track day.date) {
@@ -208,6 +212,7 @@
                         @for (rt of roomTypes(); track rt.id) {
                           @let cell = day.roomTypes.find(r => r.roomTypeName === rt.name);
                           @let editing = isEditing(day.date, rt.name);
+                          @let roomNums = roomNumbersByType().get(rt.id);
                           <div class="cal-week-room-cell"
                                [class.cell-good]="cell && !editing && cellClass(cell) === 'cell-good'"
                                [class.cell-caution]="cell && !editing && cellClass(cell) === 'cell-caution'"
@@ -235,7 +240,12 @@
                                        autofocus />
                               </div>
                             } @else {
-                              <span class="cal-week-rt-name">{{ rt.name }}</span>
+                              <div class="cal-week-room-info">
+                                <span class="cal-week-rt-name">{{ rt.name }}</span>
+                                @if (roomNums && roomNums.length > 0) {
+                                  <span class="cal-week-room-numbers">{{ roomNums.slice(0, 3).join(', ') }}{{ roomNums.length > 3 ? '…' : '' }}</span>
+                                }
+                              </div>
                               @if (cell) {
                                 <span class="cal-week-val">{{ cellLabel(cell) }}</span>
                               } @else {

@@ -16,7 +16,7 @@ import { AvailabilityCalendarComponent } from '../../components/availability-cal
 import { AvailabilityQuickActionsComponent } from '../../components/availability-quick-actions/availability-quick-actions';
 import { AvailabilityDataTablesComponent } from '../../components/availability-data-tables/availability-data-tables';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { AvailabilityInventoryItem, AvailabilityViewModel, CalendarMonth, CalendarRoomTypeCell } from '../../models/availability.model';
+import type { AvailabilityInventoryItem, AvailabilityViewModel, CalendarMonth, CalendarRoomTypeCell, HotelRoomInfo } from '../../models/availability.model';
 import type { AvailabilityDto } from '../../models/availability.dto';
 import { AvailabilityApiService } from '../../services/availability-api.service';
 import { mapAvailability } from '../../mappers/availability.mapper';
@@ -335,6 +335,31 @@ export class AvailabilityPageComponent {
     }, 0) / daysWithData;
   });
 
+  /** All hotel rooms for the property (for calendar room-number display). */
+  readonly allHotelRooms = signal<HotelRoomInfo[]>([]);
+
+  /** Map of room type ID → room numbers for display in calendar row headers. */
+  readonly roomNumbersByType = computed(() => {
+    const rooms = this.allHotelRooms();
+    const map = new Map<string, string[]>();
+    for (const room of rooms) {
+      const rtId = room.roomTypeId;
+      if (!map.has(rtId)) map.set(rtId, []);
+      if (room.roomNumber) map.get(rtId)!.push(room.roomNumber);
+    }
+    // Sort room numbers numerically
+    for (const [key, nums] of map) {
+      nums.sort((a, b) => {
+        const na = parseInt(a, 10);
+        const nb = parseInt(b, 10);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a.localeCompare(b);
+      });
+      map.set(key, nums);
+    }
+    return map;
+  });
+
   /** Rooms fetched for the selected room type (multi-select). */
   readonly hotelRoomsForType = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; is_active: boolean }>>([]);
   /** Set of room numbers selected as 'available' in the inventory form. */
@@ -353,6 +378,29 @@ export class AvailabilityPageComponent {
     reason: string;
     roomNumbers: string[];
   } | null>(null);
+
+  /** Fetch all hotel rooms when prop ID changes (for calendar room-number display). */
+  private _fetchHotelRooms(propId: number) {
+    if (!propId) {
+      this.allHotelRooms.set([]);
+      return;
+    }
+    this.api.getAllHotelRooms(propId).subscribe({
+      next: (res) => {
+        const rooms: HotelRoomInfo[] = (res.hotel_rooms || []).map(r => ({
+          hotelRoomId: r.hotel_room_id,
+          roomNumber: r.room_number || '',
+          roomLabel: r.room_label,
+          roomTypeId: r.room_type_id,
+          roomTypeName: r.room_type_name || '',
+          floor: r.floor || '',
+          isActive: r.is_active,
+        }));
+        this.allHotelRooms.set(rooms);
+      },
+      error: () => this.allHotelRooms.set([]),
+    });
+  }
 
   readonly inventoryForm = this.formBuilder.nonNullable.group({
     roomTypeId: ['', [Validators.required]],
@@ -481,6 +529,8 @@ export class AvailabilityPageComponent {
         this.errorMessage.set('');
         this.propertyCtx.setProperty(data.propId, data.hotelName);
         this._rebuildCalendar();
+        // Fetch hotel rooms for calendar room-number display
+        this._fetchHotelRooms(data.propId);
         this.refreshing.set(false);
         this.skeletonExiting.set(true);
         setTimeout(() => this.skeletonExiting.set(false), 300);

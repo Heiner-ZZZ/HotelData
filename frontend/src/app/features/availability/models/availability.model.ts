@@ -80,3 +80,14 @@ export interface PropertyOptionsPage {
   pageSize: number;
   hasNext: boolean;
 }
+
+/** Individual hotel room info for calendar display. */
+export interface HotelRoomInfo {
+  hotelRoomId: string;
+  roomNumber: string;
+  roomLabel: string;
+  roomTypeId: string;
+  roomTypeName: string;
+  floor: string;
+  isActive: boolean;
+}

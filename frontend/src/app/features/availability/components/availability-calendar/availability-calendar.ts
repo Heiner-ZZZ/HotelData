@@ -26,6 +26,8 @@ export class AvailabilityCalendarComponent {
   readonly skeletonExiting = input(false);
   readonly selectionCount = input(0);
   readonly layoutMode = input<'scroll' | 'wrap'>('scroll');
+  /** Map room type ID → sorted room numbers for display in row headers. */
+  readonly roomNumbersByType = input<Map<string, string[]>>(new Map());
 
   readonly prevPeriod = output<void>();
   readonly nextPeriod = output<void>();
