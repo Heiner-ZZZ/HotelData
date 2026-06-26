@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
+import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapRoomCreatePayload, mapRoomsOptions, mapRoomsResponse } from '../mappers/rooms.mapper';
 import type { RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
 
@@ -20,7 +21,7 @@ export class RoomsApiService {
         params,
         withCredentials: true
       })
-      .pipe(map((dto) => mapRoomsResponse(dto)));
+      .pipe(catchAuthError(), map((dto) => mapRoomsResponse(dto)));
   }
 
   getOptions() {
@@ -28,7 +29,7 @@ export class RoomsApiService {
       .get<RoomsOptionsDto>(`${this.apiConfig.baseUrl}/management/rooms/options`, {
         withCredentials: true
       })
-      .pipe(map((dto) => mapRoomsOptions(dto)));
+      .pipe(catchAuthError(), map((dto) => mapRoomsOptions(dto)));
   }
 
   createRoomType(payload: {
