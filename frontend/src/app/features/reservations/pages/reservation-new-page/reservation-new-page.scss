@@ -449,6 +449,12 @@
   box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.08);
 }
 
+.readonly-field {
+  background: var(--surface-soft, #f5f5f5) !important;
+  opacity: 0.8;
+  cursor: default;
+}
+
 .field.field-error input,
 .field.field-error select,
 .field.field-error textarea {

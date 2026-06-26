@@ -22,6 +22,7 @@ export class ReservationTimelineComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
 
   readonly reservation = input.required<ReservationDetailViewModel>();
+  readonly isStaff = input(false);
   readonly successMessage = output<string>();
 
   readonly roomGuests = signal<RoomGuestEntry[]>([]);
@@ -35,7 +36,7 @@ export class ReservationTimelineComponent {
 
   readonly showReviewForm = computed(() => {
     const vm = this.reservation();
-    return vm.status === 'checked_out' && !this.reviewSuccess();
+    return vm.status === 'checked_out' && !this.reviewSuccess() && !this.isStaff();
   });
 
   readonly totalRooms = computed(() => this.reservation().rooms || 1);

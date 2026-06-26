@@ -213,6 +213,7 @@
         @if (data(); as current) {
           <app-reservation-timeline
             [reservation]="current"
+            [isStaff]="isStaff()"
             (successMessage)="onTimelineMessage($event)"
           />
         }

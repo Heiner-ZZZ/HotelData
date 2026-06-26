@@ -5,6 +5,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 
@@ -17,6 +19,7 @@ import { ReservationsApiService } from '../../services/reservations-api.service'
 })
 export class ReservationNewPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly reservationsApi = inject(ReservationsApiService);
@@ -36,6 +39,16 @@ export class ReservationNewPageComponent {
 
   readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
   readonly couponValidating = signal(false);
+
+  readonly isStaff = computed(() => {
+    const role = this.authService.currentUser()?.primaryRole;
+    return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
+  });
+
+  readonly isClient = computed(() => {
+    const role = this.authService.currentUser()?.primaryRole;
+    return !role || role === 'cliente';
+  });
 
   readonly selectedHotel = computed(() => {
     const selectedId = this.form.controls.propId.value;
@@ -80,6 +93,16 @@ export class ReservationNewPageComponent {
   constructor() {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     this._loadGuestSuggestions();
+
+    // Auto-fill guest data from user profile for client role
+    if (this.isClient()) {
+      const user = this.authService.currentUser();
+      if (user) {
+        this.form.controls.guestName.setValue(user.displayName || '');
+        this.form.controls.guestEmail.setValue(user.email || '');
+      }
+    }
+
     this.reservationsApi
       .getOptions()
       .pipe(takeUntilDestroyed(this.destroyRef))
