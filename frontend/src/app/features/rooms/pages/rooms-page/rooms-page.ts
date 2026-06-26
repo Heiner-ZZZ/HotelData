@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -12,7 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
+import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
@@ -82,6 +82,31 @@ export class RoomsPageComponent {
   readonly deleteTargetName = signal('');
   readonly deleting = signal(false);
 
+  /* ── Room Features ── */
+  readonly featureCatalog = signal<FeatureCategory[]>([]);
+  readonly selectedFeatures = signal<Set<string>>(new Set());
+  readonly editingRoomTypeName = signal('');
+  readonly editingRoomTypeId = signal('');
+  readonly featurePanelOpen = signal(true);
+  readonly featureSearchQuery = signal('');
+
+  /** Filtered feature catalog based on search query (matches by label or category). */
+  readonly filteredFeatureCatalog = computed(() => {
+    const query = this.featureSearchQuery().toLowerCase().trim();
+    const catalog = this.featureCatalog();
+    if (!query) return catalog;
+    return catalog
+      .map((cat) => ({
+        ...cat,
+        items: cat.items.filter(
+          (feat) =>
+            feat.label.toLowerCase().includes(query) ||
+            cat.category.toLowerCase().includes(query),
+        ),
+      }))
+      .filter((cat) => cat.items.length > 0);
+  });
+
   constructor() {
     this.route.queryParamMap
       .pipe(
@@ -136,12 +161,46 @@ export class RoomsPageComponent {
       roomNumber: roomType.roomNumber,
       floor: roomType.floor,
     });
+    this.editingRoomTypeName.set(roomType.name);
+    this.editingRoomTypeId.set(roomType.id);
+    this.selectedFeatures.set(new Set(roomType.features));
+    this.featurePanelOpen.set(true);
     this.showEditModal.set(true);
+
+    // Load feature catalog if not already loaded
+    if (this.featureCatalog().length === 0) {
+      this.api.getFeatureCatalog().pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (catalog) => this.featureCatalog.set(catalog),
+        error: () => { /* silently fail, feature selector will be empty */ },
+      });
+    }
   }
+
+  /** Toggle a feature on/off in the selected set. */
+  toggleFeature(feature: string) {
+    const current = new Set(this.selectedFeatures());
+    if (current.has(feature)) {
+      current.delete(feature);
+    } else {
+      current.add(feature);
+    }
+    this.selectedFeatures.set(current);
+  }
+
+  /** Check if a feature is selected. */
+  isFeatureSelected(feature: string): boolean {
+    return this.selectedFeatures().has(feature);
+  }
+
+  /** Count selected features. */
+  readonly selectedFeatureCount = computed(() => this.selectedFeatures().size);
 
   cancelEdit() {
     this.showEditModal.set(false);
     this.editForm.reset();
+    this.selectedFeatures.set(new Set());
   }
 
   requestDelete(roomTypeId: string, name: string) {
@@ -189,8 +248,14 @@ export class RoomsPageComponent {
       return;
     }
     const value = this.editForm.getRawValue();
+    const propId = this.selectedPropId();
     this.savingEdit.set(true);
-    this.api.updateRoomType(value.roomTypeId, {
+
+    // Update room type basic fields + features in parallel
+    const featuresArr = [...this.selectedFeatures()];
+    const roomTypeId = value.roomTypeId;
+
+    this.api.updateRoomType(roomTypeId, {
       name: value.name,
       description: value.description,
       maxAdults: value.maxAdults,
@@ -201,8 +266,16 @@ export class RoomsPageComponent {
       roomNumber: value.roomNumber,
       floor: value.floor,
     }).pipe(
-      switchMap(() => {          const current = this.viewModel();
-          return current ? this.api.getRooms(current.propId) : of(null);
+      switchMap(() => {
+        // Always update features (even empty array = clear all)
+        if (propId > 0) {
+          return this.api.updateRoomTypeFeatures(propId, roomTypeId, featuresArr);
+        }
+        return of(null);
+      }),
+      switchMap(() => {
+        const current = this.viewModel();
+        return current ? this.api.getRooms(current.propId) : of(null);
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({

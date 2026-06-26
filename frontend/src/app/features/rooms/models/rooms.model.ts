@@ -21,6 +21,19 @@ export interface RoomTypeItem {
   activeLabel: string;
   roomNumber: string;
   floor: string;
+  features: string[];
+}
+
+export interface RoomFeature {
+  label: string;
+  category: string;
+  icon: string;
+  custom: boolean;
+}
+
+export interface FeatureCategory {
+  category: string;
+  items: RoomFeature[];
 }
 
 export interface HotelRoomItem {

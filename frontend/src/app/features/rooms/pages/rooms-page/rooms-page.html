@@ -303,8 +303,8 @@
         <div class="modal-head">
           <span class="material-symbols-outlined modal-head-icon">edit</span>
           <div>
-            <h2>Editar tipo de habitación</h2>
-            <p>{{ editForm.controls.roomTypeId.value }}</p>
+            <h2>Editar: {{ editingRoomTypeName() }}</h2>
+            <p>{{ editingRoomTypeId() }}</p>
           </div>
           <button type="button" class="modal-close" (click)="cancelEdit()" aria-label="Cerrar">
             <span class="material-symbols-outlined">close</span>
@@ -347,7 +347,66 @@
             <span class="field-label">Activo</span>
             <input type="checkbox" formControlName="isActive">
           </label>
-          <div class="modal-actions">
+
+          <!-- ═══ Room Features Selector ═══ -->
+          <div class="features-section" style="grid-column: 1 / -1">
+            <div class="features-section-head" (click)="featurePanelOpen.set(!featurePanelOpen())">
+              <span class="material-symbols-outlined features-head-icon">stars</span>
+              <span class="features-head-title">Características</span>
+              <span class="features-count-badge" [class.has-selection]="selectedFeatureCount() > 0">
+                {{ selectedFeatureCount() }} seleccionadas
+              </span>
+              <span class="material-symbols-outlined features-chevron" [class.open]="featurePanelOpen()">
+                {{ featurePanelOpen() ? 'expand_less' : 'expand_more' }}
+              </span>
+            </div>
+            @if (featurePanelOpen()) {
+              @if (featureCatalog().length > 0) {
+                <!-- Search input -->
+                <div class="features-search-wrap">
+                  <span class="material-symbols-outlined features-search-icon">search</span>
+                  <input
+                    class="features-search-input"
+                    type="text"
+                    placeholder="Buscar características…"
+                    [value]="featureSearchQuery()"
+                    (input)="featureSearchQuery.set($any($event.target).value)"
+                    (click)="$event.stopPropagation()"
+                  />
+                  @if (featureSearchQuery()) {
+                    <button type="button" class="features-search-clear" (click)="featureSearchQuery.set(''); $event.stopPropagation()">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  }
+                </div>
+                <div class="features-catalog">
+                  @for (cat of filteredFeatureCatalog(); track cat.category) {
+                    <div class="feature-category">
+                      <span class="feature-category-label">{{ cat.category }}</span>
+                      <div class="feature-items">
+                        @for (feat of cat.items; track feat.label) {
+                          <button type="button"
+                            class="feature-chip"
+                            [class.is-selected]="isFeatureSelected(feat.label)"
+                            (click)="toggleFeature(feat.label)"
+                            title="{{ feat.label }}">
+                            @if (feat.icon) {
+                              <span class="material-symbols-outlined feature-chip-icon">{{ feat.icon }}</span>
+                            }
+                            <span class="feature-chip-label">{{ feat.label }}</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="features-loading">Cargando catálogo de características...</p>
+              }
+            }
+          </div>
+
+          <div class="modal-actions" style="grid-column: 1 / -1">
             <button type="button" class="btn-secondary" (click)="cancelEdit()">Cancelar</button>
             <button type="submit" class="btn-primary" [disabled]="savingEdit()">
               @if (savingEdit()) {

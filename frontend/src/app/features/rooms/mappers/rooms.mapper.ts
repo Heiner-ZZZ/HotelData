@@ -21,6 +21,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       activeLabel: room.is_active ? 'Sí' : 'No',
       roomNumber: room.room_number || '',
       floor: room.floor || '',
+      features: room.features || [],
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,

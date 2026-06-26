@@ -8,6 +8,7 @@
         <th>Piso</th>
         <th>Descripción</th>
         <th>Capacidad</th>
+        <th>Características</th>
         <th>Estado</th>
         <th></th>
       </tr>
@@ -28,6 +29,31 @@
               <span class="material-symbols-outlined cap-icon">group</span>
               {{ room.capacityLabel }}
             </span>
+          </td>
+          <td class="features-cell">
+            @if (room.features.length > 0) {
+              <div class="features-summary" [title]="room.features.join(', ')">
+                <span class="features-count-badge"
+                      [class.count-single]="room.features.length === 1"
+                      [class.count-few]="room.features.length >= 2 && room.features.length <= 3"
+                      [class.count-many]="room.features.length >= 4">
+                  <span class="material-symbols-outlined features-count-icon">stars</span>
+                  <span class="features-count-num">{{ room.features.length }}</span>
+                </span>
+                <span class="features-preview">
+                  @for (feat of room.features.slice(0, 2); track trackByFeature($index, feat)) {
+                    <span class="feature-badge" [style.--feat-color]="featureColor(feat)">
+                      {{ feat }}
+                    </span>
+                  }
+                  @if (room.features.length > 2) {
+                    <span class="features-more">+{{ room.features.length - 2 }} más</span>
+                  }
+                </span>
+              </div>
+            } @else {
+              <span class="no-features">—</span>
+            }
           </td>
           <td>
             <span class="status-badge" [class.active]="room.activeLabel === 'Sí'" [class.inactive]="room.activeLabel !== 'Sí'">

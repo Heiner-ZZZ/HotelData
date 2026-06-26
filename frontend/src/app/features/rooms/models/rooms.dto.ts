@@ -19,6 +19,7 @@ export interface RoomsDto {
     is_active: boolean;
     room_number?: string;
     floor?: string;
+    features?: string[];
   }>;
   hotel_rooms?: Array<{
     hotel_room_id: string;

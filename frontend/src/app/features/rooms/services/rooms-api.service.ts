@@ -5,6 +5,7 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapRoomCreatePayload, mapRoomsOptions, mapRoomsResponse } from '../mappers/rooms.mapper';
+import type { FeatureCategory } from '../models/rooms.model';
 import type { RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
 
 @Injectable({
@@ -83,6 +84,39 @@ export class RoomsApiService {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
       { withCredentials: true }
+    );
+  }
+
+  /* ── Room Features API ── */
+
+  /** Get the master feature catalog, grouped by category. */
+  getFeatureCatalog() {
+    return this.http
+      .get<{ features: FeatureCategory[] }>(
+        `${this.apiConfig.baseUrl}/management/room-features`,
+        { withCredentials: true }
+      )
+      .pipe(map((res) => res.features));
+  }
+
+  /** Get features for a specific room type. */
+  getRoomTypeFeatures(propId: number, roomTypeId: string) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http
+      .get<{ room_type_id: string; features: string[] }>(
+        `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
+        { params, withCredentials: true }
+      )
+      .pipe(map((res) => res.features));
+  }
+
+  /** Update features for a room type. */
+  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: string[]) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
+      { features },
+      { params, withCredentials: true }
     );
   }
 }
