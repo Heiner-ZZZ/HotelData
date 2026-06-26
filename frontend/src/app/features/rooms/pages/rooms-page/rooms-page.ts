@@ -50,6 +50,15 @@ export class RoomsPageComponent {
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
 
+  /** 'existing' = seleccionar tipo existente, 'new' = escribir nuevo */
+  readonly createMode = signal<'existing' | 'new'>('new');
+  readonly selectedExistingRoomTypeId = signal('');
+
+  readonly existingRoomTypes = computed(() => {
+    const vm = this.viewModel();
+    return vm?.roomTypes ?? [];
+  });
+
   readonly createForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required]],
     description: [''],
@@ -61,6 +70,41 @@ export class RoomsPageComponent {
     roomNumber: [''],
     floor: [''],
   });
+
+  onExistingTypeSelected(roomTypeId: string) {
+    this.selectedExistingRoomTypeId.set(roomTypeId);
+    const types = this.existingRoomTypes();
+    const selected = types.find(t => t.id === roomTypeId);
+    if (selected) {
+      const parts = selected.capacityLabel.match(/(\d+)/g);
+      this.createForm.patchValue({
+        name: selected.name,
+        description: selected.description === 'Sin descripción' ? '' : selected.description,
+        maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
+        maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
+        baseCapacity: parts ? Number(parts[0]) : 2,
+        isActive: true,
+      });
+    }
+  }
+
+  setCreateMode(mode: 'existing' | 'new') {
+    this.createMode.set(mode);
+    if (mode === 'new') {
+      this.selectedExistingRoomTypeId.set('');
+      this.createForm.patchValue({
+        name: '',
+        description: '',
+        maxAdults: 2,
+        maxChildren: 0,
+        baseCapacity: 2,
+        baseRate: 0,
+        isActive: true,
+        roomNumber: '',
+        floor: '',
+      });
+    }
+  }
 
   readonly editForm = this.formBuilder.nonNullable.group({
     roomTypeId: ['', [Validators.required]],

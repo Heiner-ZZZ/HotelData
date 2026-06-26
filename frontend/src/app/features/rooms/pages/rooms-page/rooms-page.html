@@ -107,12 +107,45 @@
             </div>
           </div>
           <form [formGroup]="createForm" (submit)="$event.preventDefault(); createRoomType()" class="form-grid">
+            <!-- Toggle: select existing vs create new -->
+            <div class="create-mode-toggle" style="grid-column: 1 / -1">
+              <button type="button" class="toggle-mode-btn" [class.is-active]="createMode() === 'existing'" (click)="setCreateMode('existing')">
+                <span class="material-symbols-outlined">list_alt</span>
+                Usar existente
+              </button>
+              <button type="button" class="toggle-mode-btn" [class.is-active]="createMode() === 'new'" (click)="setCreateMode('new')">
+                <span class="material-symbols-outlined">add_circle</span>
+                Crear nuevo
+              </button>
+            </div>
+
+            @if (createMode() === 'existing') {
+              <label class="field" style="grid-column: 1 / -1">
+                <span class="field-label">
+                  <span class="material-symbols-outlined field-icon">bed</span>
+                  Tipo existente
+                </span>
+                <select [value]="selectedExistingRoomTypeId()" (change)="onExistingTypeSelected($any($event.target).value)">
+                  <option value="">Seleccionar tipo de habitación…</option>
+                  @for (rt of existingRoomTypes(); track rt.id) {
+                    <option [value]="rt.id">{{ rt.name }}</option>
+                  }
+                </select>
+              </label>
+              @if (selectedExistingRoomTypeId()) {
+                <div class="existing-type-info" style="grid-column: 1 / -1">
+                  <span class="material-symbols-outlined">info</span>
+                  <span>Se copiarán los datos del tipo seleccionado. Solo agrega el número de habitación y piso.</span>
+                </div>
+              }
+            }
+
             <label class="field">
               <span class="field-label">
                 <span class="material-symbols-outlined field-icon">badge</span>
                 Nombre
               </span>
-              <input formControlName="name" placeholder="Ej: Suite Premium">
+              <input formControlName="name" placeholder="Ej: Suite Premium" [class.readonly-field]="createMode() === 'existing'" [attr.readonly]="createMode() === 'existing' || null">
             </label>
             <label class="field">
               <span class="field-label">

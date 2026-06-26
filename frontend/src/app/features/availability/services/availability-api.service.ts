@@ -70,12 +70,30 @@ export class AvailabilityApiService {
     return this.http.post(`${this.apiConfig.baseUrl}/management/availability/blackouts`, payload, {
       withCredentials: true
     });
+  }  /** Fetch all hotel rooms for a property (for calendar room-number display). */
+  getAllHotelRooms(propId: number) {
+    return this.http.get<{ hotel_rooms: Array<{
+      hotel_room_id: string;
+      room_number?: string;
+      room_label: string;
+      room_type_id: string;
+      room_type_name?: string;
+      floor?: string;
+      is_active: boolean;
+    }> }>(
+      `${this.apiConfig.baseUrl}/management/rooms`,
+      {
+        params: { prop_id: String(propId) },
+        withCredentials: true
+      }
+    );
   }
 
   deleteBlackout(blackoutId: string) {
-    return this.http.delete(`${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`, {
-      withCredentials: true
-    });
+    return this.http.delete(
+      `${this.apiConfig.baseUrl}/management/availability/blackouts/${blackoutId}`,
+      { withCredentials: true }
+    );
   }
 
   deleteInventory(propId: number, roomTypeId: string, date: string) {
