@@ -72,7 +72,7 @@
     @switch (listState()) {
       @case ('loading') { <app-loading-state /> }
       @case ('error') { <app-error-state /> }
-      @case ('empty') { <app-empty-state message="No hay comisiones registradas aún. Aparecerán cuando se generen facturas." /> }
+      @case ('empty') { <app-empty-state title="Sin comisiones" message="No hay comisiones registradas aún. Aparecerán cuando se generen facturas." /> }
       @case ('success') {
         @if (list(); as l) {
           <div class="table-wrap">
@@ -86,6 +86,7 @@
                   <th>Comisión $</th>
                   <th>Estado</th>
                   <th>Fecha</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +103,19 @@
                       </span>
                     </td>
                     <td class="cell-date">{{ item.createdAt | date:'dd/MM/yyyy' }}</td>
+                    <td class="cell-action">
+                      @if (item.status === 'pending') {
+                        <button
+                          type="button"
+                          class="pay-btn"
+                          (click)="markAsPaid(item.bookingId)"
+                          title="Marcar como pagada"
+                        >
+                          <span class="material-symbols-outlined">check_circle</span>
+                          Pagar
+                        </button>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>

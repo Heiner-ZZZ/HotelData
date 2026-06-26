@@ -24,3 +24,11 @@ export interface EarningsListDto {
   page_size: number;
   total_pages: number;
 }
+
+export interface WeeklyEarningPointDto {
+  label: string;
+  total_commission: number;
+  total_bookings: number;
+  paid_count: number;
+  pending_count: number;
+}

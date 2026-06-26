@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import type { EarningsSummaryDto, EarningsListDto, EarningsItemDto } from '../models/earnings.dto';
-import type { EarningsSummary, EarningsList, EarningsItem } from '../models/earnings.model';
+import type { EarningsSummaryDto, EarningsListDto, EarningsItemDto, WeeklyEarningPointDto } from '../models/earnings.dto';
+import type { EarningsSummary, EarningsList, EarningsItem, WeeklyEarningPoint } from '../models/earnings.model';
 
 function mapSummary(dto: EarningsSummaryDto): EarningsSummary {
   return {
@@ -58,5 +58,41 @@ export class EarningsApiService {
     return this.http
       .get<EarningsListDto>(`${this.base}`, { params, withCredentials: true })
       .pipe(map(mapList));
+  }
+
+  markPaid(bookingId: string): Observable<EarningsItem | null> {
+    return this.http
+      .put<EarningsItemDto | null>(
+        `${this.base}/${bookingId}/pay`,
+        {},
+        { withCredentials: true },
+      )
+      .pipe(map((dto) => (dto ? mapItem(dto) : null)));
+  }
+
+  getWeeklyEarnings(
+    weeks = 12,
+    startDate?: string,
+    endDate?: string,
+  ): Observable<WeeklyEarningPoint[]> {
+    let params = new HttpParams().set('weeks', String(weeks));
+    if (startDate) params = params.set('start_date', startDate);
+    if (endDate) params = params.set('end_date', endDate);
+    return this.http
+      .get<{ items: WeeklyEarningPointDto[] }>(`${this.base}/weekly`, {
+        params,
+        withCredentials: true,
+      })
+      .pipe(
+        map((res) =>
+          res.items.map((dto) => ({
+            label: dto.label,
+            totalCommission: dto.total_commission,
+            totalBookings: dto.total_bookings,
+            paidCount: dto.paid_count,
+            pendingCount: dto.pending_count,
+          })),
+        ),
+      );
   }
 }

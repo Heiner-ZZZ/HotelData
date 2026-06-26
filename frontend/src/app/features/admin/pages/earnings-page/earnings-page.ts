@@ -2,11 +2,13 @@ import { CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { toast } from '../../../../core/toast/toast.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import type { ApiError } from '../../../../core/api/api-error.model';
 import type { EarningsSummary, EarningsItem, EarningsList } from '../../models/earnings.model';
 import { EarningsApiService } from '../../services/earnings-api.service';
 
@@ -59,5 +61,17 @@ export class EarningsPageComponent {
   pagesArray(): number[] {
     const total = this.list()?.totalPages ?? 1;
     return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  markAsPaid(bookingId: string) {
+    this.api.markPaid(bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        toast('Comisión marcada como pagada.', 'dark', 4000);
+        this.loadData();
+      },
+      error: (err: ApiError) => {
+        toast(err.message || 'Error al marcar comisión como pagada.', 'error', 5000);
+      },
+    });
   }
 }

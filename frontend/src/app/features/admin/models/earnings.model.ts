@@ -24,3 +24,11 @@ export interface EarningsList {
   pageSize: number;
   totalPages: number;
 }
+
+export interface WeeklyEarningPoint {
+  label: string;
+  totalCommission: number;
+  totalBookings: number;
+  paidCount: number;
+  pendingCount: number;
+}
