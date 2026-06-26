@@ -36,6 +36,7 @@ export interface HousekeepingTaskItem {
   assignedTo: string;
   priority: string;
   note: string;
+  scheduledDate: string;
   createdAt: string;
   completedAt: string | null;
 }
@@ -117,8 +118,16 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<HousekeepingTaskItem>>(`${this.baseUrl}/tasks`, { params, withCredentials: true });
   }
 
-  createTask(payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string }) {
+  createTask(payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
     return this.http.post<HousekeepingTaskItem>(`${this.baseUrl}/tasks`, payload, { withCredentials: true });
+  }
+
+  updateTask(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
+    return this.http.put<HousekeepingTaskItem>(`${this.baseUrl}/tasks/${taskId}`, payload, { withCredentials: true });
+  }
+
+  deleteTask(taskId: string) {
+    return this.http.delete<HousekeepingTaskItem>(`${this.baseUrl}/tasks/${taskId}`, { withCredentials: true });
   }
 
   completeTask(taskId: string, note = '') {
@@ -146,6 +155,10 @@ export class HousekeepingApiService {
     return this.http.post<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}/complete`, { note }, { withCredentials: true });
   }
 
+  deleteMaintenance(taskId: string) {
+    return this.http.delete<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}`, { withCredentials: true });
+  }
+
   // ── Additional Charges ──
 
   getCharges(bookingId?: string, propId?: number, page = 1) {
@@ -164,6 +177,14 @@ export class HousekeepingApiService {
   getDashboard(propId?: number) {
     const params = propId ? new HttpParams().set('prop_id', String(propId)) : undefined;
     return this.http.get<HousekeepingDashboard>(`${this.baseUrl}/dashboard`, { params, withCredentials: true });
+  }
+
+  getUpcomingEvents(propId?: number) {
+    let params = new HttpParams();
+    if (propId) params = params.set('prop_id', String(propId));
+    return this.http.get<Array<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }>>(
+      `${this.baseUrl}/upcoming-events`, { params, withCredentials: true }
+    );
   }
 
   syncRoomStatus(propId: number) {

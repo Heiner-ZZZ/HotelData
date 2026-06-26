@@ -23,6 +23,7 @@ from src.app.modules.housekeeping.service import (
     list_housekeeping_tasks,
     list_maintenance_tasks,
     list_room_status,
+    list_upcoming_events,
     module_status,
     sync_room_status_from_hotel_rooms,
     update_housekeeping_task,
@@ -298,3 +299,13 @@ def housekeeping_dashboard_api(
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
     return get_housekeeping_dashboard(prop_id=prop_id)
+
+
+@api_router.get("/upcoming-events")
+def upcoming_events_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    days: int = Query(default=30, ge=1, le=90),
+    current_user: dict = Depends(require_login),
+):
+    """Return upcoming tasks and maintenance events for calendar display."""
+    return list_upcoming_events(prop_id=prop_id, days=days)
