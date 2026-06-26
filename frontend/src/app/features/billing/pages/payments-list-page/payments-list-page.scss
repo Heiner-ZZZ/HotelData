@@ -59,6 +59,11 @@ th, td {
   vertical-align: top;
 }
 
+.cell-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
 button {
   display: inline-flex;
   align-items: center;
@@ -72,6 +77,38 @@ button {
   cursor: pointer;
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.refund-btn {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
+  color: #f59e0b;
+  font-size: 0.78rem;
+  padding: 0 0.65rem;
+  min-height: 2rem;
+
+  .material-symbols-outlined { font-size: 14px; }
+
+  &:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: #f59e0b;
+  }
+}
+
+.method-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.8rem;
+  color: #c8d0da;
+}
+
+.method-icon {
+  font-size: 14px;
+  color: #6b7a8d;
 }
 
 .inline-link {

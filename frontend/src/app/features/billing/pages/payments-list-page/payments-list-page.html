@@ -6,8 +6,8 @@
   />
 
   <div class="sub-nav">
-    <a routerLink="/management/billing/invoices" class="sub-link">Facturas</a>
-    <a routerLink="/management/billing/payments" class="sub-link active">Pagos</a>
+    <a routerLink="/admin/billing/invoices" class="sub-link">Facturas</a>
+    <a routerLink="/admin/billing/payments" class="sub-link active">Pagos</a>
   </div>
 
   @switch (viewState()) {
@@ -57,6 +57,7 @@
                   <th>Referencia</th>
                   <th>Fecha</th>
                   <th>Factura</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -64,7 +65,12 @@
                   <tr>
                     <td>{{ item.bookingId }}</td>
                     <td><strong>{{ item.amount | currency:'USD' }}</strong></td>
-                    <td>{{ item.method }}</td>
+                    <td>
+                      <span class="method-pill">
+                        <span class="material-symbols-outlined method-icon">{{ getMethodInfo(item.method).icon }}</span>
+                        {{ getMethodInfo(item.method).label }}
+                      </span>
+                    </td>
                     <td>
                       <app-status-badge
                         [tone]="item.status === 'confirmed' ? 'success' : item.status === 'refunded' ? 'warning' : 'neutral'"
@@ -79,6 +85,20 @@
                           <span class="material-symbols-outlined btn-icon">receipt</span>
                           Ver factura
                         </a>
+                      }
+                    </td>
+                    <td class="cell-action">
+                      @if (item.status === 'confirmed') {
+                        <button
+                          type="button"
+                          class="refund-btn"
+                          (click)="refund(item.id)"
+                          [disabled]="refundingId() === item.id"
+                          title="Reembolsar pago"
+                        >
+                          <span class="material-symbols-outlined">undo</span>
+                          {{ refundingId() === item.id ? '...' : 'Reembolsar' }}
+                        </button>
                       }
                     </td>
                   </tr>

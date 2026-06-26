@@ -9,7 +9,9 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
+import { toast } from '../../../../core/toast/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import type { ApiError } from '../../../../core/api/api-error.model';
 import type { PaymentsListViewModel } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
 
@@ -28,6 +30,14 @@ export class PaymentsListPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<PaymentsListViewModel | null>(null);
+  readonly refundingId = signal<string | null>(null);
+
+  readonly methodLabels: Record<string, { label: string; icon: string }> = {
+    cash: { label: 'Efectivo', icon: 'payments' },
+    credit_card: { label: 'Tarjeta crédito', icon: 'credit_card' },
+    bank_transfer: { label: 'Transferencia', icon: 'account_balance' },
+    simulated: { label: 'Simulado', icon: 'experiment' },
+  };
 
   constructor() {
     this.activatedRoute.queryParamMap
@@ -54,5 +64,26 @@ export class PaymentsListPageComponent {
       relativeTo: this.activatedRoute,
       queryParams: { page: page > 1 ? page : null },
     });
+  }
+
+  refund(paymentId: string) {
+    this.refundingId.set(paymentId);
+    this.billingApi.refundPayment(paymentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          toast('Pago reembolsado correctamente.', 'dark', 4000);
+          this.refundingId.set(null);
+          this.goToPage(this.data()?.page ?? 1);
+        },
+        error: (err: ApiError) => {
+          toast(err.message || 'Error al reembolsar el pago.', 'error', 5000);
+          this.refundingId.set(null);
+        },
+      });
+  }
+
+  getMethodInfo(method: string) {
+    return this.methodLabels[method] ?? { label: method, icon: 'receipt' };
   }
 }
