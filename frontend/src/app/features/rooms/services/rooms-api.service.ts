@@ -123,12 +123,16 @@ export class RoomsApiService {
       .pipe(map((res) => res.features));
   }
 
-  /** Update features for a room type. */
-  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: string[]) {
+  /** Update features (with optional unit_price) for a room type. */
+  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: Array<{ label: string; unitPrice?: number }>) {
     const params = new HttpParams().set('prop_id', String(propId));
+    const payload = features.map((f) => ({
+      label: f.label,
+      unit_price: f.unitPrice ?? 0,
+    }));
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
-      { features },
+      { features: payload },
       { params, withCredentials: true }
     );
   }

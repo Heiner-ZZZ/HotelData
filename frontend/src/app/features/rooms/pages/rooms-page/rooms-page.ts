@@ -137,6 +137,7 @@ export class RoomsPageComponent {
   /* ── Room Features ── */
   readonly featureCatalog = signal<FeatureCategory[]>([]);
   readonly selectedFeatures = signal<Set<string>>(new Set());
+  readonly featurePrices = signal<Map<string, number>>(new Map());
   readonly editingRoomTypeName = signal('');
   readonly editingRoomTypeId = signal('');
   readonly featurePanelOpen = signal(true);
@@ -221,7 +222,21 @@ export class RoomsPageComponent {
     });
     this.editingRoomTypeName.set(roomType.name);
     this.editingRoomTypeId.set(roomType.id);
-    this.selectedFeatures.set(new Set(roomType.features));
+    this.selectedFeatures.set(new Set(roomType.features.map(f => f.label)));
+    // Populate price map from room type feature data
+    const prices = new Map<string, number>();
+    for (const f of roomType.features) {
+      prices.set(f.label, f.unitPrice);
+    }
+    // Merge with catalog defaults for features not yet in price map
+    for (const cat of this.featureCatalog()) {
+      for (const feat of cat.items) {
+        if (!prices.has(feat.label) && feat.unitPrice) {
+          prices.set(feat.label, feat.unitPrice);
+        }
+      }
+    }
+    this.featurePrices.set(prices);
     this.featurePanelOpen.set(true);
     this.showEditModal.set(true);
 
@@ -270,10 +285,30 @@ export class RoomsPageComponent {
   /** Count selected features. */
   readonly selectedFeatureCount = computed(() => this.selectedFeatures().size);
 
+  updateFeaturePrice(label: string, value: string) {
+    const num = parseFloat(value);
+    const prices = new Map(this.featurePrices());
+    prices.set(label, isNaN(num) ? 0 : num);
+    this.featurePrices.set(prices);
+  }
+
+  /** Get current price for a feature label, falling back to catalog default. */
+  getFeaturePrice(label: string): number {
+    const prices = this.featurePrices();
+    if (prices.has(label)) return prices.get(label)!;
+    // Fall back to catalog default
+    for (const cat of this.featureCatalog()) {
+      const found = cat.items.find((f) => f.label === label);
+      if (found?.unitPrice) return found.unitPrice;
+    }
+    return 0;
+  }
+
   cancelEdit() {
     this.showEditModal.set(false);
     this.editForm.reset();
     this.selectedFeatures.set(new Set());
+    this.featurePrices.set(new Map());
   }
 
   requestDelete(roomTypeId: string, name: string) {
@@ -325,7 +360,11 @@ export class RoomsPageComponent {
     this.savingEdit.set(true);
 
     // Update room type basic fields + features in parallel
-    const featuresArr = [...this.selectedFeatures()];
+    const prices = this.featurePrices();
+    const featuresArr = [...this.selectedFeatures()].map((label) => ({
+      label,
+      unitPrice: prices.get(label) ?? 0,
+    }));
     const roomTypeId = value.roomTypeId;
 
     this.api.updateRoomType(roomTypeId, {

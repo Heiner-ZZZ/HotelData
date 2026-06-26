@@ -1,5 +1,13 @@
 import type { RoomCreateDto, RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
-import type { RoomPropertyOption, RoomsViewModel } from '../models/rooms.model';
+import type { RoomFeatureItem, RoomPropertyOption, RoomsViewModel } from '../models/rooms.model';
+
+function normalizeFeatures(features: unknown): RoomFeatureItem[] {
+  if (!Array.isArray(features)) return [];
+  return features.map((f) => {
+    if (typeof f === 'string') return { label: f, unitPrice: 0 };
+    return { label: String(f.label ?? ''), unitPrice: Number(f.unit_price ?? 0) };
+  });
+}
 
 export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
   return {
@@ -21,7 +29,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       activeLabel: room.is_active ? 'Sí' : 'No',
       roomNumber: room.room_number || '',
       floor: room.floor || '',
-      features: room.features || [],
+      features: normalizeFeatures(room.features),
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,

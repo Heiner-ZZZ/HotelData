@@ -41,14 +41,17 @@ def room_features_update_api(
     payload: dict = Body(...),
     current_user: dict = Depends(require_login),
 ):
-    """Set feature tags for a room type."""
-    features = payload.get("features", [])
-    if not isinstance(features, list):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="features must be a list of strings")
+    """Set feature tags for a room type. Accepts a list of strings (legacy) or
+    list of objects with ``label`` and optional ``unit_price``."""
+    features_raw = payload.get("features", [])
+    if not isinstance(features_raw, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="features must be a list")
+
+    # Preserve objects; convert strings to objects in update_room_type_features
     result = update_room_type_features(
         require_prop_id(prop_id),
         room_type_id,
-        features=[str(f) for f in features],
+        features=features_raw,
         changed_by=current_user.get("username", "angular_api"),
     )
     if result is None:

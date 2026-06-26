@@ -11,6 +11,7 @@ export interface RoomsDto {
     avg_price_label: string;
     source_collection: string;
   };
+  /** Feature item from the API: either a string (legacy) or an object with label & unit_price. */
   room_types: Array<{
     room_type_id: string;
     name: string;
@@ -19,7 +20,7 @@ export interface RoomsDto {
     is_active: boolean;
     room_number?: string;
     floor?: string;
-    features?: string[];
+    features?: string[] | Array<{ label: string; unit_price: number }>;
   }>;
   hotel_rooms?: Array<{
     hotel_room_id: string;

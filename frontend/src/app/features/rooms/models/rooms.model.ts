@@ -13,6 +13,11 @@ export interface RoomsViewModel {
   hotelRooms: HotelRoomItem[];
 }
 
+export interface RoomFeatureItem {
+  label: string;
+  unitPrice: number;
+}
+
 export interface RoomTypeItem {
   id: string;
   name: string;
@@ -21,7 +26,7 @@ export interface RoomTypeItem {
   activeLabel: string;
   roomNumber: string;
   floor: string;
-  features: string[];
+  features: RoomFeatureItem[];
 }
 
 export interface RoomFeature {
