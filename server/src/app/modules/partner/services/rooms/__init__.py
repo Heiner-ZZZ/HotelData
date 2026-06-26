@@ -15,6 +15,7 @@ from .types import (
 from .inventory import (
     partner_hotel_inventory,
     save_inventory_entry,
+    soft_delete_inventory_entry,
 )
 from .availability import (
     create_blackout_block,
@@ -32,6 +33,7 @@ __all__ = [
     "update_room_type",
     "delete_room_type",
     "save_inventory_entry",
+    "soft_delete_inventory_entry",
     "create_blackout_block",
     "delete_blackout_block",
     "list_property_blackouts",

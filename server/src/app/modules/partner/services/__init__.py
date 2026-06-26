@@ -88,6 +88,7 @@ from src.app.modules.partner.services.rooms import (
     partner_hotel_inventory,
     partner_hotel_rooms,
     save_inventory_entry,
+    soft_delete_inventory_entry,
     update_room_type,
 )
 
@@ -127,6 +128,7 @@ __all__ = [
     "partner_hotel_rooms",
     "properties_dashboard",
     "save_inventory_entry",
+    "soft_delete_inventory_entry",
     "save_partner_hotel_amenities",
     "save_partner_hotel_content",
     "save_partner_hotel_policies",

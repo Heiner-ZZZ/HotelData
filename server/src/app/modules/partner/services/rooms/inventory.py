@@ -16,7 +16,7 @@ from src.database.connection import get_database
 
 def _inventory_for_prop(prop_id: int, limit: int = 365, start_date: str = "", end_date: str = "") -> list[dict[str, Any]]:
     db = get_database()
-    query: dict[str, Any] = {"prop_id": prop_id}
+    query: dict[str, Any] = {"prop_id": prop_id, "is_deleted": {"$ne": True}}
     if start_date and end_date:
         query["date"] = {"$gte": start_date, "$lte": end_date}
     elif start_date:
@@ -133,6 +133,18 @@ def save_inventory_entry(
         {"$set": payload, "$setOnInsert": {"created_at": now}},
         upsert=True, return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
+
+
+def soft_delete_inventory_entry(prop_id: int, *, room_type_id: str, date: str) -> dict[str, Any] | None:
+    """Soft-delete an inventory entry by setting is_deleted=True."""
+    db = get_database()
+    now = now_utc()
+    result = db.room_inventory_calendar.find_one_and_update(
+        {"prop_id": prop_id, "room_type_id": room_type_id, "date": date},
+        {"$set": {"is_deleted": True, "deleted_at": now}},
+        return_document=ReturnDocument.AFTER, projection={"_id": 0},
+    )
+    return result
 
 
 def partner_hotel_inventory(prop_id: int, days: int = 90, start_date: str = "", end_date: str = "") -> dict[str, Any] | None:
