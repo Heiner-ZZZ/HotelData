@@ -72,6 +72,39 @@
   white-space: nowrap;
 }
 
+.kpi-split {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.kpi-split-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.kpi-split-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--app-text);
+  line-height: 1.15;
+}
+
+.kpi-split-meta {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
+.kpi-split-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--app-border) 70%, transparent);
+  flex-shrink: 0;
+}
+
 .kpi-info {
   position: absolute;
   top: 0.35rem;

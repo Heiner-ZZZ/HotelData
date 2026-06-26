@@ -38,13 +38,23 @@
     </span>
   </article>
 
-  <article class="kpi-card glass">
+  <article class="kpi-card glass promo-card">
     <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
       <span class="material-symbols-outlined kpi-icon">campaign</span>
     </div>
     <div class="kpi-body">
-      <p class="kpi-label">Promociones y Cupones</p>
-      <h3 class="kpi-value">{{ data().promotionsCount + data().couponsCount }}</h3>
+      <p class="kpi-label">Promociones · Cupones</p>
+      <div class="kpi-split">
+        <div class="kpi-split-item">
+          <span class="kpi-split-value">{{ data().promotionsCount }}</span>
+          <span class="kpi-split-meta">campañas</span>
+        </div>
+        <span class="kpi-split-dot"></span>
+        <div class="kpi-split-item">
+          <span class="kpi-split-value">{{ data().couponsCount }}</span>
+          <span class="kpi-split-meta">cupones</span>
+        </div>
+      </div>
     </div>
     <span class="kpi-info" title="{{ data().promotionsCount }} campañas · {{ data().couponsCount }} cupones">
       <span class="material-symbols-outlined info-icon">info</span>
