@@ -49,11 +49,23 @@ export function mapAmenityCategory(item: AmenitiesDto['amenities']['catalog'][nu
   };
 }
 
-export function mapAmenitiesPayload(propId: number, activeAmenities: string[], roomTypeId = ''): AmenitiesSaveDto {
+export function mapAmenitiesPayload(
+  propId: number,
+  activeAmenities: string[],
+  roomTypeId = '',
+  amenityPrices?: Map<string, number>,
+): AmenitiesSaveDto {
+  const prices: Record<string, number> = {};
+  if (amenityPrices) {
+    for (const [label, price] of amenityPrices) {
+      prices[label] = price;
+    }
+  }
   return {
     prop_id: propId,
     active_amenities: activeAmenities,
     amenities_text: activeAmenities.join(', '),
+    amenity_prices: prices,
     ...(roomTypeId ? { room_type_id: roomTypeId } : {}),
   };
 }

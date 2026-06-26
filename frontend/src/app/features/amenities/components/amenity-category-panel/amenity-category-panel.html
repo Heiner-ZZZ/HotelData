@@ -24,8 +24,31 @@
               }
             }
           </span>
-          @if (item.unitPrice && item.unitPrice > 0) {
-            <span class="amenity-price">+${{ item.unitPrice }}</span>
+          @if (selectedLabels().has(item.label.toLowerCase())) {
+            <div class="amenity-pricing">
+              @if (getPrice(item.label) > 0) {
+                <span class="amenity-price-badge paid" title="Extra pagado">Extra</span>
+              } @else {
+                <span class="amenity-price-badge included" title="Incluido en tarifa">Incl.</span>
+              }
+              <div class="amenity-price-input-wrap">
+                <span class="amenity-price-symbol">$</span>
+                <input
+                  class="amenity-price-input"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [value]="getPrice(item.label)"
+                  (input)="onPriceInput(item.label, $event)"
+                  (click)="$event.stopPropagation()"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          } @else {
+            @if (getPrice(item.label) > 0) {
+              <span class="amenity-price-badge paid-off">+${{ getPrice(item.label) }}</span>
+            }
           }
         </label>
       }

@@ -174,15 +174,84 @@
     line-height: 1.3;
   }
 
-  .amenity-price {
+  .amenity-pricing {
     margin-left: auto;
-    font-size: 0.72rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .amenity-price-badge {
+    font-size: 0.6rem;
     font-weight: 700;
-    color: #4ade80;
-    background: rgba(74, 222, 128, 0.08);
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: 4px;
     white-space: nowrap;
+    letter-spacing: 0.02em;
+
+    &.paid {
+      background: rgba(251, 191, 36, 0.15);
+      color: #f59e0b;
+    }
+
+    &.included {
+      background: rgba(74, 222, 128, 0.1);
+      color: #4ade80;
+    }
+
+    &.paid-off {
+      background: rgba(251, 191, 36, 0.08);
+      color: #f59e0b;
+    }
+  }
+
+  .amenity-price-input-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 0 2px 0 4px;
+    border-left: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
+    margin-left: 2px;
+  }
+
+  .amenity-price-symbol {
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: var(--muted-text);
+    line-height: 1;
+  }
+
+  .amenity-price-input {
+    width: 36px;
+    min-height: unset;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #f59e0b;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: inherit;
+    outline: none;
+    text-align: right;
+    line-height: 1;
+
+    &:focus {
+      box-shadow: none;
+      border-color: transparent;
+    }
+
+    &::placeholder {
+      color: var(--muted-text);
+      opacity: 0.4;
+    }
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    -moz-appearance: textfield;
   }
 
   &.is-checked .amenity-label {

@@ -14,6 +14,8 @@ export class AmenityCategoryPanelComponent {
   readonly toggleAmenity = output<string>();
   readonly selectedLabels = input.required<Set<string>>();
   readonly searchTerm = input<string>('');
+  readonly amenityPrices = input<Map<string, number>>(new Map());
+  readonly updatePrice = output<{ label: string; value: string }>();
 
   readonly expanded = signal(true);
 
@@ -23,6 +25,15 @@ export class AmenityCategoryPanelComponent {
 
   onToggle(label: string) {
     this.toggleAmenity.emit(label);
+  }
+
+  onPriceInput(label: string, event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.updatePrice.emit({ label, value });
+  }
+
+  getPrice(label: string): number {
+    return this.amenityPrices().get(label) ?? 0;
   }
 
   getAmenityIcon(label: string): string {
