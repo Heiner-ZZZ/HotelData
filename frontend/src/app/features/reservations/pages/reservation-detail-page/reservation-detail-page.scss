@@ -615,6 +615,165 @@ button:disabled {
   padding: 0.25rem 0;
 }
 
+/* ─── Room Assignment Modal ─── */
+
+.btn-rooms {
+  border: 1px solid #8b5cf6;
+  background: #8b5cf6;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, #8b5cf6 85%, black);
+  }
+}
+
+.room-modal {
+  max-width: 560px;
+
+  .room-assignment-info {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+
+    .badge-required,
+    .badge-selected {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .badge-required {
+      background: rgba(139, 92, 246, 0.12);
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .badge-selected {
+      background: rgba(20, 99, 255, 0.1);
+      color: #60a5fa;
+      border: 1px solid rgba(20, 99, 255, 0.15);
+    }
+  }
+
+  .rooms-checklist {
+    display: grid;
+    gap: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+
+    .room-check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #0f1419;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      &:hover {
+        border-color: #334155;
+        background: #141c27;
+      }
+
+      &.is-selected {
+        border-color: #1463ff;
+        background: rgba(20, 99, 255, 0.06);
+      }
+
+      &.is-assigned {
+        opacity: 0.7;
+        border-color: #22c55e;
+      }
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #1463ff;
+        cursor: pointer;
+      }
+
+      .room-icon {
+        color: #5f6f87;
+        font-size: 22px;
+      }
+
+      .room-info {
+        flex: 1;
+        display: grid;
+        gap: 2px;
+
+        strong {
+          color: #e8edf2;
+          font-size: 0.9rem;
+        }
+
+        .room-number,
+        .room-floor {
+          font-size: 0.78rem;
+          color: #6b7a8d;
+        }
+      }
+
+      .assigned-badge {
+        font-size: 0.72rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(34, 197, 94, 0.12);
+        color: #4ade80;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .empty-rooms {
+    text-align: center;
+    padding: 32px 16px;
+
+    .material-symbols-outlined {
+      font-size: 40px;
+      color: #5f6f87;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #8896a6;
+      margin: 0 0 4px;
+      font-size: 0.9rem;
+    }
+
+    .hint {
+      color: #5f6f87;
+      font-size: 0.8rem;
+    }
+  }
+
+  .loading-shade-sm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 32px 16px;
+    color: #6b7a8d;
+    font-size: 0.9rem;
+
+    .loading-spin {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  .error-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    color: #f87171;
+    font-size: 0.9rem;
+  }
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 920px) {

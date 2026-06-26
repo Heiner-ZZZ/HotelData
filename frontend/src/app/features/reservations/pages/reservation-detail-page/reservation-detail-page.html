@@ -48,6 +48,12 @@
               Modificar
             </button>
           }
+          @if (isStaff() && ['confirmed', 'checked_in'].includes(vm.status)) {
+            <button type="button" class="btn-action btn-rooms" (click)="openRoomModal()">
+              <span class="material-symbols-outlined btn-icon">meeting_room</span>
+              Asignar habitaciones
+            </button>
+          }
         </div>
 
           <section class="hero-grid">
@@ -115,6 +121,9 @@
                   <tr><th>Email</th><td>{{ vm.guestEmail }}</td></tr>
                   @if (vm.guestPhone) {
                     <tr><th>Teléfono</th><td>{{ vm.guestPhone }}</td></tr>
+                  }
+                  @if (vm.guestCedula) {
+                    <tr><th>Cédula</th><td><strong>{{ vm.guestCedula }}</strong></td></tr>
                   }
                   @if (vm.totalPrice !== null) {
                     <tr>
@@ -270,6 +279,89 @@
           </div>
         </section>
 
+        <!-- ═══ Room Assignment Modal ═══ -->
+        @if (showRoomModal()) {
+          <div class="modal-overlay" (click)="closeRoomModal()">
+            <div class="modal-panel room-modal" (click)="$event.stopPropagation()">
+              <div class="modal-head">
+                <span class="material-symbols-outlined modal-head-icon">meeting_room</span>
+                <div>
+                  <h2>Asignar habitaciones</h2>
+                  <p>{{ vm.bookingId }} — {{ vm.hotelLabel }}</p>
+                </div>
+                <button type="button" class="modal-close" (click)="closeRoomModal()" aria-label="Cerrar">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                @if (roomAssignmentState() === 'loading') {
+                  <div class="loading-shade-sm">
+                    <span class="material-symbols-outlined loading-spin">sync</span>
+                    <span>Cargando habitaciones disponibles...</span>
+                  </div>
+                } @else if (roomAssignmentState() === 'error') {
+                  <div class="error-msg">
+                    <span class="material-symbols-outlined">error</span>
+                    <span>No se pudieron cargar las habitaciones disponibles.</span>
+                  </div>
+                } @else {
+                  @if (roomAssignmentMessage()) {
+                    <div class="toast toast-error" style="margin-bottom: 12px;">{{ roomAssignmentMessage() }}</div>
+                  }
+                  <div class="room-assignment-info">
+                    <span class="badge-required">Requiere {{ roomsRequired() }} habitación(es)</span>
+                    <span class="badge-selected">{{ selectedRoomIds().size }} seleccionada(s)</span>
+                  </div>
+                  @if (availableRooms().length === 0) {
+                    <div class="empty-rooms">
+                      <span class="material-symbols-outlined">meeting_room</span>
+                      <p>No hay habitaciones físicas disponibles para esta reserva.</p>
+                      <p class="hint">Configura las habitaciones en Gestión &gt; Habitaciones primero.</p>
+                    </div>
+                  } @else {
+                    <div class="rooms-checklist">
+                      @for (room of availableRooms(); track room.hotel_room_id) {
+                        <label class="room-check-item" [class.is-selected]="selectedRoomIds().has(room.hotel_room_id)" [class.is-assigned]="assignedRoomIds().includes(room.hotel_room_id)">
+                          <input type="checkbox"
+                            [checked]="selectedRoomIds().has(room.hotel_room_id)"
+                            (change)="toggleRoomSelection(room.hotel_room_id)"
+                            [disabled]="assignedRoomIds().includes(room.hotel_room_id) && !selectedRoomIds().has(room.hotel_room_id)" />
+                          <span class="material-symbols-outlined room-icon">door_front</span>
+                          <div class="room-info">
+                            <strong>{{ room.room_label || room.room_number || room.hotel_room_id }}</strong>
+                            @if (room.room_number) {
+                              <span class="room-number">N° {{ room.room_number }}</span>
+                            }
+                            @if (room.floor) {
+                              <span class="room-floor">Piso {{ room.floor }}</span>
+                            }
+                          </div>
+                          @if (assignedRoomIds().includes(room.hotel_room_id)) {
+                            <span class="assigned-badge">Asignada</span>
+                          }
+                        </label>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+              <div class="modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeRoomModal()">Cancelar</button>
+                <button type="button" class="btn-primary"
+                  (click)="saveRoomAssignment()"
+                  [disabled]="roomAssignmentSaving() || selectedRoomIds().size === 0">
+                  @if (roomAssignmentSaving()) {
+                    <span class="material-symbols-outlined loading-spin">sync</span>
+                    Asignando...
+                  } @else {
+                    <span class="material-symbols-outlined">check</span>
+                    Asignar {{ selectedRoomIds().size }} habitación(es)
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
 
       }
     }

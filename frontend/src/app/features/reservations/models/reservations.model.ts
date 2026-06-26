@@ -30,6 +30,7 @@ export interface ReservationCreateInput {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  cedula?: string;
   checkInDate: string;
   checkOutDate: string;
   adults: number;
@@ -130,6 +131,7 @@ export interface ReservationDetailViewModel {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  guestCedula: string;
   totalPrice: number | null;
   currency: string;
   totalNights: number;

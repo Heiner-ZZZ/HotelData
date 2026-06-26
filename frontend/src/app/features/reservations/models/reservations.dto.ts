@@ -118,6 +118,7 @@ export interface ReservationDetailDto {
     guest_name: string;
     guest_email: string;
     guest_phone: string;
+    cedula?: string | null;
   } | null;
   history: Array<{
     status: string;
