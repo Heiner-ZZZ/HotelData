@@ -1,0 +1,172 @@
+<div class="geo-page">
+  <app-page-header
+    eyebrow="Administración"
+    title="Catálogo geográfico"
+    description="Gestiona países, estados, ciudades y destinos turísticos. CRUD completo con resolución de IDs a nombres display."
+  />
+
+  @if (message()) {
+    <div class="toast toast-success" (click)="message.set('')">
+      <span class="material-symbols-outlined">check_circle</span>
+      {{ message() }}
+    </div>
+  }
+  @if (errorMessage()) {
+    <div class="toast toast-error" (click)="errorMessage.set('')">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- ═══ Type filter tabs ═══ -->
+  <div class="bar-actions">
+    <nav class="type-tabs">
+      @for (t of entryTypes; track t.value) {
+        <button type="button" class="type-tab" [class.active]="activeType() === t.value" (click)="setTypeFilter(t.value)">
+          <span class="material-symbols-outlined tab-icon">{{ t.icon }}</span>
+          {{ t.label }}
+        </button>
+      }
+    </nav>
+    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+      {{ showCreateForm() ? 'Cancelar' : 'Nueva entrada' }}
+    </button>
+  </div>
+
+  <!-- ═══ Create / Edit form ═══ -->
+  @if (showCreateForm()) {
+    <section class="surface-card form-card">
+      <h3>
+        <span class="material-symbols-outlined">{{ editingId() ? 'edit' : 'add_location' }}</span>
+        {{ editingId() ? 'Editar ' + typeLabel(activeType()) : 'Nuevo ' + typeLabel(activeType()) }}
+      </h3>
+      <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitEntry()" class="geo-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="code">Código *</label>
+            <input id="code" type="text" formControlName="code" placeholder="Ej: MX, JAL, GDL" [readonly]="!!editingId()" />
+          </div>
+          <div class="form-group" style="flex: 2">
+            <label for="name">Nombre *</label>
+            <input id="name" type="text" formControlName="name" placeholder="Ej: México, Jalisco, Guadalajara" />
+          </div>
+        </div>
+        @if (activeType() !== 'country') {
+          <div class="form-row">
+            <div class="form-group">
+              <label for="countryCode">País</label>
+              <input id="countryCode" type="text" formControlName="countryCode" placeholder="Código del país (MX, US...)" />
+            </div>
+            @if (activeType() === 'city') {
+              <div class="form-group">
+                <label for="stateCode">Estado / Provincia</label>
+                <input id="stateCode" type="text" formControlName="stateCode" placeholder="Código del estado (JAL, CDMX...)" />
+              </div>
+            }
+            @if (activeType() === 'destination') {
+              <div class="form-group">
+                <label for="category">Categoría</label>
+                <input id="category" type="text" formControlName="category" placeholder="urbano, playa, rural, ejecutivo..." />
+              </div>
+            }
+          </div>
+        }
+        @if (activeType() === 'country') {
+          <div class="form-row">
+            <div class="form-group">
+              <label for="isoCode">Código ISO</label>
+              <input id="isoCode" type="text" formControlName="isoCode" placeholder="Ej: MEX, USA, ESP" />
+            </div>
+          </div>
+        }
+        <div class="form-row" style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+            <span class="material-symbols-outlined">save</span>
+            {{ editingId() ? 'Guardar cambios' : 'Crear' }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="btn-secondary" (click)="cancelForm()">
+              <span class="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+          }
+        </div>
+      </form>
+    </section>
+  }
+
+  <!-- ═══ Table ═══ -->
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando catálogo geográfico..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" description="No se pudieron obtener las entradas del catálogo." />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin entradas"
+        description="No hay {{ typeLabel(activeType()) | lowercase }} registrados. Usa el botón 'Nueva entrada' para agregar."
+      />
+    }
+    @default {
+      @if (data(); as d) {
+        <section class="surface-card data-card">
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined">{{ typeIcon(activeType()) }}</span>
+              <div>
+                <h2>{{ typeLabel(activeType()) }}</h2>
+                <p>{{ d.total }} registro(s) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+              </div>
+            </div>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span> Anterior
+              </button>
+              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                Siguiente <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre</th>
+                  @if (activeType() === 'country') { <th>ISO</th> }
+                  @if (activeType() !== 'country') { <th>País</th> }
+                  @if (activeType() === 'city') { <th>Estado</th> }
+                  @if (activeType() === 'destination') { <th>Categoría</th> }
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr>
+                    <td><code>{{ item.code }}</code></td>
+                    <td><strong>{{ item.name }}</strong></td>
+                    @if (activeType() === 'country') { <td>{{ item.isoCode || '—' }}</td> }
+                    @if (activeType() !== 'country') { <td>{{ item.countryCode || '—' }}</td> }
+                    @if (activeType() === 'city') { <td>{{ item.stateCode || '—' }}</td> }
+                    @if (activeType() === 'destination') { <td>{{ item.category || '—' }}</td> }
+                    <td class="cell-action">
+                      <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                      <button type="button" class="btn-icon-only danger" (click)="deleteEntry(item.id, item.name)" aria-label="Eliminar">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
