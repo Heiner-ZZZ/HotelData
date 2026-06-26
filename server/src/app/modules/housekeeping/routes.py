@@ -22,6 +22,7 @@ from src.app.modules.housekeeping.service import (
     list_maintenance_tasks,
     list_room_status,
     module_status,
+    sync_room_status_from_hotel_rooms,
     update_room_status_bulk,
     upsert_room_status,
 )
@@ -93,6 +94,18 @@ def room_status_bulk_api(
         raise HTTPException(status_code=400, detail="prop_id y room_labels son requeridos")
     count = update_room_status_bulk(prop_id, room_labels, new_status, note)
     return {"ok": True, "updated_count": count}
+
+
+@api_router.post("/room-status/sync")
+def room_status_sync_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Auto‑seed room_status_log from hotel_rooms for a property."""
+    prop_id = payload.get("prop_id")
+    if not prop_id:
+        raise HTTPException(status_code=400, detail="prop_id es requerido")
+    return sync_room_status_from_hotel_rooms(prop_id)
 
 
 # ═══════════════════════════════════════════════

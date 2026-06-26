@@ -11,6 +11,7 @@ from src.app.modules.housekeeping.service.lifecycle import (
     list_housekeeping_tasks,
     list_maintenance_tasks,
     list_room_status,
+    sync_room_status_from_hotel_rooms,
     update_room_status_bulk,
     upsert_room_status,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "list_maintenance_tasks",
     "list_room_status",
     "module_status",
+    "sync_room_status_from_hotel_rooms",
     "update_room_status_bulk",
     "upsert_room_status",
 ]

@@ -7,6 +7,7 @@ from .status import (
     list_room_status,
     get_room_status,
     update_room_status_bulk,
+    sync_room_status_from_hotel_rooms,
 )
 from .tasks import (
     create_housekeeping_task,
@@ -29,6 +30,7 @@ __all__ = [
     "list_room_status",
     "get_room_status",
     "update_room_status_bulk",
+    "sync_room_status_from_hotel_rooms",
     "create_housekeeping_task",
     "list_housekeeping_tasks",
     "complete_housekeeping_task",

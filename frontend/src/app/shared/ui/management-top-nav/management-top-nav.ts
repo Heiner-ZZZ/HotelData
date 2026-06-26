@@ -10,6 +10,7 @@ import { PropertyContextService } from '../../services/property-context.service'
 interface BreadcrumbItem {
   label: string;
   path: string;
+  queryParams?: Record<string, string>;
 }
 
 const SEGMENT_LABELS: Record<string, string> = {
