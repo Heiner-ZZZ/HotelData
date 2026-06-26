@@ -214,3 +214,44 @@ def guest_status_change_html(
 {_cta_button(detail_url)}"""
 
     return _base_layout(headline, body)
+
+
+def guest_invoice_html(
+    hotel_label: str,
+    booking_id: str,
+    guest_name: str,
+    check_in_date: str,
+    check_out_date: str,
+    nights_label: str,
+    invoice_number: str,
+    invoice_total: str,
+    invoice_url: str,
+) -> str:
+    """Email HTML notifying a guest about an invoice issued post-check-out."""
+    rows = _detail_table(
+        "📋 Factura",
+        _detail_row("No. Factura", f"<strong>{invoice_number}</strong>")
+        + _detail_row("Total", invoice_total)
+        + _detail_row("Check-in", check_in_date)
+        + _detail_row("Check-out", check_out_date)
+        + _detail_row("Estancia", nights_label)
+        + _detail_row(
+            "Estado",
+            "<span style=\"display:inline-block;padding:2px 10px;border-radius:12px;"
+            "background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600\">EMITIDA</span>",
+        ),
+    )
+
+    body = f"""<p style="margin:0 0 12px;font-size:15px;color:#374151">Hola <strong>{guest_name}</strong>,</p>
+<p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.5">
+  Tu estancia en <strong>{hotel_label}</strong> ha finalizado. Tu factura <strong>{invoice_number}</strong>
+  por <strong>{invoice_total}</strong> ya está disponible.
+</p>
+{rows}
+{_cta_button(invoice_url, "Ver mi factura →")}"""
+
+    return _base_layout(
+        "¡Gracias por tu visita!",
+        body,
+        footer_note="Este es un mensaje automático de HotelData Hub.<br>Puedes descargar tu factura desde tu panel de huésped.",
+    )

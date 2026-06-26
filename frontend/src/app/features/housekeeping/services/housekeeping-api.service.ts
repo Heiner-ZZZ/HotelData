@@ -146,11 +146,11 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<MaintenanceTaskItem>>(`${this.baseUrl}/maintenance`, { params, withCredentials: true });
   }
 
-  createMaintenance(payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string }) {
+  createMaintenance(payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean }) {
     return this.http.post<MaintenanceTaskItem>(`${this.baseUrl}/maintenance`, payload, { withCredentials: true });
   }
 
-  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string }) {
+  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean }) {
     return this.http.put<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}`, payload, { withCredentials: true });
   }
 

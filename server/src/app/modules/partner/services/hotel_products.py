@@ -8,7 +8,7 @@ to active reservations as line items during the guest's stay.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from src.app.modules.partner.services._common import clean_text, now_utc
@@ -264,6 +264,98 @@ def get_platform_earnings_summary() -> dict[str, Any]:
         "pending_count": r.get("pending_count", 0),
         "paid_count": r.get("paid_count", 0),
     }
+
+
+def mark_commission_paid(booking_id: str) -> dict[str, Any] | None:
+    """Mark a pending platform earning as paid."""
+    db = get_database()
+    result = db.platform_earnings.find_one_and_update(
+        {"booking_id": booking_id, "status": "pending"},
+        {"$set": {"status": "paid", "paid_at": now_utc()}},
+        return_document=True,
+        projection={"_id": 0},
+    )
+    if result:
+        logger.info("Commission %s marked as paid", booking_id)
+    return result
+
+
+def get_weekly_earnings(
+    weeks: int = 12,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Aggregate platform earnings by week.
+
+    If start_date and end_date are provided, they take precedence.
+    Otherwise, uses last N weeks from now.
+    """
+    db = get_database()
+
+    if start_date and end_date:
+        end = end_date
+        start = start_date
+    else:
+        end = now_utc()
+        start = end - timedelta(weeks=weeks)
+
+    pipeline = [
+        {"$match": {"created_at": {"$gte": start, "$lte": end}}},
+        {
+            "$group": {
+                "_id": {
+                    "year": {"$isoWeekYear": "$created_at"},
+                    "week": {"$isoWeek": "$created_at"},
+                },
+                "total_commission": {"$sum": "$commission_amount"},
+                "total_bookings": {"$sum": 1},
+                "paid_count": {
+                    "$sum": {"$cond": [{"$eq": ["$status", "paid"]}, 1, 0]}
+                },
+                "pending_count": {
+                    "$sum": {"$cond": [{"$eq": ["$status", "pending"]}, 1, 0]}
+                },
+            }
+        },
+        {"$sort": {"_id.year": 1, "_id.week": 1}},
+    ]
+
+    results = list(db.platform_earnings.aggregate(pipeline))
+
+    # Build a lookup of week -> data
+    week_map: dict[str, dict[str, Any]] = {}
+    for r in results:
+        yr = r["_id"]["year"]
+        wk = r["_id"]["week"]
+        label = f"S{wk:02d}" if yr == end.isocalendar()[0] else f"{yr}-S{wk:02d}"
+        week_map[label] = {
+            "label": label,
+            "total_commission": round(r.get("total_commission", 0), 2),
+            "total_bookings": r.get("total_bookings", 0),
+            "paid_count": r.get("paid_count", 0),
+            "pending_count": r.get("pending_count", 0),
+        }
+
+    # Fill all weeks in range, even those with no data
+    filled: list[dict[str, Any]] = []
+    cursor = start
+    while cursor <= end:
+        iso = cursor.isocalendar()
+        yr, wk = iso[0], iso[1]
+        label = f"S{wk:02d}" if yr == end.isocalendar()[0] else f"{yr}-S{wk:02d}"
+        if label in week_map:
+            filled.append(week_map[label])
+        else:
+            filled.append({
+                "label": label,
+                "total_commission": 0.0,
+                "total_bookings": 0,
+                "paid_count": 0,
+                "pending_count": 0,
+            })
+        cursor += timedelta(days=7)
+
+    return filled
 
 
 def list_platform_earnings(page: int = 1, page_size: int = 20) -> dict[str, Any]:

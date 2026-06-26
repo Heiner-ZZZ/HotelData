@@ -33,7 +33,23 @@ def _update_both(collection: str, fact_collection: str, doc_id: ObjectId, update
 
 
 def _generate_invoice_number() -> str:
-    return f"INV-{_now().strftime('%Y%m')}-{secrets.token_hex(4).upper()}"
+    """Generate sequential invoice number: INV-YYYYMM-XXXX where XXXX is sequential per month."""
+    db = get_database()
+    prefix = f"INV-{_now().strftime('%Y%m')}-"
+    # Find the highest sequence for this month
+    last = db[INVOICES].find_one(
+        {"invoice_number": {"$regex": f"^{prefix}"}},
+        sort=[("invoice_number", -1)],
+        projection={"invoice_number": 1},
+    )
+    if last and last.get("invoice_number"):
+        try:
+            seq = int(last["invoice_number"].split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            seq = 1
+    else:
+        seq = 1
+    return f"{prefix}{seq:04d}"
 
 
 # --- Invoices ---

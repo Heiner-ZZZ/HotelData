@@ -14,6 +14,69 @@ from ..collections import MAINTENANCE_COLLECTION
 from ...schemas import MaintenanceTaskCreate, now_iso
 
 
+def _auto_block_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -> None:
+    """Mark the room as 'maintenance' in room_status_log and create blackout_date.
+
+    RF-002: Bloquear disponibilidad durante mantenimiento.
+    This ensures the room cannot be booked while under maintenance.
+    """
+    if not room_label:
+        return
+    # Update room status to 'maintenance'
+    db.room_status_log.update_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {
+            "$set": {"status": "maintenance", "note": "Mantenimiento programado", "updated_at": now_iso()},
+            "$setOnInsert": {"created_at": now_iso()},
+        },
+        upsert=True,
+    )
+    # Create blackout date entry for the scheduled date
+    if scheduled_date:
+        existing = db.blackout_dates.find_one({
+            "prop_id": prop_id,
+            "room_label": room_label,
+            "start_date": scheduled_date,
+            "end_date": scheduled_date,
+            "source": "maintenance",
+        })
+        if not existing:
+            db.blackout_dates.insert_one({
+                "prop_id": prop_id,
+                "room_label": room_label,
+                "start_date": scheduled_date,
+                "end_date": scheduled_date,
+                "source": "maintenance",
+                "reason": "Mantenimiento programado",
+                "created_at": now_iso(),
+            })
+
+
+def _unblock_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -> None:
+    """Restore room status to 'available' and remove blackout dates.
+
+    Called when maintenance is completed or deleted.
+    """
+    if not room_label:
+        return
+    # Only restore if the room is still marked as maintenance
+    current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"status": 1})
+    if current and current.get("status") == "maintenance":
+        db.room_status_log.update_one(
+            {"prop_id": prop_id, "room_label": room_label},
+            {"$set": {"status": "available", "note": "", "updated_at": now_iso()}},
+        )
+    # Remove blackout dates created by maintenance
+    if scheduled_date:
+        db.blackout_dates.delete_many({
+            "prop_id": prop_id,
+            "room_label": room_label,
+            "start_date": scheduled_date,
+            "end_date": scheduled_date,
+            "source": "maintenance",
+        })
+
+
 def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
@@ -22,10 +85,18 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
         "task_type": payload.task_type, "title": payload.title,
         "description": payload.description, "status": "scheduled",
         "priority": payload.priority, "scheduled_date": payload.scheduled_date,
+        "auto_block": payload.auto_block,
         "created_at": now, "completed_at": None,
     }
     result = db[MAINTENANCE_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+    # RF-002: Auto-block room availability if auto_block is True
+    if payload.auto_block:
+        try:
+            _auto_block_room(db, payload.prop_id, payload.room_label, payload.scheduled_date)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to auto-block room for maintenance task")
     return _enrich_mt_task(doc)
 
 
@@ -52,6 +123,8 @@ def list_maintenance_tasks(
 def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dict[str, Any] | None:
     db = get_database()
     now = now_iso()
+    # Fetch previous state to know if we need to unblock old room
+    prev = db[MAINTENANCE_COLLECTION].find_one({"_id": ObjectId(task_id)})
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id)},
         {"$set": {
@@ -61,10 +134,22 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
             "description": payload.description or "",
             "priority": payload.priority,
             "scheduled_date": payload.scheduled_date,
+            "auto_block": payload.auto_block,
             "updated_at": now,
         }},
         return_document=ReturnDocument.AFTER,
     )
+    if doc:
+        # If room/date/auto_block changed, unblock old and block new
+        if prev and prev.get("auto_block"):
+            old_room = prev.get("room_label", "")
+            old_date = prev.get("scheduled_date", "")
+            # Unblock old room if room or date changed
+            if old_room != payload.room_label or old_date != payload.scheduled_date:
+                _unblock_room(db, payload.prop_id, old_room, old_date)
+        # Block new room if needed
+        if payload.auto_block and payload.room_label:
+            _auto_block_room(db, payload.prop_id, payload.room_label, payload.scheduled_date)
     return _enrich_mt_task(doc) if doc else None
 
 
@@ -78,6 +163,12 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
         {"_id": ObjectId(task_id), "status": {"$in": ["scheduled", "in_progress"]}},
         update, return_document=True,
     )
+    if doc and doc.get("auto_block"):
+        try:
+            _unblock_room(db, doc.get("prop_id", 0), doc.get("room_label", ""), doc.get("scheduled_date", ""))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to unblock room on maintenance completion")
     return _enrich_mt_task(doc) if doc else None
 
 
@@ -89,6 +180,12 @@ def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
         {"$set": {"status": "deleted", "deleted_at": now}},
         return_document=True,
     )
+    if doc and doc.get("auto_block"):
+        try:
+            _unblock_room(db, doc.get("prop_id", 0), doc.get("room_label", ""), doc.get("scheduled_date", ""))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to unblock room on maintenance deletion")
     return _enrich_mt_task(doc) if doc else None
 
 

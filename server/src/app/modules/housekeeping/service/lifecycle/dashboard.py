@@ -40,6 +40,22 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
     total_rooms = status_counts.get("available", 0) + status_counts.get("occupied", 0) + status_counts.get("cleaning", 0)
     occupied = status_counts.get("occupied", 0)
 
+    # Maintenance compliance: on-time completion rate
+    total_mt_completed = db[MAINTENANCE_COLLECTION].count_documents({
+        **match, "status": "completed",
+    })
+    on_time_mt = db[MAINTENANCE_COLLECTION].count_documents({
+        **match, "status": "completed",
+        "$expr": {
+            "$and": [
+                {"$ne": ["$completed_at", None]},
+                {"$ne": ["$scheduled_date", ""]},
+                {"$lte": ["$completed_at", {"$concat": ["$scheduled_date", "T23:59:59"]}]},
+            ]
+        },
+    })
+    mt_compliance_pct = round((on_time_mt / total_mt_completed) * 100, 1) if total_mt_completed else 0
+
     return {
         "total_rooms": total_rooms, "occupied": occupied,
         "occupancy_rate": round((occupied / total_rooms) * 100, 1) if total_rooms else 0,
@@ -47,6 +63,8 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
         "pending_housekeeping_tasks": pending_hk,
         "completed_today": completed_today,
         "upcoming_maintenance": upcoming_mt,
+        "maintenance_compliance_pct": mt_compliance_pct,
+        "total_maintenance_completed": total_mt_completed,
         "pending_charges": db[CHARGES_COLLECTION].count_documents(match),
     }
 

@@ -12,9 +12,11 @@ from src.app.modules.partner.services.hotel_products import (
     create_hotel_product,
     delete_hotel_product,
     get_platform_earnings_summary,
+    get_weekly_earnings,
     list_booking_line_items,
     list_hotel_products,
     list_platform_earnings,
+    mark_commission_paid,
     record_platform_earnings,
     remove_booking_line_item,
     update_hotel_product,
@@ -161,3 +163,44 @@ def earnings_list(
     current_user: dict = Depends(require_permission("users.manage")),
 ):
     return list_platform_earnings(page=page, page_size=page_size)
+
+
+@router.get("/products/earnings/weekly")
+def earnings_weekly(
+    weeks: int = Query(default=12, ge=4, le=52),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Weekly earnings aggregation for charting.
+
+    Supports date range filtering via start_date / end_date (ISO format).
+    Falls back to last N weeks if no dates provided.
+    """
+    from datetime import datetime
+
+    start_dt: datetime | None = None
+    end_dt: datetime | None = None
+    if start_date and end_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            end_dt = datetime.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format (YYYY-MM-DD).")
+
+    return {"items": get_weekly_earnings(weeks=weeks, start_date=start_dt, end_date=end_dt)}
+
+
+@router.put("/products/earnings/{booking_id}/pay")
+def mark_paid(
+    booking_id: str,
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Mark a pending commission as paid."""
+    result = mark_commission_paid(booking_id)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Comisión no encontrada o ya fue pagada.",
+        )
+    return result
