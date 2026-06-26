@@ -44,649 +44,365 @@
     @default {
       @if (viewModel(); as vm) {
         <!-- KPI Grid -->
-        <section class="kpi-grid">
-          <article class="kpi-card">
-            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
-              <span class="material-symbols-outlined kpi-icon">business</span>
-            </div>
-            <div class="kpi-body">
-              <p class="kpi-label">Hotel</p>
-              <h3 class="kpi-value">{{ vm.hotelLabel }}</h3>
-              <p class="kpi-desc">Operación comercial de tarifas</p>
-              @if (vm.profileBadge) {
-                <p class="kpi-badge-text">{{ vm.profileBadge }}</p>
-              }
-            </div>
-          </article>
+        @if (kpiData(); as kpi) {
+        <app-rate-kpi-grid [data]="kpi" />
+      }
 
-          <article class="kpi-card">
-            <div class="kpi-icon-wrap" style="--card-accent: var(--success)">
-              <span class="material-symbols-outlined kpi-icon">attach_money</span>
-            </div>
-            <div class="kpi-body">
-              <p class="kpi-label">Planes Tarifarios</p>
-              <h3 class="kpi-value">{{ vm.ratePlans.length }}</h3>
-              <p class="kpi-desc">Planes configurados</p>
-            </div>
-          </article>
+        <!-- Sidebar + Content Layout -->
+        <div class="rates-layout">
+          <app-rate-sidebar
+            [sections]="sidebarSections"
+            [activeSection]="activeSection()"
+            (sectionChange)="onSectionChange($event)"
+          />
 
-          <article class="kpi-card">
-            <div class="kpi-icon-wrap" style="--card-accent: var(--warning)">
-              <span class="material-symbols-outlined kpi-icon">calendar_month</span>
-            </div>
-            <div class="kpi-body">
-              <p class="kpi-label">Calendario</p>
-              <h3 class="kpi-value">{{ vm.calendar.length }}</h3>
-              <p class="kpi-desc">Filas recientes de tarifa por fecha</p>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-icon-wrap" style="--card-accent: var(--accent)">
-              <span class="material-symbols-outlined kpi-icon">campaign</span>
-            </div>
-            <div class="kpi-body">
-              <p class="kpi-label">Promociones y Cupones</p>
-              <h3 class="kpi-value">{{ vm.promotions.length + vm.coupons.length }}</h3>
-              <p class="kpi-desc">{{ vm.promotions.length }} campañas &middot; {{ vm.coupons.length }} cupones</p>
-            </div>
-          </article>
-        </section>
-
-        <!-- Accordion: Tool Sections (colapsables con info tooltip) -->
-        <section class="tools-accordion">
-          @for (panel of formPanels; track panel.id) {
-            <article class="accordion-item surface-card" [class.is-open]="isExpanded(panel.id)">
-              <div
-                class="accordion-header"
-                (click)="toggleSection(panel.id)"
-                role="button"
-                [attr.aria-expanded]="isExpanded(panel.id)"
-                tabindex="0"
-                (keydown.enter)="toggleSection(panel.id)"
-                (keydown.space)="toggleSection(panel.id); $event.preventDefault()"
-              >
-                <div class="accordion-header-left">
-                  <span class="material-symbols-outlined accordion-icon">{{ panel.icon }}</span>
-                  <div>
-                    <strong class="accordion-title">{{ panel.label }}</strong>
-                    <p class="accordion-desc">{{ panel.tooltip }}</p>
+          <main class="rates-content">
+            @switch (activeSection()) {
+              @case ('overview') {
+                <!-- Panel: Overview with summary tables -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon">table</span>
+                    <div>
+                      <h2>Planes tarifarios</h2>
+                      <p>{{ vm.ratePlans.length }} plan(es) configurado(s).</p>
+                    </div>
                   </div>
-                </div>
-                <div class="accordion-header-right">
-                  <span
-                    class="material-symbols-outlined info-icon"
-                    [title]="panel.tooltip"
-                    (click)="$event.stopPropagation()"
-                    tabindex="-1"
-                  >info</span>
-                  <span class="material-symbols-outlined chevron-icon">
-                    {{ isExpanded(panel.id) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}
-                  </span>
-                </div>
-              </div>
-              @if (isExpanded(panel.id)) {
-                <div class="accordion-body">
-                  @switch (panel.id) {
-                    @case ('plan') {
-                      <form [formGroup]="planForm" (ngSubmit)="createRatePlan()" class="panel-form">
-                        @if (editingPlan(); as edit) {
-                          <div class="editing-banner">
-                            <span class="material-symbols-outlined">edit</span>
-                            Editando: {{ edit.name }}
-                            <button type="button" class="cancel-edit-btn" (click)="cancelEditPlan()">
-                              <span class="material-symbols-outlined">close</span>
-                            </button>
-                          </div>
-                        }
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">badge</span>
-                            Nombre
-                          </span>
-                          <input formControlName="name" placeholder="Ej: Tarifa estándar" appAiSuggest="nombre_plan_tarifario">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">description</span>
-                            Descripción
-                          </span>
-                          <input formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_plan_tarifario">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">bed</span>
-                            Tipo de habitación
-                          </span>
-                          <select formControlName="roomTypeId">
-                            <option value="">Sin asignar</option>
-                            @for (rt of roomTypes; track rt.id) {
-                              <option [value]="rt.id">{{ rt.name }}</option>
-                            }
-                          </select>
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">payments</span>
-                            Tarifa base
-                          </span>
-                          <input type="number" min="0" step="0.01" formControlName="baseRate" placeholder="0.00">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">currency_exchange</span>
-                            Moneda
-                          </span>
-                          <input formControlName="currency" placeholder="USD">
-                        </label>
-                        <label class="field checkbox-field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">toggle_on</span>
-                            Activo
-                          </span>
-                          <input type="checkbox" formControlName="isActive">
-                        </label>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary">
-                            <span class="material-symbols-outlined btn-icon">{{ editingPlan() ? 'save' : 'add' }}</span>
-                            {{ editingPlan() ? 'Guardar cambios' : 'Crear plan' }}
-                          </button>
-                        </div>
-                      </form>
-                    }
-                    @case ('calendar') {
-                      <form [formGroup]="calendarForm" (ngSubmit)="saveRate()" class="panel-form">
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">table_rows</span>
-                            Plan tarifario
-                          </span>
-                          <select formControlName="ratePlanId">
-                            <option value="">Seleccione</option>
-                            @for (plan of ratePlanOptions(); track plan.id) {
-                              <option [value]="plan.id">{{ plan.label }}</option>
-                            }
-                          </select>
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">calendar_today</span>
-                            Fecha
-                          </span>
-                          <input type="date" formControlName="date">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">payments</span>
-                            Tarifa
-                          </span>
-                          <input type="number" min="0" step="0.01" formControlName="rateAmount" placeholder="0.00">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">nights_stay</span>
-                            Min stay nights
-                          </span>
-                          <input type="number" min="1" formControlName="minStayNights">
-                        </label>
-                        <label class="field checkbox-field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">lock</span>
-                            Cerrado
-                          </span>
-                          <input type="checkbox" formControlName="isClosed">
-                        </label>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary">
-                            <span class="material-symbols-outlined btn-icon">save</span>
-                            Guardar tarifa
-                          </button>
-                        </div>
-                      </form>
-                    }
-                    @case ('batch') {
-                      <form [formGroup]="batchForm" (ngSubmit)="batchUpdateCalendar()" class="panel-form">
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">table_rows</span>
-                            Plan tarifario
-                          </span>
-                          <select formControlName="ratePlanId">
-                            <option value="">Seleccione</option>
-                            @for (plan of ratePlanOptions(); track plan.id) {
-                              <option [value]="plan.id">{{ plan.label }}</option>
-                            }
-                          </select>
-                        </label>
-                        <div class="field-row">
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Fecha inicio
-                            </span>
-                            <input type="date" formControlName="startDate">
-                          </label>
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Fecha fin
-                            </span>
-                            <input type="date" formControlName="endDate">
-                          </label>
-                        </div>
-                        <div class="field-row">
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">payments</span>
-                            Tarifa
-                            </span>
-                            <input type="number" min="0.01" step="0.01" formControlName="rateAmount" placeholder="0.00">
-                          </label>
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">nights_stay</span>
-                              Min stay
-                            </span>
-                            <input type="number" min="1" formControlName="minStayNights">
-                          </label>
-                        </div>
-                        <label class="field checkbox-field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">weekend</span>
-                            Solo fines de semana
-                          </span>
-                          <input type="checkbox" formControlName="onlyWeekends">
-                        </label>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary">
-                            <span class="material-symbols-outlined btn-icon">date_range</span>
-                            Actualizar lote
-                          </button>
-                        </div>
-                      </form>
-                    }
-                    @case ('generate') {
-                      <form [formGroup]="generateForm" (ngSubmit)="generateCalendar()" class="panel-form">
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">table_rows</span>
-                            Plan (opcional)
-                          </span>
-                          <select formControlName="ratePlanId">
-                            <option value="">Todos los planes</option>
-                            @for (plan of ratePlanOptions(); track plan.id) {
-                              <option [value]="plan.id">{{ plan.label }}</option>
-                            }
-                          </select>
-                        </label>
-                        <div class="field-row">
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Desde (opcional)
-                            </span>
-                            <input type="date" formControlName="startDate">
-                          </label>
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Hasta (opcional)
-                            </span>
-                            <input type="date" formControlName="endDate">
-                          </label>
-                        </div>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary" style="background: #16a34a">
-                            <span class="material-symbols-outlined btn-icon">auto_awesome</span>
-                            Generar
-                          </button>
-                        </div>
-                      </form>
-                    }
-                    @case ('seasonal') {
-                      <form [formGroup]="seasonalForm" (ngSubmit)="createSeasonalRule()" class="panel-form">
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">table_rows</span>
-                            Plan tarifario
-                          </span>
-                          <select formControlName="ratePlanId">
-                            <option value="">Seleccione</option>
-                            @for (plan of ratePlanOptions(); track plan.id) {
-                              <option [value]="plan.id">{{ plan.label }}</option>
-                            }
-                          </select>
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">badge</span>
-                            Nombre
-                          </span>
-                          <input formControlName="name" placeholder="Ej: Temporada alta">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">calendar_today</span>
-                            Fecha inicio
-                          </span>
-                          <input type="date" formControlName="startDate">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">calendar_today</span>
-                            Fecha fin
-                          </span>
-                          <input type="date" formControlName="endDate">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">payments</span>
-                            Precio override
-                          </span>
-                          <input type="number" min="0" step="0.01" formControlName="priceOverride" placeholder="0.00">
-                        </label>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary">
-                            <span class="material-symbols-outlined btn-icon">add</span>
-                            Crear regla
-                          </button>
-                        </div>
-                      </form>
-                    }
-                    @case ('promo') {
-                      <form [formGroup]="promoForm" (ngSubmit)="createPromotion()" class="panel-form">
-                        @if (editingPromo(); as edit) {
-                          <div class="editing-banner" style="background: color-mix(in srgb, #f59e0b 8%, transparent); border-color: color-mix(in srgb, #f59e0b 20%, transparent); color: #d97706;">
-                            <span class="material-symbols-outlined">edit</span>
-                            Editando: {{ edit.name }}
-                            <button type="button" class="cancel-edit-btn" style="color: #d97706;" (click)="cancelEditPromo()">
-                              <span class="material-symbols-outlined">close</span>
-                            </button>
-                          </div>
-                        }
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">badge</span>
-                            Nombre
-                          </span>
-                          <input formControlName="name" placeholder="Ej: Descuento verano" appAiSuggest="nombre_promocion">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">description</span>
-                            Descripción
-                          </span>
-                          <input formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_promocion">
-                        </label>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">percent</span>
-                            Descuento (%)
-                          </span>
-                          <input type="number" min="1" max="100" formControlName="discountPercent" placeholder="10">
-                        </label>
-                        @if (!editingPromo()) {
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">numbers</span>
-                              Cantidad de cupones
-                            </span>
-                            <input type="number" min="1" max="1000" formControlName="couponCount" placeholder="10">
-                          </label>
-                        }
-                        <div class="field-row">
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Fecha inicio
-                            </span>
-                            <input type="date" formControlName="startDate">
-                          </label>
-                          <label class="field">
-                            <span class="field-label">
-                              <span class="material-symbols-outlined field-icon">calendar_today</span>
-                              Fecha fin
-                            </span>
-                            <input type="date" formControlName="endDate">
-                          </label>
-                        </div>
-                        <label class="field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">confirmation_number</span>
-                            Cupón adicional (opcional)
-                          </span>
-                          <input formControlName="couponCode" placeholder="Ej: VERANO2024">
-                        </label>
-                        <label class="field checkbox-field">
-                          <span class="field-label">
-                            <span class="material-symbols-outlined field-icon">toggle_on</span>
-                            Activo
-                          </span>
-                          <input type="checkbox" formControlName="isActive">
-                        </label>
-                        <div class="form-actions">
-                          <button type="submit" class="btn-primary" style="background: var(--warning)">
-                            <span class="material-symbols-outlined btn-icon">{{ editingPromo() ? 'save' : 'add' }}</span>
-                            {{ editingPromo() ? 'Guardar cambios' : 'Crear promoción' }}
-                          </button>
-                        </div>
-                      </form>
-                    }
+                  @if (vm.ratePlans.length) {
+                    <app-rate-plan-table
+                      [items]="vm.ratePlans"
+                      (editPlan)="onEditPlan($event)"
+                      (deletePlan)="onDeletePlan($event)"
+                    />
+                  } @else {
+                    <app-empty-state icon="attach_money" title="Sin planes todavía" description="Primero crea un plan tarifario." />
                   }
-                </div>
+                </section>
+
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon icon-calendar-purple">calendar_view_month</span>
+                    <div>
+                      <h2>Calendario reciente</h2>
+                      <p>{{ vm.calendar.length }} fila(s) visibles.</p>
+                    </div>
+                  </div>
+                  @if (vm.calendar.length) {
+                    <app-rate-calendar-table [items]="vm.calendar" />
+                  } @else {
+                    <app-empty-state icon="calendar_month" title="Sin tarifas todavía" description="Carga la primera tarifa por fecha." />
+                  }
+                </section>
+
+                <!-- Individual Calendar Entry Form -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon" style="color: #06b6d4">edit_calendar</span>
+                    <div>
+                      <h2>Entrada individual de tarifa</h2>
+                      <p>Agrega o actualiza una tarifa para una fecha concreta.</p>
+                    </div>
+                  </div>
+                  <form (ngSubmit)="saveRate()" class="panel-form">
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
+                      <select [value]="calendarRatePlanId()" (change)="calendarRatePlanId.set($any($event.target).value)">
+                        <option value="">Seleccione</option>
+                        @for (plan of ratePlanOptions(); track plan.id) { <option [value]="plan.id">{{ plan.label }}</option> }
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fecha</span>
+                      <input type="date" [value]="calendarDate()" (input)="calendarDate.set($any($event.target).value)" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa</span>
+                      <input type="number" min="0" step="0.01" [value]="calendarRateAmount()" (input)="calendarRateAmount.set(Number($any($event.target).value))" placeholder="0.00" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">nights_stay</span>Estancia mínima (noches)</span>
+                      <input type="number" min="1" [value]="calendarMinStayNights()" (input)="calendarMinStayNights.set(Number($any($event.target).value))" />
+                    </label>
+                    <label class="field checkbox-field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">lock</span>Cerrado (sin venta)</span>
+                      <input type="checkbox" [checked]="calendarIsClosed()" (change)="calendarIsClosed.set($any($event.target).checked)" />
+                    </label>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary">
+                        <span class="material-symbols-outlined btn-icon">save</span>Guardar tarifa
+                      </button>
+                    </div>
+                  </form>
+                </section>
               }
-            </article>
-          }
-        </section>
 
-        <!-- Rate Plans Table -->
-        <section class="surface-card data-panel">
-          <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon">table</span>
-            <div>
-              <h2>Planes tarifarios</h2>
-              <p>{{ vm.ratePlans.length }} plan(es) configurado(s).</p>
-            </div>
-          </div>
-          @if (vm.ratePlans.length) {
-            <app-rate-plan-table
-              [items]="vm.ratePlans"
-              (editPlan)="onEditPlan($event)"
-              (deletePlan)="onDeletePlan($event)"
-            />
-          } @else {
-            <app-empty-state
-              icon="attach_money"
-              title="Sin planes todavía"
-              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
-            />
-          }
-        </section>
+              @case ('calendar') {
+                <!-- Batch Update Form -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon" style="color: #06b6d4">date_range</span>
+                    <div>
+                      <h2>Actualización masiva de calendario</h2>
+                      <p>Aplica una tarifa a un rango de fechas de una sola vez.</p>
+                    </div>
+                  </div>
+                  <form (ngSubmit)="batchUpdateCalendar()" class="panel-form">
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
+                      <select [value]="batchRatePlanId()" (change)="batchRatePlanId.set($any($event.target).value)">
+                        <option value="">Seleccione</option>
+                        @for (plan of ratePlanOptions(); track plan.id) { <option [value]="plan.id">{{ plan.label }}</option> }
+                      </select>
+                    </label>
+                    <div class="field-row">
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Inicio</span>
+                        <input type="date" [value]="batchStartDate()" (input)="batchStartDate.set($any($event.target).value)" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fin</span>
+                        <input type="date" [value]="batchEndDate()" (input)="batchEndDate.set($any($event.target).value)" />
+                      </label>
+                    </div>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa</span>
+                      <input type="number" min="0.01" step="0.01" [value]="batchRateAmount()" (input)="batchRateAmount.set(Number($any($event.target).value))" placeholder="0.00" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">nights_stay</span>Estancia mínima (opcional)</span>
+                      <input type="number" min="1" [value]="batchMinStayNights()" (input)="batchMinStayNights.set(Number($any($event.target).value))" />
+                    </label>
+                    <label class="field checkbox-field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">weekend</span>Solo fines de semana</span>
+                      <input type="checkbox" [checked]="batchOnlyWeekends()" (change)="batchOnlyWeekends.set($any($event.target).checked)" />
+                    </label>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary">
+                        <span class="material-symbols-outlined btn-icon">batch_prediction</span>Actualizar lote
+                      </button>
+                    </div>
+                  </form>
+                </section>
 
-        <!-- Seasonal Rules Table -->
-        <section class="surface-card data-panel">
-          <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
-            <div>
-              <h2>Reglas de temporada</h2>
-              <p>{{ seasonalRules.length }} regla(s) configurada(s).</p>
-            </div>
-          </div>
-          @if (seasonalRules.length) {
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Plan</th>
-                    <th>Rango</th>
-                    <th>Precio override</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (rule of seasonalRules; track rule.ruleId) {
-                    <tr>
-                      <td><strong>{{ rule.name }}</strong></td>
-                      <td>{{ rule.ratePlanId }}</td>
-                      <td>{{ rule.rangeLabel }}</td>
-                      <td><strong>${{ rule.priceOverride }}</strong></td>
-                      <td>
-                        <button
-                          type="button"
-                          class="qa-btn delete-btn"
-                          (click)="deleteSeasonalRule(rule.ruleId)"
-                          title="Eliminar regla"
-                        >
-                          <span class="material-symbols-outlined">delete</span>
+                <!-- Monthly Calendar View -->
+                <app-rate-monthly-calendar
+                  [rows]="calendarRows()"
+                  [month]="calendarMonth()"
+                  [year]="calendarYear()"
+                  (monthChange)="onMonthChange($event.month, $event.year)"
+                />
+              }
+
+              @case ('plans') {
+                <!-- Generate Calendar Form -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon" style="color: #10b981">auto_awesome</span>
+                    <div>
+                      <h2>Generar calendario</h2>
+                      <p>Genera automáticamente entradas de calendario aplicando la tarifa base del plan a un rango de fechas.</p>
+                    </div>
+                  </div>
+                  <form (ngSubmit)="generateCalendar()" class="panel-form">
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario (opcional)</span>
+                      <select [value]="generateRatePlanId()" (change)="generateRatePlanId.set($any($event.target).value)">
+                        <option value="">Todos los planes</option>
+                        @for (plan of ratePlanOptions(); track plan.id) { <option [value]="plan.id">{{ plan.label }}</option> }
+                      </select>
+                    </label>
+                    <div class="field-row">
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Inicio (opcional)</span>
+                        <input type="date" [value]="generateStartDate()" (input)="generateStartDate.set($any($event.target).value)" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fin (opcional)</span>
+                        <input type="date" [value]="generateEndDate()" (input)="generateEndDate.set($any($event.target).value)" />
+                      </label>
+                    </div>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary">
+                        <span class="material-symbols-outlined btn-icon">auto_awesome</span>Generar
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <!-- Rate Plans Section -->
+                <section class="surface-card data-panel plan-form-section">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon">add_card</span>
+                    <div>
+                      <h2>{{ editingPlan() ? 'Editar plan' : 'Nuevo plan tarifario' }}</h2>
+                      <p>Configura un plan tarifario base para la propiedad.</p>
+                    </div>
+                  </div>
+                  <form (ngSubmit)="createRatePlan()" class="panel-form">
+                    @if (editingPlan(); as edit) {
+                      <div class="editing-banner">
+                        <span class="material-symbols-outlined">edit</span>
+                        Editando: {{ edit.name }}
+                        <button type="button" class="cancel-edit-btn" (click)="cancelEditPlan()">
+                          <span class="material-symbols-outlined">close</span>
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    }
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">badge</span>Nombre</span>
+                      <input [value]="planName()" (input)="planName.set($any($event.target).value)" placeholder="Ej: Tarifa estándar" appAiSuggest="nombre_plan_tarifario">
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">description</span>Descripción</span>
+                      <input [value]="planDescription()" (input)="planDescription.set($any($event.target).value)" placeholder="Opcional" appAiSuggest="descripcion_plan_tarifario">
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">bed</span>Tipo de habitación</span>
+                      <select [value]="planRoomTypeId()" (change)="planRoomTypeId.set($any($event.target).value)">
+                        <option value="">Sin asignar</option>
+                        @for (rt of roomTypes; track rt.id) { <option [value]="rt.id">{{ rt.name }}</option> }
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Tarifa base</span>
+                      <input type="number" min="0" step="0.01" [value]="planBaseRate()" (input)="planBaseRate.set(Number($any($event.target).value))" placeholder="0.00">
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">currency_exchange</span>Moneda</span>
+                      <input [value]="planCurrency()" (input)="planCurrency.set($any($event.target).value)" placeholder="USD">
+                    </label>
+                    <label class="field checkbox-field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">toggle_on</span>Activo</span>
+                      <input type="checkbox" [checked]="planIsActive()" (change)="planIsActive.set($any($event.target).checked)">
+                    </label>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary">
+                        <span class="material-symbols-outlined btn-icon">{{ editingPlan() ? 'save' : 'add' }}</span>
+                        {{ editingPlan() ? 'Guardar cambios' : 'Crear plan' }}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon">table</span>
+                    <div>
+                      <h2>Planes existentes</h2>
+                      <p>{{ vm.ratePlans.length }} plan(es).</p>
+                    </div>
+                  </div>
+                  @if (vm.ratePlans.length) {
+                    <app-rate-plan-table [items]="vm.ratePlans" (editPlan)="onEditPlan($event)" (deletePlan)="onDeletePlan($event)" />
+                  } @else {
+                    <app-empty-state icon="attach_money" title="Sin planes" description="Crea el primer plan tarifario." />
                   }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <app-empty-state
-              icon="event"
-              title="Sin reglas de temporada"
-              description="Crea reglas por temporada para sobreescribir tarifas base en rangos de fecha."
-            />
-          }
-        </section>
+                </section>
+              }
 
-        <!-- Calendar Table -->
-        <section class="surface-card data-panel">
-          <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon icon-calendar-purple">calendar_view_month</span>
-            <div>
-              <h2>Calendario reciente</h2>
-              <p>{{ vm.calendar.length }} fila(s) visibles.</p>
-            </div>
-          </div>
-          @if (vm.calendar.length) {
-            <app-rate-calendar-table [items]="vm.calendar" />
-          } @else {
-            <app-empty-state
-              icon="calendar_month"
-              title="Sin tarifas todavía"
-              description="Primero crea un plan tarifario y luego carga la primera tarifa por fecha."
-            />
-          }
-        </section>
+              @case ('seasons') {
+                <!-- Seasons Section -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
+                    <div>
+                      <h2>Nueva regla de temporada</h2>
+                      <p>Define un precio override por rango de fechas.</p>
+                    </div>
+                  </div>
+                  <form (ngSubmit)="createSeasonalRule()" class="panel-form">
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
+                      <select [value]="seasonalRatePlanId()" (change)="seasonalRatePlanId.set($any($event.target).value)">
+                        <option value="">Seleccione</option>
+                        @for (plan of ratePlanOptions(); track plan.id) { <option [value]="plan.id">{{ plan.label }}</option> }
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">badge</span>Nombre</span>
+                      <input [value]="seasonalName()" (input)="seasonalName.set($any($event.target).value)" placeholder="Ej: Temporada alta">
+                    </label>
+                    <div class="field-row">
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Inicio</span>
+                        <input type="date" [value]="seasonalStartDate()" (input)="seasonalStartDate.set($any($event.target).value)">
+                      </label>
+                      <label class="field">
+                        <span class="field-label"><span class="material-symbols-outlined field-icon">calendar_today</span>Fin</span>
+                        <input type="date" [value]="seasonalEndDate()" (input)="seasonalEndDate.set($any($event.target).value)">
+                      </label>
+                    </div>
+                    <label class="field">
+                      <span class="field-label"><span class="material-symbols-outlined field-icon">payments</span>Precio override</span>
+                      <input type="number" min="0" step="0.01" [value]="seasonalPriceOverride()" (input)="seasonalPriceOverride.set(Number($any($event.target).value))" placeholder="0.00">
+                    </label>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary">
+                        <span class="material-symbols-outlined btn-icon">add</span>Crear regla
+                      </button>
+                    </div>
+                  </form>
+                </section>
 
-        <!-- Promotions Table -->
-        <section class="surface-card data-panel">
-          <div class="panel-head">
-            <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
-            <div>
-              <h2>Promociones y cupones</h2>
-              <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es) activos/demo.</p>
-            </div>
-          </div>
-          @if (promotionsCampaigns.length || vm.coupons.length) {
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Nombre / código</th>
-                    <th>Dto.</th>
-                    <th>Cupones</th>
-                    <th>Vigencia</th>
-                    <th>Estado</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (promo of promotionsCampaigns; track promo.campaign_id) {
-                    <tr>
-                      <td>
-                        <span class="material-symbols-outlined table-icon icon-promo-amber">campaign</span>
-                        Campaña
-                      </td>
-                      <td>
-                        <strong>{{ promo.name }}</strong>
-                        @if (promo.description) {
-                          <br><small>{{ promo.description }}</small>
-                        }
-                      </td>
-                      <td>{{ promo.discount_percent }}%</td>
-                      <td>
-                        <small>{{ promo.coupon_available ?? '—' }}/{{ promo.coupon_total ?? '—' }} disp.</small>
-                      </td>
-                      <td><small>{{ promo.start_date }} → {{ promo.end_date }}</small></td>
-                      <td>
-                        <button
-                          type="button"
-                          class="toggle-badge-btn"
-                          [class.active]="promo.is_active"
-                          [class.inactive]="!promo.is_active"
-                          (click)="onTogglePromo(promo.campaign_id)"
-                          title="Cambiar estado"
-                        >
-                          <span class="material-symbols-outlined badge-icon">{{ promo.is_active ? 'check_circle' : 'cancel' }}</span>
-                          {{ promo.is_active ? 'Activo' : 'Inactivo' }}
-                        </button>
-                      </td>
-                      <td class="actions-cell">
-                        <button
-                          type="button"
-                          class="edit-btn"
-                          (click)="onEditPromo({
-                            campaignId: promo.campaign_id,
-                            name: promo.name,
-                            description: promo.description || '',
-                            discountPercent: promo.discount_percent ?? 0,
-                            startDate: promo.start_date || '',
-                            endDate: promo.end_date || '',
-                            isActive: promo.is_active
-                          })"
-                          title="Editar promoción"
-                        >
-                          <span class="material-symbols-outlined">edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          class="delete-btn"
-                          (click)="onDeletePromo(promo.campaign_id)"
-                          title="Desactivar promoción"
-                        >
-                          <span class="material-symbols-outlined">toggle_off</span>
-                        </button>
-                      </td>
-                    </tr>
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon" style="color: #8b5cf6">event</span>
+                    <div>
+                      <h2>Reglas de temporada</h2>
+                      <p>{{ seasonalRuleRows().length }} regla(s) configurada(s).</p>
+                    </div>
+                  </div>
+                  @if (seasonalRuleRows().length) {
+                    <app-seasonal-rules-table [rules]="seasonalRuleRows()" (deleteRule)="deleteSeasonalRule($event)" />
+                  } @else {
+                    <app-empty-state icon="event" title="Sin reglas de temporada" description="Crea reglas por temporada." />
                   }
-                  @for (coupon of vm.coupons; track coupon.code) {
-                    <tr>
-                      <td>
-                        <span class="material-symbols-outlined table-icon icon-coupon-blue">confirmation_number</span>
-                        Cupón
-                      </td>
-                      <td><code>{{ coupon.code }}</code></td>
-                      <td>—</td>
-                      <td><small>—</small></td>
-                      <td><small>—</small></td>
-                      <td>
-                        <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
-                          <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
-                          {{ coupon.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
-                        </span>
-                      </td>
-                      <td></td>
-                    </tr>
+                </section>
+              }
+
+              @case ('promos') {
+                <!-- Promotions Section -->
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
+                    <div>
+                      <h2>{{ promoDeleteConfirm() ? 'Desactivar promoción' : 'Promoción' }}</h2>
+                      <p>Crea o edita campañas promocionales con descuento y cupones.</p>
+                    </div>
+                  </div>
+                  <app-promotion-form
+                    [viewModel]="viewModel()"
+                    [editingPromo]="editingPromo()"
+                    (promoCreated)="refreshAfterPromo(); editingPromo.set(null)"
+                    (messageChange)="message.set($event); errorMessage.set('')"
+                    (errorChange)="errorMessage.set($event); message.set('')"
+                  />
+                </section>
+
+                <section class="surface-card data-panel">
+                  <div class="panel-head">
+                    <span class="material-symbols-outlined panel-head-icon icon-promo-amber">campaign</span>
+                    <div>
+                      <h2>Promociones y cupones</h2>
+                      <p>{{ vm.promotions.length }} campaña(s) y {{ vm.coupons.length }} cupón(es).</p>
+                    </div>
+                  </div>
+                  @if (campaignRows().length || couponRows().length) {
+                    <app-promotions-table
+                      [campaigns]="campaignRows()"
+                      [coupons]="couponRows()"
+                      (editPromo)="onEditPromo($event)"
+                      (deletePromo)="onDeletePromo($event)"
+                      (togglePromo)="onTogglePromo($event)"
+                    />
+                  } @else {
+                    <app-empty-state icon="campaign" title="Sin promociones" description="No hay campañas ni cupones para esta propiedad." />
                   }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <app-empty-state
-              icon="campaign"
-              title="Sin promociones todavía"
-              description="No hay campañas ni cupones conectados para esta propiedad."
-            />
-          }
-        </section>
+                </section>
+              }
+            }
+          </main>
+        </div>
       }
     }
   }

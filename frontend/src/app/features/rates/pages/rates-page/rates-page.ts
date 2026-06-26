@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import type { PromoEditState } from '../../components/promotion-form/promotion-form';
+import { httpResource } from '@angular/common/http';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
+import { distinctUntilChanged, forkJoin, map, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -12,9 +13,17 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { RatePlanOption, RatesViewModel } from '../../models/rates.model';
+import type { RatesDto } from '../../models/rates.dto';
 import { RatesApiService } from '../../services/rates-api.service';
+import { mapRatesResponse } from '../../mappers/rates.mapper';
 import { RatePlanTableComponent } from '../../components/rate-plan-table/rate-plan-table';
 import { RateCalendarTableComponent } from '../../components/rate-calendar-table/rate-calendar-table';
+import { RateSidebarComponent, type SidebarSection } from '../../components/rate-sidebar/rate-sidebar';
+import { RateKpiGridComponent, type KpiData } from '../../components/rate-kpi-grid/rate-kpi-grid';
+import { RateMonthlyCalendarComponent, type RoomTypeCalendarRow } from '../../components/rate-monthly-calendar/rate-monthly-calendar';
+import { PromotionFormComponent } from '../../components/promotion-form/promotion-form';
+import { PromotionsTableComponent, type CampaignRow, type CouponRow } from '../../components/promotions-table/promotions-table';
+import { SeasonalRulesTableComponent, type SeasonalRuleRow } from '../../components/seasonal-rules-table/seasonal-rules-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
 @Component({
@@ -25,687 +34,475 @@ import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.direc
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
-    ReactiveFormsModule,
+    RateSidebarComponent,
+    RateKpiGridComponent,
+    RateMonthlyCalendarComponent,
+    PromotionFormComponent,
+    PromotionsTableComponent,
+    SeasonalRulesTableComponent,
     RatePlanTableComponent,
     RateCalendarTableComponent,
-    AiSuggestDirective
+    AiSuggestDirective,
   ],
   templateUrl: './rates-page.html',
   styleUrl: './rates-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RatesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(RatesApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
 
+  /** Prop ID from route — source of truth for current property. */
+  private readonly routePropId = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => Number(params.get('prop_id') ?? '0')),
+      distinctUntilChanged(),
+    ),
+    { initialValue: 0 }
+  );
+
+  /** Section from URL — declarative, no manual subscription needed. */
+  private readonly routeSection = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => params.get('section') || 'overview'),
+      distinctUntilChanged(),
+    ),
+    { initialValue: 'overview' }
+  );
+
+  /** Declarative data fetching — auto-fetches when routePropId changes. */
+  private readonly ratesResource = httpResource<RatesDto>(() => {
+    const propId = this.routePropId();
+    return propId > 0 ? `/api/management/rates?prop_id=${propId}` : undefined;
+  });
+
+  /* ── State ── */
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<RatesViewModel | null>(null);
-  readonly ratePlanOptions = signal<RatePlanOption[]>([]);
+  /** Derived from viewModel — no separate API call needed. */
+  readonly ratePlanOptions = computed<RatePlanOption[]>(() =>
+    (this.viewModel()?.ratePlans ?? []).map((p) => ({ id: p.id, label: p.name }))
+  );
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly selectedPropId = signal(0);
-  readonly selectedLabel = signal('');
+  /** Current property ID — derived from URL (source of truth). */
+  readonly selectedPropId = computed(() => this.routePropId());
 
-  /* ── Forms ── */
-  readonly planForm = this.formBuilder.nonNullable.group({
-    name: ['', [Validators.required]],
-    description: [''],
-    roomTypeId: [''],
-    baseRate: [0, [Validators.required, Validators.min(0)]],
-    currency: ['USD', [Validators.required]],
-    isActive: [true]
-  });
+  /** Current property name — derived from loaded data. */
+  readonly selectedLabel = computed(() => this.viewModel()?.hotelLabel ?? '');
 
-  readonly calendarForm = this.formBuilder.nonNullable.group({
-    ratePlanId: ['', [Validators.required]],
-    date: ['', [Validators.required]],
-    rateAmount: [0, [Validators.required, Validators.min(0)]],
-    minStayNights: [1, [Validators.required, Validators.min(1)]],
-    isClosed: [false]
-  });
-
-  readonly batchForm = this.formBuilder.nonNullable.group({
-    ratePlanId: ['', [Validators.required]],
-    startDate: ['', [Validators.required]],
-    endDate: ['', [Validators.required]],
-    rateAmount: [0, [Validators.required, Validators.min(0.01)]],
-    minStayNights: [1, [Validators.min(1)]],
-    onlyWeekends: [false]
-  });
-
-  readonly generateForm = this.formBuilder.nonNullable.group({
-    ratePlanId: [''],
-    startDate: [''],
-    endDate: ['']
-  });
-
-  readonly seasonalForm = this.formBuilder.nonNullable.group({
-    ratePlanId: ['', [Validators.required]],
-    name: ['', [Validators.required]],
-    startDate: ['', [Validators.required]],
-    endDate: ['', [Validators.required]],
-    priceOverride: [0, [Validators.required, Validators.min(0)]]
-  });
-
-  readonly promoForm = this.formBuilder.nonNullable.group({
-    name: ['', [Validators.required]],
-    description: [''],
-    discountPercent: [10, [Validators.required, Validators.min(1), Validators.max(100)]],
-    couponCount: [10, [Validators.required, Validators.min(1), Validators.max(1000)]],
-    startDate: ['', [Validators.required]],
-    endDate: ['', [Validators.required]],
-    couponCode: [''],
-    isActive: [true]
-  });
-
-  /* ── Form panel configuration ── */
-  readonly formPanels = [
-    {
-      id: 'plan',
-      label: 'Nuevo plan tarifario',
-      icon: 'add_card',
-      tooltip: 'Configura un plan tarifario base para la propiedad.'
-    },
-    {
-      id: 'calendar',
-      label: 'Actualizar tarifa',
-      icon: 'edit_calendar',
-      tooltip: 'Upsert por plan y fecha.'
-    },
-    {
-      id: 'batch',
-      label: 'Actualizar por lote',
-      icon: 'date_range',
-      tooltip: 'Aplica un precio a todo un rango de fechas.'
-    },
-    {
-      id: 'generate',
-      label: 'Generar calendario',
-      icon: 'auto_awesome',
-      tooltip: 'Genera entradas desde tarifa base y reglas de temporada.'
-    },
-    {
-      id: 'seasonal',
-      label: 'Regla de temporada',
-      icon: 'event',
-      tooltip: 'Define un precio override por rango de fechas.'
-    },
-    {
-      id: 'promo',
-      label: 'Promoción',
-      icon: 'campaign',
-      tooltip: 'Crea una campaña promocional con descuento y cupones.'
-    }
-  ] as const;
-
-  readonly expandedSections = signal<Set<string>>(new Set(['plan']));
-
-  toggleSection(id: string): void {
-    const current = this.expandedSections();
-    const next = new Set(current);
-    // Accordion: only one section open at a time
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.clear();
-      next.add(id);
-    }
-    this.expandedSections.set(next);
-  }
-
-  isExpanded(id: string): boolean {
-    return this.expandedSections().has(id);
-  }
-
-  /* ── State ── */
+  /** Current section — derived from URL query param. */
+  readonly activeSection = computed(() => this.routeSection());
   readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; roomTypeId: string; isActive: boolean } | null>(null);
-  readonly editingPromo = signal<{ campaignId: string; name: string; description: string; discountPercent: number; startDate: string; endDate: string; isActive: boolean } | null>(null);
   readonly deleteConfirm = signal<string | null>(null);
   readonly promoDeleteConfirm = signal<string | null>(null);
   readonly promotionsData = signal<{ campaigns: Array<any>; total: number } | null>(null);
+  readonly editingPromo = signal<PromoEditState | null>(null);
+
+  /* ── Form signals (replacing FormBuilder) ── */
+
+  // Plan form
+  readonly planName = signal('');
+  readonly planDescription = signal('');
+  readonly planRoomTypeId = signal('');
+  readonly planBaseRate = signal(0);
+  readonly planCurrency = signal('USD');
+  readonly planIsActive = signal(true);
+
+  // Calendar form
+  readonly calendarRatePlanId = signal('');
+  readonly calendarDate = signal('');
+  readonly calendarRateAmount = signal(0);
+  readonly calendarMinStayNights = signal(1);
+  readonly calendarIsClosed = signal(false);
+
+  // Batch update form
+  readonly batchRatePlanId = signal('');
+  readonly batchStartDate = signal('');
+  readonly batchEndDate = signal('');
+  readonly batchRateAmount = signal(0);
+  readonly batchMinStayNights = signal(1);
+  readonly batchOnlyWeekends = signal(false);
+
+  // Generate calendar form
+  readonly generateRatePlanId = signal('');
+  readonly generateStartDate = signal('');
+  readonly generateEndDate = signal('');
+
+  // Seasonal rule form
+  readonly seasonalRatePlanId = signal('');
+  readonly seasonalName = signal('');
+  readonly seasonalStartDate = signal('');
+  readonly seasonalEndDate = signal('');
+  readonly seasonalPriceOverride = signal(0);
+
+  /* ── Sidebar sections ── */
+  readonly sidebarSections: SidebarSection[] = [
+    { id: 'overview', label: 'Panel', icon: 'dashboard' },
+    { id: 'calendar', label: 'Calendario Global', icon: 'calendar_month' },
+    { id: 'plans', label: 'Planes Tarifarios', icon: 'table' },
+    { id: 'seasons', label: 'Temporadas', icon: 'event' },
+    { id: 'promos', label: 'Promociones', icon: 'campaign' },
+  ];
+
+  /* ── KPI data derived from viewModel ── */
+  readonly kpiData = computed((): KpiData | null => {
+    const vm = this.viewModel();
+    if (!vm) return null;
+    return {
+      hotelLabel: vm.hotelLabel,
+      profileBadge: vm.profileBadge,
+      ratePlansCount: vm.ratePlans.length,
+      calendarCount: vm.calendar.length,
+      promotionsCount: vm.promotions.length,
+      couponsCount: vm.coupons.length,
+    };
+  });
+
+  /* ── Calendar data derived from viewModel ── */
+  readonly calendarMonth = signal(new Date().getMonth());
+  readonly calendarYear = signal(new Date().getFullYear());
+
+  readonly calendarRows = computed((): RoomTypeCalendarRow[] => {
+    const vm = this.viewModel();
+    if (!vm) return [];
+    const month = this.calendarMonth();
+    const year = this.calendarYear();
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+    // Rate plan → room type mapping
+    const planToRoomType = new Map<string, string>();
+    for (const plan of vm.ratePlans) {
+      if (plan.roomTypeId) {
+        planToRoomType.set(plan.id, plan.roomTypeId);
+      }
+    }
+
+    return vm.roomTypes.map((rt) => ({
+      roomTypeId: rt.id,
+      roomTypeName: rt.name,
+      days: vm.calendar
+        .filter((c) => planToRoomType.get(c.ratePlanId) === rt.id && c.date.startsWith(monthStr))
+        .map((c) => {
+          const amount = c.rateAmount;
+          let tier: 'low' | 'medium' | 'high' | 'premium' = 'medium';
+          if (amount < 80) tier = 'low';
+          else if (amount < 150) tier = 'medium';
+          else if (amount < 250) tier = 'high';
+          else tier = 'premium';
+          return {
+            date: c.date,
+            rateAmount: c.rateAmount,
+            ratePlanName: c.planName || '-',
+            ratePlanId: c.ratePlanId,
+            isClosed: c.isClosed,
+            minStay: c.minStayNights,
+            tier,
+          };
+        }),
+    }));
+  });
+
+  /* ── Derived data for tables ── */
+  readonly seasonalRuleRows = computed((): SeasonalRuleRow[] => {
+    return (this.viewModel()?.seasonalRules ?? []).map((r) => ({
+      ruleId: r.ruleId,
+      name: r.name,
+      ratePlanId: r.ratePlanId,
+      rangeLabel: r.rangeLabel,
+      priceOverride: r.priceOverride,
+    }));
+  });
+
+  readonly campaignRows = computed((): CampaignRow[] => {
+    const data = this.promotionsData();
+    if (data) {
+      return data.campaigns.map((p: any) => ({
+        campaignId: p.campaign_id,
+        name: p.name,
+        description: p.description || '',
+        discountPercent: p.discount_percent ?? 0,
+        isActive: p.is_active,
+        startDate: p.start_date || '',
+        endDate: p.end_date || '',
+        couponTotal: p.coupon_total ?? 0,
+        couponUsed: p.coupon_used ?? 0,
+        couponAvailable: p.coupon_available ?? 0,
+      }));
+    }
+    return (this.viewModel()?.promotions ?? []).map((p) => ({
+      campaignId: p.campaignId,
+      name: p.name,
+      description: p.description,
+      discountPercent: p.discountPercent,
+      isActive: p.activeLabel === 'Sí',
+      startDate: p.dateRange.split(' → ')[0] || '',
+      endDate: p.dateRange.split(' → ')[1] || '',
+      couponTotal: 0,
+      couponUsed: 0,
+      couponAvailable: 0,
+    }));
+  });
+
+  readonly couponRows = computed((): CouponRow[] => {
+    return (this.viewModel()?.coupons ?? []).map((c) => ({
+      code: c.code,
+      activeLabel: c.activeLabel,
+    }));
+  });
+
+
+  get roomTypes() { return this.viewModel()?.roomTypes ?? []; }
 
   constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => Number(params.get('prop_id') ?? '0')),
-        distinctUntilChanged(),
-        switchMap((propId) => {
-          this.viewState.set('loading');
-          this.message.set('');
-          this.errorMessage.set('');
-          this.editingPlan.set(null);
-          this.deleteConfirm.set(null);
-          const load = propId > 0
-            ? forkJoin({
-                rates: this.api.getRates(propId),
-                plans: this.api.getRatePlanOptions(propId)
-              })
-            : of(null);
-          return load;
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (result) => {
-          if (result) {
-            this.viewModel.set(result.rates);
-            this.ratePlanOptions.set(result.plans);
-            this.selectedPropId.set(result.rates.propId);
-            this.selectedLabel.set(result.rates.hotelLabel);
-            this.viewState.set('success');
-          } else {
-            this.viewModel.set(null);
-            this.ratePlanOptions.set([]);
-            this.viewState.set('empty');
-          }
-        },
-        error: () => this.viewState.set('error')
-      });
-  }
+    // ── Sync httpResource → viewModel + viewState ──
+    effect(() => {
+      const propId = this.selectedPropId();
 
-  get roomTypes() {
-    return this.viewModel()?.roomTypes ?? [];
-  }
+      if (!propId) {
+        this.viewState.set('empty');
+        this.viewModel.set(null);
+        this.message.set('');
+        this.errorMessage.set('');
+        this.editingPlan.set(null);
+        this.editingPromo.set(null);
+        this.deleteConfirm.set(null);
+        return;
+      }
 
-  get seasonalRules() {
-    return this.viewModel()?.seasonalRules ?? [];
+      if (this.ratesResource.isLoading()) {
+        this.viewState.set(this.viewModel() ? 'success' : 'loading');
+        return;
+      }
+
+      if (this.ratesResource.error()) {
+        this.viewState.set('error');
+        this.errorMessage.set('No se pudo cargar la información.');
+        return;
+      }
+
+      const dto = this.ratesResource.value();
+      if (dto) {
+        const data = mapRatesResponse(dto);
+        this.viewModel.set(data);
+        this.viewState.set('success');
+        this.message.set('');
+        this.errorMessage.set('');
+      }
+    }, { allowSignalWrites: true });
   }
 
   onPropSelected(propId: number): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: propId || null }
+      queryParams: { prop_id: propId || null },
     });
   }
 
-  createRatePlan() {
-    const current = this.viewModel();
-    if (!current || this.planForm.invalid) {
-      this.planForm.markAllAsTouched();
-      return;
-    }
+  onSectionChange(section: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { section },
+    });
+  }
 
-    const value = this.planForm.getRawValue();
+  onMonthChange(month: number, year: number): void {
+    this.calendarMonth.set(month);
+    this.calendarYear.set(year);
+  }
+
+  /* ── Rate Plan CRUD ── */
+  createRatePlan(): void {
+    const current = this.viewModel();
+    if (!current || !this.planName() || this.planBaseRate() <= 0) { return; }
     const obs = this.editingPlan()
       ? this.api.updateRatePlan(this.editingPlan()!.id, {
-          name: value.name,
-          description: value.description,
-          baseRate: value.baseRate,
-          currency: value.currency,
-          roomTypeId: value.roomTypeId,
-          isActive: value.isActive
+          name: this.planName(), description: this.planDescription(), baseRate: this.planBaseRate(),
+          currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
         })
       : this.api.createRatePlan({
-          propId: current.propId,
-          name: value.name,
-          description: value.description,
-          baseRate: value.baseRate,
-          currency: value.currency,
-          roomTypeId: value.roomTypeId,
-          isActive: value.isActive
+          propId: current.propId, name: this.planName(), description: this.planDescription(),
+          baseRate: this.planBaseRate(), currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
         });
-    obs
-      .pipe(
-        switchMap(() =>
-          forkJoin({
-            rates: this.api.getRates(current.propId),
-            plans: this.api.getRatePlanOptions(current.propId)
-          })
-        ),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: ({ rates, plans }) => {
-          this.viewModel.set(rates);
-          this.ratePlanOptions.set(plans);
-          this.message.set('Plan tarifario registrado');
-          this.errorMessage.set('');
-          this.editingPlan.set(null);
-          this.planForm.reset({
-            name: '',
-            description: '',
-            baseRate: 0,
-            currency: 'USD',
-            roomTypeId: '',
-            isActive: true
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.');
-          this.message.set('');
-        }
-      });
+    obs.pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => {
+        this.viewModel.set(rates);
+        this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
+        this.editingPlan.set(null);
+        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true);
+      },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.'); this.message.set(''); },
+    });
   }
 
-  /** Pre-fill the plan form for editing. */
-  onEditPlan(plan: import('../../models/rates.model').RatePlanItem) {
+  onEditPlan(plan: any): void {
     this.editingPlan.set({
-      id: plan.id,
-      name: plan.name,
-      description: plan.description,
-      baseRate: plan.baseRate,
-      currency: plan.currency,
-      roomTypeId: plan.roomTypeId ?? '',
-      isActive: plan.activeLabel === 'Sí'
+      id: plan.id, name: plan.name, description: plan.description, baseRate: plan.baseRate,
+      currency: plan.currency, roomTypeId: plan.roomTypeId ?? '', isActive: plan.activeLabel === 'Sí',
     });
-    this.planForm.patchValue({
-      name: plan.name,
-      description: plan.description,
-      baseRate: plan.baseRate,
-      currency: plan.currency,
-      roomTypeId: plan.roomTypeId ?? '',
-      isActive: plan.activeLabel === 'Sí'
+    this.planName.set(plan.name); this.planDescription.set(plan.description); this.planBaseRate.set(plan.baseRate);
+    this.planCurrency.set(plan.currency); this.planRoomTypeId.set(plan.roomTypeId ?? ''); this.planIsActive.set(plan.activeLabel === 'Sí');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { section: 'plans' },
     });
-    // Scroll to form
-    setTimeout(() => {
-      document.querySelector('.form-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
+    setTimeout(() => document.querySelector('.plan-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   }
 
-  /** Cancel editing and reset form. */
-  cancelEditPlan() {
+  cancelEditPlan(): void {
     this.editingPlan.set(null);
-    this.planForm.reset({
-      name: '',
-      description: '',
-      baseRate: 0,
-      currency: 'USD',
-      roomTypeId: '',
-      isActive: true
-    });
+    this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true);
   }
 
-  /** Request delete confirmation. */
-  onDeletePlan(planId: string) {
-    this.deleteConfirm.set(planId);
-  }
+  onDeletePlan(planId: string): void { this.deleteConfirm.set(planId); }
 
-  /** Confirm and execute rate plan deletion. */
-  confirmDeletePlan() {
-    const planId = this.deleteConfirm();
-    if (!planId) return;
+  confirmDeletePlan(): void {
+    const planId = this.deleteConfirm(); if (!planId) return;
     this.deleteConfirm.set(null);
-
-    const current = this.viewModel();
-    if (!current) return;
-
-    this.api
-      .deleteRatePlan(planId)
-      .pipe(
-        switchMap(() => this.api.getRates(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.message.set('Plan tarifario eliminado');
-          this.errorMessage.set('');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al eliminar plan.');
-          this.message.set('');
-        }
-      });
-  }
-
-  saveRate() {
-    const current = this.viewModel();
-    if (!current || this.calendarForm.invalid) {
-      this.calendarForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.calendarForm.getRawValue();
-    this.api
-      .saveRate({
-        propId: current.propId,
-        ratePlanId: value.ratePlanId,
-        date: value.date,
-        rateAmount: value.rateAmount,
-        minStayNights: value.minStayNights,
-        isClosed: value.isClosed
-      })
-      .pipe(
-        switchMap(() => this.api.getRates(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.message.set('Tarifa actualizada');
-          this.errorMessage.set('');
-          this.calendarForm.reset({
-            ratePlanId: '',
-            date: '',
-            rateAmount: 0,
-            minStayNights: 1,
-            isClosed: false
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible actualizar la tarifa.');
-          this.message.set('');
-        }
-      });
-  }
-
-  batchUpdateCalendar() {
-    const current = this.viewModel();
-    if (!current || this.batchForm.invalid) {
-      this.batchForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.batchForm.getRawValue();
-    this.api
-      .batchUpdateCalendar({
-        propId: current.propId,
-        ratePlanId: value.ratePlanId,
-        startDate: value.startDate,
-        endDate: value.endDate,
-        rateAmount: value.rateAmount,
-        minStayNights: value.minStayNights || undefined,
-        onlyWeekends: value.onlyWeekends
-      })
-      .pipe(
-        switchMap(() => this.api.getRates(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.message.set('Calendario actualizado por lote');
-          this.errorMessage.set('');
-          this.batchForm.reset({
-            ratePlanId: '',
-            startDate: '',
-            endDate: '',
-            rateAmount: 0,
-            minStayNights: 1,
-            onlyWeekends: false
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al actualizar calendario por lote.');
-          this.message.set('');
-        }
-      });
-  }
-
-  generateCalendar() {
-    const current = this.viewModel();
-    if (!current) return;
-
-    const value = this.generateForm.getRawValue();
-    this.api
-      .generateCalendar({
-        propId: current.propId,
-        ratePlanId: value.ratePlanId || undefined,
-        startDate: value.startDate || undefined,
-        endDate: value.endDate || undefined
-      })
-      .pipe(
-        switchMap((result) => {
-          this.message.set(`Calendario generado: ${result.entries_generated} entradas`);
-          return this.api.getRates(current.propId);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.errorMessage.set('');
-          this.generateForm.reset({
-            ratePlanId: '',
-            startDate: '',
-            endDate: ''
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al generar calendario.');
-          this.message.set('');
-        }
-      });
-  }
-
-  createSeasonalRule() {
-    const current = this.viewModel();
-    if (!current || this.seasonalForm.invalid) {
-      this.seasonalForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.seasonalForm.getRawValue();
-    this.api
-      .createSeasonalRule({
-        propId: current.propId,
-        ratePlanId: value.ratePlanId,
-        name: value.name,
-        startDate: value.startDate,
-        endDate: value.endDate,
-        priceOverride: value.priceOverride
-      })
-      .pipe(
-        switchMap(() => this.api.getRates(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.message.set('Regla de temporada creada');
-          this.errorMessage.set('');
-          this.seasonalForm.reset({
-            ratePlanId: '',
-            name: '',
-            startDate: '',
-            endDate: '',
-            priceOverride: 0
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al crear regla de temporada.');
-          this.message.set('');
-        }
-      });
-  }
-
-  deleteSeasonalRule(ruleId: string) {
-    const current = this.viewModel();
-    if (!current) return;
-
-    this.api
-      .deleteSeasonalRule(ruleId)
-      .pipe(
-        switchMap(() => this.api.getRates(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rates) => {
-          this.viewModel.set(rates);
-          this.message.set('Regla de temporada eliminada');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.');
-        }
-      });
-  }
-
-  createPromotion() {
-    const current = this.viewModel();
-    if (!current || this.promoForm.invalid) {
-      this.promoForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.promoForm.getRawValue();
-    const obs = this.editingPromo()
-      ? this.api.updatePromotion(this.editingPromo()!.campaignId, {
-          name: value.name,
-          description: value.description,
-          discountPercent: value.discountPercent,
-          startDate: value.startDate,
-          endDate: value.endDate,
-          isActive: value.isActive
-        })
-      : this.api.createPromotion({
-          propId: current.propId,
-          name: value.name,
-          description: value.description,
-          discountPercent: value.discountPercent,
-          startDate: value.startDate,
-          endDate: value.endDate,
-          couponCount: value.couponCount,
-          couponCode: value.couponCode,
-          isActive: value.isActive
-        });
-    obs
-      .pipe(
-        switchMap(() => forkJoin({
-          rates: this.api.getRates(current.propId),
-          plans: this.api.getRatePlanOptions(current.propId),
-          promotions: this.api.listPropertyPromotions(current.propId)
-        })),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: ({ rates, plans, promotions }) => {
-          this.viewModel.set(rates);
-          this.ratePlanOptions.set(plans);
-          this.promotionsData.set(promotions);
-          this.message.set(this.editingPromo() ? 'Promoción actualizada' : 'Promoción creada');
-          this.errorMessage.set('');
-          this.editingPromo.set(null);
-          this.promoForm.reset({
-            name: '',
-            description: '',
-            discountPercent: 10,
-            couponCount: 10,
-            startDate: '',
-            endDate: '',
-            couponCode: '',
-            isActive: true
-          });
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible crear la promoción.');
-          this.message.set('');
-        }
-      });
-  }
-
-  onEditPromo(promo: { campaignId: string; name: string; description: string; discountPercent: number; startDate: string; endDate: string; isActive: boolean }) {
-    this.editingPromo.set(promo);
-    this.promoForm.patchValue({
-      name: promo.name,
-      description: promo.description,
-      discountPercent: promo.discountPercent,
-      startDate: promo.startDate,
-      endDate: promo.endDate,
-      isActive: promo.isActive
-    });
-    setTimeout(() => {
-      document.querySelector('.form-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  }
-
-  cancelEditPromo() {
-    this.editingPromo.set(null);
-    this.promoForm.reset({
-      name: '',
-      description: '',
-      discountPercent: 10,
-      couponCount: 10,
-      startDate: '',
-      endDate: '',
-      couponCode: '',
-      isActive: true
+    const current = this.viewModel(); if (!current) return;
+    this.api.deleteRatePlan(planId).pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.message.set('Plan tarifario eliminado'); this.errorMessage.set(''); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar plan.'); this.message.set(''); },
     });
   }
 
-  onTogglePromo(campaignId: string) {
+  /* ── Calendar Entry ── */
+  saveRate(): void {
+    const current = this.viewModel();
+    if (!current || !this.calendarRatePlanId() || !this.calendarDate() || this.calendarRateAmount() <= 0) { return; }
+    this.api.saveRate({
+      propId: current.propId, ratePlanId: this.calendarRatePlanId(), date: this.calendarDate(),
+      rateAmount: this.calendarRateAmount(), minStayNights: this.calendarMinStayNights(), isClosed: this.calendarIsClosed(),
+    }).pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.message.set('Tarifa actualizada'); this.errorMessage.set(''); this.calendarRatePlanId.set(''); this.calendarDate.set(''); this.calendarRateAmount.set(0); this.calendarMinStayNights.set(1); this.calendarIsClosed.set(false); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible actualizar la tarifa.'); this.message.set(''); },
+    });
+  }
+
+  /* ── Batch Update ── */
+  batchUpdateCalendar(): void {
+    const current = this.viewModel();
+    if (!current || !this.batchRatePlanId() || !this.batchStartDate() || !this.batchEndDate() || this.batchRateAmount() <= 0) { return; }
+    this.api.batchUpdateCalendar({
+      propId: current.propId, ratePlanId: this.batchRatePlanId(), startDate: this.batchStartDate(),
+      endDate: this.batchEndDate(), rateAmount: this.batchRateAmount(), minStayNights: this.batchMinStayNights() || undefined, onlyWeekends: this.batchOnlyWeekends(),
+    }).pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.message.set('Calendario actualizado por lote'); this.errorMessage.set(''); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al actualizar calendario por lote.'); this.message.set(''); },
+    });
+  }
+
+  /* ── Generate Calendar ── */
+  generateCalendar(): void {
     const current = this.viewModel();
     if (!current) return;
-
-    this.api
-      .togglePromotion(campaignId)
-      .pipe(
-        switchMap(() => forkJoin({
-          rates: this.api.getRates(current.propId),
-          plans: this.api.getRatePlanOptions(current.propId),
-          promotions: this.api.listPropertyPromotions(current.propId)
-        })),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: ({ rates, plans, promotions }) => {
-          this.viewModel.set(rates);
-          this.ratePlanOptions.set(plans);
-          this.promotionsData.set(promotions);
-          this.message.set('Estado de promoción actualizado');
-          this.errorMessage.set('');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al cambiar estado.');
-          this.message.set('');
-        }
-      });
+    this.api.generateCalendar({
+      propId: current.propId, ratePlanId: this.generateRatePlanId() || undefined,
+      startDate: this.generateStartDate() || undefined, endDate: this.generateEndDate() || undefined,
+    }).pipe(
+      switchMap((result) => { this.message.set(`Calendario generado: ${result.entries_generated} entradas`); return this.api.getRates(current.propId); }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.errorMessage.set(''); this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set(''); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al generar calendario.'); this.message.set(''); },
+    });
   }
 
-  onDeletePromo(campaignId: string) {
-    this.promoDeleteConfirm.set(campaignId);
+  /* ── Seasonal Rules ── */
+  createSeasonalRule(): void {
+    const current = this.viewModel();
+    if (!current || !this.seasonalRatePlanId() || !this.seasonalName() || !this.seasonalStartDate() || !this.seasonalEndDate() || this.seasonalPriceOverride() <= 0) { return; }
+    this.api.createSeasonalRule({
+      propId: current.propId, ratePlanId: this.seasonalRatePlanId(), name: this.seasonalName(),
+      startDate: this.seasonalStartDate(), endDate: this.seasonalEndDate(), priceOverride: this.seasonalPriceOverride(),
+    }).pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.message.set('Regla de temporada creada'); this.errorMessage.set(''); this.seasonalRatePlanId.set(''); this.seasonalName.set(''); this.seasonalStartDate.set(''); this.seasonalEndDate.set(''); this.seasonalPriceOverride.set(0); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al crear regla de temporada.'); this.message.set(''); },
+    });
   }
 
-  confirmDeletePromo() {
-    const campaignId = this.promoDeleteConfirm();
-    if (!campaignId) return;
+  deleteSeasonalRule(ruleId: string): void {
+    const current = this.viewModel(); if (!current) return;
+    this.api.deleteSeasonalRule(ruleId).pipe(
+      switchMap(() => this.api.getRates(current.propId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (rates) => { this.viewModel.set(rates); this.message.set('Regla de temporada eliminada'); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.'); },
+    });
+  }
+
+  /* ── Promotions ── */
+  refreshAfterPromo(): void {
+    const current = this.viewModel(); if (!current) return;
+    forkJoin({
+      rates: this.api.getRates(current.propId),
+      promotions: this.api.listPropertyPromotions(current.propId),
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); },
+    });
+  }
+
+  onTogglePromo(campaignId: string): void {
+    const current = this.viewModel(); if (!current) return;
+    this.api.togglePromotion(campaignId).pipe(
+      switchMap(() => forkJoin({ rates: this.api.getRates(current.propId), promotions: this.api.listPropertyPromotions(current.propId) })),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); this.message.set('Estado de promoción actualizado'); this.errorMessage.set(''); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al cambiar estado.'); this.message.set(''); },
+    });
+  }
+
+  onDeletePromo(campaignId: string): void { this.promoDeleteConfirm.set(campaignId); }
+
+  confirmDeletePromo(): void {
+    const campaignId = this.promoDeleteConfirm(); if (!campaignId) return;
     this.promoDeleteConfirm.set(null);
-
-    const current = this.viewModel();
-    if (!current) return;
-
-    // Soft delete via update to inactive
-    this.api
-      .updatePromotion(campaignId, { isActive: false })
-      .pipe(
-        switchMap(() => forkJoin({
-          rates: this.api.getRates(current.propId),
-          promotions: this.api.listPropertyPromotions(current.propId)
-        })),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: ({ rates, promotions }) => {
-          this.viewModel.set(rates);
-          this.promotionsData.set(promotions);
-          this.message.set('Promoción desactivada');
-          this.errorMessage.set('');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al desactivar promoción.');
-          this.message.set('');
-        }
-      });
+    const current = this.viewModel(); if (!current) return;
+    this.api.updatePromotion(campaignId, { isActive: false }).pipe(
+      switchMap(() => forkJoin({ rates: this.api.getRates(current.propId), promotions: this.api.listPropertyPromotions(current.propId) })),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); this.message.set('Promoción desactivada'); this.errorMessage.set(''); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al desactivar promoción.'); this.message.set(''); },
+    });
   }
 
-  get promotionsCampaigns() {
-    const data = this.promotionsData();
-    if (data) return data.campaigns;
-    // Fallback to rates viewModel promotions
-    return (this.viewModel()?.promotions ?? []).map((p) => ({
-      campaign_id: p.campaignId,
-      name: p.name,
-      description: p.description,
-      discount_percent: p.discountPercent,
-      is_active: p.activeLabel === 'Sí',
-      start_date: p.dateRange.split(' → ')[0] || '',
-      end_date: p.dateRange.split(' → ')[1] || '',
-      coupon_total: 0,
-      coupon_used: 0,
-      coupon_available: 0
-    }));
+  onEditPromo(promo: any): void {
+    this.editingPromo.set({
+      campaignId: promo.campaignId,
+      name: promo.name,
+      description: promo.description || '',
+      discountPercent: promo.discountPercent,
+      startDate: promo.startDate || '',
+      endDate: promo.endDate || '',
+      isActive: promo.isActive,
+    });
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { section: 'promos' },
+    });
   }
 }

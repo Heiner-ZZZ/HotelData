@@ -42,9 +42,12 @@ export interface RatePlanItem {
 
 export interface RateCalendarItem {
   date: string;
+  ratePlanId: string;
   planName: string;
+  rateAmount: number;
   rateAmountLabel: string;
   minStayNights: number;
+  isClosed: boolean;
   closedLabel: string;
 }
 

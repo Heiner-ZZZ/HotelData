@@ -23,9 +23,12 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
     })),
     calendar: dto.calendar.map((item) => ({
       date: item.date,
+      ratePlanId: item.rate_plan_id,
       planName: item.plan_name,
+      rateAmount: item.rate_amount,
       rateAmountLabel: item.rate_amount_label,
       minStayNights: item.min_stay_nights,
+      isClosed: item.is_closed,
       closedLabel: item.is_closed ? 'Sí' : 'No'
     })),
     rateRules: (dto.rate_rules || []).map((rule) => ({
