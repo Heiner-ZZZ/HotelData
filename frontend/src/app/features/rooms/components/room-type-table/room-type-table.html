@@ -43,7 +43,7 @@
                 <span class="features-preview">
                   @for (feat of room.features.slice(0, 2); track trackByFeature($index, feat)) {
                     <span class="feature-badge" [style.--feat-color]="featureColor(feat)">
-                      {{ feat }}
+                      {{ feat.label }}
                     </span>
                   }
                   @if (room.features.length > 2) {

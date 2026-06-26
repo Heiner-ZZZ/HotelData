@@ -6,7 +6,7 @@
     @case ('error') {
       <app-error-state
         description="No se pudo cargar el destino solicitado."
-        (retry)="router.navigate(['/admin/destinations'])"
+        (retry)="handleRetry()"
       />
     }
     @default {
