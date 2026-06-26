@@ -84,15 +84,17 @@
   }
 
   &.has-unread .notif-icon {
-    animation: bell-ring 1.8s ease-in-out infinite alternate;
+    animation: bell-ring 0.6s ease-in-out infinite alternate;
   }
 }
 
 @keyframes bell-ring {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(6deg); }
-  50% { transform: rotate(-4deg); }
-  75% { transform: rotate(3deg); }
+  0% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(15deg) scale(1.12); }
+  30% { transform: rotate(-10deg) scale(1.08); }
+  45% { transform: rotate(8deg) scale(1.04); }
+  60% { transform: rotate(-5deg) scale(1); }
+  80% { transform: rotate(3deg); }
   100% { transform: rotate(0deg); }
 }
 

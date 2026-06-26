@@ -258,6 +258,7 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
     try:
         return modify_booking(booking_id,
             check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
+            check_in_time=str(payload["check_in_time"]) if payload.get("check_in_time") else None,
             check_out_date=str(payload["check_out_date"]) if payload.get("check_out_date") else None,
             room_type_id=str(payload["room_type_id"]) if payload.get("room_type_id") else None,
             rooms=int(payload["rooms"]) if payload.get("rooms") is not None else None,

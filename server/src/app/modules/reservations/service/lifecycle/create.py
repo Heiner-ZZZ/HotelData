@@ -223,6 +223,7 @@ def modify_booking(
     booking_id: str,
     *,
     check_in_date: str | None = None,
+    check_in_time: str | None = None,
     check_out_date: str | None = None,
     room_type_id: str | None = None,
     rooms: int | None = None,
@@ -237,43 +238,73 @@ def modify_booking(
         raise ValueError("Booking not found")
 
     current_status = booking.get("status", "")
-    if current_status in ("cancelled", "rejected", "checked_in", "checked_out"):
+    current_stay_status = booking.get("stay_status", "")
+
+    # Determine what's changing
+    only_datetime = (
+        check_in_date is not None or check_in_time is not None
+    ) and all(x is None for x in (check_out_date, room_type_id, rooms, comment))
+
+    # Blocked statuses — allow checked_in only for date/time tweaks
+    # Note: "checked_in" and "checked_out" are stored in stay_status, not status
+    if current_status in ("cancelled", "rejected"):
         raise ValueError(f"Cannot modify a booking with status '{current_status}'")
+    if current_stay_status in ("checked_in", "checked_out") and not only_datetime:
+        raise ValueError(f"Cannot modify booking '{booking_id}' — stay status is '{current_stay_status}'. Only date/time can be edited.")
 
     new_check_in = check_in_date if check_in_date is not None else booking.get("check_in_date", "")
     new_check_out = check_out_date if check_out_date is not None else booking.get("check_out_date", "")
     new_room_type = room_type_id if room_type_id is not None else booking.get("room_type_id", "")
     new_rooms = rooms if rooms is not None else int(booking.get("rooms", 1))
     new_comment = comment if comment is not None else booking.get("comment", "")
+    new_check_in_time = booking.get("check_in_time", "")
+    if check_in_time is not None:
+        new_check_in_time = check_in_time
 
     if check_in_date or check_out_date:
         errors = validate_date_format(new_check_in, new_check_out)
         if errors:
             raise ValueError("; ".join(errors))
 
-    avail_error = _check_availability(
-        int(booking.get("prop_id", 0)), new_check_in, new_check_out, new_rooms, new_room_type,
-    )
-    if avail_error:
-        raise ValueError(f"Cannot modify booking: {avail_error}")
+    # For checked-in/checked-out bookings that only change date/time, skip availability check
+    if current_stay_status in ("checked_in", "checked_out"):
+        # Guest is already in-house — no need to re-check availability or recalc price
+        total_price = booking.get("total_price")
+        currency = booking.get("currency", "USD")
+        total_nights = booking.get("total_nights", 0)
+    else:
+        avail_error = _check_availability(
+            int(booking.get("prop_id", 0)), new_check_in, new_check_out, new_rooms, new_room_type,
+        )
+        if avail_error:
+            raise ValueError(f"Cannot modify booking: {avail_error}")
 
-    total_price, currency, total_nights = _calculate_total_price(
-        int(booking.get("prop_id", 0)), new_room_type, new_check_in, new_check_out, new_rooms,
-    )
+        total_price, currency, total_nights = _calculate_total_price(
+            int(booking.get("prop_id", 0)), new_room_type, new_check_in, new_check_out, new_rooms,
+        )
 
     now = utc_now()
-    update_fields = {
-        "check_in_date": new_check_in, "check_out_date": new_check_out,
-        "room_type_id": new_room_type, "rooms": new_rooms, "comment": new_comment,
-        "total_price": total_price, "currency": currency or booking.get("currency", "USD"),
-        "total_nights": total_nights, "updated_at": now,
+    update_fields: dict[str, Any] = {
+        "check_in_date": new_check_in,
+        "check_out_date": new_check_out,
+        "room_type_id": new_room_type,
+        "rooms": new_rooms,
+        "comment": new_comment,
+        "total_price": total_price,
+        "currency": currency or booking.get("currency", "USD"),
+        "total_nights": total_nights,
+        "updated_at": now,
     }
+    if check_in_time is not None:
+        update_fields["check_in_time"] = new_check_in_time
 
     db.booking_orders.update_one({"booking_id": booking_id}, {"$set": update_fields})
 
     changed_fields = []
     if check_in_date:
         changed_fields.append("fechas")
+    if check_in_time is not None:
+        changed_fields.append("hora check-in")
     if room_type_id:
         changed_fields.append("tipo habitacion")
     if rooms:

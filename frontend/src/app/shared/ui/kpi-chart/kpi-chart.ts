@@ -1,13 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { NgChartsModule } from 'ng2-charts';
+import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
-import { registerables, Chart } from 'chart.js';
-
-Chart.register(...registerables);
 
 @Component({
   selector: 'app-kpi-chart',
-  imports: [NgChartsModule],
+  imports: [BaseChartDirective],
+  providers: [provideCharts(withDefaultRegisterables())],
   template: `
     <div class="kpi-chart-wrap">
       @if (title()) {
@@ -15,7 +13,6 @@ Chart.register(...registerables);
       }
       <div class="chart-container">
         <canvas
-          [ngStyle]="{ height: height() + 'px', maxHeight: height() + 'px', display: 'block' }"
           baseChart
           [data]="chartData()"
           [options]="chartOptions()"

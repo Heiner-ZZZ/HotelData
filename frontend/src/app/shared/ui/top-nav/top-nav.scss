@@ -213,9 +213,9 @@
   position: relative;
 }
 
-/* Vibration animation: fast → slow → pause → repeat */
+/* Fast vibration with more travel distance */
 .notif-bell.has-unread {
-  animation: notif-vibrate 2.4s ease-in-out infinite;
+  animation: notif-vibrate 0.8s ease-in-out infinite;
 }
 
 /* When user opens the dropdown, animation stops (mark as reviewed) */
@@ -224,14 +224,14 @@
 }
 
 @keyframes notif-vibrate {
-  0%, 100% { transform: rotate(0deg); }
-  5% { transform: rotate(12deg) scale(1.08); }
-  10% { transform: rotate(-12deg) scale(1.08); }
-  15% { transform: rotate(8deg); }
-  20% { transform: rotate(-8deg); }
-  25% { transform: rotate(4deg); }
-  30% { transform: rotate(-4deg); }
-  35% { transform: rotate(0deg); }
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  5% { transform: rotate(18deg) scale(1.12); }
+  10% { transform: rotate(-15deg) scale(1.1); }
+  15% { transform: rotate(12deg) scale(1.06); }
+  20% { transform: rotate(-8deg) scale(1.03); }
+  30% { transform: rotate(5deg); }
+  40% { transform: rotate(-3deg); }
+  50% { transform: rotate(0deg); }
   100% { transform: rotate(0deg); }
 }
 

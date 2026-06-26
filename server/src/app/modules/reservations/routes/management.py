@@ -15,6 +15,7 @@ from src.app.modules.reservations.service import (
     list_check_out_dates, complete_check_in, complete_check_out,
 )
 from src.app.modules.reservations.service._helpers import utc_now
+from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -38,6 +39,19 @@ def check_ins_api(
     current_user: dict = Depends(require_login),
 ):
     return list_check_ins(operation_date=operation_date, prop_id=prop_id, user=current_user)
+
+
+@management_api_router.patch("/check-ins/{booking_id}/update-datetime")
+def check_in_update_datetime_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+    try:
+        return update_check_in_datetime(
+            booking_id,
+            check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
+            check_in_time=str(payload["check_in_time"]) if payload.get("check_in_time") else None,
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @management_api_router.post("/check-ins/{booking_id}/complete")
