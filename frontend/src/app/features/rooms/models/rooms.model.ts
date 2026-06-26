@@ -36,6 +36,13 @@ export interface FeatureCategory {
   items: RoomFeature[];
 }
 
+export interface UpcomingBooking {
+  guest_name: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+}
+
 export interface HotelRoomItem {
   id: string;
   roomTypeName: string;
@@ -43,6 +50,9 @@ export interface HotelRoomItem {
   activeLabel: string;
   roomNumber: string;
   floor: string;
+  upcomingBookings?: UpcomingBooking[];
+  isOccupiedSoon?: boolean;
+  occupancyLabel?: string;
 }
 
 export interface RoomPropertyOption {

@@ -30,6 +30,9 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       activeLabel: room.is_active ? 'Sí' : 'No',
       roomNumber: room.room_number || '',
       floor: room.floor || '',
+      upcomingBookings: (room as any).upcoming_bookings,
+      isOccupiedSoon: (room as any).is_occupied_soon ?? false,
+      occupancyLabel: (room as any).occupancy_label || '',
     }))
   };
 }
