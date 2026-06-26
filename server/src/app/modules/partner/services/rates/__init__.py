@@ -18,6 +18,7 @@ from .rules import (
     delete_seasonal_rule,
     generate_calendar_from_rules,
     list_seasonal_rules,
+    update_seasonal_rule,
 )
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "save_rate_calendar_entry",
     "batch_update_rate_calendar",
     "create_seasonal_rule",
+    "update_seasonal_rule",
     "delete_seasonal_rule",
     "list_seasonal_rules",
     "generate_calendar_from_rules",

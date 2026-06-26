@@ -88,18 +88,20 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
     now = now_iso()
     rooms = list(db[HOTEL_ROOMS_COLLECTION].find(
         {"prop_id": prop_id},
-        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "is_active": 1},
+        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "room_number": 1, "is_active": 1},
     ))
 
     created = 0
     for room in rooms:
+        hotel_room_id = room.get("hotel_room_id", "")
         room_type_id = room.get("room_type_id", "")
         room_label = room.get("room_label", "")
-        if not room_label:
+        room_number = room.get("room_number", "")
+        if not hotel_room_id:
             continue
 
         existing = db[ROOM_STATUS_COLLECTION].find_one(
-            {"prop_id": prop_id, "room_label": room_label},
+            {"prop_id": prop_id, "hotel_room_id": hotel_room_id},
             {"_id": 1},
         )
         if existing:
@@ -107,8 +109,10 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
 
         db[ROOM_STATUS_COLLECTION].insert_one({
             "prop_id": prop_id,
+            "hotel_room_id": hotel_room_id,
             "room_type_id": room_type_id,
             "room_label": room_label,
+            "room_number": room_number,
             "status": "available",
             "note": "",
             "created_at": now,
@@ -130,4 +134,10 @@ def _enrich_room_status(doc: dict) -> dict:
     for f in ("created_at", "updated_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])
+    # camelCase aliases for frontend
+    doc["roomLabel"] = doc.get("room_label", "")
+    doc["roomNumber"] = doc.get("room_number", "")
+    doc["roomTypeId"] = doc.get("room_type_id", "")
+    doc["propId"] = doc.get("prop_id", 0)
+    doc["hotelRoomId"] = doc.get("hotel_room_id", "")
     return doc
