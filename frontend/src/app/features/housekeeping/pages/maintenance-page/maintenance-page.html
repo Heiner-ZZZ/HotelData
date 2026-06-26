@@ -83,6 +83,19 @@
             <label for="description">Descripción</label>
             <textarea id="description" formControlName="description" rows="2" placeholder="Detalles del mantenimiento..."></textarea>
           </div>
+          <!-- RF-002: Auto-block room availability toggle -->
+          <label class="toggle-row">
+            <div class="toggle-info">
+              <span class="material-symbols-outlined toggle-icon">block</span>
+              <div>
+                <strong>Bloquear habitación</strong>
+                <p>Marcar la habitación como 'Mantenimiento' y crear blackout en la fecha programada</p>
+              </div>
+            </div>
+            <input type="checkbox" formControlName="autoBlock" class="toggle-input" />
+            <span class="toggle-track"></span>
+          </label>
+
           <div style="display: flex; gap: 0.5rem;">
             <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
               <span class="material-symbols-outlined">build</span>

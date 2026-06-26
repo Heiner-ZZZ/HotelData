@@ -56,6 +56,7 @@ export class MaintenancePageComponent {
     description: [''],
     priority: ['normal'],
     scheduledDate: [todayIso()],
+    autoBlock: [true],
   });
 
   readonly priorities = [...PRIORITIES];
@@ -178,6 +179,7 @@ export class MaintenancePageComponent {
           description: val.description || undefined,
           priority: val.priority,
           scheduled_date: val.scheduledDate || undefined,
+          auto_block: val.autoBlock,
         });
 
     obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

@@ -61,6 +61,12 @@ export class HousekeepingDashboardPageComponent {
     return total > 0 ? d.completedToday / total : 0;
   });
 
+  readonly maintenanceCompliancePct = computed(() => {
+    const d = this.dashboard();
+    if (!d) return 0;
+    return d.maintenanceCompliancePct ?? 0;
+  });
+
   readonly occupancyCircumference = computed(() => {
     const r = 54;
     return 2 * Math.PI * r;
