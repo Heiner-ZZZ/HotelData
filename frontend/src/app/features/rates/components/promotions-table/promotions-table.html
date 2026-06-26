@@ -1,0 +1,76 @@
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Nombre / código</th>
+        <th>Dto.</th>
+        <th>Cupones</th>
+        <th>Vigencia</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (promo of campaigns(); track promo.campaignId) {
+        <tr>
+          <td>
+            <span class="material-symbols-outlined table-icon icon-promo-amber">campaign</span>
+            Campaña
+          </td>
+          <td>
+            <strong>{{ promo.name }}</strong>
+            @if (promo.description) {
+              <br><small>{{ promo.description }}</small>
+            }
+          </td>
+          <td>{{ promo.discountPercent }}%</td>
+          <td>
+            <small>{{ promo.couponAvailable }}/{{ promo.couponTotal }} disp.</small>
+          </td>
+          <td><small>{{ promo.startDate }} → {{ promo.endDate }}</small></td>
+          <td>
+            <button
+              type="button"
+              class="toggle-badge-btn"
+              [class.active]="promo.isActive"
+              [class.inactive]="!promo.isActive"
+              (click)="togglePromo.emit(promo.campaignId)"
+              title="Cambiar estado"
+            >
+              <span class="material-symbols-outlined badge-icon">{{ promo.isActive ? 'check_circle' : 'cancel' }}</span>
+              {{ promo.isActive ? 'Activo' : 'Inactivo' }}
+            </button>
+          </td>
+          <td class="actions-cell">
+            <button type="button" class="edit-btn" (click)="editPromo.emit(promo)" title="Editar promoción">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button type="button" class="delete-btn" (click)="deletePromo.emit(promo.campaignId)" title="Desactivar promoción">
+              <span class="material-symbols-outlined">toggle_off</span>
+            </button>
+          </td>
+        </tr>
+      }
+      @for (coupon of coupons(); track coupon.code) {
+        <tr>
+          <td>
+            <span class="material-symbols-outlined table-icon icon-coupon-blue">confirmation_number</span>
+            Cupón
+          </td>
+          <td><code>{{ coupon.code }}</code></td>
+          <td>—</td>
+          <td><small>—</small></td>
+          <td><small>—</small></td>
+          <td>
+            <span class="status-badge" [class.active]="coupon.activeLabel === 'Sí'" [class.inactive]="coupon.activeLabel !== 'Sí'">
+              <span class="material-symbols-outlined badge-icon">{{ coupon.activeLabel === 'Sí' ? 'check_circle' : 'cancel' }}</span>
+              {{ coupon.activeLabel === 'Sí' ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+          <td></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
