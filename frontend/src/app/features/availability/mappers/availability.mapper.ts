@@ -63,6 +63,7 @@ function mapBlackoutItem(item: AvailabilityDto['blackout_items'][number]): Avail
     roomTypeId: item.room_type_id,
     rangeLabel: item.range_label,
     blockedRooms: item.blocked_rooms,
-    reason: item.reason || 'Sin razón'
+    reason: item.reason || 'Sin razón',
+    roomNumbers: item.room_numbers,
   };
 }

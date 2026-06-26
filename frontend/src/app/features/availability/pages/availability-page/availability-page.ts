@@ -437,6 +437,7 @@ export class AvailabilityPageComponent {
     }
     this.api.getHotelRooms(propId, roomTypeId).subscribe({
       next: (res) => {
+        this.hotelRoomsForType.set(res.items);
         this.blackoutSelectedRooms.set(new Set());
       },
       error: () => {},
@@ -907,6 +908,13 @@ export class AvailabilityPageComponent {
     this.saveInventory();
   }
 
+  /** Cancel blackout editing — resets form and clears edit state. */
+  cancelEditBlackout() {
+    this.editingBlackout.set(null);
+    this.blackoutForm.reset({ roomTypeId: '', startDate: '', endDate: '', blockedRooms: 0, reason: '' });
+    this.blackoutSelectedRooms.set(new Set<string>());
+  }
+
   /** Cancel inline editing */
   cancelEdit() {
     this.editingCell.set(null);
@@ -1125,21 +1133,35 @@ export class AvailabilityPageComponent {
     if (!vm) return;
     const item = vm.blackoutItems.find(b => b.blackoutId === blackoutId);
     if (!item) return;
+    const startDate = item.rangeLabel.split(' -> ')[0];
+    const endDate = item.rangeLabel.split(' -> ')[1];
     this.blackoutForm.patchValue({
       roomTypeId: item.roomTypeId,
-      startDate: item.rangeLabel.split(' -> ')[0],
-      endDate: item.rangeLabel.split(' -> ')[1],
+      startDate,
+      endDate,
       blockedRooms: item.blockedRooms,
       reason: item.reason,
     });
     this.editingBlackout.set({
       blackoutId,
       roomTypeId: item.roomTypeId,
-      startDate: item.rangeLabel.split(' -> ')[0],
-      endDate: item.rangeLabel.split(' -> ')[1],
+      startDate,
+      endDate,
       reason: item.reason,
-      roomNumbers: [],
+      roomNumbers: item.roomNumbers || [],
     });
+    // Fetch rooms and pre-select
+    const propId = this.selectedPropId();
+    if (propId && item.roomTypeId) {
+      this.api.getHotelRooms(propId, item.roomTypeId).subscribe({
+        next: (res) => {
+          this.hotelRoomsForType.set(res.items);
+          const blockedSet = new Set<string>(item.roomNumbers || []);
+          this.blackoutSelectedRooms.set(blockedSet.size > 0 ? blockedSet : new Set());
+        },
+        error: () => {},
+      });
+    }
     // Scroll to blackout form
     setTimeout(() => {
       const el = document.querySelector('.form-card:has(#blk-start)');

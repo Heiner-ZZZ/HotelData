@@ -65,6 +65,7 @@ export interface AvailabilityBlackoutItem {
   rangeLabel: string;
   blockedRooms: number;
   reason: string;
+  roomNumbers?: string[];
 }
 
 export interface AvailabilityPropertyOption {

@@ -33,6 +33,7 @@ export interface AvailabilityDto {
     range_label: string;
     blocked_rooms: number;
     reason: string;
+    room_numbers?: string[];
   }>;
   availability_blocks?: Array<{
     block_id?: string;
@@ -42,6 +43,7 @@ export interface AvailabilityDto {
     range_label: string;
     blocked_rooms: number;
     reason: string;
+    room_numbers?: string[];
   }>;
 }
 

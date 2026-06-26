@@ -313,7 +313,7 @@
 
               <div class="form-actions">
                 @if (editingBlackout()) {
-                  <button type="button" class="btn-secondary" (click)="editingBlackout.set(null); blackoutForm.reset({ roomTypeId: '', startDate: '', endDate: '', blockedRooms: 0, reason: '' }); blackoutSelectedRooms.set(new Set())">
+                  <button type="button" class="btn-secondary" (click)="cancelEditBlackout()">
                     <span class="material-symbols-outlined">close</span>
                     Cancelar edición
                   </button>
