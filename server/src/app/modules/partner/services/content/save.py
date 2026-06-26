@@ -57,6 +57,7 @@ def save_partner_hotel_amenities(
     *,
     active_amenities: list[str],
     amenities_text: str | None = None,
+    amenity_prices: dict[str, float] | None = None,
     room_type_id: str = "",
     changed_by: str = "angular_api",
 ) -> dict[str, Any] | None:
@@ -74,6 +75,15 @@ def save_partner_hotel_amenities(
             continue
         seen.add(key)
         clean_active.append(label)
+
+    # Merge incoming prices with existing — normalize keys to lowercase for lookup
+    existing_prices: dict[str, float] = dict(current.get("amenity_prices") or {})
+    if amenity_prices:
+        for label, price in amenity_prices.items():
+            try:
+                existing_prices[normalize_label(label)] = float(price)
+            except (ValueError, TypeError):
+                pass
 
     if room_type_id:
         room_amenities = dict(current.get("room_amenities") or {})
@@ -96,6 +106,7 @@ def save_partner_hotel_amenities(
             "amenities_text": clean_text(amenities_text) or ", ".join(clean_active),
             "active_amenities": clean_active,
             "amenities_catalog": [{"category": _amenity_category(label), "label": label} for label in clean_active],
+            "amenity_prices": existing_prices,
             "source": current.get("source") or "partner_manual",
             "updated_at": now_utc(),
         }

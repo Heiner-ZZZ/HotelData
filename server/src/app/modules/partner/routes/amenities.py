@@ -44,10 +44,20 @@ def amenities_update_api(
     if not isinstance(active_amenities, list):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="active_amenities must be a list")
     room_type_id = str(payload.get("room_type_id") or "")
+    amenity_prices: dict[str, float] = {}
+    raw_prices = payload.get("amenity_prices")
+    if isinstance(raw_prices, dict):
+        for k, v in raw_prices.items():
+            try:
+                amenity_prices[str(k)] = float(v)
+            except (ValueError, TypeError):
+                pass
+
     saved = save_partner_hotel_amenities(
         prop_id,
         active_amenities=[str(item) for item in active_amenities],
         amenities_text=str(payload.get("amenities_text") or ""),
+        amenity_prices=amenity_prices,
         room_type_id=room_type_id,
         changed_by=current_user.get("username", "system"),
     )

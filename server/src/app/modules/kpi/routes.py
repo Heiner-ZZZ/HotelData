@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Query
 from pymongo import ASCENDING, DESCENDING
 
+
+logger = logging.getLogger(__name__)
+
+from src.app.modules.kpi.bsc_service import build_bsc
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/api/kpi", tags=["kpi"])
@@ -106,6 +111,16 @@ def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20)):
         })
 
     return {"dates": date_strs, "series": series}
+
+
+@router.get("/bsc")
+def balanced_scorecard():
+    """Balanced Scorecard with 4 perspectives, semáforos, and temporal comparison."""
+    try:
+        return build_bsc()
+    except Exception:
+        logger.exception("BSC build failed")
+        return {"error": "Error al generar el Balanced Scorecard."}
 
 
 @router.get("/operational-stats")

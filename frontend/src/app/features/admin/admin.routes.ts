@@ -3,8 +3,13 @@ import { Routes } from '@angular/router';
 export const ADMIN_ROUTES: Routes = [
   {
     path: '',
-    redirectTo: 'earnings',
+    redirectTo: 'bsc',
     pathMatch: 'full',
+  },
+  {
+    path: 'bsc',
+    loadComponent: () =>
+      import('./pages/bsc-page/bsc-page').then((m) => m.BscPageComponent),
   },
   {
     path: 'earnings',

@@ -72,6 +72,9 @@ def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[s
     for label in active_items:
         catalog_items.append({"category": _amenity_category(label), "label": label})
 
+    # Load stored overridden prices (label_lower -> price)
+    stored_prices: dict[str, float] = {k.lower(): v for k, v in (page.get("amenity_prices") or {}).items()}
+
     seen: set[tuple[str, str]] = set()
     grouped: dict[str, list[dict[str, Any]]] = {}
     active_lookup = {item.lower() for item in active_items}
@@ -82,10 +85,12 @@ def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[s
         if not label or key in seen:
             continue
         seen.add(key)
+        # Use stored price if available, otherwise fall back to default
+        unit_price = stored_prices.get(label.lower(), _amenity_unit_price(label))
         grouped.setdefault(category, []).append({
             "label": label,
             "active": label.lower() in active_lookup,
-            "unit_price": _amenity_unit_price(label),
+            "unit_price": unit_price,
         })
 
     return [
