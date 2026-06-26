@@ -50,6 +50,16 @@ export class ReservationDetailPageComponent {
   readonly editSaving = signal(false);
   readonly editError = signal('');
 
+  // Room assignment modal
+  readonly showRoomModal = signal(false);
+  readonly roomAssignmentState = signal<'loading' | 'success' | 'error' | 'idle'>('idle');
+  readonly availableRooms = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string }>>([]);
+  readonly assignedRoomIds = signal<string[]>([]);
+  readonly selectedRoomIds = signal<Set<string>>(new Set());
+  readonly roomAssignmentSaving = signal(false);
+  readonly roomAssignmentMessage = signal('');
+  readonly roomsRequired = signal(0);
+
   readonly isStaff = computed(() => {
     const role = this.authService.currentUser()?.primaryRole;
     return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
@@ -177,6 +187,77 @@ export class ReservationDetailPageComponent {
         },
         error: () => { this.rejectPending.set(false); }
       });
+  }
+
+  // ── Room Assignment ──
+
+  openRoomModal() {
+    const vm = this.data();
+    if (!vm) return;
+    this.showRoomModal.set(true);
+    this.roomAssignmentState.set('loading');
+    this.roomAssignmentMessage.set('');
+    this.selectedRoomIds.set(new Set());
+
+    this.reservationsApi.getAvailableRooms(vm.bookingId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (result) => {
+        this.availableRooms.set(result.available_rooms);
+        this.assignedRoomIds.set(result.assigned_rooms || []);
+        this.roomsRequired.set(result.rooms_required);
+        // Pre-select already assigned rooms
+        if (result.assigned_rooms && result.assigned_rooms.length > 0) {
+          this.selectedRoomIds.set(new Set(result.assigned_rooms));
+        }
+        this.roomAssignmentState.set('success');
+      },
+      error: () => {
+        this.roomAssignmentState.set('error');
+      }
+    });
+  }
+
+  closeRoomModal() {
+    this.showRoomModal.set(false);
+    this.roomAssignmentState.set('idle');
+  }
+
+  toggleRoomSelection(roomId: string) {
+    const current = new Set(this.selectedRoomIds());
+    if (current.has(roomId)) {
+      current.delete(roomId);
+    } else {
+      current.add(roomId);
+    }
+    this.selectedRoomIds.set(current);
+  }
+
+  saveRoomAssignment() {
+    const vm = this.data();
+    if (!vm) return;
+    const selected = [...this.selectedRoomIds()];
+    if (selected.length === 0) return;
+
+    this.roomAssignmentSaving.set(true);
+    this.roomAssignmentMessage.set('');
+
+    this.reservationsApi.assignRooms(vm.bookingId, selected).pipe(
+      switchMap(() => this.reservationsApi.getReservationDetail(vm.bookingId)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (detail) => {
+        this.data.set(detail);
+        this.roomAssignmentSaving.set(false);
+        this.showRoomModal.set(false);
+        this.successMessage.set('Habitaciones asignadas correctamente.');
+        setTimeout(() => this.successMessage.set(''), 4000);
+      },
+      error: () => {
+        this.roomAssignmentSaving.set(false);
+        this.roomAssignmentMessage.set('Error al asignar habitaciones');
+      }
+    });
   }
 
   goToInvoice(invoiceId: string) {

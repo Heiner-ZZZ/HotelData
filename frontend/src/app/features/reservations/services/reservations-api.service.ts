@@ -184,6 +184,43 @@ export class ReservationsApiService {
     );
   }
 
+  /** Get available physical rooms for a booking */
+  getAvailableRooms(bookingId: string) {
+    return this.http.get<{
+      prop_id: number;
+      room_type: { name: string; base_capacity: number; max_adults: number } | null;
+      rooms_required: number;
+      rooms_available: number;
+      available_rooms: Array<{
+        hotel_room_id: string;
+        room_number: string;
+        room_label: string;
+        floor: string;
+      }>;
+      assigned_rooms: string[];
+    }>(`${this.apiConfig.baseUrl}/management/bookings/${bookingId}/available-rooms`, {
+      withCredentials: true,
+    });
+  }
+
+  /** Assign physical rooms to a booking */
+  assignRooms(bookingId: string, roomIds: string[]) {
+    return this.http.post<{ booking_id: string; assigned_rooms: string[]; assigned_count: number }>(
+      `${this.apiConfig.baseUrl}/management/bookings/${bookingId}/assign-rooms`,
+      { room_ids: roomIds },
+      { withCredentials: true }
+    );
+  }
+
+  /** Search registered users by name or email for quick guest data prefill */
+  searchUsers(q: string) {
+    const params = new HttpParams().set('q', q).set('limit', '10');
+    return this.http.get<{ items: Array<{ name: string; email: string; phone: string; cedula: string }> }>(
+      `${this.apiConfig.baseUrl}/management/users/search`,
+      { params, withCredentials: true }
+    );
+  }
+
   /** Check if a hotel has inventory/availability for a given date range */
   getHotelAvailability(propId: number, checkIn: string, checkOut: string) {
     const params = new HttpParams()

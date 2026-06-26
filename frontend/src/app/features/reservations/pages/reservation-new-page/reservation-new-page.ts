@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged } from 'rxjs';
+import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -38,8 +38,14 @@ export class ReservationNewPageComponent {
   readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
 
   readonly guestSuggestions = signal<Array<{ name: string; email: string; phone: string }>>([]);
+  readonly apiUserResults = signal<Array<{ name: string; email: string; phone: string; cedula: string }>>([]);
+  readonly apiSearching = signal(false);
   readonly showGuestDropdown = signal(false);
   readonly guestSearchFocused = signal(false);
+
+  /** Subject with debounce for typing-triggered user search */
+  /** Subject with debounce for typing-triggered user search — public for template access */
+  readonly userSearch$ = new Subject<string>();
 
   readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
   readonly couponValidating = signal(false);
@@ -128,12 +134,44 @@ export class ReservationNewPageComponent {
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
     comment: [''],
     couponCode: [''],
-    specialRequests: [[] as string[]]
+    specialRequests: [[] as string[]],
+    cedula: ['']
   });
 
   constructor() {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     this._loadGuestSuggestions();
+
+    // ── Search registered users on the backend when staff types ──
+    this.userSearch$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((q) => {
+          if (!q || q.length < 2) {
+            this.apiUserResults.set([]);
+            this.apiSearching.set(false);
+            return EMPTY;
+          }
+          this.apiSearching.set(true);
+          return this.reservationsApi.searchUsers(q).pipe(
+            takeUntilDestroyed(this.destroyRef)
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (result) => {
+          if (result && 'items' in result) {
+            this.apiUserResults.set(result.items);
+          }
+          this.apiSearching.set(false);
+        },
+        error: () => {
+          this.apiUserResults.set([]);
+          this.apiSearching.set(false);
+        },
+      });
 
     // Auto-fill guest data from user profile for client role
     if (this.isClient()) {
@@ -245,6 +283,7 @@ export class ReservationNewPageComponent {
       guestName: v.guestName,
       guestEmail: v.guestEmail,
       guestPhone: v.guestPhone,
+      cedula: v.cedula,
       checkInDate: v.checkInDate,
       checkOutDate: v.checkOutDate,
       adults: v.adults,
@@ -327,20 +366,36 @@ export class ReservationNewPageComponent {
     }
   }
 
-  /** Filter guest suggestions based on user input */
+  /** Combined guest suggestions: localStorage recent guests + API search results */
   readonly filteredGuestSuggestions = computed(() => {
     const query = this.form.controls.guestName.value.toLowerCase().trim();
-    if (!query || query.length < 1) return this.guestSuggestions();
-    return this.guestSuggestions().filter(
-      g => g.name.toLowerCase().includes(query) || g.email.toLowerCase().includes(query)
-    );
+    const localGuests = this.guestSuggestions();
+    const apiGuests = this.apiUserResults();
+
+    // Show only recent guests when no query
+    if (!query || query.length < 1) {
+      return localGuests.map(g => ({ ...g, cedula: '', source: 'local' as const }));
+    }
+
+    // Merge: API results shown first, then matching localStorage entries (filter out dupes by email)
+    const apiEmails = new Set(apiGuests.map(g => g.email.toLowerCase()));
+    const merged: Array<{ name: string; email: string; phone: string; cedula: string; source: 'api' | 'local' }> = [
+      ...apiGuests.map(g => ({ ...g, source: 'api' as const })),
+      ...localGuests
+        .filter(g => !apiEmails.has(g.email.toLowerCase()))
+        .filter(g => g.name.toLowerCase().includes(query) || g.email.toLowerCase().includes(query))
+        .map(g => ({ ...g, cedula: '', source: 'local' as const })),
+    ];
+
+    return merged;
   });
 
-  /** Select a guest from the autocomplete dropdown, filling name + email + phone */
-  selectGuest(guest: { name: string; email: string; phone: string }) {
+  /** Select a guest from the autocomplete dropdown, filling name + email + phone + cedula */
+  selectGuest(guest: { name: string; email: string; phone: string; cedula?: string }) {
     this.form.controls.guestName.setValue(guest.name);
     this.form.controls.guestEmail.setValue(guest.email);
     this.form.controls.guestPhone.setValue(guest.phone || '');
+    this.form.controls.cedula.setValue(guest.cedula || '');
     this.showGuestDropdown.set(false);
   }
 

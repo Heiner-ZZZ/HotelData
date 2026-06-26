@@ -175,26 +175,38 @@
               <div class="input-wrap">
                 <span class="material-symbols-outlined input-prefix">badge</span>
                 <input formControlName="guestName"
-                       [placeholder]="isClient() ? '' : 'Ej: Juan Pérez'"
+                       [placeholder]="isClient() ? '' : 'Buscar cliente registrado...'"
                        autocomplete="name"
                        [attr.readonly]="isClient() || null"
                        [class.readonly-field]="isClient()"
                        (focus)="guestSearchFocused.set(true); toggleGuestDropdown(true)"
                        (blur)="guestSearchFocused.set(false); toggleGuestDropdown(false)"
-                       (input)="showGuestDropdown.set(true)" />
+                       (input)="showGuestDropdown.set(true); userSearch$.next($any($event.target).value)" />
               </div>
               @if (form.controls.guestName.invalid && form.controls.guestName.touched) {
                 <span class="field-error-msg">El nombre es obligatorio</span>
               }
-              @if (showGuestDropdown() && filteredGuestSuggestions().length > 0) {
+              @if (showGuestDropdown() && (filteredGuestSuggestions().length > 0 || apiSearching())) {
                 <div class="guest-dropdown">
+                  @if (apiSearching()) {
+                    <div class="guest-option guest-loading">
+                      <span class="material-symbols-outlined loading-spin">sync</span>
+                      <span>Buscando usuarios...</span>
+                    </div>
+                  }
                   @for (g of filteredGuestSuggestions(); track g.email) {
-                    <button type="button" class="guest-option" (mousedown)="selectGuest(g)">
+                    <button type="button" class="guest-option" [class.is-api]="g.source === 'api'" (mousedown)="selectGuest(g)">
                       <span class="material-symbols-outlined guest-option-icon">person</span>
                       <div class="guest-option-info">
                         <strong>{{ g.name }}</strong>
                         <span>{{ g.email }}</span>
+                        @if (g.cedula) {
+                          <span class="guest-cedula">Cédula: {{ g.cedula }}</span>
+                        }
                       </div>
+                      @if (g.source === 'api') {
+                        <span class="guest-source-badge">Registrado</span>
+                      }
                     </button>
                   }
                 </div>
