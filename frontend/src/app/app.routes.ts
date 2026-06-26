@@ -141,6 +141,10 @@ export const routes: Routes = [
     redirectTo: 'management/reservations'
   },
   {
+    path: 'admin/settings',
+    redirectTo: 'management/settings'
+  },
+  {
     path: '**',
     redirectTo: 'login'
   }
