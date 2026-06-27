@@ -36,7 +36,7 @@ export class PaymentsListPageComponent {
     cash: { label: 'Efectivo', icon: 'payments' },
     credit_card: { label: 'Tarjeta crédito', icon: 'credit_card' },
     bank_transfer: { label: 'Transferencia', icon: 'account_balance' },
-    simulated: { label: 'Simulado', icon: 'experiment' },
+    simulated: { label: 'Tarjeta de crédito', icon: 'credit_card' },
   };
 
   constructor() {
@@ -85,5 +85,9 @@ export class PaymentsListPageComponent {
 
   getMethodInfo(method: string) {
     return this.methodLabels[method] ?? { label: method, icon: 'receipt' };
+  }
+
+  printPage() {
+    window.print();
   }
 }

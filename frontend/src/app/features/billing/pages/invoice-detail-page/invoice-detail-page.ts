@@ -56,6 +56,18 @@ export class InvoiceDetailPageComponent {
       });
   }
 
+  payInvoice() {
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+    this.billingApi.payInvoice(this.invoice()!.id).subscribe({
+      next: () => {
+        this.actionMessage.set('Pago procesado exitosamente.');
+        this.invoice.update(i => i ? { ...i, status: 'paid' } : i);
+      },
+      error: () => this.actionError.set('No se pudo procesar el pago. Intenta nuevamente.'),
+    });
+  }
+
   cancelInvoice() {
     this.actionError.set(null);
     this.actionMessage.set(null);
@@ -70,5 +82,9 @@ export class InvoiceDetailPageComponent {
 
   goBack() {
     void this.router.navigate(['/management/billing/invoices']);
+  }
+
+  printPage() {
+    window.print();
   }
 }

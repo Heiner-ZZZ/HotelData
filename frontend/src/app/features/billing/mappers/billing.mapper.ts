@@ -12,9 +12,9 @@ function mapLineItem(dto: LineItemDto): LineItem {
   };
 }
 
-function mapInvoiceItem(item: InvoiceItemDto): InvoiceListItem {
+function mapInvoiceItem(item: InvoiceItemDto & { id?: string }): InvoiceListItem {
   return {
-    id: item._id,
+    id: item.id || item._id,
     bookingId: item.booking_id,
     invoiceNumber: item.invoice_number,
     subtotal: item.subtotal,
@@ -38,9 +38,9 @@ export function mapInvoicesList(dto: InvoicesListDto): InvoicesListViewModel {
   };
 }
 
-export function mapInvoiceDetail(dto: InvoiceDetailDto): InvoiceDetailViewModel {
+export function mapInvoiceDetail(dto: InvoiceDetailDto & { id?: string }): InvoiceDetailViewModel {
   return {
-    id: dto._id,
+    id: dto.id || dto._id,
     bookingId: dto.booking_id,
     invoiceNumber: dto.invoice_number,
     propId: dto.prop_id,
@@ -57,9 +57,9 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto): InvoiceDetailViewModel 
   };
 }
 
-function mapPaymentItem(item: PaymentItemDto): PaymentListItem {
+function mapPaymentItem(item: PaymentItemDto & { id?: string }): PaymentListItem {
   return {
-    id: item._id,
+    id: item.id || item._id,
     bookingId: item.booking_id,
     invoiceId: item.invoice_id,
     amount: item.amount,

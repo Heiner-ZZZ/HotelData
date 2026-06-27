@@ -1,13 +1,19 @@
 <div class="payments-page">
   <app-page-header
     eyebrow="Facturación"
-    title="Pagos simulados"
-    description="Registro de pagos simulados asociados a reservas. No hay integración bancaria real."
+    title="Pagos"
+    description="Registro de pagos asociados a reservas."
   />
 
-  <div class="sub-nav">
-    <a routerLink="/admin/billing/invoices" class="sub-link">Facturas</a>
-    <a routerLink="/admin/billing/payments" class="sub-link active">Pagos</a>
+  <div class="top-actions no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem;">
+    <div class="sub-nav" style="margin-bottom: 0; display: flex; gap: 1rem;">
+      <a routerLink="/management/billing/invoices" class="sub-link">Facturas</a>
+      <a routerLink="/management/billing/payments" class="sub-link active">Pagos</a>
+    </div>
+    <button type="button" class="btn-small-primary" (click)="printPage()" style="background: var(--surface); color: var(--app-text); border: 1px solid var(--app-border); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500;">
+      <span class="material-symbols-outlined btn-icon" style="font-size: 1.2rem;">print</span>
+      Imprimir reporte
+    </button>
   </div>
 
   @switch (viewState()) {

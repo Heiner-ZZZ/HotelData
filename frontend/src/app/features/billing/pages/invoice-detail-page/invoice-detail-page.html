@@ -5,10 +5,16 @@
     description="Información detallada de la factura y acciones disponibles."
   />
 
-  <button type="button" class="back-btn" (click)="goBack()">
-    <span class="material-symbols-outlined btn-icon">arrow_back</span>
-    Volver a facturas
-  </button>
+  <div class="top-actions no-print" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+    <button type="button" class="back-btn" (click)="goBack()" style="margin-bottom: 0;">
+      <span class="material-symbols-outlined btn-icon">arrow_back</span>
+      Volver a facturas
+    </button>
+    <button type="button" class="btn-small-primary" (click)="printPage()" style="background: var(--surface); color: var(--app-text); border: 1px solid var(--app-border); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500;">
+      <span class="material-symbols-outlined btn-icon" style="font-size: 1.2rem;">print</span>
+      Imprimir / Exportar PDF
+    </button>
+  </div>
 
   @if (actionMessage(); as msg) {
     <div class="success-banner">{{ msg }}</div>
@@ -69,7 +75,7 @@
                   <div class="line-item-row">
                     <span class="li-name">{{ li.name }}</span>
                     <span class="li-qty">x{{ li.quantity }}</span>
-                    <span class="li-price">{{ li.unit_price | currency:'USD' }}</span>
+                    <span class="li-price">{{ li.unitPrice | currency:'USD' }}</span>
                     <span class="li-total">{{ li.total | currency:'USD' }}</span>
                   </div>
                 }
@@ -93,10 +99,16 @@
         @if (inv.status === 'issued') {
           <section class="surface-card panel action-section">
             <h4>Acciones</h4>
-            <button type="button" class="btn-cancel" (click)="cancelInvoice()">
-              <span class="material-symbols-outlined btn-icon">cancel</span>
-              Anular factura
-            </button>
+            <div class="action-buttons">
+              <button type="button" class="btn-pay" (click)="payInvoice()">
+                <span class="material-symbols-outlined btn-icon">payments</span>
+                Pagar factura
+              </button>
+              <button type="button" class="btn-cancel" (click)="cancelInvoice()">
+                <span class="material-symbols-outlined btn-icon">cancel</span>
+                Anular factura
+              </button>
+            </div>
           </section>
         }
       }
