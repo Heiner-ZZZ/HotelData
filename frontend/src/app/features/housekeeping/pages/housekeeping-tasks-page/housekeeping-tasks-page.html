@@ -77,8 +77,15 @@
               <input id="assignedTo" type="text" formControlName="assignedTo" placeholder="Nombre del personal" />
             </div>
             <div class="form-group">
-              <label for="scheduledDate">Fecha programada</label>
-              <input id="scheduledDate" type="date" formControlName="scheduledDate" />
+              <label for="scheduledDate">Fecha y hora programada</label>
+              <input id="scheduledDate" type="datetime-local" formControlName="scheduledDate" />
+            </div>
+            <div class="form-group">
+              <label for="status">Estado</label>
+              <select id="status" formControlName="status">
+                <option value="pending">Pendiente</option>
+                <option value="completed">Completada</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="note">Nota</label>
@@ -165,7 +172,7 @@
                         {{ item.status === 'pending' ? 'Pendiente' : 'Completada' }}
                       </span>
                     </td>
-                    <td class="cell-time">{{ (item.scheduledDate || item.createdAt) | slice:0:10 }}</td>
+                    <td class="cell-time">{{ formatDate(item.scheduledDate || item.createdAt) }}</td>
                     <td class="cell-action">
                       <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
                         <span class="material-symbols-outlined">edit</span>

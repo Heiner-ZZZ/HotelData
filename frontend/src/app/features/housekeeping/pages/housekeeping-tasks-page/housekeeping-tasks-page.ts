@@ -14,8 +14,10 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type HousekeepingTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+function todayLocalIso(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16);
 }
 
 const TASK_TYPES = ['cleaning', 'deep_clean', 'turnover', 'inspection'] as const;
@@ -55,7 +57,8 @@ export class HousekeepingTasksPageComponent {
     priority: ['normal'],
     assignedTo: [''],
     note: [''],
-    scheduledDate: [todayIso()],
+    scheduledDate: [todayLocalIso()],
+    status: ['pending', Validators.required],
   });
 
   readonly taskTypes = [...TASK_TYPES];
@@ -124,7 +127,15 @@ export class HousekeepingTasksPageComponent {
     this.showCreateForm.update((v) => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
-      this.createForm.reset({ roomLabel: '', taskType: 'cleaning', priority: 'normal', assignedTo: '', note: '', scheduledDate: todayIso() });
+      this.createForm.reset({
+        roomLabel: '',
+        taskType: 'cleaning',
+        priority: 'normal',
+        assignedTo: '',
+        note: '',
+        scheduledDate: todayLocalIso(),
+        status: 'pending',
+      });
     }
   }
 
@@ -148,13 +159,18 @@ export class HousekeepingTasksPageComponent {
       priority: item.priority,
       assignedTo: item.assignedTo || '',
       note: item.note || '',
-      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : todayIso(),
+      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 16) : todayLocalIso(),
+      status: item.status || 'pending',
     });
   }
 
   cancelForm(): void {
     this.showCreateForm.set(false);
     this.editingId.set(null);
+  }
+
+  formatDate(val: string): string {
+    return val ? val.replace('T', ' ').slice(0, 16) : '--';
   }
 
   submitTask(): void {
@@ -169,6 +185,7 @@ export class HousekeepingTasksPageComponent {
       priority: val.priority,
       note: val.note || undefined,
       scheduled_date: val.scheduledDate || undefined,
+      status: val.status,
     };
     const obs = editId
       ? this.api.updateTask(editId, payload)

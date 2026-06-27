@@ -14,8 +14,10 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type MaintenanceTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+function todayLocalIso(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16);
 }
 
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
@@ -55,8 +57,9 @@ export class MaintenancePageComponent {
     title: ['', Validators.required],
     description: [''],
     priority: ['normal'],
-    scheduledDate: [todayIso()],
+    scheduledDate: [todayLocalIso()],
     autoBlock: [true],
+    status: ['scheduled', Validators.required],
   });
 
   readonly priorities = [...PRIORITIES];
@@ -124,7 +127,16 @@ export class MaintenancePageComponent {
     this.showCreateForm.update((v) => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
-      this.createForm.reset({ roomLabel: '', taskType: 'preventive', title: '', description: '', priority: 'normal', scheduledDate: todayIso() });
+      this.createForm.reset({
+        roomLabel: '',
+        taskType: 'preventive',
+        title: '',
+        description: '',
+        priority: 'normal',
+        scheduledDate: todayLocalIso(),
+        autoBlock: true,
+        status: 'scheduled',
+      });
     }
   }
 
@@ -148,8 +160,9 @@ export class MaintenancePageComponent {
       title: item.title,
       description: item.description || '',
       priority: item.priority,
-      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : todayIso(),
+      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 16) : todayLocalIso(),
       autoBlock: item.autoBlock,
+      status: item.status || 'scheduled',
     });
   }
 
@@ -158,31 +171,28 @@ export class MaintenancePageComponent {
     this.editingId.set(null);
   }
 
+  formatDate(val: string): string {
+    return val ? val.replace('T', ' ').slice(0, 16) : '--';
+  }
+
   submitTask(): void {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
+    const payload = {
+      prop_id: this.selectedPropId() || 0,
+      room_label: val.roomLabel,
+      task_type: val.taskType,
+      title: val.title,
+      description: val.description || undefined,
+      priority: val.priority,
+      scheduled_date: val.scheduledDate || undefined,
+      auto_block: val.autoBlock,
+      status: val.status,
+    };
     const obs = editId
-      ? this.api.updateMaintenance(editId, {
-          prop_id: this.selectedPropId() || 0,
-          room_label: val.roomLabel,
-          task_type: val.taskType,
-          title: val.title,
-          description: val.description || undefined,
-          priority: val.priority,
-          scheduled_date: val.scheduledDate || undefined,
-          auto_block: val.autoBlock,
-        })
-      : this.api.createMaintenance({
-          prop_id: this.selectedPropId() || 0,
-          room_label: val.roomLabel,
-          task_type: val.taskType,
-          title: val.title,
-          description: val.description || undefined,
-          priority: val.priority,
-          scheduled_date: val.scheduledDate || undefined,
-          auto_block: val.autoBlock,
-        });
+      ? this.api.updateMaintenance(editId, payload)
+      : this.api.createMaintenance(payload);
 
     obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {

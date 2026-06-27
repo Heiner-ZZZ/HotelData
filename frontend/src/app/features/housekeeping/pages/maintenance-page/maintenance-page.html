@@ -75,8 +75,16 @@
               <input id="title" type="text" formControlName="title" placeholder="Ej: Revisión de HVAC" />
             </div>
             <div class="form-group">
-              <label for="scheduledDate">Fecha programada</label>
-              <input id="scheduledDate" type="date" formControlName="scheduledDate" />
+              <label for="scheduledDate">Fecha y hora programada</label>
+              <input id="scheduledDate" type="datetime-local" formControlName="scheduledDate" />
+            </div>
+            <div class="form-group">
+              <label for="status">Estado</label>
+              <select id="status" formControlName="status">
+                <option value="scheduled">Programado</option>
+                <option value="in_progress">En progreso</option>
+                <option value="completed">Completado</option>
+              </select>
             </div>
           </div>
           <div class="form-group">
@@ -181,7 +189,7 @@
                           {{ item.status === 'scheduled' ? 'Programado' : item.status === 'in_progress' ? 'En progreso' : 'Completado' }}
                         </span>
                       </td>
-                      <td class="cell-time">{{ item.scheduledDate | slice:0:10 }}</td>
+                      <td class="cell-time">{{ formatDate(item.scheduledDate) }}</td>
                       <td class="cell-action">
                         <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
                           <span class="material-symbols-outlined">edit</span>
