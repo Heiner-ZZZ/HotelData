@@ -16,11 +16,19 @@ from ...schemas import HousekeepingTaskCreate, now_iso
 def create_housekeeping_task(payload: HousekeepingTaskCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
+    status = payload.status or "pending"
+    completed_at = now if status == "completed" else None
     doc = {
-        "prop_id": payload.prop_id, "room_label": payload.room_label,
-        "task_type": payload.task_type, "status": "pending",
-        "assigned_to": payload.assigned_to, "priority": payload.priority,
-        "note": payload.note, "created_at": now, "completed_at": None,
+        "prop_id": payload.prop_id,
+        "room_label": payload.room_label,
+        "task_type": payload.task_type,
+        "status": status,
+        "assigned_to": payload.assigned_to,
+        "priority": payload.priority,
+        "note": payload.note,
+        "scheduled_date": payload.scheduled_date or "",
+        "created_at": now,
+        "completed_at": completed_at,
     }
     result = db[HOUSEKEEPING_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -64,17 +72,25 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
 def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> dict[str, Any] | None:
     db = get_database()
     now = now_iso()
+    status = payload.status or "pending"
+    set_data = {
+        "room_label": payload.room_label,
+        "task_type": payload.task_type,
+        "assigned_to": payload.assigned_to or "",
+        "priority": payload.priority,
+        "note": payload.note or "",
+        "scheduled_date": payload.scheduled_date or "",
+        "status": status,
+        "updated_at": now,
+    }
+    if status == "completed":
+        set_data["completed_at"] = now
+    else:
+        set_data["completed_at"] = None
+
     doc = db[HOUSEKEEPING_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id)},
-        {"$set": {
-            "room_label": payload.room_label,
-            "task_type": payload.task_type,
-            "assigned_to": payload.assigned_to or "",
-            "priority": payload.priority,
-            "note": payload.note or "",
-            "scheduled_date": payload.scheduled_date or "",
-            "updated_at": now,
-        }},
+        {"$set": set_data},
         return_document=ReturnDocument.AFTER,
     )
     return _enrich_hk_task(doc) if doc else None

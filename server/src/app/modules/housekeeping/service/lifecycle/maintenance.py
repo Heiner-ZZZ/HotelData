@@ -80,18 +80,25 @@ def _unblock_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -
 def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
+    status = payload.status or "scheduled"
+    completed_at = now if status == "completed" else None
     doc = {
-        "prop_id": payload.prop_id, "room_label": payload.room_label,
-        "task_type": payload.task_type, "title": payload.title,
-        "description": payload.description, "status": "scheduled",
-        "priority": payload.priority, "scheduled_date": payload.scheduled_date,
+        "prop_id": payload.prop_id,
+        "room_label": payload.room_label,
+        "task_type": payload.task_type,
+        "title": payload.title,
+        "description": payload.description,
+        "status": status,
+        "priority": payload.priority,
+        "scheduled_date": payload.scheduled_date,
         "auto_block": payload.auto_block,
-        "created_at": now, "completed_at": None,
+        "created_at": now,
+        "completed_at": completed_at,
     }
     result = db[MAINTENANCE_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
-    # RF-002: Auto-block room availability if auto_block is True
-    if payload.auto_block:
+    # RF-002: Auto-block room availability if auto_block is True and not completed
+    if payload.auto_block and status != "completed":
         try:
             _auto_block_room(db, payload.prop_id, payload.room_label, payload.scheduled_date)
         except Exception:
@@ -123,33 +130,40 @@ def list_maintenance_tasks(
 def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dict[str, Any] | None:
     db = get_database()
     now = now_iso()
+    status = payload.status or "scheduled"
     # Fetch previous state to know if we need to unblock old room
     prev = db[MAINTENANCE_COLLECTION].find_one({"_id": ObjectId(task_id)})
+    
+    set_data = {
+        "room_label": payload.room_label,
+        "task_type": payload.task_type,
+        "title": payload.title,
+        "description": payload.description or "",
+        "priority": payload.priority,
+        "scheduled_date": payload.scheduled_date,
+        "auto_block": payload.auto_block,
+        "status": status,
+        "updated_at": now,
+    }
+    if status == "completed":
+        set_data["completed_at"] = now
+    else:
+        set_data["completed_at"] = None
+
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
         {"_id": ObjectId(task_id)},
-        {"$set": {
-            "room_label": payload.room_label,
-            "task_type": payload.task_type,
-            "title": payload.title,
-            "description": payload.description or "",
-            "priority": payload.priority,
-            "scheduled_date": payload.scheduled_date,
-            "auto_block": payload.auto_block,
-            "updated_at": now,
-        }},
+        {"$set": set_data},
         return_document=ReturnDocument.AFTER,
     )
     if doc:
-        # If room/date/auto_block changed, unblock old and block new
+        # If auto_block was enabled on prev, unblock old first
         if prev and prev.get("auto_block"):
-            old_room = prev.get("room_label", "")
-            old_date = prev.get("scheduled_date", "")
-            # Unblock old room if room or date changed
-            if old_room != payload.room_label or old_date != payload.scheduled_date:
-                _unblock_room(db, payload.prop_id, old_room, old_date)
-        # Block new room if needed
-        if payload.auto_block and payload.room_label:
+            _unblock_room(db, payload.prop_id, prev.get("room_label", ""), prev.get("scheduled_date", ""))
+        
+        # If new status is not completed and auto_block is True, block new room/date
+        if status != "completed" and payload.auto_block and payload.room_label:
             _auto_block_room(db, payload.prop_id, payload.room_label, payload.scheduled_date)
+            
     return _enrich_mt_task(doc) if doc else None
 
 

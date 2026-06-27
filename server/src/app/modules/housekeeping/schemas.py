@@ -39,6 +39,7 @@ class HousekeepingTaskCreate(BaseModel):
     priority: str = "normal"  # low, normal, high, urgent
     note: str = ""
     scheduled_date: str = ""
+    status: str = "pending"
 
 
 class HousekeepingTaskResponse(BaseModel):
@@ -62,6 +63,7 @@ class MaintenanceTaskCreate(BaseModel):
     description: str = ""
     priority: str = "normal"
     scheduled_date: str = ""
+    status: str = "scheduled"
     auto_block: bool = True  # RF-002: block room availability during maintenance
 
 
