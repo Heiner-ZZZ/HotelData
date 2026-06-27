@@ -91,6 +91,198 @@ def geo_delete(
     return {"ok": True, "message": "Entrada eliminada"}
 
 
+# ─── Visitor Countries (dim_visitor_countries) ─────────────────────────
+
+
+@api_router.get("/visitor-countries", status_code=200)
+def list_visitor_countries(
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """List visitor country dimensions from MongoDB dim_visitor_countries collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    cursor = db.dim_visitor_countries.find({}, {"_id": 0}).sort("visitor_location_country_id", 1)
+    items = []
+    for doc in cursor:
+        items.append({
+            "visitor_location_country_id": doc["visitor_location_country_id"],
+            "country_display_name": doc.get("visitor_country_label") or doc.get("country_display_name") or f"País {doc['visitor_location_country_id']}"
+        })
+    return {"items": items}
+
+
+@api_router.put("/visitor-countries/{country_id}", status_code=200)
+def update_visitor_country(
+    country_id: int,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Update country_display_name in dim_visitor_countries collection globally."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    new_name = payload.get("country_display_name")
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del país es requerido")
+
+    db.dim_visitor_countries.update_one(
+        {"visitor_location_country_id": country_id},
+        {
+            "$set": {
+                "country_display_name": new_name,
+                "country_name": new_name,
+                "visitor_country_label": new_name,
+            }
+        },
+    )
+    return {"ok": True, "message": "Nombre del país actualizado exitosamente"}
+
+
+# ─── Visitor Destinations (dim_destinations) ───────────────────────────
+
+
+@api_router.get("/visitor-destinations", status_code=200)
+def list_visitor_destinations(
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """List visitor destinations from dim_destinations collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    cursor = db.dim_destinations.find({}, {"_id": 0}).sort("srch_destination_id", 1)
+    items = []
+    for doc in cursor:
+        items.append({
+            "srch_destination_id": doc["srch_destination_id"],
+            "destination_display_name": doc.get("destination_label") or doc.get("destination_display_name") or f"Destino {doc['srch_destination_id']}"
+        })
+    return {"items": items}
+
+
+@api_router.put("/visitor-destinations/{dest_id}", status_code=200)
+def update_visitor_destination(
+    dest_id: int,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Update destination display name in dim_destinations collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    new_name = payload.get("destination_display_name")
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del destino es requerido")
+
+    db.dim_destinations.update_one(
+        {"srch_destination_id": dest_id},
+        {
+            "$set": {
+                "destination_display_name": new_name,
+                "destination_name": new_name,
+                "destination_label": new_name,
+            }
+        },
+    )
+    return {"ok": True, "message": "Nombre del destino actualizado exitosamente"}
+
+
+# ─── Visitor Sites (dim_sites) ─────────────────────────────────────────
+
+
+@api_router.get("/visitor-sites", status_code=200)
+def list_visitor_sites(
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """List visitor sites (channels) from dim_sites collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    cursor = db.dim_sites.find({}, {"_id": 0}).sort("site_id", 1)
+    items = []
+    for doc in cursor:
+        items.append({
+            "site_id": doc["site_id"],
+            "site_display_name": doc.get("site_label") or doc.get("site_display_name") or f"Sitio {doc['site_id']}"
+        })
+    return {"items": items}
+
+
+@api_router.put("/visitor-sites/{site_id}", status_code=200)
+def update_visitor_site(
+    site_id: int,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Update site display name in dim_sites collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    new_name = payload.get("site_display_name")
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del sitio es requerido")
+
+    db.dim_sites.update_one(
+        {"site_id": site_id},
+        {
+            "$set": {
+                "site_display_name": new_name,
+                "site_name": new_name,
+                "site_label": new_name,
+            }
+        },
+    )
+    return {"ok": True, "message": "Nombre del sitio/canal actualizado exitosamente"}
+
+
+# ─── Visitor Hotels (dim_hotels) ───────────────────────────────────────
+
+
+@api_router.get("/visitor-hotels", status_code=200)
+def list_visitor_hotels(
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """List visitor hotels from dim_hotels collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    cursor = db.dim_hotels.find({}, {"_id": 0}).sort("prop_id", 1)
+    items = []
+    for doc in cursor:
+        items.append({
+            "prop_id": doc["prop_id"],
+            "hotel_name": doc.get("display_name") or doc.get("hotel_name") or doc.get("hotel_label") or f"Hotel {doc['prop_id']}"
+        })
+    return {"items": items}
+
+
+@api_router.put("/visitor-hotels/{prop_id}", status_code=200)
+def update_visitor_hotel(
+    prop_id: int,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Update hotel name in dim_hotels collection."""
+    from src.database.connection import get_database
+
+    db = get_database()
+    new_name = payload.get("hotel_name")
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del hotel es requerido")
+
+    db.dim_hotels.update_one(
+        {"prop_id": prop_id},
+        {
+            "$set": {
+                "hotel_name": new_name,
+                "hotel_label": new_name,
+                "display_name": new_name,
+            }
+        },
+    )
+    return {"ok": True, "message": "Nombre del hotel actualizado exitosamente"}
+
+
 # ─── Resolve IDs to display names ──────────────────────────────────────
 
 
