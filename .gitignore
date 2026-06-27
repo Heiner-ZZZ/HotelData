@@ -44,7 +44,7 @@ build/
 # Python local env/config
 .env
 .env.*
-!.env.example
+.env.example
 *.local
 local_settings.py
 
