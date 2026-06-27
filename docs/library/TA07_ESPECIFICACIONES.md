@@ -43,14 +43,14 @@ Implementar un sistema de gestión hotelera que cubra el ciclo operativo complet
 
 | ID | Objetivo Específico | Alcance |
 |----|---------------------|---------|
-| OE1 | Implementar autenticación segura con JWT, sesiones y RBAC de 9 roles | Sistema y seguridad |
-| OE2 | Desarrollar el módulo de búsqueda y experiencia del cliente con filtros, detalle y comparación | Experiencia cliente |
-| OE3 | Implementar el ciclo completo de reservas: solicitud, confirmación, check-in, check-out y cancelación | Core de reservas |
-| OE4 | Desarrollar la gestión hotelera: tipos de habitación, inventario, tarifas, políticas, amenities e imágenes | Gestión hotelera |
-| OE5 | Implementar el módulo de reseñas con registro, moderación y respuesta | Reputación online |
-| OE6 | Desarrollar facturación y pagos asociados a reservas con trazabilidad | Respaldo documental |
-| OE7 | Implementar reportes operativos de revenue, calidad de datos y mercado | Analítica y reportes |
-| OE8 | Desarrollar el módulo de usuarios, roles, permisos y monitoreo del sistema | Administración del sistema |
+| ESP1 | Implementar autenticación segura con JWT, sesiones y RBAC de 9 roles | Sistema y seguridad |
+| ESP2 | Desarrollar el módulo de búsqueda y experiencia del cliente con filtros, detalle y comparación | Experiencia cliente |
+| ESP3 | Implementar el ciclo completo de reservas: solicitud, confirmación, check-in, check-out y cancelación | Core de reservas |
+| ESP4 | Desarrollar la gestión hotelera: tipos de habitación, inventario, tarifas, políticas, amenities e imágenes | Gestión hotelera |
+| ESP5 | Implementar el módulo de reseñas con registro, moderación y respuesta | Reputación online |
+| ESP6 | Desarrollar facturación y pagos asociados a reservas con trazabilidad | Respaldo documental |
+| ESP7 | Implementar reportes operativos de revenue, calidad de datos y mercado | Analítica y reportes |
+| ESP8 | Desarrollar el módulo de usuarios, roles, permisos y monitoreo del sistema | Administración del sistema |
 
 ---
 
@@ -88,8 +88,8 @@ HotelData se estructura en tres niveles organizacionales que conectan la estrate
 | **OT3.2** | Automatizar procesamiento de datos, gobierno, ETL/ELT, calidad, auditoría y trazabilidad | OE3 |
 | **OT4.1** | Consolidar analítica hotelera global mediante dashboards y reportes de management | OE4 |
 | **OT4.2** | Aplicar BI, IA, modelos predictivos, segmentación, forecasting y detección de anomalías | OE4 |
-| **OT2.3** | Enriquecer catálogo geoespacial de destinos con mapa interactivo y edición de metadata de nombres y coordenadas | OE2 |
-| **OT3.3** | Automatizar gestión de limpieza, rotación, mantenimiento y cargos adicionales de habitaciones | OE3 |
+| **OT2.3** | Enriquecer catálogo geoespacial de destinos con mapa interactivo y edición de metadata de nombres y coordenadas | OE5 |
+| **OT3.3** | Automatizar gestión de limpieza, rotación, mantenimiento y cargos adicionales de habitaciones | OE5 |
 | **OT5.1** | Monitorear eficiencia operativa mediante indicadores de limpieza, mantenimiento, ocupación y cargos adicionales | OE5 |
 
 ## 2.4 Objetivos Operativos (OO)
@@ -401,13 +401,13 @@ La siguiente matriz relaciona los niveles organizacionales, departamentos funcio
 | OE4 | OT4.1 | OO4.1.2: Analizar mercados | CU-O26 |
 | OE4 | OT4.2: Aplicar BI y ML | OO4.2.1: Proyectar demanda y revenue | CU-O26 |
 | OE4 | OT4.2 | OO4.2.2: Detectar anomalías | CU-O27 |
-| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35 |
-| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36 |
-| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37, CU-O38 |
-| OE3 | OT3.3: Automatizar gestión de habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30, CU-O31, CU-O32 |
-| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39, CU-T14 |
-| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40, CU-T15 |
-| OE3 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34 |
+| OE5 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35 |
+| OE5 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36 |
+| OE5 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37, CU-O38 |
+| OE5 | OT3.3: Automatizar gestión de habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30, CU-O31, CU-O32 |
+| OE5 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39, CU-T14 |
+| OE5 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40, CU-T15 |
+| OE5 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34 |
 | OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia | CU-E09 |
 
 ---
@@ -2587,19 +2587,19 @@ La siguiente matriz conecta los objetivos estratégicos (OE) con los objetivos t
 | OE4 | OT4.1 | OO4.1.2: Analizar mercados y destinos | CU-O26: Consultar reportes de revenue y mercado | HU-26: Consulta de reportes de revenue y mercado |
 | OE4 | OT4.2: Aplicar BI y ML | OO4.2.1: Proyectar demanda y revenue | CU-O26: Consultar reportes de revenue y mercado | HU-26: Consulta de reportes de revenue y mercado |
 | OE4 | OT4.2 | OO4.2.2: Detectar anomalías y calidad | CU-O27: Consultar reporte de calidad de datos | HU-27: Consulta de reporte de calidad y registros rechazados |
-| OE2 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35: Editar metadata de destino | HU-35: Edición de metadata de destino |
-| OE2 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36: Editar nombre visible de hotel | HU-36: Edición de nombre visible de hotel |
-| OE2 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37: Visualizar mapa mundial | HU-37: Visualización de mapa mundial |
-| OE2 | OT2.3 | OO2.3.3 | CU-O38: Seleccionar ubicación en mapa | HU-38: Selección de ubicación en mapa |
-| OE3 | OT3.3: Automatizar gestión habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30: Consultar estado de habitaciones | HU-30: Consulta de estado de habitaciones |
-| OE3 | OT3.3 | OO3.3.1 | CU-O31: Asignar tipo de habitación | HU-31: Asignación de tipo de habitación |
-| OE3 | OT3.3 | OO3.3.1 | CU-O32: Consultar disponibilidad por habitación | HU-32: Consulta de disponibilidad por habitación |
-| OE3 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39: Gestionar limpieza y rotación | HU-39: Gestión de limpieza y rotación |
-| OE3 | OT3.3 | OO3.3.2 | CU-T14: Gestionar rotación y limpieza | HU-T14: Gestión de rotación y limpieza |
-| OE3 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40: Gestionar mantenimiento preventivo | HU-40: Gestión de mantenimiento preventivo |
-| OE3 | OT3.3 | OO3.3.3 | CU-T15: Programar mantenimiento preventivo proactivo | HU-T15: Programación de mantenimiento preventivo |
-| OE3 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34: Registrar cargos adicionales | HU-34: Registro de cargos adicionales |
-| OE3 | OT3.3 | OO3.3.1 | CU-O33: Gestionar amenities por tipo habitación | HU-33: Gestión de amenities por tipo habitación |
+| OE5 | OT2.3: Enriquecer catálogo geoespacial | OO2.3.1: Editar metadata de destinos | CU-O35: Editar metadata de destino | HU-35: Edición de metadata de destino |
+| OE5 | OT2.3 | OO2.3.2: Editar nombre visible de hotel | CU-O36: Editar nombre visible de hotel | HU-36: Edición de nombre visible de hotel |
+| OE5 | OT2.3 | OO2.3.3: Visualizar destinos en mapa interactivo | CU-O37: Visualizar mapa mundial | HU-37: Visualización de mapa mundial |
+| OE5 | OT2.3 | OO2.3.3 | CU-O38: Seleccionar ubicación en mapa | HU-38: Selección de ubicación en mapa |
+| OE5 | OT3.3: Automatizar gestión habitaciones | OO3.3.1: Consultar estado de habitaciones | CU-O30: Consultar estado de habitaciones | HU-30: Consulta de estado de habitaciones |
+| OE5 | OT3.3 | OO3.3.1 | CU-O31: Asignar tipo de habitación | HU-31: Asignación de tipo de habitación |
+| OE5 | OT3.3 | OO3.3.1 | CU-O32: Consultar disponibilidad por habitación | HU-32: Consulta de disponibilidad por habitación |
+| OE5 | OT3.3 | OO3.3.2: Gestionar limpieza y rotación | CU-O39: Gestionar limpieza y rotación | HU-39: Gestión de limpieza y rotación |
+| OE5 | OT3.3 | OO3.3.2 | CU-T14: Gestionar rotación y limpieza | HU-T14: Gestión de rotación y limpieza |
+| OE5 | OT3.3 | OO3.3.3: Programar mantenimiento preventivo | CU-O40: Gestionar mantenimiento preventivo | HU-40: Gestión de mantenimiento preventivo |
+| OE5 | OT3.3 | OO3.3.3 | CU-T15: Programar mantenimiento preventivo proactivo | HU-T15: Programación de mantenimiento preventivo |
+| OE5 | OT3.3 | OO3.3.4: Registrar cargos adicionales | CU-O34: Registrar cargos adicionales | HU-34: Registro de cargos adicionales |
+| OE5 | OT3.3 | OO3.3.1 | CU-O33: Gestionar amenities por tipo habitación | HU-33: Gestión de amenities por tipo habitación |
 | OE5 | OT5.1: Monitorear eficiencia operativa | OO5.1.1: Monitorear eficiencia | CU-E09: Monitorear eficiencia operativa | HU-E09: Monitoreo de eficiencia operativa |
 
 ## 8.2 Trazabilidad por Caso de Uso

@@ -48,12 +48,11 @@ graph TB
     UC32[CU-O32: Disponibilidad x Hab.]
     UC33[CU-O33: Amenities x Tipo Hab.]
     UC34[CU-O34: Cargos Adicionales]
-    UC35[CU-O35: Editar Metadata Destino]
-    UC36[CU-O36: Nombre Hotel Override]
-    UC37[CU-O37: Mapa Mundial]
-    UC38[CU-O38: Seleccionar Ubicación Mapa]
+    UC35[CU-O35: Gestionar Geoloc/Metadata]
     UC39[CU-O39: Limpieza/Rotación]
     UC40[CU-O40: Mantenimiento Preventivo]
+    UC41[CU-O41: Gestionar Notificaciones]
+    UC42[CU-O42: Validar Ciclo Vida Reserva]
     UT14[CU-T14: Rotación/Limpieza Táctico]
     UT15[CU-T15: Mantenimiento Proactivo]
     UE09[CU-E09: Eficiencia Operativa]
@@ -75,9 +74,9 @@ graph TB
   A3 --- UC1 & UC9 & UC15 & UC16 & UC26 & UC28 & UC29 & UC30 & UC31 & UC32 & UC39 & UC40 & UT14 & UT15 & UE09
   A4 --- UC1 & UC14 & UC20 & UC28 & UC29 & UC33
   A5 --- UC1 & UC17 & UC18 & UC19 & UC26 & UC28 & UC29 & UC34
-  A6 --- UC1 & UC12 & UC19 & UC21 & UC23 & UC28 & UC29 & UC33 & UC36 & UC37
+  A6 --- UC1 & UC12 & UC19 & UC21 & UC23 & UC28 & UC29 & UC33 & UC35
   A7 --- UC1 & UC13 & UC23 & UC27 & UC28 & UC29 & UE09
-  A8 --- UC1 & UC13 & UC27 & UC28 & UC29 & UC35 & UC36 & UC37 & UC38
+  A8 --- UC1 & UC13 & UC27 & UC28 & UC29 & UC35
 ```
 
 ## 1.2 Diagrama por Paquete
@@ -138,9 +137,7 @@ graph LR
   end
 
   subgraph "Paquete 9: Mapa/Geo"
-    CU35[CU-O35: Metadata Destino]
-    CU37[CU-O37: Mapa Mundial]
-    CU38[CU-O38: Selector Mapa]
+    CU35[CU-O35: Geoloc y Metadata]
   end
 
   subgraph "Paquete 10: Housekeeping"
@@ -158,9 +155,7 @@ graph LR
     CU34[CU-O34: Cargos Adicionales]
   end
 
-  subgraph "Paquete 12: Admin"
-    CU36[CU-O36: Nombre Override]
-  end
+
 
   subgraph "Estratégico"
     UE09[CU-E09: Eficiencia]
