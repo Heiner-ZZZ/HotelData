@@ -195,13 +195,22 @@ def list_invoices(
 
 def get_invoice(invoice_id: str) -> dict | None:
     db = get_database()
-    doc = db[INVOICES].find_one({"_id": ObjectId(invoice_id)})
+    try:
+        from bson.errors import InvalidId
+        doc = db[INVOICES].find_one({"_id": ObjectId(invoice_id)})
+    except (InvalidId, Exception):
+        return None
     return _enrich_invoice(doc) if doc else None
 
 
 def cancel_invoice(invoice_id: str) -> dict | None:
     db = get_database()
-    doc_id = ObjectId(invoice_id)
+    try:
+        from bson.errors import InvalidId
+        doc_id = ObjectId(invoice_id)
+    except (InvalidId, Exception):
+        return None
+    
     doc = db[INVOICES].find_one_and_update(
         {"_id": doc_id, "status": "issued"},
         {"$set": {"status": "cancelled", "updated_at": _now()}},
@@ -277,13 +286,22 @@ def list_payments(
 
 def get_payment(payment_id: str) -> dict | None:
     db = get_database()
-    doc = db[PAYMENTS].find_one({"_id": ObjectId(payment_id)})
+    try:
+        from bson.errors import InvalidId
+        doc = db[PAYMENTS].find_one({"_id": ObjectId(payment_id)})
+    except (InvalidId, Exception):
+        return None
     return _enrich_payment(doc) if doc else None
 
 
 def refund_payment(payment_id: str) -> dict | None:
     db = get_database()
-    pay_id = ObjectId(payment_id)
+    try:
+        from bson.errors import InvalidId
+        pay_id = ObjectId(payment_id)
+    except (InvalidId, Exception):
+        return None
+        
     pay = db[PAYMENTS].find_one_and_update(
         {"_id": pay_id, "status": "confirmed"},
         {"$set": {"status": "refunded", "updated_at": _now()}},

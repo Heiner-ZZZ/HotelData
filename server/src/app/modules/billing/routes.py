@@ -72,6 +72,36 @@ def cancel_invoice_api(
     return result
 
 
+@api_router.post("/invoices/{invoice_id}/pay")
+def pay_invoice_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Staff-side: simulate payment for any invoice. No ownership check."""
+    from src.app.modules.billing.schemas import PaymentCreate
+    from bson import ObjectId
+    from src.database.connection import get_database
+
+    db = get_database()
+    inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+
+    if inv.get("status") != "issued":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
+
+    pay_payload = PaymentCreate(
+        booking_id=str(inv.get("booking_id", "")),
+        invoice_id=invoice_id,
+        amount=float(inv.get("total", 0)),
+        method="simulated",
+    )
+    result = create_payment(pay_payload)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+    return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}
+
+
 # --- Payments (admin/staff) ---
 
 @api_router.post("/payments", status_code=201)
