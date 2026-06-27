@@ -95,4 +95,64 @@ export class GeoCatalogApiService {
   resolveIds(payload: { destination_ids?: number[]; country_ids?: number[]; site_ids?: number[] }) {
     return this.http.post<GeoResolveResponse>(`${this.baseUrl}/resolve`, payload, { withCredentials: true });
   }
+
+  listVisitorCountries() {
+    return this.http.get<{ items: Array<{ visitor_location_country_id: number; country_display_name: string }> }>(
+      `${this.baseUrl}/visitor-countries`,
+      { withCredentials: true }
+    );
+  }
+
+  updateVisitorCountry(countryId: number, displayName: string) {
+    return this.http.put<{ ok: boolean; message: string }>(
+      `${this.baseUrl}/visitor-countries/${countryId}`,
+      { country_display_name: displayName },
+      { withCredentials: true }
+    );
+  }
+
+  listVisitorDestinations() {
+    return this.http.get<{ items: Array<{ srch_destination_id: number; destination_display_name: string }> }>(
+      `${this.baseUrl}/visitor-destinations`,
+      { withCredentials: true }
+    );
+  }
+
+  updateVisitorDestination(destId: number, displayName: string) {
+    return this.http.put<{ ok: boolean; message: string }>(
+      `${this.baseUrl}/visitor-destinations/${destId}`,
+      { destination_display_name: displayName },
+      { withCredentials: true }
+    );
+  }
+
+  listVisitorSites() {
+    return this.http.get<{ items: Array<{ site_id: number; site_display_name: string }> }>(
+      `${this.baseUrl}/visitor-sites`,
+      { withCredentials: true }
+    );
+  }
+
+  updateVisitorSite(siteId: number, displayName: string) {
+    return this.http.put<{ ok: boolean; message: string }>(
+      `${this.baseUrl}/visitor-sites/${siteId}`,
+      { site_display_name: displayName },
+      { withCredentials: true }
+    );
+  }
+
+  listVisitorHotels() {
+    return this.http.get<{ items: Array<{ prop_id: number; hotel_name: string }> }>(
+      `${this.baseUrl}/visitor-hotels`,
+      { withCredentials: true }
+    );
+  }
+
+  updateVisitorHotel(propId: number, hotelName: string) {
+    return this.http.put<{ ok: boolean; message: string }>(
+      `${this.baseUrl}/visitor-hotels/${propId}`,
+      { hotel_name: hotelName },
+      { withCredentials: true }
+    );
+  }
 }

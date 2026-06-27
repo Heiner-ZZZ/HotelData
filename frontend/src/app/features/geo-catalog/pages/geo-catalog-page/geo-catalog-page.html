@@ -28,10 +28,6 @@
         </button>
       }
     </nav>
-    <button type="button" class="btn-primary" (click)="toggleCreateForm()">
-      <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
-      {{ showCreateForm() ? 'Cancelar' : 'Nueva entrada' }}
-    </button>
   </div>
 
   <!-- ═══ Create / Edit form ═══ -->
@@ -44,53 +40,23 @@
       <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitEntry()" class="geo-form">
         <div class="form-row">
           <div class="form-group">
-            <label for="code">Código *</label>
-            <input id="code" type="text" formControlName="code" placeholder="Ej: MX, JAL, GDL" [readonly]="!!editingId()" />
+            <label for="code">ID (Dataset)</label>
+            <input id="code" type="text" formControlName="code" [readonly]="true" />
           </div>
           <div class="form-group" style="flex: 2">
-            <label for="name">Nombre *</label>
-            <input id="name" type="text" formControlName="name" placeholder="Ej: México, Jalisco, Guadalajara" />
+            <label for="name">Nombre / Etiqueta de Mapeo *</label>
+            <input id="name" type="text" formControlName="name" [placeholder]="namePlaceholder()" />
           </div>
         </div>
-        @if (activeType() !== 'country') {
-          <div class="form-row">
-            <div class="form-group">
-              <label for="countryCode">País</label>
-              <input id="countryCode" type="text" formControlName="countryCode" placeholder="Código del país (MX, US...)" />
-            </div>
-            @if (activeType() === 'city') {
-              <div class="form-group">
-                <label for="stateCode">Estado / Provincia</label>
-                <input id="stateCode" type="text" formControlName="stateCode" placeholder="Código del estado (JAL, CDMX...)" />
-              </div>
-            }
-            @if (activeType() === 'destination') {
-              <div class="form-group">
-                <label for="category">Categoría</label>
-                <input id="category" type="text" formControlName="category" placeholder="urbano, playa, rural, ejecutivo..." />
-              </div>
-            }
-          </div>
-        }
-        @if (activeType() === 'country') {
-          <div class="form-row">
-            <div class="form-group">
-              <label for="isoCode">Código ISO</label>
-              <input id="isoCode" type="text" formControlName="isoCode" placeholder="Ej: MEX, USA, ESP" />
-            </div>
-          </div>
-        }
-        <div class="form-row" style="display: flex; gap: 0.5rem;">
+        <div class="form-row" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
           <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
             <span class="material-symbols-outlined">save</span>
-            {{ editingId() ? 'Guardar cambios' : 'Crear' }}
+            Guardar cambios
           </button>
-          @if (editingId()) {
-            <button type="button" class="btn-secondary" (click)="cancelForm()">
-              <span class="material-symbols-outlined">close</span>
-              Cancelar
-            </button>
-          }
+          <button type="button" class="btn-secondary" (click)="cancelForm()">
+            <span class="material-symbols-outlined">close</span>
+            Cancelar
+          </button>
         </div>
       </form>
     </section>
@@ -106,8 +72,8 @@
     }
     @case ('empty') {
       <app-empty-state
-        title="Sin entradas"
-        description="No hay {{ typeLabel(activeType()) | lowercase }} registrados. Usa el botón 'Nueva entrada' para agregar."
+        title="Sin registros"
+        description="No se encontraron registros de {{ typeLabel(activeType()) | lowercase }} en el dataset."
       />
     }
     @default {
@@ -134,13 +100,9 @@
             <table>
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Nombre</th>
-                  @if (activeType() === 'country') { <th>ISO</th> }
-                  @if (activeType() !== 'country') { <th>País</th> }
-                  @if (activeType() === 'city') { <th>Estado</th> }
-                  @if (activeType() === 'destination') { <th>Categoría</th> }
-                  <th></th>
+                  <th>ID (Dataset)</th>
+                  <th>Nombre / Etiqueta de Mapeo</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,16 +110,9 @@
                   <tr>
                     <td><code>{{ item.code }}</code></td>
                     <td><strong>{{ item.name }}</strong></td>
-                    @if (activeType() === 'country') { <td>{{ item.isoCode || '—' }}</td> }
-                    @if (activeType() !== 'country') { <td>{{ item.countryCode || '—' }}</td> }
-                    @if (activeType() === 'city') { <td>{{ item.stateCode || '—' }}</td> }
-                    @if (activeType() === 'destination') { <td>{{ item.category || '—' }}</td> }
                     <td class="cell-action">
                       <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
                         <span class="material-symbols-outlined">edit</span>
-                      </button>
-                      <button type="button" class="btn-icon-only danger" (click)="deleteEntry(item.id, item.name)" aria-label="Eliminar">
-                        <span class="material-symbols-outlined">delete</span>
                       </button>
                     </td>
                   </tr>
