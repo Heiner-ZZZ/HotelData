@@ -151,6 +151,7 @@ export class SidebarNavComponent {
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
         { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' },
+        { label: 'BSC', href: '/system/bsc', icon: 'monitor_heart', allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'] },
         { label: 'Geográfico', href: '/admin/geo-catalog', icon: 'map', allowedRoles: ['super_admin', 'admin_sistema'] }
       ]
     }

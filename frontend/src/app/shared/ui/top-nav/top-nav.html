@@ -52,10 +52,10 @@
   <div class="nav-actions">
     @if (authState().authenticated) {
       <div class="menu-shell notif-wrapper">
-        <button type="button" class="icon-btn notif-bell" [class.has-unread]="notifBookingCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
+        <button type="button" class="icon-btn notif-bell" [class.has-unread]="unreadCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
           <span class="material-symbols-outlined">notifications</span>
-          @if (notifBookingCount() > 0) {
-            <span class="notif-badge-sm">{{ notifBookingCount() }}</span>
+          @if (unreadCount() > 0) {
+            <span class="notif-badge-sm">{{ unreadCount() }}</span>
           }
         </button>
         @if (showNotifications()) {
@@ -64,13 +64,22 @@
               <strong>Notificaciones</strong>
             </div>
             <div class="notif-body-sm">
-              <div class="notif-row-sm">
-                <span class="material-symbols-outlined notif-row-icon">pending_actions</span>
-                <div>
-                  <strong>{{ notifBookingCount() }}</strong> reserva{{ notifBookingCount() === 1 ? '' : 's' }} activa{{ notifBookingCount() === 1 ? '' : 's' }}
-                  <p class="notif-row-desc">Pendientes o confirmadas</p>
+              @for (n of notifications(); track n.id) {
+                <a class="notif-item-sm" [class.unread]="n.unread"
+                   [routerLink]="n.bookingId ? '/account/bookings/' + n.bookingId : null"
+                   (click)="closeNotifications()">
+                  <div class="notif-item-body-sm">
+                    <p class="notif-item-title-sm">{{ n.title }}</p>
+                    <p class="notif-item-desc-sm">{{ n.description }}</p>
+                    <span class="notif-item-time-sm">{{ n.time }}</span>
+                  </div>
+                </a>
+              } @empty {
+                <div class="notif-empty-sm">
+                  <span class="material-symbols-outlined">notifications_off</span>
+                  <p>No hay notificaciones</p>
                 </div>
-              </div>
+              }
               <a class="notif-row-sm notif-row-link" routerLink="/account/bookings" (click)="closeNotifications()">
                 <span class="material-symbols-outlined notif-row-icon">visibility</span>
                 <span>Ver reservas</span>

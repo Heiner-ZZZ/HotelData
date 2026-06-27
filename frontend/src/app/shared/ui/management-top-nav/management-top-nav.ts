@@ -179,7 +179,11 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (viewModel) => {
           this.pollingError.set(false);
-          const mapped = viewModel.items.map((item, idx) => ({
+          const currentUserEmail = this.currentUser()?.email?.toLowerCase() || '';
+          const filteredItems = viewModel.items.filter(item =>
+            item.recipientEmail?.toLowerCase() === currentUserEmail
+          );
+          const mapped = filteredItems.map((item, idx) => ({
             id: idx + 1,
             title: item.typeLabel,
             description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,

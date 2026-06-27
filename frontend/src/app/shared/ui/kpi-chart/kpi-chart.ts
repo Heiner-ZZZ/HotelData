@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, ViewChild, inject } from '@angular/core';
 import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
+import { ThemeService } from '../../../core/theme/theme.service';
 
 @Component({
   selector: 'app-kpi-chart',
@@ -24,16 +25,18 @@ import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
   `,
   styles: [`
     .kpi-chart-wrap {
-      background: #0f1419;
-      border: 1px solid #1e293b;
+      background: var(--surface);
+      border: 1px solid var(--app-border);
       border-radius: 12px;
       padding: 1rem 1rem 0.5rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
     .kpi-chart-title {
       margin: 0 0 0.5rem;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #c8d0da;
+      color: var(--app-text);
+      transition: color 0.15s ease;
     }
     .chart-container {
       position: relative;
@@ -47,6 +50,7 @@ import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 })
 export class KpiChartComponent {
   @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective;
+  private readonly themeService = inject(ThemeService);
 
   readonly title = input<string>('');
   readonly labels = input<string[]>([]);
@@ -57,6 +61,7 @@ export class KpiChartComponent {
   readonly formatValue = input<'none' | 'currency' | 'number'>('none');
 
   readonly chartType = computed((): ChartType => this.type());
+  readonly isDark = this.themeService.isDark;
 
   readonly colors = ['#1463ff', '#22c55e', '#a78bfa', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
@@ -83,6 +88,7 @@ export class KpiChartComponent {
 
   readonly chartOptions = computed((): ChartConfiguration['options'] => {
     const fmt = this.formatValue();
+    const isDark = this.isDark();
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -91,17 +97,17 @@ export class KpiChartComponent {
           display: this.showLegend(),
           position: 'bottom',
           labels: {
-            color: '#6b7a8d',
+            color: isDark ? '#8b949e' : '#5f6f87',
             font: { size: 10 },
             boxWidth: 10,
             padding: 8,
           },
         },
         tooltip: {
-          backgroundColor: '#1e293b',
-          titleColor: '#e8edf2',
-          bodyColor: '#c8d0da',
-          borderColor: '#334155',
+          backgroundColor: isDark ? '#161b22' : '#ffffff',
+          titleColor: isDark ? '#e6edf3' : '#162033',
+          bodyColor: isDark ? '#8b949e' : '#5f6f87',
+          borderColor: isDark ? '#30363d' : '#d8e0eb',
           borderWidth: 1,
           padding: 8,
           callbacks: {
@@ -118,16 +124,16 @@ export class KpiChartComponent {
         x: {
           grid: { display: false },
           ticks: {
-            color: '#5f6f87',
+            color: isDark ? '#8b949e' : '#5f6f87',
             font: { size: 10 },
             maxRotation: 45,
           },
         },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,0.04)' },
+          grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
           ticks: {
-            color: '#5f6f87',
+            color: isDark ? '#8b949e' : '#5f6f87',
             font: { size: 10 },
             callback: (val) => {
               if (fmt === 'currency') return `$${val}`;

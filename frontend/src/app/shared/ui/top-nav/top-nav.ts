@@ -16,6 +16,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
+import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
 
 interface TopNavItem {
   label: string;
@@ -42,6 +43,7 @@ interface TopNavGroup {
 export class TopNavComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly reservationsApi = inject(ReservationsApiService);
+  private readonly notificationsApi = inject(NotificationsApiService);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -52,18 +54,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
-  readonly notifBookingCount = signal(0);
+  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }>>([]);
+  readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
   private _notifPollSub: ReturnType<typeof setInterval> | null = null;
   /** Track if polling was permanently stopped due to an auth error. */
   private _notifPollingStopped = false;
-
-  /** Whether the current user can access the reservations stats endpoint. */
-  private get _canAccessReservations(): boolean {
-    const role = this.currentUser()?.primaryRole;
-    if (!role) return false;
-    const allowed = ['cliente', 'super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'];
-    return allowed.includes(role);
-  }
   readonly navTransform = signal('translateY(0%)');
   readonly navOpacity = signal(1);
   private readonly SCROLL_HIDE_RANGE = 120;
@@ -126,8 +121,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
   }
 
   private _startNotifPolling() {
-    this._fetchBookingCount();
-    this._notifPollSub = setInterval(() => this._fetchBookingCount(), 30000);
+    this._fetchNotifications();
+    this._notifPollSub = setInterval(() => this._fetchNotifications(), 30000);
   }
 
   private _stopNotifPolling() {
@@ -137,25 +132,52 @@ export class TopNavComponent implements OnInit, OnDestroy {
     }
   }
 
-  private _fetchBookingCount() {
-    if (this._notifPollingStopped || !this._canAccessReservations) {
+  private _fetchNotifications() {
+    if (this._notifPollingStopped) {
       this._stopNotifPolling();
       return;
     }
 
-    this.reservationsApi.getStats()
+    this.notificationsApi.getNotifications(1, undefined, undefined, undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (stats) => {
-          this.notifBookingCount.set(stats.pending + stats.confirmed);
+        next: (viewModel) => {
+          const currentUserEmail = this.currentUser()?.email?.toLowerCase() || '';
+          const filteredItems = viewModel.items.filter(item =>
+            item.recipientEmail?.toLowerCase() === currentUserEmail
+          );
+          const mapped = filteredItems.map((item, idx) => ({
+            id: idx + 1,
+            title: item.typeLabel,
+            description: `${item.recipientName || 'Huésped'} · ${item.bookingId ? '#' + item.bookingId : ''} · ${item.statusLabel}`,
+            time: this._timeAgo(item.createdAt),
+            unread: item.status === 'sent',
+            bookingId: item.bookingId || '',
+            propId: item.propId || 0,
+          }));
+          this.notifications.set(mapped);
         },
         error: (err) => {
-          if (err?.status === 403) {
+          if (err?.status === 403 || err?.status === 401) {
             this._notifPollingStopped = true;
             this._stopNotifPolling();
           }
         }
       });
+  }
+
+  private _timeAgo(iso: string): string {
+    const now = Date.now();
+    const past = new Date(iso).getTime();
+    const diffMs = now - past;
+    if (isNaN(diffMs) || diffMs < 0) return 'Ahora';
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `Hace ${diffHours} h`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `Hace ${diffDays} d`;
   }
 
   toggleNotifications() {
