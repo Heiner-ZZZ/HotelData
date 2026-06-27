@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { TrackingService } from '../../../../core/tracking/tracking.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -23,6 +24,7 @@ export class HotelDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly hotelDetailApi = inject(HotelDetailApiService);
+  private readonly trackingService = inject(TrackingService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly hotel = signal<HotelDetailViewModel | null>(null);
@@ -57,6 +59,7 @@ export class HotelDetailPageComponent {
         next: (hotel) => {
           this.hotel.set(hotel);
           this.viewState.set('success');
+          this.trackingService.trackHotelClick(hotel.id, 'detail');
           this.loadSimilarHotels(hotel.id);
         },
         error: (error: ApiError) => {
