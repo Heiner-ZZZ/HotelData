@@ -131,9 +131,9 @@ def create_app() -> FastAPI:
     app.include_router(products_api_router)
     app.include_router(global_settings_api_router)
     app.include_router(geo_catalog_api_router)
-    app.include_router(crud_router)
     app.include_router(kpi_api_router)
     app.include_router(map_api_router)
+    app.include_router(crud_router)
     return app
 
 

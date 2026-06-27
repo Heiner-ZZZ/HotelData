@@ -23,7 +23,7 @@ from src.app.modules.admin.service import (
     update_role_definition,
     users_overview,
 )
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_permission, require_login
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -225,12 +225,19 @@ def notifications_list_api(
     notification_type: str | None = Query(default=None),
     start_date: str | None = Query(default=None),
     end_date: str | None = Query(default=None),
-    current_user: dict = Depends(require_permission("users.manage")),
+    current_user: dict = Depends(require_login),
 ):
     from src.database.connection import get_database
+    from src.app.security.permissions import user_has_permission
 
     db = get_database()
     match: dict[str, Any] = {}
+
+    # Check permission. If user does not have users.manage permission, force filter by their own email
+    has_manage = user_has_permission(db, current_user, "users.manage")
+    if not has_manage:
+        user_email = (current_user.get("email") or current_user.get("username") or "").strip()
+        match["recipient_email"] = {"$regex": f"^{user_email}$", "$options": "i"}
     if notification_type:
         match["notification_type"] = notification_type
 
