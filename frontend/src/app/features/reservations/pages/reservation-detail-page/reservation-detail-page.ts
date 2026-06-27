@@ -109,9 +109,20 @@ export class ReservationDetailPageComponent {
 
   readonly canReject = computed(() => this.canConfirm());
 
+  readonly todayStr = computed(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
   readonly canEdit = computed(() => {
     const vm = this.data();
-    return vm && !['cancelled', 'rejected', 'checked_in', 'checked_out'].includes(vm.status);
+    if (!vm) return false;
+    if (['cancelled', 'rejected', 'checked_in', 'checked_out'].includes(vm.status)) return false;
+    const today = this.todayStr();
+    return today < vm.checkOutDate;
   });
 
   constructor() {
@@ -392,7 +403,11 @@ export class ReservationDetailPageComponent {
   }
 
   goToInvoice(invoiceId: string) {
-    this.router.navigate(['/account/billing', invoiceId]);
+    if (this.isStaff()) {
+      this.router.navigate(['/management/billing/invoices', invoiceId]);
+    } else {
+      this.router.navigate(['/account/billing', invoiceId]);
+    }
   }
 
   onTimelineMessage(message: string) {

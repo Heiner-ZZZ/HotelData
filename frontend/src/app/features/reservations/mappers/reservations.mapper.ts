@@ -145,7 +145,7 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     canConfirm: false,
     canReject: false,
     invoice: dto.invoice ? {
-      id: dto.invoice.id,
+      id: (dto.invoice as any).id || (dto.invoice as any)._id,
       invoiceNumber: dto.invoice.invoice_number,
       subtotal: dto.invoice.subtotal,
       taxes: dto.invoice.taxes,
@@ -178,6 +178,7 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       changedAt: formatDateTime(item.changed_at),
       reason: item.reason,
       changedBy: item.changed_by
-    }))
+    })),
+    stayStatus: dto.booking.stay_status || dto.booking.status,
   };
 }

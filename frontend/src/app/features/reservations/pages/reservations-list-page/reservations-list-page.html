@@ -6,14 +6,17 @@
   />
 
   <div class="action-row">
-    <a routerLink="new" class="primary-link">
-      <span class="material-symbols-outlined btn-icon">add_circle</span>
-      Nueva solicitud
-    </a>
-    <a routerLink="new" class="secondary-link">
-      <span class="material-symbols-outlined btn-icon">edit_note</span>
-      Reserva manual partner
-    </a>
+    @if (isStaff()) {
+      <a routerLink="new" class="primary-link">
+        <span class="material-symbols-outlined btn-icon">add_circle</span>
+        Reserva física
+      </a>
+    } @else {
+      <a routerLink="new" class="primary-link">
+        <span class="material-symbols-outlined btn-icon">add_circle</span>
+        Reservar
+      </a>
+    }
 
     <div class="more-menu">
       <button type="button" class="more-btn" (click)="toggleMenu()" (blur)="closeMenu()" aria-label="M&aacute;s opciones">

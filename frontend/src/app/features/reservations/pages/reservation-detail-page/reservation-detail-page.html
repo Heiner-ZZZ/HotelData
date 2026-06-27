@@ -36,7 +36,7 @@
               {{ rejectPending() ? 'Rechazando...' : 'Rechazar reserva' }}
             </button>
           }
-          @if (vm.canCancel) {
+          @if (vm.canCancel && todayStr() < vm.checkInDate) {
             <button type="button" class="btn-action btn-cancel" (click)="cancelReservation()" [disabled]="cancelPending()">
               <span class="material-symbols-outlined btn-icon">block</span>
               Cancelar solicitud
@@ -58,28 +58,82 @@
 
           <section class="hero-grid">
             <article class="surface-card hero-card">
-              <span class="stat-label">Hotel</span>
-              <strong>{{ vm.hotelLabel }}</strong>
+              <div class="hero-card-icon-wrap" style="--card-accent: var(--accent)">
+                <span class="material-symbols-outlined">business</span>
+              </div>
+              <div class="hero-card-content">
+                <span class="stat-label">Hotel</span>
+                <strong>{{ vm.hotelLabel }}</strong>
+              </div>
             </article>
-            <article class="surface-card hero-card accent-card">
-              <span class="stat-label">Status</span>
-              <strong>{{ vm.status }}</strong>
-            </article>
-            <article class="surface-card hero-card">
-              <span class="stat-label">Origen</span>
-              <strong>{{ vm.bookingSource }}</strong>
-            </article>
-            @if (vm.totalPrice !== null) {
-              <article class="surface-card hero-card">
-                <span class="stat-label">Total</span>
+
+            <article class="surface-card hero-card" [class.hero-status-pending]="vm.status === 'pending'"
+                     [class.hero-status-confirmed]="vm.status === 'confirmed'"
+                     [class.hero-status-checked-in]="vm.status === 'checked_in'"
+                     [class.hero-status-checked-out]="vm.status === 'checked_out'"
+                     [class.hero-status-cancelled]="vm.status === 'cancelled'"
+                     [class.hero-status-rejected]="vm.status === 'rejected'">
+              <div class="hero-card-icon-wrap">
+                @switch (vm.status) {
+                  @case ('pending') { <span class="material-symbols-outlined">pending</span> }
+                  @case ('confirmed') { <span class="material-symbols-outlined">check_circle</span> }
+                  @case ('checked_in') { <span class="material-symbols-outlined">vpn_key</span> }
+                  @case ('checked_out') { <span class="material-symbols-outlined">logout</span> }
+                  @case ('cancelled') { <span class="material-symbols-outlined">cancel</span> }
+                  @case ('rejected') { <span class="material-symbols-outlined">block</span> }
+                  @default { <span class="material-symbols-outlined">info</span> }
+                }
+              </div>
+              <div class="hero-card-content">
+                <span class="stat-label">Estado</span>
                 <strong>
-                  @if (vm.discountPercent) {
-                    <span style="text-decoration: line-through; opacity: 0.7; font-weight: normal; margin-right: 4px; font-size: 0.9em;">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
-                    {{ vm.totalPrice | currency:vm.currency }} <span style="font-size: 0.8em; font-weight: normal;">(-{{ vm.discountPercent }}%)</span>
-                  } @else {
-                    {{ vm.totalPrice | currency:vm.currency }}
+                  @switch (vm.status) {
+                    @case ('pending') { Pendiente }
+                    @case ('confirmed') { Confirmada }
+                    @case ('checked_in') { Checked-In }
+                    @case ('checked_out') { Checked-Out }
+                    @case ('cancelled') { Cancelada }
+                    @case ('rejected') { Rechazada }
+                    @default { {{ vm.status }} }
                   }
                 </strong>
+              </div>
+            </article>
+
+            <article class="surface-card hero-card">
+              <div class="hero-card-icon-wrap" style="--card-accent: #a78bfa">
+                <span class="material-symbols-outlined">language</span>
+              </div>
+              <div class="hero-card-content">
+                <span class="stat-label">Origen</span>
+                <strong>
+                  @switch (vm.bookingSource) {
+                    @case ('angular_api') { Plataforma Web }
+                    @case ('manual_partner') { Reserva Manual Partner }
+                    @case ('reception_physical') { Recepción Física }
+                    @case ('manual') { Registro Manual }
+                    @default { {{ vm.bookingSource }} }
+                  }
+                </strong>
+              </div>
+            </article>
+
+            @if (vm.totalPrice !== null) {
+              <article class="surface-card hero-card">
+                <div class="hero-card-icon-wrap" style="--card-accent: var(--success)">
+                  <span class="material-symbols-outlined">payments</span>
+                </div>
+                <div class="hero-card-content">
+                  <span class="stat-label">Total</span>
+                  <strong>
+                    @if (vm.discountPercent) {
+                      <span style="text-decoration: line-through; opacity: 0.7; font-weight: normal; margin-right: 4px; font-size: 0.9em;">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
+                      {{ vm.totalPrice | currency:vm.currency }} <span style="font-size: 0.8em; font-weight: normal;">(-{{ vm.discountPercent }}%)</span>
+                    } @else {
+                      {{ vm.totalPrice | currency:vm.currency }}
+                    }
+                  </strong>
+                </div>
               </article>
             }
           </section>

@@ -113,6 +113,7 @@ export interface ReservationDetailDto {
     discount_percent?: number | null;
     original_total_price?: number | null;
     special_requests?: string[];
+    stay_status?: string;
   };
   guest: {
     guest_name: string;

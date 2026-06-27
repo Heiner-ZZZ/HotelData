@@ -153,4 +153,5 @@ export interface ReservationDetailViewModel {
     reason: string;
     changedBy: string;
   }>;
+  stayStatus?: string;
 }
