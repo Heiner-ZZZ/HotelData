@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pymongo.errors import DuplicateKeyError
@@ -245,12 +245,18 @@ def modify_booking(
         check_in_date is not None or check_in_time is not None
     ) and all(x is None for x in (check_out_date, room_type_id, rooms, comment))
 
-    # Blocked statuses — allow checked_in only for date/time tweaks
-    # Note: "checked_in" and "checked_out" are stored in stay_status, not status
+    # Blocked statuses
     if current_status in ("cancelled", "rejected"):
         raise ValueError(f"Cannot modify a booking with status '{current_status}'")
-    if current_stay_status in ("checked_in", "checked_out") and not only_datetime:
-        raise ValueError(f"Cannot modify booking '{booking_id}' — stay status is '{current_stay_status}'. Only date/time can be edited.")
+    if current_stay_status == "checked_out":
+        raise ValueError("No se puede modificar una reserva que ya ha finalizado (Check-out completado).")
+    
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if today_str >= booking.get("check_out_date", ""):
+        raise ValueError("No se puede modificar una reserva cuyas fechas de estancia ya han pasado o finalizado.")
+
+    if current_stay_status == "checked_in" and not only_datetime:
+        raise ValueError(f"Cannot modify booking '{booking_id}' — stay status is 'checked_in'. Only date/time can be edited.")
 
     new_check_in = check_in_date if check_in_date is not None else booking.get("check_in_date", "")
     new_check_out = check_out_date if check_out_date is not None else booking.get("check_out_date", "")

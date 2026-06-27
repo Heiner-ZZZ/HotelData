@@ -162,7 +162,6 @@ def _kpi(label: str, value: str, target: float, current_val: float,
 def _financiera() -> list[dict[str, Any]]:
     """Perspective 1: Financial KPIs."""
     db = get_database()
-    cs, ce, ps, pe = _previous_period_dates()
 
     cs_key, ce_key, ps_key, pe_key = _previous_period_keys()
     current = _fact_aggregate(db, match_filter={"date_key": {"$gte": cs_key, "$lte": ce_key}})
@@ -276,27 +275,62 @@ def _aprendizaje() -> list[dict[str, Any]]:
 
     fact = _fact_collection(db)
     total_records = fact.estimated_document_count()
+    
+    # Calculate previous total records using current period aggregation
+    cs_key, ce_key, ps_key, pe_key = _previous_period_keys()
+    current_agg = _fact_aggregate(db, match_filter={"date_key": {"$gte": cs_key, "$lte": ce_key}})
+    current_events = current_agg.get("total_events", 0)
+    prev_total_records = max(0, total_records - current_events)
+
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    days_30_ago = today - timedelta(days=30)
+
+    # Rejected records
     rejected = db.rejected_records.count_documents({})
-    sessions = db.user_sessions.count_documents({})
+    try:
+        rejected_current = db.rejected_records.count_documents({"created_at": {"$gte": days_30_ago}})
+        prev_rejected = max(0, rejected - rejected_current)
+    except Exception:
+        prev_rejected = rejected
+
+    # Registered users
     users = db.users.count_documents({})
+    users_current = db.users.count_documents({"created_at": {"$gte": days_30_ago}})
+    prev_users = max(0, users - users_current)
+
+    # Audit logs
     activity_logs = db.user_activity_logs.count_documents({})
+    logs_current = db.user_activity_logs.count_documents({"created_at": {"$gte": days_30_ago}})
+    prev_activity_logs = max(0, activity_logs - logs_current)
+
+    # Active sessions (for detail)
+    sessions = db.user_sessions.count_documents({"expires_at": {"$gte": today}})
 
     # Quality: latest quality report
     latest_quality = db.data_quality_reports.find_one({}, sort=[("generated_at", -1)])
     completeness = float(latest_quality.get("completeness_score", 0)) if latest_quality else 0
     quality_pct = round(completeness * 100, 2)
 
+    prev_quality = None
+    if latest_quality:
+        prev_quality = db.data_quality_reports.find_one(
+            {"_id": {"$ne": latest_quality["_id"]}},
+            sort=[("generated_at", -1)]
+        )
+    prev_completeness = float(prev_quality.get("completeness_score", 0)) if prev_quality else completeness
+    prev_quality_pct = round(prev_completeness * 100, 2)
+
     return [
-        _kpi("Registros Procesados", f"{total_records:,}", 600000.0, float(total_records), float(total_records),
+        _kpi("Registros Procesados", f"{total_records:,}", 600000.0, float(total_records), float(prev_total_records),
              detail="Registros en fact table (meta: 600K)"),
-        _kpi("Calidad de Datos", f"{quality_pct}%", 95.0, quality_pct, quality_pct,
+        _kpi("Calidad de Datos", f"{quality_pct}%", 95.0, quality_pct, prev_quality_pct,
              unit="%", detail="Completitud del dataset (meta: 95%)"),
-        _kpi("Registros Rechazados", f"{rejected:,}", 100.0, float(rejected), float(rejected),
+        _kpi("Registros Rechazados", f"{rejected:,}", 100.0, float(rejected), float(prev_rejected),
              detail="Incidencias de calidad",
              higher_is_better=False),
-        _kpi("Usuarios Activos", f"{users:,}", 10.0, float(users), float(users),
+        _kpi("Usuarios Activos", f"{users:,}", 10.0, float(users), float(prev_users),
              detail=f"{sessions} sesiones activas"),
-        _kpi("Traza de Auditoría", f"{activity_logs:,}", 1000.0, float(activity_logs), float(activity_logs),
+        _kpi("Traza de Auditoría", f"{activity_logs:,}", 1000.0, float(activity_logs), float(prev_activity_logs),
              detail="Eventos de actividad registrados"),
     ]
 

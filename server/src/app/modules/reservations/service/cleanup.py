@@ -82,6 +82,9 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
         raise ValueError("booking not found")
     if booking.get("status") != "pending":
         raise ValueError("only pending bookings can be cancelled")
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if today_str >= booking.get("check_in_date", ""):
+        raise ValueError("No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
     changed_at = utc_now()
     db.booking_orders.update_one(
         {"booking_id": booking_id},
