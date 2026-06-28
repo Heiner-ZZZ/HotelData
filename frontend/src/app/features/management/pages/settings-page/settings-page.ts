@@ -31,8 +31,6 @@ export class SettingsPageComponent {
 
   readonly loading = signal(true);
   readonly saving = signal(false);
-  readonly successMessage = signal('');
-  readonly errorMessage = signal('');
   readonly settings = signal<SettingsViewModel | null>(null);
   readonly activeTab = signal<'security' | 'preferences'>('security');
 
@@ -56,8 +54,6 @@ export class SettingsPageComponent {
   });
 
   readonly changingPassword = signal(false);
-  readonly passwordError = signal('');
-  readonly passwordSuccess = signal('');
 
   constructor() {
     this.loadSettings();
@@ -79,7 +75,7 @@ export class SettingsPageComponent {
           this.loading.set(false);
         },
         error: () => {
-          this.errorMessage.set('No se pudieron cargar las configuraciones.');
+          toast('No se pudieron cargar las configuraciones.', 'error');
           this.loading.set(false);
         },
       });
@@ -93,8 +89,6 @@ export class SettingsPageComponent {
     if (this.form.invalid) return;
 
     this.saving.set(true);
-    this.successMessage.set('');
-    this.errorMessage.set('');
 
     const dashboard = this.form.controls.defaultDashboard.value;
     const theme = this.form.controls.theme.value;
@@ -110,13 +104,11 @@ export class SettingsPageComponent {
           this.settings.set(updated);
           localStorage.setItem('hoteldata-default-dashboard', updated.defaultDashboard);
           this.applyTheme(updated.theme);
-          this.successMessage.set('Configuración guardada correctamente.');
           toast('Configuración guardada correctamente.', 'success', 3000);
           this.saving.set(false);
-          setTimeout(() => this.successMessage.set(''), 3000);
         },
         error: (err: { message?: string }) => {
-          this.errorMessage.set(err.message || 'No se pudieron guardar los cambios.');
+          toast(err.message || 'No se pudieron guardar los cambios.', 'error');
           this.saving.set(false);
         },
       });
@@ -137,26 +129,23 @@ export class SettingsPageComponent {
 
     const { currentPassword, newPassword, confirmPassword } = this.passwordForm.getRawValue();
     if (newPassword !== confirmPassword) {
-      this.passwordError.set('Las contraseñas no coinciden.');
+      toast('Las contraseñas no coinciden.', 'error');
       return;
     }
 
     this.changingPassword.set(true);
-    this.passwordError.set('');
-    this.passwordSuccess.set('');
 
     this.settingsApi
       .changePassword(currentPassword, newPassword)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.passwordSuccess.set('Contraseña actualizada correctamente.');
+          toast('Contraseña actualizada correctamente.', 'success');
           this.passwordForm.reset();
           this.changingPassword.set(false);
-          setTimeout(() => this.passwordSuccess.set(''), 3000);
         },
         error: (err: { message?: string }) => {
-          this.passwordError.set(err.message || 'Error al cambiar la contraseña.');
+          toast(err.message || 'Error al cambiar la contraseña.', 'error');
           this.changingPassword.set(false);
         },
       });

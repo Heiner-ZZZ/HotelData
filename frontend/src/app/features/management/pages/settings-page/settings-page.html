@@ -19,19 +19,6 @@
     }
   </nav>
 
-  @if (successMessage()) {
-    <div class="toast toast-success">
-      <span class="material-symbols-outlined">check_circle</span>
-      {{ successMessage() }}
-    </div>
-  }
-  @if (errorMessage()) {
-    <div class="toast toast-error">
-      <span class="material-symbols-outlined">error</span>
-      {{ errorMessage() }}
-    </div>
-  }
-
   @if (loading()) {
     <div class="loading-state">
       <span class="material-symbols-outlined spin">sync</span>
@@ -84,19 +71,6 @@
               }
             </div>
           </div>
-
-          @if (passwordError()) {
-            <div class="toast toast-error compact">
-              <span class="material-symbols-outlined">error</span>
-              {{ passwordError() }}
-            </div>
-          }
-          @if (passwordSuccess()) {
-            <div class="toast toast-success compact">
-              <span class="material-symbols-outlined">check_circle</span>
-              {{ passwordSuccess() }}
-            </div>
-          }
 
           <div class="card-actions">
             <button type="button" class="btn-primary" (click)="changePassword()" [disabled]="changingPassword()">
