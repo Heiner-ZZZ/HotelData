@@ -63,6 +63,24 @@
           </button>
         }
       </div>
+      <div class="add-url-divider">
+        <span>o añadir desde URL</span>
+      </div>
+      <div class="add-url-form">
+        <div class="input-wrap">
+          <span class="material-symbols-outlined input-icon">link</span>
+          <input
+            #urlInput
+            type="url"
+            placeholder="https://ejemplo.com/imagen.jpg"
+            (keydown.enter)="$event.preventDefault(); addImageByUrl(urlInput.value); urlInput.value = ''"
+          />
+        </div>
+        <button type="button" class="btn-outline" (click)="addImageByUrl(urlInput.value); urlInput.value = ''">
+          <span class="material-symbols-outlined">add</span>
+          Añadir URL
+        </button>
+      </div>
     </div>
   </div>
 </section>

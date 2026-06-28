@@ -105,6 +105,30 @@ export class ImageGalleryComponent {
     });
   }
 
+  addImageByUrl(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      this.errorChange.emit('Introduce una URL válida.');
+      return;
+    }
+    const current = this.images();
+    if (current.length >= this.maxImages()) {
+      this.errorChange.emit(`Máximo ${this.maxImages()} imágenes por propiedad.`);
+      return;
+    }
+    this.propertiesApi.addImage(this.propId(), trimmed, '').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.errorChange.emit('');
+        this.imagesChange.emit([...current, { imageUrl: trimmed, title: '' }]);
+      },
+      error: (err) => {
+        if (isDevMode()) console.error('Error adding image by URL', err);
+        const msg = err?.error?.detail || err?.message || 'Error al añadir imagen por URL.';
+        this.errorChange.emit(msg);
+      },
+    });
+  }
+
   removeImage(imageUrl: string) {
     const current = this.images();
     this.propertiesApi.deleteImage(this.propId(), imageUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

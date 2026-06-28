@@ -275,3 +275,53 @@
     cursor: not-allowed;
   }
 }
+
+.add-url-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-2, #9ca3af);
+  font-size: 0.8rem;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e5e7eb);
+  }
+}
+
+.add-url-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    background: var(--surface, #fff);
+
+    .input-icon {
+      font-size: 1rem;
+      color: var(--text-2, #9ca3af);
+    }
+
+    input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 10px 0;
+      font-size: 0.9rem;
+      background: transparent;
+      color: var(--text-color, #374151);
+      font-family: inherit;
+    }
+  }
+}
