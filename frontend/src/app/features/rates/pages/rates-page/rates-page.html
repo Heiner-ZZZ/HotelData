@@ -11,20 +11,22 @@
     (propIdChange)="onPropSelected($event)"
   />
 
-  <!-- KPI Chart: 7-Day Rate Trend -->
-  <section class="surface-card kpi-chart-section">
-    @if (rateTrend(); as rt) {
-      <app-kpi-chart
-        title="Tendencia de tarifas últimos 7 días"
-        [labels]="rt.dates"
-        [datasets]="rt.series.map(s => ({ label: s.plan_name, data: s.data.map(d => d.avg_rate) }))"
-        [showLegend]="true"
-        [height]="220"
-        type="line"
-        formatValue="currency"
-      />
-    }
-  </section>
+  <!-- KPI Chart: 7-Day Rate Trend — hidden when hotel selected -->
+  @if (selectedPropId() === 0) {
+    <section class="surface-card kpi-chart-section">
+      @if (rateTrend(); as rt) {
+        <app-kpi-chart
+          title="Tendencia de tarifas últimos 7 días"
+          [labels]="rt.dates"
+          [datasets]="rt.series.map(s => ({ label: s.plan_name, data: s.data.map(d => d.avg_rate) }))"
+          [showLegend]="true"
+          [height]="220"
+          type="line"
+          formatValue="currency"
+        />
+      }
+    </section>
+  }
 
   @if (message()) {
     <section class="notification success">
@@ -155,15 +157,17 @@
               }
 
               @case ('calendar') {
-                <!-- Batch Update Form -->
-                <section class="surface-card data-panel">
-                  <div class="panel-head">
+                <!-- Batch Update Form — collapsible, closed by default -->
+                <section class="surface-card data-panel collapsible-section">
+                  <div class="panel-head collapsible-trigger" (click)="toggleCollapse('batchCalendar')">
                     <span class="material-symbols-outlined panel-head-icon" style="color: #06b6d4">date_range</span>
                     <div>
                       <h2>Actualización masiva de calendario</h2>
                       <p>Aplica una tarifa a un rango de fechas de una sola vez.</p>
                     </div>
+                    <span class="material-symbols-outlined collapse-icon">{{ batchCalendarCollapsed() ? 'expand_more' : 'expand_less' }}</span>
                   </div>
+                  @if (!batchCalendarCollapsed()) {
                   <form (submit)="$event.preventDefault(); batchUpdateCalendar()" class="panel-form">
                     <label class="field">
                       <span class="field-label"><span class="material-symbols-outlined field-icon">table_rows</span>Plan tarifario</span>
@@ -203,6 +207,7 @@
                       </button>
                     </div>
                   </form>
+                  }
                 </section>
 
                 <!-- Monthly Calendar View -->

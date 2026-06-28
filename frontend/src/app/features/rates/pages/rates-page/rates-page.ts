@@ -163,16 +163,18 @@ export class RatesPageComponent {
   readonly seasonalPriceTouched = signal(false);
 
   // Collapsible sections (collapsed by default)
+  readonly batchCalendarCollapsed = signal(true);
   readonly planFormCollapsed = signal(false);
   readonly existingPlansCollapsed = signal(false);
   readonly newSeasonalCollapsed = signal(false);
   readonly existingSeasonsCollapsed = signal(false);
 
-  toggleCollapse(section: 'planForm' | 'existingPlans' | 'newSeasonal' | 'existingSeasons'): void {
+  toggleCollapse(section: string): void {
     if (section === 'planForm') this.planFormCollapsed.update(v => !v);
     else if (section === 'existingPlans') this.existingPlansCollapsed.update(v => !v);
     else if (section === 'newSeasonal') this.newSeasonalCollapsed.update(v => !v);
     else if (section === 'existingSeasons') this.existingSeasonsCollapsed.update(v => !v);
+    else if (section === 'batchCalendar') this.batchCalendarCollapsed.update(v => !v);
   }
 
   /* ── Sidebar sections ── */

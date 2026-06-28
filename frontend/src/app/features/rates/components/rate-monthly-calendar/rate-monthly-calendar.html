@@ -6,7 +6,7 @@
     </button>
     <h3 class="cal-month-title">
       @if (displayMode() === 'week') {
-        {{ monthLabel() }} (7 días)
+        Semana del {{ weekLabel() }}
       } @else {
         {{ monthLabel() }}
       }
@@ -28,68 +28,130 @@
     </div>
   </div>
 
-  <!-- Day Labels -->
-  <div class="cal-day-labels">
-    @for (label of dayLabels; track label) {
-      <span class="cal-day-label">{{ label }}</span>
-    }
-  </div>
-
-  <!-- Room Type Rows -->
-  <div class="cal-body">
-    @for (row of rows(); track row.roomTypeId) {
-      <div class="cal-room-row">
-        <div class="cal-room-label">
-          <span class="material-symbols-outlined cal-room-icon">bed</span>
-          <span class="cal-room-name" [title]="row.roomTypeName">
-            <span class="room-number">{{ row.roomTypeNumber }}</span>
-          </span>
-        </div>
-        @for (week of weekRows(); track $index) {
-          <div class="cal-week">
-            @for (day of week; track $index) {
-              @if (day === 0) {
-                <div class="cal-cell cal-cell-empty"></div>
-              } @else {
-                @let rate = getRateForDay(row, day);
-                <div
-                  class="cal-cell"
-                  [class.is-today]="isToday(day)"
-                  [class.has-rate]="!!rate"
-                  [class.is-closed]="rate?.isClosed"
-                  [title]="rate ? (rate.rateAmount | currency) + ' - ' + rate.ratePlanName : 'Sin tarifa'"
-                >
-                  <span class="cal-day-num">{{ day }}</span>
-                  @if (rate) {
-                    <span class="cal-rate-amount" [class]="'tier-' + rate.tier">
-                      {{ rate.rateAmount | currency:'':'symbol-narrow':'1.0-0' }}
-                    </span>
-                  }
-                  @let cellEvents = getEventsForDate(dateStrFromDay(day));
-                  @if (cellEvents.length > 0) {
-                    <div class="cal-cell-events">
-                      @for (ev of cellEvents.slice(0, 2); track $index) {
-                        <span class="cal-event-dot" [style.background]="ev.color" [title]="ev.label"></span>
-                      }
-                      @if (cellEvents.length > 2) {
-                        <span class="cal-event-more">+{{ cellEvents.length - 2 }}</span>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            }
+  @if (displayMode() === 'week') {
+    <!-- ═══ WEEK VIEW: 7 columns, large cells ═══ -->
+    <div class="week-view">
+      <!-- Day headers -->
+      <div class="week-row week-header-row">
+        <div class="week-label-col"></div>
+        @for (dayLabel of weekDayLabels(); track $index) {
+          <div class="week-day-header" [class.is-today]="dayLabel.isToday">
+            <span class="week-day-name">{{ dayLabel.name }}</span>
+            <span class="week-day-num">{{ dayLabel.num }}</span>
           </div>
         }
       </div>
-    }
 
+      <!-- Room type rows -->
+      @for (row of rows(); track row.roomTypeId) {
+        <div class="week-row week-room-row">
+          <div class="week-label-col">
+            <span class="material-symbols-outlined week-room-icon">bed</span>
+            <span class="week-room-number" [title]="row.roomTypeName">{{ row.roomTypeNumber }}</span>
+          </div>
+          @for (day of weekDays(row); track $index) {
+            <div
+              class="week-cell"
+              [class.is-today]="day.isToday"
+              [class.is-closed]="day.rate?.isClosed"
+              [class.has-rate]="!!day.rate"
+              [title]="day.date + ' - ' + (day.rate ? (day.rate.rateAmount | currency) + ' ' + day.rate.ratePlanName : 'Sin tarifa')"
+            >
+              @if (day.rate) {
+                <span class="week-rate-amount" [class]="'tier-' + day.rate.tier">
+                  {{ day.rate.rateAmount | currency:'':'symbol-narrow':'1.0-0' }}
+                </span>
+                <span class="week-rate-plan">{{ day.rate.ratePlanName }}</span>
+              } @else {
+                <span class="week-empty">—</span>
+              }
+              @if (day.events.length > 0) {
+                <div class="week-events">
+                  @for (ev of day.events.slice(0, 3); track $index) {
+                    <span class="week-event-dot" [style.background]="ev.color" [title]="ev.label"></span>
+                  }
+                  @if (day.events.length > 3) {
+                    <span class="week-event-more">+{{ day.events.length - 3 }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
 
-  <!-- Empty State -->
-  @if (!rows().length) {
-    <div class="cal-empty">
-      <span class="material-symbols-outlined cal-empty-icon">calendar_month</span>
-      <p>No hay datos de calendario para este mes.</p>
+      @if (!rows().length) {
+        <div class="cal-empty">
+          <span class="material-symbols-outlined cal-empty-icon">calendar_month</span>
+          <p>No hay datos para esta semana.</p>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- ═══ MONTH VIEW: full month grid ═══ -->
+    <!-- Day Labels -->
+    <div class="cal-day-labels">
+      @for (label of dayLabels; track label) {
+        <span class="cal-day-label">{{ label }}</span>
+      }
+    </div>
+
+    <!-- Room Type Rows -->
+    <div class="cal-body">
+      @for (row of rows(); track row.roomTypeId) {
+        <div class="cal-room-row">
+          <div class="cal-room-label">
+            <span class="material-symbols-outlined cal-room-icon">bed</span>
+            <span class="cal-room-name" [title]="row.roomTypeName">
+              <span class="room-number">{{ row.roomTypeNumber }}</span>
+            </span>
+          </div>
+          @for (week of weekRows(); track $index) {
+            <div class="cal-week">
+              @for (day of week; track $index) {
+                @if (day === 0) {
+                  <div class="cal-cell cal-cell-empty"></div>
+                } @else {
+                  @let rate = getRateForDay(row, day);
+                  <div
+                    class="cal-cell"
+                    [class.is-today]="isToday(day)"
+                    [class.has-rate]="!!rate"
+                    [class.is-closed]="rate?.isClosed"
+                    [title]="rate ? (rate.rateAmount | currency) + ' - ' + rate.ratePlanName : 'Sin tarifa'"
+                  >
+                    <span class="cal-day-num">{{ day }}</span>
+                    @if (rate) {
+                      <span class="cal-rate-amount" [class]="'tier-' + rate.tier">
+                        {{ rate.rateAmount | currency:'':'symbol-narrow':'1.0-0' }}
+                      </span>
+                    }
+                    @let cellEvents = getEventsForDate(dateStrFromDay(day));
+                    @if (cellEvents.length > 0) {
+                      <div class="cal-cell-events">
+                        @for (ev of cellEvents.slice(0, 2); track $index) {
+                          <span class="cal-event-dot" [style.background]="ev.color" [title]="ev.label"></span>
+                        }
+                        @if (cellEvents.length > 2) {
+                          <span class="cal-event-more">+{{ cellEvents.length - 2 }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!rows().length) {
+        <div class="cal-empty">
+          <span class="material-symbols-outlined cal-empty-icon">calendar_month</span>
+          <p>No hay datos de calendario para este mes.</p>
+        </div>
+      }
     </div>
   }
 

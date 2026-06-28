@@ -127,6 +127,85 @@ export class RateMonthlyCalendarComponent {
     return this.events().filter((e) => e.date === dateStr);
   }
 
+  /** Week view: compute the 7-day window (Monday–Sunday) based on the first available date in rows. */
+  readonly weekStart = computed(() => {
+    const rows = this.rows();
+    if (!rows.length || !rows[0].days.length) return new Date();
+    // Use the first day in the first row as reference
+    const firstDate = rows[0].days[0].date;
+    if (!firstDate) return new Date();
+    const d = new Date(firstDate + 'T12:00:00');
+    // Find the Monday of that week
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  });
+
+  /** Week view: labels for the 7 columns (Mon–Sun) with day names and numbers. */
+  readonly weekDayLabels = computed(() => {
+    const start = this.weekStart();
+    const today = new Date();
+    const labels: Array<{ name: string; num: number; isToday: boolean }> = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      labels.push({
+        name: this.dayLabels[d.getDay()],
+        num: d.getDate(),
+        isToday:
+          d.getDate() === today.getDate() &&
+          d.getMonth() === today.getMonth() &&
+          d.getFullYear() === today.getFullYear(),
+      });
+    }
+    return labels;
+  });
+
+  /** Week view: label like "10 Mar — 16 Mar 2026". */
+  readonly weekLabel = computed(() => {
+    const start = this.weekStart();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const startStr = `${start.getDate()} ${this.monthNames[start.getMonth()]}`;
+    const endStr = `${end.getDate()} ${this.monthNames[end.getMonth()]} ${end.getFullYear()}`;
+    return `${startStr} — ${endStr}`;
+  });
+
+  /** Week view: build 7 daily cells for a room type row (combining rate data + events). */
+  weekDays(row: RoomTypeCalendarRow): Array<{
+    date: string;
+    rate: CalendarDayRate | undefined;
+    events: Array<{ type: string; label: string; color: string }>;
+    isToday: boolean;
+  }> {
+    const start = this.weekStart();
+    const today = new Date();
+    const result: Array<{
+      date: string;
+      rate: CalendarDayRate | undefined;
+      events: Array<{ type: string; label: string; color: string }>;
+      isToday: boolean;
+    }> = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const rate = row.days.find((rd) => rd.date === dateStr);
+      const events = this.getEventsForDate(dateStr);
+      result.push({
+        date: dateStr,
+        rate,
+        events,
+        isToday:
+          d.getDate() === today.getDate() &&
+          d.getMonth() === today.getMonth() &&
+          d.getFullYear() === today.getFullYear(),
+      });
+    }
+    return result;
+  }
+
   /** Build a full date string from year + month (0-11) + day. */
   dateStrFromDay(day: number): string {
     return `${this.year()}-${String(this.month() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
