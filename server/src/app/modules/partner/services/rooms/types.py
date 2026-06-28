@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from typing import Any
 
@@ -42,6 +43,24 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
                 "unit_price": _feature_unit_price(f),
             })
     return result
+
+
+def _room_type_by_id(room_type_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
+    """Get a single room type by ID."""
+    db = get_database()
+    query: dict[str, Any] = {"room_type_id": room_type_id}
+    if prop_id is not None:
+        query["prop_id"] = prop_id
+    room = db.room_types.find_one(query, {"_id": 0})
+    if room is None:
+        return None
+    room["capacity_label"] = (
+        f"{room.get('base_capacity', 0)} base · "
+        f"{room.get('max_adults', 0)} adultos · "
+        f"{room.get('max_children', 0)} niños"
+    )
+    room["features"] = _normalize_features(room.get("features", []))
+    return room
 
 
 def _room_types_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
@@ -90,19 +109,15 @@ def _validate_room_type(
         except (ValueError, TypeError):
             return "base_rate debe ser un valor numérico válido."
 
-    db = get_database()
-    query: dict[str, Any] = {"prop_id": prop_id, "name": clean_name}
-    if room_type_id:
-        query["room_type_id"] = {"$ne": room_type_id}
-    existing = db.room_types.find_one(query, {"_id": 1})
-    if existing is not None:
-        return "Ya existe un tipo de habitación con ese nombre en esta propiedad."
-
+    # The name is NOT unique per property — multiple rooms can have the same name
+    # (e.g., "Suite" can exist multiple times). The unique identifier is the
+    # room_number within the property.
     clean_rn = clean_text(room_number)
     if clean_rn:
         rn_query: dict[str, Any] = {"prop_id": prop_id, "room_number": clean_rn}
         if room_type_id:
             rn_query["room_type_id"] = {"$ne": room_type_id}
+        db = get_database()
         dup = db.room_types.find_one(rn_query, {"_id": 1})
         if dup is not None:
             return f"El número de habitación '{clean_rn}' ya existe en esta propiedad."
@@ -135,7 +150,9 @@ def create_room_type(
 
     db = get_database()
     clean_name = clean_text(name)
-    room_type_id = f"RT-{prop_id}-{slugify(clean_name)}"
+    # Use room_number as unique suffix when available; otherwise append a short hash
+    unique_suffix = clean_room_number if clean_room_number else uuid.uuid4().hex[:6]
+    room_type_id = f"RT-{prop_id}-{slugify(clean_name)}-{unique_suffix}"
     max_adults_value = safe_positive_int(max_adults, 1)
     max_children_value = safe_positive_int(max_children, 0)
     base_capacity_value = safe_positive_int(base_capacity, max_adults_value or 1)
