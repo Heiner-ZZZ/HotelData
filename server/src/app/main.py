@@ -37,6 +37,7 @@ from src.app.modules.settings.routes import api_router as settings_api_router
 from src.app.modules.reservations.routes import api_router as reservations_api_router
 from src.app.modules.reservations.routes import management_api_router as reservations_management_api_router
 from src.app.modules.reservations.routes import router as reservations_module_router
+from src.app.modules.reservations.routes.reception_calendar import reception_calendar_router
 from src.app.modules.revenue.routes import api_router as revenue_api_router
 from src.app.modules.revenue.routes import router as revenue_module_router
 from src.app.modules.reviews.routes import api_router as reviews_api_router
@@ -132,6 +133,7 @@ def create_app() -> FastAPI:
     app.include_router(global_settings_api_router)
     app.include_router(geo_catalog_api_router)
     app.include_router(kpi_api_router)
+    app.include_router(reception_calendar_router)
     app.include_router(map_api_router)
     app.include_router(crud_router)
     return app

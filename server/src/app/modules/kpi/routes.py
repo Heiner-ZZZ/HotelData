@@ -113,6 +113,31 @@ def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20)):
     return {"dates": date_strs, "series": series}
 
 
+@router.get("/occupancy-trend")
+def occupancy_trend(days: int = Query(default=14, ge=7, le=90)):
+    """Daily check-in / check-out counts for the last N days (line chart data)."""
+    db = get_database()
+
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    date_strs = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days - 1, -1, -1)]
+
+    check_ins = []
+    check_outs = []
+    for d in date_strs:
+        ci = db.booking_orders.count_documents({"check_in_date": d})
+        co = db.booking_orders.count_documents({"check_out_date": d})
+        check_ins.append(ci)
+        check_outs.append(co)
+
+    return {
+        "dates": date_strs,
+        "check_ins": check_ins,
+        "check_outs": check_outs,
+        "total_check_ins": sum(check_ins),
+        "total_check_outs": sum(check_outs),
+    }
+
+
 @router.get("/bsc")
 def balanced_scorecard():
     """Balanced Scorecard with 4 perspectives, semáforos, and temporal comparison."""
