@@ -46,13 +46,23 @@ export class PropertyDetailPageComponent {
     return circ - (circ * score) / 100;
   });
 
-  // Operational calendar
+  // Operational calendar — single week view
   readonly calendarData = signal<OperationalCalendarData | null>(null);
   readonly calendarLoading = signal(false);
   readonly calendarYear = signal(new Date().getFullYear());
   readonly calendarMonth = signal(new Date().getMonth() + 1);
 
-  private loadCalendar(propId: number, year: number, month: number) {
+  readonly weekStart = signal(this._mondayOfToday());
+
+  private _mondayOfToday(): string {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private _loadCalendar(propId: number, year: number, month: number) {
     this.calendarLoading.set(true);
     this.api.getOperationalCalendar(propId, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
@@ -63,22 +73,29 @@ export class PropertyDetailPageComponent {
     });
   }
 
-  prevCalendarMonth() {
-    let y = this.calendarYear();
-    let m = this.calendarMonth() - 1;
-    if (m < 1) { m = 12; y--; }
-    this.calendarYear.set(y);
-    this.calendarMonth.set(m);
-    this.loadCalendar(this.viewModel()!.propId, y, m);
+  prevWeek() {
+    const d = new Date(this.weekStart());
+    d.setDate(d.getDate() - 7);
+    this._setWeekAndLoad(d);
   }
 
-  nextCalendarMonth() {
-    let y = this.calendarYear();
-    let m = this.calendarMonth() + 1;
-    if (m > 12) { m = 1; y++; }
-    this.calendarYear.set(y);
-    this.calendarMonth.set(m);
-    this.loadCalendar(this.viewModel()!.propId, y, m);
+  nextWeek() {
+    const d = new Date(this.weekStart());
+    d.setDate(d.getDate() + 7);
+    this._setWeekAndLoad(d);
+  }
+
+  private _setWeekAndLoad(d: Date) {
+    const newY = d.getFullYear();
+    const newM = d.getMonth() + 1;
+    const y = this.calendarYear();
+    const m = this.calendarMonth();
+    this.weekStart.set(`${newY}-${String(newM).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    if (newY !== y || newM !== m) {
+      this.calendarYear.set(newY);
+      this.calendarMonth.set(newM);
+      this._loadCalendar(this.viewModel()!.propId, newY, newM);
+    }
   }
 
   // RF-006: Top approved reviews
@@ -109,7 +126,7 @@ export class PropertyDetailPageComponent {
           this.viewModel.set(vm);
           this.viewState.set('success');
           // Load operational calendar in background
-          this.loadCalendar(vm.propId, this.calendarYear(), this.calendarMonth());
+          this._loadCalendar(vm.propId, this.calendarYear(), this.calendarMonth());
           // Load approved reviews in background
           this.loadReviews(vm.propId);
         },

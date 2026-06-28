@@ -166,8 +166,9 @@
             <app-operational-calendar
               [data]="calendarData()"
               [loading]="calendarLoading()"
-              (prevMonth)="prevCalendarMonth()"
-              (nextMonth)="nextCalendarMonth()"
+              [weekStart]="weekStart()"
+              (prevWeek)="prevWeek()"
+              (nextWeek)="nextWeek()"
             />
           </section>
 

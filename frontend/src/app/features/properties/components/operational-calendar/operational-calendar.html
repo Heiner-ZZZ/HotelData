@@ -7,11 +7,11 @@
   } @else if (data(); as cal) {
     <!-- ═══ Navigation ═══ -->
     <div class="op-cal-header">
-      <button type="button" class="op-cal-nav" (click)="prevMonth.emit()" title="Mes anterior">
+      <button type="button" class="op-cal-nav" (click)="prevWeek.emit()" title="Semana anterior">
         <span>◀</span>
       </button>
       <h3 class="op-cal-title">{{ monthLabel() }}</h3>
-      <button type="button" class="op-cal-nav" (click)="nextMonth.emit()" title="Mes siguiente">
+      <button type="button" class="op-cal-nav" (click)="nextWeek.emit()" title="Semana siguiente">
         <span>▶</span>
       </button>
     </div>
@@ -59,44 +59,37 @@
       }
     </div>
 
-    <!-- ═══ Single row calendar ═══ -->
+    <!-- ═══ Single week row (7 days) ═══ -->
     <div class="op-cal-body">
-      @for (week of weekRows(); track $index) {
-        <div class="op-cal-week">
-          @for (wd of week; track $index) {
-              @if (wd.day === 0) {
-              <div class="op-cal-cell op-cal-cell--empty"></div>
-            } @else {
-              @let d = getDay(wd.date);
-              <div
-                class="op-cal-cell"
-                [class.is-today]="wd.isToday"
-                [class.has-data]="!!d && (d.hasRate || d.hasPromotion || d.hasInventory)"
-              >
-                <span class="op-cal-day">{{ wd.day }}</span>
-                @if (d) {
-                  @if (d.hasRate) {
-                    <span class="op-icon op-icon--rate" [title]="d.bestRate != null ? 'Tarifa desde $' + d.bestRate : 'Tarifas configuradas'">$</span>
-                  }
-                  @if (d.hasPromotion) {
-                    <span class="op-icon op-icon--promo" title="Promoción activa">%</span>
-                  }
-                  @if (d.hasInventory && d.totalRooms > 0) {
-                    @if (d.availableRooms > 0 && d.blockedRooms === 0) {
-                      <span class="op-icon op-icon--avail" [title]="roomTooltip(d)">D</span>
-                    } @else if (d.availableRooms > 0 && d.blockedRooms > 0) {
-                      <span class="op-icon op-icon--mixed" [title]="roomTooltip(d)">D</span>
-                      <span class="op-icon op-icon--blocked" [title]="roomTooltip(d)">B</span>
-                    } @else if (d.blockedRooms > 0) {
-                      <span class="op-icon op-icon--blocked" [title]="roomTooltip(d)">B</span>
-                    }
-                  }
+      <div class="op-cal-week">
+        @for (wd of weekDays(); track wd.date) {
+          <div
+            class="op-cal-cell"
+            [class.is-today]="wd.isToday"
+            [class.has-data]="!!wd.data && (wd.data.hasRate || wd.data.hasPromotion || wd.data.hasInventory)"
+          >
+            <span class="op-cal-day">{{ wd.day }}</span>
+            @if (wd.data) {
+              @if (wd.data.hasRate) {
+                <span class="op-icon op-icon--rate" [title]="wd.data.bestRate != null ? 'Tarifa desde $' + wd.data.bestRate : 'Tarifas configuradas'">$</span>
+              }
+              @if (wd.data.hasPromotion) {
+                <span class="op-icon op-icon--promo" title="Promoción activa">%</span>
+              }
+              @if (wd.data.hasInventory && wd.data.totalRooms > 0) {
+                @if (wd.data.availableRooms > 0 && wd.data.blockedRooms === 0) {
+                  <span class="op-icon op-icon--avail" [title]="roomTooltip(wd.data)">D</span>
+                } @else if (wd.data.availableRooms > 0 && wd.data.blockedRooms > 0) {
+                  <span class="op-icon op-icon--mixed" [title]="roomTooltip(wd.data)">D</span>
+                  <span class="op-icon op-icon--blocked" [title]="roomTooltip(wd.data)">B</span>
+                } @else if (wd.data.blockedRooms > 0) {
+                  <span class="op-icon op-icon--blocked" [title]="roomTooltip(wd.data)">B</span>
                 }
-              </div>
+              }
             }
-          }
-        </div>
-      }
+          </div>
+        }
+      </div>
     </div>
 
     <!-- ═══ Legend ═══ -->

@@ -57,69 +57,40 @@ export interface OperationalCalendarData {
 export class OperationalCalendarComponent {
   readonly data = input<OperationalCalendarData | null>(null);
   readonly loading = input(false);
+  readonly weekStart = input<string>('');
 
-  readonly prevMonth = output<void>();
-  readonly nextMonth = output<void>();
-
-  readonly monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ];
+  readonly prevWeek = output<void>();
+  readonly nextWeek = output<void>();
 
   readonly dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'];
 
   readonly monthLabel = computed(() => {
     const d = this.data();
     if (!d) return '';
-    return `${this.monthNames[d.month - 1]} ${d.year}`;
+    const names = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return `${names[d.month - 1]} ${d.year}`;
   });
 
-  readonly daysInMonth = computed(() => {
+  readonly weekDays = computed(() => {
     const d = this.data();
-    if (!d) return 0;
-    return new Date(d.year, d.month, 0).getDate();
-  });
-
-  readonly firstDayOfWeek = computed(() => {
-    const d = this.data();
-    if (!d) return 0;
-    return new Date(d.year, d.month - 1, 1).getDay();
-  });
-
-  readonly weekRows = computed(() => {
-    const d = this.data();
-    if (!d) return [];
-    const days = this.daysInMonth();
-    const firstDow = this.firstDayOfWeek();
-    const totalCells = firstDow + days;
-    const rowsCount = Math.ceil(totalCells / 7);
-    const result: Array<Array<{ day: number; date: string; isToday: boolean }>> = [];
-    let day = 1;
-    for (let r = 0; r < rowsCount; r++) {
-      const week: Array<{ day: number; date: string; isToday: boolean }> = [];
-      for (let col = 0; col < 7; col++) {
-        const cellIdx = r * 7 + col;
-        if (cellIdx < firstDow || day > days) {
-          week.push({ day: 0, date: '', isToday: false });
-        } else {
-          const dateStr = `${d.year}-${String(d.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const today = new Date();
-          week.push({
-            day,
-            date: dateStr,
-            isToday: today.getDate() === day && today.getMonth() === d.month - 1 && today.getFullYear() === d.year,
-          });
-          day++;
-        }
-      }
-      result.push(week);
+    const ws = this.weekStart();
+    if (!d || !ws) return [];
+    const start = new Date(ws);
+    const today = new Date();
+    const days: Array<{ day: number; date: string; isToday: boolean; data: OperationalDay | undefined }> = [];
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(start);
+      dt.setDate(start.getDate() + i);
+      const dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      days.push({
+        day: dt.getDate(),
+        date: dateStr,
+        isToday: today.getDate() === dt.getDate() && today.getMonth() === dt.getMonth() && today.getFullYear() === dt.getFullYear(),
+        data: d.days.find(day => day.date === dateStr),
+      });
     }
-    return result;
+    return days;
   });
-
-  getDay(dateStr: string): OperationalDay | undefined {
-    return this.data()?.days.find(d => d.date === dateStr);
-  }
 
   roomTooltip(d: OperationalDay): string {
     if (!d.hasInventory) return 'Sin datos de inventario';
