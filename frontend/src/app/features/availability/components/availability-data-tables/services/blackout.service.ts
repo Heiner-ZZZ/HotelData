@@ -3,11 +3,11 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import type { ApiError } from '../../../core/api/api-error.model';
-import { AvailabilityState } from './availability-state';
-import { CalendarService } from './availability-calendar.service';
-import { AvailabilityApiService } from './availability-api.service';
-import { ToastService } from '../../../shared/services/toast.service';
+import type { ApiError } from '../../../../../core/api/api-error.model';
+import { AvailabilityState } from '../../../services/availability-state';
+import { CalendarService } from '../../availability-calendar/services/calendar.service';
+import { AvailabilityApiService } from '../../../services/availability-api.service';
+import { ToastService } from '../../../../../shared/services/toast.service';
 
 export class BlackoutService {
   readonly form;

@@ -55,6 +55,10 @@ export class TopNavComponent implements OnInit, OnDestroy {
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
   readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }>>([]);
+  readonly canViewNotifications = computed(() => {
+    const role = this.currentUser()?.primaryRole;
+    return role === 'super_admin' || role === 'admin_sistema';
+  });
   readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
   private _notifPollSub: ReturnType<typeof setInterval> | null = null;
   /** Track if polling was permanently stopped due to an auth error. */
@@ -135,6 +139,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
   private _fetchNotifications() {
     if (this._notifPollingStopped) {
       this._stopNotifPolling();
+      return;
+    }
+
+    if (!this.canViewNotifications()) {
+      this.notifications.set([]);
       return;
     }
 

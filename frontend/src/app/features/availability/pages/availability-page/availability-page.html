@@ -350,12 +350,12 @@
 
   <!-- Delete inventory confirmation modal -->
   @if (store.inventoryDeleteConfirm(); as idc) {
-    <div class="modal-backdrop" (click)="inventorystore.deleteConfirm.set(null)">
+    <div class="modal-backdrop" (click)="store.inventoryDeleteConfirm.set(null)">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar registro de inventario</h2>
         <p>¿Estás seguro de eliminar el inventario para <strong>{{ idc.roomTypeName }}</strong> el <strong>{{ idc.date }}</strong>?</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="inventorystore.deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="store.inventoryDeleteConfirm.set(null)">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-danger" (click)="store.confirmDeleteInventory()">
             @if (store.saving()) {
               <span class="material-symbols-outlined spin">progress_activity</span>

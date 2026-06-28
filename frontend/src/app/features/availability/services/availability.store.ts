@@ -1,6 +1,6 @@
 import { DestroyRef, effect, inject, Injectable } from '@angular/core';
 import { httpResource } from '@angular/common/http';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
@@ -9,11 +9,11 @@ import { PropertyContextService } from '../../../shared/services/property-contex
 import { ToastService } from '../../../shared/services/toast.service';
 import { AvailabilityApiService } from './availability-api.service';
 import { AvailabilityState } from './availability-state';
-import { CalendarService } from './availability-calendar.service';
-import { SelectionService } from './availability-selection.service';
-import { InventoryService } from './availability-inventory.service';
-import { BlackoutService } from './availability-blackout.service';
-import { CellService } from './availability-cell.service';
+import { CalendarService } from '../components/availability-calendar/services/calendar.service';
+import { SelectionService } from '../components/availability-quick-actions/services/selection.service';
+import { InventoryService } from '../components/availability-data-tables/services/inventory.service';
+import { BlackoutService } from '../components/availability-data-tables/services/blackout.service';
+import { CellService } from '../components/availability-calendar/services/cell.service';
 import { mapAvailability } from '../mappers/availability.mapper';
 import type { AvailabilityDto } from '../models/availability.dto';
 

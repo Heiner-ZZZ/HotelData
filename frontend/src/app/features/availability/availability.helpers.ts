@@ -1,4 +1,4 @@
-import type { AvailabilityInventoryItem, CalendarMonth, CalendarRoomTypeCell } from '../../models/availability.model';
+import type { AvailabilityInventoryItem, CalendarMonth, CalendarRoomTypeCell } from './models/availability.model';
 
 export type ViewMode = 'month' | 'week';
 

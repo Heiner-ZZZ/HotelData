@@ -74,7 +74,13 @@
                 @if (selectedCompareIds().length >= 2) {
                   <a class="compare-btn"
                     [routerLink]="['/hotels/compare']"
-                    [queryParams]="{ prop_id: selectedCompareIds() }">
+                    [queryParams]="{
+                      prop_id: selectedCompareIds(),
+                      check_in: currentFilters().checkIn || null,
+                      check_out: currentFilters().checkOut || null,
+                      adults: currentFilters().adults !== '1' ? currentFilters().adults : null,
+                      children: currentFilters().children !== '0' ? currentFilters().children : null
+                    }">
                     Comparar {{ selectedCompareIds().length }} hoteles
                   </a>
                 }

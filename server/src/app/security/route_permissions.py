@@ -33,6 +33,10 @@ ROUTE_RULES = [
     AccessRule("/api/housekeeping",
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
     ),
+    AccessRule("/api/tracking",
+        roles=("super_admin", "admin_sistema", "cliente", "hotel_partner", "gerente_hotel",
+               "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
+    ),
     # Heartbeat — must bypass permission checks so the frontend can keep
     # the inactivity timeout alive even when the user lacks crud.write.
     AccessRule("/api/auth/heartbeat",

@@ -89,7 +89,21 @@ export class HotelComparePageComponent implements OnDestroy {
 
   readonly addMoreUrl = computed(() => {
     const existing = this.propIds();
-    return `/search${existing.length ? `?compare_ids=${existing.join(',')}` : ''}`;
+    const params = new URLSearchParams();
+    if (existing.length) {
+      params.set('compare_ids', existing.join(','));
+    }
+    const snapshot = this.activatedRoute.snapshot.queryParamMap;
+    for (const key of ['check_in', 'check_out']) {
+      const val = snapshot.get(key);
+      if (val) params.set(key, val);
+    }
+    for (const key of ['adults', 'children']) {
+      const val = snapshot.get(key);
+      if (val && val !== (key === 'adults' ? '1' : '0')) params.set(key, val);
+    }
+    const qs = params.toString();
+    return `/search${qs ? `?${qs}` : ''}`;
   });
 
   // ── Carousel ──

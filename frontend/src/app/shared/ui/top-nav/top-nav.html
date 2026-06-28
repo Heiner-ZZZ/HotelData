@@ -50,7 +50,7 @@
   </nav>
 
   <div class="nav-actions">
-    @if (authState().authenticated) {
+    @if (authState().authenticated && canViewNotifications()) {
       <div class="menu-shell notif-wrapper">
         <button type="button" class="icon-btn notif-bell" [class.has-unread]="unreadCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">
           <span class="material-symbols-outlined">notifications</span>

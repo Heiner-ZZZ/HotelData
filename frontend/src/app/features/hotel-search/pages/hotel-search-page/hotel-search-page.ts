@@ -91,10 +91,12 @@ export class HotelSearchPageComponent {
       .subscribe({
         next: (pageData) => {
           // Preserve selection state when items refresh
+          const currentFilters = this.pageData();
+          const fromCompareIds = new Set(currentFilters?.compareIds ?? []);
           const selected = new Set(this.selectedCompareIds());
           const items = pageData.items.map((h) => ({
             ...h,
-            selected: selected.has(h.id),
+            selected: selected.has(h.id) || fromCompareIds.has(h.id),
           }));
           this.items.set(items);
           this.total.set(pageData.total);

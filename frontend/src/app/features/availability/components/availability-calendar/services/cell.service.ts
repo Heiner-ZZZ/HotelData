@@ -1,8 +1,8 @@
-import { AvailabilityState } from './availability-state';
-import { CalendarService } from './availability-calendar.service';
-import { InventoryService } from './availability-inventory.service';
-import { BlackoutService } from './availability-blackout.service';
-import { ToastService } from '../../../shared/services/toast.service';
+import { AvailabilityState } from '../../services/availability-state';
+import { CalendarService } from './calendar.service';
+import { InventoryService } from '../../data-tables/services/inventory.service';
+import { BlackoutService } from '../../data-tables/services/blackout.service';
+import { ToastService } from '../../../../../shared/services/toast.service';
 
 export class CellService {
   constructor(

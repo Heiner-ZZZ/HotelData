@@ -9,6 +9,8 @@
 
 # 1. DIAGRAMA DE CASOS DE USO
 
+El diagrama de casos de uso describe la interacción entre los 8 actores del sistema y las 42 funcionalidades principales de HotelData Hub. Los casos de uso se organizan en tres niveles: operativos (CU-O01 a CU-O42), tácticos (CU-T14, CU-T15) y estratégico (CU-E09), cubriendo desde la autenticación JWT hasta la eficiencia operativa del hotel.
+
 ## 1.1 Vista General — 40 Casos de Uso Operativos + Tácticos + Estratégico
 
 ```mermaid
@@ -80,6 +82,8 @@ graph TB
 ```
 
 ## 1.2 Diagrama por Paquete
+
+Esta vista organiza los mismos casos de uso en 11 paquetes funcionales, agrupando las capacidades del sistema por módulo de negocio: autenticación, búsqueda, reservas, partner central, revenue, reseñas, facturación, reportes, mapa, housekeeping y estratégico.
 
 ```mermaid
 graph LR
@@ -165,6 +169,8 @@ graph LR
 ---
 
 # 2. DIAGRAMA DE CLASES
+
+El diagrama de clases modela el dominio central de HotelData con 32 clases que cubren los objetos del negocio: usuarios, hoteles, reservas, tarifas, reseñas, facturación, housekeeping y analítica. Se incluyen atributos clave, métodos principales y las relaciones de asociación, composición y herencia entre entidades.
 
 ## 2.1 Modelo de Dominio — Core del Sistema
 
@@ -569,6 +575,8 @@ classDiagram
 
 # 3. DIAGRAMA DE COMPONENTES
 
+La arquitectura de HotelData sigue un modelo por capas: presentación (Angular 19 con 11 módulos funcionales), servicios (FastAPI con 10 servicios de negocio más seguridad), datos (MongoDB + Redis) e infraestructura (Docker + Airflow). Los dos diagramas siguientes muestran la organización de paquetes y las dependencias entre módulos.
+
 ## 3.1 Arquitectura de Paquetes del Sistema
 
 ```mermaid
@@ -660,6 +668,8 @@ graph TB
 
 ## 3.2 Diagrama de Dependencias entre Módulos
 
+Este diagrama complementa al anterior mostrando las relaciones de dependencia directa entre los módulos del backend. Los módulos base (`auth/`, `security/`) son el fundamento del que dependen todos los módulos de negocio y transversales.
+
 ```mermaid
 graph LR
   subgraph "Módulos Base"
@@ -711,6 +721,8 @@ graph LR
 ---
 
 # 4. DIAGRAMA DE DESPLIEGUE
+
+El sistema se despliega sobre Docker con 6 servicios orquestados: MongoDB 7.0, Redis 7.4, PocketBase, FastAPI (Uvicorn), Airflow y un frontend Angular servido por Nginx. Todos los servicios se comunican a través de la red `hoteldata-network` y persisten datos mediante volúmenes Docker.
 
 ## 4.1 Infraestructura Dockerizada
 
@@ -772,6 +784,8 @@ graph TB
 
 ## 4.2 Diagrama de Red y Puertos
 
+Se exponen 6 puertos al host: 4200 (frontend Angular/Nginx), 8000 (API FastAPI), 27017 (MongoDB), 6379 (Redis), 8090 (PocketBase) y 8080 (Airflow). Nginx actúa como proxy inverso redirigiendo `/api/`, `/auth/` y `/static/` hacia FastAPI.
+
 ```mermaid
 graph LR
   subgraph "Puertos Expuestos al Host"
@@ -796,6 +810,8 @@ graph LR
 ---
 
 # 5. DIAGRAMA DE BASE DE DATOS
+
+HotelData utiliza MongoDB como base de datos principal con un modelo documental que combina colecciones operacionales y analíticas en esquema Fact-Dim. El diagrama entidad-relación siguiente muestra las 25 colecciones principales y sus relaciones de uno a muchos.
 
 ## 5.1 Modelo Relacional de Colecciones MongoDB
 
@@ -846,6 +862,8 @@ erDiagram
 ```
 
 ## 5.2 Colecciones por Módulo
+
+Las 59 colecciones de MongoDB se distribuyen en 11 módulos funcionales, desde autenticación (6 colecciones) hasta housekeeping (6 colecciones). El módulo Partner es el más extenso con 13 colecciones, reflejando la complejidad de la gestión hotelera.
 
 ```mermaid
 graph TB
@@ -946,6 +964,8 @@ graph TB
 
 # 6. DIAGRAMA DE FLUJO DE DATOS
 
+Los diagramas de flujo de datos documentan dos procesos críticos del sistema: el ciclo de vida de una reserva (desde solicitud hasta facturación) y el pipeline ETL que transforma datos CSV en el modelo analítico Fact-Dim.
+
 ## 6.1 Ciclo de Vida de una Reserva
 
 ```mermaid
@@ -972,6 +992,8 @@ stateDiagram-v2
 
 ## 6.2 Flujo de Datos del Pipeline ETL
 
+El pipeline ETL orquestado por Airflow procesa archivos CSV con 600 000 registros hoteleros. Cada registro pasa por validación de calidad: los aprobados se cargan en MongoDB y alimentan las tablas de hechos y dimensiones, mientras que los rechazados se almacenan con trazabilidad para su revisión.
+
 ```mermaid
 flowchart LR
   A[CSV Hoteleros<br/>data/raw/] --> B[Airflow DAG<br/>etl_pipeline.py]
@@ -989,6 +1011,8 @@ flowchart LR
 ---
 
 # 7. DIAGRAMA DE NAVEGACIÓN (FRONTEND ANGULAR)
+
+La navegación del frontend Angular está segmentada por rol de usuario. Cada uno de los 7 perfiles (cliente, gerente, partner, revenue manager, marketing, admin, housekeeping y data operator) tiene acceso a rutas específicas que reflejan sus responsabilidades dentro del sistema.
 
 ## 7.1 Mapa de Navegación por Rol
 
@@ -1091,6 +1115,8 @@ graph TB
 ---
 
 # 8. DIAGRAMA DE PROCESOS DE NEGOCIO
+
+Este diagrama integra los procesos de los 5 departamentos principales en un flujo único: desde la búsqueda del cliente hasta la facturación y limpieza post-estancia. Se muestran las interacciones entre cliente, gerente de hotel, revenue manager, marketing y housekeeping.
 
 ## 8.1 Proceso de Reserva Completo (BPMN simplificado)
 

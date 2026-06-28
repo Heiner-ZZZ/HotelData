@@ -1,8 +1,8 @@
 import { computed } from '@angular/core';
 
-import type { AvailabilityInventoryItem, CalendarMonth } from '../models/availability.model';
-import { buildCalendarMonth, buildCalendarWeek, mondayOfWeek } from '../availability.helpers';
-import { AvailabilityState } from './availability-state';
+import type { AvailabilityInventoryItem, CalendarMonth } from '../../../models/availability.model';
+import { buildCalendarMonth, buildCalendarWeek, mondayOfWeek } from '../../../availability.helpers';
+import { AvailabilityState } from '../../services/availability-state';
 
 export class CalendarService {
   constructor(private readonly state: AvailabilityState) {
