@@ -26,24 +26,19 @@ def _operational_flags(prop_id: int) -> dict[str, Any]:
     rooms_ready = room_types_count > 0
     rates_ready = rate_plans_count > 0
     inventory_ready = inventory_count > 0
-    content_ready = content_count > 0 or image_count > 0
-    images_ready = image_count > 0
     promotions_ready = promotions_count > 0 or coupon_count > 0
 
     score = 0
-    score += 20 if policies_ready else 0
-    score += 20 if rooms_ready else 0
-    score += 20 if rates_ready else 0
-    score += 20 if inventory_ready else 0
-    score += 20 if content_ready else 0
+    score += 25 if policies_ready else 0
+    score += 25 if rooms_ready else 0
+    score += 25 if rates_ready else 0
+    score += 25 if inventory_ready else 0
 
     return {
         "policies_configured": policies_ready,
         "rooms_configured": rooms_ready,
         "rates_configured": rates_ready,
         "inventory_configured": inventory_ready,
-        "content_configured": content_ready,
-        "images_configured": images_ready,
         "promotions_active": promotions_ready,
         "operational_score": score,
         "counts": {
@@ -52,8 +47,6 @@ def _operational_flags(prop_id: int) -> dict[str, Any]:
             "hotel_rooms": hotel_rooms_count,
             "rate_plans": rate_plans_count,
             "room_inventory_calendar": inventory_count,
-            "hotel_content_pages": content_count,
-            "hotel_images": image_count,
             "promotion_campaigns": promotions_count,
             "coupon_codes": coupon_count,
         },
