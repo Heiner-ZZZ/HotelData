@@ -110,6 +110,20 @@ def property_profile_update_api(
     return saved
 
 
+@api_router.get("/properties/{prop_id}/operational-calendar")
+def property_operational_calendar_api(
+    prop_id: int,
+    year: int = Query(default=None),
+    month: int = Query(default=None),
+    current_user: dict = Depends(require_login),
+):
+    from src.app.modules.partner.services.properties.operational_calendar import operational_calendar as _oc
+    from datetime import date as dt_date
+    y = year or dt_date.today().year
+    m = month or dt_date.today().month
+    return _oc(prop_id, y, m)
+
+
 @api_router.get("/properties/{prop_id}")
 def property_detail_api(prop_id: int, current_user: dict = Depends(require_login)):
     detail = partner_hotel_detail(prop_id, user=current_user)
