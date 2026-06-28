@@ -29,6 +29,7 @@ export class AvailabilityCalendarComponent {
   readonly layoutMode = input<'scroll' | 'wrap'>('scroll');
   /** Map room type ID → sorted room numbers for display in row headers. */
   readonly roomNumbersByType = input<Map<string, string[]>>(new Map());
+  readonly avgOccupancy = input(0);
 
   readonly prevPeriod = output<void>();
   readonly nextPeriod = output<void>();
@@ -81,14 +82,4 @@ export class AvailabilityCalendarComponent {
     return chunks;
   });
 
-  readonly avgOccupancy = computed(() => {
-    const cal = this.calendar();
-    if (!cal) return 0;
-    const daysWithData = cal.days.filter(d => d.roomTypes.length > 0).length;
-    if (daysWithData === 0) return 0;
-    return cal.days.reduce((sum, d) => {
-      const pcts = d.roomTypes.map(r => r.occupancyPct);
-      return sum + (pcts.length > 0 ? pcts.reduce((a, b) => a + b, 0) / pcts.length : 0);
-    }, 0) / daysWithData;
-  });
 }
