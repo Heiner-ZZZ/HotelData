@@ -1,172 +1,233 @@
-<div class="system-users-page">
+<div class="users-page">
   <app-page-header
-    eyebrow="Administración"
+    eyebrow="Administración del Sistema"
     title="Usuarios"
-    description="Consulta centralizada de usuarios, correos, roles y estado de activación para el flujo administrativo."
+    description="Gestión centralizada de cuentas de usuario, roles, estado de activación y permisos del sistema."
   />
-
-  @if (message()) {
-    <section class="surface-card message success">{{ message() }}</section>
-  }
-
-  @if (errorMessage()) {
-    <section class="surface-card message error">{{ errorMessage() }}</section>
-  }
 
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando usuarios..." />
+      <div class="loading-wrapper">
+        <app-loading-state label="Cargando usuarios..." />
+      </div>
     }
     @case ('error') {
-      <app-error-state
-        title="No fue posible cargar los usuarios"
-        [description]="loadErrorMessage() || 'Revisa la API de administración o vuelve a intentar en unos segundos.'"
-      />
+      <div class="error-wrapper">
+        <app-error-state
+          title="No fue posible cargar los usuarios"
+          [description]="loadErrorMessage() || 'Revisa la conexión con la API de administración o vuelve a intentar en unos segundos.'"
+        />
+      </div>
     }
     @case ('empty') {
-      <app-empty-state
-        title="Sin usuarios registrados"
-        description="Cuando existan cuentas del sistema aparecerán aquí con su rol y estado activo."
-      />
+      <div class="empty-wrapper">
+        <app-empty-state
+          title="Sin usuarios registrados"
+          description="Cuando existan cuentas del sistema aparecerán aquí con su información de rol y estado."
+        />
+      </div>
     }
     @default {
       @if (viewModel(); as vm) {
-        <section class="hero-grid">
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">group</span>
-            <span class="label">Usuarios</span>
-            <strong>{{ vm.totalUsers }}</strong>
-            <p>Cuentas visibles en esta vista administrativa.</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">vpn_key</span>
-            <span class="label">Roles</span>
-            <strong>{{ vm.totalRoles }}</strong>
-            <p>Roles base disponibles en el modelo de seguridad.</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">lock</span>
-            <span class="label">Sesión actual</span>
-            <strong>{{ vm.currentUsername }}</strong>
-            <p>Tu cuenta queda protegida contra cambios desde esta pantalla.</p>
-          </article>
-        </section>
-
-        <section class="surface-card accordion-section">
-          <div class="accordion-header" (click)="toggleSection('users')">
-            <div>
-              <h2>Usuarios registrados</h2>
-              <p>{{ filterableItems().length }} de {{ vm.totalUsers }} usuarios y {{ vm.totalRoles }} roles disponibles.</p>
+        <!-- ─── Stats Cards ─── -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--users">
+              <span class="material-symbols-outlined">group</span>
             </div>
-            <div class="accordion-actions">
-              @if (activeFilterCount) {
-                <button class="clear-filters-btn" (click)="clearFilters(); $event.stopPropagation()">
-                  <span class="material-symbols-outlined">filter_alt_off</span>
-                  Limpiar filtros ({{ activeFilterCount }})
-                </button>
-              }
-              <span class="accordion-chevron">{{ openSection() === 'users' ? '▼' : '▶' }}</span>
+            <div class="stat-body">
+              <span class="stat-value">{{ vm.totalUsers }}</span>
+              <span class="stat-label">Usuarios registrados</span>
             </div>
           </div>
-          @if (openSection() === 'users') {
-            <div class="accordion-body">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      @for (col of columnFilters(); track col.column) {
-                        <th class="filterable-th" (click)="toggleFilter(col.column)">
-                          <div class="th-content">
-                            <span>{{ col.label }}</span>
-                            <span class="filter-icon" [class.active]="isFiltered(col.column)">
-                              <span class="material-symbols-outlined">unfold_more</span>
-                            </span>
-                          </div>
-                          @if (openFilter() === col.column) {
-                            <div class="filter-dropdown" (click)="$event.stopPropagation()">
-                              <button
-                                class="filter-option"
-                                [class.selected]="col.selected === ''"
-                                (click)="setFilter(col.column, '')"
-                              >Todos</button>
-                              @for (opt of col.options; track opt) {
-                                <button
-                                  class="filter-option"
-                                  [class.selected]="col.selected === opt"
-                                  (click)="setFilter(col.column, opt)"
-                                >{{ opt }}</button>
-                              }
-                            </div>
-                          }
-                        </th>
-                      }
-                      <th>Creado</th>
-                      <th>Estado</th>
-                      <th>Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (user of filterableItems(); track user.userId) {
-                      <tr [class.row-deleted]="!user.isActive">
-                        <td>
-                          <strong>{{ user.username }}</strong>
-                        </td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.primaryRole }}</td>
-                        <td>{{ user.roleNamesLabel }}</td>
-                        <td>
-                          <app-status-badge
-                            [tone]="user.isActive ? 'success' : 'warning'"
-                            [label]="user.isActive ? 'Activo' : 'Desactivado'"
-                          />
-                        </td>
-                        <td>{{ user.createdAtLabel }}</td>
-                        <td>
-                          @if (!user.isActive) {
-                            <span class="action-hint">Inactivo</span>
-                          } @else if (confirmDeleteId() === user.userId) {
-                            <div class="confirm-delete">
-                              <span>¿Eliminar?</span>
-                              <button class="confirm-yes" (click)="confirmDelete(user.userId)" [disabled]="deletingId() === user.userId">
-                                {{ deletingId() === user.userId ? 'Eliminando...' : 'Sí' }}
-                              </button>
-                              <button class="confirm-no" (click)="cancelDelete()">No</button>
-                            </div>
-                          } @else if (user.canToggle) {
-                            <div class="action-group">
-                              <button
-                                type="button"
-                                class="row-action"
-                                [disabled]="pendingUserId() === user.userId"
-                                (click)="toggleUser(user.userId)"
-                              >
-                                {{ pendingUserId() === user.userId ? 'Actualizando...' : user.toggleLabel }}
-                              </button>
-                              <button
-                                type="button"
-                                class="row-action row-action--danger"
-                                [disabled]="deletingId() === user.userId"
-                                (click)="requestDelete(user.userId)"
-                              >
-                                <span class="material-symbols-outlined">delete</span>
-                              </button>
-                            </div>
-                          } @else {
-                            <span class="action-hint">{{ user.actionHint }}</span>
-                          }
-                        </td>
-                      </tr>
-                    } @empty {
-                      <tr>
-                        <td colspan="8" class="empty-filter">Ningún usuario coincide con los filtros aplicados.</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--roles">
+              <span class="material-symbols-outlined">vpn_key</span>
+            </div>
+            <div class="stat-body">
+              <span class="stat-value">{{ vm.totalRoles }}</span>
+              <span class="stat-label">Roles del sistema</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--session">
+              <span class="material-symbols-outlined">shield_person</span>
+            </div>
+            <div class="stat-body">
+              <span class="stat-value stat-value--sm">{{ vm.currentUsername }}</span>
+              <span class="stat-label">Sesión actual</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Tabla de Usuarios ─── -->
+        <div class="users-table-card">
+          <!-- Toolbar: search + filters -->
+          <div class="table-toolbar">
+            <div class="search-wrap">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Buscar por usuario o correo…"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="searchQuery.set($event)"
+              />
+              @if (searchQuery()) {
+                <button class="search-clear" (click)="searchQuery.set('')">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+            </div>
+            @if (activeFilterCount) {
+              <button class="clear-filters-btn" (click)="clearFilters()">
+                <span class="material-symbols-outlined">filter_alt_off</span>
+                Limpiar filtros ({{ activeFilterCount }})
+              </button>
+            }
+          </div>
+
+          <!-- Active filter chips -->
+          @if (hasActiveFilters()) {
+            <div class="active-filters">
+              @for (col of columnFilters(); track col.column) {
+                @if (col.selected) {
+                  <span class="filter-chip" (click)="setFilter(col.column, '')">
+                    {{ col.label }}: <strong>{{ col.selected }}</strong>
+                    <span class="material-symbols-outlined chip-close">close</span>
+                  </span>
+                }
+              }
             </div>
           }
-        </section>
+
+          <!-- Table -->
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  @for (col of columnFilters(); track col.column) {
+                    <th
+                      class="filterable-th"
+                      [class.filter-active]="isFiltered(col.column)"
+                      (click)="toggleFilter(col.column)"
+                    >
+                      <div class="th-inner">
+                        <span>{{ col.label }}</span>
+                        <span class="th-arrow" [class.active]="isFiltered(col.column)">
+                          <span class="material-symbols-outlined">unfold_more</span>
+                        </span>
+                      </div>
+
+                      @if (openFilter() === col.column) {
+                        <div class="filter-dropdown" (click)="$event.stopPropagation()">
+                          <button
+                            class="filter-opt"
+                            [class.selected]="!col.selected"
+                            (click)="setFilter(col.column, '')"
+                          >Todos</button>
+                          @for (opt of col.options; track opt) {
+                            <button
+                              class="filter-opt"
+                              [class.selected]="col.selected === opt"
+                              (click)="setFilter(col.column, opt)"
+                            >{{ opt }}</button>
+                          }
+                        </div>
+                      }
+                    </th>
+                  }
+                  <th>Registro</th>
+                  <th class="th-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of filteredItems(); track user.userId) {
+                  <tr [class.row-inactive]="!user.isActive">
+                    <td>
+                      <div class="cell-user">
+                        <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
+                        <div>
+                          <div class="user-name">{{ user.username }}</div>
+                          <div class="user-display">{{ user.displayName }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="cell-email">{{ user.email }}</td>
+                    <td>
+                      <span class="role-badge">{{ user.primaryRole }}</span>
+                    </td>
+                    <td class="cell-roles">{{ user.roleNamesLabel }}</td>
+                    <td>
+                      <app-status-badge
+                        [tone]="user.isActive ? 'success' : 'neutral'"
+                        [label]="user.isActive ? 'Activo' : 'Inactivo'"
+                      />
+                    </td>
+                    <td class="cell-date">{{ user.createdAtLabel }}</td>
+                    <td class="cell-actions">
+                      @if (!user.isActive) {
+                        <span class="action-hint">Inactivo</span>
+                      } @else if (confirmDeleteId() === user.userId) {
+                        <div class="confirm-delete">
+                          <span>¿Eliminar?</span>
+                          <button
+                            class="btn btn-sm btn-danger"
+                            (click)="confirmDelete(user.userId)"
+                            [disabled]="deletingId() === user.userId"
+                          >{{ deletingId() === user.userId ? '…' : 'Sí' }}</button>
+                          <button class="btn btn-sm btn-outline" (click)="cancelDelete()">No</button>
+                        </div>
+                      } @else if (user.canToggle) {
+                        <div class="action-group">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline"
+                            [disabled]="pendingUserId() === user.userId"
+                            (click)="toggleUser(user.userId)"
+                          >
+                            @if (pendingUserId() === user.userId) {
+                              <span class="material-symbols-outlined spinning">refresh</span>
+                            }
+                            {{ pendingUserId() === user.userId ? '…' : user.toggleLabel }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-icon btn-danger-soft"
+                            [disabled]="deletingId() === user.userId"
+                            (click)="requestDelete(user.userId)"
+                            title="Eliminar usuario"
+                          >
+                            <span class="material-symbols-outlined">delete</span>
+                          </button>
+                        </div>
+                      } @else {
+                        <span class="action-hint">{{ user.actionHint }}</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="empty-filter-row">
+                      <div class="empty-filter-msg">
+                        <span class="material-symbols-outlined">search_off</span>
+                        <span>Ningún usuario coincide con los filtros aplicados.</span>
+                        <button class="btn btn-sm btn-outline" (click)="clearFilters()">Limpiar filtros</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Footer -->
+          <div class="table-footer">
+            <span class="footer-count">
+              {{ filteredItems().length }} de {{ vm.totalUsers }} usuarios
+            </span>
+          </div>
+        </div>
       }
     }
   }

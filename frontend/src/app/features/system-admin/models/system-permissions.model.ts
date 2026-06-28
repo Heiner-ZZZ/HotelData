@@ -7,6 +7,7 @@ export interface SystemRolePermissionItem {
   roleName: string;
   description: string;
   permissionCount: number;
+  permissionCodes: string[];
   permissionCodesLabel: string;
   accessButtons: Array<{ label: string; href: string; icon: string }>;
 }

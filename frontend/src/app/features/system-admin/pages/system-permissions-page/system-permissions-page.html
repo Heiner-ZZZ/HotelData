@@ -1,76 +1,106 @@
-<div class="system-permissions-page">
+<div class="permissions-page">
   <app-page-header
-    eyebrow="Administración"
-    title="Permisos"
-    description="Gestión global de roles, permisos y accesos visibles dentro del sistema."
+    eyebrow="Administración del Sistema"
+    title="Roles y Permisos"
+    description="Matriz visual de permisos, roles del sistema y catálogo completo de autorizaciones."
   />
 
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando permisos..." />
+      <div class="loading-wrapper">
+        <app-loading-state label="Cargando permisos..." />
+      </div>
     }
     @case ('error') {
-      <app-error-state
-        title="No fue posible cargar permisos"
-        [description]="loadErrorMessage() || 'Revisa la API de administración o vuelve a intentar en unos segundos.'"
-      />
+      <div class="error-wrapper">
+        <app-error-state
+          title="No fue posible cargar los permisos"
+          [description]="loadErrorMessage() || 'Revisa la conexión con la API de administración o vuelve a intentar.'"
+        />
+      </div>
     }
     @case ('empty') {
-      <app-empty-state
-        title="Sin permisos configurados"
-        description="Cuando existan permisos y roles cargados aparecerán aquí para administración global."
-      />
+      <div class="empty-wrapper">
+        <app-empty-state
+          title="Sin permisos configurados"
+          description="Cuando existan roles y permisos cargados aparecerán aquí para administración global."
+        />
+      </div>
     }
     @default {
       @if (viewModel(); as vm) {
-        <section class="hero-grid">
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">vpn_key</span>
-            <span class="label">Roles</span>
-            <strong>{{ vm.totals.roles }}</strong>
-            <p>Roles base del modelo de seguridad.</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">security</span>
-            <span class="label">Permisos</span>
-            <strong>{{ vm.totals.permissions }}</strong>
-            <p>Permisos disponibles para proteger rutas y acciones.</p>
-          </article>
-          <article class="surface-card hero-card">
-            <span class="hero-icon material-symbols-outlined">person</span>
-            <span class="label">Usuarios</span>
-            <strong>{{ vm.totals.users }}</strong>
-            <p>Cuentas impactadas por el modelo actual.</p>
-          </article>
-        </section>
+        <!-- ─── Stats Cards ─── -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--roles">
+              <span class="material-symbols-outlined">vpn_key</span>
+            </div>
+            <div class="stat-body">
+              <span class="stat-value">{{ vm.totals.roles }}</span>
+              <span class="stat-label">Roles del sistema</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--perms">
+              <span class="material-symbols-outlined">security</span>
+            </div>
+            <div class="stat-body">
+              <span class="stat-value">{{ vm.totals.permissions }}</span>
+              <span class="stat-label">Permisos registrados</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--users">
+              <span class="material-symbols-outlined">group</span>
+            </div>
+            <div class="stat-body">
+              <span class="stat-value">{{ vm.totals.users }}</span>
+              <span class="stat-label">Usuarios impactados</span>
+            </div>
+          </div>
+        </div>
 
+        <!-- ─── Role Editor (overlay when editing) ─── -->
         @if (editRoleName(); as editing) {
           @if (roleDetail(); as detail) {
-            <section class="surface-card role-editor">
+            <section class="role-editor-card">
+              <!-- Editor Header -->
               <div class="editor-head">
-                <div>
-                  <h2>Editando: {{ detail.role.roleName }}</h2>
-                  <p>Selecciona los permisos y modifica la descripción del rol.</p>
+                <div class="editor-title">
+                  <span class="editor-badge">{{ detail.role.roleName }}</span>
+                  <span class="editor-subtitle">{{ detail.role.permissionCodes.length }} permisos asignados</span>
                 </div>
-                <button class="btn-ghost" (click)="closeRoleEditor()">Cerrar editor</button>
+                <button class="btn btn-sm btn-ghost" (click)="closeRoleEditor()">
+                  <span class="material-symbols-outlined">close</span>
+                  Cerrar
+                </button>
               </div>
 
-              @if (saveMessage()) {
-                <div class="save-feedback" [class.success]="saveMessage().includes('actualizado')">
-                  {{ saveMessage() }}
-                </div>
-              }
-
               <div class="editor-body">
-                <div class="editor-form">
-                  <label class="field">
-                    <span>Descripción</span>
-                    <textarea [value]="detail.role.description" (input)="detail.role.description = $any($event.target).value" rows="2"></textarea>
-                  </label>
+                <!-- Left: Permission checkboxes -->
+                <div class="editor-perms">
+                  <div class="field">
+                    <label class="field-label">Descripción del rol</label>
+                    <textarea
+                      class="field-input"
+                      [value]="detail.role.description"
+                      (input)="detail.role.description = $any($event.target).value"
+                      rows="2"
+                      placeholder="Descripción del rol..."
+                    ></textarea>
+                  </div>
+
+                  <div class="editor-perms-header">
+                    <span class="field-label">Permisos disponibles</span>
+                    <span class="perm-count">{{ detail.role.permissionCodes.length }} / {{ detail.permissions.length }} seleccionados</span>
+                  </div>
 
                   <div class="permissions-grid">
                     @for (perm of detail.permissions; track perm.permissionCode) {
-                      <label class="perm-chip" [class.selected]="detail.role.permissionCodes.includes(perm.permissionCode)">
+                      <label
+                        class="perm-item"
+                        [class.selected]="detail.role.permissionCodes.includes(perm.permissionCode)"
+                      >
                         <input
                           type="checkbox"
                           [checked]="detail.role.permissionCodes.includes(perm.permissionCode)"
@@ -83,21 +113,31 @@
                   </div>
 
                   <div class="editor-actions">
-                    <button class="btn-primary" [disabled]="saving()" (click)="saveRole()">
-                      @if (saving()) { Guardando... } @else { Guardar cambios }
+                    <button class="btn btn-primary" [disabled]="saving()" (click)="saveRole()">
+                      @if (saving()) {
+                        <span class="material-symbols-outlined spinning">refresh</span>
+                        Guardando…
+                      } @else {
+                        <span class="material-symbols-outlined">save</span>
+                        Guardar cambios
+                      }
                     </button>
                   </div>
                 </div>
 
+                <!-- Right: Navigation preview -->
                 <div class="editor-preview">
-                  <h3>Accesos visibles</h3>
-                  <p>Vista previa del menú que verá este rol según los permisos seleccionados.</p>
+                  <div class="preview-header">
+                    <span class="material-symbols-outlined preview-header-icon">visibility</span>
+                    <span>Vista previa de navegación</span>
+                  </div>
+                  <p class="preview-desc">Menú que verá este rol según los permisos seleccionados.</p>
                   <div class="nav-preview-list">
                     @for (item of detail.role.navigationCatalog; track item.href) {
-                      <div class="nav-preview-item" [class.visible]="item.visible" [class.hidden]="!item.visible">
-                        <span class="nav-preview-icon material-symbols-outlined">{{ item.icon }}</span>
-                        <span class="nav-preview-label">{{ item.label }}</span>
-                        <span class="nav-preview-badge" [class.visible-badge]="item.visible" [class.hidden-badge]="!item.visible">
+                      <div class="nav-item" [class.visible]="item.visible" [class.hidden]="!item.visible">
+                        <span class="nav-icon material-symbols-outlined">{{ item.icon }}</span>
+                        <span class="nav-label">{{ item.label }}</span>
+                        <span class="nav-badge" [class.visible-badge]="item.visible" [class.hidden-badge]="!item.visible">
                           {{ item.visible ? 'Visible' : 'Oculto' }}
                         </span>
                       </div>
@@ -111,71 +151,80 @@
           }
         }
 
+        <!-- ─── Content Tabs ─── -->
         @if (!editRoleName()) {
-          <section class="surface-card accordion-section">
-            <div class="accordion-header" (click)="toggleSection('roles')">
-              <div>
-                <h2>Roles y accesos visibles</h2>
-                <p>{{ vm.roles.length }} rol(es) visibles con sus permisos y botones asociados.</p>
-              </div>
-              <span class="accordion-chevron">{{ openSection() === 'roles' ? '▼' : '▶' }}</span>
+          <div class="content-card">
+            <div class="tab-bar">
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'matrix'"
+                (click)="setTab('matrix')"
+              >
+                <span class="material-symbols-outlined">grid_view</span>
+                Matriz de permisos
+              </button>
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'roles'"
+                (click)="setTab('roles')"
+              >
+                <span class="material-symbols-outlined">vpn_key</span>
+                Roles
+                <span class="tab-count">{{ vm.roles.length }}</span>
+              </button>
+              <button
+                class="tab-btn"
+                [class.active]="activeTab() === 'catalog'"
+                (click)="setTab('catalog')"
+              >
+                <span class="material-symbols-outlined">list_alt</span>
+                Catálogo
+                <span class="tab-count">{{ vm.permissions.length }}</span>
+              </button>
             </div>
-            @if (openSection() === 'roles') {
-              <div class="accordion-body">
-                <div class="roles-grid">
-                  @for (role of vm.roles; track role.roleName) {
-                      <article class="role-card" [class.highlight]="role.roleName === 'admin_sistema' || role.roleName === 'auditor_datos'">
-                      <div class="role-card-head">
-                        <h3>{{ role.roleName }}</h3>
-                        <span>{{ role.permissionCount }} permisos</span>
-                      </div>
-                      <p>{{ role.description }}</p>
-                      <div>
-                        <dt>Accesos visibles</dt>
-                        <dd class="access-chips">
-                          @for (btn of role.accessButtons; track btn.href) {
-                            <span class="access-chip">
-                              <span class="material-symbols-outlined access-chip-icon">{{ btn.icon }}</span>
-                              {{ btn.label }}
-                            </span>
-                          }
-                        </dd>
-                      </div>
-                      <button class="btn-edit-role" (click)="openRoleEditor(role.roleName)">
-                        <span class="material-symbols-outlined">edit</span> Editar permisos
-                      </button>
-                    </article>
-                  }
-                </div>
-              </div>
-            }
-          </section>
-        }
 
-        @if (!editRoleName()) {
-          <section class="surface-card accordion-section">
-            <div class="accordion-header" (click)="toggleSection('catalog')">
-              <div>
-                <h2>Catálogo de permisos</h2>
-                <p>{{ vm.permissions.length }} permiso(s) registrados.</p>
-              </div>
-              <span class="accordion-chevron">{{ openSection() === 'catalog' ? '▼' : '▶' }}</span>
-            </div>
-            @if (openSection() === 'catalog') {
-              <div class="accordion-body">
-                <div class="table-wrap">
-                  <table>
+            <!-- ── Tab: Permission Matrix ── -->
+            @if (activeTab() === 'matrix') {
+              <div class="tab-content">
+                <div class="matrix-intro">
+                  <span class="material-symbols-outlined">info</span>
+                  <span>Vista consolidada de roles y sus permisos asignados. Haz clic en un rol para editarlo.</span>
+                </div>
+                <div class="matrix-wrap">
+                  <table class="matrix-table">
                     <thead>
                       <tr>
-                        <th>Permiso</th>
-                        <th>Descripción</th>
+                        <th class="matrix-role-th">Rol</th>
+                        @for (cat of permissionCategories(); track cat.key) {
+                          <th class="matrix-cat-th" [title]="cat.permissions.map(p => p.permissionCode).join(', ')">
+                            <span>{{ cat.key }}</span>
+                            <span class="cat-count">{{ cat.permissions.length }}</span>
+                          </th>
+                        }
+                        <th class="matrix-total-th">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      @for (permission of vm.permissions; track permission.permissionCode) {
-                        <tr>
-                          <td><strong>{{ permission.permissionCode }}</strong></td>
-                          <td>{{ permission.description }}</td>
+                      @for (role of vm.roles; track role.roleName) {
+                        <tr class="matrix-row" (click)="openRoleEditor(role.roleName)">
+                          <td class="matrix-role-td">
+                            <div class="matrix-role-info">
+                              <span class="matrix-role-name">{{ role.roleName }}</span>
+                              <span class="matrix-role-desc">{{ role.description }}</span>
+                            </div>
+                          </td>
+                          @for (cat of permissionCategories(); track cat.key) {
+                            <td class="matrix-cell">
+                              @if (roleHasCategory(role, cat.key)) {
+                                <span class="matrix-dot matrix-dot--active" title="Tiene permisos en {{ cat.key }}"></span>
+                              } @else {
+                                <span class="matrix-dot matrix-dot--empty"></span>
+                              }
+                            </td>
+                          }
+                          <td class="matrix-total-td">
+                            <span class="total-badge">{{ role.permissionCount }}</span>
+                          </td>
                         </tr>
                       }
                     </tbody>
@@ -183,7 +232,75 @@
                 </div>
               </div>
             }
-          </section>
+
+            <!-- ── Tab: Roles List ── -->
+            @if (activeTab() === 'roles') {
+              <div class="tab-content">
+                <div class="roles-grid">
+                  @for (role of vm.roles; track role.roleName) {
+                    <div class="role-card" [class.highlight]="role.roleName === 'admin_sistema'">
+                      <div class="role-card-head">
+                        <div class="role-card-info">
+                          <h3 class="role-card-name">{{ role.roleName }}</h3>
+                          <span class="role-card-desc">{{ role.description }}</span>
+                        </div>
+                        <span class="role-badge-count">{{ role.permissionCount }} permisos</span>
+                      </div>
+                      <div class="role-card-body">
+                        <span class="role-section-label">Accesos visibles</span>
+                        <div class="access-chips">
+                          @for (btn of role.accessButtons; track btn.href) {
+                            <span class="access-chip">
+                              <span class="material-symbols-outlined access-chip-icon">{{ btn.icon }}</span>
+                              {{ btn.label }}
+                            </span>
+                          }
+                        </div>
+                      </div>
+                      <button class="role-edit-btn" (click)="openRoleEditor(role.roleName); $event.stopPropagation()">
+                        <span class="material-symbols-outlined">edit</span>
+                        Editar permisos
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- ── Tab: Permission Catalog ── -->
+            @if (activeTab() === 'catalog') {
+              <div class="tab-content">
+                <div class="catalog-intro">
+                  <span class="catalog-search-icon material-symbols-outlined">search</span>
+                  <span>{{ vm.permissions.length }} permisos registrados en el sistema</span>
+                </div>
+                <div class="table-wrap">
+                  <table class="catalog-table">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Categoría</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (permission of vm.permissions; track permission.permissionCode) {
+                        <tr>
+                          <td>
+                            <span class="perm-code-badge">{{ permission.permissionCode }}</span>
+                          </td>
+                          <td class="perm-desc-cell">{{ permission.description }}</td>
+                          <td>
+                            <span class="cat-badge">{{ permissionCategory(permission.permissionCode) }}</span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
         }
       }
     }

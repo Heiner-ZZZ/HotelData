@@ -32,6 +32,7 @@ function mapRole(item: SystemPermissionsResponseDto['roles'][number]): SystemRol
     roleName: item.role_name,
     description: item.description,
     permissionCount: item.permission_codes.length,
+    permissionCodes: item.permission_codes,
     permissionCodesLabel: item.permission_codes.length ? item.permission_codes.join(', ') : 'Sin permisos',
     accessButtons: (item.access_buttons || []).map(mapAccessButton)
   };
