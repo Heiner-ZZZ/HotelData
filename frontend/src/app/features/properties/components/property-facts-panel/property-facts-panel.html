@@ -1,10 +1,20 @@
-<article class="surface-card panel-card">
-  <h2>{{ title() }}</h2>
+<article class="surface-card panel-card" [class.panel-card--master]="title() === 'Dato maestro'">
+  <div class="panel-card-head">
+    @if (title() === 'Perfil de propiedad') {
+      <span class="material-symbols-outlined panel-card-icon icon-profile">business</span>
+    } @else {
+      <span class="material-symbols-outlined panel-card-icon icon-master">database</span>
+    }
+    <div>
+      <h2>{{ title() }}</h2>
+      <p>{{ facts().length }} campos</p>
+    </div>
+  </div>
   <div class="fact-grid">
     @for (fact of facts(); track fact.label) {
-      <div class="fact-item">
-        <span>{{ fact.label }}</span>
-        <strong>{{ fact.value }}</strong>
+      <div class="fact-item" [class.fact-item--highlight]="fact.label === 'Operacional' || fact.label === 'Review score'">
+        <span class="fact-label">{{ fact.label }}</span>
+        <strong class="fact-value">{{ fact.value }}</strong>
       </div>
     }
   </div>

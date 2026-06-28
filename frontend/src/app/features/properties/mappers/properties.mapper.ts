@@ -24,8 +24,6 @@ function mapOperationalChecks(operational?: {
   rooms_configured?: boolean;
   rates_configured?: boolean;
   inventory_configured?: boolean;
-  content_configured?: boolean;
-  images_configured?: boolean;
   promotions_active?: boolean;
 }) {
   return [
@@ -33,7 +31,6 @@ function mapOperationalChecks(operational?: {
     { label: 'Habitaciones', ready: operational?.rooms_configured ?? false },
     { label: 'Tarifas', ready: operational?.rates_configured ?? false },
     { label: 'Inventario', ready: operational?.inventory_configured ?? false },
-    { label: 'Contenido/Imágenes', ready: (operational?.content_configured ?? false) || (operational?.images_configured ?? false) },
     { label: 'Promociones', ready: operational?.promotions_active ?? false }
   ];
 }
