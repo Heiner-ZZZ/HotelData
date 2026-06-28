@@ -1,4 +1,7 @@
 .availability-page {
+  /* ─── Color local: override de --accent solo en esta página ─── */
+  --accent: #0F7892;
+
   max-width: 1060px;
   margin: 0 auto;
   display: grid;
@@ -720,7 +723,7 @@ select option {
   padding: 0.55rem 1.25rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
   color: #fff;
   font-size: 0.85rem;
   font-weight: 600;
@@ -729,7 +732,7 @@ select option {
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(20, 99, 255, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent);
     transform: translateY(-1px);
   }
 

@@ -5,19 +5,6 @@
     description="Administra la disponibilidad de habitaciones, actualiza inventario y gestiona bloqueos operativos."
   />
 
-  @if (submitMessage()) {
-    <div class="toast toast-success">
-      <span class="material-symbols-outlined">check_circle</span>
-      {{ submitMessage() }}
-    </div>
-  }
-  @if (errorMessage() && !submitMessage()) {
-    <div class="toast toast-error">
-      <span class="material-symbols-outlined">error</span>
-      {{ errorMessage() }}
-    </div>
-  }
-
   <app-property-selector
     [selectedPropId]="selectedPropId()"
     [selectedLabel]="selectedLabel()"

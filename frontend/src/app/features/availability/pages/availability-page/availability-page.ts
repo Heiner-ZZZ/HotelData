@@ -12,6 +12,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { AvailabilityCalendarComponent } from '../../components/availability-calendar/availability-calendar';
 import { AvailabilityQuickActionsComponent } from '../../components/availability-quick-actions/availability-quick-actions';
 import { AvailabilityDataTablesComponent } from '../../components/availability-data-tables/availability-data-tables';
@@ -173,6 +174,7 @@ export class AvailabilityPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   /** Prop ID from route query params — source of truth for current selection. */
   private readonly routePropId = toSignal(
@@ -191,7 +193,9 @@ export class AvailabilityPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly pageData = signal<AvailabilityViewModel | null>(null);
+  /** @deprecated Use toast service instead - kept for legacy compatibility */
   readonly errorMessage = signal('');
+  /** @deprecated Use toast service instead - kept for legacy compatibility */
   readonly submitMessage = signal('');
 
   /** Current property ID — derived from URL (source of truth). */
@@ -442,6 +446,8 @@ export class AvailabilityPageComponent {
         // Pre-populate: all rooms as available by default
         this.selectedAvailableRooms.set(new Set(res.items.map(r => r.room_number)));
         this.selectedBlockedRooms.set(new Set());
+        // Sync form totals from checkbox state
+        this._syncInventoryFormFromCheckboxes();
       },
       error: () => this.hotelRoomsForType.set([]),
     });
@@ -462,6 +468,8 @@ export class AvailabilityPageComponent {
     }
     this.selectedAvailableRooms.set(available);
     this.selectedBlockedRooms.set(blocked);
+    // Sync form totals whenever checkboxes change
+    this._syncInventoryFormFromCheckboxes();
   }
 
   /** Toggle a room for blackout multi-select. */
@@ -624,7 +632,7 @@ export class AvailabilityPageComponent {
     this._rebuildCalendar();
   }
 
-  /** Handle click on a calendar cell — auto-save toggle in normal mode, multi-select toggle in selection mode. */
+  /** Handle click on a calendar cell — enter inline edit mode so user types value before saving. */
   onCellClick(event: MouseEvent, date: string, roomTypeName: string) {
     if (this.multiSelectMode()) {
       if (event.shiftKey && this._lastCellKey) {
@@ -634,31 +642,8 @@ export class AvailabilityPageComponent {
       }
       this._lastCellKey = `${date}|${roomTypeName}`;
     } else {
-      this._autoSaveToggle(date, roomTypeName);
+      this.startEdit(date, roomTypeName);
     }
-  }
-
-  /** Auto-save toggle: click a cell to toggle between fully available (total) and fully blocked (0). */
-  private _autoSaveToggle(date: string, roomTypeName: string) {
-    const vm = this.pageData();
-    if (!vm) return;
-    const invItem = vm.inventoryItems.find(
-      (i) => i.date === date && i.roomTypeName === roomTypeName
-    );
-    const rt = vm.roomTypes.find((r) => r.name === roomTypeName);
-    if (!rt) return;
-    const total = invItem?.totalRooms ?? 0;
-    const currentAvail = invItem?.availableRooms ?? 0;
-    const newAvail = currentAvail > 0 ? 0 : total;
-    this.savingCell.set(`${date}|${roomTypeName}`);
-    this.inventoryForm.patchValue({
-      roomTypeId: rt.id,
-      date,
-      totalRooms: total,
-      availableRooms: newAvail,
-      blockedRooms: total - newAvail,
-    });
-    this.saveInventory();
   }
 
   /** Toggle multi-select mode on/off, clearing selection/reset state when turning off. */
@@ -766,8 +751,7 @@ export class AvailabilityPageComponent {
             completed++;
             this.pageData.set(data);
             const label = avail === 0 ? 'no disponible' : `${avail} disponibles`;
-            this.submitMessage.set(`${label} (${completed}/${total})`);
-            this.errorMessage.set('');
+            this.toast.success(`${label} (${completed}/${total})`);
             this._rebuildCalendar();
             if (completed >= total) {
               this.selectedCells.set(new Set());
@@ -784,8 +768,7 @@ export class AvailabilityPageComponent {
             }
           },
           error: (err: ApiError) => {
-            this.errorMessage.set(err.message || 'Error al actualizar disponibilidad.');
-            this.submitMessage.set('');
+            this.toast.error(err.message || 'Error al actualizar disponibilidad.');
             this.saving.set(false);
           },
         });
@@ -828,8 +811,7 @@ export class AvailabilityPageComponent {
           next: (data) => {
             completed++;
             this.pageData.set(data);
-            this.submitMessage.set(`Bloqueo registrado (${completed}/${total})`);
-            this.errorMessage.set('');
+            this.toast.success(`Bloqueo registrado (${completed}/${total})`);
             this._rebuildCalendar();
             if (completed >= total) {
               this.selectedCells.set(new Set());
@@ -838,15 +820,14 @@ export class AvailabilityPageComponent {
             }
           },
           error: (err: ApiError) => {
-            this.errorMessage.set(err.message || 'Error al registrar bloqueo.');
-            this.submitMessage.set('');
+            this.toast.error(err.message || 'Error al registrar bloqueo.');
             this.saving.set(false);
           },
         });
     }
   }
 
-  /** Single click on a calendar cell — enter inline edit mode */
+  /** Click on a calendar cell — enter inline edit mode (user types value, then presses Enter to save). */
   startEdit(date: string, roomTypeName: string) {
     // Skip if already editing this cell
     const current = this.editingCell();
@@ -862,13 +843,17 @@ export class AvailabilityPageComponent {
       (i) => i.date === date && i.roomTypeName === roomTypeName
     );
 
+    const rtId = rt?.id ?? roomTypeName;
     this.inventoryForm.patchValue({
-      roomTypeId: rt?.id ?? roomTypeName,
+      roomTypeId: rtId,
       date,
       totalRooms: invItem?.totalRooms ?? 0,
       availableRooms: invItem?.availableRooms ?? 0,
       blockedRooms: invItem?.blockedRooms ?? 0,
     });
+
+    // Load hotel rooms for the selected room type so the form shows room checkboxes
+    this.onInventoryRoomTypeChange();
 
     // Auto-focus the inline input after render
     setTimeout(() => {
@@ -1120,7 +1105,7 @@ export class AvailabilityPageComponent {
     this.startEdit(cal.days[dayIdx].date, roomTypeNames[rtIdx]);
   }
 
-  /** Edit inventory from the data table — pre-fills the inventory form and scrolls to it. */
+  /** Edit inventory from the data table — pre-fills the inventory form, loads rooms, and scrolls to it. */
   onEditInventoryFromTable(item: { date: string; roomTypeName: string; roomTypeId: string; totalRooms: number; availableRooms: number; blockedRooms: number }) {
     const vm = this.pageData();
     const rt = vm?.roomTypes.find((r) => r.name === item.roomTypeName);
@@ -1131,6 +1116,8 @@ export class AvailabilityPageComponent {
       availableRooms: item.availableRooms,
       blockedRooms: item.blockedRooms,
     });
+    // Load hotel rooms so the form shows room checkboxes
+    this.onInventoryRoomTypeChange();
     setTimeout(() => {
       const el = document.getElementById('inventory-form-card');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1156,8 +1143,6 @@ export class AvailabilityPageComponent {
     if (!rt) return;
 
     this.saving.set(true);
-    this.errorMessage.set('');
-    this.submitMessage.set('');
 
     this.api.deleteInventory(propId, rt.id, payload.date).pipe(
       switchMap(() => this.api.getAvailability(propId, 92)),
@@ -1165,13 +1150,12 @@ export class AvailabilityPageComponent {
     ).subscribe({
       next: (data) => {
         this.pageData.set(data);
-        this.submitMessage.set('Registro de inventario eliminado');
+        this.toast.success('Registro de inventario eliminado');
         this._rebuildCalendar();
         this.saving.set(false);
       },
       error: (err: ApiError) => {
-        this.errorMessage.set(err.message || 'Error al eliminar registro de inventario.');
-        this.submitMessage.set('');
+        this.toast.error(err.message || 'Error al eliminar registro de inventario.');
         this.saving.set(false);
       },
     });
@@ -1232,8 +1216,6 @@ export class AvailabilityPageComponent {
     const blackoutId = payload.blackoutId;
 
     this.saving.set(true);
-    this.errorMessage.set('');
-    this.submitMessage.set('');
 
     this.api
       .deleteBlackout(blackoutId)
@@ -1244,13 +1226,12 @@ export class AvailabilityPageComponent {
       .subscribe({
         next: (data) => {
           this.pageData.set(data);
-          this.submitMessage.set('Bloqueo eliminado correctamente');
+          this.toast.success('Bloqueo eliminado correctamente');
           this._rebuildCalendar();
           this.saving.set(false);
         },
         error: (err: ApiError) => {
-          this.errorMessage.set(err.message || 'Error al eliminar bloqueo.');
-          this.submitMessage.set('');
+          this.toast.error(err.message || 'Error al eliminar bloqueo.');
           this.saving.set(false);
         },
       });
@@ -1291,9 +1272,7 @@ export class AvailabilityPageComponent {
       blockedRooms: state.blockedRooms,
     });
     this.savingCell.set(`${state.date}|${state.roomTypeName}`);
-    this.saveInventory();
-
-    this.submitMessage.set('Restaurando inventario anterior…');
+    this.saveInventory();        this.toast.info('Restaurando inventario anterior…');
   }
 
   /** Dismiss the undo bar without restoring. */
@@ -1317,32 +1296,41 @@ export class AvailabilityPageComponent {
     this.highlightedCell.set(null);
   }
 
-  saveInventory(): void {
-    const propId = this.selectedPropId();
-    if (!propId || this.inventoryForm.invalid) {
-      this.inventoryForm.markAllAsTouched();
-      this.savingCell.set(null);
-      return;
-    }
-
+  /** Sync form totals from room checkbox selections (only for form-based saves). */
+  private _syncInventoryFormFromCheckboxes() {
     const totals = this.computedInventoryTotals();
-    // Sync form values from room selections
     this.inventoryForm.patchValue({
       totalRooms: totals.total,
       availableRooms: totals.available,
       blockedRooms: totals.blocked,
     });
+  }
+
+  saveInventory(): void {
+    const propId = this.selectedPropId();
+    if (!propId) {
+      this.savingCell.set(null);
+      return;
+    }
+
+    // Validate form values as-is (already set by _autoSaveToggle, commitEdit, or room checkboxes)
+    if (this.inventoryForm.invalid) {
+      this.inventoryForm.markAllAsTouched();
+      this.savingCell.set(null);
+      return;
+    }
 
     this.saving.set(true);
 
+    const f = this.inventoryForm.controls;
     this.api
       .saveInventory({
         prop_id: propId,
-        room_type_id: this.inventoryForm.controls.roomTypeId.value,
-        date: this.inventoryForm.controls.date.value,
-        total_rooms: totals.total,
-        available_rooms: totals.available,
-        blocked_rooms: totals.blocked,
+        room_type_id: f.roomTypeId.value,
+        date: f.date.value,
+        total_rooms: f.totalRooms.value,
+        available_rooms: f.availableRooms.value,
+        blocked_rooms: f.blockedRooms.value,
       })
       .pipe(
         switchMap(() => this.api.getAvailability(propId, 92)),
@@ -1351,8 +1339,7 @@ export class AvailabilityPageComponent {
       .subscribe({
         next: (data) => {
           this.pageData.set(data);
-          this.submitMessage.set('Inventario actualizado');
-          this.errorMessage.set('');
+          this.toast.success('Inventario actualizado');
           this._rebuildCalendar();
           this.inventoryForm.reset({
             roomTypeId: '',
@@ -1363,6 +1350,10 @@ export class AvailabilityPageComponent {
           });
           this.activeCell.set(null);
           this.editingCell.set(null);
+          // Clean up room selections for a fresh start on next create
+          this.hotelRoomsForType.set([]);
+          this.selectedAvailableRooms.set(new Set());
+          this.selectedBlockedRooms.set(new Set());
 
           // Brief green flash + tooltip on the cell that was just saved
           const savedKey = this.savingCell();
@@ -1391,10 +1382,8 @@ export class AvailabilityPageComponent {
               this.undoState.set(null);
             }, 10000);
           }
-        },
-        error: (err: ApiError) => {
-          this.errorMessage.set(err.message || 'Error al guardar inventario.');
-          this.submitMessage.set('');
+        },         error: (err: ApiError) => {
+          this.toast.error(err.message || 'Error al guardar inventario.');
           this.savingCell.set(null);
           this._clearHighlight();
           this.saving.set(false);
@@ -1446,8 +1435,7 @@ export class AvailabilityPageComponent {
       .subscribe({
         next: (data) => {
           this.pageData.set(data);
-          this.submitMessage.set('Bloqueo registrado');
-          this.errorMessage.set('');
+          this.toast.success('Bloqueo registrado');
           this._rebuildCalendar();
           this.blackoutForm.reset({
             roomTypeId: '',
@@ -1458,11 +1446,10 @@ export class AvailabilityPageComponent {
           });
           this.editingBlackout.set(null);
           this.blackoutSelectedRooms.set(new Set());
+          this.hotelRoomsForType.set([]);
           this.saving.set(false);
-        },
-        error: (err: ApiError) => {
-          this.errorMessage.set(err.message || 'Error al registrar bloqueo.');
-          this.submitMessage.set('');
+        },          error: (err: ApiError) => {
+          this.toast.error(err.message || 'Error al registrar bloqueo.');
           this.saving.set(false);
         },
       });
