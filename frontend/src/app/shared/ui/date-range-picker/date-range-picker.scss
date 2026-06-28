@@ -142,6 +142,8 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .dp-day {
@@ -196,6 +198,14 @@
     color: var(--accent);
     border-radius: 0;
     font-weight: 600;
+  }
+
+  &.dp-drag-preview {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+    border-radius: 0;
+    font-weight: 500;
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
   }
 
   /* Same date for start and end */

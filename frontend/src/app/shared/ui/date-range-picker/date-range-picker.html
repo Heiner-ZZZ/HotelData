@@ -1,4 +1,4 @@
-<div class="date-range-picker-wrapper">
+<div class="date-range-picker-wrapper" (mouseup)="onMouseUpGlobal()">
   <!-- Trigger button -->
   <button type="button" class="dp-trigger" (click)="toggleOpen()">
     <span class="material-symbols-outlined dp-trigger-icon">calendar_month</span>
@@ -9,7 +9,7 @@
   <!-- Popover overlay -->
   @if (isOpen()) {
     <!-- Backdrop for click-outside -->
-    <div class="dp-backdrop" (click)="close()"></div>
+    <div class="dp-backdrop" (click)="close()" (mouseup)="onMouseUpGlobal()"></div>
 
     <div class="dp-popover">
       <div class="dp-popover-header">
@@ -28,7 +28,7 @@
         }
       </div>
 
-      <div class="dp-grid">
+      <div class="dp-grid" (mouseleave)="onMouseUpGlobal()">
         @for (day of calendarDays(); track $index) {
           <button
             type="button"
@@ -37,11 +37,13 @@
             [class.dp-today]="day.isToday"
             [class.dp-start]="day.isStart"
             [class.dp-end]="day.isEnd"
-            [class.dp-range]="day.isInRange"
+            [class.dp-range]="day.isInRange || isDragInRange(day)"
             [class.dp-same]="day.isSameStartEnd"
             [class.dp-disabled]="day.isDisabled"
             [disabled]="day.isDisabled"
-            (click)="selectDay(day)"
+            (mousedown)="onDayMouseDown(day, $event)"
+            (mouseenter)="onDayMouseEnter(day)"
+            (mouseup)="onDayMouseUp(day)"
           >
             {{ day.day }}
           </button>
@@ -64,7 +66,7 @@
               </span>
             }
             @if (startDate() && !endDate()) {
-              <span class="dp-hint">Selecciona la fecha de salida</span>
+              <span class="dp-hint">Arrastra o haz clic para seleccionar la fecha de salida</span>
             }
             @if (startDate() && endDate() && startDate() === endDate()) {
               <span class="dp-hint">Misma fecha de entrada y salida</span>

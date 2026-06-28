@@ -162,6 +162,11 @@ export class DateRangePickerComponent {
     this.isOpen.set(false);
   }
 
+  // ─── Drag-select state ───
+  readonly isDragging = signal(false);
+  readonly dragStartDate = signal('');
+  readonly dragHoverDate = signal('');
+
   selectDay(day: CalendarDay): void {
     if (day.isDisabled) return;
 
@@ -180,9 +185,75 @@ export class DateRangePickerComponent {
       } else {
         this.endChange.emit(dateStr);
         this.selectingEnd.set(false);
-        this.close();
+        // Don't close — let user adjust if needed
       }
     }
+  }
+
+  // ─── Drag-select handlers ───
+
+  onDayMouseDown(day: CalendarDay, event: MouseEvent): void {
+    if (day.isDisabled) return;
+    event.preventDefault();
+    const dateStr = this._formatDate(day.date);
+    this.isDragging.set(true);
+    this.dragStartDate.set(dateStr);
+    this.dragHoverDate.set(dateStr);
+    this.startChange.emit(dateStr);
+    this.endChange.emit('');
+    this.selectingEnd.set(true);
+  }
+
+  onDayMouseEnter(day: CalendarDay): void {
+    if (!this.isDragging()) return;
+    const dateStr = this._formatDate(day.date);
+    this.dragHoverDate.set(dateStr);
+    // Preview the range end
+    const startD = new Date(this.dragStartDate() + 'T00:00:00');
+    const hoverD = new Date(dateStr + 'T00:00:00');
+    if (hoverD >= startD) {
+      this.endChange.emit(dateStr);
+    } else {
+      this.startChange.emit(dateStr);
+      this.endChange.emit(this.dragStartDate());
+    }
+  }
+
+  onDayMouseUp(day: CalendarDay): void {
+    if (!this.isDragging()) return;
+    this.isDragging.set(false);
+    const dateStr = this._formatDate(day.date);
+    const startD = new Date(this.dragStartDate() + 'T00:00:00');
+    const endD = new Date(dateStr + 'T00:00:00');
+    if (endD >= startD) {
+      this.startChange.emit(this.dragStartDate());
+      this.endChange.emit(dateStr);
+    } else {
+      this.startChange.emit(dateStr);
+      this.endChange.emit(this.dragStartDate());
+    }
+    this.selectingEnd.set(false);
+  }
+
+  onMouseUpGlobal(): void {
+    if (this.isDragging()) {
+      this.isDragging.set(false);
+      this.selectingEnd.set(false);
+    }
+  }
+
+  /** Check if a day is within the drag preview range. */
+  isDragInRange(day: CalendarDay): boolean {
+    if (!this.isDragging()) return false;
+    const hoverStr = this.dragHoverDate();
+    if (!hoverStr) return false;
+    const d = day.date;
+    const start = this.startDate() ? new Date(this.startDate() + 'T00:00:00') : null;
+    const hover = new Date(hoverStr + 'T00:00:00');
+    if (!start) return false;
+    const lo = start < hover ? start : hover;
+    const hi = start < hover ? hover : start;
+    return d > lo && d < hi;
   }
 
   private _formatDate(date: Date): string {

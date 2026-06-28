@@ -28,6 +28,14 @@ export interface CheckInOutHotelItem {
   count: number;
 }
 
+export interface OccupancyTrendResponse {
+  dates: string[];
+  check_ins: number[];
+  check_outs: number[];
+  total_check_ins: number;
+  total_check_outs: number;
+}
+
 export interface OperationalStatsResponse {
   total_hotels: number;
   total_policies: number;
@@ -64,6 +72,14 @@ export class KpiApiService {
   getOperationalStats(): Observable<OperationalStatsResponse> {
     return this.http.get<OperationalStatsResponse>(
       `${this.base}/operational-stats`,
+      { withCredentials: true }
+    );
+  }
+
+  /** Daily check-in / check-out counts for occupancy trend line chart */
+  getOccupancyTrend(days = 14): Observable<OccupancyTrendResponse> {
+    return this.http.get<OccupancyTrendResponse>(
+      `${this.base}/occupancy-trend?days=${days}`,
       { withCredentials: true }
     );
   }
