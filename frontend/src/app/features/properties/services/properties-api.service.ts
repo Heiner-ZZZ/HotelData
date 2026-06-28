@@ -179,4 +179,14 @@ export class PropertiesApiService {
       { withCredentials: true }
     );
   }
+
+  getOperationalCalendar(propId: number, year?: number, month?: number) {
+    let params = new HttpParams();
+    if (year) params = params.set('year', year);
+    if (month) params = params.set('month', month);
+    return this.http.get<import('../components/operational-calendar/operational-calendar').OperationalCalendarData>(
+      `${this.apiConfig.baseUrl}/management/properties/${propId}/operational-calendar`,
+      { params, withCredentials: true }
+    );
+  }
 }

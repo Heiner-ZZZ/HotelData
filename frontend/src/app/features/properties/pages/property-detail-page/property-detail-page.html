@@ -82,41 +82,93 @@
             }
           </div>
 
-          <!-- ═══ Operational readiness ═══ -->
+          <!-- ═══ Operational readiness — Dashboard widget ═══ -->
           <section class="surface-card ops-card">
             <div class="card-head">
-              <span class="material-symbols-outlined card-icon icon-ops">checklist</span>
+              <span class="material-symbols-outlined card-icon icon-ops">monitoring</span>
               <div>
-                <h2>Estado operacional</h2>
-                <p>{{ vm.operationalScore }}/100 — {{ vm.operationalChecks.filter(c => c.ready).length }} de {{ vm.operationalChecks.length }} módulos listos</p>
+                <h2>Checklist operacional</h2>
+                <p>{{ vm.operationalChecks.filter(c => c.ready).length }} / {{ vm.operationalChecks.length }} módulos listos</p>
               </div>
             </div>
-            <div class="ops-progress-track">
-              <div class="ops-bar">
-                @for (check of vm.operationalChecks; track check.label; let i = $index) {
-                  <div
-                    class="ops-segment"
-                    [class.ops-segment--ready]="check.ready"
-                    [title]="check.label + ': ' + (check.ready ? 'Listo' : 'Pendiente')"
-                    [style.--seg-index]="i"
-                  ></div>
+
+            <div class="ops-body">
+              <div class="ops-ring-wrap">
+                <svg class="ops-ring" viewBox="0 0 120 120">
+                  <circle class="ops-ring-bg" cx="60" cy="60" r="52" />
+                  <circle
+                    class="ops-ring-fill"
+                    cx="60" cy="60" r="52"
+                    [style.stroke-dasharray]="opsCircumference()"
+                    [style.stroke-dashoffset]="opsOffset()"
+                  />
+                </svg>
+                <div class="ops-ring-label">
+                  <strong>{{ vm.operationalScore }}</strong>
+                  <small>/100</small>
+                </div>
+              </div>
+
+              <div class="ops-modules">
+                @for (check of vm.operationalChecks; track check.label) {
+                  <div class="ops-module" [class.ops-module--ready]="check.ready">
+                    <div class="ops-module-icon-wrap">
+                      @switch (check.label) {
+                        @case ('Políticas') {
+                          <span class="material-symbols-outlined ops-module-icon">policy</span>
+                        }
+                        @case ('Habitaciones') {
+                          <span class="material-symbols-outlined ops-module-icon">meeting_room</span>
+                        }
+                        @case ('Tarifas') {
+                          <span class="material-symbols-outlined ops-module-icon">payments</span>
+                        }
+                        @case ('Inventario') {
+                          <span class="material-symbols-outlined ops-module-icon">inventory_2</span>
+                        }
+                        @case ('Promociones') {
+                          <span class="material-symbols-outlined ops-module-icon">campaign</span>
+                        }
+                        @default {
+                          <span class="material-symbols-outlined ops-module-icon">check_circle</span>
+                        }
+                      }
+                    </div>
+                    <div class="ops-module-body">
+                      <span class="ops-module-label">{{ check.label }}</span>
+                      @if (check.ready) {
+                        <span class="ops-module-badge ops-module-badge--ok">
+                          <span class="material-symbols-outlined">check_circle</span>
+                          Listo
+                        </span>
+                      } @else {
+                        <span class="ops-module-badge ops-module-badge--pending">
+                          <span class="material-symbols-outlined">radio_button_unchecked</span>
+                          Pendiente
+                        </span>
+                      }
+                    </div>
+                  </div>
                 }
               </div>
             </div>
-            <div class="ops-grid">
-              @for (check of vm.operationalChecks; track check.label) {
-                <div class="ops-item" [class.ops-item--ready]="check.ready">
-                  <div class="ops-indicator">
-                    @if (check.ready) {
-                      <span class="material-symbols-outlined ops-check">check_circle</span>
-                    } @else {
-                      <span class="material-symbols-outlined ops-pending">radio_button_unchecked</span>
-                    }
-                  </div>
-                  <span class="ops-label">{{ check.label }}</span>
-                </div>
-              }
+          </section>
+
+          <!-- ═══ Operational calendar ═══ -->
+          <section class="surface-card">
+            <div class="card-head">
+              <span class="material-symbols-outlined card-icon icon-ops">calendar_month</span>
+              <div>
+                <h2>Calendario operacional</h2>
+                <p>Estado diario de tarifas, inventario y promociones.</p>
+              </div>
             </div>
+            <app-operational-calendar
+              [data]="calendarData()"
+              [loading]="calendarLoading()"
+              (prevMonth)="prevCalendarMonth()"
+              (nextMonth)="nextCalendarMonth()"
+            />
           </section>
 
           <!-- ═══ Two-column detail ═══ -->

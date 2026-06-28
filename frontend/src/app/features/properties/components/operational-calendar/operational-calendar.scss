@@ -1,0 +1,207 @@
+.op-cal {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.op-cal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--muted-text);
+  font-size: 0.85rem;
+}
+
+/* ── Header ── */
+.op-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.op-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem; height: 2rem;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: all 150ms;
+  font-size: 1rem;
+  &:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+}
+
+.op-cal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* ── Badges ── */
+.op-cal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+}
+
+.op-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  color: var(--muted-text);
+  font-size: 0.85rem;
+
+  &.is-ready {
+    border-color: color-mix(in srgb, #16a34a 30%, transparent);
+    background: color-mix(in srgb, #16a34a 6%, transparent);
+    color: #16a34a;
+  }
+}
+
+.op-check { font-size: 0.75rem; color: #16a34a; }
+.op-x { font-size: 0.7rem; color: var(--muted-text); }
+
+/* ── Day labels ── */
+.op-cal-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.op-cal-label {
+  padding: 0.3rem 0.15rem;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  border-right: 1px solid var(--app-border);
+  &:last-child { border-right: none; }
+}
+
+/* ── Calendar grid ── */
+.op-cal-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.op-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--app-border);
+  &:last-child { border-bottom: none; }
+}
+
+.op-cal-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0.25rem 0.3rem;
+  min-height: 1.8rem;
+  border-right: 1px solid var(--app-border);
+  cursor: default;
+  transition: background 100ms;
+
+  &:last-child { border-right: none; }
+  &:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+
+  &.is-today {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    box-shadow: inset 0 0 0 2px var(--accent);
+    border-radius: 4px;
+  }
+
+  &--empty {
+    background: color-mix(in srgb, var(--bg) 50%, transparent);
+    min-height: 1.8rem;
+  }
+}
+
+.op-cal-day {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--app-text);
+  line-height: 1;
+}
+
+.op-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 3px;
+  cursor: help;
+
+  &--rate {
+    background: color-mix(in srgb, #2563eb 12%, transparent);
+    color: #2563eb;
+  }
+
+  &--promo {
+    background: color-mix(in srgb, #d97706 12%, transparent);
+    color: #d97706;
+  }
+
+  &--avail {
+    background: color-mix(in srgb, #16a34a 12%, transparent);
+    color: #16a34a;
+  }
+
+  &--blocked {
+    background: color-mix(in srgb, #dc2626 12%, transparent);
+    color: #dc2626;
+  }
+
+  &--mixed {
+    background: color-mix(in srgb, #d97706 12%, transparent);
+    color: #d97706;
+  }
+}
+
+/* ── Footer legend ── */
+.op-cal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--app-border);
+  font-size: 0.65rem;
+  color: var(--muted-text);
+}
+
+.op-fi {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  .op-icon { cursor: default; }
+}
+
+

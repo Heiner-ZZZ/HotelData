@@ -1,15 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map, switchMap } from 'rxjs';
+import { map, switchMap, tap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { PropertyFactsPanelComponent } from '../../components/property-facts-panel/property-facts-panel';
+import { OperationalCalendarComponent } from '../../components/operational-calendar/operational-calendar';
+import type { OperationalCalendarData } from '../../components/operational-calendar/operational-calendar';
+import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { PropertyDetailViewModel } from '../../models/properties.model';
 import { PropertiesApiService } from '../../services/properties-api.service';
 import { ReviewsApiService } from '../../../reviews/services/reviews-api.service';
@@ -18,12 +17,10 @@ import { ReviewsApiService } from '../../../reviews/services/reviews-api.service
   selector: 'app-property-detail-page',
   imports: [
     ErrorStateComponent,
-    FormsModule,
     LoadingStateComponent,
-    PageHeaderComponent,
+    OperationalCalendarComponent,
     PropertyFactsPanelComponent,
     RouterLink,
-    StatusBadgeComponent,
   ],
   templateUrl: './property-detail-page.html',
   styleUrl: './property-detail-page.scss',
@@ -37,6 +34,52 @@ export class PropertyDetailPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<PropertyDetailViewModel | null>(null);
+
+  readonly opsCircumference = computed(() => {
+    const r = 52;
+    return 2 * Math.PI * r;
+  });
+
+  readonly opsOffset = computed(() => {
+    const score = this.viewModel()?.operationalScore ?? 0;
+    const circ = 2 * Math.PI * 52;
+    return circ - (circ * score) / 100;
+  });
+
+  // Operational calendar
+  readonly calendarData = signal<OperationalCalendarData | null>(null);
+  readonly calendarLoading = signal(false);
+  readonly calendarYear = signal(new Date().getFullYear());
+  readonly calendarMonth = signal(new Date().getMonth() + 1);
+
+  private loadCalendar(propId: number, year: number, month: number) {
+    this.calendarLoading.set(true);
+    this.api.getOperationalCalendar(propId, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (data) => {
+        this.calendarData.set(data);
+        this.calendarLoading.set(false);
+      },
+      error: () => this.calendarLoading.set(false),
+    });
+  }
+
+  prevCalendarMonth() {
+    let y = this.calendarYear();
+    let m = this.calendarMonth() - 1;
+    if (m < 1) { m = 12; y--; }
+    this.calendarYear.set(y);
+    this.calendarMonth.set(m);
+    this.loadCalendar(this.viewModel()!.propId, y, m);
+  }
+
+  nextCalendarMonth() {
+    let y = this.calendarYear();
+    let m = this.calendarMonth() + 1;
+    if (m > 12) { m = 1; y++; }
+    this.calendarYear.set(y);
+    this.calendarMonth.set(m);
+    this.loadCalendar(this.viewModel()!.propId, y, m);
+  }
 
   // RF-006: Top approved reviews
   readonly reviews = signal<Array<{
@@ -65,6 +108,8 @@ export class PropertyDetailPageComponent {
         next: (vm) => {
           this.viewModel.set(vm);
           this.viewState.set('success');
+          // Load operational calendar in background
+          this.loadCalendar(vm.propId, this.calendarYear(), this.calendarMonth());
           // Load approved reviews in background
           this.loadReviews(vm.propId);
         },

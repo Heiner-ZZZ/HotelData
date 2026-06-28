@@ -1,0 +1,118 @@
+<div class="op-cal">
+  @if (loading()) {
+    <div class="op-cal-loading">
+      <span>⏳</span>
+      Cargando calendario...
+    </div>
+  } @else if (data(); as cal) {
+    <!-- ═══ Navigation ═══ -->
+    <div class="op-cal-header">
+      <button type="button" class="op-cal-nav" (click)="prevMonth.emit()" title="Mes anterior">
+        <span>◀</span>
+      </button>
+      <h3 class="op-cal-title">{{ monthLabel() }}</h3>
+      <button type="button" class="op-cal-nav" (click)="nextMonth.emit()" title="Mes siguiente">
+        <span>▶</span>
+      </button>
+    </div>
+
+    <!-- ═══ Badges operacionales ═══ -->
+    <div class="op-cal-badges">
+      <span class="op-badge" [class.is-ready]="cal.operational.policies_configured">
+        📋 Políticas
+        @if (cal.operational.policies_configured) {
+          <span class="op-check">✓</span>
+        } @else {
+          <span class="op-x">○</span>
+        }
+      </span>
+      <span class="op-badge" [class.is-ready]="cal.operational.rooms_configured">
+        🚪 {{ cal.roomCount }} Hab.
+        @if (cal.operational.rooms_configured) {
+          <span class="op-check">✓</span>
+        }
+      </span>
+      <span class="op-badge" [class.is-ready]="cal.operational.rates_configured">
+        💰 Tarifas
+        @if (cal.operational.rates_configured) {
+          <span class="op-check">✓</span>
+        }
+      </span>
+      <span class="op-badge" [class.is-ready]="cal.operational.inventory_configured">
+        📦 Inventario
+        @if (cal.operational.inventory_configured) {
+          <span class="op-check">✓</span>
+        }
+      </span>
+      <span class="op-badge" [class.is-ready]="cal.operational.promotions_active">
+        📢 Promos
+        @if (cal.operational.promotions_active) {
+          <span class="op-check">✓</span>
+        }
+      </span>
+    </div>
+
+    <!-- ═══ Day labels ═══ -->
+    <div class="op-cal-labels">
+      @for (label of dayLabels; track label) {
+        <span class="op-cal-label">{{ label }}</span>
+      }
+    </div>
+
+    <!-- ═══ Single row calendar ═══ -->
+    <div class="op-cal-body">
+      @for (week of weekRows(); track $index) {
+        <div class="op-cal-week">
+          @for (wd of week; track $index) {
+              @if (wd.day === 0) {
+              <div class="op-cal-cell op-cal-cell--empty"></div>
+            } @else {
+              @let d = getDay(wd.date);
+              <div
+                class="op-cal-cell"
+                [class.is-today]="wd.isToday"
+                [class.has-data]="!!d && (d.hasRate || d.hasPromotion || d.hasInventory)"
+              >
+                <span class="op-cal-day">{{ wd.day }}</span>
+                @if (d) {
+                  @if (d.hasRate) {
+                    <span class="op-icon op-icon--rate" [title]="d.bestRate != null ? 'Tarifa desde $' + d.bestRate : 'Tarifas configuradas'">$</span>
+                  }
+                  @if (d.hasPromotion) {
+                    <span class="op-icon op-icon--promo" title="Promoción activa">%</span>
+                  }
+                  @if (d.hasInventory && d.totalRooms > 0) {
+                    @if (d.availableRooms > 0 && d.blockedRooms === 0) {
+                      <span class="op-icon op-icon--avail" [title]="roomTooltip(d)">D</span>
+                    } @else if (d.availableRooms > 0 && d.blockedRooms > 0) {
+                      <span class="op-icon op-icon--mixed" [title]="roomTooltip(d)">D</span>
+                      <span class="op-icon op-icon--blocked" [title]="roomTooltip(d)">B</span>
+                    } @else if (d.blockedRooms > 0) {
+                      <span class="op-icon op-icon--blocked" [title]="roomTooltip(d)">B</span>
+                    }
+                  }
+                }
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ═══ Legend ═══ -->
+    <div class="op-cal-footer">
+      <span class="op-fi">
+        <span class="op-icon op-icon--rate">$</span> Tarifa
+      </span>
+      <span class="op-fi">
+        <span class="op-icon op-icon--promo">%</span> Promoción
+      </span>
+      <span class="op-fi">
+        <span class="op-icon op-icon--avail">D</span> Disponible
+      </span>
+      <span class="op-fi">
+        <span class="op-icon op-icon--blocked">B</span> Bloqueada
+      </span>
+    </div>
+  }
+</div>
