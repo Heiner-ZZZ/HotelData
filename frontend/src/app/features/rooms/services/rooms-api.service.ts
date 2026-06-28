@@ -49,7 +49,7 @@ export class RoomsApiService {
       `${this.apiConfig.baseUrl}/management/rooms`,
       mapRoomCreatePayload(payload),
       { withCredentials: true }
-    );
+    ).pipe(catchAuthError());
   }
 
   updateRoomType(roomTypeId: string, payload: {
@@ -107,6 +107,7 @@ export class RoomsApiService {
         category: item.category,
         icon: item.icon,
         custom: item.custom,
+        source: item.source,
         unitPrice: typeof item.unit_price === 'number' ? item.unit_price : 0,
       })),
     }));

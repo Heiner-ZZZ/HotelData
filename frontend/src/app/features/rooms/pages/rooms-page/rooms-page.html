@@ -28,19 +28,6 @@
     </section>
   }
 
-  @if (message()) {
-    <section class="notification success">
-      <span class="material-symbols-outlined notif-icon">check_circle</span>
-      <span>{{ message() }}</span>
-    </section>
-  }
-  @if (errorMessage()) {
-    <section class="notification error">
-      <span class="material-symbols-outlined notif-icon">error</span>
-      <span>{{ errorMessage() }}</span>
-    </section>
-  }
-
   @switch (viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando habitaciones..." />
@@ -466,6 +453,11 @@
                                 <span class="material-symbols-outlined feature-chip-icon">{{ feat.icon }}</span>
                               }
                               <span class="feature-chip-label">{{ feat.label }}</span>
+                              @if (feat.source === 'amenity') {
+                                <span class="feature-source-badge" title="Del catálogo de amenidades">A</span>
+                              } @else if (feat.custom) {
+                                <span class="feature-source-badge feature-source-badge--custom" title="Personalizada">+</span>
+                              }
                             </button>
                             <div class="feature-price-input-wrap" [class.disabled]="!isFeatureSelected(feat.label)">
                               <span class="feature-price-symbol">$</span>

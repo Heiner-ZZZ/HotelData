@@ -21,6 +21,7 @@ export interface RoomsDto {
     room_number?: string;
     floor?: string;
     features?: string[] | Array<{ label: string; unit_price: number }>;
+    base_rate?: number;
   }>;
   hotel_rooms?: Array<{
     hotel_room_id: string;

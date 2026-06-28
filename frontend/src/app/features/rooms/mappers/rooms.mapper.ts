@@ -30,6 +30,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       roomNumber: room.room_number || '',
       floor: room.floor || '',
       features: normalizeFeatures(room.features),
+      baseRate: room.base_rate ?? 0,
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,

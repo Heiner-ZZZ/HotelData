@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, inject, NgZone, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -12,6 +12,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
 import { RoomsApiService } from '../../services/rooms-api.service';
@@ -45,6 +46,9 @@ export class RoomsPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly toast = inject(ToastService);
+  private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   // ── KPI data (top 5 hotels by rooms) ──
   readonly topHotels = signal<TopHotelRoomsItem[]>([]);
@@ -207,38 +211,44 @@ export class RoomsPageComponent {
   }
 
   startEdit(roomType: RoomTypeItem) {
-    const parts = roomType.capacityLabel.match(/(\d+)/g);
-    this.editForm.setValue({
-      roomTypeId: roomType.id,
-      name: roomType.name,
-      description: roomType.description === 'Sin descripción' ? '' : roomType.description,
-      maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
-      maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
-      baseCapacity: parts ? Number(parts[0]) : 2,
-      baseRate: 0,
-      isActive: roomType.activeLabel === 'Sí',
-      roomNumber: roomType.roomNumber,
-      floor: roomType.floor,
+    // Defer form manipulation to next VM turn to avoid NG01002
+    this.ngZone.runOutsideAngular(() => {
+      setTimeout(() => {
+        const parts = roomType.capacityLabel.match(/(\d+)/g);
+        this.editForm.setValue({
+          roomTypeId: roomType.id,
+          name: roomType.name,
+          description: roomType.description === 'Sin descripción' ? '' : roomType.description,
+          maxAdults: parts && parts.length >= 2 ? Number(parts[1]) : 2,
+          maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
+          baseCapacity: parts ? Number(parts[0]) : 2,
+          baseRate: (roomType as any).baseRate ?? 0,
+          isActive: roomType.activeLabel === 'Sí',
+          roomNumber: roomType.roomNumber,
+          floor: roomType.floor,
+        });
+        this.ngZone.run(() => {
+          this.editingRoomTypeName.set(roomType.name);
+          this.editingRoomTypeId.set(roomType.id);
+          this.selectedFeatures.set(new Set(roomType.features.map(f => f.label)));
+          const prices = new Map<string, number>();
+          for (const f of roomType.features) {
+            prices.set(f.label, f.unitPrice);
+          }
+          for (const cat of this.featureCatalog()) {
+            for (const feat of cat.items) {
+              if (!prices.has(feat.label) && feat.unitPrice) {
+                prices.set(feat.label, feat.unitPrice);
+              }
+            }
+          }
+          this.featurePrices.set(prices);
+          this.featurePanelOpen.set(true);
+          this.showEditModal.set(true);
+          this.cdr.markForCheck();
+        });
+      });
     });
-    this.editingRoomTypeName.set(roomType.name);
-    this.editingRoomTypeId.set(roomType.id);
-    this.selectedFeatures.set(new Set(roomType.features.map(f => f.label)));
-    // Populate price map from room type feature data
-    const prices = new Map<string, number>();
-    for (const f of roomType.features) {
-      prices.set(f.label, f.unitPrice);
-    }
-    // Merge with catalog defaults for features not yet in price map
-    for (const cat of this.featureCatalog()) {
-      for (const feat of cat.items) {
-        if (!prices.has(feat.label) && feat.unitPrice) {
-          prices.set(feat.label, feat.unitPrice);
-        }
-      }
-    }
-    this.featurePrices.set(prices);
-    this.featurePanelOpen.set(true);
-    this.showEditModal.set(true);
 
     // Load feature catalog if not already loaded
     if (this.featureCatalog().length === 0) {
@@ -330,17 +340,13 @@ export class RoomsPageComponent {
         return current ? this.api.getRooms(current.propId) : of(null);
       }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (rooms) => {
+    ).subscribe({        next: (rooms) => {
         this.viewModel.set(rooms);
-        this.message.set('Tipo de habitación eliminado');
-        this.errorMessage.set('');
+        this.toast.success('Tipo de habitación eliminado');
         this.deleting.set(false);
         this.showDeleteConfirm.set(false);
-      },
-      error: (error: ApiError) => {
-        this.errorMessage.set(error.message || 'No se pudo eliminar el tipo de habitación.');
-        this.message.set('');
+      },        error: (error: ApiError) => {
+        this.toast.error(error.message || 'No se pudo eliminar el tipo de habitación.');
         this.deleting.set(false);
       }
     });
@@ -386,17 +392,13 @@ export class RoomsPageComponent {
         return current ? this.api.getRooms(current.propId) : of(null);
       }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (rooms) => {
+    ).subscribe({        next: (rooms) => {
         this.viewModel.set(rooms);
-        this.message.set('Tipo de habitación actualizado');
-        this.errorMessage.set('');
+        this.toast.success('Tipo de habitación actualizado');
         this.savingEdit.set(false);
         this.showEditModal.set(false);
-      },
-      error: (error: ApiError) => {
-        this.errorMessage.set(error.message || 'No fue posible actualizar el tipo de habitación.');
-        this.message.set('');
+      },        error: (error: ApiError) => {
+        this.toast.error(error.message || 'No fue posible actualizar el tipo de habitación.');
         this.savingEdit.set(false);
       }
     });
@@ -430,8 +432,7 @@ export class RoomsPageComponent {
       .subscribe({
         next: (rooms) => {
           this.viewModel.set(rooms);
-          this.message.set('Tipo de habitación registrado');
-          this.errorMessage.set('');
+          this.toast.success('Tipo de habitación registrado');
           this.createForm.reset({
             name: '',
             description: '',
@@ -445,8 +446,7 @@ export class RoomsPageComponent {
           });
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible registrar el tipo de habitación.');
-          this.message.set('');
+          this.toast.error(error.message || 'No fue posible registrar el tipo de habitación.');
         }
       });
   }

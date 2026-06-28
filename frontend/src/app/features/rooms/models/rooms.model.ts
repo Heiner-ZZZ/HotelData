@@ -27,6 +27,7 @@ export interface RoomTypeItem {
   roomNumber: string;
   floor: string;
   features: RoomFeatureItem[];
+  baseRate?: number;
 }
 
 export interface RoomFeature {
@@ -34,6 +35,7 @@ export interface RoomFeature {
   category: string;
   icon: string;
   custom: boolean;
+  source?: string;
   unitPrice?: number;
 }
 
