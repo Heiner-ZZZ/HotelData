@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -16,7 +16,7 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapPoliciesPayload } from '../../mappers/policies.mapper';
 import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import { PoliciesApiService } from '../../services/policies-api.service';
-import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
+import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 
@@ -49,6 +49,9 @@ export class PoliciesPageComponent {
   // ── KPI: Operational stats ──
   readonly opStats = signal<OperationalStatsResponse | null>(null);
   readonly opStatsState = signal<'loading' | 'success' | 'error'>('loading');
+
+  // ── KPI: Occupancy trend (line chart, hidden when hotel selected) ──
+  readonly occupancyTrend = signal<OccupancyTrendResponse | null>(null);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<PoliciesViewModel | null>(null);
@@ -85,6 +88,12 @@ export class PoliciesPageComponent {
     this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (stats) => { this.opStats.set(stats); this.opStatsState.set('success'); },
       error: () => this.opStatsState.set('error'),
+    });
+
+    // Load occupancy trend (for line chart)
+    this.kpiApi.getOccupancyTrend(14).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (trend) => this.occupancyTrend.set(trend),
+      error: () => {},
     });
 
     this.route.queryParamMap
@@ -216,4 +225,20 @@ export class PoliciesPageComponent {
         },
       });
   }
+
+  /** Chart data for occupancy trend — only show when no hotel selected */
+  readonly occupancyChartData = computed(() => {
+    const trend = this.occupancyTrend();
+    if (!trend || this.selectedPropId() > 0) return null;
+    return {
+      labels: trend.dates.map((d) => {
+        const [y, m, day] = d.split('-');
+        return `${day}/${m}`;
+      }),
+      datasets: [
+        { label: 'Check-ins', data: trend.check_ins, color: '#2563eb' },
+        { label: 'Check-outs', data: trend.check_outs, color: '#d97706' },
+      ],
+    };
+  });
 }

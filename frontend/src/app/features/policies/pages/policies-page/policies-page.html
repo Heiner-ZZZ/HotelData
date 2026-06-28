@@ -11,16 +11,32 @@
     (propIdChange)="onPropSelected($event)"
   />
 
-  <!-- KPI Chart: Operational Stats -->
+  <!-- KPI Chart: Operational Stats — line chart, hidden when hotel selected -->
   @if (opStats(); as stats) {
+    @if (selectedPropId() === 0) {
+      <section class="surface-card kpi-chart-section">
+        <app-kpi-chart
+          title="Hoteles con políticas configuradas"
+          [labels]="['Con políticas', 'Sin políticas']"
+          [datasets]="[{ label: 'Hoteles', data: [stats.hotels_with_policies, stats.total_hotels - stats.hotels_with_policies] }]"
+          [showLegend]="true"
+          [height]="200"
+          type="line"
+        />
+      </section>
+    }
+  }
+
+  <!-- Occupancy Trend Line Chart — hides when a hotel is selected -->
+  @if (occupancyChartData(); as chart) {
     <section class="surface-card kpi-chart-section">
       <app-kpi-chart
-        title="Hoteles con políticas configuradas"
-        [labels]="['Con políticas', 'Sin políticas']"
-        [datasets]="[{ label: 'Hoteles', data: [stats.hotels_with_policies, stats.total_hotels - stats.hotels_with_policies] }]"
+        title="Tendencia de ocupación — últimos 14 días"
+        [labels]="chart.labels"
+        [datasets]="chart.datasets"
         [showLegend]="true"
-        [height]="200"
-        type="bar"
+        [height]="220"
+        type="line"
       />
     </section>
   }
