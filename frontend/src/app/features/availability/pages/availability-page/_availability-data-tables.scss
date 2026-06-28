@@ -1,0 +1,126 @@
+/* ─── Data cards ─── */
+
+.data-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  display: grid;
+  gap: 1rem;
+}
+
+.data-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.data-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  .material-symbols-outlined {
+    font-size: 1.35rem;
+    color: var(--accent);
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  }
+
+  h2 {
+    margin: 0 0 2px;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-text);
+    font-size: 0.78rem;
+  }
+}
+
+/* ─── Table ─── */
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+thead th {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
+}
+
+/* ─── Badge ─── */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.badge-warning {
+  background: rgba(234, 179, 8, 0.1);
+  color: #b8860b;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+/* ─── Selection count badge in calendar nav title ─── */
+
+.cal-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  animation: badge-in 200ms ease;
+}
+

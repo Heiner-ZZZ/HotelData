@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, ViewEncapsulation } from '@angular/core';
 
-import type { AvailabilityRoomType, CalendarMonth, CalendarRoomTypeCell } from '../../models/availability.model';
+import type { AvailabilityRoomType, CalendarMonth } from '../../models/availability.model';
+import { cellClass, cellLabel, cellTooltip } from '../../availability.helpers';
 
 @Component({
   selector: 'app-availability-calendar',
@@ -49,25 +50,11 @@ export class AvailabilityCalendarComponent {
   onCancelEdit() { this.cancelEditOutput.emit(); }
   onToggleLayout(mode: 'scroll' | 'wrap') { this.toggleLayout.emit(mode); }
 
-  // ── Pure computation methods (moved from parent) ──
+  // ── Pure computation methods ──
 
-  cellClass(roomType: CalendarRoomTypeCell): string {
-    if (roomType.totalRooms === 0) return 'cell-na';
-    const pct = roomType.occupancyPct;
-    if (pct >= 90) return 'cell-danger';
-    if (pct >= 60) return 'cell-warning';
-    if (pct >= 30) return 'cell-caution';
-    return 'cell-good';
-  }
-
-  cellLabel(roomType: CalendarRoomTypeCell): string {
-    if (roomType.totalRooms === 0) return '—';
-    return `${roomType.availableRooms}/${roomType.totalRooms}`;
-  }
-
-  cellTooltip(roomType: CalendarRoomTypeCell, date: string): string {
-    return `${date} · ${roomType.roomTypeName}: ${roomType.availableRooms}/${roomType.totalRooms} disponibles (${roomType.occupancyPct}% ocupado)`;
-  }
+  cellClass = cellClass;
+  cellLabel = cellLabel;
+  cellTooltip = cellTooltip;
 
   isEditing(date: string, roomTypeName: string): boolean {
     const cell = this.editingCell();

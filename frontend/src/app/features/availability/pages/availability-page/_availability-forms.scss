@@ -1,0 +1,128 @@
+/* ─── Forms grid ─── */
+
+.forms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.form-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.form-card-head {
+  display: flex;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0 0 2px;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-text);
+    font-size: 0.8rem;
+  }
+}
+
+.form-card-icon {
+  font-size: 1.4rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+.form-body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.form-actions {
+  padding-top: 0.25rem;
+}
+
+/* ─── Fields ─── */
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.field-error {
+  font-size: 0.7rem;
+  color: #dc2626;
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.1);
+  }
+
+  .input-icon {
+    font-size: 1.05rem;
+    color: var(--muted-text);
+    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+    flex-shrink: 0;
+  }
+
+  input,
+  select {
+    flex: 1;
+    min-height: 36px;
+    border: 0;
+    background: transparent;
+    font-size: 0.85rem;
+    color: inherit;
+    outline: none;
+    font-family: inherit;
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+
+  select {
+    appearance: none;
+    padding-right: 0.5rem;
+    cursor: pointer;
+    color-scheme: light;
+  }
+}
+
+[data-theme="dark"] .input-wrap select {
+  color-scheme: dark;
+}
+
+select option {
+  background: var(--surface);
+  color: var(--app-text);
+}
+

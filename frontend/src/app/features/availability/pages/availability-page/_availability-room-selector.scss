@@ -1,0 +1,135 @@
+/* ─── Room selector (multi-select chips) ─── */
+
+.room-selector {
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.room-selector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.room-selector-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.room-selector-summary {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.room-selector-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.room-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.55rem;
+  border: 1.5px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease;
+  font-family: inherit;
+  user-select: none;
+
+  &:hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    transform: translateY(-1px);
+  }
+
+  &.is-available {
+    border-color: var(--success);
+    background: color-mix(in srgb, var(--success) 8%, transparent);
+    color: #065f46;
+
+    &:hover {
+      background: color-mix(in srgb, var(--danger) 8%, transparent);
+      border-color: var(--danger);
+    }
+  }
+
+  &.is-blocked {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    color: #991b1b;
+
+    &:hover {
+      background: color-mix(in srgb, var(--success) 8%, transparent);
+      border-color: var(--success);
+    }
+  }
+}
+
+.room-chip-icon {
+  font-size: 0.85rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+}
+
+.room-chip-label {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.room-chip-status {
+  font-size: 0.8rem;
+  color: var(--success);
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 18;
+}
+
+.room-chip-blocked {
+  color: var(--danger);
+}
+
+.room-selector-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  background: var(--surface-soft);
+  border-radius: 8px;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--warning);
+  }
+}
+
+/* Semantic icon color overrides */
+.icon-hotel-warm { color: #d97706; }
+.icon-room-blue { color: var(--accent); }
+.icon-price-green { color: var(--success); }
+.icon-block-red { color: var(--danger); }
+.icon-inventory-blue { color: var(--accent); }
+
+
+
+/* Semantic icon color overrides */
+.icon-hotel-warm { color: #d97706; }
+.icon-room-blue { color: var(--accent); }
+.icon-price-green { color: var(--success); }
+.icon-block-red { color: var(--danger); }
+.icon-inventory-blue { color: var(--accent); }
+

@@ -6,12 +6,12 @@
   />
 
   <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
+    [selectedPropId]="store.selectedPropId()"
+    [selectedLabel]="store.selectedLabel()"
+    (propIdChange)="store.onPropSelected($event)"
   />
 
-  @switch (viewState()) {
+  @switch (store.viewState()) {
     @case ('loading') {
       <app-loading-state label="Cargando inventario..." />
     }
@@ -28,7 +28,7 @@
       />
     }
     @default {
-      @if (pageData(); as vm) {
+      @if (store.pageData(); as vm) {
         <!-- Info bar -->
         <div class="info-bar">
           <div class="info-item">
@@ -66,35 +66,35 @@
 
         <!-- Calendar grid -->
         <app-availability-calendar
-          [calendar]="displayCalendar()"
+          [calendar]="store.displayCalendar()"
           [roomTypes]="vm.roomTypes"
-          [viewMode]="viewMode()"
-          [multiSelectMode]="multiSelectMode()"
-          [saving]="saving()"
-          [savingCell]="savingCell()"
-          [highlightedCell]="highlightedCell()"
-          [skeletonCols]="skeletonCols()"
-          [editingCell]="editingCell()"
-          [activeCell]="activeCell()"
-          [selectedCells]="selectedCells()"
-          [refreshing]="refreshing()"
-          [skeletonExiting]="skeletonExiting()"
-          [selectionCount]="selectionCount()"
-          [layoutMode]="layoutMode()"
-          [roomNumbersByType]="roomNumbersByType()"
-          (prevPeriod)="prevPeriod()"
-          (nextPeriod)="nextPeriod()"
-          (goToday)="goToday()"
-          (setView)="setView($event)"
-          (toggleMultiSelect)="toggleMultiSelect($event)"
-          (cellClick)="onCellClick($event.event, $event.date, $event.roomTypeName)"
-          (commitEdit)="commitEdit($event.date, $event.roomTypeName, $event.input)"
-          (cancelEditOutput)="cancelEdit()"
-          (toggleLayout)="layoutMode.set($event)"
+          [viewMode]="store.viewMode()"
+          [multiSelectMode]="store.multiSelectMode()"
+          [saving]="store.saving()"
+          [savingCell]="store.savingCell()"
+          [highlightedCell]="store.highlightedCell()"
+          [skeletonCols]="store.skeletonCols()"
+          [editingCell]="store.editingCell()"
+          [activeCell]="store.activeCell()"
+          [selectedCells]="store.selectedCells()"
+          [refreshing]="store.refreshing()"
+          [skeletonExiting]="store.skeletonExiting()"
+          [selectionCount]="store.selectionCount()"
+          [layoutMode]="store.layoutMode()"
+          [roomNumbersByType]="store.roomNumbersByType()"
+          (prevPeriod)="store.prevPeriod()"
+          (nextPeriod)="store.nextPeriod()"
+          (goToday)="store.goToday()"
+          (setView)="store.setView($event)"
+          (toggleMultiSelect)="store.toggleMultiSelect($event)"
+          (cellClick)="store.onCellClick($event.event, $event.date, $event.roomTypeName)"
+          (commitEdit)="store.commitEdit($event.date, $event.roomTypeName, $event.input)"
+          (cancelEditOutput)="store.cancelEdit()"
+          (toggleLayout)="store.layoutMode.set($event)"
         />
 
         <!-- Undo bar -->
-        @if (undoState(); as undo) {
+        @if (store.undoState(); as undo) {
           <section class="surface-card undo-card">
             <div class="undo-left">
               <span class="material-symbols-outlined undo-icon">undo</span>
@@ -104,8 +104,8 @@
               </div>
             </div>
             <div class="undo-actions">
-              <button type="button" class="qa-btn undo-btn" [disabled]="saving()" (click)="undoQuickAction()">
-                @if (saving()) {
+              <button type="button" class="qa-btn undo-btn" [disabled]="store.saving()" (click)="store.undoQuickAction()">
+                @if (store.saving()) {
                   <span class="material-symbols-outlined spin">progress_activity</span>
                 } @else {
                   <span class="material-symbols-outlined">restore</span>
@@ -113,7 +113,7 @@
                 Deshacer
               </button>
             </div>
-            <button type="button" class="qa-close" (click)="dismissUndo()" title="Descartar">
+            <button type="button" class="qa-close" (click)="store.dismissUndo()" title="Descartar">
               <span class="material-symbols-outlined">close</span>
             </button>
           </section>
@@ -121,20 +121,20 @@
 
         <!-- Quick actions bar -->
         <app-availability-quick-actions
-          [selectionCount]="selectionCount()"
-          [selectionSummary]="selectionSummary()"
-          [multiSelectMode]="multiSelectMode()"
-          [activeCell]="activeCell()"
-          [saving]="saving()"
-          [batchAvailableValue]="batchAvailableValue()"
-          (batchMarkUnavailable)="batchMarkUnavailable()"
-          (blockSelectedRange)="blockSelectedRange()"
-          (clearSelectionOutput)="clearSelection()"
-          (selectAllCells)="selectAllCells()"
-          (quickBlock)="quickBlock()"
-          (quickMarkUnavailable)="quickMarkUnavailable()"
-          (batchAvailableChange)="batchAvailableValue.set($event < 0 ? 0 : ($event || 0))"
-          (dismissActiveCell)="activeCell.set(null)"
+          [selectionCount]="store.selectionCount()"
+          [selectionSummary]="store.selectionSummary()"
+          [multiSelectMode]="store.multiSelectMode()"
+          [activeCell]="store.activeCell()"
+          [saving]="store.saving()"
+          [batchAvailableValue]="store.batchAvailableValue()"
+          (batchMarkUnavailable)="store.batchMarkUnavailable()"
+          (blockSelectedRange)="store.blockSelectedRange()"
+          (clearSelectionOutput)="store.clearSelection()"
+          (selectAllCells)="store.selectAllCells()"
+          (quickBlock)="store.quickBlock()"
+          (quickMarkUnavailable)="store.quickMarkUnavailable()"
+          (batchAvailableChange)="store.batchAvailableValue.set($event < 0 ? 0 : ($event || 0))"
+          (dismissActiveCell)="store.activeCell.set(null)"
         />
 
         <!-- Forms grid -->
@@ -148,19 +148,19 @@
                 <p>Selecciona habitaciones disponibles / bloqueadas</p>
               </div>
             </div>
-            <form [formGroup]="inventoryForm" (ngSubmit)="saveInventory()" class="form-body">
+            <form [formGroup]="store.inventoryForm" (ngSubmit)="store.saveInventory()" class="form-body">
               <div class="field">
                 <label for="inv-roomType">Tipo de habitación</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">bed</span>
-                  <select id="inv-roomType" formControlName="roomTypeId" (change)="onInventoryRoomTypeChange()">
+                  <select id="inv-roomType" formControlName="roomTypeId" (change)="store.onInventoryRoomTypeChange()">
                     <option value="">Seleccionar</option>
                     @for (room of vm.roomTypes; track room.id) {
                       <option [value]="room.id">{{ room.name }}</option>
                     }
                   </select>
                 </div>
-                @if (inventoryForm.controls.roomTypeId.invalid && inventoryForm.controls.roomTypeId.touched) {
+                @if (store.inventoryForm.controls.roomTypeId.invalid && store.inventoryForm.controls.roomTypeId.touched) {
                   <span class="field-error">Campo obligatorio</span>
                 }
               </div>
@@ -170,34 +170,34 @@
                   <span class="material-symbols-outlined input-icon">calendar_today</span>
                   <input id="inv-date" type="date" formControlName="date" />
                 </div>
-                @if (inventoryForm.controls.date.invalid && inventoryForm.controls.date.touched) {
+                @if (store.inventoryForm.controls.date.invalid && store.inventoryForm.controls.date.touched) {
                   <span class="field-error">Campo obligatorio</span>
                 }
               </div>
 
               <!-- Room checkboxes (multi-select) -->
-              @if (hotelRoomsForType().length > 0) {
+              @if (store.hotelRoomsForType().length > 0) {
                 <div class="room-selector">
                   <div class="room-selector-head">
                     <span class="room-selector-title">Habitaciones</span>
                     <span class="room-selector-summary">
-                      {{ computedInventoryTotals().available }} disponibles ·
-                      {{ computedInventoryTotals().blocked }} bloqueadas
+                      {{ store.computedInventoryTotals().available }} disponibles ·
+                      {{ store.computedInventoryTotals().blocked }} bloqueadas
                     </span>
                   </div>
                   <div class="room-selector-grid">
-                    @for (room of hotelRoomsForType(); track room.hotel_room_id) {
+                    @for (room of store.hotelRoomsForType(); track room.hotel_room_id) {
                       <button
                         type="button"
                         class="room-chip"
-                        [class.is-available]="selectedAvailableRooms().has(room.room_number)"
-                        [class.is-blocked]="selectedBlockedRooms().has(room.room_number)"
-                        (click)="toggleInventoryRoom(room.room_number)"
+[class.is-available]="store.selectedAvailableRooms().has(room.room_number)"
+[class.is-blocked]="store.selectedBlockedRooms().has(room.room_number)"
+                        (click)="store.toggleInventoryRoom(room.room_number)"
                         title="{{ room.room_label }} ({{ room.floor }})"
                       >
                         <span class="material-symbols-outlined room-chip-icon">door_front</span>
                         <span class="room-chip-label">{{ room.room_number }}</span>
-                        @if (selectedAvailableRooms().has(room.room_number)) {
+                        @if (store.selectedAvailableRooms().has(room.room_number)) {
                           <span class="room-chip-status material-symbols-outlined">check_circle</span>
                         } @else {
                           <span class="material-symbols-outlined room-chip-status room-chip-blocked">block</span>
@@ -206,7 +206,7 @@
                     }
                   </div>
                 </div>
-              } @else if (inventoryForm.controls.roomTypeId.value) {
+              } @else if (store.inventoryForm.controls.roomTypeId.value) {
                 <div class="room-selector-empty">
                   <span class="material-symbols-outlined">info</span>
                   <span>No hay habitaciones físicas registradas para este tipo.</span>
@@ -214,8 +214,8 @@
               }
 
               <div class="form-actions">
-                <button type="submit" class="btn-primary" [disabled]="saving()">
-                  @if (saving()) {
+                <button type="submit" class="btn-primary" [disabled]="store.saving()">
+                  @if (store.saving()) {
                     <span class="material-symbols-outlined spin">progress_activity</span>
                   } @else {
                     <span class="material-symbols-outlined">save</span>
@@ -231,16 +231,16 @@
             <div class="form-card-head">
               <span class="material-symbols-outlined form-card-icon icon-block-red">event_busy</span>
               <div>
-                <h2>{{ editingBlackout() ? 'Editar bloqueo' : 'Bloquear fechas' }}</h2>
-                <p>{{ editingBlackout() ? 'Modifica el bloqueo existente' : 'Registra bloqueos operativos' }}</p>
+                <h2>{{ store.editingBlackout() ? 'Editar bloqueo' : 'Bloquear fechas' }}</h2>
+                <p>{{ store.editingBlackout() ? 'Modifica el bloqueo existente' : 'Registra bloqueos operativos' }}</p>
               </div>
             </div>
-            <form [formGroup]="blackoutForm" (ngSubmit)="saveBlackout()" class="form-body">
+            <form [formGroup]="store.blackoutForm" (ngSubmit)="store.saveBlackout()" class="form-body">
               <div class="field">
                 <label for="blk-roomType">Tipo de habitación</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">bed</span>
-                  <select id="blk-roomType" formControlName="roomTypeId" (change)="onBlackoutRoomTypeChange()">
+                  <select id="blk-roomType" formControlName="roomTypeId" (change)="store.onBlackoutRoomTypeChange()">
                     <option value="">Seleccionar</option>
                     @for (room of vm.roomTypes; track room.id) {
                       <option [value]="room.id">{{ room.name }}</option>
@@ -273,24 +273,24 @@
               </div>
 
               <!-- Blackout room checkboxes -->
-              @if (hotelRoomsForType().length > 0 && blackoutForm.controls.roomTypeId.value) {
+              @if (store.hotelRoomsForType().length > 0 && store.blackoutForm.controls.roomTypeId.value) {
                 <div class="room-selector">
                   <div class="room-selector-head">
                     <span class="room-selector-title">Habitaciones a bloquear</span>
-                    <span class="room-selector-summary">{{ blackoutSelectedRooms().size }} seleccionadas</span>
+                    <span class="room-selector-summary">{{ store.blackoutSelectedRooms().size }} seleccionadas</span>
                   </div>
                   <div class="room-selector-grid">
-                    @for (room of hotelRoomsForType(); track room.hotel_room_id) {
+                    @for (room of store.hotelRoomsForType(); track room.hotel_room_id) {
                       <button
                         type="button"
                         class="room-chip"
-                        [class.is-blocked]="blackoutSelectedRooms().has(room.room_number)"
-                        (click)="toggleBlackoutRoom(room.room_number)"
+[class.is-blocked]="store.blackoutSelectedRooms().has(room.room_number)"
+                         (click)="store.toggleBlackoutRoom(room.room_number)"
                         title="{{ room.room_label }}"
                       >
                         <span class="material-symbols-outlined room-chip-icon">door_front</span>
                         <span class="room-chip-label">{{ room.room_number }}</span>
-                        @if (blackoutSelectedRooms().has(room.room_number)) {
+@if (store.blackoutSelectedRooms().has(room.room_number)) {
                           <span class="material-symbols-outlined room-chip-status">block</span>
                         }
                       </button>
@@ -300,19 +300,19 @@
               }
 
               <div class="form-actions">
-                @if (editingBlackout()) {
-                  <button type="button" class="btn-secondary" (click)="cancelEditBlackout()">
+                @if (store.editingBlackout()) {
+                  <button type="button" class="btn-secondary" (click)="store.cancelEditBlackout()">
                     <span class="material-symbols-outlined">close</span>
                     Cancelar edición
                   </button>
                 }
-                <button type="submit" class="btn-primary" [disabled]="saving()">
-                  @if (saving()) {
+                <button type="submit" class="btn-primary" [disabled]="store.saving()">
+                  @if (store.saving()) {
                     <span class="material-symbols-outlined spin">progress_activity</span>
                   } @else {
-                    <span class="material-symbols-outlined">{{ editingBlackout() ? 'save' : 'event_busy' }}</span>
+                    <span class="material-symbols-outlined">{{ store.editingBlackout() ? 'save' : 'event_busy' }}</span>
                   }
-                  {{ editingBlackout() ? 'Guardar cambios' : 'Registrar bloqueo' }}
+                  {{ store.editingBlackout() ? 'Guardar cambios' : 'Registrar bloqueo' }}
                 </button>
               </div>
             </form>
@@ -324,39 +324,39 @@
           [inventoryItems]="vm.inventoryItems"
           [availabilityBlocks]="vm.availabilityBlocks"
           [blackoutItems]="vm.blackoutItems"
-          (deleteBlackout)="onDeleteBlackout($event)"
-          (editBlackout)="onEditBlackout($event)"
-          (editInventory)="onEditInventoryFromTable($event)"
-          (deleteInventory)="onDeleteInventoryFromTable($event)"
+          (deleteBlackout)="store.onDeleteBlackout($event)"
+          (editBlackout)="store.onEditBlackout($event)"
+          (editInventory)="store.onEditInventoryFromTable($event)"
+          (deleteInventory)="store.onDeleteInventoryFromTable($event)"
         />
       }
     }
   }
 
   <!-- Confirmation modal (quick actions) -->
-  @if (confirmAction(); as confirm) {
-    <div class="modal-backdrop" (click)="confirmCancel()">
+  @if (store.confirmAction(); as confirm) {
+    <div class="modal-backdrop" (click)="store.confirmCancel()">
       <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>{{ confirm.title }}</h2>
         <p>{{ confirm.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
-          <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="store.confirmCancel()">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-primary" (click)="store.confirmAccept()">Continuar</button>
         </div>
       </article>
     </div>
   }
 
   <!-- Delete inventory confirmation modal -->
-  @if (inventoryDeleteConfirm(); as idc) {
-    <div class="modal-backdrop" (click)="inventoryDeleteConfirm.set(null)">
+  @if (store.inventoryDeleteConfirm(); as idc) {
+    <div class="modal-backdrop" (click)="inventorystore.deleteConfirm.set(null)">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar registro de inventario</h2>
         <p>¿Estás seguro de eliminar el inventario para <strong>{{ idc.roomTypeName }}</strong> el <strong>{{ idc.date }}</strong>?</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="inventoryDeleteConfirm.set(null)">Cancelar</button>
-          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteInventory()">
-            @if (saving()) {
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="inventorystore.deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="store.confirmDeleteInventory()">
+            @if (store.saving()) {
               <span class="material-symbols-outlined spin">progress_activity</span>
             }
             Eliminar
@@ -367,15 +367,15 @@
   }
 
   <!-- Delete blackout confirmation modal -->
-  @if (deleteConfirm(); as dc) {
-    <div class="modal-backdrop" (click)="deleteConfirm.set(null)">
+  @if (store.deleteConfirm(); as dc) {
+    <div class="modal-backdrop" (click)="store.deleteConfirm.set(null)">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar bloqueo</h2>
         <p>¿Estás seguro de eliminar este bloqueo de disponibilidad?</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="deleteConfirm.set(null)">Cancelar</button>
-          <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeleteBlackout()">
-            @if (saving()) {
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="store.deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-danger" (click)="store.confirmDeleteBlackout()">
+            @if (store.saving()) {
               <span class="material-symbols-outlined spin">progress_activity</span>
             }
             Eliminar
@@ -385,3 +385,5 @@
     </div>
   }
 </div>
+
+

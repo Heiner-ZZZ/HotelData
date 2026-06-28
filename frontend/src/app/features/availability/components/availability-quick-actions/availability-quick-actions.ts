@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, ViewEncapsulation } from '@angular/core';
+
+import { activeCellLabel as formatActiveCellLabel } from '../../availability.helpers';
 
 @Component({
   selector: 'app-availability-quick-actions',
@@ -25,6 +27,11 @@ export class AvailabilityQuickActionsComponent {
   readonly batchAvailableChange = output<number>();
   readonly dismissActiveCell = output<void>();
 
+  readonly activeCellLabel = computed(() => {
+    const cell = this.activeCell();
+    return cell ? formatActiveCellLabel(cell.date, cell.roomTypeName) : '';
+  });
+
   onBatchMark() { this.batchMarkUnavailable.emit(); }
   onBlockRange() { this.blockSelectedRange.emit(); }
   onClearSelection() { this.clearSelectionOutput.emit(); }
@@ -32,10 +39,4 @@ export class AvailabilityQuickActionsComponent {
   onQuickBlock() { this.quickBlock.emit(); }
   onQuickMarkUnavailable() { this.quickMarkUnavailable.emit(); }
   onDismiss() { this.dismissActiveCell.emit(); }
-
-  activeCellLabel(): string {
-    const cell = this.activeCell();
-    if (!cell) return '';
-    return `${cell.date} — ${cell.roomTypeName}`;
-  }
 }

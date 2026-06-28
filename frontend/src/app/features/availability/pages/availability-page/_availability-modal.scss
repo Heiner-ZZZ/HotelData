@@ -1,0 +1,139 @@
+/* ════════════════════════════════════════════════════════════ */
+/*  CONFIRMATION MODAL                                         */
+/* ══════════════════════════════════════════════════════════════ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: modal-backdrop-in 200ms ease;
+}
+
+.modal-card {
+  width: min(480px, 100%);
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25), 0 8px 24px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 0.75rem;
+  animation: modal-card-in 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--app-text);
+}
+
+.modal-card p {
+  margin: 0;
+  color: var(--muted-text);
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.modal-btn {
+  min-height: 2.35rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  font-family: inherit;
+  transition: opacity 180ms ease;
+}
+
+.modal-btn-primary {
+  background: var(--accent);
+  color: #fff;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.modal-btn-secondary {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
+.modal-btn-danger {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+
+  &:hover {
+    background: #c82333;
+  }
+}
+
+.delete-btn {
+  color: #dc3545;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  font-size: 1.1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.modal-card-danger {
+  border-color: #dc3545;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes modal-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-32px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

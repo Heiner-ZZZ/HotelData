@@ -3,8 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 
 import type { AvailabilityInventoryItem, AvailabilityBlackoutItem } from '../../models/availability.model';
-
-const MO_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+import { DAY_NAMES, MONTH_NAMES_SHORT } from '../../availability.helpers';
 
 @Component({
   selector: 'app-availability-data-tables',
@@ -31,7 +30,7 @@ export class AvailabilityDataTablesComponent {
   /** Emitted when the user wants to delete an inventory entry. */
   readonly deleteInventory = output<{ date: string; roomTypeName: string }>();
 
-  readonly DAY_NAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  readonly DAY_NAMES = DAY_NAMES;
 
   readonly viewMode = signal<'table' | 'calendar'>('table');
   readonly pageSize = 10;
@@ -124,7 +123,7 @@ export class AvailabilityDataTablesComponent {
       weeks.push(week);
     }
 
-    return { year, month, monthName: MO_SHORT[month], weeks };
+    return { year, month, monthName: MONTH_NAMES_SHORT[month], weeks };
   });
 
   readonly calendarSummary = computed(() => {

@@ -1,0 +1,126 @@
+/* ════════════════════════════════════════════════════════════ */
+/*  SKELETON LOADER — calendar grid placeholders                */
+/* ══════════════════════════════════════════════════════════════ */
+
+.cal-animate-wrap {
+  position: relative;
+  min-height: 200px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cal-skeleton {
+  display: grid;
+  gap: 2px;
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: unset;
+  animation: fade-in 200ms ease;
+  transition: opacity 260ms ease, visibility 260ms ease;
+
+  &.is-exiting {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.cal-content-real {
+  animation: cal-content-in 280ms ease;
+  width: 100%;
+  max-width: 100%;
+}
+
+@keyframes cal-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sk-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.sk-row-head {
+  margin-bottom: 2px;
+}
+
+.sk-th-room {
+  min-width: 140px;
+  padding: 0.5rem 0.6rem;
+  flex-shrink: 0;
+}
+
+.sk-th-date {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  padding: 0.4rem 0.6rem;
+  align-items: center;
+  justify-items: center;
+  min-width: 3rem;
+}
+
+.sk-td-room {
+  min-width: 140px;
+  padding: 0.5rem 0.6rem;
+  display: grid;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sk-td-cell {
+  flex: 1;
+  padding: 0.15rem;
+  min-width: 3rem;
+}
+
+.sk-cell-block {
+  height: 2.2rem;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  animation: sk-pulse 1.4s ease-in-out infinite;
+}
+
+.sk-line {
+  height: 0.7rem;
+  border-radius: 4px;
+  background: var(--surface-soft);
+  animation: sk-pulse 1.4s ease-in-out infinite;
+}
+
+.sk-w-16 { width: 16px; }
+.sk-w-20 { width: 20px; }
+.sk-w-30 { width: 30px; }
+.sk-w-40 { width: 40px; }
+.sk-w-50 { width: 50px; }
+.sk-w-60 { width: 60px; }
+
+.sk-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.25rem 0;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--app-border);
+}
+
+@keyframes sk-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+

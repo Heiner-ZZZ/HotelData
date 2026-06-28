@@ -1,0 +1,55 @@
+/* ─── Info bar ─── */
+
+.info-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0.75rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.info-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.25rem 0.5rem;
+
+  .info-icon {
+    font-size: 1.35rem;
+    color: var(--accent);
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    flex-shrink: 0;
+  }
+
+  div {
+    display: grid;
+    gap: 1px;
+  }
+
+  .info-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--app-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .info-label {
+    font-size: 0.7rem;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.info-divider {
+  width: 1px;
+  background: var(--app-border);
+  margin: 0.25rem 0.25rem;
+  flex-shrink: 0;
+}
