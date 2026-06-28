@@ -10,9 +10,11 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
 import { ReservationsApiService, type DateHistoryEntry } from '../../services/reservations-api.service';
+import { ReceptionCalendarComponent } from '../../components/reception-calendar/reception-calendar';
 
 function todayIso(): string {
   const d = new Date();
@@ -27,7 +29,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-reservations-list-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, RouterLink],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, ReactiveFormsModule, ReceptionCalendarComponent, RouterLink],
   templateUrl: './reservations-list-page.html',
   styleUrl: './reservations-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,6 +53,17 @@ export class ReservationsListPageComponent {
     return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
   });
 
+  readonly isClient = computed(() => {
+    const role = this.authService.currentUser()?.primaryRole;
+    return !role || role === 'cliente';
+  });
+
+  /** View toggle: 'list' (default) or 'calendar' (occupancy bars). */
+  readonly viewMode = signal<'list' | 'calendar'>('list');
+  /** Property ID for the calendar view. */
+  readonly calendarPropId = signal(0);
+  readonly calendarPropLabel = signal('');
+
   readonly dateForm = this.formBuilder.nonNullable.group({
     createdDate: ['', [Validators.required]]
   });
@@ -58,6 +71,19 @@ export class ReservationsListPageComponent {
   // Current date filter (to sync between switchMap and next)
   readonly currentDateFilter = signal('');
   readonly currentStatusFilter = signal('');
+
+  setViewMode(mode: 'list' | 'calendar') {
+    this.viewMode.set(mode);
+  }
+
+  onCalendarPropSelected(event: { propId: number; label: string }) {
+    this.calendarPropId.set(event.propId);
+    this.calendarPropLabel.set(event.label);
+  }
+
+  onCalendarReservationClick(reservation: any) {
+    // Could navigate to reservation detail or keep modal open
+  }
 
   // Inline confirm/reject
   readonly confirmingId = signal<string | null>(null);

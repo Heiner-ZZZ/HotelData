@@ -28,6 +28,74 @@ import type {
   ReservationsListDto
 } from '../models/reservations.dto';
 import type { ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
+import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoomType } from '../models/reception-calendar.model';
+
+/** Raw API response (snake_case) for reception calendar. */
+interface ReceptionCalendarDto {
+  room_types: Array<{
+    room_type_id: string;
+    room_type_name: string;
+    reservations: Array<{
+      booking_id: string;
+      guest_name: string;
+      adults: number;
+      children: number;
+      check_in_date: string;
+      check_in_time: string;
+      check_in_fraction: number;
+      check_out_date: string;
+      check_out_time: string;
+      check_out_fraction: number;
+      total_nights: number;
+      status: string;
+      visual_status: string;
+      assigned_rooms: string[];
+      hotel_room_id: string;
+      room_number: string;
+      total_price: number | null;
+      currency: string;
+    }>;
+  }>;
+  start_date: string;
+  end_date: string;
+  today: string;
+}
+
+function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData {
+  return {
+    roomTypes: dto.room_types.map(rt => ({
+      roomTypeId: rt.room_type_id,
+      roomTypeName: rt.room_type_name,
+      reservations: rt.reservations.map(mapReceptionReservation),
+    })),
+    startDate: dto.start_date,
+    endDate: dto.end_date,
+    today: dto.today,
+  };
+}
+
+function mapReceptionReservation(r: ReceptionCalendarDto['room_types'][number]['reservations'][number]): ReceptionCalendarReservation {
+  return {
+    bookingId: r.booking_id,
+    guestName: r.guest_name,
+    adults: r.adults,
+    children: r.children,
+    checkInDate: r.check_in_date,
+    checkInTime: r.check_in_time,
+    checkInFraction: r.check_in_fraction,
+    checkOutDate: r.check_out_date,
+    checkOutTime: r.check_out_time,
+    checkOutFraction: r.check_out_fraction,
+    totalNights: r.total_nights,
+    status: r.status,
+    visualStatus: r.visual_status as ReceptionCalendarReservation['visualStatus'],
+    assignedRooms: r.assigned_rooms,
+    hotelRoomId: r.hotel_room_id,
+    roomNumber: r.room_number,
+    totalPrice: r.total_price,
+    currency: r.currency,
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -219,6 +287,17 @@ export class ReservationsApiService {
       `${this.apiConfig.baseUrl}/management/users/search`,
       { params, withCredentials: true }
     );
+  }
+
+  /** Fetch reception calendar data — reservations grouped by room type for a property. */
+  getReceptionCalendar(propId: number, startDate?: string, endDate?: string) {
+    let params = new HttpParams().set('prop_id', String(propId));
+    if (startDate) params = params.set('start_date', startDate);
+    if (endDate) params = params.set('end_date', endDate);
+    return this.http.get<ReceptionCalendarDto>(`${this.apiConfig.baseUrl}/management/reception/calendar`, {
+      params,
+      withCredentials: true,
+    }).pipe(map(dto => mapReceptionCalendar(dto)));
   }
 
   /** Check if a hotel has inventory/availability for a given date range */

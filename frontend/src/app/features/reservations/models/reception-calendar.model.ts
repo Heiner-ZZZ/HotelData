@@ -1,0 +1,56 @@
+/** A single reservation bar in the reception calendar. */
+export interface ReceptionCalendarReservation {
+  bookingId: string;
+  guestName: string;
+  adults: number;
+  children: number;
+  checkInDate: string;
+  checkInTime: string;
+  checkInFraction: number;   // 0.0–1.0 — partial-day positioning
+  checkOutDate: string;
+  checkOutTime: string;
+  checkOutFraction: number;  // 0.0–1.0 — partial-day positioning
+  totalNights: number;
+  status: string;
+  visualStatus: 'active' | 'upcoming' | 'past' | 'cancelled';
+  assignedRooms: string[];
+  hotelRoomId: string;
+  roomNumber: string;
+  totalPrice: number | null;
+  currency: string;
+}
+
+/** Room type grouping in the reception calendar. */
+export interface ReceptionCalendarRoomType {
+  roomTypeId: string;
+  roomTypeName: string;
+  reservations: ReceptionCalendarReservation[];
+}
+
+/** Full reception calendar response. */
+export interface ReceptionCalendarData {
+  roomTypes: ReceptionCalendarRoomType[];
+  startDate: string;
+  endDate: string;
+  today: string;
+}
+
+/** A computed day cell in the calendar grid. */
+export interface ReceptionCalendarDay {
+  date: string;
+  day: number;
+  dayName: string;
+  isToday: boolean;
+  isWeekend: boolean;
+}
+
+/** Computed bar segment positioned inside a day cell. */
+export interface ReceptionBarSegment {
+  reservation: ReceptionCalendarReservation;
+  /** Left offset within the cell (0–1). */
+  leftPct: number;
+  /** Width of the bar within the cell (0–1). */
+  widthPct: number;
+  /** Visual colour class. */
+  colorClass: string;
+}
