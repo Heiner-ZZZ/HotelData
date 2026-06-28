@@ -5,19 +5,6 @@
     description="Gestiona países, estados, ciudades y destinos turísticos. CRUD completo con resolución de IDs a nombres display."
   />
 
-  @if (message()) {
-    <div class="toast toast-success" (click)="message.set('')">
-      <span class="material-symbols-outlined">check_circle</span>
-      {{ message() }}
-    </div>
-  }
-  @if (errorMessage()) {
-    <div class="toast toast-error" (click)="errorMessage.set('')">
-      <span class="material-symbols-outlined">error</span>
-      {{ errorMessage() }}
-    </div>
-  }
-
   <!-- ═══ Type filter tabs ═══ -->
   <div class="bar-actions">
     <nav class="type-tabs">

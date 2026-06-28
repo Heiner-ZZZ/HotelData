@@ -9,6 +9,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { GeoCatalogApiService, type GeoEntry, type GeoListResponse } from '../../services/geo-catalog-api.service';
 
@@ -32,6 +33,7 @@ export class GeoCatalogPageComponent {
   private readonly api = inject(GeoCatalogApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly toast = inject(ToastService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<GeoListResponse | null>(null);
@@ -257,15 +259,13 @@ export class GeoCatalogPageComponent {
 
     obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.message.set('Nombre actualizado correctamente');
-        this.errorMessage.set('');
+        this.toast.success('Nombre actualizado correctamente');
         this.showCreateForm.set(false);
         this.editingId.set(null);
         this.refresh();
       },
       error: (err: any) => {
-        this.errorMessage.set(err.error?.detail || err.message || 'Error al guardar');
-        this.message.set('');
+        this.toast.error(err.error?.detail || err.message || 'Error al guardar');
       },
     });
   }
