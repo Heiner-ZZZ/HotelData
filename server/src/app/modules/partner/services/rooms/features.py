@@ -16,6 +16,7 @@ from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, now_utc
 from src.app.modules.partner.services.audit import register_action
+from src.app.modules.partner.services.content.amenities import DEFAULT_AMENITIES_CATALOG, _amenity_unit_price as _amenity_default_price
 from src.database.connection import get_database
 
 # Predefined default feature catalog for hotel room types
@@ -126,7 +127,13 @@ def _feature_unit_price(label: str) -> float:
 
 
 def get_all_features() -> list[dict[str, Any]]:
-    """Return the master catalog of available features, grouped by category."""
+    """Return the master catalog of available features, grouped by category.
+
+    Sources (priority order):
+      1. ``room_features`` collection (custom user-created features)
+      2. Hardcoded ``FEATURE_CATEGORIES`` (room-specific attributes)
+      3. ``DEFAULT_AMENITIES_CATALOG`` (property-level amenities, de-duped)
+    """
     db = get_database()
     custom = list(
         db.room_features.find({}, {"_id": 0, "label": 1, "category": 1, "icon": 1, "unit_price": 1})
@@ -136,7 +143,6 @@ def get_all_features() -> list[dict[str, Any]]:
     for feat in custom:
         seen_labels.add(feat.get("label", "").lower())
 
-    # Merge defaults with custom
     merged: dict[str, list[dict[str, Any]]] = {}
     for category, labels in FEATURE_CATEGORIES.items():
         merged[category] = [
@@ -145,6 +151,7 @@ def get_all_features() -> list[dict[str, Any]]:
                 "category": category,
                 "icon": _feature_icon(label),
                 "custom": False,
+                "source": "feature",
                 "unit_price": _feature_unit_price(label),
             }
             for label in labels
@@ -157,8 +164,24 @@ def get_all_features() -> list[dict[str, Any]]:
             "category": cat,
             "icon": feat.get("icon", ""),
             "custom": True,
+            "source": "custom",
             "unit_price": float(feat.get("unit_price", 0) or 0),
         })
+
+    # Merge amenity catalog items (de-duped against existing labels)
+    for category, labels in DEFAULT_AMENITIES_CATALOG.items():
+        for label in labels:
+            if label.lower() in seen_labels:
+                continue
+            seen_labels.add(label.lower())
+            merged.setdefault(category, []).append({
+                "label": label,
+                "category": category,
+                "icon": _feature_icon(label),
+                "custom": False,
+                "source": "amenity",
+                "unit_price": _amenity_default_price(label),
+            })
 
     result = []
     for category in sorted(merged.keys()):
@@ -226,6 +249,23 @@ def _feature_icon(label: str) -> str:
         "juegos de mesa": "board_game",
         "servicio a la habitación": "room_service",
         "desayuno en habitación": "breakfast_dining",
+        "wi-fi": "wifi",
+        "recepcion 24 horas": "support_agent",
+        "recepcion": "support_agent",
+        "parking": "local_parking",
+        "piscina": "pool",
+        "gimnasio": "fitness_center",
+        "restaurante": "restaurant",
+        "bar": "local_bar",
+        "cafe": "coffee",
+        "café": "coffee",
+        "centro de negocios": "business_center",
+        "salas de reuniones": "meeting_room",
+        "habitaciones familiares": "family_restroom",
+        "cunas": "crib",
+        "spa": "spa",
+        "sauna": "sauna",
+        "masajes": "massage",
     }
     return icon_map.get(label.lower(), "check")
 

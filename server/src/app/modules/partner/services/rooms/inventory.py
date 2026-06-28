@@ -99,10 +99,10 @@ def save_inventory_entry(
         payload = {
             "total_rooms": total_value, "available_rooms": available_value,
             "blocked_rooms": blocked_value, "version": expected_version + 1,
-            "updated_at": now,
+            "updated_at": now, "is_deleted": False,
         }
         result = db.room_inventory_calendar.find_one_and_update(
-            filter_, {"$set": payload},
+            filter_, {"$set": payload, "$unset": {"deleted_at": ""}},
             return_document=ReturnDocument.AFTER, projection={"_id": 0},
         )
         if result is None:
@@ -115,7 +115,7 @@ def save_inventory_entry(
             if current_version is None and expected_version == 0:
                 return db.room_inventory_calendar.find_one_and_update(
                     {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date, "version": {"$exists": False}},
-                    {"$set": {"version": 1, "total_rooms": total_value, "available_rooms": available_value, "blocked_rooms": blocked_value, "updated_at": now}},
+                    {"$set": {"version": 1, "total_rooms": total_value, "available_rooms": available_value, "blocked_rooms": blocked_value, "updated_at": now, "is_deleted": False}, "$unset": {"deleted_at": ""}},
                     return_document=ReturnDocument.AFTER, projection={"_id": 0},
                 )
             raise ValueError(
@@ -128,7 +128,7 @@ def save_inventory_entry(
         "prop_id": prop_id, "room_type_id": clean_room_type_id,
         "date": clean_date, "total_rooms": total_value,
         "available_rooms": available_value, "blocked_rooms": blocked_value,
-        "version": 1, "updated_at": now,
+        "version": 1, "updated_at": now, "is_deleted": False,
     }
     room_name = ""
     room_doc = db.room_types.find_one({"prop_id": prop_id, "room_type_id": clean_room_type_id}, {"_id": 0, "name": 1})
@@ -145,7 +145,7 @@ def save_inventory_entry(
     )
     return db.room_inventory_calendar.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date},
-        {"$set": payload, "$setOnInsert": {"created_at": now}},
+        {"$set": payload, "$unset": {"deleted_at": ""}, "$setOnInsert": {"created_at": now}},
         upsert=True, return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
 

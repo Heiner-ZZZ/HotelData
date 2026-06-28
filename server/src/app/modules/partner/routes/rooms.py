@@ -110,6 +110,20 @@ def rooms_create_api(
     return saved
 
 
+@api_router.get("/rooms/{room_type_id}")
+def rooms_get_api(
+    room_type_id: str,
+    prop_id: int = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
+):
+    """Get a single room type by ID."""
+    from src.app.modules.partner.services.rooms.types import _room_type_by_id
+    detail = _room_type_by_id(room_type_id, prop_id=prop_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
+    return detail
+
+
 @api_router.put("/rooms/{room_type_id}")
 def rooms_update_api(
     room_type_id: str,
