@@ -21,11 +21,44 @@ def create_additional_charge(payload: AdditionalChargeCreate) -> dict[str, Any] 
         "concept": payload.concept, "amount": round(payload.amount, 2),
         "quantity": max(1, payload.quantity),
         "total": round(payload.amount * max(1, payload.quantity), 2),
+        "category": payload.category or _infer_category(payload.concept),
         "note": payload.note, "created_at": now,
     }
     result = db[CHARGES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
     return _enrich_charge(doc)
+
+
+def _infer_category(concept: str) -> str:
+    """Infer charge category from concept text if not provided."""
+    concept_lower = concept.lower()
+    category_map = {
+        "minibar": "minibar",
+        "spa": "spa",
+        "restaurante": "restaurante",
+        "comida": "restaurante",
+        "cena": "restaurante",
+        "desayuno": "restaurante",
+        "bar": "restaurante",
+        "lavandería": "lavanderia",
+        "lavanderia": "lavanderia",
+        "parking": "parking",
+        "estacionamiento": "parking",
+        "mascota": "mascotas",
+        "pet": "mascotas",
+        "room service": "room_service",
+        "habitación": "room_service",
+        "daño": "danos",
+        "daños": "danos",
+        "damage": "danos",
+        "late checkout": "late_checkout",
+        "salida tarde": "late_checkout",
+        "amenidad": "amenities",
+    }
+    for keyword, cat in category_map.items():
+        if keyword in concept_lower:
+            return cat
+    return "otros"
 
 
 def list_additional_charges(

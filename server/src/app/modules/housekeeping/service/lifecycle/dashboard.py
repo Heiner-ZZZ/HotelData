@@ -63,10 +63,28 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
     })
     mt_compliance_pct = round((on_time_mt / total_mt_completed) * 100, 1) if total_mt_completed else 0
 
+    # ── Fetch all room status records for floor map ──
+    rooms_cursor = db[ROOM_STATUS_COLLECTION].find(match).sort("room_label", 1).limit(500)
+    rooms_list: list[dict[str, Any]] = []
+    for doc in rooms_cursor:
+        doc["id"] = str(doc.pop("_id"))
+        for f in ("created_at", "updated_at"):
+            if f in doc and hasattr(doc[f], "isoformat"):
+                doc[f] = doc[f].isoformat()
+            elif f in doc:
+                doc[f] = str(doc[f]) if doc[f] else None
+        # camelCase for frontend
+        doc["roomLabel"] = doc.get("room_label", "")
+        doc["roomNumber"] = doc.get("room_number", "")
+        doc["propId"] = doc.get("prop_id", 0)
+        doc["hotelRoomId"] = doc.get("hotel_room_id", "")
+        rooms_list.append(doc)
+
     return {
         "total_rooms": total_rooms, "occupied": occupied,
         "occupancy_rate": round((occupied / total_rooms) * 100, 1) if total_rooms else 0,
         "room_statuses": status_counts,
+        "rooms": rooms_list,
         "pending_housekeeping_tasks": pending_hk,
         "completed_today": completed_today,
         "upcoming_maintenance": upcoming_mt,

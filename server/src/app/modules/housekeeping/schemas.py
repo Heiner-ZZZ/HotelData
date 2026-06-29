@@ -87,6 +87,7 @@ class AdditionalChargeCreate(BaseModel):
     concept: str
     amount: float
     quantity: int = 1
+    category: str = ""  # minibar, spa, restaurante, lavanderia, parking, mascotas, room_service, danos, late_checkout
     note: str = ""
 
 
@@ -98,6 +99,7 @@ class AdditionalChargeResponse(BaseModel):
     amount: float
     quantity: int
     total: float
+    category: str = ""
     note: str
     created_at: str
 
