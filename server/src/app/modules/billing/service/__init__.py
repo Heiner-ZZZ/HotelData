@@ -12,6 +12,15 @@ from src.app.modules.billing.service.lifecycle import (
     update_invoice_additional_charges,
     create_split_charges_invoice,
 )
+from src.app.modules.billing.service.folio import (
+    close_folio,
+    create_folio,
+    get_folio,
+    get_folio_by_id,
+    list_folios,
+    post_to_folio,
+    FOLIO_CATEGORIES,
+)
 
 __all__ = [
     "cancel_invoice",
@@ -25,6 +34,13 @@ __all__ = [
     "refund_payment",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
+    "create_folio",
+    "get_folio",
+    "get_folio_by_id",
+    "post_to_folio",
+    "close_folio",
+    "list_folios",
+    "FOLIO_CATEGORIES",
     "ensure_billing_collections",
     "module_status",
 ]

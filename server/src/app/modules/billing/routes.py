@@ -5,14 +5,21 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
     cancel_invoice,
+    close_folio,
+    create_folio,
     create_invoice,
     create_payment,
+    get_folio,
+    get_folio_by_id,
     get_invoice,
     get_payment,
+    list_folios,
     list_invoices,
     list_payments,
     module_status,
+    post_to_folio,
     refund_payment,
+    FOLIO_CATEGORIES,
 )
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
@@ -192,6 +199,93 @@ def my_invoices_api(
         "has_next": page * page_size < total,
         "has_prev": page > 1,
     }
+
+
+# ── Fólios (Guest Folio / Cuenta de Huésped) ──
+
+
+@api_router.get("/folios/categories")
+def folio_categories_api(
+    current_user: dict = Depends(require_login),
+):
+    """Return the list of available folio posting categories."""
+    return FOLIO_CATEGORIES
+
+
+@api_router.get("/folios/{booking_id}")
+def get_folio_api(
+    booking_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Get the folio for a booking."""
+    result = get_folio(booking_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado para esta reserva")
+    return result
+
+
+@api_router.post("/folios/{booking_id}/post")
+def post_to_folio_api(
+    booking_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Post a transaction to the guest's folio.
+
+    Payload:
+    {
+      "posting_type": "charge" | "discount" | "payment" | "adjustment",
+      "category": "restaurante" | "minibar" | "spa" | ...,
+      "concept": "Masaje relajante",
+      "amount": 40.00,
+      "quantity": 1,
+      "reference_id": "optional",
+      "reference_type": "additional_charge"
+    }
+    """
+    result = post_to_folio(
+        booking_id,
+        posting_type=payload.get("posting_type", "charge"),
+        category=payload.get("category", "Otros"),
+        concept=payload.get("concept", ""),
+        amount=float(payload.get("amount", 0)),
+        quantity=int(payload.get("quantity", 1)),
+        reference_id=payload.get("reference_id", ""),
+        reference_type=payload.get("reference_type", "manual"),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
+    return result
+
+
+@api_router.post("/folios/{booking_id}/close")
+def close_folio_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Close a folio at check-out."""
+    invoice_id = payload.get("invoice_id")
+    result = close_folio(
+        booking_id,
+        invoice_id=invoice_id,
+        closed_by=str(current_user.get("_id", "")),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cerrar el folio")
+    return result
+
+
+@api_router.get("/folios")
+def list_folios_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    status_filter: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_login),
+):
+    """List folios with optional property and status filters."""
+    return list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
 
 
 @api_router.post("/my-invoices/{invoice_id}/pay")

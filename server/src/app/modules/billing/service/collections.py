@@ -8,6 +8,7 @@ INVOICES_COLLECTION = "reservation_invoices"
 PAYMENTS_COLLECTION = "reservation_payments"
 FACT_INVOICES = "fact_reservation_invoices"
 FACT_PAYMENTS = "fact_reservation_payments"
+FOLIO_COLLECTION = "guest_folios"
 
 INDEXES_INVOICES = [
     IndexModel([("booking_id", ASCENDING)], name="idx_inv_booking"),
@@ -19,6 +20,13 @@ INDEXES_PAYMENTS = [
     IndexModel([("invoice_id", ASCENDING)], name="idx_pay_invoice"),
     IndexModel([("status", ASCENDING)], name="idx_pay_status"),
 ]
+INDEXES_FOLIOS = [
+    IndexModel([("booking_id", ASCENDING)], name="idx_fl_booking", unique=True),
+    IndexModel([("folio_number", ASCENDING)], name="idx_fl_number", unique=True),
+    IndexModel([("prop_id", ASCENDING)], name="idx_fl_prop"),
+    IndexModel([("status", ASCENDING)], name="idx_fl_status"),
+    IndexModel([("created_at", -1)], name="idx_fl_created_desc"),
+]
 
 
 def ensure_billing_collections() -> None:
@@ -26,6 +34,7 @@ def ensure_billing_collections() -> None:
     ensure_collection(PAYMENTS_COLLECTION, INDEXES_PAYMENTS)
     ensure_collection(FACT_INVOICES, INDEXES_INVOICES)
     ensure_collection(FACT_PAYMENTS, INDEXES_PAYMENTS)
+    ensure_collection(FOLIO_COLLECTION, INDEXES_FOLIOS)
 
 
 def module_status() -> ModuleStatus:
