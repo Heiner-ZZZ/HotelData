@@ -1,0 +1,282 @@
+<div class="lost-and-found-page">
+  <app-page-header
+    eyebrow="Gestión hotelera"
+    title="Objetos perdidos"
+    description="Registro de objetos olvidados por huéspedes en habitaciones y áreas comunes."
+  />
+
+  @if (errorMessage()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="toast-close" (click)="errorMessage.set('')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- ═══ Search & Actions ═══ -->
+  <div class="toolbar surface-card">
+    <div class="search-wrap">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Buscar por objeto, huésped o ubicación..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)"
+        aria-label="Buscar objetos perdidos"
+      />
+    </div>
+    <div class="toolbar-actions">
+      <div class="filter-chips">
+        @for (opt of ['', 'pending', 'returned', 'claimed', 'disposed']; track opt) {
+          <button
+            type="button"
+            class="filter-chip"
+            [class.is-active]="statusFilter() === opt"
+            (click)="setStatusFilter(opt)"
+          >
+            {{ opt === '' ? 'Todas' : (statusLabel[opt] || opt) }}
+          </button>
+        }
+      </div>
+      <button type="button" class="btn-primary" (click)="openCreateModal()">
+        <span class="material-symbols-outlined">add</span>
+        Nuevo objeto
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ List ═══ -->
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando objetos perdidos..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error" [description]="errorMessage()" />
+    }
+    @default {
+      @if (items().length === 0) {
+        <app-empty-state
+          icon="search_off"
+          title="Sin resultados"
+          description="No se encontraron objetos perdidos con los filtros actuales."
+        />
+      } @else {
+        <div class="items-table surface-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Objeto</th>
+                <th>Ubicación</th>
+                <th>Huésped</th>
+                <th>Estado</th>
+                <th>Encontrado por</th>
+                <th>Fecha</th>
+                <th class="cell-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items(); track item.id) {
+                <tr class="item-row" (click)="openDetail(item)">
+                  <td>
+                    <strong>{{ item.item_name }}</strong>
+                    @if (item.description) {
+                      <span class="item-desc">{{ item.description | slice:0:60 }}{{ item.description.length > 60 ? '…' : '' }}</span>
+                    }
+                  </td>
+                  <td><span class="cell-muted">{{ item.found_location || '—' }}</span></td>
+                  <td>
+                    @if (item.guest_name) {
+                      <div class="guest-info">
+                        <strong>{{ item.guest_name }}</strong>
+                        @if (item.guest_contact) {
+                          <span class="cell-muted">{{ item.guest_contact }}</span>
+                        }
+                      </div>
+                    } @else {
+                      <span class="cell-muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <app-status-badge
+                      [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'info' : 'warning'"
+                      [label]="statusLabel[item.status] || item.status"
+                    />
+                  </td>
+                  <td><span class="cell-muted">{{ item.found_by || '—' }}</span></td>
+                  <td><span class="cell-muted">{{ item.created_at | date:'dd/MM/yyyy' }}</span></td>
+                  <td class="cell-center">
+                    <button type="button" class="btn-icon" (click)="$event.stopPropagation(); openDetail(item)" title="Ver detalle">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (data(); as d) {
+          @if (d.total_pages > 1) {
+            <div class="pagination">
+              <button type="button" class="page-btn" [disabled]="!d.has_prev" (click)="setPage(currentPage() - 1)">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <span class="page-info">{{ d.page }} / {{ d.total_pages }}</span>
+              <button type="button" class="page-btn" [disabled]="!d.has_next" (click)="setPage(currentPage() + 1)">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          }
+        }
+      }
+    }
+  }
+
+  <!-- ═══ Create Modal ═══ -->
+  @if (showCreateModal()) {
+    <div class="modal-overlay" (click)="closeCreateModal()">
+      <div class="modal-panel surface-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-icon">add_circle</span>
+          <h2>Registrar objeto perdido</h2>
+          <button type="button" class="modal-close" (click)="closeCreateModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        @if (modalError()) {
+          <div class="modal-error">{{ modalError() }}</div>
+        }
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <label class="field required">
+              <span>Hotel (Prop ID)</span>
+              <input type="number" [ngModel]="form().prop_id" (ngModelChange)="form.update(f => ({...f, prop_id: $event}))" min="1" required />
+            </label>
+            <label class="field">
+              <span>Booking ID</span>
+              <input type="text" [ngModel]="form().booking_id" (ngModelChange)="form.update(f => ({...f, booking_id: $event}))" placeholder="BK-..." />
+            </label>
+            <label class="field required">
+              <span>Nombre del objeto</span>
+              <input type="text" [ngModel]="form().item_name" (ngModelChange)="form.update(f => ({...f, item_name: $event}))" placeholder="Ej: Cargador de celular" required />
+            </label>
+            <label class="field field-wide">
+              <span>Descripción</span>
+              <textarea [ngModel]="form().description" (ngModelChange)="form.update(f => ({...f, description: $event}))" rows="2" placeholder="Color, marca, detalles..."></textarea>
+            </label>
+            <label class="field">
+              <span>Nombre del huésped</span>
+              <input type="text" [ngModel]="form().guest_name" (ngModelChange)="form.update(f => ({...f, guest_name: $event}))" />
+            </label>
+            <label class="field">
+              <span>Contacto del huésped</span>
+              <input type="text" [ngModel]="form().guest_contact" (ngModelChange)="form.update(f => ({...f, guest_contact: $event}))" placeholder="Teléfono o email" />
+            </label>
+            <label class="field">
+              <span>¿Dónde se encontró?</span>
+              <input type="text" [ngModel]="form().found_location" (ngModelChange)="form.update(f => ({...f, found_location: $event}))" placeholder="Ej: Habitación 204, Lobby" />
+            </label>
+            <label class="field">
+              <span>Encontrado por</span>
+              <input type="text" [ngModel]="form().found_by" (ngModelChange)="form.update(f => ({...f, found_by: $event}))" placeholder="Nombre del staff" />
+            </label>
+            <label class="field field-wide">
+              <span>Notas adicionales</span>
+              <textarea [ngModel]="form().notes" (ngModelChange)="form.update(f => ({...f, notes: $event}))" rows="2"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeCreateModal()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="createItem()" [disabled]="saving()">
+            @if (saving()) {
+              <span class="material-symbols-outlined loading-spin">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined">save</span>
+              Registrar objeto
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ Detail Modal ═══ -->
+  @if (showDetailModal(); as _) {
+    @if (selectedItem(); as item) {
+      <div class="modal-overlay" (click)="closeDetail()">
+        <div class="modal-panel surface-card" (click)="$event.stopPropagation()">
+          <div class="modal-head">
+            <span class="material-symbols-outlined modal-icon">search</span>
+            <h2>{{ item.item_name }}</h2>
+            <app-status-badge
+              [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'info' : 'warning'"
+              [label]="statusLabel[item.status] || item.status"
+            />
+            <button type="button" class="modal-close" (click)="closeDetail()">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          @if (modalError()) {
+            <div class="modal-error">{{ modalError() }}</div>
+          }
+
+          <div class="modal-body">
+            <div class="detail-grid">
+              <div class="detail-item"><span class="dt-label">Descripción</span><span>{{ item.description || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Ubicación</span><span>{{ item.found_location || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Encontrado por</span><span>{{ item.found_by || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Hotel (Prop ID)</span><span>#{{ item.prop_id }}</span></div>
+              <div class="detail-item"><span class="dt-label">Booking ID</span><span>{{ item.booking_id || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Huésped</span><span>{{ item.guest_name || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Contacto</span><span>{{ item.guest_contact || '—' }}</span></div>
+              <div class="detail-item"><span class="dt-label">Creado</span><span>{{ item.created_at | date:'dd/MM/yyyy HH:mm' }}</span></div>
+              @if (item.returned_to) {
+                <div class="detail-item"><span class="dt-label">Devuelto a</span><span>{{ item.returned_to }}</span></div>
+              }
+              @if (item.returned_at) {
+                <div class="detail-item"><span class="dt-label">Devuelto el</span><span>{{ item.returned_at | date:'dd/MM/yyyy HH:mm' }}</span></div>
+              }
+              @if (item.notes) {
+                <div class="detail-item detail-item-span"><span class="dt-label">Notas</span><span>{{ item.notes }}</span></div>
+              }
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            @if (item.status === 'pending') {
+              <button type="button" class="btn-success" (click)="claimItem(item)">
+                <span class="material-symbols-outlined">handshake</span>
+                Marcar como devuelto
+              </button>
+              <button type="button" class="btn-danger" (click)="disposeItem(item)">
+                <span class="material-symbols-outlined">delete</span>
+                Desechar
+              </button>
+            }
+            @if (item.status === 'claimed') {
+              <button type="button" class="btn-success" (click)="claimItem(item)">
+                <span class="material-symbols-outlined">check_circle</span>
+                Confirmar devolución
+              </button>
+            }
+            <button type="button" class="btn-danger-outline" (click)="deleteItem(item)">
+              <span class="material-symbols-outlined">delete_forever</span>
+              Eliminar
+            </button>
+            <button type="button" class="btn-secondary" (click)="closeDetail()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

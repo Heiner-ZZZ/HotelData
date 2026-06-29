@@ -1,0 +1,129 @@
+<div class="history-page">
+  <app-page-header
+    eyebrow="Housekeeping"
+    title="Historial de estados"
+    description="Auditoría de cambios de estado de cada habitación — timeline completo."
+  />
+
+  <!-- ═══ Filters ═══ -->
+  <section class="history-filters">
+    <label class="filter-field">
+      <span class="material-symbols-outlined">business</span>
+      <input type="number" placeholder="Prop ID" [ngModel]="editPropId()" (ngModelChange)="editPropId.set($event || 0)" />
+    </label>
+    <label class="filter-field">
+      <span class="material-symbols-outlined">meeting_room</span>
+      <input type="text" placeholder="Habitación" [ngModel]="editRoomLabel()" (ngModelChange)="editRoomLabel.set($event)" />
+    </label>
+    <label class="filter-field">
+      <span class="material-symbols-outlined">bookmark</span>
+      <input type="text" placeholder="Booking ID" [ngModel]="editBookingId()" (ngModelChange)="editBookingId.set($event)" />
+    </label>
+    <button type="button" class="filter-btn" (click)="applyFilters()">Filtrar</button>
+    <button type="button" class="filter-btn filter-btn-clear" (click)="clearFilters()">Limpiar</button>
+  </section>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando historial..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar historial"
+        description="No se pudo obtener el historial de cambios de estado."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="Sin cambios registrados"
+        description="No se encontraron cambios de estado con los filtros seleccionados."
+      />
+    }
+    @default {
+      <!-- ═══ Timeline ═══ -->
+      <section class="timeline-card">
+        <div class="timeline-head">
+          <div class="timeline-head-left">
+            <span class="material-symbols-outlined">history</span>
+            <div>
+              <h2>Cambios de estado</h2>
+              <p>{{ totalItems() }} registro(s) encontrado(s)</p>
+            </div>
+          </div>
+          <a routerLink="/management/housekeeping/rooms" class="timeline-back-link">
+            <span class="material-symbols-outlined">meeting_room</span>
+            Ir a estados
+          </a>
+        </div>
+
+        <div class="timeline-list">
+          @for (entry of historyItems(); track entry.id) {
+            <div class="timeline-entry">
+              <div class="timeline-marker">
+                <div class="timeline-dot" [style.--dot-color]="getStatusMeta(entry.newStatus).color">
+                  <span class="material-symbols-outlined">{{ getStatusMeta(entry.newStatus).icon }}</span>
+                </div>
+                <div class="timeline-line"></div>
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-content-head">
+                  <span class="timeline-room">{{ entry.roomLabel }}</span>
+                  <span class="timeline-prop">Prop {{ entry.propId }}</span>
+                  <span class="timeline-time">{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <div class="timeline-transition">
+                  <span class="status-badge" [style.--badge-color]="getStatusMeta(entry.oldStatus).color">
+                    <span class="material-symbols-outlined badge-icon">{{ getStatusMeta(entry.oldStatus).icon }}</span>
+                    {{ getStatusMeta(entry.oldStatus).label }}
+                  </span>
+                  <span class="material-symbols-outlined transition-arrow">arrow_forward</span>
+                  <span class="status-badge" [style.--badge-color]="getStatusMeta(entry.newStatus).color">
+                    <span class="material-symbols-outlined badge-icon">{{ getStatusMeta(entry.newStatus).icon }}</span>
+                    {{ getStatusMeta(entry.newStatus).label }}
+                  </span>
+                </div>
+                @if (entry.note) {
+                  <div class="timeline-note">{{ entry.note }}</div>
+                }
+                <div class="timeline-meta">
+                  <span class="timeline-meta-item">
+                    <span class="material-symbols-outlined">person</span>
+                    {{ entry.changedBy }}
+                  </span>
+                  @if (entry.bookingId) {
+                    <span class="timeline-meta-item">
+                      <span class="material-symbols-outlined">bookmark</span>
+                      {{ entry.bookingId }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- ═══ Pagination ═══ -->
+        @if (totalPages() > 1) {
+          <div class="timeline-pagination">
+            <button type="button" class="page-btn" [disabled]="!hasPrev()" (click)="goToPage(currentPage() - 1)">
+              <span class="material-symbols-outlined">chevron_left</span>
+              Anterior
+            </button>
+            <div class="page-info">
+              @for (p of pagesArray(); track p) {
+                <button type="button" class="page-num" [class.page-num-active]="p === currentPage()"
+                  (click)="goToPage(p)">
+                  {{ p }}
+                </button>
+              }
+            </div>
+            <button type="button" class="page-btn" [disabled]="!hasNext()" (click)="goToPage(currentPage() + 1)">
+              Siguiente
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        }
+      </section>
+    }
+  }
+</div>
