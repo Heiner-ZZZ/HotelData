@@ -1,93 +1,208 @@
-<div class="invoices-page">
+<div class="invl-page">
   <app-page-header
     eyebrow="Facturación"
-    title="Facturas y comprobantes"
-    description="Consulta las facturas generadas por reservas. Los pagos son simulados, no hay integración bancaria real."
+    title="Facturas"
+    description="Consulta facturas emitidas, pagadas y anuladas. Filtra por estado, fecha o buscador."
   />
 
-  <div class="sub-nav">
-    <a routerLink="/management/billing/invoices" class="sub-link active">Facturas</a>
-    <a routerLink="/management/billing/payments" class="sub-link">Pagos</a>
+  <div class="invl-nav">
+    <a routerLink="/management/billing/invoices" class="invl-nav-link active">Facturas</a>
+    <a routerLink="/management/billing/payments" class="invl-nav-link">Pagos</a>
   </div>
 
+  <!-- ═══ Stats Cards ═══ -->
+  @let s = stats();
+  @if (s) {
+    <div class="invl-stats">
+      <div class="invl-stat-card issued">
+        <span class="invl-stat-icon">
+          <span class="material-symbols-outlined">receipt_long</span>
+        </span>
+        <div class="invl-stat-body">
+          <span class="invl-stat-value">{{ s.issued.count }}</span>
+          <span class="invl-stat-label">Emitidas</span>
+        </div>
+        <span class="invl-stat-amount">${{ s.issued.total.toFixed(2) }}</span>
+      </div>
+      <div class="invl-stat-card paid">
+        <span class="invl-stat-icon">
+          <span class="material-symbols-outlined">check_circle</span>
+        </span>
+        <div class="invl-stat-body">
+          <span class="invl-stat-value">{{ s.paid.count }}</span>
+          <span class="invl-stat-label">Pagadas</span>
+        </div>
+        <span class="invl-stat-amount">${{ s.paid.total.toFixed(2) }}</span>
+      </div>
+      <div class="invl-stat-card cancelled">
+        <span class="invl-stat-icon">
+          <span class="material-symbols-outlined">cancel</span>
+        </span>
+        <div class="invl-stat-body">
+          <span class="invl-stat-value">{{ s.cancelled.count }}</span>
+          <span class="invl-stat-label">Anuladas</span>
+        </div>
+        <span class="invl-stat-amount">${{ s.cancelled.total.toFixed(2) }}</span>
+      </div>
+      <div class="invl-stat-card refunded">
+        <span class="invl-stat-icon">
+          <span class="material-symbols-outlined">currency_exchange</span>
+        </span>
+        <div class="invl-stat-body">
+          <span class="invl-stat-value">{{ s.refunded.count }}</span>
+          <span class="invl-stat-label">Reembolsadas</span>
+        </div>
+        <span class="invl-stat-amount">${{ s.refunded.total.toFixed(2) }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ Filter Bar ═══ -->
+  <section class="invl-filters surface-card">
+    <div class="invl-filter-row">
+      <div class="invl-chips">
+        <span class="invl-filter-label">Estado</span>
+        <button type="button" class="invl-chip" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
+        <button type="button" class="invl-chip" [class.active]="statusFilter() === 'issued'" (click)="setStatusFilter('issued')">
+          <span class="material-symbols-outlined chip-icon">receipt_long</span> Emitidas
+        </button>
+        <button type="button" class="invl-chip" [class.active]="statusFilter() === 'paid'" (click)="setStatusFilter('paid')">
+          <span class="material-symbols-outlined chip-icon">check_circle</span> Pagadas
+        </button>
+        <button type="button" class="invl-chip" [class.active]="statusFilter() === 'cancelled'" (click)="setStatusFilter('cancelled')">
+          <span class="material-symbols-outlined chip-icon">cancel</span> Anuladas
+        </button>
+        <button type="button" class="invl-chip" [class.active]="statusFilter() === 'refunded'" (click)="setStatusFilter('refunded')">
+          <span class="material-symbols-outlined chip-icon">currency_exchange</span> Reembolsadas
+        </button>
+      </div>
+    </div>
+    <div class="invl-filter-row secondary">
+      <div class="invl-search-group">
+        <span class="material-symbols-outlined invl-search-icon">search</span>
+        <input
+          type="text" class="invl-search-input"
+          placeholder="Buscar por Nº factura, reserva o huésped…"
+          [value]="searchQuery()"
+          (input)="onSearch(($any($event.target)?.value ?? ''))"
+        />
+      </div>
+      <div class="invl-date-group">
+        <span class="material-symbols-outlined invl-date-icon">calendar_month</span>
+        <input type="date" class="invl-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+        <span class="invl-date-sep">→</span>
+        <input type="date" class="invl-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+      </div>
+      @if (activeFilterCount() > 0) {
+        <button type="button" class="invl-clear-btn" (click)="clearAllFilters()">
+          <span class="material-symbols-outlined">filter_alt_off</span>
+          Limpiar
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- ═══ Content ═══ -->
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando facturas..." />
+      <app-loading-state label="Cargando facturas…" />
     }
     @case ('error') {
-      <app-error-state
-        title="No fue posible cargar las facturas"
-        description="Intenta nuevamente o revisa la conectividad con la API."
-      />
+      <app-error-state title="Error al cargar" description="No se pudieron obtener las facturas." />
     }
     @case ('empty') {
-      <app-empty-state
-        title="No hay facturas todavía"
-        description="Las facturas se generan cuando se crea una reserva con datos de facturación."
-      />
+      <app-empty-state title="Sin facturas" description="No hay facturas con los filtros seleccionados." />
     }
-    @default {
-      @if (data(); as vm) {
-        <section class="surface-card panel">
-          <div class="panel-head">
+    @case ('success') {
+      @let d = invoicesResource.value()!;
+      <section class="surface-card invl-table-card">
+        <!-- Header -->
+        <div class="invl-table-head">
+          <div class="invl-table-head-left">
+            <span class="material-symbols-outlined invl-head-icon">receipt_long</span>
             <div>
               <h2>Facturas emitidas</h2>
-              <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
-            </div>
-            <div class="pagination-bar">
-              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
-                <span class="material-symbols-outlined btn-icon">chevron_left</span>
-                Anterior
-              </button>
-              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
-                Siguiente
-                <span class="material-symbols-outlined btn-icon">chevron_right</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nº Factura</th>
-                  <th>Reserva</th>
-                  <th>Subtotal</th>
-                  <th>Impuestos</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th>Emisión</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of vm.items; track item.id) {
-                  <tr>
-                    <td><code>{{ item.invoiceNumber }}</code></td>
-                    <td>{{ item.bookingId }}</td>
-                    <td>{{ item.subtotal | currency:'USD' }}</td>
-                    <td>{{ item.taxes | currency:'USD' }}</td>
-                    <td><strong>{{ item.total | currency:'USD' }}</strong></td>
-                    <td>
-                      <app-status-badge
-                        [tone]="item.status === 'paid' ? 'success' : item.status === 'cancelled' ? 'danger' : 'warning'"
-                        [label]="item.status === 'paid' ? 'Pagada' : item.status === 'cancelled' ? 'Anulada' : 'Emitida'"
-                      />
-                    </td>
-                    <td>{{ item.issuedAt }}</td>
-                    <td>
-                      <a [routerLink]="[item.id]" class="inline-link">
-                        <span class="material-symbols-outlined btn-icon">visibility</span>
-                        Ver detalle
-                      </a>
-                    </td>
-                  </tr>
+              <p class="invl-meta">
+                {{ d.total }} factura(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                @if (activeFilterCount() > 0) {
+                  <span class="invl-filter-badge">{{ activeFilterCount() }} filtro(s)</span>
                 }
-              </tbody>
-            </table>
+              </p>
+            </div>
           </div>
-        </section>
-      }
+          <div class="invl-pagination">
+            <button type="button" class="invl-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+              <span class="material-symbols-outlined">chevron_left</span>
+              <span class="btn-label">Anterior</span>
+            </button>
+            <button type="button" class="invl-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+              <span class="btn-label">Siguiente</span>
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="invl-table-wrap">
+          <table class="invl-table">
+            <thead>
+              <tr>
+                <th class="th-inv">Factura</th>
+                <th class="th-booking">Reserva</th>
+                <th class="th-guest">Huésped</th>
+                <th class="th-amount">Total</th>
+                <th class="th-pay">Pagado</th>
+                <th class="th-pay">Pendiente</th>
+                <th class="th-status">Estado</th>
+                <th class="th-date">Emisión</th>
+                <th class="th-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of d.items; track item.id) {
+                <tr class="invl-row" [routerLink]="[item.id]">
+                  <td class="td-inv">
+                    <span class="invl-number">{{ item.invoiceNumber }}</span>
+                  </td>
+                  <td class="td-booking">
+                    <span class="invl-booking-id">{{ item.bookingId.length > 20 ? item.bookingId.slice(0, 20) + '…' : item.bookingId }}</span>
+                  </td>
+                  <td class="td-guest">
+                    @if (item.guestName) {
+                      <div class="invl-guest-cell">
+                        <span class="material-symbols-outlined invl-guest-icon">person</span>
+                        <span>{{ item.guestName }}</span>
+                      </div>
+                    } @else {
+                      <span class="invl-muted">—</span>
+                    }
+                  </td>
+                  <td class="td-amount mono">${{ item.total.toFixed(2) }}</td>
+                  <td class="td-amount mono paid">${{ (item.totalPaidAmount ?? 0).toFixed(2) }}</td>
+                  <td class="td-amount mono pending">${{ (item.totalPendingAmount ?? item.total).toFixed(2) }}</td>
+                  <td class="td-status">
+                    <span class="invl-status-badge" [class]="'tone-' + statusTone(item.status)">
+                      <span class="material-symbols-outlined badge-icon">{{ statusIcon(item.status) }}</span>
+                      {{ statusLabel(item.status) }}
+                    </span>
+                  </td>
+                  <td class="td-date">
+                    <span class="invl-date-cell">
+                      <span class="material-symbols-outlined date-cell-icon">calendar_today</span>
+                      {{ formatDate(item.issuedAt) }}
+                    </span>
+                  </td>
+                  <td class="td-actions">
+                    <a [routerLink]="[item.id]" class="invl-detail-link" title="Ver detalle">
+                      <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     }
   }
 </div>
