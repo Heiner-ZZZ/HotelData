@@ -272,7 +272,7 @@ def complete_check_in(
                         {"prop_id": booking["prop_id"], "room_label": label},
                         {
                             "$set": {
-                                "status": "occupied",
+                                "status": "occupied_clean",
                                 "note": f"Check-in: {booking_id}",
                                 "updated_at": changed_at,
                             },
@@ -525,12 +525,12 @@ def complete_check_out(
                     if not label:
                         continue
 
-                    # 1. Mark as dirty in room_status_log
+                    # 1. Mark as vacant_dirty in room_status_log
                     db.room_status_log.update_one(
                         {"prop_id": booking["prop_id"], "room_label": label},
                         {
                             "$set": {
-                                "status": "dirty",
+                                "status": "vacant_dirty",
                                 "note": f"Check-out: {booking_id}",
                                 "updated_at": changed_at,
                             },

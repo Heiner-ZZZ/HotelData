@@ -88,17 +88,40 @@ export interface DashboardRoomItem {
   hotelRoomId: string;
   roomTypeId: string;
   status: string;
+  statusLabel: string;
+  statusColor: string;
   note: string;
   createdAt: string;
   updatedAt: string | null;
+  cleaning_started_at?: string;
+  cleaning_completed_at?: string;
+}
+
+export interface FloorData {
+  floor: string;
+  rooms: DashboardRoomItem[];
+  count: number;
+  status_counts: Record<string, number>;
 }
 
 export interface HousekeepingDashboard {
   totalRooms: number;
   occupied: number;
+  vacant: number;
+  clean_rooms: number;
+  pending_rooms: number;
+  in_cleaning: number;
+  cleaning_completed: number;
+  inspected: number;
+  out_of_service: number;
+  out_of_order: number;
+  maintenance_requested: number;
   occupancyRate: number;
   roomStatuses: Record<string, number>;
+  status_labels: Record<string, string>;
+  status_colors: Record<string, string>;
   rooms: DashboardRoomItem[];
+  floors: FloorData[];
   pendingHousekeepingTasks: number;
   completedToday: number;
   upcomingMaintenance: number;

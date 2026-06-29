@@ -26,7 +26,7 @@ def _auto_block_room(db: Any, prop_id: int, room_label: str, scheduled_date: str
     db.room_status_log.update_one(
         {"prop_id": prop_id, "room_label": room_label},
         {
-            "$set": {"status": "maintenance", "note": "Mantenimiento programado", "updated_at": now_iso()},
+            "$set": {"status": "maintenance_requested", "note": "Mantenimiento programado", "updated_at": now_iso()},
             "$setOnInsert": {"created_at": now_iso()},
         },
         upsert=True,
@@ -62,9 +62,10 @@ def _unblock_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -
     # Only restore if the room is still marked as maintenance
     current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"status": 1})
     if current and current.get("status") == "maintenance":
+        # Restore to vacant_clean (the new housekeeping status)
         db.room_status_log.update_one(
             {"prop_id": prop_id, "room_label": room_label},
-            {"$set": {"status": "available", "note": "", "updated_at": now_iso()}},
+            {"$set": {"status": "vacant_clean", "note": "", "updated_at": now_iso()}},
         )
     # Remove blackout dates created by maintenance
     if scheduled_date:
