@@ -86,6 +86,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('./pages/audit-log-page/audit-log-page').then((m) => m.AuditLogPageComponent)
   },
   {
+    path: 'lost-and-found',
+    loadChildren: () =>
+      import('../lost-and-found/lost-and-found.routes').then((m) => m.LOST_AND_FOUND_ROUTES)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)
