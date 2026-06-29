@@ -38,6 +38,7 @@ from src.app.modules.reservations.routes import api_router as reservations_api_r
 from src.app.modules.reservations.routes import management_api_router as reservations_management_api_router
 from src.app.modules.reservations.routes import router as reservations_module_router
 from src.app.modules.reservations.routes.reception_calendar import reception_calendar_router
+from src.app.modules.reservations.routes.self_checkin import public_router as self_checkin_public_router
 from src.app.modules.revenue.routes import api_router as revenue_api_router
 from src.app.modules.revenue.routes import router as revenue_module_router
 from src.app.modules.reviews.routes import api_router as reviews_api_router
@@ -53,6 +54,10 @@ from src.app.modules.geo_catalog.routes import api_router as geo_catalog_api_rou
 from src.app.modules.partner.routes.hotel_products import router as products_api_router
 from src.app.modules.kpi.routes import router as kpi_api_router
 from src.app.modules.map.routes import router as map_api_router
+from src.app.modules.amenities.routes import admin_router as amenities_admin_router
+from src.app.modules.amenities.routes import guest_router as amenities_guest_router
+from src.app.modules.lost_and_found.routes import api_router as lost_and_found_api_router
+from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -134,7 +139,12 @@ def create_app() -> FastAPI:
     app.include_router(geo_catalog_api_router)
     app.include_router(kpi_api_router)
     app.include_router(reception_calendar_router)
+    app.include_router(self_checkin_public_router)
     app.include_router(map_api_router)
+    app.include_router(amenities_guest_router)
+    app.include_router(amenities_admin_router)
+    app.include_router(lost_and_found_api_router)
+    app.include_router(lost_and_found_module_router)
     app.include_router(crud_router)
     return app
 
@@ -158,6 +168,7 @@ async def lifespan(app: FastAPI):
     ensure_geo_collections()
     ensure_auth_collections()
     ensure_room_features_collections()
+    ensure_lost_and_found_collections()
     ensure_audit_indexes()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield

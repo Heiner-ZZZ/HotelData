@@ -332,6 +332,255 @@ def _enrich_invoice(doc: dict) -> dict:
     return doc
 
 
+def update_invoice_additional_charges(booking_id: str, *, changed_by: str = "angular_api") -> dict | None:
+    """
+    Fetch all additional_charges for a booking, sum them, and update the invoice.
+
+    Called at check-out to settle consumption charges (room service, minibar, damages, etc.).
+    Returns the updated invoice dict, or None if no invoice exists.
+    """
+    from src.app.modules.housekeeping.service.collections import CHARGES_COLLECTION
+
+    db = get_database()
+
+    # 1. Fetch all charges for this booking
+    charges = list(
+        db[CHARGES_COLLECTION].find({"booking_id": booking_id})
+    )
+    charges_sum = round(sum(c.get("total", 0) or 0 for c in charges), 2)
+
+    if not charges and not db[INVOICES].find_one({"booking_id": booking_id}):
+        return None
+
+    # 2. Fetch existing invoice
+    inv = db[INVOICES].find_one({"booking_id": booking_id})
+    if not inv:
+        return None
+
+    inv_id = inv["_id"]
+
+    # 3. Build line_items from charges
+    charge_items = []
+    for c in charges:
+        charge_items.append({
+            "type": "additional_charge",
+            "charge_id": str(c.get("_id")),
+            "concept": c.get("concept", ""),
+            "amount": c.get("amount", 0),
+            "quantity": c.get("quantity", 1),
+            "total": c.get("total", 0),
+            "created_at": c.get("created_at", ""),
+        })
+
+    # 4. Preserve existing line items (product add-ons) and append new charges
+    existing_line_items = inv.get("line_items", []) or []
+    # Avoid duplicates: skip charge_ids already in the invoice
+    existing_charge_ids = {
+        item["charge_id"] for item in existing_line_items
+        if isinstance(item, dict) and item.get("type") == "additional_charge" and item.get("charge_id")
+    }
+    new_items = [item for item in charge_items if item["charge_id"] not in existing_charge_ids]
+    if not new_items:
+        # All charges already settled in a previous run — skip to avoid double-counting
+        return _enrich_invoice(inv)
+
+    combined_line_items = existing_line_items + new_items
+
+    # 5. Recalculate financials
+    room_subtotal = inv.get("room_subtotal", 0) or 0
+    existing_extras = inv.get("extras_total", 0) or 0
+    new_extras = round(existing_extras + charges_sum, 2)
+    new_subtotal = round(room_subtotal + new_extras, 2)
+    # Recalculate taxes at same rate (16% IVA on new subtotal)
+    new_taxes = round(new_subtotal * 0.16, 2)
+    new_total = round(new_subtotal + new_taxes, 2)
+
+    update_doc = {
+        "extras_total": new_extras,
+        "subtotal": new_subtotal,
+        "taxes": new_taxes,
+        "total": new_total,
+        "line_items": combined_line_items,
+        "additional_charges": [
+            {
+                "charge_id": str(c.get("_id")),
+                "concept": c.get("concept", ""),
+                "amount": c.get("amount", 0),
+                "quantity": c.get("quantity", 1),
+                "total": c.get("total", 0),
+            }
+            for c in charges
+        ],
+        "updated_at": _now(),
+    }
+
+    db[INVOICES].update_one(
+        {"_id": inv_id},
+        {"$set": update_doc},
+    )
+    db[FACT_INVOICES].update_one(
+        {"_id": inv_id},
+        {"$set": update_doc},
+    )
+
+    # 6. Also update the booking's total_price to reflect charges
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {
+            "$set": {
+                "total_charges": charges_sum,
+                "total_price": new_total,
+                "updated_at": _now(),
+            }
+        },
+    )
+
+    # 7. Record settlement in status history (only when new charges were actually settled)
+    db.booking_status_history.insert_one({
+        "booking_id": booking_id,
+        "status": "settled_charges",
+        "changed_at": _now(),
+        "reason": f"Consumo liquidado: {len(new_items)} cargo(s) por ${charges_sum:.2f}",
+        "changed_by": changed_by,
+        "is_test": False,
+    })
+
+    # Refresh and return
+    updated = db[INVOICES].find_one({"_id": inv_id})
+    return _enrich_invoice(updated) if updated else None
+
+
+def create_split_charges_invoice(booking_id: str, *, changed_by: str = "angular_api") -> dict | None:
+    """
+    Create a separate invoice for additional charges only (split by charge type).
+
+    Used at check-out when split_invoice=True. Leaves the room invoice untouched
+    and creates a new invoice exclusively for additional charges (room service,
+    minibar, damages, etc.).
+
+    Returns the new charges invoice dict, or None if no charges exist.
+    """
+    from src.app.modules.housekeeping.service.collections import CHARGES_COLLECTION
+
+    db = get_database()
+
+    # 1. Fetch all charges for this booking
+    charges = list(
+        db[CHARGES_COLLECTION].find({"booking_id": booking_id})
+    )
+    if not charges:
+        return None
+
+    charges_sum = round(sum(c.get("total", 0) or 0 for c in charges), 2)
+
+    # 2. Fetch booking data
+    booking = _find_booking(booking_id)
+    if not booking:
+        return None
+
+    # 3. Fetch existing room invoice to link as parent
+    room_inv = db[INVOICES].find_one({"booking_id": booking_id, "split_type": {"$ne": "charges_only"}})
+    room_inv_id = room_inv["_id"] if room_inv else None
+
+    # 4. Build line_items from charges
+    charge_items = []
+    for c in charges:
+        charge_items.append({
+            "type": "additional_charge",
+            "charge_id": str(c.get("_id")),
+            "concept": c.get("concept", "") or c.get("item_name", ""),
+            "amount": c.get("amount", 0),
+            "quantity": c.get("quantity", 1),
+            "total": c.get("total", 0),
+            "created_at": c.get("created_at", ""),
+        })
+
+    # 5. Calculate financials for charges-only invoice
+    extras_total = charges_sum
+    subtotal = charges_sum
+    taxes = round(subtotal * 0.16, 2)  # 16% IVA
+    total = round(subtotal + taxes, 2)
+
+    # 6. Create the charges invoice
+    inv_doc = {
+        "booking_id": booking.get("booking_id") or booking_id,
+        "prop_id": booking.get("prop_id", 0),
+        "invoice_number": _generate_invoice_number(),
+        "subtotal": subtotal,
+        "room_subtotal": 0,
+        "extras_total": extras_total,
+        "line_items": charge_items,
+        "taxes": taxes,
+        "total": total,
+        "status": "issued",
+        "split_type": "charges_only",
+        "parent_invoice_id": str(room_inv_id) if room_inv_id else None,
+        "notes": f"Factura de consumos — {len(charges)} cargo(s) adicional(es) por ${charges_sum:.2f}",
+        "additional_charges": [
+            {
+                "charge_id": str(c.get("_id")),
+                "concept": c.get("concept", "") or c.get("item_name", ""),
+                "amount": c.get("amount", 0),
+                "quantity": c.get("quantity", 1),
+                "total": c.get("total", 0),
+            }
+            for c in charges
+        ],
+        "issued_at": _now(),
+        "paid_at": None,
+    }
+    _write_both(INVOICES, FACT_INVOICES, inv_doc)
+
+    # 7. Mark the room invoice as room_only (if not already marked)
+    if room_inv_id:
+        db[INVOICES].update_one(
+            {"_id": room_inv_id},
+            {"$set": {
+                "split_type": "room_only",
+                "split_charges_invoice_id": str(inv_doc.get("_id") or inv_doc.get("inserted_id", "")),
+                "updated_at": _now(),
+            }},
+        )
+        db[FACT_INVOICES].update_one(
+            {"_id": room_inv_id},
+            {"$set": {
+                "split_type": "room_only",
+                "split_charges_invoice_id": str(inv_doc.get("_id") or inv_doc.get("inserted_id", "")),
+                "updated_at": _now(),
+            }},
+        )
+
+    # 8. Update booking total to include charges
+    db.booking_orders.update_one(
+        {"booking_id": booking_id},
+        {
+            "$set": {
+                "total_charges": charges_sum,
+                "split_invoice": True,
+                "updated_at": _now(),
+            }
+        },
+    )
+
+    # 9. Record settlement in status history
+    db.booking_status_history.insert_one({
+        "booking_id": booking_id,
+        "status": "split_charges_invoice",
+        "changed_at": _now(),
+        "reason": f"Factura de consumos separada creada: {len(charges)} cargo(s) por ${charges_sum:.2f}",
+        "changed_by": changed_by,
+        "is_test": False,
+    })
+
+    # Refresh and return
+    inserted_id = inv_doc.get("_id")
+    if not inserted_id:
+        # _write_both modifies the doc in-place, look for inserted_id
+        pass
+    updated = db[INVOICES].find_one({"invoice_number": inv_doc["invoice_number"]})
+    return _enrich_invoice(updated) if updated else None
+
+
 def _enrich_payment(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     doc["booking_id"] = str(doc.get("booking_id", ""))

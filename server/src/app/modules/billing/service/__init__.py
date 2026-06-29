@@ -9,6 +9,8 @@ from src.app.modules.billing.service.lifecycle import (
     list_invoices,
     list_payments,
     refund_payment,
+    update_invoice_additional_charges,
+    create_split_charges_invoice,
 )
 
 __all__ = [
@@ -21,6 +23,8 @@ __all__ = [
     "list_invoices",
     "list_payments",
     "refund_payment",
+    "update_invoice_additional_charges",
+    "create_split_charges_invoice",
     "ensure_billing_collections",
     "module_status",
 ]
