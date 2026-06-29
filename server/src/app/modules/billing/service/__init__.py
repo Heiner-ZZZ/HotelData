@@ -6,6 +6,7 @@ from src.app.modules.billing.service.lifecycle import (
     create_payment,
     generate_invoice_for_booking,
     get_invoice,
+    get_invoice_stats,
     get_payment,
     list_invoices,
     list_payments,

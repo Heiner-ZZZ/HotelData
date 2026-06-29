@@ -162,18 +162,29 @@ def _record_earnings(booking: dict, invoice_total: float) -> None:
 def list_invoices(
     booking_id: str | None = None,
     status: str | None = None,
+    q: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
     db = get_database()
     query: dict = {}
+
     if booking_id:
-        # Match either string booking_id or check if it matches the object id of booking
         booking = _find_booking(booking_id)
         booking_str_id = booking.get("booking_id") if booking else booking_id
         query["booking_id"] = booking_str_id
     if status:
         query["status"] = status
+    if date_from or date_to:
+        issued_q: dict = {}
+        if date_from:
+            issued_q["$gte"] = date_from
+        if date_to:
+            issued_q["$lte"] = date_to + "T23:59:59"
+        query["issued_at"] = issued_q
+
     total = db[INVOICES].count_documents(query)
     cursor = (
         db[INVOICES]
@@ -182,7 +193,65 @@ def list_invoices(
         .skip((page - 1) * page_size)
         .limit(page_size)
     )
-    items = [_enrich_invoice(doc) for doc in cursor]
+    items = []
+    for doc in cursor:
+        enriched = _enrich_invoice(doc)
+        # Enrich with guest_name, hotel_label, and payment info
+        inv_id = enriched.get("id", "")
+        booking_id_field = enriched.get("booking_id", "")
+        prop_id = int(enriched.get("prop_id", 0))
+
+        # Guest name from booking
+        booking_doc = db.booking_orders.find_one(
+            {"booking_id": booking_id_field},
+            {"_id": 0, "guest_name": 1},
+        )
+        enriched["guest_name"] = (booking_doc or {}).get("guest_name", "") if booking_doc else ""
+
+        # Hotel label
+        if prop_id:
+            ctx = db.hotel_booking_context.find_one(
+                {"prop_id": prop_id}, {"_id": 0, "hotel_label": 1}
+            )
+            enriched["hotel_label"] = (
+                ctx.get("hotel_label", "") if ctx else f"Hotel #{prop_id}"
+            )
+        else:
+            enriched["hotel_label"] = ""
+
+        # Payment totals
+        try:
+            payments_cursor = db[PAYMENTS].find(
+                {"invoice_id": ObjectId(inv_id), "status": "confirmed"},
+                {"_id": 0, "amount": 1},
+            )
+            total_paid = round(
+                sum(float(p.get("amount", 0)) for p in payments_cursor), 2
+            )
+        except Exception:
+            total_paid = 0.0
+        enriched["total_paid_amount"] = total_paid
+        enriched["total_pending_amount"] = round(
+            max(enriched.get("total", 0) - total_paid, 0), 2
+        )
+
+        # Only include if matches text search (post-filter since guest_name is in booking)
+        if q:
+            q_lower = q.lower()
+            matches = (
+                q_lower in booking_id_field.lower()
+                or q_lower in enriched.get("guest_name", "").lower()
+                or q_lower in enriched.get("invoice_number", "").lower()
+            )
+            if not matches:
+                continue
+
+        items.append(enriched)
+
+    # Recompute total after post-filter text search
+    if q:
+        total = len(items)
+
     return {
         "items": items,
         "total": total,
@@ -191,6 +260,34 @@ def list_invoices(
         "has_next": page * page_size < total,
         "has_prev": page > 1,
     }
+
+
+def get_invoice_stats() -> dict:
+    """Return counts and totals grouped by invoice status."""
+    db = get_database()
+    pipeline = [
+        {
+            "$group": {
+                "_id": "$status",
+                "count": {"$sum": 1},
+                "total_amount": {"$sum": {"$ifNull": ["$total", 0]}},
+            },
+        },
+        {"$sort": {"_id": 1}},
+    ]
+    results = list(db[INVOICES].aggregate(pipeline))
+    stats = {
+        "issued": {"count": 0, "total": 0.0},
+        "paid": {"count": 0, "total": 0.0},
+        "cancelled": {"count": 0, "total": 0.0},
+        "refunded": {"count": 0, "total": 0.0},
+    }
+    for r in results:
+        key = r["_id"]
+        if key in stats:
+            stats[key]["count"] = r["count"]
+            stats[key]["total"] = round(r["total_amount"], 2)
+    return stats
 
 
 def get_invoice(invoice_id: str) -> dict | None:
@@ -266,6 +363,20 @@ def get_invoice(invoice_id: str) -> dict | None:
     )
     enriched["total_paid_amount"] = total_paid
     enriched["total_pending_amount"] = round(max(enriched.get("total", 0) - total_paid, 0), 2)
+
+    # ── Look up associated folio ──
+    enriched["folio_id"] = None
+    enriched["folio_number"] = None
+    try:
+        folio = db.guest_folios.find_one(
+            {"booking_id": booking_id},
+            {"_id": 1, "folio_number": 1},
+        )
+        if folio:
+            enriched["folio_id"] = str(folio["_id"])
+            enriched["folio_number"] = folio.get("folio_number")
+    except Exception:
+        pass
 
     return enriched
 

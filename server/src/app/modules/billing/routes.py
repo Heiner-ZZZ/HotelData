@@ -13,6 +13,7 @@ from src.app.modules.billing.service import (
     get_folio,
     get_folio_by_id,
     get_invoice,
+    get_invoice_stats,
     get_payment,
     list_folios,
     list_invoices,
@@ -52,11 +53,25 @@ def create_invoice_api(
 def list_invoices_api(
     booking_id: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
+    q: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    return list_invoices(booking_id=booking_id, status=status_filter, page=page, page_size=page_size)
+    return list_invoices(
+        booking_id=booking_id, status=status_filter, q=q,
+        date_from=date_from, date_to=date_to, page=page, page_size=page_size,
+    )
+
+
+@api_router.get("/invoices/stats")
+def invoice_stats_api(
+    current_user: dict = Depends(require_login),
+):
+    """Return aggregate counts and totals grouped by invoice status."""
+    return get_invoice_stats()
 
 
 @api_router.get("/invoices/{invoice_id}")
