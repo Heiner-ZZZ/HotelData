@@ -15,9 +15,20 @@ INDEXES = [
 ]
 
 
+REPORTS_COLLECTION = "review_reports"
+
+REPORTS_INDEXES = [
+    IndexModel([("review_id", ASCENDING)], name="idx_rr_review"),
+    IndexModel([("reported_by", ASCENDING)], name="idx_rr_reported_by"),
+    IndexModel([("status", ASCENDING)], name="idx_rr_status"),
+    IndexModel([("created_at", ASCENDING)], name="idx_rr_created"),
+]
+
+
 def ensure_reviews_collections() -> None:
     ensure_collection(COLLECTION, INDEXES)
     ensure_collection(FACT_COLLECTION, INDEXES)
+    ensure_collection(REPORTS_COLLECTION, REPORTS_INDEXES)
 
 
 def module_status() -> ModuleStatus:
