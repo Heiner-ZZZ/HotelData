@@ -1,4 +1,7 @@
-"""Room status operations and enrichment helpers."""
+"""Room status operations and enrichment helpers.
+
+Implements the complete hotel housekeeping cycle with status transitions.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +12,25 @@ from bson import ObjectId
 
 from src.database.connection import get_database
 from ..collections import ROOM_STATUS_COLLECTION
-from ...schemas import RoomStatusLogCreate, now_iso
+from ...schemas import (
+    RoomStatusLogCreate, is_valid_transition, get_valid_next_statuses,
+    ROOM_STATUSES, ROOM_STATUS_COLORS, now_iso,
+)
 
 HOTEL_ROOMS_COLLECTION = "hotel_rooms"
+
+
+def list_valid_transitions(status: str | None = None) -> dict:
+    """Return valid transitions for the frontend dropdown builder."""
+    if status:
+        return {"current": status, "valid_next": get_valid_next_statuses(status)}
+    return {
+        "statuses": ROOM_STATUSES,
+        "transitions": {k: v for k, v in {
+            s: get_valid_next_statuses(s) for s in ROOM_STATUSES
+        }.items() if v},
+        "colors": ROOM_STATUS_COLORS,
+    }
 
 
 def _get_current_status(prop_id: int, room_label: str) -> str | None:
@@ -30,6 +49,20 @@ def upsert_room_status(payload: RoomStatusLogCreate) -> dict[str, Any]:
 
     # Get old status before updating
     old_status = _get_current_status(payload.prop_id, payload.room_label)
+
+    # ── Validate transition ──
+    if old_status is not None and old_status != payload.status:
+        if not is_valid_transition(old_status, payload.status):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "Invalid status transition for room %s (prop %s): %s → %s",
+                payload.room_label, payload.prop_id, old_status, payload.status,
+            )
+            # Allow the transition anyway with warning (PMS should be flexible)
+            # but log it for audit
+
+    # ── Auto-transition: if syncing from hotel_rooms, default to vacant_clean ──
 
     doc = {
         "prop_id": payload.prop_id, "room_type_id": payload.room_type_id,
@@ -155,6 +188,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
 
     Creates missing records (does not overwrite existing ones) so the
     housekeeping rooms page reflects all known rooms.
+    Default status is 'vacant_clean'.
     """
     db = get_database()
     now = now_iso()
@@ -185,7 +219,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
             "room_type_id": room_type_id,
             "room_label": room_label,
             "room_number": room_number,
-            "status": "available",
+            "status": "vacant_clean",
             "note": "",
             "created_at": now,
             "updated_at": now,
