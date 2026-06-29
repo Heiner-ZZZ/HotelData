@@ -29,7 +29,7 @@
       <div class="status-filter-chips">
         <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
         @for (s of statusOptions; track s) {
-          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'in_progress' ? 'En progreso' : s === 'scheduled' ? 'Programado' : s }}</button>
+          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'in_progress' ? 'En progreso' : s === 'scheduled' ? 'Programado' : s === 'inspection' ? 'Inspección' : s === 'completed' ? 'Completado' : s }}</button>
         }
       </div>
       <button type="button" class="btn-primary" (click)="toggleCreateForm()">
@@ -83,6 +83,7 @@
               <select id="status" formControlName="status">
                 <option value="scheduled">Programado</option>
                 <option value="in_progress">En progreso</option>
+                <option value="inspection">Inspección</option>
                 <option value="completed">Completado</option>
               </select>
             </div>
@@ -184,9 +185,10 @@
                         <span class="badge"
                           [class.badge-scheduled]="item.status === 'scheduled'"
                           [class.badge-progress]="item.status === 'in_progress'"
+                          [class.badge-inspection]="item.status === 'inspection'"
                           [class.badge-done]="item.status === 'completed'"
                         >
-                          {{ item.status === 'scheduled' ? 'Programado' : item.status === 'in_progress' ? 'En progreso' : 'Completado' }}
+                          {{ item.status === 'scheduled' ? 'Programado' : item.status === 'in_progress' ? 'En progreso' : item.status === 'inspection' ? 'Inspección' : 'Completado' }}
                         </span>
                       </td>
                       <td class="cell-time">{{ formatDate(item.scheduledDate) }}</td>
@@ -194,6 +196,11 @@
                         <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
                           <span class="material-symbols-outlined">edit</span>
                         </button>
+                        @if (item.status === 'scheduled' || item.status === 'in_progress') {
+                          <button type="button" class="btn-icon-only" (click)="markInspection(item)" aria-label="Enviar a inspección" title="Enviar a inspección">
+                            <span class="material-symbols-outlined">visibility</span>
+                          </button>
+                        }
                         @if (item.status !== 'completed') {
                           <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
                             <span class="material-symbols-outlined">check</span>

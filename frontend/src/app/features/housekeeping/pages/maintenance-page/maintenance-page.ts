@@ -21,7 +21,7 @@ function todayLocalIso(): string {
 }
 
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
-const STATUS_OPTIONS = ['scheduled', 'in_progress', 'completed'] as const;
+const STATUS_OPTIONS = ['scheduled', 'in_progress', 'inspection', 'completed'] as const;
 
 @Component({
   selector: 'app-maintenance-page',
@@ -207,6 +207,34 @@ export class MaintenancePageComponent {
         this.message.set('');
       },
     });
+  }
+
+  markInspection(item: MaintenanceTaskItem): void {
+    const payload = {
+      prop_id: item.propId,
+      room_label: item.roomLabel,
+      task_type: item.taskType,
+      title: item.title,
+      description: item.description || undefined,
+      priority: item.priority,
+      scheduled_date: item.scheduledDate || undefined,
+      auto_block: item.autoBlock,
+      status: 'inspection',
+    };
+    this.api
+      .updateMaintenance(item.id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set('Mantenimiento enviado a inspección');
+          this.errorMessage.set('');
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.message || 'Error al enviar a inspección');
+          this.message.set('');
+        },
+      });
   }
 
   completeTask(taskId: string): void {

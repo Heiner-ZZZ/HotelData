@@ -72,6 +72,9 @@
 .chip-available.active { background: #059669; border-color: #059669; color: #fff; }
 .chip-occupied.active { background: var(--accent); border-color: var(--accent); }
 .chip-cleaning.active { background: #d97706; border-color: #d97706; }
+.chip-clean.active { background: #10b981; border-color: #10b981; color: #fff; }
+.chip-inspected.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+.chip-dirty.active { background: #92400e; border-color: #92400e; color: #fff; }
 .chip-maintenance.active { background: #dc2626; border-color: #dc2626; }
 .chip-out.active { background: #6b7280; border-color: #6b7280; }
 
@@ -267,6 +270,9 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
 .badge-available { background: rgba(16, 185, 129, 0.1); color: #059669; }
 .badge-occupied { background: rgba(20, 99, 255, 0.1); color: #1463ff; }
 .badge-cleaning { background: rgba(234, 179, 8, 0.1); color: #b8860b; }
+.badge-clean { background: rgba(16, 185, 129, 0.08); color: #047857; }
+.badge-inspected { background: rgba(99, 102, 241, 0.1); color: #4338ca; }
+.badge-dirty { background: rgba(146, 64, 14, 0.1); color: #92400e; }
 .badge-maintenance { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
 .badge-out { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
 

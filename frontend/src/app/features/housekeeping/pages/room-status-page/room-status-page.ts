@@ -13,7 +13,7 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type PaginatedResponse, type RoomStatusItem } from '../../services/housekeeping-api.service';
 
-const STATUS_OPTIONS = ['available', 'occupied', 'cleaning', 'maintenance', 'out_of_order'] as const;
+const STATUS_OPTIONS = ['available', 'occupied', 'cleaning', 'clean', 'inspected', 'dirty', 'maintenance', 'out_of_order', 'out_of_service'] as const;
 
 @Component({
   selector: 'app-room-status-page',

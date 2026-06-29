@@ -35,10 +35,14 @@
           [class.chip-available]="s === 'available'"
           [class.chip-occupied]="s === 'occupied'"
           [class.chip-cleaning]="s === 'cleaning'"
+          [class.chip-clean]="s === 'clean'"
+          [class.chip-inspected]="s === 'inspected'"
           [class.chip-maintenance]="s === 'maintenance'"
           [class.chip-out]="s === 'out_of_order'"
+          [class.chip-out]="s === 'out_of_service'"
+          [class.chip-dirty]="s === 'dirty'"
           (click)="setStatusFilter(s)"
-        >{{ s === 'out_of_order' ? 'Fuera de servicio' : s }}</button>
+        >{{ s === 'out_of_order' ? 'Fuera de orden' : s === 'out_of_service' ? 'Fuera de servicio' : s === 'dirty' ? 'Sucia' : s === 'clean' ? 'Limpia' : s === 'inspected' ? 'Inspeccionada' : s }}</button>
       }
     </div>
 
@@ -61,7 +65,7 @@
       <label for="new-status">Nuevo estado</label>
       <select id="new-status" formControlName="newStatus">
         @for (s of statusOptions; track s) {
-          <option [value]="s">{{ s === 'out_of_order' ? 'Fuera de servicio' : s }}</option>
+          <option [value]="s">{{ s === 'available' ? 'Disponible' : s === 'occupied' ? 'Ocupada' : s === 'cleaning' ? 'Limpieza' : s === 'clean' ? 'Limpia' : s === 'inspected' ? 'Inspeccionada' : s === 'dirty' ? 'Sucia' : s === 'maintenance' ? 'Mantenimiento' : s === 'out_of_order' ? 'Fuera de orden' : s === 'out_of_service' ? 'Fuera de servicio' : s }}</option>
         }
       </select>
       <input type="text" formControlName="note" placeholder="Nota (opcional)" />
@@ -130,10 +134,14 @@
                         [class.badge-available]="item.status === 'available'"
                         [class.badge-occupied]="item.status === 'occupied'"
                         [class.badge-cleaning]="item.status === 'cleaning'"
+                        [class.badge-clean]="item.status === 'clean'"
+                        [class.badge-inspected]="item.status === 'inspected'"
+                        [class.badge-dirty]="item.status === 'dirty'"
                         [class.badge-maintenance]="item.status === 'maintenance'"
                         [class.badge-out]="item.status === 'out_of_order'"
+                        [class.badge-out]="item.status === 'out_of_service'"
                       >
-                        {{ item.status === 'out_of_order' ? 'Fuera de servicio' : item.status }}
+                        {{ item.status === 'available' ? 'Disponible' : item.status === 'occupied' ? 'Ocupada' : item.status === 'cleaning' ? 'Limpieza' : item.status === 'clean' ? 'Limpia' : item.status === 'inspected' ? 'Inspeccionada' : item.status === 'dirty' ? 'Sucia' : item.status === 'maintenance' ? 'Mantenimiento' : item.status === 'out_of_order' ? 'Fuera de orden' : item.status === 'out_of_service' ? 'Fuera de servicio' : item.status }}
                       </span>
                     </td>
                     <td class="cell-notes">{{ item.note || '--' }}</td>
