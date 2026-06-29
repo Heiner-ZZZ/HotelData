@@ -1,18 +1,15 @@
-import { SlicePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { HousekeepingApiService, type HousekeepingTaskItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
+import { HousekeepingApiService, type HousekeepingTaskItem } from '../../services/housekeeping-api.service';
 
 function todayLocalIso(): string {
   const now = new Date();
@@ -22,36 +19,141 @@ function todayLocalIso(): string {
 
 const TASK_TYPES = ['cleaning', 'deep_clean', 'turnover', 'inspection'] as const;
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
-const STATUS_OPTIONS = ['pending', 'inspection', 'completed'] as const;
+const STATUS_OPTIONS = ['pending', 'in_progress', 'inspection', 'completed'] as const;
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  in_progress: 'En Progreso',
+  inspection: 'Inspección',
+  completed: 'Completada',
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Baja',
+  normal: 'Normal',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
+
+const TASK_TYPE_ICONS: Record<string, string> = {
+  cleaning: 'cleaning_services',
+  deep_clean: 'auto_awesome',
+  turnover: 'sync',
+  inspection: 'visibility',
+};
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  cleaning: 'Limpieza',
+  deep_clean: 'Limpieza profunda',
+  turnover: 'Rotación',
+  inspection: 'Inspección',
+};
+
+/** Common housekeeping staff names for the assigned-to dropdown. */
+const COMMON_STAFF = [
+  'María García', 'Juan Pérez', 'Ana López', 'Carlos Ruiz',
+  'Sofía Martínez', 'Pedro Hernández', 'Laura Sánchez', 'Miguel Torres',
+  'Gabriela Flores', 'Diego Ramírez',
+];
 
 @Component({
   selector: 'app-housekeeping-tasks-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, ReactiveFormsModule, SlicePipe],
-
+  imports: [
+    EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
+    PropertySelectorComponent, ReactiveFormsModule,
+  ],
   templateUrl: './housekeeping-tasks-page.html',
   styleUrl: './housekeeping-tasks-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HousekeepingTasksPageComponent {
+  // ── DI ──
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
+  private readonly fb = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<PaginatedResponse<HousekeepingTaskItem> | null>(null);
-  readonly message = signal('');
-  readonly errorMessage = signal('');
+  // ── URL-driven state (toSignal auto-cleans, no DestroyRef) ──
+  private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+
+  readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
+  readonly statusFilter = computed(() => this.qp()?.get('status') ?? '');
+  readonly assignedToFilter = computed(() => this.qp()?.get('assigned_to') ?? '');
+  readonly priorityFilter = computed(() => this.qp()?.get('priority') ?? '');
+  readonly currentPage = computed(() => Math.max(1, Number(this.qp()?.get('page') ?? '1')));
+  readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
+
+  // ── Derived ──
+  readonly activeFilterCount = computed(() =>
+    (this.statusFilter() ? 1 : 0) + (this.assignedToFilter() ? 1 : 0) + (this.priorityFilter() ? 1 : 0),
+  );
+
+  // ── Rooms resource (fetches room labels after sync) ──
+  readonly roomsResource = rxResource({
+    request: () => this.selectedPropId() || undefined,
+    loader: async ({ request }) => {
+      if (!request) return { items: [] } as any;
+      await lastValueFrom(this.api.syncRoomStatus(request));
+      return lastValueFrom(this.api.getRoomStatus(request, undefined, 1));
+    },
+  });
+
+  readonly roomLabels = computed(() =>
+    (this.roomsResource.value()?.items ?? []).map(r => r.roomNumber || r.roomLabel),
+  );
+
+  // ── Tasks resource ──
+  readonly tasksResource = rxResource({
+    request: () => {
+      const pid = this.selectedPropId();
+      if (!pid) return undefined;
+      return {
+        propId: pid,
+        status: this.statusFilter() || undefined,
+        assignedTo: this.assignedToFilter() || undefined,
+        page: this.currentPage(),
+      };
+    },
+    loader: ({ request }) => this.api.getTasks(request!.propId, request!.status, request!.assignedTo, request!.page),
+  });
+
+  readonly tasks = computed(() => this.tasksResource.value() ?? null);
+
+  readonly viewState = computed(() => {
+    const r = this.tasksResource;
+    if (r.isLoading()) return 'loading';
+    if (r.error()) return 'error';
+    if (!r.value()?.items.length) return 'empty';
+    return 'success';
+  });
+
+  // ── Stats summary ──
+  readonly statsSummary = computed(() => {
+    const items = this.tasksResource.value()?.items ?? [];
+    // note: these stats are based on the current page — a full summary would
+    // require a dedicated endpoint. For now show what we can.
+    const allItems = items;
+    return {
+      pending: allItems.filter(i => i.status === 'pending').length,
+      inProgress: allItems.filter(i => i.status === 'in_progress').length,
+      inspection: allItems.filter(i => i.status === 'inspection').length,
+      completed: allItems.filter(i => i.status === 'completed').length,
+    };
+  });
+
+  // ── UI state ──
   readonly showCreateForm = signal(false);
   readonly editingId = signal<string | null>(null);
-  readonly selectedPropId = signal(0);
-  readonly selectedLabel = signal('');
-  readonly roomLabels = signal<string[]>([]);
+  readonly message = signal('');
+  readonly errorMessage = signal('');
 
-  readonly statusFilter = signal<string>('');
-  readonly createForm = this.formBuilder.nonNullable.group({
+  // ── Complete modal ──
+  readonly showCompleteModal = signal(false);
+  readonly completingItem = signal<HousekeepingTaskItem | null>(null);
+
+  // ── Create / Edit Form ──
+  readonly createForm = this.fb.nonNullable.group({
     roomLabel: ['', Validators.required],
     taskType: ['cleaning', Validators.required],
     priority: ['normal'],
@@ -61,70 +163,90 @@ export class HousekeepingTasksPageComponent {
     status: ['pending', Validators.required],
   });
 
+  // ── Complete Cleaning Form ──
+  readonly completeForm = this.fb.nonNullable.group({
+    observations: [''],
+    damageFound: [false],
+    damageDescription: [''],
+    lostObjectFound: [false],
+    lostObjectDescription: [''],
+    needsMaintenance: [false],
+    maintenanceDescription: [''],
+  });
+
+  // ── Display constants ──
   readonly taskTypes = [...TASK_TYPES];
   readonly priorities = [...PRIORITIES];
   readonly statusOptions = [...STATUS_OPTIONS];
+  readonly statusLabels = STATUS_LABELS;
+  readonly priorityLabels = PRIORITY_LABELS;
+  readonly taskTypeIcons = TASK_TYPE_ICONS;
+  readonly taskTypeLabels = TASK_TYPE_LABELS;
+  readonly commonStaff = COMMON_STAFF;
 
-  constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => ({
-          page: Number(params.get('page') ?? '1'),
-          status: params.get('status') ?? '',
-          propId: Number(params.get('prop_id') ?? '0'),
-          propLabel: params.get('prop_label') ?? '',
-        })),
-        distinctUntilChanged((a, b) => a.page === b.page && a.status === b.status && a.propId === b.propId),
-        switchMap(({ page, status, propId, propLabel }) => {
-          this.viewState.set('loading');
-          this.statusFilter.set(status);
-          this.selectedPropId.set(propId);
-          if (!propId) {
-            this.propertyCtx.clear();
-            this.roomLabels.set([]);
-            return this.api.getTasks(undefined, status || undefined, undefined, page);
-          }
-          const label = propLabel || this.propertyCtx.currentPropLabel() || `Propiedad #${propId}`;
-          this.selectedLabel.set(label);
-          this.propertyCtx.setProperty(propId, label);
-          return this.api.syncRoomStatus(propId).pipe(
-            switchMap(() => this.api.getRoomStatus(propId, undefined, 1)),
-            switchMap((roomData) => {
-              this.roomLabels.set(roomData.items.map(r => r.roomNumber || r.roomLabel));
-              this.selectedLabel.set(label);
-              this.propertyCtx.setProperty(propId, label);
-              return this.api.getTasks(propId, status || undefined, undefined, page);
-            }),
-          );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          this.data.set(data);
-          this.viewState.set(data.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
-  }
-
-  setStatusFilter(status: string): void {
-    this.statusFilter.set(status === this.statusFilter() ? '' : status);
+  // ── Property selection ──
+  onPropSelected(event: { propId: number; label: string }): void {
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.selectedLabel.set(label);
+    if (event.propId) {
+      this.propertyCtx.setProperty(event.propId, label);
+    } else {
+      this.propertyCtx.clear();
+    }
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { status: this.statusFilter() || null, page: null },
+      queryParams: { prop_id: event.propId || null, prop_label: label || null, page: null },
+      queryParamsHandling: 'merge',
     });
   }
 
+  // ── Filter actions ──
+  setStatusFilter(status: string): void {
+    const next = status === this.statusFilter() ? '' : status;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { status: next || null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  setPriorityFilter(priority: string): void {
+    const next = priority === this.priorityFilter() ? '' : priority;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { priority: next || null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onAssignedToChange(value: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { assigned_to: value || null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  clearAllFilters(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { status: null, assigned_to: null, priority: null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  // ── Pagination ──
   goToPage(page: number): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { page: page > 1 ? page : null },
+      queryParamsHandling: 'merge',
     });
   }
 
+  // ── Form actions (Create/Edit) ──
   toggleCreateForm(): void {
-    this.showCreateForm.update((v) => !v);
+    this.showCreateForm.update(v => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
       this.createForm.reset({
@@ -137,17 +259,6 @@ export class HousekeepingTasksPageComponent {
         status: 'pending',
       });
     }
-  }
-
-  onPropSelected(event: { propId: number; label: string }): void {
-    if (!event.propId) this.propertyCtx.clear();
-    const label = event.label || `Propiedad #${event.propId}`;
-    this.selectedLabel.set(label);
-    this.propertyCtx.setProperty(event.propId, label);
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { prop_id: event.propId || null, prop_label: label || null },
-    });
   }
 
   startEdit(item: HousekeepingTaskItem): void {
@@ -169,11 +280,7 @@ export class HousekeepingTasksPageComponent {
     this.editingId.set(null);
   }
 
-  formatDate(val: string): string {
-    return val ? val.replace('T', ' ').slice(0, 16) : '--';
-  }
-
-  submitTask(): void {
+  async submitTask(): Promise<void> {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
@@ -187,100 +294,151 @@ export class HousekeepingTasksPageComponent {
       scheduled_date: val.scheduledDate || undefined,
       status: val.status,
     };
-    const obs = editId
-      ? this.api.updateTask(editId, payload)
-      : this.api.createTask(payload);
 
-    obs.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.message.set(editId ? 'Tarea actualizada' : 'Tarea creada exitosamente');
-          this.errorMessage.set('');
-          this.showCreateForm.set(false);
-          this.editingId.set(null);
-          this.refresh();
-        },
-        error: (err) => {
-          this.errorMessage.set(err.message || 'Error al guardar tarea');
-          this.message.set('');
-        },
-      });
+    try {
+      if (editId) {
+        await lastValueFrom(this.api.updateTask(editId, payload));
+      } else {
+        await lastValueFrom(this.api.createTask(payload));
+      }
+      this.message.set(editId ? 'Tarea actualizada' : 'Tarea creada');
+      this.errorMessage.set('');
+      this.showCreateForm.set(false);
+      this.editingId.set(null);
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al guardar tarea');
+      this.message.set('');
+    }
   }
 
-  deleteTask(taskId: string): void {
-    this.api
-      .deleteTask(taskId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.message.set('Tarea eliminada');
-          this.errorMessage.set('');
-          this.refresh();
-        },
-        error: (err) => {
-          this.errorMessage.set(err.message || 'Error al eliminar tarea');
-          this.message.set('');
-        },
-      });
+  // ── Complete Cleaning Modal ──
+
+  openCompleteModal(item: HousekeepingTaskItem): void {
+    this.completingItem.set(item);
+    this.completeForm.reset({
+      observations: '',
+      damageFound: false,
+      damageDescription: '',
+      lostObjectFound: false,
+      lostObjectDescription: '',
+      needsMaintenance: false,
+      maintenanceDescription: '',
+    });
+    this.showCompleteModal.set(true);
   }
 
-  markInspection(item: HousekeepingTaskItem): void {
-    const payload = {
-      prop_id: item.propId,
-      room_label: item.roomLabel,
-      task_type: item.taskType,
-      assigned_to: item.assignedTo || undefined,
-      priority: item.priority,
-      note: item.note || undefined,
-      scheduled_date: item.scheduledDate || undefined,
-      status: 'inspection',
-    };
-    this.api
-      .updateTask(item.id, payload)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.message.set('Tarea enviada a inspección');
-          this.errorMessage.set('');
-          this.refresh();
-        },
-        error: (err) => {
-          this.errorMessage.set(err.message || 'Error al enviar a inspección');
-          this.message.set('');
-        },
-      });
+  closeCompleteModal(): void {
+    this.showCompleteModal.set(false);
+    this.completingItem.set(null);
   }
 
-  completeTask(taskId: string): void {
-    this.api
-      .completeTask(taskId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.message.set('Tarea completada');
-          this.errorMessage.set('');
-          this.refresh();
-        },
-        error: (err) => {
-          this.errorMessage.set(err.message || 'Error al completar tarea');
-          this.message.set('');
-        },
-      });
+  async submitCompleteCleaning(): Promise<void> {
+    const item = this.completingItem();
+    if (!item) return;
+
+    const val = this.completeForm.getRawValue();
+    try {
+      await lastValueFrom(this.api.completeCleaning({
+        prop_id: item.propId,
+        room_label: item.roomLabel,
+        assigned_to: item.assignedTo || '',
+        observations: val.observations || '',
+        damage_found: val.damageFound,
+        damage_description: val.damageDescription || '',
+        lost_object_found: val.lostObjectFound,
+        lost_object_description: val.lostObjectDescription || '',
+        needs_maintenance: val.needsMaintenance,
+        maintenance_description: val.maintenanceDescription || '',
+      }));
+      this.message.set(`✅ Limpieza completada — Hab. ${item.roomLabel}`);
+      this.errorMessage.set('');
+      this.closeCompleteModal();
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al completar limpieza');
+      this.message.set('');
+    }
   }
 
-  private refresh(): void {
-    const current = this.data();
-    if (!current) return;
-    this.viewState.set('loading');
-    this.api
-      .getTasks(this.selectedPropId() || undefined, this.statusFilter() || undefined, undefined, current.page)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          this.data.set(data);
-          this.viewState.set(data.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
+  // ── Quick actions ──
+
+  async startCleaning(item: HousekeepingTaskItem): Promise<void> {
+    try {
+      await lastValueFrom(this.api.startCleaning(item.propId, item.roomLabel, item.assignedTo || 'system'));
+      this.message.set(`🧹 Limpieza iniciada — Hab. ${item.roomLabel}`);
+      this.errorMessage.set('');
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al iniciar limpieza');
+      this.message.set('');
+    }
   }
+
+  async markInspection(item: HousekeepingTaskItem): Promise<void> {
+    try {
+      await lastValueFrom(this.api.updateTask(item.id, {
+        prop_id: item.propId,
+        room_label: item.roomLabel,
+        task_type: item.taskType,
+        assigned_to: item.assignedTo || undefined,
+        priority: item.priority,
+        note: item.note || undefined,
+        scheduled_date: item.scheduledDate || undefined,
+        status: 'inspection',
+      }));
+      this.message.set('🔍 Tarea enviada a inspección');
+      this.errorMessage.set('');
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al enviar a inspección');
+      this.message.set('');
+    }
+  }
+
+  async completeTask(taskId: string): Promise<void> {
+    try {
+      await lastValueFrom(this.api.completeTask(taskId));
+      this.message.set('✅ Tarea completada');
+      this.errorMessage.set('');
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al completar tarea');
+      this.message.set('');
+    }
+  }
+
+  async deleteTask(taskId: string): Promise<void> {
+    try {
+      await lastValueFrom(this.api.deleteTask(taskId));
+      this.message.set('🗑️ Tarea eliminada');
+      this.errorMessage.set('');
+      this.tasksResource.reload();
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al eliminar tarea');
+      this.message.set('');
+    }
+  }
+
+  // ── Helpers ──
+
+  formatDate(val: string): string {
+    if (!val) return '--';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val.replace('T', ' ').slice(0, 16);
+    return d.toLocaleDateString('es-MX', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  statusClass(status: string): string {
+    return (
+      { pending: 'badge-pending', in_progress: 'badge-progress', inspection: 'badge-inspection', completed: 'badge-done' }[status]
+    ) || 'badge-pending';
+  }
+
+  priorityClass(p: string): string { return `prio-${p}`; }
+  canStartCleaning(item: HousekeepingTaskItem): boolean { return item.status === 'pending'; }
+  canMarkInspection(item: HousekeepingTaskItem): boolean { return item.status === 'pending' || item.status === 'in_progress'; }
+  canComplete(item: HousekeepingTaskItem): boolean { return item.status === 'pending' || item.status === 'in_progress' || item.status === 'inspection'; }
 }

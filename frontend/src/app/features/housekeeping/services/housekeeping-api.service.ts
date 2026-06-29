@@ -104,6 +104,39 @@ export interface FloorData {
   status_counts: Record<string, number>;
 }
 
+export interface CalendarDayTask {
+  id: string;
+  task_type: string;
+  status: string;
+  assigned_to: string;
+  priority: string;
+  note: string;
+  scheduled_date: string;
+  title?: string;
+  description?: string;
+}
+
+export interface CalendarRoomDay {
+  room_label: string;
+  room_number: string;
+  status: string;
+  status_color: string;
+  status_label: string;
+  days: Record<string, CalendarDayTask[]>;
+}
+
+export interface WeeklyCalendarData {
+  week_days: string[];
+  week_start: string;
+  week_end: string;
+  calendar: Record<string, CalendarRoomDay>;
+  staff: string[];
+  summary: {
+    total_tasks: number;
+    by_status: Record<string, number>;
+  };
+}
+
 export interface HousekeepingDashboard {
   totalRooms: number;
   occupied: number;
@@ -224,6 +257,43 @@ export class HousekeepingApiService {
     return this.http.post<AdditionalChargeItem>(`${this.baseUrl}/charges`, payload, { withCredentials: true });
   }
 
+  // ── Cleaning Actions ──
+
+  startCleaning(propId: number, roomLabel: string, assignedTo: string) {
+    return this.http.post<{ ok: boolean; room_label: string; new_status: string }>(
+      `${this.baseUrl}/cleaning/start`,
+      { prop_id: propId, room_label: roomLabel, assigned_to: assignedTo },
+      { withCredentials: true }
+    );
+  }
+
+  completeCleaning(payload: {
+    prop_id: number;
+    room_label: string;
+    assigned_to?: string;
+    observations?: string;
+    damage_found?: boolean;
+    damage_description?: string;
+    lost_object_found?: boolean;
+    lost_object_description?: string;
+    needs_maintenance?: boolean;
+    maintenance_description?: string;
+  }) {
+    return this.http.post<{ ok: boolean; room_label: string; new_status: string; maintenance_created?: boolean; maintenance_task_id?: string }>(
+      `${this.baseUrl}/cleaning/complete`,
+      payload,
+      { withCredentials: true }
+    );
+  }
+
+  approveCleaning(propId: number, roomLabel: string, inspectedBy: string, note = '', setOccupied = false) {
+    return this.http.post<{ ok: boolean; room_label: string; new_status: string }>(
+      `${this.baseUrl}/cleaning/approve`,
+      { prop_id: propId, room_label: roomLabel, inspected_by: inspectedBy, note, set_occupied: setOccupied },
+      { withCredentials: true }
+    );
+  }
+
   // ── Dashboard ──
 
   getDashboard(propId?: number) {
@@ -237,6 +307,16 @@ export class HousekeepingApiService {
     return this.http.get<Array<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }>>(
       `${this.baseUrl}/upcoming-events`, { params, withCredentials: true }
     );
+  }
+
+  // ── Weekly Calendar ──
+
+  getWeeklyCalendar(propId: number, weekStart: string, assignedTo?: string) {
+    let params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('week_start', weekStart);
+    if (assignedTo) params = params.set('assigned_to', assignedTo);
+    return this.http.get<WeeklyCalendarData>(`${this.baseUrl}/calendar-week`, { params, withCredentials: true });
   }
 
   // ── Room Status History / Audit ──

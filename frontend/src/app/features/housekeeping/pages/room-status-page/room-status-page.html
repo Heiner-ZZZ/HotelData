@@ -3,12 +3,12 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Estado de Habitaciones</h1>
-      <p class="page-subtitle">Consultar y actualizar el estado individual de cada habitación.</p>
+      <p class="page-subtitle">Ciclo completo housekeeping · 10 estados · Transiciones por máquina de estados</p>
     </div>
     <div class="page-header-right">
       <app-property-selector
-        [selectedPropId]="selectedPropId()"
-        [selectedLabel]="selectedLabel()"
+        [selectedPropId]="propId()"
+        [selectedLabel]="propLabel()"
         (propIdChange)="onPropSelected($event)"
       />
     </div>
@@ -32,14 +32,54 @@
       @for (opt of statusOptions; track opt.value) {
         <button type="button" class="chip"
           [class.chip-active]="statusFilter() === opt.value"
-          [style.--chip-color]="getStatusColor(opt.value)"
-          (click)="setStatusFilter(opt.value)">
-          <span class="chip-dot" [style.--dot-color]="getStatusColor(opt.value)"></span>
+          [style.--chip-color]="opt.color"
+          (click)="setStatusFilter(opt.value)"
+          [title]="opt.label">
+          <span class="chip-dot" [style.--dot-color]="opt.color"></span>
+          <span class="chip-icon material-symbols-outlined">{{ opt.icon }}</span>
           {{ opt.label }}
         </button>
       }
     </div>
   </div>
+
+  <!-- ═══ Legend / State Flow (desktop) ═══ -->
+  @if (viewState() === 'success') {
+    <details class="state-flow">
+      <summary class="state-flow-summary">
+        <span class="material-symbols-outlined">account_tree</span>
+        Máquina de Estados — Ver transiciones
+      </summary>
+      <div class="state-flow-grid">
+        @for (def of statusOptions; track def.value) {
+          <div class="state-node" [style.--node-color]="def.color">
+            <div class="state-node-header">
+              <span class="material-symbols-outlined state-node-icon">{{ def.icon }}</span>
+              <span class="state-node-label">{{ def.label }}</span>
+            </div>
+            @let next = getNextStatuses(def.value);
+            @if (next.length) {
+              <div class="state-node-arrows">
+                @for (n of next; track n) {
+                  <span class="state-arrow" [style.--arrow-color]="getStatusColor(n)">
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                    {{ getStatusLabel(n) }}
+                  </span>
+                }
+              </div>
+            } @else {
+              <div class="state-node-arrows">
+                <span class="state-arrow state-arrow-end">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  Estado final
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </details>
+  }
 
   @switch (viewState()) {
     @case ('loading') {
@@ -57,138 +97,131 @@
         description="No hay registros para los filtros seleccionados."
       />
     }
-    @default {
-      @if (data(); as d) {
-        <div class="table-card">
-          <!-- ═══ Table Header ═══ -->
-          <div class="table-header">
-            <div class="table-header-left">
-              <span class="material-symbols-outlined table-header-icon">meeting_room</span>
-              <div>
-                <span class="table-header-title">{{ d.total }} habitación(es)</span>
-                <span class="table-header-meta">Página {{ d.page }} de {{ d.totalPages || 1 }}</span>
-              </div>
-            </div>
-            <div class="table-header-actions">
-              <button type="button" class="page-btn"
-                (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
-                <span class="material-symbols-outlined">chevron_left</span>
-                Anterior
-              </button>
-              <button type="button" class="page-btn"
-                (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
-                Siguiente
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
+    @case ('success') {
+      @let d = data()!;
+      <div class="table-card">
+        <!-- ═══ Table Header ═══ -->
+        <div class="table-header">
+          <div class="table-header-left">
+            <span class="material-symbols-outlined table-header-icon">meeting_room</span>
+            <div>
+              <span class="table-header-title">{{ d.total }} habitación(es)</span>
+              <span class="table-header-meta">Página {{ d.page }} de {{ d.totalPages || 1 }}</span>
             </div>
           </div>
-
-          <!-- ═══ Table ═══ -->
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Habitación</th>
-                  <th>Prop</th>
-                  <th>Estado</th>
-                  <th>Nota</th>
-                  <th>Actualizado</th>
-                  <th class="th-actions">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of d.items; track item.id) {
-                  <tr>
-                    <td class="td-room">
-                      <strong>{{ item.roomLabel }}</strong>
-                      @if (item.roomTypeId) {
-                        <span class="room-type">{{ item.roomTypeId }}</span>
-                      }
-                    </td>
-                    <td class="td-prop">
-                      <code>#{{ item.propId }}</code>
-                    </td>
-                    <td class="td-status">
-                      <div class="inline-status">
-                        <span class="status-badge"
-                          [style.--badge-bg]="getStatusColor(item.status)"
-                          [style.--badge-text]="getStatusColor(item.status)">
-                          {{ getStatusLabel(item.status) }}
-                        </span>
-                        <select class="status-select"
-                          [value]="item.status"
-                          [disabled]="savingRow().has(item.id)"
-                          (change)="updateStatusInline(item, ($event.target as HTMLSelectElement).value)">
-                          @for (opt of statusOptions; track opt.value) {
-                            <option [value]="opt.value">{{ opt.label }}</option>
-                          }
-                        </select>
-                        @if (savingRow().has(item.id)) {
-                          <span class="material-symbols-outlined saving-icon spinning">sync</span>
-                        }
-                      </div>
-                    </td>
-                    <td class="td-note">
-                      <span class="note-text">{{ item.note || '—' }}</span>
-                    </td>
-                    <td class="td-time">
-                      {{ (item.updatedAt || item.createdAt) | date:'dd/MM HH:mm' }}
-                    </td>
-                    <td class="td-actions">
-                      <div class="action-btns">
-                        @if (item.status === 'dirty' || item.status === 'clean') {
-                          <button type="button" class="action-btn action-btn-inspect"
-                            (click)="quickInspect(item)" [disabled]="savingRow().has(item.id)"
-                            title="Marcar como inspeccionada">
-                            <span class="material-symbols-outlined">fact_check</span>
-                          </button>
-                        }
-                        @if (item.status === 'dirty') {
-                          <button type="button" class="action-btn action-btn-cleaning"
-                            (click)="quickCleaning(item)" [disabled]="savingRow().has(item.id)"
-                            title="Iniciar limpieza">
-                            <span class="material-symbols-outlined">cleaning_services</span>
-                          </button>
-                        }
-                        @if (item.status === 'inspected') {
-                          <button type="button" class="action-btn action-btn-available"
-                            (click)="quickAvailable(item)" [disabled]="savingRow().has(item.id)"
-                            title="Liberar habitación">
-                            <span class="material-symbols-outlined">check_circle</span>
-                          </button>
-                        }
-                        @if (item.status === 'occupied' || item.status === 'cleaning') {
-                          <button type="button" class="action-btn action-btn-dirty"
-                            (click)="quickDirty(item)" [disabled]="savingRow().has(item.id)"
-                            title="Marcar como sucia">
-                            <span class="material-symbols-outlined">report</span>
-                          </button>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ═══ Table Footer Pagination ═══ -->
-          <div class="table-footer">
-            <span class="table-footer-info">{{ d.total }} registro(s) — {{ d.totalPages || 1 }} página(s)</span>
-            <div class="table-footer-actions">
-              <button type="button" class="page-btn page-btn-sm"
-                (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
-                <span class="material-symbols-outlined">chevron_left</span>
-              </button>
-              <span class="page-indicator">{{ d.page }} / {{ d.totalPages || 1 }}</span>
-              <button type="button" class="page-btn page-btn-sm"
-                (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
-            </div>
+          <div class="table-header-actions">
+            <button type="button" class="page-btn"
+              (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+              <span class="material-symbols-outlined">chevron_left</span>
+              Anterior
+            </button>
+            <button type="button" class="page-btn"
+              (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+              Siguiente
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
           </div>
         </div>
-      }
+
+        <!-- ═══ Table ═══ -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Habitación</th>
+                <th>Prop</th>
+                <th>Estado</th>
+                <th>Próximas Transiciones</th>
+                <th>Nota</th>
+                <th>Actualizado</th>
+                <th class="th-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of d.items; track item.id) {
+                <tr>
+                  <td class="td-room">
+                    <strong>{{ item.roomLabel }}</strong>
+                    @if (item.roomTypeId) {
+                      <span class="room-type">{{ item.roomTypeId }}</span>
+                    }
+                  </td>
+                  <td class="td-prop">
+                    <code>#{{ item.propId }}</code>
+                  </td>
+                  <td class="td-status">
+                    <span class="status-badge"
+                      [style.--badge-bg]="getStatusColor(item.status)"
+                      [style.--badge-text]="getStatusColor(item.status)">
+                      <span class="material-symbols-outlined status-badge-icon">{{ getStatusIcon(item.status) }}</span>
+                      {{ getStatusLabel(item.status) }}
+                    </span>
+                  </td>
+                  <td class="td-next">
+                    <div class="next-chips">
+                      @for (ns of getNextStatuses(item.status); track ns) {
+                        <span class="next-chip"
+                          [style.--next-color]="getStatusColor(ns)"
+                          (click)="updateStatusInline(item, ns)">
+                          {{ getStatusLabel(ns) }}
+                        </span>
+                      }
+                      @if (getNextStatuses(item.status).length === 0) {
+                        <span class="next-chip next-chip-end">—</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="td-note">
+                    <span class="note-text">{{ item.note || '—' }}</span>
+                  </td>
+                  <td class="td-time">
+                    {{ (item.updatedAt || item.createdAt) | date:'dd/MM HH:mm' }}
+                  </td>
+                  <td class="td-actions">
+                    @let actions = getActions(item.status);
+                    @if (actions.length) {
+                      <div class="quick-actions">
+                        @for (act of actions; track act.id) {
+                          <button type="button"
+                            class="qa-btn qa-btn-{{ act.variant }}"
+                            [disabled]="savingRow().has(item.id)"
+                            (click)="executeAction(item, act)"
+                            [title]="'→ ' + act.description">
+                            @if (savingRow().has(item.id)) {
+                              <span class="material-symbols-outlined qa-spin">sync</span>
+                            } @else {
+                              <span class="material-symbols-outlined">{{ act.icon }}</span>
+                            }
+                            <span class="qa-label">{{ getActionLabel(act, item) }}</span>
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <span class="no-actions">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ═══ Table Footer Pagination ═══ -->
+        <div class="table-footer">
+          <span class="table-footer-info">{{ d.total }} registro(s) — {{ d.totalPages || 1 }} página(s)</span>
+          <div class="table-footer-actions">
+            <button type="button" class="page-btn page-btn-sm"
+              (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <span class="page-indicator">{{ d.page }} / {{ d.totalPages || 1 }}</span>
+            <button type="button" class="page-btn page-btn-sm"
+              (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
     }
   }
 </div>
