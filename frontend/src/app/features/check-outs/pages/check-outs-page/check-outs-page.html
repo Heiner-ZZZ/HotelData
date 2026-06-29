@@ -268,7 +268,7 @@
                       <td class="cell-notes">{{ item.notes || '--' }}</td>
                       <td class="cell-action">
                         @if (item.canComplete) {
-                          <button type="button" class="btn-icon-only" (click)="completeCheckOut(item.bookingId)" aria-label="Completar check-out">
+                          <button type="button" class="btn-icon-only" (click)="openConsumptionModal(item)" aria-label="Completar check-out">
                             <span class="material-symbols-outlined">logout</span>
                           </button>
                         }
@@ -292,6 +292,162 @@
         </section>
       }
     }
+  }
+
+  <!-- ═══ Consumption Summary Modal ═══ -->
+  @if (showConsumptionModal()) {
+    <div class="modal-overlay" (click)="closeConsumptionModal()">
+      <div class="modal-panel consumption-modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <span class="material-symbols-outlined modal-head-icon">receipt_long</span>
+          <div>
+            <h2>Resumen de consumos</h2>
+            <p>{{ consumptionGuestName() }} · {{ consumptionHotelLabel() }} · {{ consumptionBookingId() }}</p>
+          </div>
+          <button type="button" class="modal-close" (click)="closeConsumptionModal()" aria-label="Cerrar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (consumptionLoading()) {
+            <div class="consumption-loading">
+              <span class="material-symbols-outlined spinning">sync</span>
+              <span>Cargando consumos...</span>
+            </div>
+          } @else if (consumptionCharges().length === 0) {
+            <div class="consumption-empty">
+              <div class="consumption-empty-icon">
+                <span class="material-symbols-outlined">check_circle</span>
+              </div>
+              <strong>Sin cargos adicionales</strong>
+              <p>El huésped no registró consumos adicionales durante su estancia.</p>
+            </div>
+          } @else {
+            <div class="consumption-items">
+              <div class="consumption-table-wrap">
+                <table class="consumption-table">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th class="cell-center">Cant.</th>
+                      <th class="cell-right">Precio</th>
+                      <th class="cell-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ch of consumptionCharges(); track ch.concept + ch.created_at) {
+                      <tr>
+                        <td>
+                          <strong>{{ ch.concept }}</strong>
+                          @if (ch.note) {
+                            <div class="charge-note-sm">{{ ch.note }}</div>
+                          }
+                        </td>
+                        <td class="cell-center">{{ ch.quantity }}</td>
+                        <td class="cell-right">{{ ch.amount | currency:'USD' }}</td>
+                        <td class="cell-right cell-total">{{ ch.total | currency:'USD' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr class="consumption-foot">
+                      <td colspan="3">
+                        <span>Total consumos</span>
+                        <span class="consumption-badge">{{ consumptionItemsCount() }} artículo(s)</span>
+                      </td>
+                      <td class="cell-right consumption-grand-total">{{ consumptionChargesTotal() | currency:'USD' }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- ═══ Grand Total Summary ═══ -->
+          <div class="consumption-summary">
+            <div class="summary-row">
+              <span>Habitación ({{ consumptionItemsCount() === 0 ? 'sin cargos' : '' }})</span>
+              <span class="summary-amount">{{ consumptionRoomTotal() | currency:'USD' }}</span>
+            </div>
+            @if (consumptionCharges().length > 0) {
+              <div class="summary-row summary-row-charges">
+                <span>Consumos adicionales ({{ consumptionItemsCount() }} artículo{{ consumptionItemsCount() !== 1 ? 's' : '' }})</span>
+                <span class="summary-amount">+ {{ consumptionChargesTotal() | currency:'USD' }}</span>
+              </div>
+            }
+            <div class="summary-divider-row"></div>
+            <div class="summary-row summary-row-total">
+              <span>Total a facturar</span>
+              <span class="summary-amount summary-amount-grand">{{ consumptionGrandTotal() | currency:'USD' }}</span>
+            </div>
+          </div>
+
+          <!-- ═══ Add Charge Form ═══ -->
+          <div class="charge-add-section">
+            <button type="button" class="charge-toggle-btn" (click)="toggleChargeForm()">
+              <span class="material-symbols-outlined">{{ chargeFormVisible() ? 'expand_less' : 'add_circle' }}</span>
+              {{ chargeFormVisible() ? 'Cancelar' : 'Agregar cargo adicional' }}
+            </button>
+
+            @if (chargeFormVisible()) {
+              <div class="charge-form">
+                @if (chargeError()) {
+                  <div class="charge-form-error">
+                    <span class="material-symbols-outlined">error</span>
+                    <span>{{ chargeError() }}</span>
+                  </div>
+                }
+                <div class="charge-form-grid">
+                  <label class="charge-field charge-field-wide">
+                    <span>Concepto</span>
+                    <input type="text" [ngModel]="chargeConcept()" (ngModelChange)="chargeConcept.set($event)" placeholder="Ej: Toallas extra, Late check-out" />
+                  </label>
+                  <label class="charge-field">
+                    <span>Monto</span>
+                    <input type="number" step="0.01" min="0" [ngModel]="chargeAmount()" (ngModelChange)="chargeAmount.set(Number($event))" placeholder="0.00" />
+                  </label>
+                  <label class="charge-field">
+                    <span>Cantidad</span>
+                    <input type="number" min="1" [ngModel]="chargeQuantity()" (ngModelChange)="chargeQuantity.set(Math.max(1, Number($event)))" />
+                  </label>
+                  <label class="charge-field charge-field-wide">
+                    <span>Nota (opcional)</span>
+                    <input type="text" [ngModel]="chargeNote()" (ngModelChange)="chargeNote.set($event)" placeholder="Ej: Solicitado por el huésped" />
+                  </label>
+                </div>
+                <div class="charge-form-actions">
+                  <button type="button" class="charge-cancel-btn" (click)="toggleChargeForm()">Cancelar</button>
+                  <button type="button" class="charge-submit-btn" (click)="addCharge()" [disabled]="chargeSaving()">
+                    @if (chargeSaving()) {
+                      <span class="material-symbols-outlined spinning">sync</span>
+                      Agregando...
+                    } @else {
+                      <span class="material-symbols-outlined">add</span>
+                      Agregar cargo
+                    }
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- ═══ Grand Total Summary ═══ -->
+          <div class="consumption-summary">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeConsumptionModal()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="confirmCheckOut()" [disabled]="confirmPending()">
+            @if (confirmPending()) {
+              <span class="material-symbols-outlined spinning">sync</span>
+              Procesando...
+            } @else {
+              <span class="material-symbols-outlined">logout</span>
+              Confirmar check-out
+            }
+          </button>
+        </div>
+      </div>
+    </div>
   }
 
   <!-- ═══ Review Modal ═══ -->

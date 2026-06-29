@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -17,7 +17,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { CheckOutsViewModel } from '../../models/check-outs.model';
 import type { CheckOutsDto } from '../../models/check-outs.dto';
-import { CheckOutsApiService, type DateHistoryEntry } from '../../services/check-outs-api.service';
+import { CheckOutsApiService, type BookingCharge, type DateHistoryEntry } from '../../services/check-outs-api.service';
 import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { mapCheckOuts } from '../../mappers/check-outs.mapper';
 
@@ -34,7 +34,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-outs-page',
-  imports: [DatePipe, FormsModule, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [CurrencyPipe, DatePipe, FormsModule, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
   templateUrl: './check-outs-page.html',
   styleUrl: './check-outs-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -90,6 +90,40 @@ export class CheckOutsPageComponent {
 
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  readonly Math = Math;
+
+  // ═══ Consumption summary modal ═══
+  readonly showConsumptionModal = signal(false);
+  readonly consumptionBookingId = signal('');
+  readonly consumptionGuestName = signal('');
+  readonly consumptionHotelLabel = signal('');
+  readonly consumptionCharges = signal<BookingCharge[]>([]);
+  readonly consumptionPropId = signal(0);
+  readonly consumptionRoomTotal = signal(0);
+  readonly consumptionLoading = signal(false);
+  readonly confirmPending = signal(false);
+
+  // ═══ Add charge form ═══
+  readonly chargeFormVisible = signal(false);
+  readonly chargeConcept = signal('');
+  readonly chargeAmount = signal(0);
+  readonly chargeQuantity = signal(1);
+  readonly chargeNote = signal('');
+  readonly chargeSaving = signal(false);
+  readonly chargeError = signal('');
+
+  readonly consumptionChargesTotal = computed(() =>
+    this.consumptionCharges().reduce((sum, c) => sum + (c.total || 0), 0)
+  );
+
+  readonly consumptionGrandTotal = computed(() =>
+    this.consumptionRoomTotal() + this.consumptionChargesTotal()
+  );
+
+  readonly consumptionItemsCount = computed(() =>
+    this.consumptionCharges().reduce((sum, c) => sum + (c.quantity || 0), 0)
+  );
 
   // Review modal
   readonly showReviewModal = signal(false);
@@ -229,18 +263,92 @@ export class CheckOutsPageComponent {
     setTimeout(() => this.dropdownOpen.set(false), 200);
   }
 
-  completeCheckOut(bookingId: string): void {
-    const current = this.viewModel();
-    if (!current) return;
+  openConsumptionModal(item: CheckOutRowViewModel): void {
+    this.consumptionBookingId.set(item.bookingId);
+    this.consumptionGuestName.set(item.guestName);
+    this.consumptionHotelLabel.set(item.hotelLabel);
+    this.consumptionRoomTotal.set(item.totalPrice || 0);
+    this.consumptionPropId.set(item.propId);
+    this.showConsumptionModal.set(true);
+    this.consumptionLoading.set(true);
+    this.consumptionCharges.set([]);
+    this.confirmPending.set(false);
+
+    this.api.getBookingCharges(item.bookingId).subscribe({
+      next: (res) => {
+        this.consumptionCharges.set(res.items || []);
+        this.consumptionLoading.set(false);
+      },
+      error: () => {
+        this.consumptionLoading.set(false);
+      },
+    });
+  }
+
+  closeConsumptionModal(): void {
+    this.showConsumptionModal.set(false);
+    this.chargeFormVisible.set(false);
+    this.chargeError.set('');
+  }
+
+  // ═══ Add / Edit Charge ═══
+
+  toggleChargeForm(): void {
+    this.chargeFormVisible.update(v => !v);
+    this.chargeError.set('');
+    if (this.chargeFormVisible()) {
+      this.chargeConcept.set('');
+      this.chargeAmount.set(0);
+      this.chargeQuantity.set(1);
+      this.chargeNote.set('');
+    }
+  }
+
+  addCharge(): void {
+    const bookingId = this.consumptionBookingId();
+    const concept = this.chargeConcept().trim();
+    const amount = this.chargeAmount();
+    const quantity = this.chargeQuantity();
+    if (!bookingId || !concept || amount <= 0) {
+      this.chargeError.set('Completa el concepto y el monto del cargo.');
+      return;
+    }
+    this.chargeSaving.set(true);
+    this.chargeError.set('');
+
+    this.api.createCharge(bookingId, this.consumptionPropId(), concept, amount, quantity, this.chargeNote()).subscribe({
+      next: () => {
+        this.chargeSaving.set(false);
+        this.chargeError.set('');
+        this.chargeFormVisible.set(false);
+        // Refresh charges
+        this.api.getBookingCharges(bookingId).subscribe({
+          next: (res) => this.consumptionCharges.set(res.items || []),
+        });
+      },
+      error: (err: ApiError) => {
+        this.chargeSaving.set(false);
+        this.chargeError.set(err.message || 'Error al crear el cargo.');
+      },
+    });
+  }
+
+  confirmCheckOut(): void {
+    const bookingId = this.consumptionBookingId();
+    if (!bookingId || this.confirmPending()) return;
+    this.confirmPending.set(true);
     this.api.completeCheckOut(bookingId).subscribe({
       next: () => {
-        this.message.set('Check-out completado');
+        this.message.set('Check-out completado correctamente');
         this.errorMessage.set('');
+        this.showConsumptionModal.set(false);
+        this.confirmPending.set(false);
       },
       error: (err: ApiError) => {
         this.errorMessage.set(err.message || 'Error al completar check-out.');
         this.message.set('');
-      }
+        this.confirmPending.set(false);
+      },
     });
   }
 

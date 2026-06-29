@@ -13,6 +13,15 @@ export interface DateHistoryEntry {
   hotel_label?: string;
 }
 
+export interface BookingCharge {
+  concept: string;
+  amount: number;
+  quantity: number;
+  total: number;
+  note: string;
+  created_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CheckOutsApiService {
   private readonly http = inject(HttpClient);
@@ -37,6 +46,29 @@ export class CheckOutsApiService {
       params,
       withCredentials: true
     });
+  }
+
+  /** Fetch additional charges (consumptions) for a booking before checkout. */
+  getBookingCharges(bookingId: string) {
+    const params = new HttpParams().set('booking_id', bookingId);
+    return this.http.get<{
+      items: BookingCharge[];
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    }>(`${this.apiConfig.baseUrl}/housekeeping/charges`, { params, withCredentials: true });
+  }
+
+  /** Create an additional charge for a booking before checkout. */
+  createCharge(bookingId: string, propId: number, concept: string, amount: number, quantity: number, note: string = '') {
+    return this.http.post<BookingCharge>(
+      `${this.apiConfig.baseUrl}/housekeeping/charges`,
+      { booking_id: bookingId, prop_id: propId, concept, amount, quantity, note },
+      { withCredentials: true }
+    );
   }
 
   completeCheckOut(bookingId: string) {
