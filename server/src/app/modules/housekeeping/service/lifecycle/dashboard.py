@@ -154,6 +154,177 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
     }
 
 
+def get_weekly_calendar(
+    prop_id: int,
+    week_start: str,
+    assigned_to: str | None = None,
+) -> dict[str, Any]:
+    """Return a weekly calendar grid: rooms × days with scheduled tasks.
+
+    Returns:
+    {
+      "week_days": ["2026-06-22", "2026-06-23", ...],  // 7 days
+      "calendar": {
+        "1201": {
+          "room_label": "1201",
+          "status": "vacant_dirty",
+          "status_color": "#92400e",
+          "days": {
+            "2026-06-22": [ { task fields... } ],
+            "2026-06-23": [],
+            ...
+          }
+        },
+        ...
+      },
+      "staff": ["María García", "Juan Pérez", ...],  // unique assigned_to
+      "summary": { "total_tasks": 42, "by_status": {...} }
+    }
+    """
+    db = get_database()
+
+    # Calculate end of week (7 days from week_start)
+    try:
+        from datetime import datetime, timedelta
+        start_dt = datetime.strptime(week_start, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=6)
+        week_end = end_dt.strftime("%Y-%m-%d")
+    except ValueError:
+        week_end = week_start  # fallback
+
+    # Build week days array
+    week_days: list[str] = []
+    try:
+        cur = start_dt
+        for _ in range(7):
+            week_days.append(cur.strftime("%Y-%m-%d"))
+            cur += timedelta(days=1)
+    except Exception:
+        week_days = [week_start]
+
+    # 1. Fetch all rooms for this property
+    rooms_query: dict[str, Any] = {"prop_id": prop_id}
+    rooms_list = list(db[ROOM_STATUS_COLLECTION].find(rooms_query).sort("room_label", 1).limit(500))
+
+    # 2. Fetch tasks scheduled within the week
+    task_query: dict[str, Any] = {
+        "prop_id": prop_id,
+        "status": {"$ne": "deleted"},
+        "scheduled_date": {"$gte": week_start, "$lte": week_end},
+    }
+    if assigned_to:
+        task_query["assigned_to"] = assigned_to
+
+    tasks_cursor = db[HOUSEKEEPING_COLLECTION].find(task_query).sort("scheduled_date", 1)
+
+    # 3. Fetch maintenance events within the week
+    maint_query: dict[str, Any] = {
+        "prop_id": prop_id,
+        "status": {"$in": ["scheduled", "in_progress"]},
+        "scheduled_date": {"$gte": week_start, "$lte": week_end},
+    }
+    maint_cursor = db[MAINTENANCE_COLLECTION].find(maint_query).sort("scheduled_date", 1)
+
+    # 4. Build calendar grid: room_label → { days: { date → [tasks] } }
+    calendar: dict[str, Any] = {}
+    for room in rooms_list:
+        label = room.get("room_label", "")
+        if not label:
+            continue
+        status = room.get("status", "")
+        days_map: dict[str, list[dict[str, Any]]] = {d: [] for d in week_days}
+        calendar[label] = {
+            "room_label": label,
+            "room_number": room.get("room_number", ""),
+            "status": status,
+            "status_color": ROOM_STATUS_COLORS.get(status, "#6f797d"),
+            "status_label": ROOM_STATUSES.get(status, status),
+            "days": days_map,
+        }
+
+    # Place tasks into calendar
+    staff_set: set[str] = set()
+    task_count_by_status: dict[str, int] = {}
+    total_tasks = 0
+
+    for doc in tasks_cursor:
+        sid = str(doc.pop("_id"))
+        sched = doc.get("scheduled_date", "")
+        rl = doc.get("room_label", "")
+        if not rl or sched not in week_days:
+            continue
+
+        assigned = doc.get("assigned_to", "")
+        if assigned:
+            staff_set.add(assigned)
+
+        task_item = {
+            "id": sid,
+            "task_type": doc.get("task_type", "cleaning"),
+            "status": doc.get("status", "pending"),
+            "assigned_to": assigned,
+            "priority": doc.get("priority", "normal"),
+            "note": doc.get("note", ""),
+            "scheduled_date": sched[:10] if sched else "",
+        }
+        total_tasks += 1
+        st = task_item["status"]
+        task_count_by_status[st] = task_count_by_status.get(st, 0) + 1
+
+        if rl in calendar and sched in calendar[rl]["days"]:
+            calendar[rl]["days"][sched].append(task_item)
+
+    # Place maintenance events into calendar
+    for doc in maint_cursor:
+        sid = str(doc.pop("_id"))
+        sched = doc.get("scheduled_date", "")
+        rl = doc.get("room_label", "")
+        if not rl or sched not in week_days:
+            continue
+
+        maint_item = {
+            "id": sid,
+            "task_type": "maintenance",
+            "status": doc.get("status", "scheduled"),
+            "assigned_to": doc.get("assigned_to", ""),
+            "priority": doc.get("priority", "normal"),
+            "title": doc.get("title", ""),
+            "description": doc.get("description", ""),
+            "scheduled_date": sched[:10] if sched else "",
+        }
+        total_tasks += 1
+        mt_st = "maintenance"
+        task_count_by_status[mt_st] = task_count_by_status.get(mt_st, 0) + 1
+
+        if rl in calendar and sched in calendar[rl]["days"]:
+            calendar[rl]["days"][sched].append(maint_item)
+
+    # Sort rooms naturally
+    def _natural_key(label: str) -> tuple:
+        digits = "".join(c for c in label if c.isdigit())
+        return (len(digits), int(digits) if digits else 0, label)
+
+    sorted_rooms = sorted(calendar.values(), key=lambda r: _natural_key(r["room_label"]))
+    sorted_calendar: dict[str, Any] = {}
+    for r in sorted_rooms:
+        sorted_calendar[r["room_label"]] = r
+
+    # Collect unique staff list
+    staff_list = sorted(staff_set)
+
+    return {
+        "week_days": week_days,
+        "week_start": week_start,
+        "week_end": week_end,
+        "calendar": sorted_calendar,
+        "staff": staff_list,
+        "summary": {
+            "total_tasks": total_tasks,
+            "by_status": task_count_by_status,
+        },
+    }
+
+
 def list_upcoming_events(prop_id: int | None = None, days: int = 30) -> list[dict[str, Any]]:
     """Return upcoming housekeeping tasks and maintenance events for calendar display."""
     db = get_database()

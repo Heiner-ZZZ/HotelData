@@ -21,6 +21,7 @@ from src.app.modules.housekeeping.service import (
     delete_maintenance_task,
     get_housekeeping_dashboard,
     get_room_status,
+    get_weekly_calendar,
     list_additional_charges,
     list_housekeeping_tasks,
     list_maintenance_tasks,
@@ -446,6 +447,25 @@ def housekeeping_dashboard_api(
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
     return get_housekeeping_dashboard(prop_id=prop_id)
+
+
+@api_router.get("/calendar-week")
+def weekly_calendar_api(
+    prop_id: int = Query(..., ge=1, description="Property ID"),
+    week_start: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    assigned_to: str | None = Query(default=None, description="Filter by staff name"),
+    current_user: dict = Depends(require_login),
+):
+    """Return a weekly calendar grid: rooms × days with scheduled tasks and maintenance events.
+
+    Each room shows its current status and scheduled tasks for each day of the week.
+    Supports filtering by assigned staff.
+    """
+    return get_weekly_calendar(
+        prop_id=prop_id,
+        week_start=week_start,
+        assigned_to=assigned_to,
+    )
 
 
 @api_router.get("/upcoming-events")

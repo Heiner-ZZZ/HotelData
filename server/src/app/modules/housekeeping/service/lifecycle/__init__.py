@@ -33,7 +33,7 @@ from .charges import (
     create_additional_charge,
     list_additional_charges,
 )
-from .dashboard import get_housekeeping_dashboard, list_upcoming_events
+from .dashboard import get_housekeeping_dashboard, get_weekly_calendar, list_upcoming_events
 from .room_history import log_room_status_change, list_room_status_history
 
 __all__ = [
@@ -61,5 +61,6 @@ __all__ = [
     "create_additional_charge",
     "list_additional_charges",
     "get_housekeeping_dashboard",
+    "get_weekly_calendar",
     "list_upcoming_events",
 ]
