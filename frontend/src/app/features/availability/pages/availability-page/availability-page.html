@@ -325,6 +325,7 @@
           [inventoryItems]="vm.inventoryItems"
           [availabilityBlocks]="vm.availabilityBlocks"
           [blackoutItems]="vm.blackoutItems"
+          [roomNumbersByType]="store.roomNumbersByType()"
           (deleteBlackout)="store.onDeleteBlackout($event)"
           (editBlackout)="store.onEditBlackout($event)"
           (editInventory)="store.onEditInventoryFromTable($event)"
