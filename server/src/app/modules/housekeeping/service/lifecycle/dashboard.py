@@ -37,7 +37,14 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
         **match, "status": {"$in": ["scheduled", "in_progress"]},
     })
 
-    total_rooms = status_counts.get("available", 0) + status_counts.get("occupied", 0) + status_counts.get("cleaning", 0)
+    total_rooms = (
+        status_counts.get("available", 0) + status_counts.get("occupied", 0)
+        + status_counts.get("cleaning", 0)
+        + status_counts.get("clean", 0) + status_counts.get("inspected", 0)
+        + status_counts.get("dirty", 0)
+        + status_counts.get("maintenance", 0) + status_counts.get("out_of_order", 0)
+        + status_counts.get("out_of_service", 0)
+    )
     occupied = status_counts.get("occupied", 0)
 
     # Maintenance compliance: on-time completion rate

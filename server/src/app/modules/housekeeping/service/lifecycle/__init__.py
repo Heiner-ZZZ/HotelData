@@ -28,6 +28,7 @@ from .charges import (
     list_additional_charges,
 )
 from .dashboard import get_housekeeping_dashboard, list_upcoming_events
+from .room_history import log_room_status_change, list_room_status_history
 
 __all__ = [
     "upsert_room_status",
@@ -35,6 +36,8 @@ __all__ = [
     "get_room_status",
     "update_room_status_bulk",
     "sync_room_status_from_hotel_rooms",
+    "log_room_status_change",
+    "list_room_status_history",
     "create_housekeeping_task",
     "list_housekeeping_tasks",
     "complete_housekeeping_task",
