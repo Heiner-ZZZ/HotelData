@@ -57,7 +57,11 @@ def check_in_update_datetime_api(booking_id: str, payload: dict = Body(default={
 @management_api_router.post("/check-ins/{booking_id}/complete")
 def check_in_complete_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
     try:
-        return complete_check_in(booking_id, changed_by=str(payload.get("changed_by") or "angular_api"))
+        return complete_check_in(
+            booking_id,
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+            payment_method=str(payload.get("payment_method", "")),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -82,7 +86,11 @@ def check_outs_api(
 @management_api_router.post("/check-outs/{booking_id}/complete")
 def check_out_complete_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
     try:
-        return complete_check_out(booking_id, changed_by=str(payload.get("changed_by") or "angular_api"))
+        return complete_check_out(
+            booking_id,
+            changed_by=str(payload.get("changed_by") or "angular_api"),
+            split_invoice=bool(payload.get("split_invoice", False)),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -163,6 +171,20 @@ def booking_available_rooms_api(
         )
         .sort([("room_number", ASCENDING)])
     )
+
+    # Enrich available rooms with current status from room_status_log
+    room_labels = [r.get("room_label", "") or r.get("room_number", "") for r in available_rooms if r.get("room_label") or r.get("room_number")]
+    status_map: dict[str, str] = {}
+    if room_labels:
+        for doc in db.room_status_log.find(
+            {"prop_id": prop_id, "room_label": {"$in": room_labels}},
+            {"_id": 0, "room_label": 1, "status": 1},
+        ):
+            status_map[doc["room_label"]] = doc["status"]
+
+    for room in available_rooms:
+        label = room.get("room_label", "") or room.get("room_number", "")
+        room["room_status"] = status_map.get(label, "unknown")
 
     # Any already assigned rooms for this booking
     assigned = list(

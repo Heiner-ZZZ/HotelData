@@ -145,13 +145,15 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
             reservation_input.prop_id, reservation_input.check_in_date,
             reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,
         )
-        total_price, currency, total_nights = _calculate_total_price(
+        total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             reservation_input.prop_id, reservation_input.room_type_id,
             reservation_input.check_in_date, reservation_input.check_out_date, reservation_input.rooms,
+            adults=reservation_input.adults, children=reservation_input.children,
         )
         return {
             "available": avail_error is None, "availability_message": avail_error,
             "total_price": total_price, "currency": currency, "total_nights": total_nights,
+            "tax_rate": tax_rate, "tax_amount": tax_amount, "tax_included": tax_included,
         }
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -263,7 +265,8 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
             room_type_id=str(payload["room_type_id"]) if payload.get("room_type_id") else None,
             rooms=int(payload["rooms"]) if payload.get("rooms") is not None else None,
             comment=str(payload["comment"]) if payload.get("comment") is not None else None,
-            changed_by=current_user.get("username", "angular_api"))
+            changed_by=current_user.get("username", "angular_api"),
+            selected_amenities=payload.get("selected_amenities"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
