@@ -59,9 +59,9 @@ def _unblock_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -
     """
     if not room_label:
         return
-    # Only restore if the room is still marked as maintenance
+    # Only restore if the room is still in a blocked state
     current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"status": 1})
-    if current and current.get("status") == "maintenance":
+    if current and current.get("status") in ("maintenance_requested", "out_of_service", "out_of_order"):
         # Restore to vacant_clean (the new housekeeping status)
         db.room_status_log.update_one(
             {"prop_id": prop_id, "room_label": room_label},
