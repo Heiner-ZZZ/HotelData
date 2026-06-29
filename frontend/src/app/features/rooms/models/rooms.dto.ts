@@ -22,6 +22,10 @@ export interface RoomsDto {
     floor?: string;
     features?: string[] | Array<{ label: string; unit_price: number }>;
     base_rate?: number;
+    view?: string;
+    smoking?: boolean;
+    accessible?: boolean;
+    is_roh?: boolean;
   }>;
   hotel_rooms?: Array<{
     hotel_room_id: string;
@@ -31,6 +35,10 @@ export interface RoomsDto {
     is_active: boolean;
     room_number?: string;
     floor?: string;
+    view?: string;
+    smoking?: boolean;
+    accessible?: boolean;
+    is_roh?: boolean;
   }>;
   room_type_count: number;
   hotel_room_count?: number;
@@ -55,4 +63,8 @@ export interface RoomCreateDto {
   is_active: boolean;
   room_number?: string;
   floor?: string;
+  view?: string;
+  smoking?: boolean;
+  accessible?: boolean;
+  is_roh?: boolean;
 }

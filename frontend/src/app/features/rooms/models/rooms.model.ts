@@ -26,6 +26,10 @@ export interface RoomTypeItem {
   activeLabel: string;
   roomNumber: string;
   floor: string;
+  view: string;
+  smoking: boolean;
+  accessible: boolean;
+  isRoh: boolean;
   features: RoomFeatureItem[];
   baseRate?: number;
 }
@@ -58,6 +62,10 @@ export interface HotelRoomItem {
   activeLabel: string;
   roomNumber: string;
   floor: string;
+  view: string;
+  smoking: boolean;
+  accessible: boolean;
+  isRoh: boolean;
   upcomingBookings?: UpcomingBooking[];
   isOccupiedSoon?: boolean;
   occupancyLabel?: string;

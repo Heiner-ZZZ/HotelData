@@ -31,6 +31,10 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       floor: room.floor || '',
       features: normalizeFeatures(room.features),
       baseRate: room.base_rate ?? 0,
+      view: room.view || '',
+      smoking: room.smoking ?? false,
+      accessible: room.accessible ?? false,
+      isRoh: room.is_roh ?? false,
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,
@@ -39,6 +43,10 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       activeLabel: room.is_active ? 'Sí' : 'No',
       roomNumber: room.room_number || '',
       floor: room.floor || '',
+      view: room.view || '',
+      smoking: room.smoking ?? false,
+      accessible: room.accessible ?? false,
+      isRoh: room.is_roh ?? false,
       upcomingBookings: (room as any).upcoming_bookings,
       isOccupiedSoon: (room as any).is_occupied_soon ?? false,
       occupancyLabel: (room as any).occupancy_label || '',
@@ -64,6 +72,10 @@ export function mapRoomCreatePayload(payload: {
   isActive: boolean;
   roomNumber?: string;
   floor?: string;
+  view?: string;
+  smoking?: boolean;
+  accessible?: boolean;
+  isRoh?: boolean;
 }): RoomCreateDto {
   return {
     prop_id: payload.propId,
@@ -76,5 +88,9 @@ export function mapRoomCreatePayload(payload: {
     is_active: payload.isActive,
     room_number: payload.roomNumber || '',
     floor: payload.floor || '',
+    view: payload.view || '',
+    smoking: payload.smoking ?? false,
+    accessible: payload.accessible ?? false,
+    is_roh: payload.isRoh ?? false,
   };
 }
