@@ -1,0 +1,24 @@
+.rooms-page > * {
+  animation: rooms-fade-in 300ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
+}
+.rooms-page > *:nth-child(1) { animation-delay: 0.00s; }
+.rooms-page > *:nth-child(2) { animation-delay: 0.04s; }
+.rooms-page > *:nth-child(3) { animation-delay: 0.08s; }
+.rooms-page > *:nth-child(4) { animation-delay: 0.12s; }
+.rooms-page > *:nth-child(5) { animation-delay: 0.16s; }
+.rooms-page > *:nth-child(6) { animation-delay: 0.20s; }
+.rooms-page > *:nth-child(7) { animation-delay: 0.24s; }
+.rooms-page > *:nth-child(8) { animation-delay: 0.28s; }
+.rooms-page > *:nth-child(9) { animation-delay: 0.32s; }
+.rooms-page > *:nth-child(10) { animation-delay: 0.36s; }
+
+@keyframes rooms-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,70 @@
+/* ── Reviews ── */
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.review-card-item {
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.review-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.review-card-score {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  flex-shrink: 0;
+}
+
+.review-card-score.score-high {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.review-card-score.score-mid {
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+}
+
+.review-card-score.score-low {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.review-card-meta {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.review-card-meta strong {
+  font-size: 0.9rem;
+  color: var(--app-text);
+}
+
+.review-card-date {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+}
+
+.review-card-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--app-text);
+}

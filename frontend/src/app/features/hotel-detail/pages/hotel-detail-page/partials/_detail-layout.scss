@@ -1,0 +1,20 @@
+/* ── Detail Sections ── */
+.detail-section {
+  scroll-margin-top: 8rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.section-title {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+}

@@ -1,0 +1,23 @@
+/* ── Amenities ── */
+.amenities-section {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.amenities-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.amenity-tag {
+  padding: 0.35rem 0.85rem;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
