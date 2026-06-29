@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
-   Invoice Detail — Stitch-inspired billing page
-   Split layout 2/3+1/3 · Flat design · M3 palette · Inter
+   Invoice Detail — Itemized invoice (PMS billing)
+   Split layout 2/3+1/3 · Stitch flat design · M3 palette
    ═══════════════════════════════════════════════════════════ */
 
 .inv-page {
@@ -601,6 +601,178 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
+  }
+}
+
+/* ═══ Guest Info Bar ═══ */
+
+.inv-guest-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding: 0.65rem 0.9rem;
+  background: #f7f9fb;
+  border: 1px solid #e0e3e5;
+  border-radius: 0.5rem;
+}
+
+.inv-guest-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.inv-guest-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6f797d;
+}
+
+.inv-guest-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #191c1e;
+}
+
+/* ═══ Count Badge ═══ */
+
+.inv-count-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #6f797d;
+  background: #eceef0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+}
+
+/* ═══ Add Charge Form ═══ */
+
+.inv-add-form {
+  border-color: #006076;
+  background: #fafcff;
+}
+
+.inv-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  @media (max-width: 500px) { grid-template-columns: 1fr; }
+}
+
+.inv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inv-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6f797d;
+}
+
+.inv-input {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #bec8cd;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #191c1e;
+  background: #fff;
+  transition: border-color 0.12s;
+
+  &:focus {
+    outline: none;
+    border-color: #006076;
+    box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.1);
+  }
+}
+
+.inv-preview {
+  font-size: 0.8rem;
+  color: #3f484c;
+  padding: 0.3rem 0;
+  strong { color: #006076; font-size: 0.9rem; }
+}
+
+.inv-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+/* ═══ Table Icon ═══ */
+
+.td-icon {
+  font-size: 0.9rem;
+  color: #006076;
+  vertical-align: middle;
+  margin-right: 0.3rem;
+}
+
+/* ═══ Remove Button ═══ */
+
+.inv-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #ba1a1a;
+  cursor: pointer;
+  transition: all 0.1s;
+
+  &:hover { background: rgba(186, 26, 26, 0.08); }
+  &:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .material-symbols-outlined { font-size: 0.85rem; }
+}
+
+.th-act {
+  width: 2.5rem;
+  text-align: center !important;
+}
+
+.td-total {
+  font-weight: 600;
+}
+
+/* ═══ Paid / Pending Status ═══ */
+
+.inv-pay-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 0;
+  border-top: 1px solid #eceef0;
+}
+
+.inv-pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+
+  &.paid {
+    color: #059669;
+    .paid-amount { font-weight: 700; color: #059669; }
+  }
+
+  &.pending {
+    color: #b8860b;
+    .pending-amount { font-weight: 700; color: #b8860b; }
   }
 }
 

@@ -2,18 +2,34 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { InvoiceDetailViewModel } from '../../models/billing.model';
+import type { InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
+
+/** Categories for manual line items on the invoice. */
+const CHARGE_CATEGORIES = [
+  { id: 'restaurante', label: 'Restaurante', icon: 'restaurant' },
+  { id: 'bar', label: 'Bar', icon: 'local_bar' },
+  { id: 'room_service', label: 'Room Service', icon: 'room_service' },
+  { id: 'minibar', label: 'Minibar', icon: 'kitchen' },
+  { id: 'spa', label: 'Spa', icon: 'spa' },
+  { id: 'lavanderia', label: 'Lavandería', icon: 'local_laundry_service' },
+  { id: 'parking', label: 'Parking', icon: 'local_parking' },
+  { id: 'mascotas', label: 'Mascotas', icon: 'pets' },
+  { id: 'late_checkout', label: 'Late Check-Out', icon: 'schedule' },
+  { id: 'danos', label: 'Daños', icon: 'warning' },
+  { id: 'otros', label: 'Otros', icon: 'more_horiz' },
+];
 
 @Component({
   selector: 'app-invoice-detail-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, ErrorStateComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, ErrorStateComponent, LoadingStateComponent, EmptyStateComponent],
   templateUrl: './invoice-detail-page.html',
   styleUrl: './invoice-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,10 +40,23 @@ export class InvoiceDetailPageComponent {
   private readonly billingApi = inject(BillingApiService);
   private readonly router = inject(Router);
 
+  readonly categories = CHARGE_CATEGORIES;
+
   readonly viewState = signal<ViewState>('loading');
   readonly invoice = signal<InvoiceDetailViewModel | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
+  readonly addMode = signal(false);
+  readonly addBusy = signal(false);
+  readonly removeBusy = signal<string | null>(null);
+
+  // Add charge form
+  readonly addForm = signal({
+    name: '',
+    category: 'otros',
+    quantity: 1,
+    unit_price: 0,
+  });
 
   readonly isPaid = computed(() => this.invoice()?.status === 'paid');
   readonly isCancelled = computed(() => this.invoice()?.status === 'cancelled');
@@ -36,18 +65,10 @@ export class InvoiceDetailPageComponent {
   readonly subtotal = computed(() => this.invoice()?.subtotal ?? 0);
   readonly taxes = computed(() => this.invoice()?.taxes ?? 0);
   readonly total = computed(() => this.invoice()?.total ?? 0);
-  readonly extrasTotal = computed(() => this.invoice()?.extrasTotal ?? 0);
-  readonly roomSubtotal = computed(() => this.invoice()?.roomSubtotal ?? 0);
+  readonly totalPaidAmount = computed(() => this.invoice()?.totalPaidAmount ?? 0);
+  readonly totalPendingAmount = computed(() => this.invoice()?.totalPendingAmount ?? 0);
   readonly lineItems = computed(() => this.invoice()?.lineItems ?? []);
   readonly payments = computed(() => this.invoice()?.payments ?? []);
-
-  readonly discount = computed(() => {
-    const s = this.subtotal();
-    const r = this.roomSubtotal();
-    const e = this.extrasTotal();
-    const expected = r + e;
-    return expected > 0 ? Math.round((expected - s) * 100) / 100 : 0;
-  });
 
   readonly totalLiteral = computed(() => {
     const t = this.total();
@@ -78,6 +99,8 @@ export class InvoiceDetailPageComponent {
     return s > 0 ? (t / s) * 100 : 0;
   });
 
+  readonly canModify = computed(() => this.isIssued());
+
   constructor() {
     this.activatedRoute.paramMap
       .pipe(
@@ -94,6 +117,71 @@ export class InvoiceDetailPageComponent {
         },
         error: () => this.viewState.set('error'),
       });
+  }
+
+  /** Starts the add-charge flow. */
+  openAddForm(): void {
+    this.addMode.set(true);
+    this.actionError.set(null);
+    this.addForm.set({ name: '', category: 'otros', quantity: 1, unit_price: 0 });
+  }
+
+  closeAddForm(): void {
+    this.addMode.set(false);
+    this.actionError.set(null);
+  }
+
+  /** Submit a new line item to the invoice. */
+  submitAddItem(): void {
+    const form = this.addForm();
+    if (!form.name || form.unit_price <= 0) {
+      this.actionError.set('El concepto y el precio unitario son obligatorios.');
+      return;
+    }
+    this.addBusy.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+
+    this.billingApi.addLineItem(this.invoice()!.id, {
+      name: form.name,
+      quantity: form.quantity,
+      unit_price: form.unit_price,
+      category: form.category,
+    }).subscribe({
+      next: (updated) => {
+        this.invoice.set(updated);
+        this.actionMessage.set(`Cargo "${form.name}" agregado a la factura.`);
+        this.addMode.set(false);
+        this.addBusy.set(false);
+      },
+      error: () => {
+        this.actionError.set('No se pudo agregar el cargo.');
+        this.addBusy.set(false);
+      },
+    });
+  }
+
+  /** Remove a line item from the invoice. */
+  removeItem(item: LineItem): void {
+    if (item.itemId.startsWith('room_')) {
+      this.actionError.set('No se puede eliminar el cargo de habitación.');
+      return;
+    }
+    this.removeBusy.set(item.itemId);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+
+    this.billingApi.removeLineItem(this.invoice()!.id, item.itemId).subscribe({
+      next: (updated) => {
+        this.invoice.set(updated);
+        this.actionMessage.set(`Concepto "${item.name}" eliminado de la factura.`);
+        this.removeBusy.set(null);
+      },
+      error: () => {
+        this.actionError.set('No se pudo eliminar el concepto.');
+        this.removeBusy.set(null);
+      },
+    });
   }
 
   payInvoice(): void {
@@ -128,6 +216,16 @@ export class InvoiceDetailPageComponent {
     window.print();
   }
 
+  categoryIcon(cat: string): string {
+    const found = CHARGE_CATEGORIES.find((c) => c.id === cat);
+    return found?.icon ?? 'receipt_long';
+  }
+
+  /** Whether a line item can be removed (not a room charge). */
+  canRemove(item: LineItem): boolean {
+    return !item.itemId.startsWith('room_') && this.canModify();
+  }
+
   paymentMethodLabel(method: string): string {
     const map: Record<string, string> = {
       simulated: 'Simulación',
@@ -149,6 +247,8 @@ export class InvoiceDetailPageComponent {
     };
     return map[method] ?? 'payments';
   }
+
+  readonly Math = Math;
 }
 
 /** Simple number to words converter for Spanish (supports 0-9999). */
