@@ -14,6 +14,13 @@ export const HOUSEKEEPING_ROUTES: Routes = [
       ),
   },
   {
+    path: 'calendar',
+    loadComponent: () =>
+      import('./pages/housekeeping-calendar-page/housekeeping-calendar-page').then(
+        (m) => m.HousekeepingCalendarPageComponent
+      ),
+  },
+  {
     path: 'rooms',
     loadComponent: () =>
       import('./pages/room-status-page/room-status-page').then(
