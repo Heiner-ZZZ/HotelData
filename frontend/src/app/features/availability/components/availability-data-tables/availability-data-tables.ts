@@ -17,6 +17,7 @@ export class AvailabilityDataTablesComponent {
   readonly inventoryItems = input<AvailabilityInventoryItem[]>([]);
   readonly availabilityBlocks = input<AvailabilityBlackoutItem[]>([]);
   readonly blackoutItems = input<AvailabilityBlackoutItem[]>([]);
+  readonly roomNumbersByType = input<Map<string, string[]>>(new Map());
 
   /** Emitted when the user wants to delete a blackout block. */
   readonly deleteBlackout = output<string>();
@@ -72,6 +73,14 @@ export class AvailabilityDataTablesComponent {
     const start = (page - 1) * this.pageSize;
     return this.filteredItems().slice(start, start + this.pageSize);
   });
+
+  roomNumbersFor(roomTypeName: string): string[] {
+    const result = this.roomNumbersByType().get(roomTypeName) ?? [];
+    if (result.length === 0) {
+      console.log('[roomNumbersFor] NOT FOUND:', roomTypeName, 'available keys:', [...this.roomNumbersByType().keys()]);
+    }
+    return result;
+  }
 
   readonly totalCount = computed(() => this.inventoryItems().length);
   readonly filteredCount = computed(() => this.filteredItems().length);

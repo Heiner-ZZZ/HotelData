@@ -55,6 +55,7 @@
             <tr>
               <th>Fecha</th>
               <th>Tipo</th>
+              <th>Habitaciones</th>
               <th>Total</th>
               <th>Disponibles</th>
               <th>Bloqueadas</th>
@@ -67,6 +68,7 @@
               <tr>
                 <td>{{ item.date }}</td>
                 <td><span class="inv-room-type-badge">{{ item.roomTypeName }}</span></td>
+                <td class="num-cell">{{ roomNumbersFor(item.roomTypeName).join(', ') || '—' }}</td>
                 <td class="num-cell">{{ item.totalRooms }}</td>
                 <td class="num-cell">{{ item.availableRooms }}</td>
                 <td class="num-cell">{{ item.blockedRooms }}</td>
