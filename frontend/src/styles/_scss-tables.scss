@@ -1,0 +1,134 @@
+/* ── Shared Data Table Styles ── */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+  font-size: 0.88rem;
+}
+
+.data-table th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table code {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+.table-icon {
+  font-size: 1.1rem;
+  color: var(--muted-text);
+  vertical-align: middle;
+  margin-right: 0.4rem;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.status-badge,
+.toggle-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.toggle-badge-btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: opacity 120ms ease, transform 100ms ease;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.status-badge.active,
+.toggle-badge-btn.active {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.status-badge.inactive,
+.toggle-badge-btn.inactive {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.badge-icon {
+  font-size: 0.95rem;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.edit-btn {
+  color: var(--accent, #1463ff);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.delete-btn {
+  color: #dc3545;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.actions-cell {
+  white-space: nowrap;
+  width: 1%;
+}

@@ -1,0 +1,138 @@
+@media print {
+  /* Hide all layout decoration */
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
+    font-family: "Courier New", Courier, monospace, "Segoe UI", Arial, sans-serif !important;
+  }
+
+  .no-print,
+  app-sidebar-nav,
+  app-management-top-nav,
+  app-top-nav,
+  .top-nav,
+  .nav-actions,
+  .sidebar,
+  .topbar,
+  .back-btn,
+  .btn-pay,
+  .btn-cancel,
+  .action-section,
+  .sub-nav,
+  app-page-header,
+  .page-header {
+    display: none !important;
+  }
+
+  /* Full width for print contents */
+  main, .main-content, .invoice-detail-page, .payments-page {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Serious invoice design: B&W, lines only, no background, no shadows */
+  .surface-card, .panel, .invoice-summary {
+    background: #fff !important;
+    border: 2px solid #000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    padding: 1.5cm !important;
+    margin: 0 !important;
+  }
+
+  .invoice-header {
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .invoice-header h3 {
+    font-size: 1.8rem !important;
+    margin: 0 !important;
+    font-weight: 700 !important;
+  }
+
+  app-status-badge {
+    border: 1px solid #000 !important;
+    color: #000 !important;
+    background: transparent !important;
+    padding: 2px 8px !important;
+    font-weight: bold !important;
+  }
+
+  .amount-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
+    gap: 1rem !important;
+  }
+
+  .amount-item {
+    display: flex !important;
+    flex-direction: column !important;
+    border: 1px solid #000 !important;
+    padding: 0.5rem !important;
+    background: transparent !important;
+  }
+
+  .amount-item.total {
+    border: 2px solid #000 !important;
+    font-weight: bold !important;
+  }
+
+  .line-items-details {
+    display: block !important;
+    border: 1px solid #000 !important;
+    margin-bottom: 1.5rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .line-items-details summary {
+    font-weight: bold !important;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 0.25rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .line-items-table {
+    display: table !important;
+    width: 100% !important;
+  }
+
+  .line-item-row {
+    display: table-row !important;
+  }
+
+  .line-item-row > span {
+    display: table-cell !important;
+    padding: 0.25rem 0.5rem !important;
+    border-bottom: 1px dashed #555 !important;
+  }
+
+  /* Table styling for payments or grids */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 6px 8px !important;
+    text-align: left !important;
+    background: transparent !important;
+    color: #000 !important;
+  }
+
+  th {
+    font-weight: bold !important;
+    background: #eee !important;
+  }
+}

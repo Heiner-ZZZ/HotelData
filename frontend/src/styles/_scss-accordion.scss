@@ -1,0 +1,41 @@
+/* Shared accordion styles for admin pages */
+.accordion-section {
+  overflow: hidden;
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.accordion-header:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.accordion-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.accordion-header p {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.accordion-chevron {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.accordion-body {
+  border-top: 1px solid var(--app-border);
+  padding: 1.25rem;
+}

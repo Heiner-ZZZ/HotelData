@@ -1,0 +1,127 @@
+/* ── Shared Form Styles (used by rates, policies, amenities, etc.) ── */
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.field-icon {
+  font-size: 1rem;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.checkbox-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+}
+
+.checkbox-field .field-label {
+  grid-column: 1;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  min-height: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.panel-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 120ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.editing-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, #3b82f6 8%, transparent);
+  border: 1px solid color-mix(in srgb, #3b82f6 20%, transparent);
+  color: #3b82f6;
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.cancel-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-left: auto;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+}
