@@ -143,17 +143,17 @@ export class FolioApiService {
 
   /** Get the folio for a booking. */
   getFolio(bookingId: string): Observable<FolioViewModel> {
-    return this.http.get<FolioDto>(`${this.base}/${bookingId}`).pipe(map(mapFolio));
+    return this.http.get<FolioDto>(`${this.base}/${bookingId}`, { withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** Post a transaction to the guest's folio. */
   postToFolio(bookingId: string, payload: FolioPostPayload): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload).pipe(map(mapFolio));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/post`, payload, { withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** Close a folio at check-out. */
   closeFolio(bookingId: string, payload: FolioClosePayload = {}): Observable<FolioViewModel> {
-    return this.http.post<FolioDto>(`${this.base}/${bookingId}/close`, payload).pipe(map(mapFolio));
+    return this.http.post<FolioDto>(`${this.base}/${bookingId}/close`, payload, { withCredentials: true }).pipe(map(mapFolio));
   }
 
   /** List folios with optional filters. */

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { switchMap } from 'rxjs';
+import { forkJoin, switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -11,6 +11,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
+import { FolioApiService } from '../../services/folio-api.service';
 
 /** Categories for manual line items on the invoice. */
 const CHARGE_CATEGORIES = [
@@ -27,6 +28,20 @@ const CHARGE_CATEGORIES = [
   { id: 'otros', label: 'Otros', icon: 'more_horiz' },
 ];
 
+/** Predefined quick charges with preset amounts for one-click posting. */
+const QUICK_CHARGES = [
+  { name: 'Parking', category: 'parking', icon: 'local_parking', amount: 20, quantity: 1 },
+  { name: 'Minibar', category: 'minibar', icon: 'kitchen', amount: 15, quantity: 1 },
+  { name: 'Desayuno', category: 'restaurante', icon: 'restaurant', amount: 25, quantity: 1 },
+  { name: 'Cena', category: 'restaurante', icon: 'restaurant', amount: 40, quantity: 1 },
+  { name: 'Spa', category: 'spa', icon: 'spa', amount: 50, quantity: 1 },
+  { name: 'Lavandería', category: 'lavanderia', icon: 'local_laundry_service', amount: 18, quantity: 1 },
+  { name: 'Room Service', category: 'room_service', icon: 'room_service', amount: 30, quantity: 1 },
+  { name: 'Late Check-Out', category: 'late_checkout', icon: 'schedule', amount: 35, quantity: 1 },
+  { name: 'Bar', category: 'bar', icon: 'local_bar', amount: 22, quantity: 1 },
+  { name: 'Mascotas', category: 'mascotas', icon: 'pets', amount: 25, quantity: 1 },
+];
+
 @Component({
   selector: 'app-invoice-detail-page',
   imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, ErrorStateComponent, LoadingStateComponent, EmptyStateComponent],
@@ -38,16 +53,20 @@ export class InvoiceDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly billingApi = inject(BillingApiService);
+  private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
 
   readonly categories = CHARGE_CATEGORIES;
+  readonly quickCharges = QUICK_CHARGES;
 
   readonly viewState = signal<ViewState>('loading');
   readonly invoice = signal<InvoiceDetailViewModel | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly addMode = signal(false);
+  readonly quickAddMode = signal(false);
   readonly addBusy = signal(false);
+  readonly quickAddBusy = signal<string | null>(null);
   readonly removeBusy = signal<string | null>(null);
 
   // Add charge form
@@ -180,6 +199,46 @@ export class InvoiceDetailPageComponent {
       error: () => {
         this.actionError.set('No se pudo eliminar el concepto.');
         this.removeBusy.set(null);
+      },
+    });
+  }
+
+  /** Quick-add: post to folio AND add to invoice simultaneously. */
+  quickAddCharge(qc: { name: string; category: string; icon: string; amount: number; quantity: number }): void {
+    const inv = this.invoice();
+    if (!inv || !inv.folioId) {
+      this.actionError.set('No hay folio asociado para registrar el cargo.');
+      return;
+    }
+    this.quickAddBusy.set(qc.name);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+
+    // Post to folio + add to invoice in parallel
+    forkJoin({
+      folio: this.folioApi.postToFolio(inv.bookingId, {
+        posting_type: 'charge',
+        category: qc.category,
+        concept: qc.name,
+        amount: qc.amount * qc.quantity,
+        quantity: qc.quantity,
+        reference_type: 'quick_charge',
+      }),
+      invoice: this.billingApi.addLineItem(inv.id, {
+        name: qc.name,
+        quantity: qc.quantity,
+        unit_price: qc.amount,
+        category: qc.category,
+      }),
+    }).subscribe({
+      next: (results) => {
+        this.invoice.set(results.invoice);
+        this.actionMessage.set(`Cargo "${qc.name}" ($ ${(qc.amount * qc.quantity).toFixed(2)}) agregado al folio y la factura.`);
+        this.quickAddBusy.set(null);
+      },
+      error: () => {
+        this.actionError.set(`No se pudo agregar "${qc.name}" al folio/factura.`);
+        this.quickAddBusy.set(null);
       },
     });
   }

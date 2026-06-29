@@ -29,14 +29,20 @@
               Imprimir
             </button>
             @if (canModify()) {
-              <button type="button" class="inv-btn inv-btn-primary" (click)="openAddForm()">
-                <span class="material-symbols-outlined">add_circle</span>
-                Agregar Cargo
-              </button>
-              <button type="button" class="inv-btn inv-btn-danger" (click)="cancelInvoice()">
-                <span class="material-symbols-outlined">cancel</span>
-                Anular
-              </button>
+              <div class="inv-btn-group">
+                <button type="button" class="inv-btn inv-btn-primary" (click)="openAddForm()">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Agregar Cargo
+                </button>
+                <button type="button" class="inv-btn inv-btn-outline" id="inv-quick-btn" (click)="quickAddMode.set(!quickAddMode())">
+                  <span class="material-symbols-outlined">bolt</span>
+                  Rápido
+                </button>
+                <button type="button" class="inv-btn inv-btn-danger" (click)="cancelInvoice()">
+                  <span class="material-symbols-outlined">cancel</span>
+                  Anular
+                </button>
+              </div>
             }
           </div>
         </header>
@@ -132,6 +138,38 @@
                       Agregar a Factura
                     }
                   </button>
+                </div>
+              </section>
+            }
+
+            <!-- ═══ Quick Add Charge Strip ═══ -->
+            @if (quickAddMode() && canModify() && inv.folioId) {
+              <section class="inv-card inv-quick-card">
+                <div class="inv-quick-header">
+                  <span class="material-symbols-outlined inv-quick-header-icon">bolt</span>
+                  <h2 class="inv-quick-title">Cargos rápidos</h2>
+                  <button type="button" class="inv-quick-close" (click)="quickAddMode.set(false)" aria-label="Cerrar">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <p class="inv-quick-desc">Se agrega automáticamente al folio y a la factura.</p>
+                <div class="inv-quick-grid">
+                  @for (qc of quickCharges; track qc.name) {
+                    <button type="button" class="inv-quick-chip"
+                      (click)="quickAddCharge(qc)"
+                      [disabled]="quickAddBusy() !== null"
+                      [class.busy]="quickAddBusy() === qc.name">
+                      @if (quickAddBusy() === qc.name) {
+                        <span class="inv-quick-spinner"></span>
+                      } @else {
+                        <span class="material-symbols-outlined inv-quick-chip-icon">{{ qc.icon }}</span>
+                      }
+                      <div class="inv-quick-chip-body">
+                        <span class="inv-quick-chip-name">{{ qc.name }}</span>
+                        <span class="inv-quick-chip-price">${{ (qc.amount * qc.quantity).toFixed(2) }}</span>
+                      </div>
+                    </button>
+                  }
                 </div>
               </section>
             }
@@ -364,6 +402,24 @@
                 Descargar PDF
               </button>
             </section>
+
+            <!-- Folio asociado -->
+            @if (inv.folioId && inv.folioNumber) {
+              <section class="inv-card inv-folio-card">
+                <div class="inv-folio-card-header">
+                  <span class="material-symbols-outlined inv-folio-icon">account_balance_wallet</span>
+                  <div>
+                    <h3 class="inv-folio-title">Folio Asociado</h3>
+                    <span class="inv-folio-number">{{ inv.folioNumber }}</span>
+                  </div>
+                </div>
+                <p class="inv-folio-desc">Cuenta del huésped durante la estancia con todos los cargos registrados.</p>
+                <a [routerLink]="['/management/billing/folios', inv.bookingId]" class="inv-btn inv-btn-primary inv-btn-full">
+                  <span class="material-symbols-outlined">open_in_new</span>
+                  Ver detalle del Folio
+                </a>
+              </section>
+            }
 
             <!-- Fiscal Info -->
             <section class="inv-card">
