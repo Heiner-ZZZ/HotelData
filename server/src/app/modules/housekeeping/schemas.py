@@ -16,7 +16,7 @@ class RoomStatusLogCreate(BaseModel):
     prop_id: int
     room_type_id: str
     room_label: str
-    status: str = "available"  # available, occupied, cleaning, maintenance, out_of_order
+    status: str = "available"  # available, occupied, cleaning, clean, inspected, dirty, maintenance, out_of_order, out_of_service
     note: str = ""
 
 

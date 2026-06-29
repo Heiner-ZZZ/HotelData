@@ -23,6 +23,7 @@ from src.app.modules.housekeeping.service import (
     list_housekeeping_tasks,
     list_maintenance_tasks,
     list_room_status,
+    list_room_status_history,
     list_upcoming_events,
     module_status,
     sync_room_status_from_hotel_rooms,
@@ -282,6 +283,30 @@ def charge_list_api(
     return list_additional_charges(
         booking_id=booking_id,
         prop_id=prop_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+# ═══════════════════════════════════════════════
+# Room Status History / Audit Trail
+# ═══════════════════════════════════════════════
+
+
+@api_router.get("/room-status/history")
+def room_status_history_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    room_label: str | None = Query(default=None),
+    booking_id: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    current_user: dict = Depends(require_login),
+):
+    """List room status change history for auditing."""
+    return list_room_status_history(
+        prop_id=prop_id,
+        room_label=room_label,
+        booking_id=booking_id,
         page=page,
         page_size=page_size,
     )
