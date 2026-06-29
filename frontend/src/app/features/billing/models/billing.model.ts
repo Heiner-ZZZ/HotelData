@@ -50,6 +50,8 @@ export interface InvoiceDetailViewModel {
   extrasTotal: number;
   taxes: number;
   total: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
   status: string;
   issuedAt: string;
   paidAt: string | null;

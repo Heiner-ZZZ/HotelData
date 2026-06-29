@@ -51,6 +51,8 @@ export interface InvoiceDetailDto {
   extras_total: number;
   taxes: number;
   total: number;
+  total_paid_amount: number;
+  total_pending_amount: number;
   status: string;
   issued_at: string;
   paid_at: string | null;

@@ -49,6 +49,8 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto & { id?: string }): Invoi
     extrasTotal: dto.extras_total,
     taxes: dto.taxes,
     total: dto.total,
+    totalPaidAmount: dto.total_paid_amount ?? 0,
+    totalPendingAmount: dto.total_pending_amount ?? 0,
     status: dto.status,
     issuedAt: dto.issued_at,
     paidAt: dto.paid_at,
