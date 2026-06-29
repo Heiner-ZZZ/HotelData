@@ -4,18 +4,30 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapInvoiceDetail, mapInvoicesList, mapPaymentsList } from '../mappers/billing.mapper';
-import type { InvoiceDetailDto, InvoicesListDto, PaymentsListDto } from '../models/billing.dto';
+import type { InvoiceDetailDto, InvoiceStatsDto, InvoicesListDto, PaymentsListDto } from '../models/billing.dto';
+import type { InvoiceStats } from '../models/billing.model';
 
 @Injectable({ providedIn: 'root' })
 export class BillingApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getInvoices(page: number) {
-    const params = new HttpParams().set('page', String(page));
+  getInvoices(page: number, filters?: { status?: string; q?: string; date_from?: string; date_to?: string }) {
+    let params = new HttpParams().set('page', String(page));
+    if (filters?.status) params = params.set('status', filters.status);
+    if (filters?.q) params = params.set('q', filters.q);
+    if (filters?.date_from) params = params.set('date_from', filters.date_from);
+    if (filters?.date_to) params = params.set('date_to', filters.date_to);
     return this.http
       .get<InvoicesListDto>(`${this.apiConfig.baseUrl}/billing/invoices`, { params, withCredentials: true })
       .pipe(map(dto => mapInvoicesList(dto)));
+  }
+
+  getInvoiceStats() {
+    return this.http.get<InvoiceStatsDto>(
+      `${this.apiConfig.baseUrl}/billing/invoices/stats`,
+      { withCredentials: true },
+    );
   }
 
   getInvoiceDetail(invoiceId: string) {

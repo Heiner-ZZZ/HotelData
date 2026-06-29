@@ -19,6 +19,17 @@ export interface InvoiceItemDto {
   issued_at: string;
   paid_at: string | null;
   notes: string | null;
+  guest_name?: string;
+  hotel_label?: string;
+  total_paid_amount?: number;
+  total_pending_amount?: number;
+}
+
+export interface InvoiceStatsDto {
+  issued: { count: number; total: number };
+  paid: { count: number; total: number };
+  cancelled: { count: number; total: number };
+  refunded: { count: number; total: number };
 }
 
 export interface LineItemDto {
@@ -69,6 +80,8 @@ export interface InvoiceDetailDto {
   room_type_name: string;
   room_labels: string[];
   payments: PaymentDto[];
+  folio_id: string | null;
+  folio_number: string | null;
 }
 
 export interface PaymentsListDto {

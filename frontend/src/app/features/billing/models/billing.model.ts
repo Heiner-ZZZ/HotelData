@@ -18,6 +18,17 @@ export interface InvoiceListItem {
   status: string;
   issuedAt: string;
   paidAt: string | null;
+  guestName?: string;
+  hotelLabel?: string;
+  totalPaidAmount?: number;
+  totalPendingAmount?: number;
+}
+
+export interface InvoiceStats {
+  issued: { count: number; total: number };
+  paid: { count: number; total: number };
+  cancelled: { count: number; total: number };
+  refunded: { count: number; total: number };
 }
 
 export interface LineItem {
@@ -68,6 +79,8 @@ export interface InvoiceDetailViewModel {
   roomTypeName: string;
   roomLabels: string[];
   payments: PaymentItem[];
+  folioId: string | null;
+  folioNumber: string | null;
 }
 
 export interface PaymentsListViewModel {

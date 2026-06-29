@@ -21,4 +21,9 @@ export const BILLING_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/payments-list-page/payments-list-page').then(m => m.PaymentsListPageComponent),
   },
+  {
+    path: 'folios/:bookingId',
+    loadComponent: () =>
+      import('./pages/folio-detail-page/folio-detail-page').then(m => m.FolioDetailPageComponent),
+  },
 ];

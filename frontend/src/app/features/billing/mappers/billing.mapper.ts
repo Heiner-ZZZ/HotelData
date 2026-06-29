@@ -23,6 +23,10 @@ function mapInvoiceItem(item: InvoiceItemDto & { id?: string }): InvoiceListItem
     status: item.status,
     issuedAt: item.issued_at,
     paidAt: item.paid_at,
+    guestName: item.guest_name,
+    hotelLabel: item.hotel_label,
+    totalPaidAmount: item.total_paid_amount,
+    totalPendingAmount: item.total_pending_amount,
   };
 }
 
@@ -67,6 +71,8 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto & { id?: string }): Invoi
     roomTypeName: dto.room_type_name,
     roomLabels: dto.room_labels || [],
     payments: (dto.payments || []).map(mapPaymentDto),
+    folioId: dto.folio_id ?? null,
+    folioNumber: dto.folio_number ?? null,
   };
 }
 
