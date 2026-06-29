@@ -29,6 +29,17 @@ export interface LineItem {
   total: number;
 }
 
+export interface PaymentItem {
+  id: string;
+  bookingId: string;
+  invoiceId: string | null;
+  amount: number;
+  method: string;
+  status: string;
+  reference: string | null;
+  paidAt: string;
+}
+
 export interface InvoiceDetailViewModel {
   id: string;
   bookingId: string;
@@ -44,6 +55,17 @@ export interface InvoiceDetailViewModel {
   paidAt: string | null;
   notes: string | null;
   lineItems: LineItem[];
+  guestName: string;
+  guestEmail: string;
+  guestCedula: string;
+  hotelLabel: string;
+  checkInDate: string;
+  checkOutDate: string;
+  totalNights: number;
+  rooms: number;
+  roomTypeName: string;
+  roomLabels: string[];
+  payments: PaymentItem[];
 }
 
 export interface PaymentsListViewModel {

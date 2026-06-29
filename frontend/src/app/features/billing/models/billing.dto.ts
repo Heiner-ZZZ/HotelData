@@ -30,6 +30,17 @@ export interface LineItemDto {
   total: number;
 }
 
+export interface PaymentDto {
+  id: string;
+  booking_id: string;
+  invoice_id: string | null;
+  amount: number;
+  method: string;
+  status: string;
+  reference: string | null;
+  paid_at: string;
+}
+
 export interface InvoiceDetailDto {
   _id: string;
   booking_id: string;
@@ -45,6 +56,17 @@ export interface InvoiceDetailDto {
   paid_at: string | null;
   notes: string | null;
   line_items: LineItemDto[];
+  guest_name: string;
+  guest_email: string;
+  guest_cedula: string;
+  hotel_label: string;
+  check_in_date: string;
+  check_out_date: string;
+  total_nights: number;
+  rooms: number;
+  room_type_name: string;
+  room_labels: string[];
+  payments: PaymentDto[];
 }
 
 export interface PaymentsListDto {
