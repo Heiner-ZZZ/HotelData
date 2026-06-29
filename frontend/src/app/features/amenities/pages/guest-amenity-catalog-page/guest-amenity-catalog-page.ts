@@ -10,7 +10,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { GuestAmenityService } from '../../services/guest-amenity.service';
-import type { GuestAmenityCategoryDto, GuestAmenityItemDto, GuestAmenityRequestItem } from '../../models/guest-amenity.dto';
+import type { GuestAmenityCategoryDto, GuestAmenityItemDto, GuestAmenityRequestItem, GuestAmenityRequestResponseDto } from '../../models/guest-amenity.dto';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 
 /** Icons per amenity category for visual distinction. */
@@ -131,7 +131,7 @@ export class GuestAmenityCatalogPageComponent {
   // ── Cart state ──
   readonly cart = signal<Map<string, number>>(new Map());
   readonly requesting = signal(false);
-  readonly requestResult = signal<{ ok: boolean; charges_created: number; total: number; items: Array<{ label: string; amount: number; free: boolean }> } | null>(null);
+  readonly requestResult = signal<GuestAmenityRequestResponseDto | null>(null);
   readonly showCartDrawer = signal(false);
 
   readonly cartEntries = computed(() => {

@@ -1,5 +1,5 @@
 import type { InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
-import type { InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+import type { InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
 
 function mapLineItem(dto: LineItemDto): LineItem {
   return {

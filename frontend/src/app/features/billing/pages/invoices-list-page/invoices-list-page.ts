@@ -35,25 +35,25 @@ export class InvoicesListPageComponent {
 
   // ── Stats resource ──
   readonly statsResource = rxResource<InvoiceStatsDto, undefined>({
-    loader: () => this.billingApi.getInvoiceStats(),
+    stream: () => this.billingApi.getInvoiceStats(),
   });
 
   readonly stats = computed(() => this.statsResource.value());
 
   // ── Invoices resource ──
-  readonly invoicesResource = rxResource({
-    request: () => ({
+  readonly invoicesResource = rxResource<any, any>({
+    params: () => ({
       page: this.currentPage(),
       status: this.statusFilter() || undefined,
       q: this.searchQuery() || undefined,
       dateFrom: this.dateFrom() || undefined,
       dateTo: this.dateTo() || undefined,
     }),
-    loader: ({ request }) => this.billingApi.getInvoices(request.page, {
-      status: request.status,
-      q: request.q,
-      date_from: request.dateFrom,
-      date_to: request.dateTo,
+    stream: ({ params }) => this.billingApi.getInvoices((params as any).page, {
+      status: (params as any).status,
+      q: (params as any).q,
+      date_from: (params as any).dateFrom,
+      date_to: (params as any).dateTo,
     }),
   });
 

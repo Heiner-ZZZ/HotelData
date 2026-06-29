@@ -126,7 +126,6 @@ export class DashboardPageComponent {
     this.isCustomRange.set(false);
     this.activePreset.set('12m');
     this.loadWeeklyEarnings();
-  }
     this.loadDashboard();
   }
 
