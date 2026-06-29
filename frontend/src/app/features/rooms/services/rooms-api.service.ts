@@ -44,6 +44,9 @@ export class RoomsApiService {
     isActive: boolean;
     roomNumber?: string;
     floor?: string;
+    view?: string;
+    smoking?: boolean;
+    accessible?: boolean;
   }) {
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rooms`,
@@ -62,6 +65,9 @@ export class RoomsApiService {
     isActive: boolean;
     roomNumber?: string;
     floor?: string;
+    view?: string;
+    smoking?: boolean;
+    accessible?: boolean;
   }) {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
@@ -75,6 +81,9 @@ export class RoomsApiService {
         is_active: payload.isActive,
         room_number: payload.roomNumber || '',
         floor: payload.floor || '',
+        view: payload.view || '',
+        smoking: payload.smoking ?? false,
+        accessible: payload.accessible ?? false,
       },
       { withCredentials: true }
     );

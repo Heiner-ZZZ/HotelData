@@ -81,6 +81,9 @@ export class RoomsPageComponent {
     isActive: [true],
     roomNumber: [''],
     floor: [''],
+    view: [''],
+    smoking: [false],
+    accessible: [false],
   });
 
   onExistingTypeSelected(roomTypeId: string) {
@@ -96,6 +99,9 @@ export class RoomsPageComponent {
         maxChildren: parts && parts.length >= 3 ? Number(parts[2]) : 0,
         baseCapacity: parts ? Number(parts[0]) : 2,
         isActive: true,
+        view: selected.view || '',
+        smoking: selected.smoking ?? false,
+        accessible: selected.accessible ?? false,
       });
     }
   }
@@ -114,6 +120,9 @@ export class RoomsPageComponent {
         isActive: true,
         roomNumber: '',
         floor: '',
+        view: '',
+        smoking: false,
+        accessible: false,
       });
     }
   }
@@ -129,6 +138,9 @@ export class RoomsPageComponent {
     isActive: [true],
     roomNumber: [''],
     floor: [''],
+    view: [''],
+    smoking: [false],
+    accessible: [false],
   });
 
   readonly showEditModal = signal(false);
@@ -226,6 +238,9 @@ export class RoomsPageComponent {
           isActive: roomType.activeLabel === 'Sí',
           roomNumber: roomType.roomNumber,
           floor: roomType.floor,
+          view: roomType.view,
+          smoking: roomType.smoking,
+          accessible: roomType.accessible,
         });
         this.ngZone.run(() => {
           this.editingRoomTypeName.set(roomType.name);
@@ -379,6 +394,9 @@ export class RoomsPageComponent {
       isActive: value.isActive,
       roomNumber: value.roomNumber,
       floor: value.floor,
+      view: value.view,
+      smoking: value.smoking,
+      accessible: value.accessible,
     }).pipe(
       switchMap(() => {
         // Always update features (even empty array = clear all)
@@ -424,6 +442,9 @@ export class RoomsPageComponent {
         isActive: value.isActive,
         roomNumber: value.roomNumber,
         floor: value.floor,
+        view: value.view,
+        smoking: value.smoking,
+        accessible: value.accessible,
       })
       .pipe(
         switchMap(() => this.api.getRooms(current.propId)),
@@ -443,6 +464,9 @@ export class RoomsPageComponent {
             isActive: true,
             roomNumber: '',
             floor: '',
+            view: '',
+            smoking: false,
+            accessible: false,
           });
         },
         error: (error: ApiError) => {
