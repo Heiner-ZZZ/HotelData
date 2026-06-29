@@ -9,6 +9,7 @@ from __future__ import annotations
 from .types import (
     _room_types_for_prop,
     create_room_type,
+    create_roh_room_type,
     delete_room_type,
     update_room_type,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "partner_hotel_rooms",
     "partner_hotel_inventory",
     "create_room_type",
+    "create_roh_room_type",
     "update_room_type",
     "delete_room_type",
     "save_inventory_entry",

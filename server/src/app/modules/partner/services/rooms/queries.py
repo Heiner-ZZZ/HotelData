@@ -64,6 +64,7 @@ def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]
 
     for item in items:
         item["room_type_name"] = room_lookup.get(item.get("room_type_id"), item.get("room_type_id"))
+        item["is_roh"] = bool(item.get("is_roh", False))
         item["room_label"] = item.get("room_label") or item.get("room_type_name") or item.get("hotel_room_id")
         # Attach upcoming occupancy
         room_id = item.get("hotel_room_id")
