@@ -1,0 +1,324 @@
+<div class="fl-page">
+  @switch (viewState()) {
+    @case ('loading') { <app-loading-state label="Cargando folio..." /> }
+    @case ('error') { <app-error-state title="Error" description="No se pudo cargar el folio del huésped." /> }
+    @default {
+      @if (folio(); as f) {
+
+        <!-- ═══ Header ═══ -->
+        <header class="fl-header">
+          <div>
+            <a class="fl-back" (click)="goBack()">
+              <span class="material-symbols-outlined">arrow_back</span>
+              Volver a Facturación
+            </a>
+            <h1 class="fl-title">
+              Folio
+              <span class="fl-number">{{ f.folioNumber }}</span>
+              <span class="fl-status-badge"
+                [class.open]="isOpen()"
+                [class.closed]="isClosed()">
+                {{ isOpen() ? 'Abierto' : 'Cerrado' }}
+              </span>
+            </h1>
+          </div>
+          <div class="fl-actions">
+            @if (isOpen()) {
+              <button type="button" class="fl-btn fl-btn-primary" (click)="startPosting('charge')">
+                <span class="material-symbols-outlined">add_circle</span>
+                Postear Cargo
+              </button>
+              <button type="button" class="fl-btn fl-btn-outline" (click)="startPosting('discount')">
+                <span class="material-symbols-outlined">sell</span>
+                Descuento
+              </button>
+            }
+          </div>
+        </header>
+
+        <!-- Guest info bar -->
+        <div class="fl-guest-bar">
+          <div class="fl-guest-item">
+            <span class="fl-guest-label">Huésped</span>
+            <span class="fl-guest-value">{{ f.guestName }}</span>
+          </div>
+          <div class="fl-guest-item">
+            <span class="fl-guest-label">Habitación</span>
+            <span class="fl-guest-value">{{ f.roomLabel }}</span>
+          </div>
+          <div class="fl-guest-item">
+            <span class="fl-guest-label">Check-in</span>
+            <span class="fl-guest-value">{{ f.checkInDate }}</span>
+          </div>
+          <div class="fl-guest-item">
+            <span class="fl-guest-label">Check-out</span>
+            <span class="fl-guest-value">{{ f.checkOutDate }}</span>
+          </div>
+          <div class="fl-guest-item">
+            <span class="fl-guest-label">Propiedad</span>
+            <span class="fl-guest-value">{{ f.hotelLabel || '#' + f.propId }}</span>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        @if (actionMessage(); as msg) {
+          <div class="fl-toast success" (click)="actionMessage.set(null)">
+            <span class="material-symbols-outlined">check_circle</span> {{ msg }}
+          </div>
+        }
+        @if (actionError(); as err) {
+          <div class="fl-toast error" (click)="actionError.set(null)">
+            <span class="material-symbols-outlined">error</span> {{ err }}
+          </div>
+        }
+
+        <!-- ═══ Split Layout ═══ -->
+        <div class="fl-grid">
+
+          <!-- ── LEFT: Postings ledger (2/3) ── -->
+          <div class="fl-left">
+
+            <!-- Posting form modal -->
+            @if (postingMode() !== 'idle') {
+              <section class="fl-card fl-posting-form">
+                <h2 class="fl-card-header">
+                  <span class="material-symbols-outlined fl-card-icon">
+                    {{ postingMode() === 'charge' ? 'add_circle' : 'sell' }}
+                  </span>
+                  {{ postingMode() === 'charge' ? 'Registrar Cargo' : 'Aplicar Descuento' }}
+                </h2>
+                <div class="fl-form-grid">
+                  <div class="fl-field">
+                    <label class="fl-label">Categoría</label>
+                    <select class="fl-select"
+                      [ngModel]="postForm().category"
+                      (ngModelChange)="postForm.update(f => ({...f, category: $event}))">
+                      @for (cat of categories(); track cat.id) {
+                        <option [value]="cat.id">{{ cat.label }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="fl-field">
+                    <label class="fl-label">Concepto</label>
+                    <input class="fl-input" type="text" placeholder="Ej: Masaje relajante"
+                      [ngModel]="postForm().concept"
+                      (ngModelChange)="postForm.update(f => ({...f, concept: $event}))" />
+                  </div>
+                  <div class="fl-field">
+                    <label class="fl-label">Monto ($)</label>
+                    <input class="fl-input" type="number" step="0.01" min="0"
+                      [ngModel]="postForm().amount"
+                      (ngModelChange)="postForm.update(f => ({...f, amount: +$event}))" />
+                  </div>
+                  @if (postingMode() === 'charge') {
+                    <div class="fl-field">
+                      <label class="fl-label">Cantidad</label>
+                      <input class="fl-input" type="number" min="1"
+                        [ngModel]="postForm().quantity"
+                        (ngModelChange)="postForm.update(f => ({...f, quantity: +$event}))" />
+                    </div>
+                  }
+                </div>
+                @if (postingMode() === 'charge' && postForm().amount > 0) {
+                  <div class="fl-preview">
+                    Total: <strong>${{ (postForm().amount * Math.max(1, postForm().quantity)).toFixed(2) }}</strong>
+                  </div>
+                }
+                <div class="fl-form-actions">
+                  <button type="button" class="fl-btn fl-btn-outline" (click)="cancelPosting()" [disabled]="postingBusy()">Cancelar</button>
+                  <button type="button" class="fl-btn fl-btn-primary" (click)="submitPosting()" [disabled]="postingBusy() || !postForm().concept || postForm().amount <= 0">
+                    @if (postingBusy()) {
+                      <span class="spinner"></span> Registrando...
+                    } @else {
+                      {{ postingMode() === 'charge' ? 'Registrar Cargo' : 'Aplicar Descuento' }}
+                    }
+                  </button>
+                </div>
+              </section>
+            }
+
+            <!-- Postings ledger -->
+            <section class="fl-card fl-card-ledger">
+              <div class="fl-card-header fl-card-header-bg">
+                <span class="material-symbols-outlined fl-card-icon">receipt_long</span>
+                <h2>Movimientos del Folio</h2>
+                <span class="fl-count-badge">{{ postingCount() }} movimiento(s)</span>
+              </div>
+
+              @if (f.postings.length === 0) {
+                <div class="fl-empty">
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  <p>No hay movimientos registrados en este folio.</p>
+                </div>
+              }
+
+              @for (group of postingsByCategory(); track group[0]) {
+                <div class="fl-group">
+                  <div class="fl-group-header">
+                    <span class="material-symbols-outlined fl-group-icon">{{ categoryIcon(group[0]) }}</span>
+                    <span class="fl-group-label">{{ group[0] }}</span>
+                    <span class="fl-group-total">
+                      @if (group[0] === 'Habitación' || group[0] === 'habitacion') {
+                        ${{ f.totalRoom.toFixed(2) }}
+                      } @else {
+                        ${{ _computeGroupTotal(group[1]).toFixed(2) }}
+                      }
+                    </span>
+                  </div>
+                  @for (posting of group[1]; track posting.postingId) {
+                    <div class="fl-posting-row">
+                      <div class="fl-posting-icon" [class.is-charge]="posting.type === 'charge' || posting.type === 'room'"
+                        [class.is-discount]="posting.type === 'discount'"
+                        [class.is-payment]="posting.type === 'payment'">
+                        <span class="material-symbols-outlined">{{ postingIcon(posting.type) }}</span>
+                      </div>
+                      <div class="fl-posting-info">
+                        <div class="fl-posting-concept">{{ posting.concept }}
+                          <span class="fl-posting-type">{{ typeLabel(posting.type) }}</span>
+                        </div>
+                        <div class="fl-posting-meta">{{ posting.postedAt | date:'dd/MM HH:mm' }}</div>
+                      </div>
+                      <span class="fl-posting-amount"
+                        [class.positive]="posting.amount >= 0"
+                        [class.negative]="posting.amount < 0">
+                        ${{ Math.abs(posting.amount).toFixed(2) }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+          </div>
+
+          <!-- ── RIGHT: Summary card (1/3) ── -->
+          <div class="fl-right">
+
+            <!-- Total card -->
+            <section class="fl-summary">
+              <div class="fl-summary-bg"></div>
+              <h2 class="fl-summary-title">Resumen del Folio</h2>
+
+              <div class="fl-summary-rows">
+                <div class="fl-summary-row">
+                  <span>Habitación</span>
+                  <span class="mono">${{ f.totalRoom.toFixed(2) }}</span>
+                </div>
+                <div class="fl-summary-row">
+                  <span>Cargos</span>
+                  <span class="mono">+${{ f.totalCharges.toFixed(2) }}</span>
+                </div>
+                @if (f.totalDiscounts > 0) {
+                  <div class="fl-summary-row">
+                    <span>Descuentos</span>
+                    <span class="mono" style="color: #ba1a1a;">-${{ f.totalDiscounts.toFixed(2) }}</span>
+                  </div>
+                }
+                @if (f.totalPayments > 0) {
+                  <div class="fl-summary-row">
+                    <span>Pagos</span>
+                    <span class="mono" style="color: #059669;">-${{ f.totalPayments.toFixed(2) }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="fl-summary-divider"></div>
+
+              <div class="fl-summary-total">
+                <span>Total a Pagar</span>
+                <span class="fl-summary-amount">${{ f.totalDue.toFixed(2) }}</span>
+              </div>
+
+              <div class="fl-summary-detail">
+                <div class="fl-summary-meta">Folio: {{ f.folioNumber }}</div>
+                <div class="fl-summary-meta">Postings: {{ postingCount() }}</div>
+                @if (isClosed() && f.closedAt) {
+                  <div class="fl-summary-meta">Cerrado: {{ f.closedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                }
+                @if (f.invoiceId) {
+                  <div class="fl-summary-meta">Factura: {{ f.invoiceId }}</div>
+                }
+              </div>
+
+              @if (isOpen()) {
+                <button type="button" class="fl-btn fl-btn-danger fl-btn-full" (click)="closeFolio()" [disabled]="postingBusy()">
+                  <span class="material-symbols-outlined">lock</span>
+                  Cerrar Folio
+                </button>
+              }
+            </section>
+
+            <!-- Quick actions -->
+            @if (isOpen()) {
+              <section class="fl-card">
+                <h3 class="fl-card-sm-header">Acciones Rápidas</h3>
+                <div class="fl-quick-actions">
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'restaurante', concept: 'Consumo restaurante'}))">
+                    <span class="material-symbols-outlined">restaurant</span>
+                    Restaurante
+                  </button>
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'minibar', concept: 'Consumo minibar'}))">
+                    <span class="material-symbols-outlined">kitchen</span>
+                    Minibar
+                  </button>
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'spa', concept: 'Servicio spa'}))">
+                    <span class="material-symbols-outlined">spa</span>
+                    Spa
+                  </button>
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'parking', concept: 'Estacionamiento'}))">
+                    <span class="material-symbols-outlined">local_parking</span>
+                    Parking
+                  </button>
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'lavanderia', concept: 'Servicio lavandería'}))">
+                    <span class="material-symbols-outlined">local_laundry_service</span>
+                    Lavandería
+                  </button>
+                  <button class="fl-quick-btn" (click)="startPosting('charge'); postForm.update(f => ({...f, category: 'room_service', concept: 'Room service'}))">
+                    <span class="material-symbols-outlined">room_service</span>
+                    Room Svc
+                  </button>
+                </div>
+              </section>
+            }
+
+            <!-- Folio info -->
+            <section class="fl-card">
+              <h3 class="fl-card-sm-header">Información del Folio</h3>
+              <dl class="fl-info-dl">
+                <div>
+                  <dt>Número</dt>
+                  <dd class="dd-mono">{{ f.folioNumber }}</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span class="fl-status-dot" [class.dot-open]="isOpen()" [class.dot-closed]="isClosed()"></span>
+                    {{ isOpen() ? 'Abierto' : 'Cerrado' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Creado</dt>
+                  <dd>{{ f.createdAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+                @if (f.roomLabel) {
+                  <div>
+                    <dt>Habitación</dt>
+                    <dd>{{ f.roomLabel }}</dd>
+                  </div>
+                }
+                @if (f.hotelLabel) {
+                  <div>
+                    <dt>Hotel</dt>
+                    <dd>{{ f.hotelLabel }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+          </div>
+        </div>
+
+      }
+    }
+  }
+</div>
