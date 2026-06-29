@@ -170,6 +170,7 @@ def save_partner_hotel_policies(
     payment_policy: str = "",
     house_rules: str = "",
     room_type_id: str = "",
+    season_id: str = "",
     # New structured fields (SPEC 022)
     cancellation_hours: Any = None,
     pets_allowed: Any = None,
@@ -178,6 +179,9 @@ def save_partner_hotel_policies(
     extra_bed_fee: Any = None,
     min_stay: Any = None,
     max_stay: Any = None,
+    deposit_percent: Any = None,
+    deposit_required: Any = None,
+    cancellation_penalty_percent: Any = None,
     changed_by: str = "partner_web",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -197,12 +201,17 @@ def save_partner_hotel_policies(
 
     db = get_database()
     clean_room_type = clean_text(room_type_id)
-    # Build the filter: hotel-wide (room_type_id="") or per-room-type
+    clean_season = clean_text(season_id)
+    # Build the filter: hotel-wide (room_type_id="") or per-room-type, optionally per-season
     filter_: dict[str, object] = {"prop_id": prop_id}
     if clean_room_type:
         filter_["room_type_id"] = clean_room_type
     else:
         filter_["room_type_id"] = {"$in": ["", None]}
+    if clean_season:
+        filter_["season_id"] = clean_season
+    else:
+        filter_["season_id"] = {"$in": ["", None]}
 
     # Parse optional numeric fields
     parsed_cancel_hours = _parse_hours(cancellation_hours)
@@ -212,6 +221,15 @@ def save_partner_hotel_policies(
     parsed_extra_bed_fee = _parse_fee(extra_bed_fee) if extra_bed_fee is not None else None
     parsed_min_stay = _parse_stay(min_stay, 1) if min_stay is not None else None
     parsed_max_stay = _parse_stay(max_stay, 30) if max_stay is not None else None
+    try:
+        parsed_deposit_percent = int(float(str(deposit_percent))) if deposit_percent is not None else None
+    except (ValueError, TypeError):
+        parsed_deposit_percent = None
+    parsed_deposit_required = safe_bool(deposit_required) if deposit_required is not None else None
+    try:
+        parsed_cancel_penalty = int(float(str(cancellation_penalty_percent))) if cancellation_penalty_percent is not None else None
+    except (ValueError, TypeError):
+        parsed_cancel_penalty = None
 
     # RF-005: Validate min_stay >= 1, max_stay >= min_stay, max_stay <= 365
     if parsed_min_stay is not None and parsed_min_stay < 1:
@@ -225,6 +243,7 @@ def save_partner_hotel_policies(
     payload: dict[str, Any] = {
         "prop_id": prop_id,
         "room_type_id": clean_room_type,
+        "season_id": clean_season,
         "check_in_time": ci,
         "check_out_time": co,
         "cancellation_policy": clean_text(cancellation_policy),
@@ -252,6 +271,12 @@ def save_partner_hotel_policies(
         payload["min_stay"] = parsed_min_stay
     if parsed_max_stay is not None:
         payload["max_stay"] = parsed_max_stay
+    if parsed_deposit_percent is not None:
+        payload["deposit_percent"] = max(0, min(parsed_deposit_percent, 100))
+    if parsed_deposit_required is not None:
+        payload["deposit_required"] = parsed_deposit_required
+    if parsed_cancel_penalty is not None:
+        payload["cancellation_penalty_percent"] = max(0, min(parsed_cancel_penalty, 100))
 
     document = db.hotel_policies.find_one_and_update(
         filter_,

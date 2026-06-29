@@ -60,6 +60,7 @@ def _room_type_by_id(room_type_id: str, prop_id: int | None = None) -> dict[str,
         f"{room.get('max_children', 0)} niños"
     )
     room["features"] = _normalize_features(room.get("features", []))
+    room["is_roh"] = bool(room.get("is_roh", False))
     return room
 
 
@@ -77,6 +78,7 @@ def _room_types_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
             f"{item.get('max_children', 0)} niños"
         )
         item["features"] = _normalize_features(item.get("features", []))
+        item["is_roh"] = bool(item.get("is_roh", False))
     return items
 
 
@@ -137,6 +139,10 @@ def create_room_type(
     is_active: Any = True,
     room_number: str = "",
     floor: str = "",
+    view: str = "",
+    smoking: Any = False,
+    accessible: Any = False,
+    is_roh: Any = False,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -171,6 +177,10 @@ def create_room_type(
         "is_active": safe_bool(is_active),
         "room_number": clean_room_number,
         "floor": clean_floor,
+        "view": clean_text(view),
+        "smoking": safe_bool(smoking),
+        "accessible": safe_bool(accessible),
+        "is_roh": safe_bool(is_roh),
         "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
@@ -180,24 +190,30 @@ def create_room_type(
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
     )
-    db.hotel_rooms.find_one_and_update(
-        {"hotel_room_id": f"HR-{room_type_id}"},
-        {
-            "$set": {
-                "hotel_room_id": f"HR-{room_type_id}",
-                "prop_id": prop_id,
-                "room_type_id": room_type_id,
-                "room_label": clean_name,
-                "is_active": payload["is_active"],
-                "room_number": clean_room_number,
-                "floor": clean_floor,
-                "updated_at": now_utc(),
+    # Skip hotel_rooms creation for ROH types (they use pooled inventory)
+    if not safe_bool(is_roh):
+        db.hotel_rooms.find_one_and_update(
+            {"hotel_room_id": f"HR-{room_type_id}"},
+            {
+                "$set": {
+                    "hotel_room_id": f"HR-{room_type_id}",
+                    "prop_id": prop_id,
+                    "room_type_id": room_type_id,
+                    "room_label": clean_name,
+                    "is_active": payload["is_active"],
+                    "is_roh": payload["is_roh"],
+                    "room_number": clean_room_number,
+                    "floor": clean_floor,
+                    "view": payload["view"],
+                    "smoking": payload["smoking"],
+                    "accessible": payload["accessible"],
+                    "updated_at": now_utc(),
+                },
+                "$setOnInsert": {"created_at": now_utc()},
             },
-            "$setOnInsert": {"created_at": now_utc()},
-        },
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
     register_action(
         prop_id=prop_id,
         entity_type="room_type",
@@ -205,7 +221,7 @@ def create_room_type(
         action="create",
         summary=f"Tipo de habitación '{clean_name}' creado",
         changed_by=changed_by,
-        metadata={"name": clean_name, "room_number": clean_room_number, "floor": clean_floor, "max_adults": max_adults_value},
+        metadata={"name": clean_name, "room_number": clean_room_number, "floor": clean_floor, "max_adults": max_adults_value, "view": clean_text(view), "smoking": safe_bool(smoking), "accessible": safe_bool(accessible)},
     )
     return document
 
@@ -222,6 +238,10 @@ def update_room_type(
     is_active: Any = True,
     room_number: str = "",
     floor: str = "",
+    view: str = "",
+    smoking: Any = False,
+    accessible: Any = False,
+    is_roh: Any = False,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
@@ -247,6 +267,10 @@ def update_room_type(
         "is_active": safe_bool(is_active),
         "room_number": clean_room_number,
         "floor": clean_floor,
+        "view": clean_text(view),
+        "smoking": safe_bool(smoking),
+        "accessible": safe_bool(accessible),
+        "is_roh": safe_bool(is_roh),
         "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
@@ -255,16 +279,23 @@ def update_room_type(
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
     )
-    db.hotel_rooms.update_one(
-        {"hotel_room_id": f"HR-{room_type_id}"},
-        {"$set": {
-            "room_label": clean_name,
-            "is_active": payload["is_active"],
-            "room_number": clean_room_number,
-            "floor": clean_floor,
-            "updated_at": now_utc(),
-        }},
-    )
+    # Only update hotel_rooms for non-ROH types
+    existing_room = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "is_roh": 1})
+    if existing_room and not existing_room.get("is_roh", False):
+        db.hotel_rooms.update_one(
+            {"hotel_room_id": f"HR-{room_type_id}"},
+            {"$set": {
+                "room_label": clean_name,
+                "is_active": payload["is_active"],
+                "is_roh": payload["is_roh"],
+                "room_number": clean_room_number,
+                "floor": clean_floor,
+                "view": payload["view"],
+                "smoking": payload["smoking"],
+                "accessible": payload["accessible"],
+                "updated_at": now_utc(),
+            }},
+        )
     register_action(
         prop_id=prop_id,
         entity_type="room_type",
@@ -275,6 +306,74 @@ def update_room_type(
         metadata={"name": clean_name},
     )
     return document
+
+
+def create_roh_room_type(
+    prop_id: int,
+    *,
+    changed_by: str = "system",
+) -> dict[str, Any] | None:
+    """Create or get an existing Run Of House (ROH) room type for a property.
+
+    ROH is a virtual room type that represents "any available room" at the
+    property. It uses pooled inventory (sum of availability across all room
+    types) and the lowest nightly rate.
+    """
+    db = get_database()
+    existing_roh = db.room_types.find_one(
+        {"prop_id": prop_id, "is_roh": True, "is_active": True},
+        {"_id": 0},
+    )
+    if existing_roh:
+        return existing_roh
+
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+
+    # Determine max capacity from existing room types
+    room_types = list(db.room_types.find({"prop_id": prop_id}, {"_id": 0, "max_adults": 1, "max_children": 1, "base_capacity": 1}))
+    max_adults_val = max((rt.get("max_adults") or 2 for rt in room_types), default=2)
+    max_children_val = max((rt.get("max_children") or 0 for rt in room_types), default=0)
+    base_capacity_val = max((rt.get("base_capacity") or 2 for rt in room_types), default=2)
+
+    return create_room_type(
+        prop_id,
+        name="Run Of House",
+        description="Habitación Run Of House — se asigna cualquier habitación disponible al momento del check-in.",
+        max_adults=max_adults_val,
+        max_children=max_children_val,
+        base_capacity=base_capacity_val,
+        is_active=True,
+        is_roh=True,
+        changed_by=changed_by,
+    )
+
+
+def _roh_available_rooms(prop_id: int) -> int:
+    """Calculate available rooms for ROH as the sum across all non-ROH room types."""
+    db = get_database()
+    result = db.room_inventory_calendar.aggregate([
+        {"$match": {"prop_id": prop_id, "is_roh": {"$ne": True}}},
+        {"$group": {"_id": "$date", "total_available": {"$sum": "$available_rooms"}}},
+        {"$sort": {"_id": 1}},
+        {"$limit": 365},
+    ])
+    items = list(result)
+    if not items:
+        return 0
+    return min(item["total_available"] for item in items)
+
+
+def _roh_min_rate(prop_id: int) -> float | None:
+    """Get the lowest nightly rate across all non-ROH rate plans."""
+    db = get_database()
+    result = db.hotel_rate_calendar.aggregate([
+        {"$match": {"prop_id": prop_id, "is_closed": {"$ne": True}}},
+        {"$group": {"_id": None, "min_rate": {"$min": "$rate_amount"}}},
+    ])
+    row = next(result, None)
+    return round(float(row["min_rate"]), 2) if row and row.get("min_rate") is not None else None
 
 
 def delete_room_type(room_type_id: str, changed_by: str = "system") -> dict[str, Any] | None:

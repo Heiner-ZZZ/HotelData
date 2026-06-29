@@ -20,10 +20,11 @@ def _content_page_defaults(prop_id: int) -> dict[str, Any]:
     }
 
 
-def _policy_defaults(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
+def _policy_defaults(prop_id: int, room_type_id: str = "", season_id: str = "") -> dict[str, Any]:
     return {
         "prop_id": prop_id,
         "room_type_id": room_type_id,
+        "season_id": season_id,
         "check_in_time": "",
         "check_out_time": "",
         "cancellation_policy": "",
@@ -32,6 +33,9 @@ def _policy_defaults(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
         "extra_bed_policy": "",
         "payment_policy": "",
         "house_rules": "",
+        "deposit_percent": 0,
+        "deposit_required": False,
+        "cancellation_penalty_percent": 100,
         "source": "partner_manual",
         "updated_at": None,
     }
@@ -43,15 +47,19 @@ def content_page_for_prop(prop_id: int) -> dict[str, Any]:
     return page or _content_page_defaults(prop_id)
 
 
-def policies_for_prop(prop_id: int, room_type_id: str = "") -> dict[str, Any]:
+def policies_for_prop(prop_id: int, room_type_id: str = "", season_id: str = "") -> dict[str, Any]:
     db = get_database()
     filter_: dict[str, object] = {"prop_id": prop_id}
     if room_type_id:
         filter_["room_type_id"] = room_type_id
     else:
         filter_["room_type_id"] = {"$in": ["", None]}
+    if season_id:
+        filter_["season_id"] = season_id
+    else:
+        filter_["season_id"] = {"$in": ["", None]}
     policies = db.hotel_policies.find_one(filter_, {"_id": 0})
-    return policies or _policy_defaults(prop_id, room_type_id=room_type_id)
+    return policies or _policy_defaults(prop_id, room_type_id=room_type_id, season_id=season_id)
 
 
 def images_for_prop(prop_id: int) -> list[dict[str, Any]]:
