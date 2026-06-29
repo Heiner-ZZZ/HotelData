@@ -80,11 +80,25 @@ export interface AdditionalChargeItem {
   createdAt: string;
 }
 
+export interface DashboardRoomItem {
+  id: string;
+  propId: number;
+  roomLabel: string;
+  roomNumber: string;
+  hotelRoomId: string;
+  roomTypeId: string;
+  status: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface HousekeepingDashboard {
   totalRooms: number;
   occupied: number;
   occupancyRate: number;
   roomStatuses: Record<string, number>;
+  rooms: DashboardRoomItem[];
   pendingHousekeepingTasks: number;
   completedToday: number;
   upcomingMaintenance: number;
