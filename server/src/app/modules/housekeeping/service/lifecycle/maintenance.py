@@ -174,7 +174,7 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
     if note:
         update["$set"]["note"] = note
     doc = db[MAINTENANCE_COLLECTION].find_one_and_update(
-        {"_id": ObjectId(task_id), "status": {"$in": ["scheduled", "in_progress"]}},
+        {"_id": ObjectId(task_id), "status": {"$in": ["scheduled", "in_progress", "inspection"]}},
         update, return_document=True,
     )
     if doc and doc.get("auto_block"):

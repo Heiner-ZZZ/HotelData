@@ -14,9 +14,23 @@ from ...schemas import RoomStatusLogCreate, now_iso
 HOTEL_ROOMS_COLLECTION = "hotel_rooms"
 
 
+def _get_current_status(prop_id: int, room_label: str) -> str | None:
+    """Fetch the current status of a room from room_status_log."""
+    db = get_database()
+    existing = db[ROOM_STATUS_COLLECTION].find_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"_id": 0, "status": 1},
+    )
+    return existing.get("status") if existing else None
+
+
 def upsert_room_status(payload: RoomStatusLogCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
+
+    # Get old status before updating
+    old_status = _get_current_status(payload.prop_id, payload.room_label)
+
     doc = {
         "prop_id": payload.prop_id, "room_type_id": payload.room_type_id,
         "room_label": payload.room_label, "status": payload.status,
@@ -37,6 +51,30 @@ def upsert_room_status(payload: RoomStatusLogCreate) -> dict[str, Any]:
         if existing:
             doc["_id"] = existing["_id"]
             doc["created_at"] = existing.get("created_at", now)
+
+    # ── Log history if status changed ──
+    if old_status is not None and old_status != payload.status:
+        from .room_history import log_room_status_change
+        log_room_status_change(
+            prop_id=payload.prop_id,
+            room_label=payload.room_label,
+            old_status=old_status,
+            new_status=payload.status,
+            note=payload.note or "",
+            changed_by="api",
+        )
+    elif old_status is None:
+        # First creation — log as available
+        from .room_history import log_room_status_change
+        log_room_status_change(
+            prop_id=payload.prop_id,
+            room_label=payload.room_label,
+            old_status="",
+            new_status=payload.status,
+            note=payload.note or "Inicial",
+            changed_by="api",
+        )
+
     return _enrich_room_status(doc)
 
 
@@ -71,10 +109,44 @@ def get_room_status(record_id: str) -> dict[str, Any] | None:
 def update_room_status_bulk(prop_id: int, room_labels: list[str], new_status: str, note: str = "") -> int:
     db = get_database()
     now = now_iso()
+
+    # Fetch old statuses before bulk update
+    old_docs = list(
+        db[ROOM_STATUS_COLLECTION].find(
+            {"prop_id": prop_id, "room_label": {"$in": room_labels}},
+            {"_id": 0, "room_label": 1, "status": 1},
+        )
+    )
+    old_status_map: dict[str, str] = {d["room_label"]: d["status"] for d in old_docs}
+
     result = db[ROOM_STATUS_COLLECTION].update_many(
         {"prop_id": prop_id, "room_label": {"$in": room_labels}},
         {"$set": {"status": new_status, "note": note, "updated_at": now}},
     )
+
+    # ── Log history for each changed room ──
+    from .room_history import log_room_status_change
+    for label in room_labels:
+        old = old_status_map.get(label)
+        if old is not None and old != new_status:
+            log_room_status_change(
+                prop_id=prop_id,
+                room_label=label,
+                old_status=old,
+                new_status=new_status,
+                note=note or "",
+                changed_by="api:bulk_update",
+            )
+        elif old is None:
+            log_room_status_change(
+                prop_id=prop_id,
+                room_label=label,
+                old_status="",
+                new_status=new_status,
+                note=note or "Inicial",
+                changed_by="api:bulk_update",
+            )
+
     return result.modified_count
 
 
