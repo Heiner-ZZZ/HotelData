@@ -1,64 +1,144 @@
 <div class="hk-subpage">
-  <app-page-header
-    eyebrow="Housekeeping"
-    title="Limpieza y rotación"
-    description="Gestionar tareas de limpieza, rotación post-checkout y asignación (CU-O39, CU-T14)."
-  />
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Tareas de Limpieza</h1>
+      <p class="page-subtitle">Gestiona tareas de limpieza, rotación e inspección por habitación.</p>
+    </div>
+    <div class="page-header-right">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </div>
 
+  <!-- ═══ Toasts ═══ -->
   @if (message()) {
     <div class="toast toast-success" (click)="message.set('')">
       <span class="material-symbols-outlined">check_circle</span>
-      {{ message() }}
+      <span>{{ message() }}</span>
     </div>
   }
   @if (errorMessage()) {
     <div class="toast toast-error" (click)="errorMessage.set('')">
       <span class="material-symbols-outlined">error</span>
-      {{ errorMessage() }}
+      <span>{{ errorMessage() }}</span>
     </div>
   }
 
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
-
   @if (selectedPropId()) {
-    <!-- ═══ Filters + Create ═══ -->
-    <div class="bar-actions">
-      <div class="status-filter-chips">
-        <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
-        @for (s of statusOptions; track s) {
-          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'pending' ? 'Pendiente' : s === 'inspection' ? 'Inspección' : 'Completada' }}</button>
-        }
+    <!-- ═══ Stats Summary Bar ═══ -->
+    @let stats = statsSummary();
+    <div class="stats-bar">
+      <div class="stat-card stat-pending">
+        <span class="stat-number">{{ stats.pending }}</span>
+        <span class="stat-label">Pendientes</span>
       </div>
-      <button type="button" class="btn-primary" (click)="toggleCreateForm()">
-        <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
-        {{ showCreateForm() ? 'Cancelar' : 'Nueva tarea' }}
-      </button>
+      <div class="stat-card stat-progress">
+        <span class="stat-number">{{ stats.inProgress }}</span>
+        <span class="stat-label">En Progreso</span>
+      </div>
+      <div class="stat-card stat-inspection">
+        <span class="stat-number">{{ stats.inspection }}</span>
+        <span class="stat-label">Inspección</span>
+      </div>
+      <div class="stat-card stat-done">
+        <span class="stat-number">{{ stats.completed }}</span>
+        <span class="stat-label">Completadas</span>
+      </div>
     </div>
 
-    <!-- ═══ Create form ═══ -->
+    <!-- ═══ Filter Bar ═══ -->
+    <section class="filter-bar surface-card">
+      <div class="filter-row">
+        <div class="filter-chips">
+          <span class="filter-label">Estado</span>
+          <button type="button" class="chip-filter"
+            [class.active]="statusFilter() === ''"
+            (click)="setStatusFilter('')">Todas</button>
+          @for (s of statusOptions; track s) {
+            <button type="button" class="chip-filter"
+              [class.active]="statusFilter() === s"
+              (click)="setStatusFilter(s)">
+              @if (s === 'pending') {
+                <span class="material-symbols-outlined chip-icon">schedule</span>
+              } @else if (s === 'in_progress') {
+                <span class="material-symbols-outlined chip-icon">cleaning_services</span>
+              } @else if (s === 'inspection') {
+                <span class="material-symbols-outlined chip-icon">visibility</span>
+              } @else if (s === 'completed') {
+                <span class="material-symbols-outlined chip-icon">check_circle</span>
+              }
+              {{ statusLabels[s] }}
+            </button>
+          }
+        </div>
+
+        <div class="filter-actions-right">
+          @if (activeFilterCount() > 0) {
+            <button type="button" class="btn-ghost btn-xs" (click)="clearAllFilters()">
+              <span class="material-symbols-outlined">filter_alt_off</span>
+              Limpiar filtros
+            </button>
+          }
+          <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+            <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+            {{ showCreateForm() ? 'Cancelar' : 'Nueva tarea' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-row secondary">
+        <div class="filter-group">
+          <span class="material-symbols-outlined filter-icon">person_search</span>
+          <select class="filter-select"
+            [value]="assignedToFilter()"
+            (change)="onAssignedToChange(($any($event.target).value))">
+            <option value="">Todas las camareras</option>
+            @for (name of commonStaff; track name) {
+              <option [value]="name">{{ name }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter-chips compact">
+          <span class="filter-label">Prioridad</span>
+          @for (p of priorities; track p) {
+            <button type="button" class="chip-filter chip-prio"
+              [class.active]="priorityFilter() === p"
+              [class.prio-low]="p === 'low'"
+              [class.prio-normal]="p === 'normal'"
+              [class.prio-high]="p === 'high'"
+              [class.prio-urgent]="p === 'urgent'"
+              (click)="setPriorityFilter(p)">{{ priorityLabels[p] }}</button>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Create / Edit Form ═══ -->
     @if (showCreateForm()) {
       <section class="surface-card form-card">
-        <h3>{{ editingId() ? 'Editar tarea' : 'Crear tarea de limpieza' }}</h3>
+        <div class="form-card-header">
+          <span class="material-symbols-outlined form-card-icon">{{ editingId() ? 'edit' : 'add_task' }}</span>
+          <h3>{{ editingId() ? 'Editar tarea' : 'Nueva tarea de limpieza' }}</h3>
+        </div>
         <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitTask()" class="task-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="roomLabel">Habitación *</label>
+              <label for="roomLabel">Habitación <span class="required">*</span></label>
               <select id="roomLabel" formControlName="roomLabel">
-                <option value="">Selecciona una habitación...</option>
+                <option value="">Seleccionar habitación…</option>
                 @for (r of roomLabels(); track r) {
                   <option [value]="r">{{ r }}</option>
                 }
               </select>
             </div>
             <div class="form-group">
-              <label for="taskType">Tipo</label>
+              <label for="taskType">Tipo de tarea</label>
               <select id="taskType" formControlName="taskType">
                 @for (t of taskTypes; track t) {
-                  <option [value]="t">{{ t === 'deep_clean' ? 'Limpieza profunda' : t === 'turnover' ? 'Rotación' : t === 'inspection' ? 'Inspección' : 'Limpieza' }}</option>
+                  <option [value]="t">{{ taskTypeLabels[t] }}</option>
                 }
               </select>
             </div>
@@ -66,40 +146,46 @@
               <label for="priority">Prioridad</label>
               <select id="priority" formControlName="priority">
                 @for (p of priorities; track p) {
-                  <option [value]="p">{{ p }}</option>
+                  <option [value]="p">{{ priorityLabels[p] }}</option>
                 }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="status">Estado inicial</label>
+              <select id="status" formControlName="status">
+                <option value="pending">Pendiente</option>
+                <option value="in_progress">En Progreso</option>
+                <option value="inspection">Inspección</option>
+                <option value="completed">Completada</option>
               </select>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label for="assignedTo">Asignar a</label>
-              <input id="assignedTo" type="text" formControlName="assignedTo" placeholder="Nombre del personal" />
+              <input id="assignedTo" type="text" formControlName="assignedTo" list="staff-list" placeholder="Nombre del personal" />
+              <datalist id="staff-list">
+                @for (name of commonStaff; track name) {
+                  <option [value]="name">{{ name }}</option>
+                }
+              </datalist>
             </div>
             <div class="form-group">
-              <label for="scheduledDate">Fecha y hora programada</label>
+              <label for="scheduledDate">Fecha programada</label>
               <input id="scheduledDate" type="datetime-local" formControlName="scheduledDate" />
             </div>
-            <div class="form-group">
-              <label for="status">Estado</label>
-              <select id="status" formControlName="status">
-                <option value="pending">Pendiente</option>
-                <option value="inspection">Inspección</option>
-                <option value="completed">Completada</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="note">Nota</label>
+            <div class="form-group grow-2">
+              <label for="note">Nota / Instrucciones</label>
               <input id="note" type="text" formControlName="note" placeholder="Instrucciones adicionales" />
             </div>
           </div>
-          <div style="display: flex; gap: 0.5rem;">
+          <div class="form-actions">
             <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
               <span class="material-symbols-outlined">{{ editingId() ? 'save' : 'add_task' }}</span>
               {{ editingId() ? 'Guardar cambios' : 'Crear tarea' }}
             </button>
             @if (editingId()) {
-              <button type="button" class="btn-primary" style="background: var(--muted-text);" (click)="cancelForm()">
+              <button type="button" class="btn-secondary" (click)="cancelForm()">
                 <span class="material-symbols-outlined">close</span>
                 Cancelar
               </button>
@@ -108,92 +194,164 @@
         </form>
       </section>
     }
-  }
 
-  @switch (viewState()) {
-    @case ('loading') {
-      <app-loading-state label="Cargando tareas..." />
-    }
-    @case ('error') {
-      <app-error-state title="Error al cargar" description="No se pudieron obtener las tareas." />
-    }
-    @case ('empty') {
-      <app-empty-state title="Sin tareas" description="No hay tareas de limpieza pendientes. Crea una nueva tarea para empezar." />
-    }
-    @default {
-      @if (data(); as d) {
+    <!-- ═══ Table / Content ═══ -->
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Cargando tareas…" />
+      }
+      @case ('error') {
+        <app-error-state
+          title="Error al cargar"
+          description="No se pudieron obtener las tareas de limpieza."
+        />
+      }
+      @case ('empty') {
+        <app-empty-state
+          title="Sin tareas"
+          description="No hay tareas de limpieza pendientes. Crea una nueva tarea para empezar."
+        />
+      }
+      @case ('success') {
+        @let d = tasks()!;
         <section class="surface-card data-card">
+          <!-- Header -->
           <div class="data-card-head">
             <div class="data-card-head-left">
-              <span class="material-symbols-outlined">cleaning_services</span>
+              <span class="material-symbols-outlined head-icon">cleaning_services</span>
               <div>
                 <h2>Tareas de limpieza</h2>
-                <p>{{ d.total }} tarea(s) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
+                <p class="data-meta">
+                  {{ d.total }} tarea(s) &middot; Página {{ d.page }} de {{ d.totalPages || 1 }}
+                  @if (activeFilterCount() > 0) {
+                    &middot; <span class="filter-badge">{{ activeFilterCount() }} filtro(s) activo(s)</span>
+                  }
+                </p>
               </div>
             </div>
             <div class="pagination-bar">
-              <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
-                <span class="material-symbols-outlined">chevron_left</span> Anterior
+              <button type="button" class="btn-page" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span>
+                <span class="btn-page-label">Anterior</span>
               </button>
-              <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
-                Siguiente <span class="material-symbols-outlined">chevron_right</span>
+              <button type="button" class="btn-page" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                <span class="btn-page-label">Siguiente</span>
+                <span class="material-symbols-outlined">chevron_right</span>
               </button>
             </div>
           </div>
 
+          <!-- Table -->
           <div class="table-wrap">
-            <table>
+            <table class="hk-tasks-table">
               <thead>
                 <tr>
-                  <th>Habitación</th>
-                  <th>Tipo</th>
-                  <th>Prioridad</th>
-                  <th>Asignado</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                  <th></th>
+                  <th class="th-room">Habitación</th>
+                  <th class="th-type">Tipo</th>
+                  <th class="th-prio">Prioridad</th>
+                  <th class="th-assign">Asignado</th>
+                  <th class="th-status">Estado</th>
+                  <th class="th-date">Programado</th>
+                  <th class="th-actions">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (item of d.items; track item.id) {
-                  <tr>
-                    <td><strong>{{ item.roomLabel }}</strong></td>
-                    <td>{{ item.taskType === 'deep_clean' ? 'Limpieza profunda' : item.taskType === 'turnover' ? 'Rotación' : item.taskType === 'inspection' ? 'Inspección' : 'Limpieza' }}</td>
-                    <td>
-                      <span class="priority-badge"
-                        [class.prio-low]="item.priority === 'low'"
-                        [class.prio-normal]="item.priority === 'normal'"
-                        [class.prio-high]="item.priority === 'high'"
-                        [class.prio-urgent]="item.priority === 'urgent'"
-                      >{{ item.priority }}</span>
+                  <tr class="task-row">
+                    <!-- Room -->
+                    <td class="td-room">
+                      <div class="room-cell">
+                        <span class="room-badge">{{ item.roomLabel }}</span>
+                      </div>
                     </td>
-                    <td>{{ item.assignedTo || '--' }}</td>
-                    <td>
-                      <span class="badge" [class.badge-pending]="item.status === 'pending'" [class.badge-inspection]="item.status === 'inspection'" [class.badge-done]="item.status === 'completed'">
-                        {{ item.status === 'pending' ? 'Pendiente' : item.status === 'inspection' ? 'Inspección' : 'Completada' }}
+
+                    <!-- Type -->
+                    <td class="td-type">
+                      <div class="type-cell">
+                        <span class="material-symbols-outlined type-icon">{{ taskTypeIcons[item.taskType] || 'cleaning_services' }}</span>
+                        <span>{{ taskTypeLabels[item.taskType] || item.taskType }}</span>
+                      </div>
+                    </td>
+
+                    <!-- Priority -->
+                    <td class="td-prio">
+                      <span class="priority-badge" [class]="priorityClass(item.priority)">
+                        <span class="prio-dot"></span>
+                        {{ priorityLabels[item.priority] || item.priority }}
                       </span>
                     </td>
-                    <td class="cell-time">{{ formatDate(item.scheduledDate || item.createdAt) }}</td>
-                    <td class="cell-action">
-                      <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
-                        <span class="material-symbols-outlined">edit</span>
-                      </button>
-                      @if (item.status === 'pending') {
-                        <button type="button" class="btn-icon-only" (click)="markInspection(item)" aria-label="Enviar a inspección" title="Enviar a inspección">
-                          <span class="material-symbols-outlined">visibility</span>
-                        </button>
-                        <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
-                          <span class="material-symbols-outlined">check</span>
-                        </button>
+
+                    <!-- Assigned -->
+                    <td class="td-assign">
+                      @if (item.assignedTo) {
+                        <div class="assignee-cell">
+                          <span class="material-symbols-outlined assignee-icon">person</span>
+                          <span>{{ item.assignedTo }}</span>
+                        </div>
+                      } @else {
+                        <span class="unassigned">—</span>
                       }
-                      @if (item.status === 'inspection') {
-                        <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
-                          <span class="material-symbols-outlined">check</span>
+                    </td>
+
+                    <!-- Status -->
+                    <td class="td-status">
+                      <span class="status-badge" [class]="statusClass(item.status)">
+                        @if (item.status === 'pending') {
+                          <span class="material-symbols-outlined badge-icon">schedule</span>
+                        } @else if (item.status === 'in_progress') {
+                          <span class="material-symbols-outlined badge-icon">cleaning_services</span>
+                        } @else if (item.status === 'inspection') {
+                          <span class="material-symbols-outlined badge-icon">visibility</span>
+                        } @else if (item.status === 'completed') {
+                          <span class="material-symbols-outlined badge-icon">check_circle</span>
+                        }
+                        {{ statusLabels[item.status] || item.status }}
+                      </span>
+                    </td>
+
+                    <!-- Scheduled Date -->
+                    <td class="td-date">
+                      <span class="date-cell">
+                        <span class="material-symbols-outlined date-icon">calendar_today</span>
+                        {{ formatDate(item.scheduledDate || item.createdAt) }}
+                      </span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="td-actions">
+                      <div class="action-buttons">
+                        @if (canStartCleaning(item)) {
+                          <button type="button" class="btn-action start"
+                            (click)="startCleaning(item)"
+                            title="Iniciar limpieza" aria-label="Iniciar limpieza">
+                            <span class="material-symbols-outlined">play_arrow</span>
+                          </button>
+                        }
+                        @if (canMarkInspection(item)) {
+                          <button type="button" class="btn-action inspect"
+                            (click)="markInspection(item)"
+                            title="Enviar a inspección" aria-label="Enviar a inspección">
+                            <span class="material-symbols-outlined">visibility</span>
+                          </button>
+                        }
+                        @if (canComplete(item)) {
+                          <button type="button" class="btn-action done"
+                            (click)="openCompleteModal(item)"
+                            title="Completar con reporte" aria-label="Completar tarea">
+                            <span class="material-symbols-outlined">check</span>
+                          </button>
+                        }
+                        <button type="button" class="btn-action edit"
+                          (click)="startEdit(item)"
+                          title="Editar" aria-label="Editar tarea">
+                          <span class="material-symbols-outlined">edit</span>
                         </button>
-                      }
-                      <button type="button" class="btn-icon-only danger" (click)="deleteTask(item.id)" aria-label="Eliminar">
-                        <span class="material-symbols-outlined">delete</span>
-                      </button>
+                        <button type="button" class="btn-action delete"
+                          (click)="deleteTask(item.id)"
+                          title="Eliminar" aria-label="Eliminar tarea">
+                          <span class="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -203,5 +361,136 @@
         </section>
       }
     }
+  }
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ═══ COMPLETE CLEANING MODAL ═══ -->
+  <!-- ════════════════════════════════════════════ -->
+  @if (showCompleteModal()) {
+    @let ci = completingItem()!;
+    <div class="modal-overlay" (click)="closeCompleteModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <span class="material-symbols-outlined modal-icon">cleaning_services</span>
+            <div>
+              <h3>Completar Limpieza</h3>
+              <p class="modal-subtitle">Hab. <strong>{{ ci.roomLabel }}</strong> &middot; {{ taskTypeLabels[ci.taskType] || ci.taskType }}</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close" (click)="closeCompleteModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form [formGroup]="completeForm" (submit)="$event.preventDefault(); submitCompleteCleaning()" class="modal-form">
+          <!-- Observations -->
+          <div class="form-group">
+            <label for="observations">Observaciones de la limpieza</label>
+            <textarea id="observations" formControlName="observations" rows="2"
+              placeholder="Estado de la habitación, toallas cambiadas, etc."></textarea>
+          </div>
+
+          <div class="form-divider"></div>
+
+          <!-- Damage Found -->
+          <div class="form-inline">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="damageFound" />
+              <span class="checkbox-custom">
+                <span class="material-symbols-outlined">report</span>
+              </span>
+              <span>¿Se encontraron daños?</span>
+            </label>
+          </div>
+          @if (completeForm.get('damageFound')?.value) {
+            <div class="form-group">
+              <label for="damageDesc">Descripción del daño</label>
+              <textarea id="damageDesc" formControlName="damageDescription" rows="2"
+                placeholder="Describir el daño encontrado (mueble roto, mancha, etc.)"></textarea>
+            </div>
+          }
+
+          <!-- Lost Object Found -->
+          <div class="form-inline">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="lostObjectFound" />
+              <span class="checkbox-custom">
+                <span class="material-symbols-outlined">search</span>
+              </span>
+              <span>¿Se encontraron objetos olvidados?</span>
+            </label>
+          </div>
+          @if (completeForm.get('lostObjectFound')?.value) {
+            <div class="form-group">
+              <label for="lostDesc">Descripción del objeto</label>
+              <textarea id="lostDesc" formControlName="lostObjectDescription" rows="2"
+                placeholder="Describir el objeto encontrado (joyas, cartera, etc.)"></textarea>
+            </div>
+          }
+
+          <!-- Needs Maintenance -->
+          <div class="form-inline">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="needsMaintenance" />
+              <span class="checkbox-custom">
+                <span class="material-symbols-outlined">build</span>
+              </span>
+              <span>¿Requiere mantenimiento?</span>
+            </label>
+          </div>
+          @if (completeForm.get('needsMaintenance')?.value) {
+            <div class="form-group">
+              <label for="maintDesc">Descripción del mantenimiento requerido</label>
+              <textarea id="maintDesc" formControlName="maintenanceDescription" rows="2"
+                placeholder="Describir qué mantenimiento se necesita (A/C, fontanería, etc.)"></textarea>
+            </div>
+          }
+
+          <div class="form-divider"></div>
+
+          <!-- Summary -->
+          @let fv = completeForm.getRawValue();
+          @if (fv.damageFound || fv.lostObjectFound || fv.needsMaintenance) {
+            <div class="complete-summary">
+              @if (fv.damageFound) {
+                <div class="summary-item summary-damage">
+                  <span class="material-symbols-outlined">report</span>
+                  <span>Daño reportado — se creará ticket de mantenimiento</span>
+                </div>
+              }
+              @if (fv.lostObjectFound) {
+                <div class="summary-item summary-lost">
+                  <span class="material-symbols-outlined">search</span>
+                  <span>Objeto olvidado — se registrará en Lost &amp; Found</span>
+                </div>
+              }
+              @if (fv.needsMaintenance) {
+                <div class="summary-item summary-maint">
+                  <span class="material-symbols-outlined">build</span>
+                  <span>Mantenimiento requerido — se creará ticket</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="complete-summary summary-clean">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Limpieza estándar — sin novedades reportadas</span>
+            </div>
+          }
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="closeCompleteModal()">
+              <span class="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary">
+              <span class="material-symbols-outlined">check</span>
+              Completar Limpieza
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   }
 </div>

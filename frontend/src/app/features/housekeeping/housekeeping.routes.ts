@@ -3,6 +3,11 @@ import { Routes } from '@angular/router';
 export const HOUSEKEEPING_ROUTES: Routes = [
   {
     path: '',
+    redirectTo: 'dashboard',
+    pathMatch: 'full',
+  },
+  {
+    path: 'dashboard',
     loadComponent: () =>
       import('./pages/housekeeping-dashboard-page/housekeeping-dashboard-page').then(
         (m) => m.HousekeepingDashboardPageComponent
