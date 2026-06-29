@@ -1,0 +1,67 @@
+.compare-page {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 0 2.5rem;
+}
+
+.compare-hero {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0f1b2d 0%, #1a2d4a 40%, #244274 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 2.5rem 2rem;
+  color: #fff;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  margin-bottom: 0.6rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hero-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  opacity: 0.78;
+}
+
+@media (max-width: 700px) {
+  .compare-page {
+    padding: 0 0 1.5rem;
+    gap: 1rem;
+  }
+  .hero-content {
+    padding: 1.75rem 1.25rem;
+  }
+  .hero-title {
+    font-size: 1.25rem;
+  }
+}

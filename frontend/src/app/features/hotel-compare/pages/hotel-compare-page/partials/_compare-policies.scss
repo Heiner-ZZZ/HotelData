@@ -1,0 +1,94 @@
+.policies-section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.policies-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.policy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
+  background: rgba(20, 99, 255, 0.04);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+}
+
+.policy-icon {
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  flex-shrink: 0;
+}
+
+.policy-info {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.policy-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.policy-value {
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.cancellation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+
+.canc-icon {
+  font-size: 0.9rem;
+  color: #ef4444;
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  flex-shrink: 0;
+}
+
+.canc-info {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.canc-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.canc-value {
+  font-size: 0.72rem;
+  color: var(--app-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}

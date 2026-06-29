@@ -1,0 +1,86 @@
+.rooms-section {
+
+}
+
+.rooms-toggle {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0;
+  cursor: pointer;
+  color: var(--app-text);
+  transition: color 160ms ease;
+}
+
+.rooms-toggle:hover {
+  color: var(--accent);
+}
+
+.toggle-arrow {
+  font-size: 1.1rem;
+  transition: transform 220ms ease;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.rooms-toggle.is-expanded .toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.rooms-list {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.3rem 0 0.2rem;
+  animation: slideDown 220ms ease both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.room-item {
+  padding: 0.55rem 0.7rem;
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.room-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.room-item-icon {
+  font-size: 1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+}
+
+.room-item-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.room-item-cap {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+.room-item-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  line-height: 1.4;
+}
