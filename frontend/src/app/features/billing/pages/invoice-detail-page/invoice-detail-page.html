@@ -26,20 +26,40 @@
           <div class="inv-actions">
             <button type="button" class="inv-btn inv-btn-outline" (click)="printPage()">
               <span class="material-symbols-outlined">print</span>
-              Imprimir Factura
+              Imprimir
             </button>
-            <button type="button" class="inv-btn inv-btn-outline" disabled>
-              <span class="material-symbols-outlined">mail</span>
-              Enviar por Email
-            </button>
-            @if (isIssued()) {
+            @if (canModify()) {
+              <button type="button" class="inv-btn inv-btn-primary" (click)="openAddForm()">
+                <span class="material-symbols-outlined">add_circle</span>
+                Agregar Cargo
+              </button>
               <button type="button" class="inv-btn inv-btn-danger" (click)="cancelInvoice()">
                 <span class="material-symbols-outlined">cancel</span>
-                Anular Comprobante
+                Anular
               </button>
             }
           </div>
         </header>
+
+        <!-- Guest info bar -->
+        <div class="inv-guest-bar">
+          <div class="inv-guest-item">
+            <span class="inv-guest-label">Huésped</span>
+            <span class="inv-guest-value">{{ inv.guestName || '—' }}</span>
+          </div>
+          <div class="inv-guest-item">
+            <span class="inv-guest-label">Estancia</span>
+            <span class="inv-guest-value">{{ inv.checkInDate }} → {{ inv.checkOutDate }}</span>
+          </div>
+          <div class="inv-guest-item">
+            <span class="inv-guest-label">Habitación</span>
+            <span class="inv-guest-value">{{ inv.roomLabels.join(', ') || '—' }}</span>
+          </div>
+          <div class="inv-guest-item">
+            <span class="inv-guest-label">Hotel</span>
+            <span class="inv-guest-value">{{ inv.hotelLabel || '#' + inv.propId }}</span>
+          </div>
+        </div>
 
         <!-- ═══ Messages ═══ -->
         @if (actionMessage(); as msg) {
@@ -59,12 +79,146 @@
           <!-- ── Left Column (2/3) ── -->
           <div class="inv-left">
 
-            <!-- Emisor / Receptor -->
+            <!-- Add charge form (inline, shown when addMode) -->
+            @if (addMode()) {
+              <section class="inv-card inv-add-form">
+                <h2 class="inv-card-header">
+                  <span class="material-symbols-outlined inv-card-icon">add_circle</span>
+                  Agregar Cargo a la Factura
+                </h2>
+                <div class="inv-add-grid">
+                  <div class="inv-field">
+                    <label class="inv-label">Concepto</label>
+                    <input class="inv-input" type="text" placeholder="Ej: Estacionamiento"
+                      [ngModel]="addForm().name"
+                      (ngModelChange)="addForm.update(f => ({...f, name: $event}))" />
+                  </div>
+                  <div class="inv-field">
+                    <label class="inv-label">Categoría</label>
+                    <select class="inv-input"
+                      [ngModel]="addForm().category"
+                      (ngModelChange)="addForm.update(f => ({...f, category: $event}))">
+                      @for (cat of categories; track cat.id) {
+                        <option [value]="cat.id">{{ cat.label }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="inv-field">
+                    <label class="inv-label">Cantidad</label>
+                    <input class="inv-input" type="number" min="1"
+                      [ngModel]="addForm().quantity"
+                      (ngModelChange)="addForm.update(f => ({...f, quantity: +$event}))" />
+                  </div>
+                  <div class="inv-field">
+                    <label class="inv-label">Precio Unitario ($)</label>
+                    <input class="inv-input" type="number" step="0.01" min="0"
+                      [ngModel]="addForm().unit_price"
+                      (ngModelChange)="addForm.update(f => ({...f, unit_price: +$event}))" />
+                  </div>
+                </div>
+                @if (addForm().unit_price > 0) {
+                  <div class="inv-preview">
+                    Total: <strong>${{ (addForm().unit_price * Math.max(1, addForm().quantity)).toFixed(2) }}</strong>
+                  </div>
+                }
+                <div class="inv-add-actions">
+                  <button type="button" class="inv-btn inv-btn-outline" (click)="closeAddForm()" [disabled]="addBusy()">Cancelar</button>
+                  <button type="button" class="inv-btn inv-btn-primary" (click)="submitAddItem()"
+                    [disabled]="addBusy() || !addForm().name || addForm().unit_price <= 0">
+                    @if (addBusy()) {
+                      <span class="spinner"></span> Agregando...
+                    } @else {
+                      <span class="material-symbols-outlined">add</span>
+                      Agregar a Factura
+                    }
+                  </button>
+                </div>
+              </section>
+            }
+
+            <!-- Line Items Table -->
+            <section class="inv-card inv-card-table">
+              <div class="inv-card-header inv-card-header-bg">
+                <span class="material-symbols-outlined inv-card-icon">receipt_long</span>
+                <h2>Conceptos</h2>
+                <span class="inv-count-badge">{{ lineItems().length }} línea(s)</span>
+              </div>
+              <div class="inv-table-wrap">
+                <table class="inv-table">
+                  <thead>
+                    <tr>
+                      <th>Descripción</th>
+                      <th class="th-num">Cant</th>
+                      <th class="th-num">P. Unit</th>
+                      <th class="th-num">Importe</th>
+                      @if (canModify()) { <th class="th-act"></th> }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Room charge (synthetic row) -->
+                    @if (inv.roomSubtotal > 0) {
+                      <tr>
+                        <td>
+                          <div class="td-name">
+                            <span class="material-symbols-outlined td-icon">bed</span>
+                            {{ inv.roomTypeName || 'Habitación' }}
+                          </div>
+                          <div class="td-sub">
+                            {{ inv.checkInDate }} → {{ inv.checkOutDate }}
+                            @if (inv.roomLabels.length) {
+                              · Hab. {{ inv.roomLabels.join(', ') }}
+                            }
+                          </div>
+                        </td>
+                        <td class="td-num">{{ inv.totalNights }}</td>
+                        <td class="td-num mono">${{ (inv.roomSubtotal / Math.max(1, inv.totalNights)).toFixed(2) }}</td>
+                        <td class="td-num mono td-total">${{ inv.roomSubtotal.toFixed(2) }}</td>
+                        @if (canModify()) {
+                          <td class="td-act"></td>
+                        }
+                      </tr>
+                    }
+                    <!-- Extra charges -->
+                    @for (li of lineItems(); track li.itemId) {
+                      <tr>
+                        <td>
+                          <div class="td-name">
+                            <span class="material-symbols-outlined td-icon">{{ categoryIcon(li.category || '') }}</span>
+                            {{ li.name }}
+                          </div>
+                        </td>
+                        <td class="td-num">{{ li.quantity }}</td>
+                        <td class="td-num mono">${{ li.unitPrice.toFixed(2) }}</td>
+                        <td class="td-num mono td-total">${{ li.total.toFixed(2) }}</td>
+                        @if (canModify()) {
+                          <td class="td-act">
+                            @if (canRemove(li)) {
+                              <button type="button" class="inv-remove-btn"
+                                (click)="removeItem(li)"
+                                [disabled]="removeBusy() === li.itemId"
+                                title="Eliminar concepto">
+                                @if (removeBusy() === li.itemId) {
+                                  <span class="spinner-sm"></span>
+                                } @else {
+                                  <span class="material-symbols-outlined">close</span>
+                                }
+                              </button>
+                            }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Emisor / Receptor Bento -->
             <div class="inv-bento">
               <section class="inv-card">
                 <h2 class="inv-card-header">
                   <span class="material-symbols-outlined inv-card-icon">business</span>
-                  Datos del Emisor
+                  Emisor
                 </h2>
                 <dl class="inv-dl">
                   <div>
@@ -77,15 +231,14 @@
                   </div>
                 </dl>
               </section>
-
               <section class="inv-card">
                 <h2 class="inv-card-header">
                   <span class="material-symbols-outlined inv-card-icon">person</span>
-                  Datos del Receptor
+                  Receptor
                 </h2>
                 <dl class="inv-dl">
                   <div>
-                    <dt>Razón Social</dt>
+                    <dt>Nombre</dt>
                     <dd class="dd-bold">{{ inv.guestName || '—' }}</dd>
                   </div>
                   <div>
@@ -99,57 +252,6 @@
                 </dl>
               </section>
             </div>
-
-            <!-- Conceptos -->
-            <section class="inv-card inv-card-table">
-              <div class="inv-card-header inv-card-header-bg">
-                <span class="material-symbols-outlined inv-card-icon">receipt_long</span>
-                <h2>Desglose de Conceptos</h2>
-              </div>
-              <div class="inv-table-wrap">
-                <table class="inv-table">
-                  <thead>
-                    <tr>
-                      <th>Descripción</th>
-                      <th class="th-num">Cant</th>
-                      <th class="th-num">V. Unitario</th>
-                      <th class="th-num">Importe</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>
-                        <div class="td-name">{{ inv.roomTypeName || 'Habitación' }}</div>
-                        <div class="td-sub">
-                          {{ inv.checkInDate }} → {{ inv.checkOutDate }}
-                          @if (inv.roomLabels.length) {
-                            · Hab. {{ inv.roomLabels.join(', ') }}
-                          }
-                        </div>
-                      </td>
-                      <td class="td-num">{{ inv.totalNights }}</td>
-                      <td class="td-num mono">{{ roomSubtotal() | currency:'USD' }}</td>
-                      <td class="td-num mono">{{ roomSubtotal() | currency:'USD' }}</td>
-                    </tr>
-                    @for (li of lineItems(); track li.itemId) {
-                      <tr>
-                        <td>
-                          <div class="td-name">{{ li.name }}</div>
-                          <div class="td-sub">
-                          @if (li.productId) {
-                            Código: {{ li.productId }}
-                          }
-                        </div>
-                        </td>
-                        <td class="td-num">{{ li.quantity }}</td>
-                        <td class="td-num mono">{{ li.unitPrice | currency:'USD' }}</td>
-                        <td class="td-num mono">{{ li.total | currency:'USD' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </section>
 
             <!-- Payment History -->
             @if (payments().length) {
@@ -178,15 +280,15 @@
               </section>
             }
 
-            @if (isIssued()) {
+            @if (canModify()) {
               <section class="inv-card inv-card-actions">
                 <button type="button" class="inv-btn inv-btn-primary" (click)="payInvoice()">
                   <span class="material-symbols-outlined">payments</span>
                   Registrar Pago
                 </button>
-                <button type="button" class="inv-btn inv-btn-danger-outline" (click)="cancelInvoice()">
-                  <span class="material-symbols-outlined">cancel</span>
-                  Anular Factura
+                <button type="button" class="inv-btn inv-btn-danger-outline" (click)="openAddForm()">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Agregar Cargo
                 </button>
               </section>
             }
@@ -199,29 +301,29 @@
             <!-- Summary Card -->
             <section class="inv-summary">
               <div class="inv-summary-bg"></div>
-              <h2 class="inv-summary-title">Resumen Total</h2>
+              <h2 class="inv-summary-title">Resumen</h2>
 
               <div class="inv-summary-rows">
+                @if (inv.roomSubtotal > 0) {
+                  <div class="inv-summary-row">
+                    <span>Habitación</span>
+                    <span class="mono">${{ inv.roomSubtotal.toFixed(2) }}</span>
+                  </div>
+                }
+                @if (inv.extrasTotal > 0) {
+                  <div class="inv-summary-row">
+                    <span>Cargos</span>
+                    <span class="mono">${{ inv.extrasTotal.toFixed(2) }}</span>
+                  </div>
+                }
                 <div class="inv-summary-row">
                   <span>Subtotal</span>
                   <span class="mono">${{ subtotal().toFixed(2) }}</span>
                 </div>
-                @if (discount() > 0) {
-                  <div class="inv-summary-row">
-                    <span>Descuento</span>
-                    <span class="mono" style="color: #ba1a1a;">-${{ discount().toFixed(2) }}</span>
-                  </div>
-                }
                 <div class="inv-summary-row">
                   <span>IVA ({{ taxRate().toFixed(0) }}%)</span>
                   <span class="mono">${{ taxes().toFixed(2) }}</span>
                 </div>
-                @if (extrasTotal() > 0) {
-                  <div class="inv-summary-row">
-                    <span>Extras</span>
-                    <span class="mono">${{ extrasTotal().toFixed(2) }}</span>
-                  </div>
-                }
               </div>
 
               <div class="inv-summary-divider"></div>
@@ -231,30 +333,48 @@
                 <span class="inv-summary-amount">${{ total().toFixed(2) }}</span>
               </div>
 
+              <!-- Paid / Pending -->
+              <div class="inv-pay-status">
+                <div class="inv-pay-row paid">
+                  <span>Pagado</span>
+                  <span class="mono paid-amount">${{ totalPaidAmount().toFixed(2) }}</span>
+                </div>
+                <div class="inv-pay-row pending">
+                  <span>Pendiente</span>
+                  <span class="mono pending-amount">${{ totalPendingAmount().toFixed(2) }}</span>
+                </div>
+              </div>
+
               <div class="inv-summary-literal">
                 ({{ totalLiteral() }})
               </div>
 
               <div class="inv-summary-meta">
-                Moneda: USD | Tipo de Cambio: 1.00
+                Moneda: USD | Líneas: {{ lineItems().length }}
               </div>
 
-              <button type="button" class="inv-btn inv-btn-primary inv-btn-full" (click)="printPage()">
+              @if (canModify()) {
+                <button type="button" class="inv-btn inv-btn-primary inv-btn-full" (click)="openAddForm()">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Agregar Cargo
+                </button>
+              }
+              <button type="button" class="inv-btn inv-btn-outline inv-btn-full" (click)="printPage()">
                 <span class="material-symbols-outlined">download</span>
-                Descargar PDF/XML
+                Descargar PDF
               </button>
             </section>
 
             <!-- Fiscal Info -->
             <section class="inv-card">
-              <h3 class="inv-fiscal-title">Información Fiscal (SAT)</h3>
+              <h3 class="inv-fiscal-title">Información Fiscal</h3>
               <dl class="inv-fiscal-dl">
                 <div>
-                  <dt>Folio Fiscal (UUID)</dt>
+                  <dt>Folio (UUID)</dt>
                   <dd class="dd-mono-sm break-all">{{ inv.id }}</dd>
                 </div>
                 <div>
-                  <dt>Fecha de Emisión</dt>
+                  <dt>Emisión</dt>
                   <dd>{{ inv.issuedAt | date:'dd/MM/yyyy HH:mm' }}</dd>
                 </div>
                 <div>
