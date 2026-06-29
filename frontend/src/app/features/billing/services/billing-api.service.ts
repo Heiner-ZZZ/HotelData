@@ -43,6 +43,23 @@ export class BillingApiService {
       .pipe(map(dto => mapInvoicesList(dto)));
   }
 
+  /** Add a line item to an invoice (only if status='issued'). */
+  addLineItem(invoiceId: string, payload: { name: string; quantity?: number; unit_price?: number; category?: string }) {
+    return this.http.post<InvoiceDetailDto>(
+      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/items`,
+      payload,
+      { withCredentials: true },
+    ).pipe(map(dto => mapInvoiceDetail(dto)));
+  }
+
+  /** Remove a line item from an invoice (only if status='issued'). Cannot remove room charge. */
+  removeLineItem(invoiceId: string, itemId: string) {
+    return this.http.delete<InvoiceDetailDto>(
+      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/items/${itemId}`,
+      { withCredentials: true },
+    ).pipe(map(dto => mapInvoiceDetail(dto)));
+  }
+
   payInvoice(invoiceId: string) {
     return this.http.post<{ ok: boolean; message: string; payment: Record<string, unknown> }>(
       `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/pay`,
