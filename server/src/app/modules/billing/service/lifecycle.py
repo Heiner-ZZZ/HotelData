@@ -200,7 +200,66 @@ def get_invoice(invoice_id: str) -> dict | None:
         doc = db[INVOICES].find_one({"_id": ObjectId(invoice_id)})
     except (InvalidId, Exception):
         return None
-    return _enrich_invoice(doc) if doc else None
+    if not doc:
+        return None
+    enriched = _enrich_invoice(doc)
+
+    # ── Enrich with booking/guest/hotel data ──
+    booking_id = enriched.get("booking_id", "")
+    prop_id = int(enriched.get("prop_id", 0))
+
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "guest_name": 1, "guest_email": 1, "cedula": 1,
+         "check_in_date": 1, "check_out_date": 1, "total_nights": 1,
+         "rooms": 1, "room_type_id": 1, "assigned_rooms": 1},
+    )
+    if booking:
+        enriched["guest_name"] = booking.get("guest_name", "")
+        enriched["guest_email"] = booking.get("guest_email", "")
+        enriched["guest_cedula"] = booking.get("cedula", "")
+        enriched["check_in_date"] = booking.get("check_in_date", "")
+        enriched["check_out_date"] = booking.get("check_out_date", "")
+        enriched["total_nights"] = booking.get("total_nights", 1)
+        enriched["rooms"] = booking.get("rooms", 1)
+        # Resolve room type name
+        room_type_id = booking.get("room_type_id", "")
+        if room_type_id:
+            rt = db.room_types.find_one(
+                {"room_type_id": room_type_id, "prop_id": prop_id},
+                {"_id": 0, "name": 1},
+            )
+            enriched["room_type_name"] = rt.get("name", room_type_id) if rt else room_type_id
+        else:
+            enriched["room_type_name"] = ""
+        # Resolve assigned room labels
+        assigned_ids = booking.get("assigned_rooms") or []
+        room_labels = []
+        if assigned_ids:
+            room_docs = list(
+                db.hotel_rooms.find(
+                    {"hotel_room_id": {"$in": assigned_ids}},
+                    {"_id": 0, "room_label": 1, "room_number": 1},
+                )
+            )
+            for r in room_docs:
+                room_labels.append(r.get("room_label", "") or r.get("room_number", ""))
+        enriched["room_labels"] = room_labels
+
+    # Hotel label
+    if prop_id:
+        ctx = db.hotel_booking_context.find_one({"prop_id": prop_id}, {"_id": 0, "hotel_label": 1})
+        enriched["hotel_label"] = ctx.get("hotel_label", "") if ctx else f"Hotel #{prop_id}"
+    else:
+        enriched["hotel_label"] = ""
+
+    # ── Fetch payments for this invoice ──
+    payments = list(
+        db[PAYMENTS].find({"invoice_id": ObjectId(invoice_id)}).sort("paid_at", -1).limit(50)
+    )
+    enriched["payments"] = [_enrich_payment(p) for p in payments]
+
+    return enriched
 
 
 def cancel_invoice(invoice_id: str) -> dict | None:
