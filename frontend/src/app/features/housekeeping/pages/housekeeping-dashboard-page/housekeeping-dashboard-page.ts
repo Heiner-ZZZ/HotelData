@@ -1,15 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingApiService, type HousekeepingDashboard } from '../../services/housekeeping-api.service';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -61,54 +60,46 @@ export class HousekeepingDashboardPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly propertyCtx = inject(PropertyContextService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly dashboard = signal<HousekeepingDashboard | null>(null);
-  readonly selectedPropId = signal(0);
-  readonly selectedFloor = signal<string>('');
+  // ── Reactive URL params ──
+  private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+
+  readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
+  private readonly selectedLabel = computed(() => this.qp()?.get('prop_label') ?? '');
+  readonly selectedFloor = computed(() => this.qp()?.get('floor') ?? '');
+
+  // ── Dashboard resource ──
+  private readonly dashboardResource = rxResource<any, any>({
+    params: () => {
+      const pid = this.selectedPropId();
+      return { propId: pid };
+    },
+    stream: ({ params }) => {
+      const { propId } = params as any;
+      if (propId) {
+        this.propertyCtx.setProperty(propId, this.selectedLabel() || `Propiedad #${propId}`);
+      } else {
+        this.propertyCtx.clear();
+      }
+      return propId ? this.api.getDashboard(propId) : this.api.getDashboard();
+    },
+  });
+
+  readonly dashboard = computed(() => this.dashboardResource.value() ?? null);
+
+  readonly viewState = computed(() => {
+    const r = this.dashboardResource;
+    if (r.isLoading() || r.status() === 'idle') return 'loading' as const;
+    if (r.error()) return 'error' as const;
+    const d = r.value();
+    if (!d) return 'error' as const;
+    return 'success' as const;
+  });
 
   readonly kpiCards = KPI_CARDS;
 
-  constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => ({
-          propId: Number(params.get('prop_id') ?? '0'),
-          propLabel: params.get('prop_label') ?? '',
-        })),
-        distinctUntilChanged((a, b) => a.propId === b.propId),
-        switchMap(({ propId, propLabel }) => {
-          this.viewState.set('loading');
-          this.selectedPropId.set(propId);
-          this.selectedFloor.set('');
-          if (!propId) {
-            this.propertyCtx.clear();
-            return this.api.getDashboard();
-          }
-          this.propertyCtx.setProperty(propId, propLabel || `Propiedad #${propId}`);
-          return this.api.getDashboard(propId);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          this.dashboard.set(data);
-          this.viewState.set('success');
-        },
-        error: () => this.viewState.set('error'),
-      });
-  }
-
-  /** KPI value from the dashboard object. */
-  kpiValue(key: string): number {
-    const d = this.dashboard();
-    if (!d) return 0;
-    return (d as any)[key] ?? 0;
-  }
-
-  /** Total rooms for occupancy rate display. */
+  // ── Derived KPIs ──
   readonly totalRooms = computed(() => this.dashboard()?.totalRooms ?? 0);
   readonly occupancyRate = computed(() => this.dashboard()?.occupancyRate ?? 0);
   readonly completedToday = computed(() => this.dashboard()?.completedToday ?? 0);
@@ -118,8 +109,17 @@ export class HousekeepingDashboardPageComponent {
     const fl = this.floors();
     const sf = this.selectedFloor();
     if (!sf) return fl;
-    return fl.filter((f) => f.floor === sf);
+    return fl.filter((f: any) => f.floor === sf);
   });
+
+  // ── Helpers ──
+
+  /** KPI value from the dashboard object. */
+  kpiValue(key: string): number {
+    const d = this.dashboard();
+    if (!d) return 0;
+    return (d as any)[key] ?? 0;
+  }
 
   getStatusColor(status: string): string {
     return STATUS_COLORS[status] ?? '#6f797d';
@@ -134,11 +134,21 @@ export class HousekeepingDashboardPageComponent {
     return Object.entries(counts).filter(([, v]) => v > 0);
   }
 
+  // ── Navigation ──
+
   onPropSelected(event: { propId: number; label: string }): void {
     const label = event.label || `Propiedad #${event.propId}`;
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { prop_id: event.propId || null, prop_label: label || null },
+      queryParams: { prop_id: event.propId || null, prop_label: label || null, floor: null },
+    });
+  }
+
+  onFloorSelected(floor: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { floor: floor || null },
+      queryParamsHandling: 'merge',
     });
   }
 }

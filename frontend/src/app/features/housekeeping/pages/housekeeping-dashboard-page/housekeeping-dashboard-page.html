@@ -80,11 +80,11 @@
               <span class="hk-filter-label">Piso:</span>
               <button type="button" class="hk-floor-chip"
                 [class.active]="!selectedFloor()"
-                (click)="selectedFloor.set('')">Todos</button>
+                (click)="onFloorSelected('')">Todos</button>
               @for (f of floors(); track f.floor) {
                 <button type="button" class="hk-floor-chip"
                   [class.active]="selectedFloor() === f.floor"
-                  (click)="selectedFloor.set(f.floor)">
+                  (click)="onFloorSelected(f.floor)">
                   Piso {{ f.floor }}
                   <span class="hk-chip-count">{{ f.count }}</span>
                 </button>

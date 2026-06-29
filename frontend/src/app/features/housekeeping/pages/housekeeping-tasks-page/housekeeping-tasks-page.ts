@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { lastValueFrom, Observable, switchMap } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
-import { lastValueFrom } from 'rxjs';
+
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -90,22 +91,24 @@ export class HousekeepingTasksPageComponent {
   );
 
   // ── Rooms resource (fetches room labels after sync) ──
-  readonly roomsResource = rxResource({
-    request: () => this.selectedPropId() || undefined,
-    loader: async ({ request }) => {
-      if (!request) return { items: [] } as any;
-      await lastValueFrom(this.api.syncRoomStatus(request));
-      return lastValueFrom(this.api.getRoomStatus(request, undefined, 1));
+  readonly roomsResource = rxResource<any, any>({
+    params: () => this.selectedPropId() || undefined,
+    stream: ({ params }) => {
+      const pid = params as any;
+      if (!pid) return new Observable(sub => { sub.next({ items: [] }); sub.complete(); });
+      return this.api.syncRoomStatus(pid).pipe(
+        switchMap(() => this.api.getRoomStatus(pid, undefined, 1)),
+      );
     },
   });
 
   readonly roomLabels = computed(() =>
-    (this.roomsResource.value()?.items ?? []).map(r => r.roomNumber || r.roomLabel),
+    (this.roomsResource.value()?.items ?? []).map((r: any) => r.roomNumber || r.roomLabel),
   );
 
   // ── Tasks resource ──
-  readonly tasksResource = rxResource({
-    request: () => {
+  readonly tasksResource = rxResource<any, any>({
+    params: () => {
       const pid = this.selectedPropId();
       if (!pid) return undefined;
       return {
@@ -115,7 +118,10 @@ export class HousekeepingTasksPageComponent {
         page: this.currentPage(),
       };
     },
-    loader: ({ request }) => this.api.getTasks(request!.propId, request!.status, request!.assignedTo, request!.page),
+    stream: ({ params }) => {
+      const r = params as any;
+      return this.api.getTasks(r.propId, r.status, r.assignedTo, r.page);
+    },
   });
 
   readonly tasks = computed(() => this.tasksResource.value() ?? null);
@@ -135,10 +141,10 @@ export class HousekeepingTasksPageComponent {
     // require a dedicated endpoint. For now show what we can.
     const allItems = items;
     return {
-      pending: allItems.filter(i => i.status === 'pending').length,
-      inProgress: allItems.filter(i => i.status === 'in_progress').length,
-      inspection: allItems.filter(i => i.status === 'inspection').length,
-      completed: allItems.filter(i => i.status === 'completed').length,
+      pending: allItems.filter((i: any) => i.status === 'pending').length,
+      inProgress: allItems.filter((i: any) => i.status === 'in_progress').length,
+      inspection: allItems.filter((i: any) => i.status === 'inspection').length,
+      completed: allItems.filter((i: any) => i.status === 'completed').length,
     };
   });
 

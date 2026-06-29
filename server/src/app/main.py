@@ -79,6 +79,7 @@ from src.app.modules.reservations.service import ensure_reservation_collections
 from src.app.modules.reception import ensure_reception_collections
 from src.app.modules.global_settings.service import ensure_global_settings_collections
 from src.app.modules.geo_catalog.service import ensure_geo_collections
+from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
 import logging
 
 from config.settings import get_settings
