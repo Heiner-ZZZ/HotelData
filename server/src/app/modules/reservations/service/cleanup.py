@@ -75,6 +75,73 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
     }
 
 
+def _calculate_cancellation_penalty(
+    prop_id: int,
+    check_in_date: str,
+    total_price: float | None,
+    total_nights: int,
+) -> dict[str, Any]:
+    """Determine if a cancellation penalty applies based on hotel policy.
+
+    Returns a dict with:
+      - free_cancellation: bool
+      - penalty_percent: int
+      - penalty_amount: float
+      - hours_until_checkin: int | None
+      - cancellation_hours: int
+    """
+    if not check_in_date:
+        return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
+                "hours_until_checkin": None, "cancellation_hours": 0}
+
+    db = get_database()
+    policy = db.hotel_policies.find_one(
+        {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
+        {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
+    )
+    if not policy:
+        return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
+                "hours_until_checkin": None, "cancellation_hours": 0}
+
+    cancellation_hours = int(policy.get("cancellation_hours", 0) or 0)
+    penalty_percent = int(policy.get("cancellation_penalty_percent", 100) or 100)
+
+    if cancellation_hours <= 0:
+        return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
+                "hours_until_checkin": None, "cancellation_hours": 0}
+
+    try:
+        checkin_dt = datetime.strptime(check_in_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
+                "hours_until_checkin": None, "cancellation_hours": cancellation_hours}
+
+    now = datetime.now(timezone.utc)
+    # check_in_date is at midnight, so hours_until = (checkin - now) total hours
+    delta = checkin_dt - now
+    hours_until_checkin = max(0, int(delta.total_seconds() / 3600))
+
+    if hours_until_checkin >= cancellation_hours:
+        # Outside penalty window → free cancellation
+        return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
+                "hours_until_checkin": hours_until_checkin, "cancellation_hours": cancellation_hours}
+
+    # Inside penalty window → calculate amount
+    if total_price is None or total_price <= 0 or total_nights <= 0:
+        penalty_amount = 0.0
+    else:
+        one_night = total_price / total_nights
+        penalty_amount = round(one_night * penalty_percent / 100, 2)
+
+    return {
+        "free_cancellation": False,
+        "penalty_percent": penalty_percent,
+        "penalty_amount": penalty_amount,
+        "hours_until_checkin": hours_until_checkin,
+        "cancellation_hours": cancellation_hours,
+    }
+
+
 def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", changed_by: str = "web") -> dict[str, Any]:
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
@@ -85,19 +152,43 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if today_str >= booking.get("check_in_date", ""):
         raise ValueError("No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
+
+    # ── Calculate cancellation penalty ──
+    penalty = _calculate_cancellation_penalty(
+        prop_id=int(booking.get("prop_id", 0)),
+        check_in_date=booking.get("check_in_date", ""),
+        total_price=booking.get("total_price"),
+        total_nights=int(booking.get("total_nights", 0)),
+    )
+
     changed_at = utc_now()
+    update_set: dict[str, Any] = {
+        "status": "cancelled",
+        "updated_at": changed_at,
+        "cancel_reason": reason,
+        "cancellation_free": penalty["free_cancellation"],
+        "cancellation_penalty_percent": penalty["penalty_percent"],
+        "cancellation_penalty_amount": penalty["penalty_amount"],
+    }
     db.booking_orders.update_one(
         {"booking_id": booking_id},
-        {"$set": {"status": "cancelled", "updated_at": changed_at, "cancel_reason": reason}},
+        {"$set": update_set},
     )
+
+    reason_detail = reason
+    if not penalty["free_cancellation"]:
+        reason_detail = f"{reason} — penalización: ${penalty['penalty_amount']:.2f} ({penalty['penalty_percent']}% de 1 noche)"
+
     db.booking_status_history.insert_one(
         {
             "booking_id": booking_id,
             "status": "cancelled",
             "changed_at": changed_at,
-            "reason": reason,
+            "reason": reason_detail,
             "changed_by": changed_by,
             "is_test": bool(booking.get("is_test")),
+            "cancellation_penalty_amount": penalty["penalty_amount"],
+            "cancellation_free": penalty["free_cancellation"],
         }
     )
     if db.manual_reservations.count_documents({"booking_id": booking_id}) > 0:
@@ -121,12 +212,20 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
                 total_price=booking.get("total_price"),
                 currency=booking.get("currency", "USD"),
                 total_nights=int(booking.get("total_nights", 0)),
-                reason=reason,
+                reason=reason_detail,
             )
     except Exception:
         logger.exception("Failed to notify guest on cancel for booking %s", booking_id)
 
-    return {"booking_id": booking_id, "status": "cancelled"}
+    return {
+        "booking_id": booking_id,
+        "status": "cancelled",
+        "free_cancellation": penalty["free_cancellation"],
+        "penalty_amount": penalty["penalty_amount"],
+        "penalty_percent": penalty["penalty_percent"],
+        "hours_until_checkin": penalty["hours_until_checkin"],
+        "cancellation_hours": penalty["cancellation_hours"],
+    }
 
 
 def cleanup_test_booking(booking_id: str) -> dict[str, Any]:

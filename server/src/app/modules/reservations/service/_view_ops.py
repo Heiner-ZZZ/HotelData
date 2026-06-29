@@ -69,6 +69,7 @@ def _operational_item(
         "room_numbers_label": assigned_room_numbers,
         "estimated_time": reference_time,
         "notes": comment or "Sin notas",
+        "total_price": booking.get("total_price") or 0,
         "balance_label": "N/D",
         "can_complete": stay_status not in (CHECKIN_COMPLETED_STATUSES if flow == "check_in" else CHECKOUT_COMPLETED_STATUSES)
         and booking.get("status") not in {"cancelled", "rejected"},

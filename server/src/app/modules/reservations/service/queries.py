@@ -338,6 +338,48 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         total_nights=int(booking.get("total_nights", 0)),
     )
 
+    # Additional charges (amenities, room service, etc.)
+    from src.app.modules.housekeeping.service.collections import CHARGES_COLLECTION
+    additional_charges = list(
+        db[CHARGES_COLLECTION].find({"booking_id": booking_id}, {"_id": 0}).sort([("created_at", -1)])
+    )
+
+    # Count how many of those charges are amenities (requested via the guest flow)
+    amenities_charges = [c for c in additional_charges if c.get("concept", "").startswith("Amenidad solicitada:")]
+    amenities_count = len(amenities_charges)
+    amenities_total = round(sum(c.get("total", 0) or 0 for c in amenities_charges), 2)
+
+    # Assigned rooms with their current status from room_status_log
+    assigned_rooms: list[dict[str, Any]] = []
+    raw_ids: list[str] = booking.get("assigned_rooms") or []
+    if raw_ids:
+        # Resolve room labels from hotel_rooms
+        room_docs = list(
+            db.hotel_rooms.find(
+                {"hotel_room_id": {"$in": raw_ids}},
+                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "floor": 1},
+            )
+        )
+        # Fetch status for each room
+        labels = [r.get("room_label", "") or r.get("room_number", "") for r in room_docs if r.get("room_label") or r.get("room_number")]
+        status_map: dict[str, str] = {}
+        if labels:
+            for doc in db.room_status_log.find(
+                {"prop_id": int(booking.get("prop_id", 0)), "room_label": {"$in": labels}},
+                {"_id": 0, "room_label": 1, "status": 1},
+            ):
+                status_map[doc["room_label"]] = doc["status"]
+
+        for r in room_docs:
+            label = r.get("room_label", "") or r.get("room_number", "")
+            assigned_rooms.append({
+                "hotel_room_id": r["hotel_room_id"],
+                "room_number": r.get("room_number", ""),
+                "room_label": r.get("room_label", ""),
+                "floor": r.get("floor", ""),
+                "room_status": status_map.get(label, "unknown"),
+            })
+
     # Cancellation policy
     cancellation_policy = _get_cancellation_policy(db, int(booking.get("prop_id", 0)))
 
@@ -351,5 +393,9 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         "room_type": room_type,
         "price_breakdown": price_breakdown,
         "cancellation_policy": cancellation_policy,
+        "additional_charges": additional_charges,
+        "assigned_rooms": assigned_rooms,
+        "amenities_count": amenities_count,
+        "amenities_total": amenities_total,
         "can_cancel": booking.get("status") in {"pending", "confirmed"},
     }
