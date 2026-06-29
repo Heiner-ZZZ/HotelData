@@ -46,9 +46,12 @@ export interface HotelRoomItem {
 const _roomNumbersByType = (rooms: HotelRoomInfo[]) => {
   const map = new Map<string, string[]>();
   for (const room of rooms) {
-    const rtId = room.roomTypeId;
-    if (!map.has(rtId)) map.set(rtId, []);
-    if (room.roomNumber) map.get(rtId)!.push(room.roomNumber);
+    const keys = [room.roomTypeId];
+    if (room.roomTypeName) keys.push(room.roomTypeName);
+    for (const key of keys) {
+      if (!map.has(key)) map.set(key, []);
+      if (room.roomNumber) map.get(key)!.push(room.roomNumber);
+    }
   }
   for (const [, nums] of map) {
     nums.sort((a, b) => {
@@ -57,6 +60,7 @@ const _roomNumbersByType = (rooms: HotelRoomInfo[]) => {
       return !isNaN(na) && !isNaN(nb) ? na - nb : a.localeCompare(b);
     });
   }
+  console.log('[roomNumbersByType] map keys:', [...map.keys()], 'rooms count:', rooms.length);
   return map;
 };
 

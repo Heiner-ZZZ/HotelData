@@ -266,15 +266,21 @@ export class AvailabilityStore {
     if (!propId) { this.state.allHotelRooms.set([]); return; }
     this.api.getAllHotelRooms(propId).subscribe({
       next: (res) => {
-        this.state.allHotelRooms.set(
-          (res.hotel_rooms || []).map((r) => ({
-            hotelRoomId: r.hotel_room_id, roomNumber: r.room_number || '',
-            roomLabel: r.room_label, roomTypeId: r.room_type_id,
-            roomTypeName: r.room_type_name || '', floor: r.floor || '', isActive: r.is_active,
-          })),
-        );
+        const rooms = (res.hotel_rooms || []).map((r) => ({
+          hotelRoomId: r.hotel_room_id, roomNumber: r.room_number || '',
+          roomLabel: r.room_label, roomTypeId: r.room_type_id,
+          roomTypeName: r.room_type_name || '', floor: r.floor || '', isActive: r.is_active,
+        }));
+        console.log('[AvailabilityStore] getAllHotelRooms response:', rooms.length, 'rooms');
+        if (rooms.length > 0) {
+          console.log('[AvailabilityStore] sample room:', rooms[0]);
+        }
+        this.state.allHotelRooms.set(rooms);
       },
-      error: () => this.state.allHotelRooms.set([]),
+      error: (err) => {
+        console.error('[AvailabilityStore] getAllHotelRooms error:', err);
+        this.state.allHotelRooms.set([]);
+      },
     });
   }
 }
