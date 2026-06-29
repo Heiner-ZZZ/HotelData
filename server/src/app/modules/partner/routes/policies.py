@@ -52,11 +52,12 @@ def policies_submit(
 def policies_api(
     prop_id: int = Query(..., ge=1),
     room_type_id: str | None = Query(default=None),
+    season_id: str | None = Query(default=None),
 ):
     if room_type_id:
         detail = partner_hotel_per_room_policies(require_prop_id(prop_id), room_type_id)
     else:
-        detail = partner_hotel_policies(require_prop_id(prop_id))
+        detail = partner_hotel_policies(require_prop_id(prop_id), season_id=season_id or "")
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
@@ -103,6 +104,7 @@ def policies_update_api(
             payment_policy=str(payload.get("payment_policy") or ""),
             house_rules=str(payload.get("house_rules") or ""),
             room_type_id=str(payload.get("room_type_id") or ""),
+            season_id=str(payload.get("season_id") or ""),
             # SPEC 022 structured fields
             cancellation_hours=payload.get("cancellation_hours"),
             pets_allowed=payload.get("pets_allowed"),
@@ -111,6 +113,9 @@ def policies_update_api(
             extra_bed_fee=payload.get("extra_bed_fee"),
             min_stay=payload.get("min_stay"),
             max_stay=payload.get("max_stay"),
+            deposit_percent=payload.get("deposit_percent"),
+            deposit_required=payload.get("deposit_required"),
+            cancellation_penalty_percent=payload.get("cancellation_penalty_percent"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:

@@ -8,17 +8,22 @@ from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     batch_update_rate_calendar,
+    create_corporate_contract,
     create_rate_plan,
     create_seasonal_rule,
+    delete_corporate_contract,
     delete_rate_plan,
     delete_seasonal_rule,
     generate_calendar_from_rules,
+    list_corporate_contracts,
     list_partner_hotels,
     list_seasonal_rules,
     partner_hotel_rates,
     save_rate_calendar_entry,
+    update_corporate_contract,
     update_rate_plan,
     update_seasonal_rule,
+    validate_contract_code,
 )
 from src.app.modules.revenue.services.promotions import create_promotion_campaign
 from src.app.security.dependencies import require_login
@@ -93,6 +98,11 @@ def rates_plan_create_api(
             base_rate=payload.get("base_rate"),
             currency=str(payload.get("currency") or "USD"),
             room_type_id=str(payload.get("room_type_id") or ""),
+            base_occupancy=int(payload.get("base_occupancy") or 2),
+            extra_adult_price=float(payload.get("extra_adult_price") or 0),
+            extra_child_price=float(payload.get("extra_child_price") or 0),
+            tax_included=payload.get("tax_included", False),
+            tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
             changed_by=current_user.get("username", "system"),
         )
@@ -117,6 +127,11 @@ def rates_plan_update_api(
             base_rate=payload.get("base_rate"),
             currency=str(payload.get("currency") or "USD"),
             room_type_id=str(payload.get("room_type_id") or ""),
+            base_occupancy=int(payload.get("base_occupancy") or 2),
+            extra_adult_price=float(payload.get("extra_adult_price") or 0),
+            extra_child_price=float(payload.get("extra_child_price") or 0),
+            tax_included=payload.get("tax_included", False),
+            tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
             changed_by=current_user.get("username", "system"),
         )
@@ -209,6 +224,8 @@ def rates_calendar_update_api(
             rate_amount=payload.get("rate_amount"),
             min_stay_nights=payload.get("min_stay_nights"),
             is_closed=payload.get("is_closed", False),
+            tax_included=payload.get("tax_included"),
+            tax_rate=payload.get("tax_rate"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -235,6 +252,8 @@ def rates_calendar_batch_api(
             min_stay_nights=payload.get("min_stay_nights"),
             is_closed=payload.get("is_closed"),
             only_weekends=bool(payload.get("only_weekends", False)),
+            tax_included=payload.get("tax_included"),
+            tax_rate=payload.get("tax_rate"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -274,3 +293,121 @@ def rates_promotion_create_api(payload: dict = Body(...)):
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return saved
+
+
+# ── Corporate contracts ──
+
+
+@api_router.get("/rates/contracts")
+def rates_contracts_list_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    is_active: bool | None = Query(default=None),
+):
+    items = list_corporate_contracts(prop_id=prop_id, is_active=is_active)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.post("/rates/contracts", status_code=201)
+def rates_contract_create_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_corporate_contract(
+            prop_id,
+            company_name=str(payload.get("company_name") or ""),
+            contract_code=str(payload.get("contract_code") or ""),
+            description=str(payload.get("description") or ""),
+            discount_percent=int(payload.get("discount_percent") or 0),
+            fixed_rate=float(payload.get("fixed_rate") or 0),
+            applicable_rate_plan_ids=payload.get("applicable_rate_plan_ids"),
+            applicable_room_type_ids=payload.get("applicable_room_type_ids"),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            is_active=payload.get("is_active", True),
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.put("/rates/contracts/{contract_id}")
+def rates_contract_update_api(
+    contract_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    try:
+        saved = update_corporate_contract(
+            contract_id,
+            company_name=str(payload.get("company_name") or ""),
+            contract_code=str(payload.get("contract_code") or ""),
+            description=str(payload.get("description") or ""),
+            discount_percent=int(payload.get("discount_percent") or 0),
+            fixed_rate=float(payload.get("fixed_rate") or 0),
+            applicable_rate_plan_ids=payload.get("applicable_rate_plan_ids"),
+            applicable_room_type_ids=payload.get("applicable_room_type_ids"),
+            start_date=str(payload.get("start_date") or ""),
+            end_date=str(payload.get("end_date") or ""),
+            is_active=payload.get("is_active", True),
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
+    return saved
+
+
+@api_router.delete("/rates/contracts/{contract_id}")
+def rates_contract_delete_api(
+    contract_id: str,
+    current_user: dict = Depends(require_login),
+):
+    result = delete_corporate_contract(contract_id, changed_by=current_user.get("username", "system"))
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
+    return result
+
+
+@api_router.post("/rates/contracts/validate")
+def rates_contract_validate_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Validate a corporate contract code for a given property and room type."""
+    try:
+        prop_id = int(payload.get("prop_id") or 0)
+        contract_code = str(payload.get("contract_code") or "")
+        room_type_id = str(payload.get("room_type_id") or "")
+        if not contract_code:
+            raise HTTPException(status_code=400, detail="contract_code is required")
+        if not prop_id:
+            raise HTTPException(status_code=400, detail="prop_id is required")
+        error, contract = validate_contract_code(
+            contract_code, prop_id,
+            room_type_id=room_type_id,
+        )
+        if error:
+            raise HTTPException(status_code=400, detail=error)
+        return {
+            "valid": True,
+            "contract_id": contract.get("contract_id", "") if contract else "",
+            "company_name": contract.get("company_name", "") if contract else "",
+            "rate_label": _contract_rate_label(contract) if contract else "",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _contract_rate_label(contract: dict) -> str:
+    if contract.get("fixed_rate", 0) > 0:
+        return f"${contract['fixed_rate']:.2f}/noche (tarifa fija)"
+    pct = contract.get("discount_percent", 0)
+    return f"{pct}% descuento"

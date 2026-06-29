@@ -9,6 +9,7 @@ from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     create_room_type,
+    create_roh_room_type,
     delete_room_type,
     list_partner_hotels,
     partner_hotel_detail,
@@ -44,6 +45,9 @@ def rooms_new_submit(
     max_children: int = Form(default=0),
     base_capacity: int = Form(default=2),
     is_active: str = Form(default="on"),
+    view: str = Form(default=""),
+    smoking: str = Form(default="off"),
+    accessible: str = Form(default="off"),
 ):
     try:
         saved = create_room_type(
@@ -54,6 +58,9 @@ def rooms_new_submit(
             max_children=max_children,
             base_capacity=base_capacity,
             is_active=is_active,
+            view=view,
+            smoking=smoking,
+            accessible=accessible,
         )
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
@@ -101,6 +108,9 @@ def rooms_create_api(
             is_active=payload.get("is_active", True),
             room_number=str(payload.get("room_number") or ""),
             floor=str(payload.get("floor") or ""),
+            view=str(payload.get("view") or ""),
+            smoking=payload.get("smoking", False),
+            accessible=payload.get("accessible", False),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -142,12 +152,34 @@ def rooms_update_api(
             is_active=payload.get("is_active", True),
             room_number=str(payload.get("room_number") or ""),
             floor=str(payload.get("floor") or ""),
+            view=str(payload.get("view") or ""),
+            smoking=payload.get("smoking", False),
+            accessible=payload.get("accessible", False),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if saved is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
+    return saved
+
+
+@api_router.post("/rooms/roh", status_code=201)
+def rooms_roh_create_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Create or get the Run Of House (ROH) room type for a property."""
+    prop_id = require_prop_id(int(payload.get("prop_id") or 0))
+    try:
+        saved = create_roh_room_type(
+            prop_id,
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return saved
 
 
