@@ -1,0 +1,387 @@
+/* ═══════════════════════════════════════════════════════════
+   Shift Banner — Reception Shift Management
+   Stitch-inspired flat design, M3 palette
+   ═══════════════════════════════════════════════════════════ */
+
+.shift-banner {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.8rem;
+  color: #191c1e;
+}
+
+/* ── Active shift bar ── */
+
+.shift-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  background: #cde6f5;
+  border: 1px solid #b1cad9;
+  border-radius: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.shift-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #041e29;
+}
+
+.shift-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.shift-dot--open {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.shift-dot--closed {
+  background: #6f797d;
+}
+
+.shift-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.72rem;
+}
+
+.shift-employee {
+  font-weight: 500;
+}
+
+.shift-sep {
+  color: #6f797d;
+  opacity: 0.5;
+}
+
+.shift-duration {
+  color: #324a56;
+}
+
+.shift-txns {
+  color: #324a56;
+}
+
+.shift-cash {
+  color: #324a56;
+
+  strong {
+    color: #041e29;
+  }
+}
+
+.collected {
+  strong {
+    color: #006076;
+  }
+}
+
+/* ── Inactive state ── */
+
+.shift-inactive {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  background: #f2f4f6;
+  border: 1px dashed #bec8cd;
+  border-radius: 0.5rem;
+}
+
+.shift-no-active {
+  color: #6f797d;
+  font-size: 0.78rem;
+  flex: 1;
+}
+
+/* ── Loading state ── */
+
+.shift-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  color: #6f797d;
+  font-size: 0.78rem;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+/* ── Error state ── */
+
+.shift-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background: #ffdad6;
+  border: 1px solid #ba1a1a;
+  border-radius: 0.5rem;
+  color: #93000a;
+  font-size: 0.78rem;
+}
+
+/* ── Buttons ── */
+
+.shift-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+}
+
+.shift-btn-open {
+  background: #006076;
+  color: #ffffff;
+  border-color: #006076;
+
+  &:hover:not(:disabled) {
+    background: #004e60;
+  }
+}
+
+.shift-btn-close {
+  background: #844910;
+  color: #ffffff;
+  border-color: #844910;
+
+  &:hover:not(:disabled) {
+    background: #6e3900;
+  }
+}
+
+.shift-btn-cancel {
+  background: transparent;
+  color: #3f484c;
+  border-color: #bec8cd;
+
+  &:hover:not(:disabled) {
+    background: #f2f4f6;
+  }
+}
+
+/* ── Modal Overlay ── */
+
+.shift-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.shift-modal {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.shift-modal-success {
+  text-align: center;
+}
+
+.shift-modal-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: #191c1e;
+}
+
+.success-icon {
+  .material-symbols-outlined {
+    font-size: 2.5rem;
+    color: #16a34a;
+  }
+}
+
+/* ── Form ── */
+
+.shift-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #3f484c;
+}
+
+.form-input,
+.form-select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #bec8cd;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #191c1e;
+  background: #ffffff;
+  transition: border-color 0.12s;
+
+  &:focus {
+    outline: none;
+    border-color: #006076;
+    box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.1);
+  }
+}
+
+.form-input-lg {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.55rem 0.7rem;
+}
+
+/* ── Summary grid ── */
+
+.shift-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f7f9fb;
+  border-radius: 0.5rem;
+  border: 1px solid #e0e3e5;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.summary-item-total {
+  text-align: center;
+}
+
+.summary-item-diff {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e0e3e5;
+  margin-top: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.68rem;
+  color: #6f797d;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #191c1e;
+}
+
+.diff-positive {
+  color: #16a34a;
+}
+
+/* ── Cash difference badge ── */
+
+.cash-diff {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+
+  &.diff-positive {
+    background: rgba(22, 163, 74, 0.06);
+    color: #16a34a;
+    border: 1px solid rgba(22, 163, 74, 0.12);
+  }
+
+  &:not(.diff-positive) {
+    background: rgba(186, 26, 26, 0.06);
+    color: #ba1a1a;
+    border: 1px solid rgba(186, 26, 26, 0.12);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+/* ── Modal actions ── */
+
+.shift-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.shift-form-error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  background: #ffdad6;
+  color: #93000a;
+  border: 1px solid #ba1a1a;
+}
+
+/* ── Animation ── */
+
+.spinning {
+  animation: sh-spin 800ms linear infinite;
+}
+
+@keyframes sh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
