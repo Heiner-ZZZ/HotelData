@@ -21,6 +21,8 @@ def save_rate_calendar_entry(
     rate_amount: Any,
     min_stay_nights: Any,
     is_closed: Any = False,
+    tax_included: Any | None = None,
+    tax_rate: Any | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -52,6 +54,10 @@ def save_rate_calendar_entry(
         "is_closed": safe_bool(is_closed),
         "updated_at": now_utc(),
     }
+    if tax_included is not None:
+        payload["tax_included"] = safe_bool(tax_included)
+    if tax_rate is not None:
+        payload["tax_rate"] = round(max(0.0, min(100.0, float(tax_rate or 0))), 2)
     plan_doc = db.rate_plans.find_one({"prop_id": prop_id, "rate_plan_id": clean_rate_plan_id}, {"_id": 0, "name": 1})
     plan_name = plan_doc.get("name", clean_rate_plan_id) if plan_doc else clean_rate_plan_id
     register_action(
@@ -80,6 +86,8 @@ def batch_update_rate_calendar(
     min_stay_nights: Any | None = None,
     is_closed: Any | None = None,
     only_weekends: bool = False,
+    tax_included: Any | None = None,
+    tax_rate: Any | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any]:
     detail = partner_hotel_detail(prop_id)
@@ -132,6 +140,10 @@ def batch_update_rate_calendar(
             payload["min_stay_nights"] = min_stay_value
         if is_closed is not None:
             payload["is_closed"] = safe_bool(is_closed)
+        if tax_included is not None:
+            payload["tax_included"] = safe_bool(tax_included)
+        if tax_rate is not None:
+            payload["tax_rate"] = round(max(0.0, min(100.0, float(tax_rate or 0))), 2)
 
         db.hotel_rate_calendar.update_one(
             {"prop_id": prop_id, "rate_plan_id": clean_plan_id, "date": date_str},

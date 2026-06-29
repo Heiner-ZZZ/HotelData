@@ -20,6 +20,14 @@ from .rules import (
     list_seasonal_rules,
     update_seasonal_rule,
 )
+from .contracts import (
+    create_corporate_contract,
+    update_corporate_contract,
+    delete_corporate_contract,
+    list_corporate_contracts,
+    validate_contract_code,
+    apply_contract_pricing,
+)
 
 __all__ = [
     "partner_hotel_rates",
@@ -34,4 +42,10 @@ __all__ = [
     "delete_seasonal_rule",
     "list_seasonal_rules",
     "generate_calendar_from_rules",
+    "create_corporate_contract",
+    "update_corporate_contract",
+    "delete_corporate_contract",
+    "list_corporate_contracts",
+    "validate_contract_code",
+    "apply_contract_pricing",
 ]
