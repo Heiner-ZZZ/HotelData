@@ -1,52 +1,102 @@
 <div class="hk-subpage">
-  <app-page-header
-    eyebrow="Housekeeping"
-    title="Mantenimiento preventivo"
-    description="Programar y registrar mantenimiento de habitaciones e instalaciones (CU-O40, CU-T15)."
-  />
+  <!-- ═══ Page Header ═══ -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mantenimiento</h1>
+      <p class="page-subtitle">Programar y registrar mantenimiento de habitaciones e instalaciones.</p>
+    </div>
+    <div class="page-header-right">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </div>
 
+  <!-- ═══ Toasts ═══ -->
   @if (message()) {
     <div class="toast toast-success" (click)="message.set('')">
       <span class="material-symbols-outlined">check_circle</span>
-      {{ message() }}
+      <span>{{ message() }}</span>
     </div>
   }
   @if (errorMessage()) {
     <div class="toast toast-error" (click)="errorMessage.set('')">
       <span class="material-symbols-outlined">error</span>
-      {{ errorMessage() }}
+      <span>{{ errorMessage() }}</span>
     </div>
   }
 
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
-
   @if (selectedPropId()) {
-    <div class="bar-actions">
-      <div class="status-filter-chips">
-        <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
-        @for (s of statusOptions; track s) {
-          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'in_progress' ? 'En progreso' : s === 'scheduled' ? 'Programado' : s === 'inspection' ? 'Inspección' : s === 'completed' ? 'Completado' : s }}</button>
-        }
+    <!-- ═══ Stats Summary Bar ═══ -->
+    @let stats = statsSummary();
+    <div class="stats-bar">
+      <div class="stat-card stat-scheduled">
+        <span class="stat-number">{{ stats.scheduled }}</span>
+        <span class="stat-label">Programados</span>
       </div>
-      <button type="button" class="btn-primary" (click)="toggleCreateForm()">
-        <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
-        {{ showCreateForm() ? 'Cancelar' : 'Nuevo mantenimiento' }}
-      </button>
+      <div class="stat-card stat-progress">
+        <span class="stat-number">{{ stats.inProgress }}</span>
+        <span class="stat-label">En Progreso</span>
+      </div>
+      <div class="stat-card stat-inspection">
+        <span class="stat-number">{{ stats.inspection }}</span>
+        <span class="stat-label">Inspección</span>
+      </div>
+      <div class="stat-card stat-done">
+        <span class="stat-number">{{ stats.completed }}</span>
+        <span class="stat-label">Completados</span>
+      </div>
     </div>
 
+    <!-- ═══ Filter Bar ═══ -->
+    <section class="filter-bar surface-card">
+      <div class="filter-row">
+        <div class="filter-chips">
+          <span class="filter-label">Estado</span>
+          <button type="button" class="chip-filter"
+            [class.active]="statusFilter() === ''"
+            (click)="setStatusFilter('')">Todos</button>
+          @for (s of statusOptions; track s) {
+            <button type="button" class="chip-filter"
+              [class.active]="statusFilter() === s"
+              (click)="setStatusFilter(s)">
+              @if (s === 'scheduled') {
+                <span class="material-symbols-outlined chip-icon">schedule</span>
+              } @else if (s === 'in_progress') {
+                <span class="material-symbols-outlined chip-icon">build</span>
+              } @else if (s === 'inspection') {
+                <span class="material-symbols-outlined chip-icon">visibility</span>
+              } @else if (s === 'completed') {
+                <span class="material-symbols-outlined chip-icon">check_circle</span>
+              }
+              {{ statusLabels[s] }}
+            </button>
+          }
+        </div>
+        <div class="filter-actions-right">
+          <button type="button" class="btn-primary" (click)="toggleCreateForm()">
+            <span class="material-symbols-outlined">{{ showCreateForm() ? 'close' : 'add' }}</span>
+            {{ showCreateForm() ? 'Cancelar' : 'Nuevo mantenimiento' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Create / Edit Form ═══ -->
     @if (showCreateForm()) {
       <section class="surface-card form-card">
-        <h3>{{ editingId() ? 'Editar mantenimiento' : 'Programar mantenimiento' }}</h3>
+        <div class="form-card-header">
+          <span class="material-symbols-outlined form-card-icon">{{ editingId() ? 'edit' : 'build' }}</span>
+          <h3>{{ editingId() ? 'Editar mantenimiento' : 'Programar mantenimiento' }}</h3>
+        </div>
         <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitTask()" class="task-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="roomLabel">Habitación/Área *</label>
+              <label for="roomLabel">Habitación/Área <span class="required">*</span></label>
               <select id="roomLabel" formControlName="roomLabel">
-                <option value="">Selecciona una habitación...</option>
+                <option value="">Seleccionar habitación…</option>
                 @for (r of roomLabels(); track r) {
                   <option [value]="r">{{ r }}</option>
                 }
@@ -55,63 +105,61 @@
             <div class="form-group">
               <label for="taskType">Tipo</label>
               <select id="taskType" formControlName="taskType">
-                <option value="preventive">Preventivo</option>
-                <option value="corrective">Correctivo</option>
-                <option value="inspection">Inspección</option>
+                @for (entry of taskTypeLabels | keyvalue; track entry.key) {
+                  <option [value]="entry.key">{{ entry.value }}</option>
+                }
               </select>
             </div>
             <div class="form-group">
               <label for="priority">Prioridad</label>
               <select id="priority" formControlName="priority">
                 @for (p of priorities; track p) {
-                  <option [value]="p">{{ p }}</option>
+                  <option [value]="p">{{ priorityLabels[p] }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="status">Estado inicial</label>
+              <select id="status" formControlName="status">
+                @for (s of statusOptions; track s) {
+                  <option [value]="s">{{ statusLabels[s] }}</option>
                 }
               </select>
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group" style="flex: 2;">
-              <label for="title">Título *</label>
+            <div class="form-group grow-2">
+              <label for="title">Título <span class="required">*</span></label>
               <input id="title" type="text" formControlName="title" placeholder="Ej: Revisión de HVAC" />
             </div>
             <div class="form-group">
-              <label for="scheduledDate">Fecha y hora programada</label>
+              <label for="scheduledDate">Fecha programada</label>
               <input id="scheduledDate" type="datetime-local" formControlName="scheduledDate" />
-            </div>
-            <div class="form-group">
-              <label for="status">Estado</label>
-              <select id="status" formControlName="status">
-                <option value="scheduled">Programado</option>
-                <option value="in_progress">En progreso</option>
-                <option value="inspection">Inspección</option>
-                <option value="completed">Completado</option>
-              </select>
             </div>
           </div>
           <div class="form-group">
             <label for="description">Descripción</label>
-            <textarea id="description" formControlName="description" rows="2" placeholder="Detalles del mantenimiento..."></textarea>
+            <textarea id="description" formControlName="description" rows="2" placeholder="Detalles del mantenimiento…"></textarea>
           </div>
-          <!-- RF-002: Auto-block room availability toggle -->
+          <!-- Auto-block toggle -->
           <label class="toggle-row">
             <div class="toggle-info">
               <span class="material-symbols-outlined toggle-icon">block</span>
               <div>
                 <strong>Bloquear habitación</strong>
-                <p>Marcar la habitación como 'Mantenimiento' y crear blackout en la fecha programada</p>
+                <p>Marcar la habitación como 'Mantenimiento' en la fecha programada</p>
               </div>
             </div>
             <input type="checkbox" formControlName="autoBlock" class="toggle-input" />
             <span class="toggle-track"></span>
           </label>
-
-          <div style="display: flex; gap: 0.5rem;">
+          <div class="form-actions">
             <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
-              <span class="material-symbols-outlined">build</span>
+              <span class="material-symbols-outlined">{{ editingId() ? 'save' : 'build' }}</span>
               {{ editingId() ? 'Guardar cambios' : 'Programar' }}
             </button>
             @if (editingId()) {
-              <button type="button" class="btn-primary" style="background: var(--muted-text);" (click)="cancelForm()">
+              <button type="button" class="btn-secondary" (click)="cancelForm()">
                 <span class="material-symbols-outlined">close</span>
                 Cancelar
               </button>
@@ -120,104 +168,216 @@
         </form>
       </section>
     }
-  }
 
-  @if (selectedPropId()) {
+    <!-- ═══ Table / Content ═══ -->
     @switch (viewState()) {
       @case ('loading') {
-        <app-loading-state label="Cargando mantenimientos..." />
+        <app-loading-state label="Cargando mantenimientos…" />
       }
       @case ('error') {
-        <app-error-state title="Error al cargar" description="No se pudieron obtener los mantenimientos." />
+        <app-error-state
+          title="Error al cargar"
+          description="No se pudieron obtener los mantenimientos."
+        />
       }
       @case ('empty') {
-        <app-empty-state title="Sin mantenimientos" description="No hay tareas de mantenimiento registradas." />
+        <app-empty-state
+          title="Sin mantenimientos"
+          description="No hay tareas de mantenimiento registradas. Programa una nueva para empezar."
+        />
       }
-      @default {
-        @if (data(); as d) {
-          <section class="surface-card data-card">
-            <div class="data-card-head">
-              <div class="data-card-head-left">
-                <span class="material-symbols-outlined">build</span>
-                <div>
-                  <h2>Órdenes de mantenimiento</h2>
-                  <p>{{ d.total }} orden(es) · página {{ d.page }} de {{ d.totalPages || 1 }}</p>
-                </div>
-              </div>
-              <div class="pagination-bar">
-                <button type="button" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
-                  <span class="material-symbols-outlined">chevron_left</span> Anterior
-                </button>
-                <button type="button" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
-                  Siguiente <span class="material-symbols-outlined">chevron_right</span>
-                </button>
+      @case ('success') {
+        @let d = maintenanceData()!;
+        <section class="surface-card data-card">
+          <!-- Header -->
+          <div class="data-card-head">
+            <div class="data-card-head-left">
+              <span class="material-symbols-outlined head-icon">build</span>
+              <div>
+                <h2>Órdenes de mantenimiento</h2>
+                <p class="data-meta">
+                  {{ d.total }} orden(es) &middot; Página {{ d.page }} de {{ d.totalPages || 1 }}
+                </p>
               </div>
             </div>
+            <div class="pagination-bar">
+              <button type="button" class="btn-page" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span>
+                <span class="btn-page-label">Anterior</span>
+              </button>
+              <button type="button" class="btn-page" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                <span class="btn-page-label">Siguiente</span>
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Título</th>
-                    <th>Habitación</th>
-                    <th>Tipo</th>
-                    <th>Prioridad</th>
-                    <th>Estado</th>
-                    <th>Programado</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of d.items; track item.id) {
-                    <tr>
-                      <td><strong>{{ item.title }}</strong></td>
-                      <td>{{ item.roomLabel }}</td>
-                      <td>{{ item.taskType }}</td>
-                      <td>
-                        <span class="priority-badge"
-                          [class.prio-low]="item.priority === 'low'"
-                          [class.prio-normal]="item.priority === 'normal'"
-                          [class.prio-high]="item.priority === 'high'"
-                          [class.prio-urgent]="item.priority === 'urgent'"
-                        >{{ item.priority }}</span>
-                      </td>
-                      <td>
-                        <span class="badge"
-                          [class.badge-scheduled]="item.status === 'scheduled'"
-                          [class.badge-progress]="item.status === 'in_progress'"
-                          [class.badge-inspection]="item.status === 'inspection'"
-                          [class.badge-done]="item.status === 'completed'"
-                        >
-                          {{ item.status === 'scheduled' ? 'Programado' : item.status === 'in_progress' ? 'En progreso' : item.status === 'inspection' ? 'Inspección' : 'Completado' }}
-                        </span>
-                      </td>
-                      <td class="cell-time">{{ formatDate(item.scheduledDate) }}</td>
-                      <td class="cell-action">
-                        <button type="button" class="btn-icon-only" (click)="startEdit(item)" aria-label="Editar">
-                          <span class="material-symbols-outlined">edit</span>
-                        </button>
-                        @if (item.status === 'scheduled' || item.status === 'in_progress') {
-                          <button type="button" class="btn-icon-only" (click)="markInspection(item)" aria-label="Enviar a inspección" title="Enviar a inspección">
+          <!-- Table -->
+          <div class="table-wrap">
+            <table class="hk-maint-table">
+              <thead>
+                <tr>
+                  <th class="th-title">Título</th>
+                  <th class="th-room">Habitación</th>
+                  <th class="th-type">Tipo</th>
+                  <th class="th-prio">Prioridad</th>
+                  <th class="th-status">Estado</th>
+                  <th class="th-date">Programado</th>
+                  <th class="th-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of d.items; track item.id) {
+                  <tr class="maint-row">
+                    <!-- Title -->
+                    <td class="td-title">
+                      <div class="title-cell">
+                        <span class="material-symbols-outlined title-icon">build</span>
+                        <strong>{{ item.title }}</strong>
+                      </div>
+                    </td>
+
+                    <!-- Room -->
+                    <td class="td-room">
+                      <span class="room-badge">{{ item.roomLabel }}</span>
+                    </td>
+
+                    <!-- Type -->
+                    <td class="td-type">
+                      <span class="type-label">{{ taskTypeLabels[item.taskType] || item.taskType }}</span>
+                    </td>
+
+                    <!-- Priority -->
+                    <td class="td-prio">
+                      <span class="priority-badge" [class]="priorityClass(item.priority)">
+                        <span class="prio-dot"></span>
+                        {{ priorityLabels[item.priority] || item.priority }}
+                      </span>
+                    </td>
+
+                    <!-- Status -->
+                    <td class="td-status">
+                      <span class="status-badge" [class]="statusClass(item.status)">
+                        @if (item.status === 'scheduled') {
+                          <span class="material-symbols-outlined badge-icon">schedule</span>
+                        } @else if (item.status === 'in_progress') {
+                          <span class="material-symbols-outlined badge-icon">build</span>
+                        } @else if (item.status === 'inspection') {
+                          <span class="material-symbols-outlined badge-icon">visibility</span>
+                        } @else if (item.status === 'completed') {
+                          <span class="material-symbols-outlined badge-icon">check_circle</span>
+                        }
+                        {{ statusLabels[item.status] || item.status }}
+                      </span>
+                    </td>
+
+                    <!-- Scheduled Date -->
+                    <td class="td-date">
+                      <span class="date-cell">
+                        <span class="material-symbols-outlined date-icon">calendar_today</span>
+                        {{ formatDate(item.scheduledDate) }}
+                      </span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="td-actions">
+                      <div class="action-buttons">
+                        @if (canStart(item)) {
+                          <button type="button" class="btn-action start"
+                            (click)="markInProgress(item)"
+                            title="Iniciar mantenimiento" aria-label="Iniciar mantenimiento">
+                            <span class="material-symbols-outlined">play_arrow</span>
+                          </button>
+                        }
+                        @if (canInspect(item)) {
+                          <button type="button" class="btn-action inspect"
+                            (click)="markInspection(item)"
+                            title="Enviar a inspección" aria-label="Enviar a inspección">
                             <span class="material-symbols-outlined">visibility</span>
                           </button>
                         }
-                        @if (item.status !== 'completed') {
-                          <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
+                        @if (canComplete(item)) {
+                          <button type="button" class="btn-action done"
+                            (click)="openCompleteModal(item)"
+                            title="Completar" aria-label="Completar mantenimiento">
                             <span class="material-symbols-outlined">check</span>
                           </button>
                         }
-                        <button type="button" class="btn-icon-only danger" (click)="deleteMaintenanceItem(item.id)" aria-label="Eliminar">
+                        <button type="button" class="btn-action edit"
+                          (click)="startEdit(item)"
+                          title="Editar" aria-label="Editar mantenimiento">
+                          <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button type="button" class="btn-action delete"
+                          (click)="deleteMaintenanceItem(item.id)"
+                          title="Eliminar" aria-label="Eliminar mantenimiento">
                           <span class="material-symbols-outlined">delete</span>
                         </button>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
-        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
       }
     }
+  }
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ═══ COMPLETE MAINTENANCE MODAL ═══ -->
+  <!-- ════════════════════════════════════════════ -->
+  @if (showCompleteModal()) {
+    @let ci = completingItem()!;
+    <div class="modal-overlay" (click)="closeCompleteModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <span class="material-symbols-outlined modal-icon">build</span>
+            <div>
+              <h3>Completar Mantenimiento</h3>
+              <p class="modal-subtitle">Hab. <strong>{{ ci.roomLabel }}</strong> &middot; {{ ci.title }}</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close" (click)="closeCompleteModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form [formGroup]="completeForm" (submit)="$event.preventDefault(); submitCompleteMaintenance()" class="modal-form">
+          <div class="form-group">
+            <label for="maint-observations">Observaciones</label>
+            <textarea id="maint-observations" formControlName="observations" rows="3"
+              placeholder="Describir el trabajo realizado, repuestos utilizados, estado final…"></textarea>
+          </div>
+
+          <div class="form-divider"></div>
+
+          <!-- Unblock room -->
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="unblockRoom" />
+            <span class="checkbox-custom">
+              <span class="material-symbols-outlined">lock_open</span>
+            </span>
+            <span>Desbloquear habitación al completar</span>
+          </label>
+          <p class="checkbox-hint">Si estaba bloqueada, la habitación volverá a estar disponible para reserva/ocupación.</p>
+
+          <div class="form-divider"></div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="closeCompleteModal()">
+              <span class="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary">
+              <span class="material-symbols-outlined">check</span>
+              Completar Mantenimiento
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   }
 </div>
