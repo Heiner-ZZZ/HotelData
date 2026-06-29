@@ -138,15 +138,19 @@
                   [class.block-available]="statusKey === 'available'"
                   [class.block-occupied]="statusKey === 'occupied'"
                   [class.block-cleaning]="statusKey === 'cleaning'"
+                  [class.block-dirty]="statusKey === 'dirty'"
                   [class.block-maintenance]="statusKey === 'maintenance'"
-                  [class.block-out]="statusKey === 'out_of_order'"
+                  [class.block-out]="statusKey === 'out_of_order' || statusKey === 'out_of_service'"
                 >
                   <span class="status-block-icon material-symbols-outlined">
                     @switch (statusKey) {
                       @case ('available') { check_circle }
                       @case ('occupied') { bed }
                       @case ('cleaning') { cleaning_services }
+                      @case ('dirty') { report }
                       @case ('maintenance') { build }
+                      @case ('out_of_order') { dangerous }
+                      @case ('out_of_service') { block }
                       @default { help }
                     }
                   </span>
@@ -156,14 +160,123 @@
                       @case ('available') { Disponible }
                       @case ('occupied') { Ocupada }
                       @case ('cleaning') { Limpieza }
+                      @case ('dirty') { Sucia }
                       @case ('maintenance') { Mantenimiento }
-                      @case ('out_of_order') { Fuera de servicio }
+                      @case ('out_of_order') { Fuera de orden }
+                      @case ('out_of_service') { Fuera de servicio }
                       @default { {{ statusKey }} }
                     }
                   </span>
                 </div>
               }
             </div>
+          </section>
+        }
+
+        <!-- ═══ Cleaning Flow Pipeline ═══ -->
+        @if (cleaningFlowData().length) {
+          <section class="surface-card pipeline-section">
+            <div class="pipeline-header">
+              <span class="material-symbols-outlined">swap_horiz</span>
+              <h2>Flujo de limpieza</h2>
+              <span class="pipeline-badge">{{ dashboard()?.pendingHousekeepingTasks || 0 }} tarea(s) pendiente(s)</span>
+            </div>
+
+            @if (actionMessage()) {
+              <div class="pipeline-toast" (click)="actionMessage.set('')">
+                <span class="material-symbols-outlined">check_circle</span>
+                {{ actionMessage() }}
+              </div>
+            }
+
+            <div class="pipeline-track">
+              @for (stage of cleaningFlowData(); track stage.key; let last = $last) {
+                <div class="pipeline-stage">
+                  <div class="stage-card" [style.--stage-color]="stage.color">
+                    <div class="stage-card-inner">
+                      <span class="stage-icon material-symbols-outlined">{{ stage.icon }}</span>
+                      <strong class="stage-count">{{ stage.count }}</strong>
+                      <span class="stage-label">{{ stage.label }}</span>
+                    </div>
+                    <div class="stage-bar">
+                      <div class="stage-bar-fill" [style.width.%]="stage.pct" [style.background]="stage.color"></div>
+                    </div>
+                    <span class="stage-pct-label">{{ stage.pct }}%</span>
+
+                    @if (stage.count > 0) {
+                      @if (stage.key === 'dirty') {
+                        <button type="button" class="stage-action stage-action-cleaning"
+                          (click)="startCleaning()" [disabled]="actionLoading() !== null">
+                          @if (actionLoading() === 'cleaning') {
+                            <span class="material-symbols-outlined spinning">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined">cleaning_services</span>
+                          }
+                          Iniciar limpieza
+                        </button>
+                      }
+                      @if (stage.key === 'clean') {
+                        <button type="button" class="stage-action stage-action-inspect"
+                          (click)="advanceToInspected()" [disabled]="actionLoading() !== null">
+                          @if (actionLoading() === 'inspected') {
+                            <span class="material-symbols-outlined spinning">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined">fact_check</span>
+                          }
+                          Inspeccionar
+                        </button>
+                      }
+                      @if (stage.key === 'inspected') {
+                        <button type="button" class="stage-action stage-action-available"
+                          (click)="advanceToAvailable()" [disabled]="actionLoading() !== null">
+                          @if (actionLoading() === 'available') {
+                            <span class="material-symbols-outlined spinning">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined">check_circle</span>
+                          }
+                          Liberar
+                        </button>
+                      }
+                    }
+                  </div>
+                  @if (!last) {
+                    <div class="pipeline-arrow">
+                      <span class="material-symbols-outlined">arrow_forward</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="pipeline-summary">
+              <span class="pipeline-summary-item">
+                <span class="summary-dot" style="background: #92400e;"></span>
+                <span>Sucia: esperando limpieza</span>
+              </span>
+              <span class="pipeline-summary-item">
+                <span class="summary-dot" style="background: #d97706;"></span>
+                <span>En proceso de limpieza</span>
+              </span>
+              <span class="pipeline-summary-item">
+                <span class="summary-dot" style="background: #059669;"></span>
+                <span>Limpia, pendiente de inspección</span>
+              </span>
+              <span class="pipeline-summary-item">
+                <span class="summary-dot" style="background: #4338ca;"></span>
+                <span>Inspeccionada, lista para asignar</span>
+              </span>
+              <span class="pipeline-summary-item">
+                <span class="summary-dot" style="background: #16a34a;"></span>
+                <span>Disponible para próximo huésped</span>
+              </span>
+            </div>
+            @if (dashboard()?.pendingHousekeepingTasks && dashboard()?.pendingHousekeepingTasks! > 0) {
+              <div class="pipeline-cta">
+                <a routerLink="tasks" class="pipeline-link">
+                  <span class="material-symbols-outlined">cleaning_services</span>
+                  Ir a tareas de limpieza
+                </a>
+              </div>
+            }
           </section>
         }
 
@@ -214,7 +327,8 @@
                         [class.badge-pending]="evt.status === 'pending'"
                         [class.badge-scheduled]="evt.status === 'scheduled'"
                         [class.badge-progress]="evt.status === 'in_progress'"
-                      >{{ evt.status === 'pending' ? 'Pendiente' : evt.status === 'scheduled' ? 'Programado' : evt.status === 'in_progress' ? 'En progreso' : evt.status }}</span>
+                        [class.badge-inspection]="evt.status === 'inspection'"
+                      >{{ evt.status === 'pending' ? 'Pendiente' : evt.status === 'scheduled' ? 'Programado' : evt.status === 'in_progress' ? 'En progreso' : evt.status === 'inspection' ? 'Inspección' : evt.status }}</span>
                     </strong>
                     <span class="event-room">Hab. {{ evt.room_label }}{{ evt.assigned_to ? ' · ' + evt.assigned_to : '' }}</span>
                   </div>

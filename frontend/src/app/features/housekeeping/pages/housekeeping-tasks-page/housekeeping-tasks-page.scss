@@ -216,6 +216,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
 }
 
 .badge-pending { background: rgba(234, 179, 8, 0.1); color: #b8860b; }
+.badge-inspection { background: rgba(147, 51, 234, 0.1); color: #7c3aed; }
 .badge-done { background: rgba(16, 185, 129, 0.1); color: #059669; }
 
 .priority-badge {

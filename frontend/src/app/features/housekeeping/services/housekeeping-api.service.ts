@@ -56,6 +56,18 @@ export interface MaintenanceTaskItem {
   completedAt: string | null;
 }
 
+export interface RoomStatusHistoryEntry {
+  id: string;
+  propId: number;
+  roomLabel: string;
+  oldStatus: string;
+  newStatus: string;
+  note: string;
+  changedBy: string;
+  bookingId: string;
+  createdAt: string;
+}
+
 export interface AdditionalChargeItem {
   id: string;
   bookingId: string;
@@ -125,7 +137,7 @@ export class HousekeepingApiService {
     return this.http.post<HousekeepingTaskItem>(`${this.baseUrl}/tasks`, payload, { withCredentials: true });
   }
 
-  updateTask(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
+  updateTask(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string; status?: string }) {
     return this.http.put<HousekeepingTaskItem>(`${this.baseUrl}/tasks/${taskId}`, payload, { withCredentials: true });
   }
 
@@ -150,7 +162,7 @@ export class HousekeepingApiService {
     return this.http.post<MaintenanceTaskItem>(`${this.baseUrl}/maintenance`, payload, { withCredentials: true });
   }
 
-  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean }) {
+  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
     return this.http.put<MaintenanceTaskItem>(`${this.baseUrl}/maintenance/${taskId}`, payload, { withCredentials: true });
   }
 
@@ -188,6 +200,16 @@ export class HousekeepingApiService {
     return this.http.get<Array<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }>>(
       `${this.baseUrl}/upcoming-events`, { params, withCredentials: true }
     );
+  }
+
+  // ── Room Status History / Audit ──
+
+  getRoomStatusHistory(propId?: number, roomLabel?: string, bookingId?: string, page = 1) {
+    let params = new HttpParams().set('page', String(page));
+    if (propId) params = params.set('prop_id', String(propId));
+    if (roomLabel) params = params.set('room_label', roomLabel);
+    if (bookingId) params = params.set('booking_id', bookingId);
+    return this.http.get<PaginatedResponse<RoomStatusHistoryEntry>>(`${this.baseUrl}/room-status/history`, { params, withCredentials: true });
   }
 
   syncRoomStatus(propId: number) {

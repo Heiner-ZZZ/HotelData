@@ -30,7 +30,7 @@
       <div class="status-filter-chips">
         <button type="button" class="chip-filter" [class.active]="statusFilter() === ''" (click)="setStatusFilter('')">Todas</button>
         @for (s of statusOptions; track s) {
-          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'pending' ? 'Pendiente' : 'Completada' }}</button>
+          <button type="button" class="chip-filter" [class.active]="statusFilter() === s" (click)="setStatusFilter(s)">{{ s === 'pending' ? 'Pendiente' : s === 'inspection' ? 'Inspección' : 'Completada' }}</button>
         }
       </div>
       <button type="button" class="btn-primary" (click)="toggleCreateForm()">
@@ -84,6 +84,7 @@
               <label for="status">Estado</label>
               <select id="status" formControlName="status">
                 <option value="pending">Pendiente</option>
+                <option value="inspection">Inspección</option>
                 <option value="completed">Completada</option>
               </select>
             </div>
@@ -168,8 +169,8 @@
                     </td>
                     <td>{{ item.assignedTo || '--' }}</td>
                     <td>
-                      <span class="badge" [class.badge-pending]="item.status === 'pending'" [class.badge-done]="item.status === 'completed'">
-                        {{ item.status === 'pending' ? 'Pendiente' : 'Completada' }}
+                      <span class="badge" [class.badge-pending]="item.status === 'pending'" [class.badge-inspection]="item.status === 'inspection'" [class.badge-done]="item.status === 'completed'">
+                        {{ item.status === 'pending' ? 'Pendiente' : item.status === 'inspection' ? 'Inspección' : 'Completada' }}
                       </span>
                     </td>
                     <td class="cell-time">{{ formatDate(item.scheduledDate || item.createdAt) }}</td>
@@ -178,6 +179,14 @@
                         <span class="material-symbols-outlined">edit</span>
                       </button>
                       @if (item.status === 'pending') {
+                        <button type="button" class="btn-icon-only" (click)="markInspection(item)" aria-label="Enviar a inspección" title="Enviar a inspección">
+                          <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                        <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
+                          <span class="material-symbols-outlined">check</span>
+                        </button>
+                      }
+                      @if (item.status === 'inspection') {
                         <button type="button" class="btn-icon-only success" (click)="completeTask(item.id)" aria-label="Completar">
                           <span class="material-symbols-outlined">check</span>
                         </button>

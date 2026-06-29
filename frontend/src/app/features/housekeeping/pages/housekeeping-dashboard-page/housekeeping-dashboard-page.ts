@@ -85,6 +85,53 @@ export class HousekeepingDashboardPageComponent {
     return Object.entries(d.roomStatuses);
   });
 
+  /* ═══ Quick action state ═══ */
+  readonly actionLoading = signal<string | null>(null);  // 'dirty' | 'cleaning' | 'clean' | 'inspected'
+  readonly actionMessage = signal('');
+
+  /* ═══ Cleaning Pipeline ═══ */
+
+  readonly pipelineStages = ['dirty', 'cleaning', 'clean', 'inspected', 'available'] as const;
+
+  readonly pipelineLabels: Record<string, string> = {
+    dirty: 'Por limpiar',
+    cleaning: 'Limpieza',
+    clean: 'Por inspeccionar',
+    inspected: 'Inspeccionada',
+    available: 'Disponible',
+  };
+
+  readonly pipelineIcons: Record<string, string> = {
+    dirty: 'report',
+    cleaning: 'cleaning_services',
+    clean: 'check',
+    inspected: 'fact_check',
+    available: 'check_circle',
+  };
+
+  readonly pipelineColors: Record<string, string> = {
+    dirty: '#92400e',
+    cleaning: '#d97706',
+    clean: '#059669',
+    inspected: '#4338ca',
+    available: '#16a34a',
+  };
+
+  readonly cleaningFlowData = computed(() => {
+    const d = this.dashboard();
+    if (!d?.roomStatuses) return [];
+    const rs = d.roomStatuses;
+    const totalInPipeline = this.pipelineStages.reduce((sum, s) => sum + (rs[s] || 0), 0);
+    return this.pipelineStages.map((stage) => ({
+      key: stage,
+      count: rs[stage] || 0,
+      label: this.pipelineLabels[stage],
+      icon: this.pipelineIcons[stage],
+      color: this.pipelineColors[stage],
+      pct: totalInPipeline > 0 ? Math.round(((rs[stage] || 0) / totalInPipeline) * 100) : 0,
+    }));
+  });
+
   constructor() {
     this.route.queryParamMap
       .pipe(
@@ -121,6 +168,128 @@ export class HousekeepingDashboardPageComponent {
         },
         error: () => this.viewState.set('error'),
       });
+  }
+
+  /** Refresh dashboard data after a quick action. */
+  private refreshDashboard(): void {
+    const propId = this.selectedPropId();
+    if (!propId) return;
+    this.api.getDashboard(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (dashboard) => this.dashboard.set(dashboard),
+    });
+  }
+
+  /** Quick action: move all dirty rooms → cleaning (bulk status + create tasks). */
+  startCleaning(): void {
+    const propId = this.selectedPropId();
+    const dashboard = this.dashboard();
+    if (!propId || !dashboard) return;
+    const dirtyCount = dashboard.roomStatuses?.dirty || 0;
+    if (dirtyCount === 0) return;
+
+    this.actionLoading.set('cleaning');
+    this.actionMessage.set('');
+
+    // 1. Fetch dirty room labels to update
+    this.api.getRoomStatus(propId, 'dirty', 1).pipe(
+      switchMap((res) => {
+        const roomLabels = res.items.map((r) => r.roomLabel);
+        if (roomLabels.length === 0) {
+          this.actionLoading.set(null);
+          this.refreshDashboard();
+          return [];
+        }
+        // 2. Bulk update status to 'cleaning'
+        return this.api.bulkUpdateRoomStatus(propId, roomLabels, 'cleaning', 'Marcado desde dashboard');
+      }),
+      switchMap(() => {
+        // 3. Create cleaning tasks for each dirty room (via tasks list refresh)
+        //    The status update auto-creates tasks through the check-out flow,
+        //    but here we just update status — tasks will be manually assigned.
+        this.actionMessage.set(`Habitaciones marcadas como 'En limpieza'`);
+        this.actionLoading.set(null);
+        this.refreshDashboard();
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      error: () => {
+        this.actionLoading.set(null);
+        this.actionMessage.set('Error al actualizar estado');
+      },
+    });
+  }
+
+  /** Quick action: advance clean → inspected via bulk status update. */
+  advanceToInspected(): void {
+    const propId = this.selectedPropId();
+    const dashboard = this.dashboard();
+    if (!propId || !dashboard) return;
+    const cleanCount = dashboard.roomStatuses?.clean || 0;
+    if (cleanCount === 0) return;
+
+    this.actionLoading.set('inspected');
+    this.actionMessage.set('');
+
+    this.api.getRoomStatus(propId, 'clean', 1).pipe(
+      switchMap((res) => {
+        const roomLabels = res.items.map((r) => r.roomLabel);
+        if (roomLabels.length === 0) {
+          this.actionLoading.set(null);
+          this.refreshDashboard();
+          return [];
+        }
+        return this.api.bulkUpdateRoomStatus(propId, roomLabels, 'inspected', 'Marcado desde dashboard');
+      }),
+      switchMap(() => {
+        this.actionMessage.set(`Habitaciones marcadas como 'Inspeccionadas'`);
+        this.actionLoading.set(null);
+        this.refreshDashboard();
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      error: () => {
+        this.actionLoading.set(null);
+        this.actionMessage.set('Error al actualizar estado');
+      },
+    });
+  }
+
+  /** Quick action: advance inspected → available via bulk status update. */
+  advanceToAvailable(): void {
+    const propId = this.selectedPropId();
+    const dashboard = this.dashboard();
+    if (!propId || !dashboard) return;
+    const inspectedCount = dashboard.roomStatuses?.inspected || 0;
+    if (inspectedCount === 0) return;
+
+    this.actionLoading.set('available');
+    this.actionMessage.set('');
+
+    this.api.getRoomStatus(propId, 'inspected', 1).pipe(
+      switchMap((res) => {
+        const roomLabels = res.items.map((r) => r.roomLabel);
+        if (roomLabels.length === 0) {
+          this.actionLoading.set(null);
+          this.refreshDashboard();
+          return [];
+        }
+        return this.api.bulkUpdateRoomStatus(propId, roomLabels, 'available', 'Liberado desde dashboard');
+      }),
+      switchMap(() => {
+        this.actionMessage.set(`Habitaciones marcadas como 'Disponibles'`);
+        this.actionLoading.set(null);
+        this.refreshDashboard();
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      error: () => {
+        this.actionLoading.set(null);
+        this.actionMessage.set('Error al actualizar estado');
+      },
+    });
   }
 
   onPropSelected(event: { propId: number; label: string }): void {

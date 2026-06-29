@@ -22,7 +22,7 @@ function todayLocalIso(): string {
 
 const TASK_TYPES = ['cleaning', 'deep_clean', 'turnover', 'inspection'] as const;
 const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
-const STATUS_OPTIONS = ['pending', 'completed'] as const;
+const STATUS_OPTIONS = ['pending', 'inspection', 'completed'] as const;
 
 @Component({
   selector: 'app-housekeeping-tasks-page',
@@ -219,6 +219,33 @@ export class HousekeepingTasksPageComponent {
         },
         error: (err) => {
           this.errorMessage.set(err.message || 'Error al eliminar tarea');
+          this.message.set('');
+        },
+      });
+  }
+
+  markInspection(item: HousekeepingTaskItem): void {
+    const payload = {
+      prop_id: item.propId,
+      room_label: item.roomLabel,
+      task_type: item.taskType,
+      assigned_to: item.assignedTo || undefined,
+      priority: item.priority,
+      note: item.note || undefined,
+      scheduled_date: item.scheduledDate || undefined,
+      status: 'inspection',
+    };
+    this.api
+      .updateTask(item.id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.message.set('Tarea enviada a inspección');
+          this.errorMessage.set('');
+          this.refresh();
+        },
+        error: (err) => {
+          this.errorMessage.set(err.message || 'Error al enviar a inspección');
           this.message.set('');
         },
       });
