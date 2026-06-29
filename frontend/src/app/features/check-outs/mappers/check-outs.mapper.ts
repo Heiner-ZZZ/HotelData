@@ -24,6 +24,7 @@ export function mapCheckOuts(dto: CheckOutsDto): CheckOutsViewModel {
       stayStatusLabel: item.stay_status_label,
       roomsLabel: item.rooms_label,
       estimatedTime: item.estimated_time,
+      totalPrice: item.total_price,
       balanceLabel: item.balance_label,
       notes: item.notes,
       canComplete: item.can_complete

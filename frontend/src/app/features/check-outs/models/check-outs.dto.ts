@@ -20,6 +20,7 @@ export interface CheckOutsDto {
     rooms_label: string;
     estimated_time: string;
     notes: string;
+    total_price: number;
     balance_label: string;
     can_complete: boolean;
   }>;

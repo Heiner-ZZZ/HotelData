@@ -14,6 +14,7 @@ export interface CheckOutRowViewModel {
   stayStatusLabel: string;
   roomsLabel: string;
   estimatedTime: string;
+  totalPrice: number;
   balanceLabel: string;
   notes: string;
   canComplete: boolean;
