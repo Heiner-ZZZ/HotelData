@@ -12,11 +12,73 @@ class ModuleStatus(BaseModel):
     description: str
 
 
+# ── Room Statuses (Hotel cycle) ──
+#
+# The complete housekeeping lifecycle:
+#   occupied_clean → occupied_dirty → vacant_dirty
+#   → cleaning_in_progress → cleaning_completed
+#   → inspected → vacant_clean → (available for booking)
+#
+#   maintenance_requested → out_of_service/out_of_order
+#   → (repair completed) → inspected
+
+ROOM_STATUSES = {
+    "vacant_dirty": "Vacante Sucia",
+    "vacant_clean": "Vacante Limpia",
+    "occupied_clean": "Ocupada Limpia",
+    "occupied_dirty": "Ocupada Sucia",
+    "cleaning_in_progress": "Limpieza en Progreso",
+    "cleaning_completed": "Limpieza Completada",
+    "inspected": "Inspeccionada",
+    "out_of_service": "Fuera de Servicio",
+    "out_of_order": "Fuera de Orden",
+    "maintenance_requested": "Mantenimiento Solicitado",
+}
+
+# Valid transitions (old_status → [new_statuses])
+ROOM_STATUS_TRANSITIONS: dict[str, list[str]] = {
+    "vacant_dirty": ["cleaning_in_progress", "maintenance_requested"],
+    "vacant_clean": ["occupied_clean", "cleaning_in_progress"],
+    "occupied_clean": ["occupied_dirty", "vacant_dirty"],
+    "occupied_dirty": ["cleaning_in_progress", "vacant_dirty"],
+    "cleaning_in_progress": ["cleaning_completed", "maintenance_requested"],
+    "cleaning_completed": ["inspected", "cleaning_in_progress", "maintenance_requested"],
+    "inspected": ["vacant_clean", "occupied_clean", "maintenance_requested"],
+    "out_of_service": ["inspected", "cleaning_in_progress"],
+    "out_of_order": ["inspected", "maintenance_requested"],
+    "maintenance_requested": ["out_of_service", "out_of_order", "inspected"],
+}
+
+ROOM_STATUS_COLORS: dict[str, str] = {
+    "vacant_dirty": "#92400e",
+    "vacant_clean": "#16a34a",
+    "occupied_clean": "#006076",
+    "occupied_dirty": "#d97706",
+    "cleaning_in_progress": "#ca8a04",
+    "cleaning_completed": "#059669",
+    "inspected": "#4338ca",
+    "out_of_service": "#6f797d",
+    "out_of_order": "#ba1a1a",
+    "maintenance_requested": "#ea580c",
+}
+
+
+def is_valid_transition(old_status: str, new_status: str) -> bool:
+    """Check if a room status transition is valid per the hotel cycle."""
+    allowed = ROOM_STATUS_TRANSITIONS.get(old_status, [])
+    return new_status in allowed
+
+
+def get_valid_next_statuses(current_status: str) -> list[str]:
+    """Return valid next states for a given current status."""
+    return ROOM_STATUS_TRANSITIONS.get(current_status, [])
+
+
 class RoomStatusLogCreate(BaseModel):
     prop_id: int
     room_type_id: str
     room_label: str
-    status: str = "available"  # available, occupied, cleaning, clean, inspected, dirty, maintenance, out_of_order, out_of_service
+    status: str = "vacant_clean"
     note: str = ""
 
 

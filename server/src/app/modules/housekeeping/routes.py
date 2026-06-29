@@ -10,6 +10,8 @@ from src.app.modules.housekeeping.schemas import (
     RoomStatusLogCreate,
 )
 from src.app.modules.housekeeping.service import (
+    approve_cleaning,
+    complete_cleaning,
     complete_housekeeping_task,
     complete_maintenance_task,
     create_additional_charge,
@@ -25,7 +27,9 @@ from src.app.modules.housekeeping.service import (
     list_room_status,
     list_room_status_history,
     list_upcoming_events,
+    list_valid_transitions,
     module_status,
+    start_cleaning,
     sync_room_status_from_hotel_rooms,
     update_housekeeping_task,
     update_maintenance_task,
@@ -310,6 +314,124 @@ def room_status_history_api(
         page=page,
         page_size=page_size,
     )
+
+
+# ═══════════════════════════════════════════════
+# Room Status Transitions & Cleaning Actions
+# ═══════════════════════════════════════════════
+
+
+@api_router.get("/room-status/transitions")
+def room_status_transitions_api(
+    current_status: str | None = Query(default=None),
+    current_user: dict = Depends(require_login),
+):
+    """Return valid transitions for the housekeeping cycle.
+    If current_status is provided, returns only valid next statuses.
+    """
+    return list_valid_transitions(status=current_status)
+
+
+@api_router.post("/cleaning/start")
+def cleaning_start_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Start a cleaning session. Marks room as cleaning_in_progress.
+
+    Payload:
+    {
+      "prop_id": 42,
+      "room_label": "1201",
+      "assigned_to": "María",
+      "task_id": "optional"
+    }
+    """
+    prop_id = int(payload.get("prop_id", 0))
+    room_label = payload.get("room_label", "")
+    if not prop_id or not room_label:
+        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
+    result = start_cleaning(
+        prop_id, room_label,
+        assigned_to=payload.get("assigned_to", ""),
+        task_id=payload.get("task_id"),
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Habitación no encontrada")
+    return result
+
+
+@api_router.post("/cleaning/complete")
+def cleaning_complete_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Complete a cleaning session with the housekeeper's report.
+
+    Payload:
+    {
+      "prop_id": 42,
+      "room_label": "1201",
+      "assigned_to": "María",
+      "observations": "Toallas cambiadas, piso trapeado",
+      "damage_found": false,
+      "damage_description": "",
+      "lost_object_found": false,
+      "lost_object_description": "",
+      "needs_maintenance": false,
+      "maintenance_description": ""
+    }
+
+    If damage_found or needs_maintenance → auto-creates maintenance task
+    and blocks the room. If lost_object_found → auto-creates Lost & Found entry.
+    """
+    prop_id = int(payload.get("prop_id", 0))
+    room_label = payload.get("room_label", "")
+    if not prop_id or not room_label:
+        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
+    result = complete_cleaning(
+        prop_id, room_label,
+        assigned_to=payload.get("assigned_to", ""),
+        observations=payload.get("observations", ""),
+        damage_found=bool(payload.get("damage_found", False)),
+        damage_description=payload.get("damage_description", ""),
+        lost_object_found=bool(payload.get("lost_object_found", False)),
+        lost_object_description=payload.get("lost_object_description", ""),
+        needs_maintenance=bool(payload.get("needs_maintenance", False)),
+        maintenance_description=payload.get("maintenance_description", ""),
+    )
+    return result
+
+
+@api_router.post("/cleaning/approve")
+def cleaning_approve_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Supervisor approves the cleaning → room becomes vacant_clean.
+
+    Payload:
+    {
+      "prop_id": 42,
+      "room_label": "1201",
+      "inspected_by": "supervisor_name",
+      "note": "Todo en orden",
+      "set_occupied": false  // true si el huésped ya está dentro
+    }
+    """
+    prop_id = int(payload.get("prop_id", 0))
+    room_label = payload.get("room_label", "")
+    if not prop_id or not room_label:
+        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
+    result = approve_cleaning(
+        prop_id, room_label,
+        inspected_by=payload.get("inspected_by", "supervisor"),
+        note=payload.get("note", ""),
+        set_occupied=bool(payload.get("set_occupied", False)),
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Habitación no encontrada")
+    return result
 
 
 # ═══════════════════════════════════════════════
