@@ -15,7 +15,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
-import type { CheckOutsViewModel } from '../../models/check-outs.model';
+import type { CheckOutRowViewModel, CheckOutsViewModel } from '../../models/check-outs.model';
 import type { CheckOutsDto } from '../../models/check-outs.dto';
 import { CheckOutsApiService, type BookingCharge, type DateHistoryEntry } from '../../services/check-outs-api.service';
 import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';

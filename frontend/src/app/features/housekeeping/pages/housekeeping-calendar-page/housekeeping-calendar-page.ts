@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, KeyValuePipe, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy, Component, computed, inject, signal,
 } from '@angular/core';
@@ -19,9 +19,11 @@ import {
   type WeeklyCalendarData,
 } from '../../services/housekeeping-api.service';
 
-/** Generate ISO date string for today. */
+/** Generate ISO date string for today (local timezone-aware). */
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 /** Get Monday of the week containing the given date. */
@@ -64,7 +66,6 @@ const TASK_TYPE_ICONS: Record<string, string> = {
 /** Status colors for task badges. */
 const TASK_STATUS_COLORS: Record<string, string> = {
   pending: '#d97706',
-  in_progress: '#1463ff',
   in_progress: '#006076',
   inspection: '#7c3aed',
   completed: '#059669',
@@ -81,7 +82,7 @@ const COMMON_STAFF = [
 
 @Component({
   selector: 'app-housekeeping-calendar-page',
-  imports: [DatePipe, ReactiveFormsModule, PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
+  imports: [DatePipe, KeyValuePipe, TitleCasePipe, ReactiveFormsModule, PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
   templateUrl: './housekeeping-calendar-page.html',
   styleUrl: './housekeeping-calendar-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -106,8 +107,8 @@ export class HousekeepingCalendarPageComponent {
   readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
 
   // ── Calendar resource ──
-  readonly calendarResource = rxResource({
-    request: () => {
+  readonly calendarResource = rxResource<any, any>({
+    params: () => {
       const pid = this.selectedPropId();
       if (!pid) return undefined;
       return {
@@ -116,8 +117,8 @@ export class HousekeepingCalendarPageComponent {
         assignedTo: this.assignedToFilter() || undefined,
       };
     },
-    loader: ({ request }) =>
-      this.api.getWeeklyCalendar(request!.propId, request!.weekStart, request!.assignedTo),
+    stream: ({ params }) =>
+      this.api.getWeeklyCalendar((params as any).propId, (params as any).weekStart, (params as any).assignedTo),
   });
 
   readonly calendarData = computed(() => this.calendarResource.value() ?? null);

@@ -157,14 +157,14 @@
                   <span class="ciw-label">Hora de llegada</span>
                   <input type="time" class="ciw-input ciw-input-mono"
                     [value]="arrivalTime()"
-                    (input)="arrivalTime.set(($event.target as HTMLInputElement).value)" />
+                    (input)="arrivalTime.set($any($event.target).value)" />
                 </div>
                 <div class="ciw-field">
                   <span class="ciw-label">¿Llegó acompañado?</span>
                   <label class="ciw-toggle">
                     <input type="checkbox"
                       [checked]="hasCompanions()"
-                      (change)="hasCompanions.set(($event.target as HTMLInputElement).checked)" />
+                      (change)="hasCompanions.set($any($event.target).checked)" />
                     <span>{{ hasCompanions() ? 'Sí' : 'No' }}</span>
                   </label>
                 </div>
@@ -173,7 +173,7 @@
                     <span class="ciw-label">Cantidad de acompañantes</span>
                     <input type="number" min="1" max="20" class="ciw-input ciw-input-narrow"
                       [value]="companionsCount()"
-                      (input)="companionsCount.set(Math.max(1, Number(($event.target as HTMLInputElement).value) || 0))" />
+                      (input)="companionsCount.set(Math.max(1, Number($any($event.target).value) || 0))" />
                   </div>
                 }
               </div>
@@ -192,7 +192,7 @@
                 <label class="ciw-check" [class.ciw-checked]="documentVerified()">
                   <input type="checkbox"
                     [checked]="documentVerified()"
-                    (change)="documentVerified.set(($event.target as HTMLInputElement).checked)" />
+                    (change)="documentVerified.set($any($event.target).checked)" />
                   <span>Documento Verificado</span>
                   @if (documentVerified()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
@@ -201,7 +201,7 @@
                 <label class="ciw-check" [class.ciw-checked]="keysDelivered()">
                   <input type="checkbox"
                     [checked]="keysDelivered()"
-                    (change)="keysDelivered.set(($event.target as HTMLInputElement).checked)" />
+                    (change)="keysDelivered.set($any($event.target).checked)" />
                   <span>Llaves Entregadas</span>
                   @if (keysDelivered()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
@@ -210,7 +210,7 @@
                 <label class="ciw-check" [class.ciw-checked]="depositReceived()">
                   <input type="checkbox"
                     [checked]="depositReceived()"
-                    (change)="depositReceived.set(($event.target as HTMLInputElement).checked)" />
+                    (change)="depositReceived.set($any($event.target).checked)" />
                   <span>Depósito Recibido</span>
                   @if (depositReceived()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
@@ -219,7 +219,7 @@
                 <label class="ciw-check" [class.ciw-checked]="privacySigned()">
                   <input type="checkbox"
                     [checked]="privacySigned()"
-                    (change)="privacySigned.set(($event.target as HTMLInputElement).checked)" />
+                    (change)="privacySigned.set($any($event.target).checked)" />
                   <span>Políticas Aceptadas</span>
                   @if (privacySigned()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
@@ -228,7 +228,7 @@
                 <label class="ciw-check" [class.ciw-checked]="paymentPending()">
                   <input type="checkbox"
                     [checked]="paymentPending()"
-                    (change)="paymentPending.set(($event.target as HTMLInputElement).checked)" />
+                    (change)="paymentPending.set($any($event.target).checked)" />
                   <span>Pago Pendiente</span>
                   @if (paymentPending()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
@@ -247,7 +247,7 @@
               </div>
               <textarea class="ciw-textarea"
                 [value]="observations()"
-                (input)="observations.set(($event.target as HTMLTextAreaElement).value)"
+                (input)="observations.set($any($event.target).value)"
                 placeholder="Alergias, notas del huésped, peticiones especiales, restricciones..."
                 rows="4"></textarea>
 

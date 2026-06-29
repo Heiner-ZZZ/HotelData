@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, switchMap } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -162,20 +162,20 @@ export class RoomStatusPageComponent {
   readonly savingRow = signal<Set<string>>(new Set());
 
   // ── Resource: fetch room statuses ──
-  readonly resource = rxResource({
-    request: () => ({
+  readonly resource = rxResource<any, any>({
+    params: () => ({
       page: this.page(),
       status: this.statusFilter(),
       propId: this.propId(),
-      propLabel: this.propLabel(),
     }),
-    loader: async ({ request }) => {
-      const { page, status, propId } = request;
+    stream: ({ params }) => {
+      const { page, status, propId } = params as any;
       if (!propId) {
-        return await lastValueFrom(this.api.getRoomStatus(undefined, status || undefined, page));
+        return this.api.getRoomStatus(undefined, status || undefined, page);
       }
-      await lastValueFrom(this.api.syncRoomStatus(propId));
-      return await lastValueFrom(this.api.getRoomStatus(propId, status || undefined, page));
+      return this.api.syncRoomStatus(propId).pipe(
+        switchMap(() => this.api.getRoomStatus(propId, status || undefined, page)),
+      );
     },
   });
 
