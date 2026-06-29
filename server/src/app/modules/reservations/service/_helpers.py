@@ -26,15 +26,22 @@ class ReservationInput:
     cedula: str = ""
     room_type_id: str = ""
     coupon_code: str = ""
+    contract_code: str = ""
+    selected_amenities: list[str] = None
     special_requests: list[str] = None
+    season_id: str = ""
     source: str = "web_request"
     user_id: str | None = None
     created_by: str | None = None
     is_test: bool = False
 
     def __post_init__(self):
+        if self.selected_amenities is None:
+            self.selected_amenities = []
         if self.special_requests is None:
             self.special_requests = []
+        if self.season_id is None:
+            self.season_id = ""
 
 
 def utc_now() -> datetime:
