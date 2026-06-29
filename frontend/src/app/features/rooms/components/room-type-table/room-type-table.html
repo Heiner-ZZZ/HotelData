@@ -18,6 +18,9 @@
           <td>
             <span class="material-symbols-outlined table-icon">meeting_room</span>
             {{ room.name }}
+            @if (room.isRoh) {
+              <span class="roh-badge">ROH</span>
+            }
           </td>
           <td>{{ room.roomNumber || '--' }}</td>
           <td>{{ room.floor || '--' }}</td>

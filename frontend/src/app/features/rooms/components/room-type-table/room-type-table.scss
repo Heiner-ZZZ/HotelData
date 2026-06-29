@@ -46,6 +46,23 @@
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
 }
 
+.roh-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: #b45309;
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+  text-transform: uppercase;
+  vertical-align: middle;
+  cursor: help;
+}
+
 .desc-cell {
   color: var(--muted-text);
   max-width: 200px;
