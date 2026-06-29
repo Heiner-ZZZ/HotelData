@@ -16,16 +16,38 @@ def create_additional_charge(payload: AdditionalChargeCreate) -> dict[str, Any] 
     if not booking:
         return None
     now = now_iso()
+    category = payload.category or _infer_category(payload.concept)
+    total = round(payload.amount * max(1, payload.quantity), 2)
     doc = {
         "booking_id": payload.booking_id, "prop_id": payload.prop_id,
         "concept": payload.concept, "amount": round(payload.amount, 2),
         "quantity": max(1, payload.quantity),
-        "total": round(payload.amount * max(1, payload.quantity), 2),
-        "category": payload.category or _infer_category(payload.concept),
+        "total": total,
+        "category": category,
         "note": payload.note, "created_at": now,
     }
     result = db[CHARGES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    # ── Auto-post to the guest folio ──
+    try:
+        from src.app.modules.billing.service.folio import post_to_folio
+        post_to_folio(
+            payload.booking_id,
+            posting_type="charge",
+            category=category,
+            concept=payload.concept,
+            amount=total,
+            quantity=payload.quantity,
+            reference_id=str(result.inserted_id),
+            reference_type="additional_charge",
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Failed to auto-post charge to folio for booking %s", payload.booking_id
+        )
+
     return _enrich_charge(doc)
 
 

@@ -318,7 +318,22 @@ def complete_check_in(
         except Exception:
             logger.exception("Failed to notify housekeeping for booking %s", booking_id)
 
-    return {"booking_id": booking_id, "stay_status": "checked_in", "folio": folio, "invoice_id": invoice_id}
+    # ── Create folio (cuenta del huésped) ──
+    folio_id: str | None = None
+    if booking and not booking.get("is_test"):
+        try:
+            from src.app.modules.billing.service import create_folio
+            folio_doc = create_folio(booking_id)
+            if folio_doc:
+                folio_id = folio_doc.get("folio_number")
+                logger.info(
+                    "Folio %s created for booking %s at check-in",
+                    folio_id, booking_id,
+                )
+        except Exception:
+            logger.exception("Failed to create folio for booking %s", booking_id)
+
+    return {"booking_id": booking_id, "stay_status": "checked_in", "folio": folio, "folio_number": folio_id, "invoice_id": invoice_id}
 
 
 def complete_check_out(
@@ -563,6 +578,20 @@ def complete_check_out(
             )
         except Exception:
             logger.exception("Failed to register shift transaction for check-out %s", booking_id)
+
+    # ── Close folio on check-out ──
+    if booking and not booking.get("is_test"):
+        try:
+            from src.app.modules.billing.service import close_folio
+            inv_doc = db.reservation_invoices.find_one(
+                {"booking_id": booking_id},
+                {"_id": 1},
+            )
+            inv_id = str(inv_doc["_id"]) if inv_doc else None
+            close_folio(booking_id, invoice_id=inv_id, closed_by=changed_by)
+            logger.info("Folio closed for booking %s on check-out", booking_id)
+        except Exception:
+            logger.exception("Failed to close folio on check-out for booking %s", booking_id)
 
     # ── Notify guest about invoice on check-out ──
     if booking and not booking.get("is_test"):
