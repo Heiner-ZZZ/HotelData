@@ -1,0 +1,428 @@
+<div class="guest-amenity-page" [class.cart-drawer-open]="showCartDrawer()">
+  <!-- ═══ Hero header ═══ -->
+  <header class="hero-header">
+    <button type="button" class="btn-back-hero" (click)="goBack()" aria-label="Volver">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <div class="hero-text">
+      <span class="hero-eyebrow">Durante tu estancia</span>
+      <h1 class="hero-title">Servicios y amenities</h1>
+      <p class="hero-desc">Solicita servicios adicionales para tu habitación.</p>
+    </div>
+    <div class="hero-badge">
+      <span class="material-symbols-outlined">concierge</span>
+    </div>
+  </header>
+
+  <!-- ═══ Booking info card ═══ -->
+  @if (bookingInfo(); as info) {
+    <section class="booking-info-card">
+      <div class="booking-info-row">
+        <span class="material-symbols-outlined info-icon">business</span>
+        <span class="info-value">{{ info.hotel_label }}</span>
+      </div>
+      <div class="booking-info-row">
+        <span class="material-symbols-outlined info-icon">calendar_today</span>
+        <span class="info-value">{{ info.check_in }} → {{ info.check_out }}</span>
+      </div>
+      <div class="booking-info-row">
+        <span class="material-symbols-outlined info-icon">person</span>
+        <span class="info-value">{{ info.guest_name }}</span>
+      </div>
+    </section>
+  }
+
+  <!-- ═══ Messages ═══ -->
+  @if (errorMessage()) {
+    <div class="toast toast-error">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="toast-close" (click)="errorMessage.set('')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  @if (requestResult(); as result) {
+    <div class="toast toast-success slide-in">
+      <span class="material-symbols-outlined" style="font-size: 28px;">check_circle</span>
+      <div class="toast-body">
+        <strong>Solicitud completada</strong>
+        <p>
+          @if (result.charges_created > 0) {
+            {{ result.charges_created }} cargo(s) creado(s) por un total de <strong>{{ result.total | currency:'USD' }}</strong>.
+          } @else {
+            Todos los artículos eran gratuitos — sin cargos adicionales.
+          }
+        </p>
+        @if (result.items.length > 0) {
+          <div class="toast-items">
+            @for (item of result.items; track item.label) {
+              <div class="toast-item-row">
+                <span>{{ item.label }}</span>
+                <span>{{ item.quantity }}x</span>
+                <span>{{ item.free ? 'Gratis' : (item.amount | currency:'USD') }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <button type="button" class="toast-close" (click)="dismissResult()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- ═══ View states ═══ -->
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando catálogo de amenities..." />
+    }
+    @case ('error') {
+      <app-error-state title="Error al cargar" [description]="errorMessage()" />
+    }
+    @case ('empty') {
+      <app-empty-state title="Sin amenities disponibles" description="No hay catálogo de amenities para esta reserva." />
+    }
+    @default {
+      @if (catalog(); as categories) {
+        @if (categories.length > 0) {
+          <!-- ═══ Search bar ═══ -->
+          <div class="search-section">
+            <div class="search-input-wrap">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Buscar servicios…"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="setSearchQuery($event)"
+                aria-label="Buscar amenities"
+              />
+              @if (searchQuery()) {
+                <button type="button" class="search-clear" (click)="setSearchQuery('')">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+            </div>
+            <button
+              type="button"
+              class="filter-chip"
+              [class.is-active]="showPaidOnly()"
+              (click)="togglePaidOnly()"
+              title="Mostrar solo servicios con costo"
+            >
+              <span class="material-symbols-outlined">payments</span>
+              <span class="chip-label">Con costo</span>
+            </button>
+          </div>
+
+          <!-- ═══ Category filter chips ═══ -->
+          @if (categories.length > 1) {
+            <div class="category-chips-row">
+              <button
+                type="button"
+                class="cat-chip"
+                [class.is-active]="!selectedCategory()"
+                (click)="selectCategory(null)"
+              >
+                <span class="material-symbols-outlined">apps</span>
+                Todas
+              </button>
+              @for (cat of categories; track cat) {
+                <button
+                  type="button"
+                  class="cat-chip"
+                  [class.is-active]="selectedCategory() === cat"
+                  (click)="selectCategory(cat)"
+                >
+                  <span class="material-symbols-outlined">{{ categoryIcon(cat) }}</span>
+                  {{ cat }}
+                </button>
+              }
+            </div>
+          }
+
+          <!-- ═══ Results summary ═══ -->
+          @if (searchQuery() || showPaidOnly() || selectedCategory()) {
+            <div class="results-summary">
+              <span class="results-count">{{ filteredItemCount() }} resultado(s)</span>
+              @if (selectedCategory()) {
+                <span class="results-active-filter">
+                  {{ selectedCategory() }}
+                  <button type="button" class="results-clear-filter" (click)="selectCategory(null)">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </span>
+              }
+              @if (showPaidOnly()) {
+                <span class="results-active-filter">
+                  Con costo
+                  <button type="button" class="results-clear-filter" (click)="togglePaidOnly()">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </span>
+              }
+            </div>
+          }
+
+          <!-- ═══ "No filter match" state ═══ -->
+          @if (!hasFilterMatch()) {
+            <div class="no-results">
+              <span class="material-symbols-outlined no-results-icon">search_off</span>
+              <h3 class="no-results-title">Sin resultados</h3>
+              <p class="no-results-desc">
+                @if (searchQuery()) {
+                  No se encontraron amenities que coincidan con "{{ searchQuery() }}".
+                } @else {
+                  No hay amenities disponibles con los filtros seleccionados.
+                }
+              </p>
+              <button type="button" class="btn-clear-all-filters" (click)="setSearchQuery(''); selectCategory(null); showPaidOnly.set(false)">
+                <span class="material-symbols-outlined">filter_alt_off</span>
+                Limpiar filtros
+              </button>
+            </div>
+          } @else {
+            <!-- ═══ Catalog grid ═══ -->
+            <div class="catalog-grid">
+              @for (cat of filteredCatalog(); track cat.category) {
+                <section
+                  class="category-panel"
+                  [class.is-collapsed]="isCategoryCollapsed(cat.category)"
+                >
+                  <button
+                    type="button"
+                    class="category-header"
+                    (click)="toggleCategory(cat.category)"
+                    [attr.aria-expanded]="!isCategoryCollapsed(cat.category)"
+                  >
+                    <span class="cat-icon-wrap">
+                      <span class="material-symbols-outlined cat-icon">
+                        {{ categoryIcon(cat.category) }}
+                      </span>
+                    </span>
+                    <span class="cat-title">{{ cat.category }}</span>
+                    <span class="cat-count">{{ cat.items.length }}</span>
+                    <span class="material-symbols-outlined cat-arrow">expand_more</span>
+                  </button>
+
+                  <div class="category-body" [class.is-hidden]="isCategoryCollapsed(cat.category)">
+                    <div class="category-items">
+                      @for (item of cat.items; track item.label) {
+                        <div
+                          class="amenity-card"
+                          [class.is-out-of-stock]="isOutOfStock(item)"
+                          [class.is-in-cart]="getCartQty(item.label) > 0"
+                        >
+                          <!-- Stock progress bar (top edge) -->
+                          @if (item.available_stock !== null && item.available_stock !== undefined) {
+                            <div
+                              class="stock-bar"
+                              [style.--stock-ratio]="stockRatio(item)"
+                              [style.--stock-color]="stockBarColor(stockRatio(item))"
+                            ></div>
+                          }
+
+                          <div class="amenity-icon-box">
+                            <span class="material-symbols-outlined amenity-item-icon">
+                              {{ categoryIcon(cat.category) }}
+                            </span>
+                          </div>
+
+                          <div class="amenity-info">
+                            <div class="amenity-head">
+                              <span class="amenity-label">{{ item.label }}</span>
+                              @if (item.active) {
+                                <span class="badge-active">Activa</span>
+                              }
+                            </div>
+                            <div class="amenity-meta">
+                              @if (item.unit_price > 0) {
+                                <span class="amenity-price">
+                                  <span class="material-symbols-outlined price-icon">sell</span>
+                                  {{ item.unit_price | currency:'USD' }}
+                                </span>
+                              } @else {
+                                <span class="amenity-free">
+                                  <span class="material-symbols-outlined price-icon">card_giftcard</span>
+                                  Gratis
+                                </span>
+                              }
+                              <span class="amenity-stock" [class.stock-low]="isLowStock(item)">
+                                @if (getStock(item) === '∞') {
+                                  <span class="material-symbols-outlined stock-icon">all_inclusive</span>
+                                  Ilimitado
+                                } @else {
+                                  <span class="material-symbols-outlined stock-icon">inventory_2</span>
+                                  {{ getStock(item) }} disp.
+                                }
+                              </span>
+                            </div>
+                          </div>
+
+                          @if (isOutOfStock(item)) {
+                            <span class="out-of-stock-badge">
+                              <span class="material-symbols-outlined">block</span>
+                              Sin stock
+                            </span>
+                          } @else {
+                            <div class="amenity-actions">
+                              @if (getCartQty(item.label) > 0) {
+                                <div class="qty-controls">
+                                  <button
+                                    type="button"
+                                    class="qty-btn"
+                                    (click)="removeFromCart(item.label)"
+                                    aria-label="Reducir cantidad"
+                                  >
+                                    <span class="material-symbols-outlined">remove</span>
+                                  </button>
+                                  <span class="qty-value">{{ getCartQty(item.label) }}</span>
+                                  <button
+                                    type="button"
+                                    class="qty-btn"
+                                    (click)="addToCart(item.label)"
+                                    [disabled]="getCartQty(item.label) >= maxQtyFor(item.label)"
+                                    aria-label="Aumentar cantidad"
+                                  >
+                                    <span class="material-symbols-outlined">add</span>
+                                  </button>
+                                </div>
+                              } @else {
+                                <button
+                                  type="button"
+                                  class="btn-add-amenity"
+                                  (click)="addToCart(item.label)"
+                                  [disabled]="isOutOfStock(item)"
+                                >
+                                  <span class="material-symbols-outlined">add_shopping_cart</span>
+                                  Solicitar
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </section>
+              }
+            </div>
+          }
+        } @else {
+          <app-empty-state
+            icon="inventory_2"
+            title="Sin amenities"
+            description="Este hotel no tiene amenities configurados en su catálogo."
+          />
+        }
+      }
+    }
+  }
+
+  <!-- ═══ Floating cart bar ═══ -->
+  @if (cartCount() > 0) {
+    <div class="cart-bar" [class.drawer-open]="showCartDrawer()">
+      <div class="cart-bar-inner">
+        <button type="button" class="cart-summary-toggle" (click)="toggleCartDrawer()">
+          <span class="material-symbols-outlined cart-icon">shopping_cart</span>
+          <span class="cart-count-badge">{{ cartCount() }}</span>
+          <div class="cart-summary-text">
+            <span class="cart-summary-label">
+              @if (cartPaidCount() > 0 && cartFreeCount() > 0) {
+                {{ cartPaidCount() }} pago · {{ cartFreeCount() }} gratis
+              } @else if (cartPaidCount() > 0) {
+                {{ cartPaidCount() }} artículo(s)
+              } @else {
+                {{ cartFreeCount() }} gratis
+              }
+            </span>
+            @if (cartTotal() > 0) {
+              <span class="cart-total">{{ cartTotal() | currency:'USD' }}</span>
+            } @else {
+              <span class="cart-total-free">Sin costo</span>
+            }
+          </div>
+          <span class="material-symbols-outlined drawer-arrow">
+            {{ showCartDrawer() ? 'expand_more' : 'expand_less' }}
+          </span>
+        </button>
+
+        <div class="cart-actions">
+          <button type="button" class="btn-clear" (click)="clearCart()" title="Limpiar carrito">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+          <button type="button" class="btn-request" (click)="submitRequest()" [disabled]="requesting()">
+            @if (requesting()) {
+              <span class="material-symbols-outlined loading-spin">sync</span>
+              Enviando…
+            } @else {
+              <span class="material-symbols-outlined">send</span>
+              Solicitar
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ Cart drawer ═══ -->
+      @if (showCartDrawer()) {
+        <div class="cart-drawer">
+          <div class="cart-drawer-header">
+            <strong>Detalle del carrito</strong>
+            <span>{{ cartCount() }} artículo(s) · {{ cartTotal() | currency:'USD' }}</span>
+          </div>
+          <div class="cart-drawer-items">
+            @for (entry of cartDetails(); track entry.label) {
+              <div class="cart-drawer-item" [class.is-free]="entry.free">
+                <div class="cart-item-info">
+                  <strong>{{ entry.label }}</strong>
+                  @if (entry.unitPrice > 0) {
+                    <span class="cart-item-price">{{ entry.unitPrice | currency:'USD' }} c/u</span>
+                  } @else {
+                    <span class="cart-item-free-badge">Gratis</span>
+                  }
+                </div>
+                <div class="cart-item-qty-controls">
+                  <button type="button" class="qty-btn-sm" (click)="removeFromCart(entry.label)" aria-label="Reducir">
+                    <span class="material-symbols-outlined">remove</span>
+                  </button>
+                  <input
+                    type="number"
+                    class="cart-qty-input"
+                    [value]="entry.qty"
+                    (change)="setCartQty(entry.label, +$any($event.target).value)"
+                    min="0"
+                    [max]="maxQtyFor(entry.label)"
+                    aria-label="Cantidad"
+                  />
+                  <button type="button" class="qty-btn-sm" (click)="addToCart(entry.label)" [disabled]="entry.qty >= maxQtyFor(entry.label)" aria-label="Aumentar">
+                    <span class="material-symbols-outlined">add</span>
+                  </button>
+                  <span class="cart-item-line-total">
+                    @if (!entry.free) { {{ entry.total | currency:'USD' }} }
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+          @if (cartTotal() > 0) {
+            <div class="cart-drawer-total">
+              <span>Total a pagar</span>
+              <strong>{{ cartTotal() | currency:'USD' }}</strong>
+            </div>
+          }
+          @if (cartFreeCount() > 0) {
+            <div class="cart-drawer-free-note">
+              <span class="material-symbols-outlined">card_giftcard</span>
+              {{ cartFreeCount() }} artículo(s) gratuito(s) incluido(s)
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══ Bottom spacer ═══ -->
+  <div class="bottom-spacer"></div>
+</div>
