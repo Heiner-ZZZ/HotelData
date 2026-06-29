@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
+    add_line_item,
     cancel_invoice,
     close_folio,
     create_folio,
@@ -19,6 +20,7 @@ from src.app.modules.billing.service import (
     module_status,
     post_to_folio,
     refund_payment,
+    remove_line_item,
     FOLIO_CATEGORIES,
 )
 from src.app.security.dependencies import require_login
@@ -65,6 +67,56 @@ def get_invoice_api(
     result = get_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    return result
+
+
+@api_router.post("/invoices/{invoice_id}/items", status_code=201)
+def add_line_item_api(
+    invoice_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Add a line item to an invoice (only if status='issued').
+
+    Payload:
+    {
+      "name": "Parking",
+      "quantity": 1,
+      "unit_price": 20.00,
+      "category": "parking"
+    }
+    """
+    result = add_line_item(
+        invoice_id,
+        name=payload.get("name", ""),
+        quantity=int(payload.get("quantity", 1)),
+        unit_price=float(payload.get("unit_price", 0)),
+        category=payload.get("category", "Otros"),
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo agregar el concepto. La factura puede no existir o no estar en estado 'issued'.",
+        )
+    return result
+
+
+@api_router.delete("/invoices/{invoice_id}/items/{item_id}")
+def remove_line_item_api(
+    invoice_id: str,
+    item_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Remove a line item from an invoice (only if status='issued').
+
+    Cannot remove room charge lines (type='room').
+    """
+    result = remove_line_item(invoice_id, item_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo eliminar el concepto. Puede ser el cargo de habitación (no removible).",
+        )
     return result
 
 

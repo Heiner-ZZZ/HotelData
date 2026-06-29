@@ -1,5 +1,6 @@
 from src.app.modules.billing.service.collections import ensure_billing_collections, module_status
 from src.app.modules.billing.service.lifecycle import (
+    add_line_item,
     cancel_invoice,
     create_invoice,
     create_payment,
@@ -9,6 +10,7 @@ from src.app.modules.billing.service.lifecycle import (
     list_invoices,
     list_payments,
     refund_payment,
+    remove_line_item,
     update_invoice_additional_charges,
     create_split_charges_invoice,
 )
@@ -23,6 +25,7 @@ from src.app.modules.billing.service.folio import (
 )
 
 __all__ = [
+    "add_line_item",
     "cancel_invoice",
     "create_invoice",
     "create_payment",
@@ -32,6 +35,7 @@ __all__ = [
     "list_invoices",
     "list_payments",
     "refund_payment",
+    "remove_line_item",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
     "create_folio",
