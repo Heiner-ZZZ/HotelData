@@ -1,0 +1,235 @@
+.invoice-panel {
+  border: 1px solid var(--app-border);
+}
+
+.invoice-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.invoice-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .material-symbols-outlined {
+    color: var(--primary, #2563eb);
+    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  }
+}
+
+.invoice-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.inv-info {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.inv-label {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.inv-value {
+  font-size: 0.95rem;
+}
+
+.inv-info-total {
+  .inv-value {
+    font-size: 1.1rem;
+    color: var(--primary, #2563eb);
+  }
+}
+
+@media (max-width: 600px) {
+  .invoice-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-invoice,
+.btn-pay-invoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--app-border);
+  min-height: 2.5rem;
+}
+
+.btn-invoice {
+  background: #fff;
+  color: var(--text-color, #111);
+
+  &:hover {
+    background: var(--hover-bg, #f5f5f5);
+  }
+}
+
+.btn-pay-invoice {
+  background: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+  color: #fff;
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.panel-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.panel-icon {
+  color: var(--primary, #2563eb);
+  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+.panel-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary, #2563eb);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.price-panel {
+  border: 1px solid var(--app-border);
+}
+
+.breakdown-table {
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted-text);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 2px solid var(--app-border);
+  }
+
+  .cell-right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .foot-subtotal td,
+  .foot-taxes td {
+    font-size: 0.85rem;
+    color: var(--muted-text);
+    border-bottom: none;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .foot-total td {
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-bottom: none;
+    padding-top: 0.5rem;
+  }
+
+  .total-value {
+    color: var(--primary, #2563eb);
+    font-size: 1.05rem;
+  }
+}
+
+.policy-panel {
+  border: 1px solid var(--app-border);
+}
+
+.policy-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-color, #222);
+  padding: 0.25rem 0;
+}
+
+/* ── Charges section ── */
+.charges-panel {
+  border: 1px solid var(--app-border);
+}
+
+.charges-table {
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted-text);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 2px solid var(--app-border);
+  }
+
+  .cell-right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .foot-total td {
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-bottom: none;
+    padding-top: 0.5rem;
+  }
+
+  .total-value {
+    color: var(--primary, #2563eb);
+    font-size: 1.05rem;
+  }
+}
+
+.charge-note {
+  font-size: 0.8rem;
+  color: var(--muted-text, #666);
+  line-height: 1.4;
+  margin-top: 2px;
+}

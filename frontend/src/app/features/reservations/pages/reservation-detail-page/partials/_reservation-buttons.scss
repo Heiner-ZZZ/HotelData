@@ -1,0 +1,141 @@
+button,
+.secondary-link {
+  min-height: 2.5rem;
+  padding: 0 1.25rem;
+  border-radius: 8px;
+}
+
+button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-weight: 500;
+  transition: all 150ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 85%, black);
+    border-color: color-mix(in srgb, var(--accent) 85%, black);
+  }
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-action {
+  font-weight: 500;
+  font-size: 0.85rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-confirm {
+  border: 1px solid var(--success);
+  background: var(--success);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--success) 85%, black);
+    border-color: color-mix(in srgb, var(--success) 85%, black);
+  }
+}
+
+.btn-reject {
+  border: 1px solid var(--warning);
+  background: var(--warning);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--warning) 85%, black);
+    border-color: color-mix(in srgb, var(--warning) 85%, black);
+  }
+}
+
+.btn-cancel {
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 85%, black);
+    border-color: color-mix(in srgb, var(--danger) 85%, black);
+  }
+}
+
+.btn-icon {
+  font-size: 1rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+}
+
+.btn-small-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border: 1px solid var(--primary, #2563eb);
+  min-height: auto;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  color: var(--app-text);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--surface-soft);
+  }
+}

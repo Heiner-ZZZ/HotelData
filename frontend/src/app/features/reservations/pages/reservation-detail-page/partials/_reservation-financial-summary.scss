@@ -1,0 +1,56 @@
+/* ═══ Financial Summary ═══ */
+
+.financial-summary {
+  .financial-summary-body {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.75rem 0.25rem;
+  }
+
+  .summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    color: var(--app-text);
+    padding: 0.3rem 0;
+  }
+
+  .summary-row-charges {
+    color: var(--muted-text);
+
+    .summary-amount {
+      color: var(--app-text);
+    }
+  }
+
+  .summary-row-total {
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.4rem 0;
+  }
+
+  .summary-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .summary-amount-grand {
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  .summary-original {
+    text-decoration: line-through;
+    opacity: 0.6;
+    font-weight: normal;
+    font-size: 0.85em;
+    margin-right: 6px;
+  }
+
+  .summary-divider-row {
+    height: 1px;
+    background: var(--app-border);
+    margin: 0.2rem 0;
+  }
+}

@@ -1,0 +1,97 @@
+.btn-edit {
+  border: 1px solid var(--primary, #2563eb);
+  background: var(--primary, #2563eb);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}
+
+.edit-panel {
+  border: 1px solid var(--app-border);
+}
+
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .edit-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edit-field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+
+  span {
+    color: var(--muted-text);
+    font-weight: 500;
+  }
+
+  input {
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+}
+
+.edit-field-wide {
+  grid-column: 1 / -1;
+}
+
+.edit-error {
+  color: var(--danger, #dc2626);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(220, 38, 38, 0.06);
+  border-radius: 8px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-cancel-edit,
+.btn-save-edit {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-cancel-edit {
+  background: #fff;
+  border: 1px solid var(--app-border);
+  color: var(--text-color, #111);
+
+  &:hover {
+    background: var(--hover-bg, #f5f5f5);
+  }
+}
+
+.btn-save-edit {
+  background: var(--primary, #2563eb);
+  border: 1px solid var(--primary, #2563eb);
+  color: #fff;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+  }
+}

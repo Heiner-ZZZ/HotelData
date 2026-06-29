@@ -1,0 +1,116 @@
+.guests-panel {
+  border: 1px solid var(--app-border);
+}
+
+.room-guests-block {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface-soft);
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+}
+
+.room-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-color, #111);
+  font-weight: 600;
+}
+
+.guest-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+
+  input {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: inherit;
+  }
+}
+
+.gf-name { flex: 2; min-width: 120px; }
+.gf-email { flex: 2; min-width: 120px; }
+.gf-phone { flex: 1; min-width: 100px; }
+.gf-age { width: 60px; }
+
+.gf-child {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--muted-text);
+
+  input { width: auto; }
+}
+
+.btn-remove-guest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--muted-text);
+  min-height: auto;
+  padding: 0;
+
+  &:hover {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--danger, #dc2626);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+}
+
+.btn-add-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  background: #fff;
+  border: 1px dashed var(--app-border);
+  color: var(--muted-text);
+  min-height: auto;
+
+  &:hover {
+    border-color: var(--primary, #2563eb);
+    color: var(--primary, #2563eb);
+    background: rgba(37, 99, 235, 0.03);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  }
+}
+
+.guests-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.muted-text {
+  color: var(--muted-text);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+}
