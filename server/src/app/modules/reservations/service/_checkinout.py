@@ -223,6 +223,19 @@ def complete_check_in(
         except Exception:
             logger.exception("Failed to notify staff on check-in for booking %s", booking_id)
 
+    # ── Register transaction on active shift ──
+    if booking and not booking.get("is_test"):
+        try:
+            from src.app.modules.reception import register_transaction
+            register_transaction(
+                prop_id=int(booking.get("prop_id", 0)),
+                txn_type="check_in",
+                booking_id=booking_id,
+                description=f"Check-in: {booking.get('guest_name', '')} — Folio {folio}",
+            )
+        except Exception:
+            logger.exception("Failed to register shift transaction for check-in %s", booking_id)
+
     # ── Auto-create or retrieve invoice on check-in ──
     invoice_id: str | None = None
     if result and not result.get("is_test"):
@@ -534,6 +547,22 @@ def complete_check_out(
                 logger.info("No assigned rooms to mark as dirty for booking %s", booking_id)
         except Exception:
             logger.exception("Failed to mark rooms as dirty / create cleaning tasks for booking %s", booking_id)
+
+    # ── Register transaction on active shift ──
+    if booking and not booking.get("is_test"):
+        try:
+            from src.app.modules.reception import register_transaction
+            total_paid = float(booking.get("total_price", 0) or 0)
+            register_transaction(
+                prop_id=int(booking.get("prop_id", 0)),
+                txn_type="check_out",
+                booking_id=booking_id,
+                amount=total_paid,
+                payment_method=payment_method or "",
+                description=f"Check-out: {booking.get('guest_name', '')} — ${total_paid:.2f}",
+            )
+        except Exception:
+            logger.exception("Failed to register shift transaction for check-out %s", booking_id)
 
     # ── Notify guest about invoice on check-out ──
     if booking and not booking.get("is_test"):

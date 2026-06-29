@@ -58,6 +58,7 @@ from src.app.modules.amenities.routes import admin_router as amenities_admin_rou
 from src.app.modules.amenities.routes import guest_router as amenities_guest_router
 from src.app.modules.lost_and_found.routes import api_router as lost_and_found_api_router
 from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
+from src.app.modules.reception.routes import api_router as reception_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -75,6 +76,7 @@ from src.app.modules.reviews.service import ensure_reviews_collections
 from src.app.modules.billing.service import ensure_billing_collections
 from src.app.modules.housekeeping.service import ensure_housekeeping_collections
 from src.app.modules.reservations.service import ensure_reservation_collections
+from src.app.modules.reception import ensure_reception_collections
 from src.app.modules.global_settings.service import ensure_global_settings_collections
 from src.app.modules.geo_catalog.service import ensure_geo_collections
 import logging
@@ -143,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(map_api_router)
     app.include_router(amenities_guest_router)
     app.include_router(amenities_admin_router)
+    app.include_router(reception_api_router)
     app.include_router(lost_and_found_api_router)
     app.include_router(lost_and_found_module_router)
     app.include_router(crud_router)
@@ -164,6 +167,7 @@ async def lifespan(app: FastAPI):
     ensure_billing_collections()
     ensure_housekeeping_collections()
     ensure_reservation_collections()
+    ensure_reception_collections()
     ensure_global_settings_collections()
     ensure_geo_collections()
     ensure_auth_collections()
