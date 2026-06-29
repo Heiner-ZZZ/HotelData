@@ -43,11 +43,11 @@ def partner_hotel_content_editor(prop_id: int) -> dict[str, Any] | None:
     return detail
 
 
-def partner_hotel_policies(prop_id: int) -> dict[str, Any] | None:
+def partner_hotel_policies(prop_id: int, season_id: str = "") -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
-    detail["policies"] = policies_for_prop(prop_id)
+    detail["policies"] = policies_for_prop(prop_id, season_id=season_id)
     detail["recent_changes"] = recent_content_changes(prop_id)
     # Include room types so the UI can offer per-room-type policies
     from src.app.modules.partner.services.rooms import _room_types_for_prop
@@ -55,6 +55,12 @@ def partner_hotel_policies(prop_id: int) -> dict[str, Any] | None:
     detail["per_room_policies"] = list(
         get_database().hotel_policies.find(
             {"prop_id": prop_id, "room_type_id": {"$nin": ["", None]}},
+            {"_id": 0},
+        )
+    )
+    detail["season_policies"] = list(
+        get_database().hotel_policies.find(
+            {"prop_id": prop_id, "season_id": {"$nin": ["", None]}},
             {"_id": 0},
         )
     )
