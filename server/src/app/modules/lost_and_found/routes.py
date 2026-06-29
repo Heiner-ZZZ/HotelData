@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+
+from src.app.modules.lost_and_found.schemas import LostItemCreate, LostItemUpdate, ModuleStatus
+from src.app.modules.lost_and_found.service import (
+    claim_lost_item,
+    create_lost_item,
+    delete_lost_item,
+    dispose_lost_item,
+    get_lost_item,
+    list_lost_items,
+    module_status,
+    update_lost_item,
+)
+from src.app.security.dependencies import require_login
+
+router = APIRouter(prefix="/modules/lost-and-found", tags=["modules-lost-and-found"])
+api_router = APIRouter(prefix="/api/lost-and-found", tags=["lost-and-found-api"])
+
+
+@router.get("/status", response_model=ModuleStatus)
+def lost_and_found_module_status() -> ModuleStatus:
+    return module_status()
+
+
+@api_router.post("", status_code=status.HTTP_201_CREATED)
+def create_lost_item_api(
+    payload: LostItemCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Register a new lost & found item."""
+    return create_lost_item(payload)
+
+
+@api_router.get("")
+def list_lost_items_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    status: str | None = Query(default=None),
+    booking_id: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_login),
+):
+    """List lost & found items with optional filters."""
+    return list_lost_items(
+        prop_id=prop_id,
+        status_filter=status,
+        booking_id=booking_id,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@api_router.get("/{item_id}")
+def get_lost_item_api(
+    item_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Get a single lost & found item."""
+    result = get_lost_item(item_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    return result
+
+
+@api_router.put("/{item_id}")
+def update_lost_item_api(
+    item_id: str,
+    payload: LostItemUpdate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Update a lost & found item."""
+    result = update_lost_item(item_id, payload)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    return result
+
+
+@api_router.delete("/{item_id}")
+def delete_lost_item_api(
+    item_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Permanently delete a lost & found item."""
+    result = delete_lost_item(item_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    return result
+
+
+@api_router.post("/{item_id}/claim")
+def claim_lost_item_api(
+    item_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Mark a lost item as returned to the guest."""
+    result = claim_lost_item(
+        item_id,
+        returned_to=str(payload.get("returned_to", "")),
+        notes=str(payload.get("notes", "")),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    return result
+
+
+@api_router.post("/{item_id}/dispose")
+def dispose_lost_item_api(
+    item_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Mark a lost item as disposed (donated, thrown away, etc.)."""
+    result = dispose_lost_item(
+        item_id,
+        notes=str(payload.get("notes", "")),
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    return result
