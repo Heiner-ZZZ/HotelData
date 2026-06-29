@@ -13,6 +13,7 @@ export interface ReservationListItemDto {
   prop_id: number;
   status: string;
   booking_source: string;
+  assigned_rooms?: string[];
   guest_name: string;
   guest_email: string;
   check_in_date: string;
@@ -144,6 +145,23 @@ export interface ReservationDetailDto {
   room_type: RoomTypeInfoDto | null;
   price_breakdown: PriceBreakdownDto | null;
   cancellation_policy: string | null;
+  assigned_rooms?: Array<{
+    hotel_room_id: string;
+    room_number: string;
+    room_label: string;
+    floor: string;
+    room_status: string;
+  }>;
+  additional_charges?: Array<{
+    concept: string;
+    amount: number;
+    quantity: number;
+    total: number;
+    note: string;
+    created_at: string;
+  }>;
+  amenities_count?: number;
+  amenities_total?: number;
   can_cancel: boolean;
 }
 

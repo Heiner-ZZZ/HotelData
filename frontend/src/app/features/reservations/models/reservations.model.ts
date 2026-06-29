@@ -18,6 +18,8 @@ export interface ReservationListItem {
   checkOutDate: string;
   status: string;
   bookingSource: string;
+  assignedRooms: string[];
+  roomsAssignedCount: number;
 }
 
 export interface ReservationHotelOption {
@@ -39,6 +41,7 @@ export interface ReservationCreateInput {
   comment: string;
   couponCode?: string;
   specialRequests?: string[];
+  selectedAmenities?: string[];
 }
 
 export interface ReservationCreateResult {
@@ -147,6 +150,24 @@ export interface ReservationDetailViewModel {
   roomType: RoomTypeInfo | null;
   priceBreakdown: PriceBreakdown | null;
   cancellationPolicy: string | null;
+  additionalCharges: Array<{
+    concept: string;
+    amount: number;
+    quantity: number;
+    total: number;
+    note: string;
+    createdAt: string;
+  }>;
+  assignedRooms: Array<{
+    hotelRoomId: string;
+    roomNumber: string;
+    roomLabel: string;
+    floor: string;
+    roomStatus: string;
+  }>;
+  totalCharges: number;
+  amenitiesCount: number;
+  amenitiesTotal: number;
   history: Array<{
     status: string;
     changedAt: string;

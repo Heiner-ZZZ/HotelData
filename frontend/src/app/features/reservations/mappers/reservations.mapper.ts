@@ -18,6 +18,7 @@ import type {
 } from '../models/reservations.model';
 
 function mapReservationListItem(item: ReservationListItemDto): ReservationListItem {
+  const assigned: string[] = item.assigned_rooms || [];
   return {
     bookingId: item.booking_id,
     propId: item.prop_id,
@@ -27,7 +28,9 @@ function mapReservationListItem(item: ReservationListItemDto): ReservationListIt
     checkInDate: item.check_in_date,
     checkOutDate: item.check_out_date,
     status: item.status,
-    bookingSource: item.booking_source
+    bookingSource: item.booking_source,
+    assignedRooms: assigned,
+    roomsAssignedCount: assigned.length,
   };
 }
 
@@ -64,7 +67,8 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     rooms: input.rooms,
     comment: input.comment,
     coupon_code: input.couponCode,
-    special_requests: input.specialRequests || []
+    special_requests: input.specialRequests || [],
+    selected_amenities: input.selectedAmenities || []
   };
 }
 
@@ -173,6 +177,24 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       source: dto.price_breakdown.source,
     } : null,
     cancellationPolicy: dto.cancellation_policy || null,
+    additionalCharges: (dto.additional_charges || []).map(c => ({
+      concept: c.concept,
+      amount: c.amount,
+      quantity: c.quantity,
+      total: c.total,
+      note: c.note || '',
+      createdAt: c.created_at,
+    })),
+    assignedRooms: (dto.assigned_rooms || []).map(r => ({
+      hotelRoomId: r.hotel_room_id,
+      roomNumber: r.room_number,
+      roomLabel: r.room_label,
+      floor: r.floor,
+      roomStatus: r.room_status,
+    })),
+    totalCharges: (dto.additional_charges || []).reduce((sum, c) => sum + (c.total || 0), 0),
+    amenitiesCount: dto.amenities_count || 0,
+    amenitiesTotal: dto.amenities_total || 0,
     history: dto.history.map((item) => ({
       status: item.status,
       changedAt: formatDateTime(item.changed_at),
