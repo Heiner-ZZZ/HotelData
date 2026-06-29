@@ -259,7 +259,140 @@ def get_invoice(invoice_id: str) -> dict | None:
     )
     enriched["payments"] = [_enrich_payment(p) for p in payments]
 
+    # ── Compute total_paid / total_pending ──
+    total_paid = round(
+        sum(float(p.get("amount", 0)) for p in payments if p.get("status") == "confirmed"),
+        2,
+    )
+    enriched["total_paid_amount"] = total_paid
+    enriched["total_pending_amount"] = round(max(enriched.get("total", 0) - total_paid, 0), 2)
+
     return enriched
+
+
+def add_line_item(invoice_id: str, *, name: str, quantity: int = 1, unit_price: float = 0.0, category: str = "Otros") -> dict | None:
+    """Add a line item to an issued invoice and recalculate totals.
+
+    Returns the updated invoice, or None if not found / not issued.
+    """
+    db = get_database()
+    try:
+        from bson.errors import InvalidId
+        doc_id = ObjectId(invoice_id)
+    except (InvalidId, Exception):
+        return None
+
+    inv = db[INVOICES].find_one({"_id": doc_id, "status": "issued"})
+    if not inv:
+        return None
+
+    total = round(unit_price * quantity, 2)
+    item_id = secrets.token_hex(8)
+    new_item = {
+        "item_id": item_id,
+        "type": "manual_charge",
+        "name": name,
+        "quantity": quantity,
+        "unit_price": round(unit_price, 2),
+        "total": total,
+        "category": category,
+        "created_at": _now(),
+    }
+
+    # Recalculate
+    existing_items = inv.get("line_items", []) or []
+    combined = existing_items + [new_item]
+    extras_total = round(sum(float(it.get("total", 0)) for it in combined), 2)
+    room_subtotal = inv.get("room_subtotal", 0) or 0
+    new_subtotal = round(room_subtotal + extras_total, 2)
+    new_taxes = round(new_subtotal * 0.16, 2)
+    new_total = round(new_subtotal + new_taxes, 2)
+
+    update = {
+        "$push": {"line_items": new_item},
+        "$set": {
+            "extras_total": extras_total,
+            "subtotal": new_subtotal,
+            "taxes": new_taxes,
+            "total": new_total,
+            "updated_at": _now(),
+        },
+    }
+    result = db[INVOICES].find_one_and_update(
+        {"_id": doc_id, "status": "issued"},
+        update,
+        return_document=ReturnDocument.AFTER,
+    )
+    if result:
+        _update_both(INVOICES, FACT_INVOICES, doc_id, {"$set": {
+            "extras_total": extras_total,
+            "subtotal": new_subtotal,
+            "taxes": new_taxes,
+            "total": new_total,
+            "line_items": combined,
+            "updated_at": _now(),
+        }})
+    return _enrich_invoice(result) if result else None
+
+
+def remove_line_item(invoice_id: str, item_id: str) -> dict | None:
+    """Remove a line item from an issued invoice and recalculate totals.
+
+    Prevents removal of the room charge line (type='room').
+    Returns the updated invoice, or None if not found / not issued.
+    """
+    db = get_database()
+    try:
+        from bson.errors import InvalidId
+        doc_id = ObjectId(invoice_id)
+    except (InvalidId, Exception):
+        return None
+
+    inv = db[INVOICES].find_one({"_id": doc_id, "status": "issued"})
+    if not inv:
+        return None
+
+    existing_items = inv.get("line_items", []) or []
+    # Find the item to remove
+    target = next((it for it in existing_items if it.get("item_id") == item_id), None)
+    if not target:
+        return None
+    # Prevent removing room-type items
+    if target.get("type") == "room":
+        return None
+
+    remaining = [it for it in existing_items if it.get("item_id") != item_id]
+    extras_total = round(sum(float(it.get("total", 0)) for it in remaining if it.get("type") != "room"), 2)
+    room_subtotal = inv.get("room_subtotal", 0) or 0
+    new_subtotal = round(room_subtotal + extras_total, 2)
+    new_taxes = round(new_subtotal * 0.16, 2)
+    new_total = round(new_subtotal + new_taxes, 2)
+
+    update = {
+        "$set": {
+            "line_items": remaining,
+            "extras_total": extras_total,
+            "subtotal": new_subtotal,
+            "taxes": new_taxes,
+            "total": new_total,
+            "updated_at": _now(),
+        },
+    }
+    result = db[INVOICES].find_one_and_update(
+        {"_id": doc_id, "status": "issued"},
+        update,
+        return_document=ReturnDocument.AFTER,
+    )
+    if result:
+        _update_both(INVOICES, FACT_INVOICES, doc_id, {"$set": {
+            "line_items": remaining,
+            "extras_total": extras_total,
+            "subtotal": new_subtotal,
+            "taxes": new_taxes,
+            "total": new_total,
+            "updated_at": _now(),
+        }})
+    return _enrich_invoice(result) if result else None
 
 
 def cancel_invoice(invoice_id: str) -> dict | None:
