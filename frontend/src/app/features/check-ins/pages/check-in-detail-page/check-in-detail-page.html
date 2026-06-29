@@ -1,157 +1,377 @@
-<div class="ci-page">
-
-  @if (successMessage()) {
-    <div class="toast toast-success">{{ successMessage() }}</div>
-  }
-
+<div class="ciw-page">
   @switch (viewState()) {
-    @case ('loading') { <app-loading-state label="Cargando..." /> }
+    @case ('loading') { <app-loading-state label="Cargando reserva..." /> }
     @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la reserva." /> }
     @case ('empty')   { <app-empty-state title="No encontrada" description="La reserva no existe." /> }
     @default {
       @if (data(); as vm) {
 
-        <!-- ─── Header ─── -->
-        <div class="ci-header">
+        <!-- ═══ Header ═══ -->
+        <div class="ciw-header">
           <div>
-            <h1>Check-In</h1>
-            <div class="ci-meta">
-              <span>{{ vm.booking_id }}</span>
-              <span class="ci-dot"></span>
+            <h1 class="ciw-title">Check-In</h1>
+            <div class="ciw-meta">
+              <span class="ciw-badge-id">{{ vm.booking_id }}</span>
+              <span class="ciw-dot"></span>
               <span>{{ vm.hotel_label }}</span>
-              <span class="ci-dot"></span>
+              <span class="ciw-dot"></span>
               <span>{{ vm.check_in_date }} → {{ vm.check_out_date }}</span>
+              <span class="ciw-dot"></span>
+              <span>{{ vm.total_nights }} noche(s)</span>
             </div>
           </div>
           @if (vm.stay_status === 'checked_in') {
-            <span class="ci-badge success">✓ Check-In Completado</span>
+            <span class="ciw-badge success">✓ Completado</span>
           } @else {
-            <span class="ci-badge pending">● Huésped en Recepción</span>
+            <span class="ciw-badge pending">● Pendiente</span>
           }
         </div>
 
-        @if (vm.folio) {
-          <div class="folio-banner">
-            <span class="material-symbols-outlined">receipt_long</span>
-            Folio: <strong>{{ vm.folio }}</strong>
-            @if (vm.check_in_by) { <span>· por <strong>{{ vm.check_in_by }}</strong></span> }
-            @if (vm.check_in_time_actual) { <span>· {{ vm.check_in_time_actual }} hrs</span> }
+        @if (successMessage()) {
+          <div class="ciw-toast success" (click)="successMessage.set('')">
+            <span class="material-symbols-outlined">check_circle</span>
+            {{ successMessage() }}
           </div>
         }
 
-        <!-- ─── Card: Guest + Room (read-only) ─── -->
-        <section class="ci-card">
-          <div class="ci-card-row">
-            <div class="ci-field">
-              <span class="ci-label">Nombre</span>
-              <span class="ci-value-lg">{{ vm.guest_name }}</span>
-            </div>
-            <div class="ci-field">
-              <span class="ci-label">Documento</span>
-              <span class="ci-value">{{ vm.cedula || 'No registrado' }}</span>
-            </div>
-            <div class="ci-field">
-              <span class="ci-label">Email / Tel</span>
-              <span class="ci-value">{{ vm.guest_email }}<br/>{{ vm.guest_phone }}</span>
-            </div>
-          </div>
+        @if (!checkinDone()) {
+          <!-- ═══ Breadcrumb ═══ -->
+          <nav class="ciw-breadcrumb">
+            @for (step of steps; track step.num) {
+              <button type="button" class="ciw-step"
+                [class.ciw-step-active]="currentStep() === step.num"
+                [class.ciw-step-done]="currentStep() > step.num"
+                (click)="goToStep(step.num)">
+                <span class="ciw-step-icon material-symbols-outlined">{{ step.icon }}</span>
+                <span class="ciw-step-label">{{ step.label }}</span>
+              </button>
+              @if (!$last) {
+                <span class="ciw-step-connector"></span>
+              }
+            }
+          </nav>
 
-          <div class="ci-room-card">
-            <span class="material-symbols-outlined ci-room-icon">meeting_room</span>
-            <div>
-              <strong>{{ vm.room_type_name || 'Sin tipo' }}</strong>
-              <span class="ci-room-label">
-                @for (r of vm.assigned_rooms; track r.hotel_room_id; let last = $last) {
-                  {{ roomLabel(r) }}@if (!last) {, }
+          <!-- ═══ Step 1: Guest Summary ═══ -->
+          @if (currentStep() === 1) {
+            <section class="ciw-card">
+              <div class="ciw-card-header">
+                <span class="material-symbols-outlined ciw-card-icon">person</span>
+                <h2>Resumen del Huésped</h2>
+              </div>
+
+              <div class="ciw-guest-grid">
+                <div class="ciw-field">
+                  <span class="ciw-label">Nombre</span>
+                  <span class="ciw-value-lg">{{ vm.guest_name }}</span>
+                </div>
+                <div class="ciw-field">
+                  <span class="ciw-label">Documento</span>
+                  <span class="ciw-value">{{ vm.cedula || 'No registrado' }}</span>
+                </div>
+                <div class="ciw-field">
+                  <span class="ciw-label">Email</span>
+                  <span class="ciw-value">{{ vm.guest_email }}</span>
+                </div>
+                <div class="ciw-field">
+                  <span class="ciw-label">Teléfono</span>
+                  <span class="ciw-value">{{ vm.guest_phone || '—' }}</span>
+                </div>
+              </div>
+
+              <div class="ciw-divider"></div>
+
+              <div class="ciw-reservation-summary">
+                <div class="ciw-summary-row">
+                  <span>Habitación</span>
+                  <strong>{{ vm.room_type_name || vm.room_type_id }}</strong>
+                </div>
+                <div class="ciw-summary-row">
+                  <span>Noches</span>
+                  <strong>{{ vm.total_nights }}</strong>
+                </div>
+                <div class="ciw-summary-row">
+                  <span>Tarifa / noche</span>
+                  <strong>{{ currency() }} {{ pricePerNight().toFixed(2) }}</strong>
+                </div>
+                <div class="ciw-summary-row">
+                  <span>Total</span>
+                  <strong>{{ currency() }} {{ totalPrice().toFixed(2) }}</strong>
+                </div>
+                <div class="ciw-summary-row">
+                  <span>Adultos</span>
+                  <strong>{{ vm.adults }}</strong>
+                </div>
+                @if (vm.children > 0) {
+                  <div class="ciw-summary-row">
+                    <span>Niños</span>
+                    <strong>{{ vm.children }}</strong>
+                  </div>
                 }
-              </span>
-            </div>
-            @if (vm.assigned_rooms.length > 0) { <span class="ci-room-count">{{ vm.assigned_rooms.length }} hab.</span> }
-          </div>
-        </section>
+                @if (vm.comment) {
+                  <div class="ciw-summary-row ciw-summary-row-full">
+                    <span>Comentario</span>
+                    <span class="ciw-value">{{ vm.comment }}</span>
+                  </div>
+                }
+              </div>
 
-        <!-- ─── Card: Arrival & Companions ─── -->
-        <section class="ci-card">
-          <div class="ci-card-row">
-            <div class="ci-field ci-field-2col">
-              <span class="ci-label">Hora de llegada</span>
-              <input type="time" class="ci-input ci-input-mono"
-                [ngModel]="arrivalTime()" (ngModelChange)="arrivalTime.set($event)" />
+              <div class="ciw-divider"></div>
+
+              <div class="ciw-section-label">Habitaciones Asignadas</div>
+              <div class="ciw-rooms-list">
+                @for (r of assignedRoomsStatuses(); track r.label) {
+                  <div class="ciw-room-item" [class.ciw-room-ok]="r.ok" [class.ciw-room-blocked]="!r.ok">
+                    <span class="material-symbols-outlined ciw-room-icon">
+                      {{ r.ok ? 'check_circle' : 'block' }}
+                    </span>
+                    <span class="ciw-room-label">{{ r.label }}</span>
+                    <span class="ciw-room-status"
+                      [style.--room-status-color]="roomStatusColor(r.status)">
+                      {{ roomStatusLabel(r.status) }}
+                    </span>
+                    @if (!r.ok) {
+                      <span class="ciw-room-warn">No disponible</span>
+                    }
+                  </div>
+                }
+              </div>
+              @if (!allRoomsAvailable()) {
+                <div class="ciw-warning">
+                  <span class="material-symbols-outlined">warning</span>
+                  Algunas habitaciones no están disponibles. Asigna otras antes del check-in.
+                </div>
+              }
+            </section>
+          }
+
+          <!-- ═══ Step 2: Arrival & Companions ═══ -->
+          @if (currentStep() === 2) {
+            <section class="ciw-card">
+              <div class="ciw-card-header">
+                <span class="material-symbols-outlined ciw-card-icon">login</span>
+                <h2>Llegada y Acompañantes</h2>
+              </div>
+
+              <div class="ciw-form-grid">
+                <div class="ciw-field">
+                  <span class="ciw-label">Hora de llegada</span>
+                  <input type="time" class="ciw-input ciw-input-mono"
+                    [value]="arrivalTime()"
+                    (input)="arrivalTime.set(($event.target as HTMLInputElement).value)" />
+                </div>
+                <div class="ciw-field">
+                  <span class="ciw-label">¿Llegó acompañado?</span>
+                  <label class="ciw-toggle">
+                    <input type="checkbox"
+                      [checked]="hasCompanions()"
+                      (change)="hasCompanions.set(($event.target as HTMLInputElement).checked)" />
+                    <span>{{ hasCompanions() ? 'Sí' : 'No' }}</span>
+                  </label>
+                </div>
+                @if (hasCompanions()) {
+                  <div class="ciw-field">
+                    <span class="ciw-label">Cantidad de acompañantes</span>
+                    <input type="number" min="1" max="20" class="ciw-input ciw-input-narrow"
+                      [value]="companionsCount()"
+                      (input)="companionsCount.set(Math.max(1, Number(($event.target as HTMLInputElement).value) || 0))" />
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- ═══ Step 3: Verification ═══ -->
+          @if (currentStep() === 3) {
+            <section class="ciw-card">
+              <div class="ciw-card-header">
+                <span class="material-symbols-outlined ciw-card-icon">fact_check</span>
+                <h2>Verificación y Documentos</h2>
+              </div>
+
+              <div class="ciw-checks">
+                <label class="ciw-check" [class.ciw-checked]="documentVerified()">
+                  <input type="checkbox"
+                    [checked]="documentVerified()"
+                    (change)="documentVerified.set(($event.target as HTMLInputElement).checked)" />
+                  <span>Documento Verificado</span>
+                  @if (documentVerified()) {
+                    <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
+                  }
+                </label>
+                <label class="ciw-check" [class.ciw-checked]="keysDelivered()">
+                  <input type="checkbox"
+                    [checked]="keysDelivered()"
+                    (change)="keysDelivered.set(($event.target as HTMLInputElement).checked)" />
+                  <span>Llaves Entregadas</span>
+                  @if (keysDelivered()) {
+                    <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
+                  }
+                </label>
+                <label class="ciw-check" [class.ciw-checked]="depositReceived()">
+                  <input type="checkbox"
+                    [checked]="depositReceived()"
+                    (change)="depositReceived.set(($event.target as HTMLInputElement).checked)" />
+                  <span>Depósito Recibido</span>
+                  @if (depositReceived()) {
+                    <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
+                  }
+                </label>
+                <label class="ciw-check" [class.ciw-checked]="privacySigned()">
+                  <input type="checkbox"
+                    [checked]="privacySigned()"
+                    (change)="privacySigned.set(($event.target as HTMLInputElement).checked)" />
+                  <span>Políticas Aceptadas</span>
+                  @if (privacySigned()) {
+                    <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
+                  }
+                </label>
+                <label class="ciw-check" [class.ciw-checked]="paymentPending()">
+                  <input type="checkbox"
+                    [checked]="paymentPending()"
+                    (change)="paymentPending.set(($event.target as HTMLInputElement).checked)" />
+                  <span>Pago Pendiente</span>
+                  @if (paymentPending()) {
+                    <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
+                  }
+                </label>
+              </div>
+            </section>
+          }
+
+          <!-- ═══ Step 4: Observations ═══ -->
+          @if (currentStep() === 4) {
+            <section class="ciw-card">
+              <div class="ciw-card-header">
+                <span class="material-symbols-outlined ciw-card-icon">edit_note</span>
+                <h2>Observaciones</h2>
+              </div>
+              <textarea class="ciw-textarea"
+                [value]="observations()"
+                (input)="observations.set(($event.target as HTMLTextAreaElement).value)"
+                placeholder="Alergias, notas del huésped, peticiones especiales, restricciones..."
+                rows="4"></textarea>
+
+              <div class="ciw-divider"></div>
+
+              <div class="ciw-checklist-summary">
+                <span class="ciw-label">Resumen de verificación</span>
+                <div class="ciw-summary-checks">
+                  <span class="ciw-summary-check" [class.done]="documentVerified()">
+                    {{ documentVerified() ? '✓' : '○' }} Documento
+                  </span>
+                  <span class="ciw-summary-check" [class.done]="keysDelivered()">
+                    {{ keysDelivered() ? '✓' : '○' }} Llaves
+                  </span>
+                  <span class="ciw-summary-check" [class.done]="depositReceived()">
+                    {{ depositReceived() ? '✓' : '○' }} Depósito
+                  </span>
+                  <span class="ciw-summary-check" [class.done]="privacySigned()">
+                    {{ privacySigned() ? '✓' : '○' }} Políticas
+                  </span>
+                  <span class="ciw-summary-check" [class.done]="paymentPending()">
+                    {{ paymentPending() ? '✓' : '○' }} Pago
+                  </span>
+                </div>
+              </div>
+            </section>
+          }
+
+          <!-- ═══ Error display ═══ -->
+          @if (completeError()) {
+            <div class="ciw-toast error" (click)="completeError.set('')">
+              <span class="material-symbols-outlined">error</span>
+              {{ completeError() }}
             </div>
-            <div class="ci-field">
-              <span class="ci-label">¿Llegó acompañado?</span>
-              <label class="ci-toggle">
-                <input type="checkbox" [ngModel]="hasCompanions()" (ngModelChange)="hasCompanions.set($event)" />
-                <span>{{ hasCompanions() ? 'Sí' : 'No' }}</span>
-              </label>
+          }
+
+          <!-- ═══ Bottom Navigation ═══ -->
+          <div class="ciw-bottom">
+            <div class="ciw-bottom-left">
+              @if (currentStep() > 1) {
+                <button type="button" class="ciw-btn ciw-btn-outline" (click)="prevStep()">
+                  <span class="material-symbols-outlined">arrow_back</span>
+                  Anterior
+                </button>
+              }
+              @if (currentStep() === 1) {
+                <a routerLink="/management/check-ins" class="ciw-btn ciw-btn-ghost">
+                  <span class="material-symbols-outlined">close</span>
+                  Cancelar
+                </a>
+              }
             </div>
-            @if (hasCompanions()) {
-              <div class="ci-field">
-                <span class="ci-label">Cantidad</span>
-                <input type="number" min="1" max="20" class="ci-input ci-input-narrow"
-                  [ngModel]="companionsCount()" (ngModelChange)="companionsCount.set(Math.max(1, Number($event)))" />
+            <div class="ciw-bottom-right">
+              @if (currentStep() < 5) {
+                <button type="button" class="ciw-btn ciw-btn-primary"
+                  [disabled]="!canGoNext()" (click)="nextStep()">
+                  Continuar
+                  <span class="material-symbols-outlined">arrow_forward</span>
+                </button>
+              }
+              @if (currentStep() === 5) {
+                <button type="button" class="ciw-btn ciw-btn-success"
+                  (click)="completeCheckIn()" [disabled]="completing() || !allRoomsAvailable()">
+                  @if (completing()) {
+                    <span class="material-symbols-outlined spinning">sync</span>
+                    Procesando...
+                  } @else {
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Realizar Check-In
+                  }
+                </button>
+              }
+            </div>
+          </div>
+
+        } @else {
+          <!-- ═══ Completed State ═══ -->
+          <div class="ciw-completed">
+            <div class="ciw-completed-icon">
+              <span class="material-symbols-outlined">check_circle</span>
+            </div>
+            <h2 class="ciw-completed-title">Check-In Completado</h2>
+
+            @if (vm.folio) {
+              <div class="ciw-completed-folio">
+                Folio: <strong>{{ vm.folio }}</strong>
+                @if (vm.check_in_by) {
+                  <span> · por <strong>{{ vm.check_in_by }}</strong></span>
+                }
+                @if (vm.check_in_time_actual) {
+                  <span> · {{ vm.check_in_time_actual }} hrs</span>
+                }
               </div>
             }
-          </div>
-        </section>
 
-        <!-- ─── Card: Verification checklist ─── -->
-        <section class="ci-card">
-          <div class="ci-check-grid">
-            <label class="ci-check" [class.ci-checked]="documentVerified()">
-              <input type="checkbox" [ngModel]="documentVerified()" (ngModelChange)="documentVerified.set($event)" />
-              <span>Documento Verificado</span>
-              @if (documentVerified()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
-            </label>
-            <label class="ci-check" [class.ci-checked]="paymentPending()">
-              <input type="checkbox" [ngModel]="paymentPending()" (ngModelChange)="paymentPending.set($event)" />
-              <span>Pago Pendiente</span>
-              @if (paymentPending()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
-            </label>
-            <label class="ci-check" [class.ci-checked]="keysDelivered()">
-              <input type="checkbox" [ngModel]="keysDelivered()" (ngModelChange)="keysDelivered.set($event)" />
-              <span>Llaves Entregadas</span>
-              @if (keysDelivered()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
-            </label>
-            <label class="ci-check" [class.ci-checked]="depositReceived()">
-              <input type="checkbox" [ngModel]="depositReceived()" (ngModelChange)="depositReceived.set($event)" />
-              <span>Depósito Recibido</span>
-              @if (depositReceived()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
-            </label>
-            <label class="ci-check" [class.ci-checked]="privacySigned()">
-              <input type="checkbox" [ngModel]="privacySigned()" (ngModelChange)="privacySigned.set($event)" />
-              <span>Políticas Aceptadas</span>
-              @if (privacySigned()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
-            </label>
-          </div>
-        </section>
+            <div class="ciw-completed-details">
+              <div class="ciw-completed-detail">
+                <span class="ciw-label">Huésped</span>
+                <span>{{ vm.guest_name }}</span>
+              </div>
+              <div class="ciw-completed-detail">
+                <span class="ciw-label">Habitación</span>
+                <span>
+                  @for (r of vm.assigned_rooms; track r.hotel_room_id; let last = $last) {
+                    {{ roomLabel(r) }}@if (!last) {, }
+                  }
+                </span>
+              </div>
+              <div class="ciw-completed-detail">
+                <span class="ciw-label">Fecha</span>
+                <span>{{ vm.check_in_date }} → {{ vm.check_out_date }}</span>
+              </div>
+              <div class="ciw-completed-detail">
+                <span class="ciw-label">Total</span>
+                <span class="ciw-price">{{ currency() }} {{ totalPrice().toFixed(2) }}</span>
+              </div>
+            </div>
 
-        <!-- ─── Card: Observations ─── -->
-        <section class="ci-card">
-          <span class="ci-label">Observaciones</span>
-          <textarea class="ci-textarea"
-            [ngModel]="observations()" (ngModelChange)="observations.set($event)"
-            placeholder="Alergias, notas del huésped, peticiones especiales..."
-            rows="2"></textarea>
-        </section>
-
-        @if (completeError()) {
-          <div class="toast toast-error">{{ completeError() }}</div>
-        }
-
-        <!-- ─── Bottom Bar ─── -->
-        @if (canComplete()) {
-          <div class="ci-bottom-bar">
-            <a routerLink="/management/check-ins" class="ci-btn-outline">Cancelar</a>
-            <button class="ci-btn-primary" (click)="completeCheckIn()" [disabled]="completing()">
-              @if (completing()) {
-                <span class="material-symbols-outlined spinning">sync</span>
-                Procesando...
-              } @else {
-                <span class="material-symbols-outlined">check_circle</span>
-                Realizar Check In
-              }
-            </button>
+            <div class="ciw-completed-actions">
+              <a routerLink="/management/check-ins" class="ciw-btn ciw-btn-outline">
+                <span class="material-symbols-outlined">arrow_back</span>
+                Volver a Check-Ins
+              </a>
+            </div>
           </div>
         }
 
