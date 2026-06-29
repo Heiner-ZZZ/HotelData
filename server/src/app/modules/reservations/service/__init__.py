@@ -10,6 +10,8 @@ from ._transitions import confirm_booking, reject_booking
 from .cleanup import auto_cancel_expired_pending, cancel_booking, cleanup_test_booking
 from ._view_ops import list_check_ins, list_check_outs, list_check_in_dates, list_check_out_dates
 from ._checkinout import complete_check_in, complete_check_out
+from ._checkin_detail import get_check_in_detail, save_check_in_detail
+from ._checkout_detail import get_check_out_detail, save_check_out_detail
 
 
 def module_status() -> ModuleStatus:
@@ -47,4 +49,8 @@ __all__ = [
     "list_check_out_dates",
     "complete_check_in",
     "complete_check_out",
+    "get_check_in_detail",
+    "save_check_in_detail",
+    "get_check_out_detail",
+    "save_check_out_detail",
 ]

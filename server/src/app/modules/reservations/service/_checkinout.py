@@ -5,6 +5,8 @@ from typing import Any
 
 from src.database.connection import get_database
 
+import secrets
+
 from ..notifications import notify_guest_invoice, notify_guest_status_change, notify_staff_check_event
 from ._helpers import CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES, utc_now
 from ._history_lookup import _booking_history_lookup, _derived_stay_status
@@ -73,7 +75,25 @@ _CHECKIN_ALLOWED_ROOM_STATUSES = {"available"}
 _CHECKIN_REJECTED_STATUSES = {"dirty", "maintenance", "out_of_order", "out_of_service"}
 
 
-def complete_check_in(booking_id: str, *, changed_by: str = "angular_api", payment_method: str = "") -> dict[str, Any]:
+def _generate_folio(prop_id: int) -> str:
+    """Generate a unique folio number for a check-in.
+
+    Format: FOL-{prop_id}-{YYMMDD}-{random4}
+    """
+    from datetime import datetime
+    date_part = datetime.now().strftime("%y%m%d")
+    random_part = secrets.token_hex(2).upper()
+    return f"FOL-{prop_id}-{date_part}-{random_part}"
+
+
+def complete_check_in(
+    booking_id: str,
+    *,
+    changed_by: str = "angular_api",
+    payment_method: str = "",
+    ip_address: str = "",
+    observations: str = "",
+) -> dict[str, Any]:
     db = get_database()
 
     # Fetch booking before update (need data for notification)
@@ -129,10 +149,21 @@ def complete_check_in(booking_id: str, *, changed_by: str = "angular_api", payme
                 )
 
     changed_at = utc_now()
+    folio = _generate_folio(int(booking.get("prop_id", 0)))
+    now_iso = changed_at.isoformat()
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": {"$ne": "checked_in"}},
-        {            "$set": {"stay_status": "checked_in", "updated_at": changed_at,
-                          "payment_method": payment_method or booking.get("payment_method", "")}},
+        {
+            "$set": {
+                "stay_status": "checked_in",
+                "updated_at": changed_at,
+                "folio": folio,
+                "check_in_date_actual": changed_at.strftime("%Y-%m-%d"),
+                "check_in_time_actual": changed_at.strftime("%H:%M"),
+                "check_in_by": changed_by,
+                "payment_method": payment_method or booking.get("payment_method", ""),
+            }
+        },
         projection={"_id": 0, "is_test": 1},
     )
     if result is None:
@@ -142,16 +173,20 @@ def complete_check_in(booking_id: str, *, changed_by: str = "angular_api", payme
         if existing.get("stay_status") == "checked_in":
             raise ValueError("booking already checked in")
         raise ValueError("booking cannot be checked in from current reservation status")
-    db.booking_status_history.insert_one(
-        {
-            "booking_id": booking_id,
-            "status": "checked_in",
-            "changed_at": changed_at,
-            "reason": "front_desk_check_in",
-            "changed_by": changed_by,
-            "is_test": bool(result.get("is_test")),
-        }
-    )
+    audit_entry: dict[str, Any] = {
+        "booking_id": booking_id,
+        "status": "checked_in",
+        "changed_at": changed_at,
+        "reason": "front_desk_check_in",
+        "changed_by": changed_by,
+        "is_test": bool(result.get("is_test")),
+        "check_in_method": "manual",
+    }
+    if ip_address:
+        audit_entry["ip_address"] = ip_address
+    if observations:
+        audit_entry["observations"] = observations
+    db.booking_status_history.insert_one(audit_entry)
 
     # ── Notify guest on check-in ──
     if booking:
@@ -270,10 +305,23 @@ def complete_check_in(booking_id: str, *, changed_by: str = "angular_api", payme
         except Exception:
             logger.exception("Failed to notify housekeeping for booking %s", booking_id)
 
-    return {"booking_id": booking_id, "stay_status": "checked_in", "invoice_id": invoice_id}
+    return {"booking_id": booking_id, "stay_status": "checked_in", "folio": folio, "invoice_id": invoice_id}
 
 
-def complete_check_out(booking_id: str, *, changed_by: str = "angular_api", split_invoice: bool = False) -> dict[str, Any]:
+def complete_check_out(
+    booking_id: str,
+    *,
+    changed_by: str = "angular_api",
+    split_invoice: bool = False,
+    ip_address: str = "",
+    observations: str = "",
+    payment_method: str = "",
+    payment_ref: str = "",
+    late_checkout_fee: float = 0,
+    discount: float = 0,
+    discount_reason: str = "",
+    damages_found: bool = False,
+) -> dict[str, Any]:
     db = get_database()
 
     # Fetch booking before update (need data for notification)
@@ -281,13 +329,38 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api", spli
         {"booking_id": booking_id},
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,
          "check_in_date": 1, "check_out_date": 1, "total_price": 1, "currency": 1,
-         "total_nights": 1, "rooms": 1, "room_type_id": 1, "assigned_rooms": 1},
+         "total_nights": 1, "rooms": 1, "room_type_id": 1, "assigned_rooms": 1,
+         "check_out_room_inspected": 1, "check_out_keys_returned": 1},
     )
 
     changed_at = utc_now()
+
+    # Build the set fields dynamically, preserving other checkout detail if saved as draft
+    checkout_set = {
+        "stay_status": "checked_out",
+        "updated_at": changed_at,
+        "check_out_date_actual": changed_at.strftime("%Y-%m-%d"),
+        "check_out_time_actual": changed_at.strftime("%H:%M"),
+        "check_out_by": changed_by,
+    }
+    if payment_method:
+        checkout_set["check_out_payment_method"] = payment_method
+    if payment_ref:
+        checkout_set["check_out_payment_ref"] = payment_ref
+    if late_checkout_fee:
+        checkout_set["check_out_late_checkout_fee"] = round(late_checkout_fee, 2)
+    if discount:
+        checkout_set["check_out_discount"] = round(discount, 2)
+    if discount_reason:
+        checkout_set["check_out_discount_reason"] = discount_reason
+    if damages_found:
+        checkout_set["check_out_damages_found"] = True
+    if observations:
+        checkout_set["check_out_observations"] = observations
+
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": "checked_in"},
-        {"$set": {"stay_status": "checked_out", "updated_at": changed_at}},
+        {"$set": checkout_set},
         projection={"_id": 0, "is_test": 1},
     )
     if result is None:
@@ -297,16 +370,32 @@ def complete_check_out(booking_id: str, *, changed_by: str = "angular_api", spli
         if existing.get("stay_status") == "checked_out":
             raise ValueError("booking already checked out")
         raise ValueError("booking cannot be checked out from current reservation status")
-    db.booking_status_history.insert_one(
-        {
-            "booking_id": booking_id,
-            "status": "checked_out",
-            "changed_at": changed_at,
-            "reason": "front_desk_check_out",
-            "changed_by": changed_by,
-            "is_test": bool(result.get("is_test")),
-        }
-    )
+    # ── Enriched audit entry ──
+    audit_entry: dict[str, Any] = {
+        "booking_id": booking_id,
+        "status": "checked_out",
+        "changed_at": changed_at,
+        "reason": "front_desk_check_out",
+        "changed_by": changed_by,
+        "is_test": bool(result.get("is_test")),
+        "check_out_method": "manual",
+    }
+    if ip_address:
+        audit_entry["ip_address"] = ip_address
+    if observations:
+        audit_entry["observations"] = observations
+    if payment_method:
+        audit_entry["payment_method"] = payment_method
+    if payment_ref:
+        audit_entry["payment_ref"] = payment_ref
+    if late_checkout_fee:
+        audit_entry["late_checkout_fee"] = round(late_checkout_fee, 2)
+    if discount:
+        audit_entry["discount"] = round(discount, 2)
+        audit_entry["discount_reason"] = discount_reason
+    if damages_found:
+        audit_entry["damages_found"] = True
+    db.booking_status_history.insert_one(audit_entry)
 
     # ── Notify guest on check-out ──
     if booking:

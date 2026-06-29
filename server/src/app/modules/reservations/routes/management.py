@@ -13,6 +13,8 @@ from pymongo import ASCENDING
 from src.app.modules.reservations.service import (
     list_check_ins, list_check_outs, list_check_in_dates,
     list_check_out_dates, complete_check_in, complete_check_out,
+    get_check_in_detail, save_check_in_detail,
+    get_check_out_detail, save_check_out_detail,
 )
 from src.app.modules.reservations.service._helpers import utc_now
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
@@ -54,13 +56,78 @@ def check_in_update_datetime_api(booking_id: str, payload: dict = Body(default={
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@management_api_router.post("/check-ins/{booking_id}/complete")
-def check_in_complete_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+@management_api_router.get("/check-ins/{booking_id}/detail")
+def check_in_detail_api(
+    booking_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Return all check-in detail data for the booking page."""
     try:
+        return get_check_in_detail(booking_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@management_api_router.patch("/check-ins/{booking_id}/detail")
+def check_in_save_detail_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Save check-in detail fields incrementally (draft)."""
+    try:
+        return save_check_in_detail(
+            booking_id,
+            check_in_arrival_time=payload.get("check_in_arrival_time"),
+            check_in_has_companions=payload.get("check_in_has_companions"),
+            check_in_companions_count=payload.get("check_in_companions_count"),
+            check_in_document_verified=payload.get("check_in_document_verified"),
+            check_in_keys_delivered=payload.get("check_in_keys_delivered"),
+            check_in_payment_pending=payload.get("check_in_payment_pending"),
+            check_in_deposit_received=payload.get("check_in_deposit_received"),
+            check_in_privacy_signed=payload.get("check_in_privacy_signed"),
+            check_in_observations=payload.get("check_in_observations"),
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@management_api_router.post("/check-ins/{booking_id}/complete")
+def check_in_complete_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    request: Request = None,
+    current_user: dict = Depends(require_login),
+):
+    try:
+        # Save all check-in fields first, then complete
+        observations = str(payload.get("check_in_observations") or "")
+        save_check_in_detail(
+            booking_id,
+            check_in_arrival_time=payload.get("check_in_arrival_time"),
+            check_in_has_companions=payload.get("check_in_has_companions"),
+            check_in_companions_count=payload.get("check_in_companions_count"),
+            check_in_document_verified=payload.get("check_in_document_verified"),
+            check_in_keys_delivered=payload.get("check_in_keys_delivered"),
+            check_in_payment_pending=payload.get("check_in_payment_pending"),
+            check_in_deposit_received=payload.get("check_in_deposit_received"),
+            check_in_privacy_signed=payload.get("check_in_privacy_signed"),
+            check_in_observations=observations,
+            changed_by=current_user.get("username", "angular_api"),
+        )
+
+        ip_address = ""
+        if request:
+            forwarded = request.headers.get("x-forwarded-for", "")
+            ip_address = forwarded.split(",")[0].strip() if forwarded else request.client.host if request.client else ""
+
         return complete_check_in(
             booking_id,
-            changed_by=str(payload.get("changed_by") or "angular_api"),
+            changed_by=str(payload.get("changed_by") or current_user.get("username", "angular_api")),
             payment_method=str(payload.get("payment_method", "")),
+            ip_address=ip_address,
+            observations=observations,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -83,13 +150,84 @@ def check_outs_api(
     return list_check_outs(operation_date=operation_date, prop_id=prop_id, user=current_user)
 
 
-@management_api_router.post("/check-outs/{booking_id}/complete")
-def check_out_complete_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+@management_api_router.get("/check-outs/{booking_id}/detail")
+def check_out_detail_api(
+    booking_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Return all check-out detail data for the liquidation page."""
     try:
+        return get_check_out_detail(booking_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@management_api_router.patch("/check-outs/{booking_id}/detail")
+def check_out_save_detail_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Save check-out detail fields incrementally (draft)."""
+    try:
+        return save_check_out_detail(
+            booking_id,
+            check_out_room_inspected=payload.get("check_out_room_inspected"),
+            check_out_keys_returned=payload.get("check_out_keys_returned"),
+            check_out_damages_found=payload.get("check_out_damages_found"),
+            check_out_late_checkout_fee=payload.get("check_out_late_checkout_fee"),
+            check_out_discount=payload.get("check_out_discount"),
+            check_out_discount_reason=payload.get("check_out_discount_reason"),
+            check_out_payment_method=payload.get("check_out_payment_method"),
+            check_out_payment_ref=payload.get("check_out_payment_ref"),
+            check_out_observations=payload.get("check_out_observations"),
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@management_api_router.post("/check-outs/{booking_id}/complete")
+def check_out_complete_api(
+    booking_id: str,
+    payload: dict = Body(default={}),
+    request: Request = None,
+    current_user: dict = Depends(require_login),
+):
+    try:
+        # Save checkout fields first, then complete
+        observations = str(payload.get("check_out_observations") or "")
+        save_check_out_detail(
+            booking_id,
+            check_out_room_inspected=payload.get("check_out_room_inspected"),
+            check_out_keys_returned=payload.get("check_out_keys_returned"),
+            check_out_damages_found=payload.get("check_out_damages_found"),
+            check_out_late_checkout_fee=payload.get("check_out_late_checkout_fee"),
+            check_out_discount=payload.get("check_out_discount"),
+            check_out_discount_reason=payload.get("check_out_discount_reason"),
+            check_out_payment_method=payload.get("check_out_payment_method"),
+            check_out_payment_ref=payload.get("check_out_payment_ref"),
+            check_out_observations=observations,
+            changed_by=current_user.get("username", "angular_api"),
+        )
+
+        ip_address = ""
+        if request:
+            forwarded = request.headers.get("x-forwarded-for", "")
+            ip_address = forwarded.split(",")[0].strip() if forwarded else request.client.host if request.client else ""
+
         return complete_check_out(
             booking_id,
-            changed_by=str(payload.get("changed_by") or "angular_api"),
+            changed_by=str(payload.get("changed_by") or current_user.get("username", "angular_api")),
             split_invoice=bool(payload.get("split_invoice", False)),
+            ip_address=ip_address,
+            observations=observations,
+            payment_method=str(payload.get("check_out_payment_method", "")),
+            payment_ref=str(payload.get("check_out_payment_ref", "")),
+            late_checkout_fee=float(payload.get("check_out_late_checkout_fee", 0) or 0),
+            discount=float(payload.get("check_out_discount", 0) or 0),
+            discount_reason=str(payload.get("check_out_discount_reason", "") or ""),
+            damages_found=bool(payload.get("check_out_damages_found", False)),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
