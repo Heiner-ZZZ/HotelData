@@ -12,6 +12,12 @@ export const ACCOUNT_ROUTES: Routes = [
       import('../reservations/reservations.routes').then((m) => m.RESERVATIONS_ROUTES)
   },
   {
+    path: 'bookings/:bookingId/amenities',
+    loadComponent: () => import('../amenities/pages/guest-amenity-catalog-page/guest-amenity-catalog-page').then(
+      (m) => m.GuestAmenityCatalogPageComponent
+    )
+  },
+  {
     path: 'profile',
     loadComponent: () =>
       import('./pages/profile-page/profile-page').then((m) => m.ProfilePageComponent)

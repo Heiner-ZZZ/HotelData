@@ -36,4 +36,11 @@ export const HOUSEKEEPING_ROUTES: Routes = [
         (m) => m.AdditionalChargesPageComponent
       ),
   },
+  {
+    path: 'history',
+    loadComponent: () =>
+      import('./pages/room-history-page/room-history-page').then(
+        (m) => m.RoomHistoryPageComponent
+      ),
+  },
 ];
