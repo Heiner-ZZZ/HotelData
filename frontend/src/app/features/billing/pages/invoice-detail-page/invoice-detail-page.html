@@ -1,116 +1,285 @@
-<div class="invoice-detail-page">
-  <app-page-header
-    eyebrow="Detalle de factura"
-    title="Factura"
-    description="Información detallada de la factura y acciones disponibles."
-  />
-
-  <div class="top-actions no-print" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-    <button type="button" class="back-btn" (click)="goBack()" style="margin-bottom: 0;">
-      <span class="material-symbols-outlined btn-icon">arrow_back</span>
-      Volver a facturas
-    </button>
-    <button type="button" class="btn-small-primary" (click)="printPage()" style="background: var(--surface); color: var(--app-text); border: 1px solid var(--app-border); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500;">
-      <span class="material-symbols-outlined btn-icon" style="font-size: 1.2rem;">print</span>
-      Imprimir / Exportar PDF
-    </button>
-  </div>
-
-  @if (actionMessage(); as msg) {
-    <div class="success-banner">{{ msg }}</div>
-  }
-  @if (actionError(); as err) {
-    <div class="error-banner">{{ err }}</div>
-  }
-
+<div class="inv-page">
   @switch (viewState()) {
-    @case ('loading') {
-      <app-loading-state label="Cargando factura..." />
-    }
-    @case ('error') {
-      <app-error-state
-        title="No fue posible cargar la factura"
-        description="Intenta nuevamente o revisa la conectividad con la API."
-      />
-    }
+    @case ('loading') { <app-loading-state label="Cargando factura..." /> }
+    @case ('error') { <app-error-state title="Error" description="No se pudo cargar la factura." /> }
     @default {
       @if (invoice(); as inv) {
-        <section class="surface-card panel invoice-summary">
-          <div class="invoice-header">
-            <div>
-              <h3>{{ inv.invoiceNumber }}</h3>
-              <p class="muted-text">Reserva: {{ inv.bookingId }}</p>
-            </div>
-            <app-status-badge
-              [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
-              [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Emitida'"
-            />
-          </div>
 
-          <div class="amount-grid">
-            <div class="amount-item">
-              <span class="label">Subtotal habitación</span>
-              <span class="value">{{ roomSubtotal() | currency:'USD' }}</span>
-            </div>
-            @if (hasLineItems()) {
-              <div class="amount-item extras">
-                <span class="label">Extras / servicios</span>
-                <span class="value">{{ extrasTotal() | currency:'USD' }}</span>
-              </div>
+        <!-- ═══ Header ═══ -->
+        <header class="inv-header">
+          <div>
+            <a class="inv-back" (click)="goBack()">
+              <span class="material-symbols-outlined">arrow_back</span>
+              Volver a Facturas
+            </a>
+            <h1 class="inv-title">
+              Factura
+              <span class="inv-number">{{ inv.invoiceNumber }}</span>
+              <span class="inv-status-badge"
+                [class.bg-success]="statusTone() === 'success'"
+                [class.bg-danger]="statusTone() === 'danger'"
+                [class.bg-warning]="statusTone() === 'warning'">
+                {{ statusLabel() }}
+              </span>
+            </h1>
+          </div>
+          <div class="inv-actions">
+            <button type="button" class="inv-btn inv-btn-outline" (click)="printPage()">
+              <span class="material-symbols-outlined">print</span>
+              Imprimir Factura
+            </button>
+            <button type="button" class="inv-btn inv-btn-outline" disabled>
+              <span class="material-symbols-outlined">mail</span>
+              Enviar por Email
+            </button>
+            @if (isIssued()) {
+              <button type="button" class="inv-btn inv-btn-danger" (click)="cancelInvoice()">
+                <span class="material-symbols-outlined">cancel</span>
+                Anular Comprobante
+              </button>
             }
-            <div class="amount-item">
-              <span class="label">Impuestos (IVA)</span>
-              <span class="value">{{ inv.taxes | currency:'USD' }}</span>
+          </div>
+        </header>
+
+        <!-- ═══ Messages ═══ -->
+        @if (actionMessage(); as msg) {
+          <div class="inv-toast success" (click)="actionMessage.set(null)">
+            <span class="material-symbols-outlined">check_circle</span> {{ msg }}
+          </div>
+        }
+        @if (actionError(); as err) {
+          <div class="inv-toast error" (click)="actionError.set(null)">
+            <span class="material-symbols-outlined">error</span> {{ err }}
+          </div>
+        }
+
+        <!-- ═══ Split Layout ═══ -->
+        <div class="inv-grid">
+
+          <!-- ── Left Column (2/3) ── -->
+          <div class="inv-left">
+
+            <!-- Emisor / Receptor -->
+            <div class="inv-bento">
+              <section class="inv-card">
+                <h2 class="inv-card-header">
+                  <span class="material-symbols-outlined inv-card-icon">business</span>
+                  Datos del Emisor
+                </h2>
+                <dl class="inv-dl">
+                  <div>
+                    <dt>Razón Social</dt>
+                    <dd class="dd-bold">{{ inv.hotelLabel || 'HotelData PMS' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Propiedad</dt>
+                    <dd class="dd-mono">#{{ inv.propId }}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section class="inv-card">
+                <h2 class="inv-card-header">
+                  <span class="material-symbols-outlined inv-card-icon">person</span>
+                  Datos del Receptor
+                </h2>
+                <dl class="inv-dl">
+                  <div>
+                    <dt>Razón Social</dt>
+                    <dd class="dd-bold">{{ inv.guestName || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{{ inv.guestEmail || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Documento</dt>
+                    <dd class="dd-mono">{{ inv.guestCedula || '—' }}</dd>
+                  </div>
+                </dl>
+              </section>
             </div>
-            <div class="amount-item total">
-              <span class="label">Total</span>
-              <span class="value">{{ inv.total | currency:'USD' }}</span>
-            </div>
+
+            <!-- Conceptos -->
+            <section class="inv-card inv-card-table">
+              <div class="inv-card-header inv-card-header-bg">
+                <span class="material-symbols-outlined inv-card-icon">receipt_long</span>
+                <h2>Desglose de Conceptos</h2>
+              </div>
+              <div class="inv-table-wrap">
+                <table class="inv-table">
+                  <thead>
+                    <tr>
+                      <th>Descripción</th>
+                      <th class="th-num">Cant</th>
+                      <th class="th-num">V. Unitario</th>
+                      <th class="th-num">Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <div class="td-name">{{ inv.roomTypeName || 'Habitación' }}</div>
+                        <div class="td-sub">
+                          {{ inv.checkInDate }} → {{ inv.checkOutDate }}
+                          @if (inv.roomLabels.length) {
+                            · Hab. {{ inv.roomLabels.join(', ') }}
+                          }
+                        </div>
+                      </td>
+                      <td class="td-num">{{ inv.totalNights }}</td>
+                      <td class="td-num mono">{{ roomSubtotal() | currency:'USD' }}</td>
+                      <td class="td-num mono">{{ roomSubtotal() | currency:'USD' }}</td>
+                    </tr>
+                    @for (li of lineItems(); track li.itemId) {
+                      <tr>
+                        <td>
+                          <div class="td-name">{{ li.name }}</div>
+                          <div class="td-sub">
+                          @if (li.productId) {
+                            Código: {{ li.productId }}
+                          }
+                        </div>
+                        </td>
+                        <td class="td-num">{{ li.quantity }}</td>
+                        <td class="td-num mono">{{ li.unitPrice | currency:'USD' }}</td>
+                        <td class="td-num mono">{{ li.total | currency:'USD' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Payment History -->
+            @if (payments().length) {
+              <section class="inv-card">
+                <h2 class="inv-card-header">
+                  <span class="material-symbols-outlined inv-card-icon">history</span>
+                  Historial de Pagos
+                </h2>
+                <ul class="inv-payments">
+                  @for (p of payments(); track p.id) {
+                    <li class="inv-pay-item">
+                      <div class="inv-pay-icon">
+                        <span class="material-symbols-outlined">{{ paymentMethodIcon(p.method) }}</span>
+                      </div>
+                      <div class="inv-pay-info">
+                        <div class="inv-pay-method">{{ paymentMethodLabel(p.method) }}</div>
+                        <div class="inv-pay-meta">
+                          {{ p.paidAt | date:'dd/MM/yyyy HH:mm' }}
+                          @if (p.reference) { · Ref: {{ p.reference }} }
+                        </div>
+                      </div>
+                      <span class="inv-pay-amount mono">${{ p.amount.toFixed(2) }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (isIssued()) {
+              <section class="inv-card inv-card-actions">
+                <button type="button" class="inv-btn inv-btn-primary" (click)="payInvoice()">
+                  <span class="material-symbols-outlined">payments</span>
+                  Registrar Pago
+                </button>
+                <button type="button" class="inv-btn inv-btn-danger-outline" (click)="cancelInvoice()">
+                  <span class="material-symbols-outlined">cancel</span>
+                  Anular Factura
+                </button>
+              </section>
+            }
+
           </div>
 
-          @if (hasLineItems()) {
-            <details class="line-items-details">
-              <summary>Ver detalle de extras ({{ lineItems().length }})</summary>
-              <div class="line-items-table">                  @for (li of lineItems(); track li.itemId) {
-                  <div class="line-item-row">
-                    <span class="li-name">{{ li.name }}</span>
-                    <span class="li-qty">x{{ li.quantity }}</span>
-                    <span class="li-price">{{ li.unitPrice | currency:'USD' }}</span>
-                    <span class="li-total">{{ li.total | currency:'USD' }}</span>
+          <!-- ── Right Column (1/3) ── -->
+          <div class="inv-right">
+
+            <!-- Summary Card -->
+            <section class="inv-summary">
+              <div class="inv-summary-bg"></div>
+              <h2 class="inv-summary-title">Resumen Total</h2>
+
+              <div class="inv-summary-rows">
+                <div class="inv-summary-row">
+                  <span>Subtotal</span>
+                  <span class="mono">${{ subtotal().toFixed(2) }}</span>
+                </div>
+                @if (discount() > 0) {
+                  <div class="inv-summary-row">
+                    <span>Descuento</span>
+                    <span class="mono" style="color: #ba1a1a;">-${{ discount().toFixed(2) }}</span>
+                  </div>
+                }
+                <div class="inv-summary-row">
+                  <span>IVA ({{ taxRate().toFixed(0) }}%)</span>
+                  <span class="mono">${{ taxes().toFixed(2) }}</span>
+                </div>
+                @if (extrasTotal() > 0) {
+                  <div class="inv-summary-row">
+                    <span>Extras</span>
+                    <span class="mono">${{ extrasTotal().toFixed(2) }}</span>
                   </div>
                 }
               </div>
-            </details>
-          }
 
-          <div class="dates">
-            <div><strong>Emisión:</strong> {{ inv.issuedAt }}</div>
-            <div><strong>Pago:</strong> {{ inv.paidAt || 'Pendiente' }}</div>
+              <div class="inv-summary-divider"></div>
+
+              <div class="inv-summary-total">
+                <span>Total</span>
+                <span class="inv-summary-amount">${{ total().toFixed(2) }}</span>
+              </div>
+
+              <div class="inv-summary-literal">
+                ({{ totalLiteral() }})
+              </div>
+
+              <div class="inv-summary-meta">
+                Moneda: USD | Tipo de Cambio: 1.00
+              </div>
+
+              <button type="button" class="inv-btn inv-btn-primary inv-btn-full" (click)="printPage()">
+                <span class="material-symbols-outlined">download</span>
+                Descargar PDF/XML
+              </button>
+            </section>
+
+            <!-- Fiscal Info -->
+            <section class="inv-card">
+              <h3 class="inv-fiscal-title">Información Fiscal (SAT)</h3>
+              <dl class="inv-fiscal-dl">
+                <div>
+                  <dt>Folio Fiscal (UUID)</dt>
+                  <dd class="dd-mono-sm break-all">{{ inv.id }}</dd>
+                </div>
+                <div>
+                  <dt>Fecha de Emisión</dt>
+                  <dd>{{ inv.issuedAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span class="inv-status-dot"
+                      [class.dot-success]="statusTone() === 'success'"
+                      [class.dot-danger]="statusTone() === 'danger'"
+                      [class.dot-warning]="statusTone() === 'warning'">
+                    </span>
+                    {{ statusLabel() }}
+                  </dd>
+                </div>
+                @if (inv.notes) {
+                  <div>
+                    <dt>Notas</dt>
+                    <dd>{{ inv.notes }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
           </div>
+        </div>
 
-          @if (inv.notes) {
-            <div class="notes">
-              <strong>Notas:</strong>
-              <p>{{ inv.notes }}</p>
-            </div>
-          }
-        </section>
-
-        @if (inv.status === 'issued') {
-          <section class="surface-card panel action-section">
-            <h4>Acciones</h4>
-            <div class="action-buttons">
-              <button type="button" class="btn-pay" (click)="payInvoice()">
-                <span class="material-symbols-outlined btn-icon">payments</span>
-                Pagar factura
-              </button>
-              <button type="button" class="btn-cancel" (click)="cancelInvoice()">
-                <span class="material-symbols-outlined btn-icon">cancel</span>
-                Anular factura
-              </button>
-            </div>
-          </section>
-        }
       }
     }
   }
