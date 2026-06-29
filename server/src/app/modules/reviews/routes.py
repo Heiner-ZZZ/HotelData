@@ -4,7 +4,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Reques
 
 from src.app.security.dependencies import get_current_user, require_permission
 from src.app.security.hotel_filter import hotel_filter_from_user
-from src.app.modules.reviews.schemas import ModuleStatus, ReviewCreate, ReviewModeration, ReviewStaffResponse
+from src.app.modules.reviews.schemas import (
+    ModuleStatus, ReviewCreate, ReviewModeration,
+    ReviewReportCreate, ReviewStaffResponse, ReviewUpdate,
+)
 from src.app.modules.reviews.service import (
     create_review,
     create_review_staff,
@@ -134,6 +137,81 @@ def respond_review_api(
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada o no se puede responder (solo reseñas aprobadas)")
     return result
+
+
+@api_router.put("/{review_id}")
+def update_review_api(
+    review_id: str,
+    payload: ReviewUpdate = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Edit a review by its author (only while moderation_status is 'pending')."""
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Debe iniciar sesión")
+    user_id = str(current_user.get("_id", ""))
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no identificado")
+    result = update_review(review_id, user_id, payload)
+    if result is None:
+        # Determine why it failed (not found, not owner, not pending)
+        from bson import ObjectId
+        from src.database.connection import get_database
+        db = get_database()
+        try:
+            existing = db.reviews.find_one({"_id": ObjectId(review_id)}, {"user_id": 1, "moderation_status": 1})
+        except Exception:
+            existing = None
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+        if str(existing.get("user_id", "")) != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el autor puede editar esta reseña")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se puede editar una reseña en estado 'pending'")
+    return result
+
+
+@api_router.post("/{review_id}/report", status_code=201)
+def create_review_report_api(
+    review_id: str,
+    payload: ReviewReportCreate = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Report a review for inappropriate content. Any authenticated user can report."""
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Debe iniciar sesión")
+    user_id = str(current_user.get("_id", ""))
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no identificado")
+    result = create_review_report(review_id, user_id, payload)
+    if result is None:
+        # Determine why it failed
+        from bson import ObjectId
+        from src.database.connection import get_database
+        db = get_database()
+        try:
+            existing = db.reviews.find_one({"_id": ObjectId(review_id)}, {"_id": 1})
+        except Exception:
+            existing = None
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+        # Already reported by this user
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya has reportado esta reseña anteriormente",
+        )
+    return result
+
+
+@api_router.get("/reports")
+def list_review_reports_api(
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(get_current_user),
+):
+    """List review reports (staff: marketing_hotelero, super_admin). Requires authentication."""
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Debe iniciar sesión")
+    return list_review_reports(status=status, page=page, page_size=page_size)
 
 
 @api_router.delete("/{review_id}", status_code=204)

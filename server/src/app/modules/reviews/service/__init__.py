@@ -9,6 +9,9 @@ from src.app.modules.reviews.service.lifecycle import (
     moderate_review,
     respond_to_review,
     delete_review,
+    update_review,
+    create_review_report,
+    list_review_reports,
 )
 from src.app.modules.reviews.service.notifications import notify_review_created, notify_review_moderated
 
@@ -21,6 +24,9 @@ __all__ = [
     "moderate_review",
     "respond_to_review",
     "delete_review",
+    "update_review",
+    "create_review_report",
+    "list_review_reports",
     "ensure_reviews_collections",
     "module_status",
     "notify_review_created",
