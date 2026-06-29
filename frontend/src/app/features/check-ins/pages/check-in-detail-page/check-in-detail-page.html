@@ -1,0 +1,161 @@
+<div class="ci-page">
+
+  @if (successMessage()) {
+    <div class="toast toast-success">{{ successMessage() }}</div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') { <app-loading-state label="Cargando..." /> }
+    @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la reserva." /> }
+    @case ('empty')   { <app-empty-state title="No encontrada" description="La reserva no existe." /> }
+    @default {
+      @if (data(); as vm) {
+
+        <!-- ─── Header ─── -->
+        <div class="ci-header">
+          <div>
+            <h1>Check-In</h1>
+            <div class="ci-meta">
+              <span>{{ vm.booking_id }}</span>
+              <span class="ci-dot"></span>
+              <span>{{ vm.hotel_label }}</span>
+              <span class="ci-dot"></span>
+              <span>{{ vm.check_in_date }} → {{ vm.check_out_date }}</span>
+            </div>
+          </div>
+          @if (vm.stay_status === 'checked_in') {
+            <span class="ci-badge success">✓ Check-In Completado</span>
+          } @else {
+            <span class="ci-badge pending">● Huésped en Recepción</span>
+          }
+        </div>
+
+        @if (vm.folio) {
+          <div class="folio-banner">
+            <span class="material-symbols-outlined">receipt_long</span>
+            Folio: <strong>{{ vm.folio }}</strong>
+            @if (vm.check_in_by) { <span>· por <strong>{{ vm.check_in_by }}</strong></span> }
+            @if (vm.check_in_time_actual) { <span>· {{ vm.check_in_time_actual }} hrs</span> }
+          </div>
+        }
+
+        <!-- ─── Card: Guest + Room (read-only) ─── -->
+        <section class="ci-card">
+          <div class="ci-card-row">
+            <div class="ci-field">
+              <span class="ci-label">Nombre</span>
+              <span class="ci-value-lg">{{ vm.guest_name }}</span>
+            </div>
+            <div class="ci-field">
+              <span class="ci-label">Documento</span>
+              <span class="ci-value">{{ vm.cedula || 'No registrado' }}</span>
+            </div>
+            <div class="ci-field">
+              <span class="ci-label">Email / Tel</span>
+              <span class="ci-value">{{ vm.guest_email }}<br/>{{ vm.guest_phone }}</span>
+            </div>
+          </div>
+
+          <div class="ci-room-card">
+            <span class="material-symbols-outlined ci-room-icon">meeting_room</span>
+            <div>
+              <strong>{{ vm.room_type_name || 'Sin tipo' }}</strong>
+              <span class="ci-room-label">
+                @for (r of vm.assigned_rooms; track r.hotel_room_id; let last = $last) {
+                  {{ roomLabel(r) }}@if (!last) {, }
+                }
+              </span>
+            </div>
+            @if (vm.assigned_rooms.length > 0) { <span class="ci-room-count">{{ vm.assigned_rooms.length }} hab.</span> }
+          </div>
+        </section>
+
+        <!-- ─── Card: Arrival & Companions ─── -->
+        <section class="ci-card">
+          <div class="ci-card-row">
+            <div class="ci-field ci-field-2col">
+              <span class="ci-label">Hora de llegada</span>
+              <input type="time" class="ci-input ci-input-mono"
+                [ngModel]="arrivalTime()" (ngModelChange)="arrivalTime.set($event)" />
+            </div>
+            <div class="ci-field">
+              <span class="ci-label">¿Llegó acompañado?</span>
+              <label class="ci-toggle">
+                <input type="checkbox" [ngModel]="hasCompanions()" (ngModelChange)="hasCompanions.set($event)" />
+                <span>{{ hasCompanions() ? 'Sí' : 'No' }}</span>
+              </label>
+            </div>
+            @if (hasCompanions()) {
+              <div class="ci-field">
+                <span class="ci-label">Cantidad</span>
+                <input type="number" min="1" max="20" class="ci-input ci-input-narrow"
+                  [ngModel]="companionsCount()" (ngModelChange)="companionsCount.set(Math.max(1, Number($event)))" />
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- ─── Card: Verification checklist ─── -->
+        <section class="ci-card">
+          <div class="ci-check-grid">
+            <label class="ci-check" [class.ci-checked]="documentVerified()">
+              <input type="checkbox" [ngModel]="documentVerified()" (ngModelChange)="documentVerified.set($event)" />
+              <span>Documento Verificado</span>
+              @if (documentVerified()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+            <label class="ci-check" [class.ci-checked]="paymentPending()">
+              <input type="checkbox" [ngModel]="paymentPending()" (ngModelChange)="paymentPending.set($event)" />
+              <span>Pago Pendiente</span>
+              @if (paymentPending()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+            <label class="ci-check" [class.ci-checked]="keysDelivered()">
+              <input type="checkbox" [ngModel]="keysDelivered()" (ngModelChange)="keysDelivered.set($event)" />
+              <span>Llaves Entregadas</span>
+              @if (keysDelivered()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+            <label class="ci-check" [class.ci-checked]="depositReceived()">
+              <input type="checkbox" [ngModel]="depositReceived()" (ngModelChange)="depositReceived.set($event)" />
+              <span>Depósito Recibido</span>
+              @if (depositReceived()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+            <label class="ci-check" [class.ci-checked]="privacySigned()">
+              <input type="checkbox" [ngModel]="privacySigned()" (ngModelChange)="privacySigned.set($event)" />
+              <span>Políticas Aceptadas</span>
+              @if (privacySigned()) { <span class="ci-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+          </div>
+        </section>
+
+        <!-- ─── Card: Observations ─── -->
+        <section class="ci-card">
+          <span class="ci-label">Observaciones</span>
+          <textarea class="ci-textarea"
+            [ngModel]="observations()" (ngModelChange)="observations.set($event)"
+            placeholder="Alergias, notas del huésped, peticiones especiales..."
+            rows="2"></textarea>
+        </section>
+
+        @if (completeError()) {
+          <div class="toast toast-error">{{ completeError() }}</div>
+        }
+
+        <!-- ─── Bottom Bar ─── -->
+        @if (canComplete()) {
+          <div class="ci-bottom-bar">
+            <a routerLink="/management/check-ins" class="ci-btn-outline">Cancelar</a>
+            <button class="ci-btn-primary" (click)="completeCheckIn()" [disabled]="completing()">
+              @if (completing()) {
+                <span class="material-symbols-outlined spinning">sync</span>
+                Procesando...
+              } @else {
+                <span class="material-symbols-outlined">check_circle</span>
+                Realizar Check In
+              }
+            </button>
+          </div>
+        }
+
+      }
+    }
+  }
+</div>
