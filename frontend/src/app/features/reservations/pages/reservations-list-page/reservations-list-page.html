@@ -250,7 +250,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Booking ID</th><th>Hotel</th><th>Huésped</th><th>Fechas</th><th>Status</th><th>Origen</th><th>Acción</th></tr>
+                  <tr><th>Booking ID</th><th>Hotel</th><th>Huésped</th><th>Fechas</th><th>Habitaciones</th><th>Status</th><th>Origen</th><th>Acción</th></tr>
                 </thead>
                 <tbody>
                   @for (item of vm.items; track item.bookingId) {
@@ -259,6 +259,24 @@
                       <td>{{ item.hotelLabel }}</td>
                       <td>{{ item.guestName }}<div class="muted-cell">{{ item.guestEmail }}</div></td>
                       <td>{{ item.checkInDate }}<div class="muted-cell">{{ item.checkOutDate }}</div></td>
+                      <td class="cell-rooms">
+                        @if (item.roomsAssignedCount > 0) {
+                          <span class="rooms-indicator rooms-assigned" title="{{ item.roomsAssignedCount }} habitación(es) asignada(s)">
+                            <span class="material-symbols-outlined">meeting_room</span>
+                            <span>{{ item.roomsAssignedCount }} asignada{{ item.roomsAssignedCount !== 1 ? 's' : '' }}</span>
+                          </span>
+                        } @else if (['pending', 'confirmed'].includes(item.status)) {
+                          <span class="rooms-indicator rooms-pending" title="Sin habitaciones asignadas">
+                            <span class="material-symbols-outlined">meeting_room</span>
+                            <span>Pendiente</span>
+                          </span>
+                        } @else {
+                          <span class="rooms-indicator rooms-na" title="No aplica">
+                            <span class="material-symbols-outlined">meeting_room</span>
+                            <span>--</span>
+                          </span>
+                        }
+                      </td>
                       <td>
                         @if (item.status === 'pending') {
                           <span class="badge badge-warning">Pendiente</span>

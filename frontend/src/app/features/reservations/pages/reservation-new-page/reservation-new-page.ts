@@ -10,6 +10,8 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
+import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
+import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amenities/models/guest-amenity.dto';
 
 @Component({
   selector: 'app-reservation-new-page',
@@ -49,6 +51,13 @@ export class ReservationNewPageComponent {
 
   readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
   readonly couponValidating = signal(false);
+
+  // Amenities catalog & selection
+  private readonly guestAmenityService = inject(GuestAmenityService);
+  readonly amenityCatalog = signal<GuestAmenityCategoryDto[]>([]);
+  readonly amenityCatalogLoading = signal(false);
+  readonly selectedAmenities = signal<Set<string>>(new Set());
+  readonly amenityCatalogError = signal('');
 
   readonly isStaff = computed(() => {
     const role = this.authService.currentUser()?.primaryRole;
@@ -204,6 +213,22 @@ export class ReservationNewPageComponent {
         }
       });
 
+    // Load amenity catalog when hotel changes
+    this.form.controls.propId.valueChanges
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        distinctUntilChanged(),
+      )
+      .subscribe((propId) => {
+        // Reset amenity selection when hotel changes
+        this.selectedAmenities.set(new Set());
+        if (propId) {
+          this._loadAmenityCatalog(propId);
+        } else {
+          this.amenityCatalog.set([]);
+        }
+      });
+
     // Reactively check availability when hotel or dates change
     this.form.controls.propId.valueChanges
       .pipe(
@@ -276,6 +301,37 @@ export class ReservationNewPageComponent {
     this.step.set('details');
   }
 
+  private _loadAmenityCatalog(propId: number) {
+    if (!propId) return;
+    this.amenityCatalogLoading.set(true);
+    this.amenityCatalogError.set('');
+    // Use a dummy booking_id to get catalog for a prop — the guest endpoint needs it
+    // Instead, directly fetch via the partner endpoint which works with prop_id
+    this.guestAmenityService.getCatalogByProp(propId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (result) => {
+        this.amenityCatalog.set(result.catalog || []);
+        this.amenityCatalogLoading.set(false);
+      },
+      error: () => {
+        this.amenityCatalog.set([]);
+        this.amenityCatalogLoading.set(false);
+        this.amenityCatalogError.set('No se pudo cargar el catálogo de amenities.');
+      },
+    });
+  }
+
+  toggleAmenity(label: string) {
+    const current = new Set(this.selectedAmenities());
+    if (current.has(label)) {
+      current.delete(label);
+    } else {
+      current.add(label);
+    }
+    this.selectedAmenities.set(current);
+  }
+
   private buildPayload(): ReservationCreateInput {
     const v = this.form.getRawValue();
     return {
@@ -291,7 +347,8 @@ export class ReservationNewPageComponent {
       rooms: v.rooms,
       comment: v.comment,
       couponCode: v.couponCode,
-      specialRequests: v.specialRequests
+      specialRequests: v.specialRequests,
+      selectedAmenities: [...this.selectedAmenities()],
     };
   }
 
