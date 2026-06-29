@@ -197,6 +197,20 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
             {"$set": {"status": "cancelled", "updated_at": changed_at}},
         )
 
+    # ── Register transaction on active shift ──
+    if not booking.get("is_test"):
+        try:
+            from src.app.modules.reception import register_transaction
+            register_transaction(
+                prop_id=int(booking.get("prop_id", 0)),
+                txn_type="cancellation",
+                booking_id=booking_id,
+                amount=-float(penalty["penalty_amount"]),
+                description=f"Cancelación: {booking.get('guest_name', '')} — razón: {reason}",
+            )
+        except Exception:
+            logger.exception("Failed to register shift transaction for cancellation %s", booking_id)
+
     # ── Notify guest on cancellation ──
     try:
         guest_email = (booking.get("guest_email") or "").strip()
