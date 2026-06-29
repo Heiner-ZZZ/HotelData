@@ -1,423 +1,136 @@
 <div class="hk-page">
-  <!-- ═══ Page Header ═══ -->
-  <div class="page-header">
-    <div class="page-header-left">
-      <h1 class="page-title">Supervisión de Housekeeping</h1>
-      <p class="page-subtitle">Monitoreo en tiempo real y asignaciones operativas.</p>
-    </div>
-    <div class="page-header-right">
-      <app-property-selector
-        [selectedPropId]="selectedPropId()"
-        [selectedLabel]="selectedLabel()"
-        (propIdChange)="onPropSelected($event)"
-      />
-    </div>
-  </div>
-
   @switch (viewState()) {
-    @case ('loading') {
-      <app-loading-state label="Cargando indicadores..." />
-    }
-    @case ('error') {
-      <app-error-state title="Error al cargar" description="No se pudieron obtener los indicadores de housekeeping." />
-    }
-    @case ('empty') {
-      <app-empty-state
-        title="Selecciona una propiedad"
-        description="Usa el selector de arriba para elegir un hotel y ver su panel de operaciones."
-      />
-    }
+    @case ('loading') { <app-loading-state label="Cargando housekeeping..." /> }
+    @case ('error') { <app-error-state title="Error" description="No se pudo cargar el dashboard de housekeeping." /> }
     @default {
       @if (dashboard(); as d) {
 
-        <!-- ═══ Bento KPI Cards ═══ -->
-        <div class="kpi-grid">
-          @for (card of kpiCards(); track card.key) {
-            <div class="kpi-card"
-              [class.kpi-inspected]="card.key === 'inspected'"
-              [class.kpi-available]="card.key === 'available'"
-              [class.kpi-dirty]="card.key === 'dirty'"
-              [class.kpi-occupied]="card.key === 'occupied'"
-              [class.kpi-cleaning]="card.key === 'cleaning'"
-              [class.kpi-maintenance]="card.key === 'maintenance'"
-            >
-              <div class="kpi-card-top">
-                <span class="kpi-label">{{ card.label }}</span>
-                <span class="kpi-icon material-symbols-outlined" [class.kpi-icon-filled]="card.key === 'cleaning' || card.key === 'occupied'">{{ card.icon }}</span>
-              </div>
-              <span class="kpi-count">{{ card.count }}</span>
-            </div>
-          }
-        </div>
+        <!-- ═══ Header ═══ -->
+        <header class="hk-header">
+          <div>
+            <h1 class="hk-title">Housekeeping Dashboard</h1>
+            <p class="hk-subtitle">
+              @if (selectedPropId()) {
+                Monitoreo de limpieza y estado de habitaciones
+              } @else {
+                Selecciona una propiedad para ver el estado
+              }
+            </p>
+          </div>
+          <div class="hk-header-right">
+            <app-property-selector
+              [selectedPropId]="selectedPropId()"
+              [selectedLabel]="''"
+              (propIdChange)="onPropSelected($event)"
+            />
+          </div>
+        </header>
 
-        <!-- ═══ Split Layout: Floor Map + Detail Panel ═══ -->
-        <div class="split-layout">
+        @if (selectedPropId()) {
 
-          <!-- ── Floor Map ── -->
-          <div class="floor-map-card">
-            <div class="floor-map-header">
-              <h3 class="floor-map-title">
-                @if (floorFilter() === 'all') {
-                  Vista General
-                } @else {
-                  Piso {{ floorFilter() }}
-                }
-              </h3>
-              <div class="floor-map-legend">
-                @for (cfg of statusConfigs; track cfg.key) {
-                  <span class="legend-item">
-                    <span class="legend-dot" [style.--dot-color]="cfg.color"></span>
-                    {{ cfg.label }}
-                  </span>
-                }
-                <div class="floor-selector">
-                  <span class="material-symbols-outlined floor-select-icon">layers</span>
-                  <select class="floor-select" [value]="floorFilter()"
-                    (change)="setFloor(($event.target as HTMLSelectElement).value)">
-                    <option value="all">Todos los Pisos</option>
-                    @for (f of floors(); track f) {
-                      <option [value]="f">Piso {{ f }}</option>
-                    }
-                  </select>
+          <!-- ═══ KPI Cards ═══ -->
+          <div class="hk-kpi-grid">
+            @for (kpi of kpiCards; track kpi.id) {
+              <div class="hk-kpi-card" [style.--kpi-color]="kpi.color">
+                <div class="hk-kpi-icon">
+                  <span class="material-symbols-outlined">{{ kpi.icon }}</span>
+                </div>
+                <div class="hk-kpi-info">
+                  <span class="hk-kpi-value">{{ kpiValue(kpi.key) }}</span>
+                  <span class="hk-kpi-label">{{ kpi.label }}</span>
                 </div>
               </div>
+            }
+            <!-- Occupancy rate -->
+            <div class="hk-kpi-card hk-kpi-rate">
+              <div class="hk-kpi-icon">
+                <span class="material-symbols-outlined">percent</span>
+              </div>
+              <div class="hk-kpi-info">
+                <span class="hk-kpi-value">{{ occupancyRate() }}%</span>
+                <span class="hk-kpi-label">Ocupación</span>
+              </div>
             </div>
-
-            <div class="room-grid" [style.--grid-cols]="gridColumns()">
-              @for (room of filteredRooms(); track room.id) {
-                <button type="button" class="room-cell"
-                  [class.room-selected]="selectedRoom()?.id === room.id"
-                  [style.--room-color]="roomStatusColor(room.status)"
-                  (click)="selectRoom(room)"
-                >
-                  <span class="room-number">{{ room.roomLabel }}</span>
-                  <span class="room-icon material-symbols-outlined">{{ roomStatusIcon(room.status) }}</span>
-                  <span class="room-occ-dot"
-                    [class.dot-occupied]="isRoomOccupied(room.status)"
-                    [class.dot-vacant]="!isRoomOccupied(room.status)"
-                  ></span>
-                </button>
-              }
+            <!-- Completed today -->
+            <div class="hk-kpi-card hk-kpi-rate">
+              <div class="hk-kpi-icon">
+                <span class="material-symbols-outlined">today</span>
+              </div>
+              <div class="hk-kpi-info">
+                <span class="hk-kpi-value">{{ completedToday() }}</span>
+                <span class="hk-kpi-label">Completadas Hoy</span>
+              </div>
             </div>
           </div>
 
-          <!-- ── Contextual Detail Panel ── -->
-          <aside class="detail-panel">
-            @if (selectedRoom(); as room) {
-              <div class="detail-panel-header">
-                <div class="detail-room-line">
-                  <h2 class="detail-room-num">Hab. {{ room.roomLabel }}</h2>
-                  <span class="detail-badge" [style.--badge-color]="roomStatusColor(room.status)">
-                    {{ roomStatusLabel(room.status) }}
-                  </span>
-                </div>
-                <p class="detail-assignee">
-                  <span class="material-symbols-outlined detail-assignee-icon">person</span>
-                  Asignada a: —
-                </p>
-              </div>
+          <!-- ═══ Stats Row ═══ -->
+          <div class="hk-stats">
+            <span class="hk-stat"><strong>{{ totalRooms() }}</strong> habitaciones totales</span>
+            <span class="hk-stat-sep">|</span>
+            <span class="hk-stat"><strong>{{ pendingTasks() }}</strong> tareas pendientes</span>
+            <span class="hk-stat-sep">|</span>
+            <span class="hk-stat"><strong>{{ d.upcomingMaintenance || 0 }}</strong> mantenimientos programados</span>
+            <span class="hk-stat-sep">|</span>
+            <span class="hk-stat">Cumplimiento: <strong>{{ d.maintenanceCompliancePct || 0 }}%</strong></span>
+          </div>
 
-              <div class="detail-body">
-                <p class="detail-section-label uppercase">Detalles</p>
-                <ul class="detail-list">
-                  <li class="detail-row">
-                    <span>Tipo</span>
-                    <span>{{ room.roomTypeId || '—' }}</span>
-                  </li>
-                  <li class="detail-row">
-                    <span>Número</span>
-                    <span>{{ room.roomNumber || room.roomLabel }}</span>
-                  </li>
-                  <li class="detail-row">
-                    <span>Piso</span>
-                    <span>{{ getFloor(room.roomLabel) }}</span>
-                  </li>
-                  <li class="detail-row">
-                    <span>Estado</span>
-                    <span>{{ roomStatusLabel(room.status) }}</span>
-                  </li>
-                  @if (room.note) {
-                    <li class="detail-row">
-                      <span>Nota</span>
-                      <span>{{ room.note }}</span>
-                    </li>
-                  }
-                </ul>
-              </div>
-
-              <div class="detail-actions">
-                <p class="detail-section-label uppercase">Acciones</p>
-
-                @if (room.status === 'dirty') {
-                  <button type="button" class="detail-btn detail-btn-primary"
-                    (click)="startCleaning()" [disabled]="actionLoading() !== null">
-                    <span class="material-symbols-outlined">cleaning_services</span>
-                    Iniciar Limpieza
-                  </button>
-                }
-                @if (room.status === 'cleaning') {
-                  <button type="button" class="detail-btn detail-btn-primary"
-                    (click)="advanceToInspected()" [disabled]="actionLoading() !== null">
-                    <span class="material-symbols-outlined">fact_check</span>
-                    Marcar Inspeccionada
-                  </button>
-                }
-                @if (room.status === 'clean' || room.status === 'inspected') {
-                  <button type="button" class="detail-btn detail-btn-primary"
-                    (click)="advanceToAvailable()" [disabled]="actionLoading() !== null">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    Liberar Habitación
-                  </button>
-                }
-
-                <a [routerLink]="['/housekeeping', 'tasks']" [queryParams]="{ prop_id: selectedPropId() }"
-                  class="detail-btn detail-btn-secondary">
-                  <span class="material-symbols-outlined">assignment</span>
-                  Ver Tareas
-                </a>
-
-                <button type="button" class="detail-btn detail-btn-tertiary"
-                  (click)="selectedRoom.set(null)">
-                  <span class="material-symbols-outlined">close</span>
-                  Cerrar
+          <!-- ═══ Floor Filter ═══ -->
+          @if (floors().length > 1) {
+            <div class="hk-floor-filter">
+              <span class="hk-filter-label">Piso:</span>
+              <button type="button" class="hk-floor-chip"
+                [class.active]="!selectedFloor()"
+                (click)="selectedFloor.set('')">Todos</button>
+              @for (f of floors(); track f.floor) {
+                <button type="button" class="hk-floor-chip"
+                  [class.active]="selectedFloor() === f.floor"
+                  (click)="selectedFloor.set(f.floor)">
+                  Piso {{ f.floor }}
+                  <span class="hk-chip-count">{{ f.count }}</span>
                 </button>
-              </div>
-            } @else {
-              <div class="detail-empty">
-                <span class="material-symbols-outlined detail-empty-icon">touch_app</span>
-                <p class="detail-empty-text">Selecciona una habitación<br>para ver sus detalles</p>
-                <div class="detail-empty-hint">
-                  <span class="legend-item">
-                    <span class="legend-dot" style="background: transparent; border: 2px solid #6f797d;"></span>
-                    Vacante
-                  </span>
-                  <span class="legend-item">
-                    <span class="legend-dot" style="background: #16a34a;"></span>
-                    Ocupada
-                  </span>
-                </div>
-              </div>
-            }
-          </aside>
-        </div>
-
-        <!-- ═══ Status Summary ═══ -->
-        @if (statusEntries().length) {
-          <section class="surface-card status-board">
-            <h2 class="section-title">Estado de habitaciones</h2>
-            <div class="status-grid">
-              @for (entry of statusEntries(); track entry[0]) {
-                @let statusKey = entry[0];
-                @let statusCount = entry[1];
-                <div class="status-block"
-                  [class.block-available]="statusKey === 'available'"
-                  [class.block-occupied]="statusKey === 'occupied'"
-                  [class.block-cleaning]="statusKey === 'cleaning'"
-                  [class.block-dirty]="statusKey === 'dirty'"
-                  [class.block-maintenance]="statusKey === 'maintenance'"
-                  [class.block-out]="statusKey === 'out_of_order' || statusKey === 'out_of_service'"
-                >
-                  <span class="status-block-icon material-symbols-outlined">
-                    @switch (statusKey) {
-                      @case ('available') { check_circle }
-                      @case ('occupied') { bed }
-                      @case ('cleaning') { cleaning_services }
-                      @case ('dirty') { report }
-                      @case ('maintenance') { build }
-                      @case ('out_of_order') { dangerous }
-                      @case ('out_of_service') { block }
-                      @default { help }
-                    }
-                  </span>
-                  <strong class="status-block-count">{{ statusCount }}</strong>
-                  <span class="status-block-label">
-                    @switch (statusKey) {
-                      @case ('available') { Disponible }
-                      @case ('occupied') { Ocupada }
-                      @case ('cleaning') { Limpieza }
-                      @case ('dirty') { Sucia }
-                      @case ('maintenance') { Mantenimiento }
-                      @case ('out_of_order') { Fuera de orden }
-                      @case ('out_of_service') { Fuera de servicio }
-                      @default { {{ statusKey }} }
-                    }
-                  </span>
-                </div>
               }
             </div>
-          </section>
-        }
+          }
 
-        <!-- ═══ Cleaning Flow Pipeline ═══ -->
-        @if (cleaningFlowData().length) {
-          <section class="surface-card pipeline-section">
-            <div class="pipeline-header">
-              <span class="material-symbols-outlined">swap_horiz</span>
-              <h2>Flujo de limpieza</h2>
-              <span class="pipeline-badge">{{ dashboard()?.pendingHousekeepingTasks || 0 }} tarea(s) pendiente(s)</span>
-            </div>
-
-            @if (actionMessage()) {
-              <div class="pipeline-toast" (click)="actionMessage.set('')">
-                <span class="material-symbols-outlined">check_circle</span>
-                {{ actionMessage() }}
-              </div>
-            }
-
-            <div class="pipeline-track">
-              @for (stage of cleaningFlowData(); track stage.key; let last = $last) {
-                <div class="pipeline-stage">
-                  <div class="stage-card" [style.--stage-color]="stage.color">
-                    <div class="stage-card-inner">
-                      <span class="stage-icon material-symbols-outlined">{{ stage.icon }}</span>
-                      <strong class="stage-count">{{ stage.count }}</strong>
-                      <span class="stage-label">{{ stage.label }}</span>
-                    </div>
-                    <div class="stage-bar">
-                      <div class="stage-bar-fill" [style.width.%]="stage.pct" [style.background]="stage.color"></div>
-                    </div>
-                    <span class="stage-pct-label">{{ stage.pct }}%</span>
-
-                    @if (stage.count > 0) {
-                      @if (stage.key === 'dirty') {
-                        <button type="button" class="stage-action stage-action-cleaning"
-                          (click)="startCleaning()" [disabled]="actionLoading() !== null">
-                          @if (actionLoading() === 'cleaning') {
-                            <span class="material-symbols-outlined spinning">sync</span>
-                          } @else {
-                            <span class="material-symbols-outlined">cleaning_services</span>
-                          }
-                          Iniciar limpieza
-                        </button>
-                      }
-                      @if (stage.key === 'clean') {
-                        <button type="button" class="stage-action stage-action-inspect"
-                          (click)="advanceToInspected()" [disabled]="actionLoading() !== null">
-                          @if (actionLoading() === 'inspected') {
-                            <span class="material-symbols-outlined spinning">sync</span>
-                          } @else {
-                            <span class="material-symbols-outlined">fact_check</span>
-                          }
-                          Inspeccionar
-                        </button>
-                      }
-                      @if (stage.key === 'inspected') {
-                        <button type="button" class="stage-action stage-action-available"
-                          (click)="advanceToAvailable()" [disabled]="actionLoading() !== null">
-                          @if (actionLoading() === 'available') {
-                            <span class="material-symbols-outlined spinning">sync</span>
-                          } @else {
-                            <span class="material-symbols-outlined">check_circle</span>
-                          }
-                          Liberar
-                        </button>
-                      }
+          <!-- ═══ Floor-by-floor Grid ═══ -->
+          <div class="hk-floors">
+            @for (floor of filteredFloors(); track floor.floor) {
+              <section class="hk-floor">
+                <div class="hk-floor-header">
+                  <span class="material-symbols-outlined hk-floor-icon">floor</span>
+                  <h2 class="hk-floor-title">Piso {{ floor.floor }}</h2>
+                  <div class="hk-floor-stats">
+                    @for (entry of _floorCounts(floor.status_counts); track entry[0]) {
+                      <span class="hk-floor-stat"
+                        [style.--stat-color]="getStatusColor(entry[0])">
+                        {{ entry[1] }}
+                      </span>
                     }
                   </div>
-                  @if (!last) {
-                    <div class="pipeline-arrow">
-                      <span class="material-symbols-outlined">arrow_forward</span>
+                </div>
+                <div class="hk-room-grid">
+                  @for (room of floor.rooms; track room.id) {
+                    <div class="hk-room-cell"
+                      [style.--cell-color]="room.statusColor"
+                      [title]="room.roomLabel + ': ' + getStatusLabel(room.status)">
+                      <span class="hk-room-label">{{ room.roomLabel }}</span>
+                      <span class="hk-room-status">{{ getStatusLabel(room.status) }}</span>
+                      <div class="hk-room-bar" [style.--bar-color]="room.statusColor"></div>
                     </div>
                   }
                 </div>
-              }
-            </div>
-            <div class="pipeline-summary">
-              <span class="pipeline-summary-item">
-                <span class="summary-dot" style="background: #92400e;"></span>
-                <span>Sucia: esperando limpieza</span>
-              </span>
-              <span class="pipeline-summary-item">
-                <span class="summary-dot" style="background: #d97706;"></span>
-                <span>En proceso de limpieza</span>
-              </span>
-              <span class="pipeline-summary-item">
-                <span class="summary-dot" style="background: #059669;"></span>
-                <span>Limpia, pendiente de inspección</span>
-              </span>
-              <span class="pipeline-summary-item">
-                <span class="summary-dot" style="background: #4338ca;"></span>
-                <span>Inspeccionada, lista para asignar</span>
-              </span>
-              <span class="pipeline-summary-item">
-                <span class="summary-dot" style="background: #16a34a;"></span>
-                <span>Disponible para próximo huésped</span>
-              </span>
-            </div>
-            @if (dashboard()?.pendingHousekeepingTasks && dashboard()?.pendingHousekeepingTasks! > 0) {
-              <div class="pipeline-cta">
-                <a routerLink="tasks" class="pipeline-link">
-                  <span class="material-symbols-outlined">cleaning_services</span>
-                  Ir a tareas de limpieza
-                </a>
-              </div>
+              </section>
             }
-          </section>
+          </div>
+
+        } @else {
+          <!-- Empty: no property selected -->
+          <div class="hk-empty">
+            <span class="material-symbols-outlined">cleaning_services</span>
+            <p>Selecciona una propiedad para ver el dashboard de housekeeping.</p>
+          </div>
         }
 
-        <!-- ═══ Module Navigation ═══ -->
-        <section class="module-grid">
-          <a class="module-card surface-card" routerLink="rooms">
-            <span class="material-symbols-outlined module-icon">meeting_room</span>
-            <h3>Estado de habitaciones</h3>
-            <p>Consultar y actualizar el estado individual de cada habitación</p>
-          </a>
-          <a class="module-card surface-card" routerLink="tasks">
-            <span class="material-symbols-outlined module-icon">cleaning_services</span>
-            <h3>Limpieza y rotación</h3>
-            <p>Gestionar tareas de limpieza, rotación post-checkout y asignación</p>
-          </a>
-          <a class="module-card surface-card" routerLink="maintenance">
-            <span class="material-symbols-outlined module-icon">build</span>
-            <h3>Mantenimiento preventivo</h3>
-            <p>Programar y registrar mantenimiento de habitaciones e instalaciones</p>
-          </a>
-          <a class="module-card surface-card" routerLink="charges">
-            <span class="material-symbols-outlined module-icon">receipt_long</span>
-            <h3>Cargos adicionales</h3>
-            <p>Registrar cargos extra a reservas: room service, daños, extras</p>
-          </a>
-        </section>
-
-        <!-- ═══ Upcoming Events ═══ -->
-        @if (upcomingEvents().length) {
-          <section class="surface-card events-section">
-            <div class="events-header">
-              <span class="material-symbols-outlined">calendar_month</span>
-              <h2>Próximos eventos</h2>
-            </div>
-            <div class="events-list">
-              @for (evt of upcomingEvents(); track evt.id) {
-                <div class="event-row"
-                  [class.event-maintenance]="evt.event_type === 'maintenance'"
-                  [class.event-task]="evt.event_type === 'task'">
-                  <div class="event-date">
-                    <span class="event-day">{{ (evt.scheduled_date || evt.created_at) | date:'dd' }}</span>
-                    <span class="event-month">{{ (evt.scheduled_date || evt.created_at) | date:'MMM' }}</span>
-                  </div>
-                  <div class="event-info">
-                    <strong class="event-title">
-                      {{ evt.title || (evt.task_type === 'deep_clean' ? 'Limpieza profunda' : evt.task_type === 'turnover' ? 'Rotación' : evt.task_type === 'inspection' ? 'Inspección' : evt.task_type === 'preventive' ? 'Preventivo' : evt.task_type === 'corrective' ? 'Correctivo' : evt.task_type) }}
-                      <span class="badge badge-sm"
-                        [class.badge-pending]="evt.status === 'pending'"
-                        [class.badge-scheduled]="evt.status === 'scheduled'"
-                        [class.badge-progress]="evt.status === 'in_progress'"
-                        [class.badge-inspection]="evt.status === 'inspection'"
-                      >{{ evt.status === 'pending' ? 'Pendiente' : evt.status === 'scheduled' ? 'Programado' : evt.status === 'in_progress' ? 'En progreso' : evt.status === 'inspection' ? 'Inspección' : evt.status }}</span>
-                    </strong>
-                    <span class="event-room">Hab. {{ evt.room_label }}{{ evt.assigned_to ? ' · ' + evt.assigned_to : '' }}</span>
-                  </div>
-                  <span class="priority-badge event-priority"
-                    [class.prio-low]="evt.priority === 'low'"
-                    [class.prio-normal]="evt.priority === 'normal'"
-                    [class.prio-high]="evt.priority === 'high'"
-                    [class.prio-urgent]="evt.priority === 'urgent'"
-                  >{{ evt.priority }}</span>
-                </div>
-              }
-            </div>
-          </section>
-        }
       }
     }
   }
