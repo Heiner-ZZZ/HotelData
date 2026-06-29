@@ -8,6 +8,12 @@ from .status import (
     get_room_status,
     update_room_status_bulk,
     sync_room_status_from_hotel_rooms,
+    list_valid_transitions,
+)
+from .cleaning_actions import (
+    start_cleaning,
+    complete_cleaning,
+    approve_cleaning,
 )
 from .tasks import (
     create_housekeeping_task,
@@ -36,6 +42,10 @@ __all__ = [
     "get_room_status",
     "update_room_status_bulk",
     "sync_room_status_from_hotel_rooms",
+    "list_valid_transitions",
+    "start_cleaning",
+    "complete_cleaning",
+    "approve_cleaning",
     "log_room_status_change",
     "list_room_status_history",
     "create_housekeeping_task",

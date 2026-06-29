@@ -1,5 +1,7 @@
 from src.app.modules.housekeeping.service.collections import ensure_housekeeping_collections, module_status
 from src.app.modules.housekeeping.service.lifecycle import (
+    approve_cleaning,
+    complete_cleaning,
     complete_housekeeping_task,
     complete_maintenance_task,
     create_additional_charge,
@@ -15,6 +17,8 @@ from src.app.modules.housekeeping.service.lifecycle import (
     list_maintenance_tasks,
     list_room_status,
     list_upcoming_events,
+    list_valid_transitions,
+    start_cleaning,
     sync_room_status_from_hotel_rooms,
     update_housekeeping_task,
     update_maintenance_task,
@@ -23,6 +27,8 @@ from src.app.modules.housekeeping.service.lifecycle import (
 )
 
 __all__ = [
+    "approve_cleaning",
+    "complete_cleaning",
     "complete_housekeeping_task",
     "complete_maintenance_task",
     "create_additional_charge",
@@ -39,7 +45,9 @@ __all__ = [
     "list_room_status",
     "list_room_status_history",
     "list_upcoming_events",
+    "list_valid_transitions",
     "module_status",
+    "start_cleaning",
     "sync_room_status_from_hotel_rooms",
     "update_housekeeping_task",
     "update_maintenance_task",
