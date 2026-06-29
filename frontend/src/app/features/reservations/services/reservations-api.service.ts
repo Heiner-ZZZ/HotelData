@@ -264,6 +264,7 @@ export class ReservationsApiService {
         room_number: string;
         room_label: string;
         floor: string;
+        room_status: string;
       }>;
       assigned_rooms: string[];
     }>(`${this.apiConfig.baseUrl}/management/bookings/${bookingId}/available-rooms`, {

@@ -54,6 +54,12 @@
               Asignar habitaciones
             </button>
           }
+          @if (vm.status === 'checked_in') {
+            <a [routerLink]="['/account/bookings', vm.bookingId, 'amenities']" class="btn-action btn-amenities">
+              <span class="material-symbols-outlined btn-icon">spa</span>
+              Solicitar amenities
+            </a>
+          }
         </div>
 
           <section class="hero-grid">
@@ -133,6 +139,21 @@
                       {{ vm.totalPrice | currency:vm.currency }}
                     }
                   </strong>
+                </div>
+              </article>
+            }
+
+            @if (vm.amenitiesCount > 0) {
+              <article class="surface-card hero-card">
+                <div class="hero-card-icon-wrap" style="--card-accent: #f59e0b">
+                  <span class="material-symbols-outlined">spa</span>
+                </div>
+                <div class="hero-card-content">
+                  <span class="stat-label">Amenities solicitados</span>
+                  <strong>{{ vm.amenitiesCount }} {{ vm.amenitiesCount === 1 ? 'servicio' : 'servicios' }}</strong>
+                  @if (vm.amenitiesTotal > 0) {
+                    <span class="hero-card-sub">{{ vm.amenitiesTotal | currency:'USD' }}</span>
+                  }
                 </div>
               </article>
             }
@@ -307,6 +328,90 @@
           </section>
         }
 
+        <!-- ═══ Additional Charges ═══ -->
+        @if (vm.additionalCharges.length > 0) {
+          <section class="surface-card panel charges-panel">
+            <div class="panel-head">
+              <div class="panel-head-left">
+                <span class="material-symbols-outlined panel-icon">receipt</span>
+                <h2>Cargos por amenities y consumos</h2>
+              </div>
+              <span class="panel-badge">{{ vm.additionalCharges.length }} cargo(s)</span>
+            </div>
+            <div class="table-wrap">
+              <table class="charges-table">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th class="cell-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of vm.additionalCharges; track c.createdAt + c.concept) {
+                    <tr>
+                      <td>
+                        <strong>{{ c.concept }}</strong>
+                        @if (c.note) {
+                          <div class="charge-note">{{ c.note }}</div>
+                        }
+                      </td>
+                      <td>{{ c.quantity }}</td>
+                      <td>{{ c.amount | currency:'USD' }}</td>
+                      <td class="cell-right">{{ c.total | currency:'USD' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (vm.totalCharges > 0) {
+                  <tfoot>
+                    <tr class="foot-total">
+                      <td colspan="3">Total cargos</td>
+                      <td class="cell-right total-value">{{ vm.totalCharges | currency:'USD' }}</td>
+                    </tr>
+                  </tfoot>
+                }
+              </table>
+            </div>
+          </section>
+        }
+
+        <!-- ═══ Financial Summary ═══ -->
+        @if (vm.totalPrice !== null) {
+          <section class="surface-card panel financial-summary">
+            <div class="panel-head">
+              <div class="panel-head-left">
+                <span class="material-symbols-outlined panel-icon">account_balance</span>
+                <h2>Resumen financiero</h2>
+              </div>
+            </div>
+            <div class="financial-summary-body">
+              <div class="summary-row">
+                <span>Habitación ({{ vm.totalNights }} {{ vm.totalNights === 1 ? 'noche' : 'noches' }})</span>
+                <span class="summary-amount">
+                  @if (vm.discountPercent) {
+                    <span class="summary-original">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
+                    {{ vm.totalPrice | currency:vm.currency }}
+                  } @else {
+                    {{ vm.totalPrice | currency:vm.currency }}
+                  }
+                </span>
+              </div>
+              @if (vm.additionalCharges.length > 0) {
+                <div class="summary-row summary-row-charges">
+                  <span>Consumos adicionales ({{ vm.additionalCharges.length }} {{ vm.additionalCharges.length === 1 ? 'cargo' : 'cargos' }})</span>
+                  <span class="summary-amount">+ {{ vm.totalCharges | currency:vm.currency }}</span>
+                </div>
+              }
+              <div class="summary-divider-row"></div>
+              <div class="summary-row summary-row-total">
+                <span>Total</span>
+                <span class="summary-amount summary-amount-grand">{{ (vm.totalPrice + vm.totalCharges) | currency:vm.currency }}</span>
+              </div>
+            </div>
+          </section>
+        }
+
         <!-- ═══ Products / Add-on Services ═══ -->
         @if (canAddProducts() && productsState() !== 'loading') {
           <section class="surface-card panel products-panel">
@@ -375,6 +480,69 @@
                 }
               }
             }
+          </section>
+        }
+
+        <!-- ═══ Assigned Rooms with Status ═══ -->
+        @if (vm.assignedRooms.length > 0) {
+          <section class="surface-card panel assigned-rooms-panel">
+            <div class="panel-head">
+              <div class="panel-head-left">
+                <span class="material-symbols-outlined panel-icon">meeting_room</span>
+                <h2>Habitaciones asignadas</h2>
+              </div>
+              <span class="panel-badge">{{ vm.assignedRooms.length }} habitación(es)</span>
+            </div>
+            <div class="table-wrap">
+              <table class="assigned-rooms-table">
+                <thead>
+                  <tr>
+                    <th>Habitación</th>
+                    <th>Número</th>
+                    <th>Piso</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of vm.assignedRooms; track r.hotelRoomId) {
+                    <tr>
+                      <td><strong>{{ r.roomLabel || r.hotelRoomId }}</strong></td>
+                      <td>{{ r.roomNumber || '--' }}</td>
+                      <td>{{ r.floor || '--' }}</td>
+                      <td>
+                        <span class="room-status-badge"
+                          [class.rs-available]="r.roomStatus === 'available'"
+                          [class.rs-occupied]="r.roomStatus === 'occupied'"
+                          [class.rs-cleaning]="r.roomStatus === 'cleaning'"
+                          [class.rs-clean]="r.roomStatus === 'clean'"
+                          [class.rs-inspected]="r.roomStatus === 'inspected'"
+                          [class.rs-dirty]="r.roomStatus === 'dirty'"
+                          [class.rs-maintenance]="r.roomStatus === 'maintenance'"
+                          [class.rs-out]="r.roomStatus === 'out_of_order' || r.roomStatus === 'out_of_service'"
+                          [class.rs-unknown]="r.roomStatus === 'unknown'"
+                        >
+                          <span class="rs-dot"></span>
+                          <span>
+                            @switch (r.roomStatus) {
+                              @case ('available') { Disponible }
+                              @case ('occupied') { Ocupada }
+                              @case ('cleaning') { Limpieza }
+                              @case ('clean') { Limpia }
+                              @case ('inspected') { Inspeccionada }
+                              @case ('dirty') { Sucia }
+                              @case ('maintenance') { Mantenimiento }
+                              @case ('out_of_order') { Fuera de orden }
+                              @case ('out_of_service') { Fuera de servicio }
+                              @default { {{ r.roomStatus }} }
+                            }
+                          </span>
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </section>
         }
 
@@ -577,12 +745,40 @@
                           <span class="material-symbols-outlined room-icon">door_front</span>
                           <div class="room-info">
                             <strong>{{ room.room_label || room.room_number || room.hotel_room_id }}</strong>
-                            @if (room.room_number) {
-                              <span class="room-number">N° {{ room.room_number }}</span>
-                            }
-                            @if (room.floor) {
-                              <span class="room-floor">Piso {{ room.floor }}</span>
-                            }
+                            <div class="room-meta">
+                              @if (room.room_number) {
+                                <span class="room-number">N° {{ room.room_number }}</span>
+                              }
+                              @if (room.floor) {
+                                <span class="room-floor">Piso {{ room.floor }}</span>
+                              }
+                            </div>
+                            <span class="room-status-badge room-status-badge--sm"
+                              [class.rs-available]="room.room_status === 'available'"
+                              [class.rs-occupied]="room.room_status === 'occupied'"
+                              [class.rs-cleaning]="room.room_status === 'cleaning'"
+                              [class.rs-clean]="room.room_status === 'clean'"
+                              [class.rs-inspected]="room.room_status === 'inspected'"
+                              [class.rs-dirty]="room.room_status === 'dirty'"
+                              [class.rs-maintenance]="room.room_status === 'maintenance'"
+                              [class.rs-out]="room.room_status === 'out_of_order' || room.room_status === 'out_of_service'"
+                              [class.rs-unknown]="!room.room_status || room.room_status === 'unknown'">
+                              <span class="rs-dot"></span>
+                              <span>
+                                @switch (room.room_status) {
+                                  @case ('available') { Disponible }
+                                  @case ('occupied') { Ocupada }
+                                  @case ('cleaning') { Limpieza }
+                                  @case ('clean') { Limpia }
+                                  @case ('inspected') { Inspeccionada }
+                                  @case ('dirty') { Sucia }
+                                  @case ('maintenance') { Mantenimiento }
+                                  @case ('out_of_order') { Fuera de orden }
+                                  @case ('out_of_service') { Fuera de servicio }
+                                  @default { {{ room.room_status || 'Desconocido' }} }
+                                }
+                              </span>
+                            </span>
                           </div>
                           @if (assignedRoomIds().includes(room.hotel_room_id)) {
                             <span class="assigned-badge">Asignada</span>

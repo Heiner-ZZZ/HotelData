@@ -282,6 +282,56 @@
           </div>
         </section>
 
+        @if (selectedHotel()) {
+          <section class="surface-card form-section">
+            <div class="section-head">
+              <span class="material-symbols-outlined section-icon">spa</span>
+              <div>
+                <h2>Servicios adicionales</h2>
+                <p>Amenidades con costo adicional disponibles para tu estancia</p>
+              </div>
+            </div>
+            @if (amenityCatalogLoading()) {
+              <div class="loading-shade-sm" style="padding: 16px; text-align: center;">
+                <span class="material-symbols-outlined loading-spin">sync</span>
+                <span>Cargando servicios...</span>
+              </div>
+            } @else if (amenityCatalog().length > 0) {
+              <div class="amenity-selector" style="display: flex; flex-direction: column; gap: 12px;">
+                @for (cat of amenityCatalog(); track cat.category) {
+                  <div>
+                    <strong style="display: block; margin-bottom: 8px; text-transform: capitalize; color: var(--text-2); font-size: 0.85rem;">{{ cat.category }}</strong>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                      @for (item of cat.items; track item.label) {
+                        @if (item.active) {
+                          <label class="amenity-chip"
+                            [class.is-selected]="selectedAmenities().has(item.label)"
+                            style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none;">
+                            <input type="checkbox"
+                              [checked]="selectedAmenities().has(item.label)"
+                              (change)="toggleAmenity(item.label)"
+                              style="display: none;" />
+                            <span>{{ item.label }}</span>
+                            @if (item.unit_price > 0) {
+                              <span style="font-weight: 700; color: var(--accent);">{{ item.unit_price | currency:'USD' }}</span>
+                            } @else {
+                              <span style="color: #16a34a; font-size: 0.8rem;">Gratis</span>
+                            }
+                          </label>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (amenityCatalogError()) {
+              <p style="color: var(--text-2); font-size: 0.85rem;">{{ amenityCatalogError() }}</p>
+            } @else {
+              <p style="color: var(--text-2); font-size: 0.85rem;">No hay servicios adicionales disponibles para este hotel.</p>
+            }
+          </section>
+        }
+
         <section class="surface-card form-section">
           <div class="section-head">
             <span class="material-symbols-outlined section-icon">notes</span>
@@ -400,6 +450,12 @@
               <div class="review-item review-item-span">
                 <span class="review-label">Peticiones Especiales</span>
                 <strong>{{ form.controls.specialRequests.value.join(', ') }}</strong>
+              </div>
+            }
+            @if (selectedAmenities().size > 0) {
+              <div class="review-item review-item-span">
+                <span class="review-label">Servicios adicionales</span>
+                <strong>{{ [...selectedAmenities()].join(', ') }}</strong>
               </div>
             }
             @if (form.controls.couponCode.value) {
