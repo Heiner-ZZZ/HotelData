@@ -1,0 +1,409 @@
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+
+.co-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+// ─── Toast ───
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+.toast-success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.toast-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+// ─── Header ───
+.co-header {
+  margin-bottom: 24px;
+}
+.co-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.co-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 10px;
+  border-radius: 3px;
+  &.in-house {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  &.completed {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+}
+.co-folio-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-text, #6b7280);
+}
+.co-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 2px 0;
+}
+.co-subtitle {
+  font-size: 14px;
+  color: var(--muted-text, #6b7280);
+  margin: 0;
+}
+
+// ─── Grid ───
+.co-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 360px;
+  }
+}
+.co-col-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.co-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ─── Card ───
+.co-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+}
+.co-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  h2, h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary, #111827);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    .material-symbols-outlined {
+      font-size: 18px;
+      color: var(--primary, #107a95);
+    }
+  }
+}
+
+// ─── Folio Table ───
+.co-table-wrap {
+  overflow-x: auto;
+}
+.co-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-text, #6b7280);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    background: var(--surface-container-low, #f9fafb);
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    vertical-align: top;
+  }
+}
+.co-table-row {
+  transition: background 0.15s;
+  &:hover {
+    background: #f1f5f9;
+  }
+}
+.co-item-name {
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+}
+.co-item-date {
+  display: block;
+  font-size: 11px;
+  color: var(--muted-text, #6b7280);
+}
+.co-item-note {
+  font-size: 11px;
+  color: var(--muted-text, #6b7280);
+  margin-top: 2px;
+}
+.co-ref {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted-text, #6b7280);
+}
+.cell-right {
+  text-align: right;
+}
+.cell-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+// ─── Verification ───
+.co-check-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.co-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  input { display: none; }
+  &:hover {
+    background: var(--hover, #f1f5f9);
+  }
+  &.co-checked {
+    border-color: var(--primary, #107a95);
+    background: #f0f9ff;
+  }
+}
+.co-check-icon {
+  font-size: 16px;
+  color: var(--primary, #107a95);
+  margin-left: auto;
+}
+.co-split-check {
+  margin-top: 8px;
+}
+.co-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f0f4f8;
+  border-radius: 6px;
+  border: 1px solid #d1d9e6;
+  font-size: 12px;
+  color: var(--text-secondary, #374151);
+  .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--secondary, #4a626e);
+    margin-top: 1px;
+  }
+  strong { font-weight: 600; }
+}
+
+// ─── Observations ───
+.co-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text, #6b7280);
+  margin-bottom: 6px;
+}
+.co-textarea {
+  width: 100%;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #111827);
+  resize: vertical;
+  transition: border-color 0.15s;
+  &:focus {
+    outline: none;
+    border-color: var(--primary, #107a95);
+    box-shadow: 0 0 0 2px rgba(16, 122, 149, 0.15);
+  }
+}
+
+// ─── Financial Summary ───
+.co-summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.co-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+}
+.co-summary-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+.co-summary-tax {
+  color: var(--muted-text, #6b7280);
+  font-size: 12px;
+}
+.co-summary-divider {
+  height: 1px;
+  background: var(--border, #e5e7eb);
+  margin: 4px 0;
+}
+.co-summary-grand {
+  font-weight: 700;
+  font-size: 15px;
+  .co-val-grand {
+    font-size: 16px;
+    color: var(--text-primary, #111827);
+  }
+}
+.co-summary-deposit {
+  color: #065f46;
+  font-size: 12px;
+}
+.co-balance-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f0f4f8;
+  border: 1px solid #d1d9e6;
+  border-radius: 6px;
+}
+.co-balance-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary, #111827);
+}
+.co-balance-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--error, #ba1a1a);
+}
+
+// ─── Payment Form ───
+.co-payment-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.co-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.co-select, .co-input {
+  width: 100%;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #111827);
+  transition: border-color 0.15s;
+  &:focus {
+    outline: none;
+    border-color: var(--primary, #107a95);
+    box-shadow: 0 0 0 2px rgba(16, 122, 149, 0.15);
+  }
+}
+
+// ─── CTA Button ───
+.co-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: #107a95;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  &:hover {
+    opacity: 0.9;
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
+}
+
+// ─── Checked-out banner ───
+.co-checked-out-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #065f46;
+  .material-symbols-outlined { font-size: 18px; }
+}
+
+// ─── Spinning animation ───
+.spinning {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

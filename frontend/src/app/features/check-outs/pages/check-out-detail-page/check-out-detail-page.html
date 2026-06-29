@@ -1,0 +1,382 @@
+<div class="co-page">
+
+  @if (successMessage()) {
+    <div class="toast toast-success">{{ successMessage() }}</div>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') { <app-loading-state label="Cargando..." /> }
+    @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la liquidación." /> }
+    @case ('empty')   { <app-empty-state title="No encontrada" description="La reserva no existe o no está checked in." /> }
+    @default {
+      @if (data(); as vm) {
+
+        <!-- ────── HEADER ────── -->
+        <div class="co-header">
+          <div>
+            <div class="co-eyebrow">
+              @if (vm.stay_status === 'checked_out') {
+                <span class="co-badge completed">Check-Out Completado</span>
+              } @else {
+                <span class="co-badge in-house">In House</span>
+              }
+              @if (vm.folio) { <span class="co-folio-code">Folio #{{ vm.folio }}</span> }
+            </div>
+            <h1>Check-Out · {{ vm.guest_name }}</h1>
+            <p class="co-subtitle">
+              Hab. {{ roomLabel(vm.assigned_rooms[0]) }} —
+              {{ vm.total_nights }} noche{{ vm.total_nights !== 1 ? 's' : '' }} —
+              {{ vm.check_in_date }} → {{ vm.check_out_date }}
+            </p>
+          </div>
+        </div>
+
+        @if (!checkoutDone()) {
+          <!-- ══════ STEP BREADCRUMB ══════ -->
+          <div class="co-steps">
+            @for (s of steps; track s.num; let first = $first) {
+              @if (!first) { <div class="co-step-connector" [class.active]="currentStep() >= s.num"></div> }
+              <button class="co-step" [class.active]="currentStep() === s.num" [class.done]="currentStep() > s.num"
+                (click)="goToStep(s.num)" [disabled]="currentStep() < s.num && !canGoNext()">
+                <span class="co-step-num">
+                  @if (currentStep() > s.num) { <span class="material-symbols-outlined">check</span> }
+                  @else { <span class="material-symbols-outlined">{{ s.icon }}</span> }
+                </span>
+                <span class="co-step-label">{{ s.label }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- ══════ STEP 1: RESUMEN ══════ -->
+        @if (currentStep() === 1) {
+          <section class="co-card co-step-card">
+            <div class="co-step-badge">Paso 1</div>
+            <h2 class="co-step-title">Resumen de estancia</h2>
+
+            <div class="co-stay-summary">
+              <div class="co-stay-row">
+                <span class="co-stay-label"><span class="material-symbols-outlined">meeting_room</span> Habitación</span>
+                <span class="co-stay-val">{{ roomLabel(vm.assigned_rooms[0]) }} — {{ vm.room_type_name }}</span>
+              </div>
+              <div class="co-stay-row">
+                <span class="co-stay-label"><span class="material-symbols-outlined">night_stay</span> Noches</span>
+                <span class="co-stay-val">{{ vm.total_nights }}</span>
+              </div>
+              <div class="co-stay-row">
+                <span class="co-stay-label"><span class="material-symbols-outlined">attach_money</span> Tarifa por noche</span>
+                <span class="co-stay-val">{{ (vm.total_price! / vm.total_nights) | currency:currency() }}</span>
+              </div>
+              <div class="co-stay-row">
+                <span class="co-stay-label"><span class="material-symbols-outlined">receipt_long</span> Extras</span>
+                <span class="co-stay-val">{{ chargesTotal() | currency:currency() }}</span>
+              </div>
+              @if (hasExistingPayments()) {
+                <div class="co-stay-row">
+                  <span class="co-stay-label"><span class="material-symbols-outlined">payments</span> Pagado</span>
+                  <span class="co-stay-val co-stay-paid">{{ totalPaid() | currency:currency() }}</span>
+                </div>
+              }
+              <div class="co-stay-divider"></div>
+              <div class="co-stay-row co-stay-row-balance">
+                <span class="co-stay-label"><span class="material-symbols-outlined">account_balance</span> Pendiente</span>
+                <span class="co-stay-val co-stay-pending">{{ balanceDue() | currency:currency() }}</span>
+              </div>
+            </div>
+
+            <div class="co-confirm-box">
+              <p class="co-confirm-question">¿Todo es correcto?</p>
+              <div class="co-confirm-btns">
+                <button class="co-btn-confirm co-btn-si" [class.selected]="everythingCorrect() === true" (click)="setCorrect(true)">
+                  <span class="material-symbols-outlined">check_circle</span> Sí, continuar
+                </button>
+                <button class="co-btn-confirm co-btn-no" [class.selected]="everythingCorrect() === false" (click)="setCorrect(false)">
+                  <span class="material-symbols-outlined">edit</span> No, agregar cargos
+                </button>
+              </div>
+            </div>
+          </section>
+        }
+
+        <!-- ══════ STEP 2: CARGOS ══════ -->
+        @if (currentStep() === 2) {
+          <section class="co-card co-step-card">
+            <div class="co-step-badge">Paso 2</div>
+            <h2 class="co-step-title">Agregar cargos adicionales</h2>
+
+            <!-- Quick charge buttons -->
+            <div class="co-quick-charges">
+              <span class="co-label">Cargos rápidos</span>
+              <div class="co-quick-grid">
+                <button class="co-quick-btn" (click)="quickCharge('minibar', 'Minibar', 15)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">liquor</span> Minibar $15
+                </button>
+                <button class="co-quick-btn" (click)="quickCharge('spa', 'Spa', 40)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">spa</span> Spa $40
+                </button>
+                <button class="co-quick-btn" (click)="quickCharge('parking', 'Parking', 10)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">local_parking</span> Parking $10
+                </button>
+                <button class="co-quick-btn" (click)="quickCharge('mascotas', 'Mascotas', 25)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">pets</span> Mascotas $25
+                </button>
+                <button class="co-quick-btn" (click)="quickCharge('lavanderia', 'Lavandería', 20)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">local_laundry_service</span> Lavandería $20
+                </button>
+                <button class="co-quick-btn" (click)="quickCharge('late_checkout', 'Late Checkout', 30)" [disabled]="chargeSaving()">
+                  <span class="material-symbols-outlined">schedule</span> Late Checkout $30
+                </button>
+              </div>
+            </div>
+
+            <!-- Custom charge form -->
+            <div class="co-custom-charge">
+              <button class="co-toggle-charge-form" (click)="toggleChargeForm()">
+                <span class="material-symbols-outlined">{{ chargeFormVisible() ? 'expand_less' : 'add_circle' }}</span>
+                {{ chargeFormVisible() ? 'Cancelar' : 'Otro cargo personalizado' }}
+              </button>
+
+              @if (chargeFormVisible()) {
+                <div class="co-charge-form">
+                  @if (chargeError()) { <div class="co-form-error"><span class="material-symbols-outlined">error</span> {{ chargeError() }}</div> }
+                  <div class="co-charge-grid">
+                    <div class="co-cf-field co-cf-wide">
+                      <span class="co-label">Concepto</span>
+                      <input type="text" class="co-input" placeholder="Ej. Toallas extra, Daño"
+                        [ngModel]="chargeConcept()" (ngModelChange)="chargeConcept.set($event)" />
+                    </div>
+                    <div class="co-cf-field">
+                      <span class="co-label">Categoría</span>
+                      <select class="co-select" [ngModel]="chargeCategory()" (ngModelChange)="chargeCategory.set($event)">
+                        @for (cat of chargeCategories; track cat.value) {
+                          <option [value]="cat.value">{{ cat.label }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="co-cf-field">
+                      <span class="co-label">Monto</span>
+                      <input type="number" step="0.01" min="0" class="co-input" placeholder="0.00"
+                        [ngModel]="chargeAmount()" (ngModelChange)="chargeAmount.set(Number($event))" />
+                    </div>
+                    <div class="co-cf-field">
+                      <span class="co-label">Cantidad</span>
+                      <input type="number" min="1" class="co-input"
+                        [ngModel]="chargeQuantity()" (ngModelChange)="chargeQuantity.set(Math.max(1, Number($event)))" />
+                    </div>
+                    <div class="co-cf-field co-cf-wide">
+                      <span class="co-label">Nota</span>
+                      <input type="text" class="co-input" placeholder="Detalle"
+                        [ngModel]="chargeNote()" (ngModelChange)="chargeNote.set($event)" />
+                    </div>
+                  </div>
+                  <button class="co-btn-charge-add" (click)="addCharge()" [disabled]="chargeSaving()">
+                    <span class="material-symbols-outlined">add</span> Agregar cargo
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- Current charges summary -->
+            @if (vm.charges.length > 0) {
+              <div class="co-current-charges">
+                <span class="co-label">Cargos actuales ({{ chargesTotal() | currency:currency() }})</span>
+                <div class="co-charge-chips">
+                  @for (catEntry of vm.charges_by_category | keyvalue; track catEntry.key) {
+                    @if (catEntry.value.length) {
+                      <span class="co-cat-chip">
+                        <span class="material-symbols-outlined co-cat-chip-icon">{{ categoryIcon(catEntry.key) }}</span>
+                        {{ categoryLabel(catEntry.key) }}: {{ categoryTotal(catEntry.key) | currency:currency() }}
+                      </span>
+                    }
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="co-step-actions">
+              <button class="co-btn-outline" (click)="prevStep()">← Atrás</button>
+              <button class="co-btn-primary" (click)="nextStep()">Continuar →</button>
+            </div>
+          </section>
+        }
+
+        <!-- ══════ STEP 3: LIQUIDAR ══════ -->
+        @if (currentStep() === 3) {
+          <section class="co-card co-step-card">
+            <div class="co-step-badge">Paso 3</div>
+            <h2 class="co-step-title">Liquidación</h2>
+
+            <!-- Charges table -->
+            <div class="co-liq-table-wrap">
+              <table class="co-liq-table">
+                <thead>
+                  <tr><th>Concepto</th><th class="cell-right">Monto</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Alojamiento ({{ vm.total_nights }} noches)</td><td class="cell-right">{{ roomTotal() | currency:currency() }}</td></tr>
+                  @for (catEntry of vm.charges_by_category | keyvalue; track catEntry.key) {
+                    @if (catEntry.value.length) {
+                      <tr><td><span class="material-symbols-outlined co-liq-icon">{{ categoryIcon(catEntry.key) }}</span> {{ categoryLabel(catEntry.key) }}</td><td class="cell-right">+ {{ categoryTotal(catEntry.key) | currency:currency() }}</td></tr>
+                    }
+                  }
+                  @if (lateFee() > 0) { <tr class="co-row-late"><td><span class="material-symbols-outlined co-liq-icon">schedule</span> Late Checkout</td><td class="cell-right">+ {{ lateFee() | currency:currency() }}</td></tr> }
+                  @if (discountVal() > 0) { <tr class="co-row-discount"><td><span class="material-symbols-outlined co-liq-icon">percent</span> Descuento{{ discountReason() ? ': ' + discountReason() : '' }}</td><td class="cell-right">− {{ discountVal() | currency:currency() }}</td></tr> }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="co-liq-summary">
+              <div class="co-liq-row"><span>Subtotal</span><span class="co-liq-val">{{ subtotal() | currency:currency() }}</span></div>
+              <div class="co-liq-row co-liq-tax"><span>IVA (16%)</span><span class="co-liq-val">{{ taxes() | currency:currency() }}</span></div>
+              <div class="co-liq-divider"></div>
+              <div class="co-liq-row co-liq-grand"><span>TOTAL</span><span class="co-liq-val">{{ grandTotal() | currency:currency() }}</span></div>
+              @if (totalPaid() > 0) { <div class="co-liq-row co-liq-paid"><span>Pagado</span><span class="co-liq-val">− {{ totalPaid() | currency:currency() }}</span></div> }
+              <div class="co-liq-divider"></div>
+              <div class="co-liq-row co-liq-balance"><span>SALDO</span><span class="co-liq-val">{{ balanceDue() | currency:currency() }}</span></div>
+            </div>
+
+            <!-- Payment method inline -->
+            <div class="co-liq-payment">
+              <span class="co-label">Forma de pago</span>
+              <div class="co-liq-pay-row">
+                <select class="co-select" [ngModel]="paymentMethod()" (ngModelChange)="paymentMethod.set($event)">
+                  <option value="credit_card">Tarjeta Crédito / Débito</option>
+                  <option value="cash">Efectivo (Caja Principal)</option>
+                  <option value="transfer">Transferencia Bancaria</option>
+                  <option value="mixed">Pago Mixto</option>
+                </select>
+                <input type="text" class="co-input" placeholder="Referencia"
+                  [ngModel]="paymentRef()" (ngModelChange)="paymentRef.set($event)" />
+              </div>
+            </div>
+
+            <div class="co-step-actions">
+              <button class="co-btn-outline" (click)="prevStep()">← Atrás</button>
+              <button class="co-btn-primary" (click)="nextStep()">Continuar →</button>
+            </div>
+          </section>
+        }
+
+        <!-- ══════ STEP 4: FACTURA ══════ -->
+        @if (currentStep() === 4) {
+          <section class="co-card co-step-card">
+            <div class="co-step-badge">Paso 4</div>
+            <h2 class="co-step-title">Emitir factura</h2>
+
+            <div class="co-invoice-actions">
+              <button class="co-inv-btn co-inv-primary">
+                <span class="material-symbols-outlined">receipt</span>
+                <span class="co-inv-btn-label">Emitir Factura</span>
+                <span class="co-inv-btn-sub">Generar CFDI / factura fiscal</span>
+              </button>
+              <button class="co-inv-btn">
+                <span class="material-symbols-outlined">mail</span>
+                <span class="co-inv-btn-label">Enviar por Correo</span>
+                <span class="co-inv-btn-sub">Al huésped: {{ vm.guest_email }}</span>
+              </button>
+              <button class="co-inv-btn">
+                <span class="material-symbols-outlined">print</span>
+                <span class="co-inv-btn-label">Imprimir</span>
+                <span class="co-inv-btn-sub">Recibo / comprobante</span>
+              </button>
+            </div>
+
+            <label class="co-check co-split-check" [class.co-checked]="splitInvoice()">
+              <input type="checkbox" [ngModel]="splitInvoice()" (ngModelChange)="splitInvoice.set($event)" />
+              <span>Factura separada para consumos</span>
+              @if (splitInvoice()) { <span class="co-check-icon material-symbols-outlined">check_circle</span> }
+            </label>
+
+            <div class="co-step-actions">
+              <button class="co-btn-outline" (click)="prevStep()">← Atrás</button>
+              <button class="co-btn-primary" (click)="nextStep()">Continuar →</button>
+            </div>
+          </section>
+        }
+
+        <!-- ══════ STEP 5: CERRAR ══════ -->
+        @if (currentStep() === 5) {
+          @if (!checkoutDone()) {
+            <section class="co-card co-step-card">
+              <div class="co-step-badge">Paso 5</div>
+              <h2 class="co-step-title">Cerrar estancia</h2>
+
+              <p class="co-close-desc">Al cerrar el check-out, el sistema realizará automáticamente:</p>
+              <div class="co-auto-list">
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Cambiar habitación <strong>Occupied → Dirty</strong></div>
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Crear tarea: <strong>Limpiar {{ roomLabel(vm.assigned_rooms[0]) }}</strong></div>
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Liberar inventario de habitaciones</div>
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Registrar hora real y usuario</div>
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Actualizar dashboard de recepción</div>
+                <div class="co-auto-item"><span class="material-symbols-outlined">check_circle</span> Auditoría completa con IP y método</div>
+              </div>
+
+              <!-- Verification -->
+              <div class="co-close-checks">
+                <label class="co-check" [class.co-checked]="roomInspected()">
+                  <input type="checkbox" [ngModel]="roomInspected()" (ngModelChange)="roomInspected.set($event)" />
+                  <span>Habitación y minibar revisados</span>
+                  @if (roomInspected()) { <span class="co-check-icon">✓</span> }
+                </label>
+                <label class="co-check" [class.co-checked]="keysReturned()">
+                  <input type="checkbox" [ngModel]="keysReturned()" (ngModelChange)="keysReturned.set($event)" />
+                  <span>Llaves devueltas</span>
+                  @if (keysReturned()) { <span class="co-check-icon">✓</span> }
+                </label>
+              </div>
+
+              <div class="co-damage-row">
+                <span class="co-label">¿Daños en la habitación?</span>
+                <div class="co-damage-toggle">
+                  <button class="co-dmg-btn" [class.active]="!damagesFound()" (click)="damagesFound.set(false)">No</button>
+                  <button class="co-dmg-btn co-dmg-danger" [class.active]="damagesFound()" (click)="damagesFound.set(true)">Sí</button>
+                </div>
+              </div>
+
+              <textarea class="co-textarea" rows="2"
+                [ngModel]="observations()" (ngModelChange)="observations.set($event)"
+                placeholder="Observaciones de salida..."></textarea>
+
+              @if (completeError()) { <div class="toast toast-error">{{ completeError() }}</div> }
+
+              <div class="co-step-actions">
+                <button class="co-btn-outline" (click)="prevStep()">← Atrás</button>
+                <button class="co-cta" (click)="completeCheckOut()" [disabled]="completing()">
+                  @if (completing()) {
+                    <span class="material-symbols-outlined spinning">sync</span> Procesando...
+                  } @else {
+                    <span class="material-symbols-outlined">logout</span> Cerrar estancia &amp; Check-Out
+                  }
+                </button>
+              </div>
+            </section>
+          }
+        }
+
+        <!-- ══════ COMPLETED STATE ══════ -->
+        @if (checkoutDone()) {
+          <div class="co-completed">
+            <div class="co-completed-icon"><span class="material-symbols-outlined">check_circle</span></div>
+            <h2>Check-out completado</h2>
+            <div class="co-completed-details">
+              <div class="co-completed-row"><span>Folio</span><span>{{ vm.folio || '—' }}</span></div>
+              <div class="co-completed-row"><span>Huésped</span><span>{{ vm.guest_name }}</span></div>
+              <div class="co-completed-row"><span>Habitación</span><span>{{ roomLabel(vm.assigned_rooms[0]) }}</span></div>
+              @if (vm.check_out_by) { <div class="co-completed-row"><span>Atendido por</span><span>{{ vm.check_out_by }}</span></div> }
+              @if (vm.check_out_time_actual) { <div class="co-completed-row"><span>Hora de salida</span><span>{{ vm.check_out_time_actual }} hrs</span></div> }
+              <div class="co-completed-row"><span>Total</span><span>{{ grandTotal() | currency:currency() }}</span></div>
+              <div class="co-completed-row"><span>Pagado</span><span>{{ balanceDue() <= 0 ? 'Sí' : (totalPaid() | currency:currency()) }}</span></div>
+            </div>
+            <div class="co-completed-actions">
+              <a routerLink="/management/check-outs" class="co-btn-outline">Volver a check-outs</a>
+              <button class="co-inv-btn co-inv-primary" (click)="successMessage.set('Factura emitida correctamente')">
+                <span class="material-symbols-outlined">receipt</span> Emitir Factura
+              </button>
+            </div>
+          </div>
+        }
+
+      }
+    }
+  }
+</div>
