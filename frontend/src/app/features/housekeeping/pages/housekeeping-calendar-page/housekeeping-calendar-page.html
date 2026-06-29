@@ -1,0 +1,244 @@
+<div class="hk-calendar">
+  <!-- ═══ Page Header ═══ -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Calendario Semanal</h1>
+      <p class="page-subtitle">Programación de tareas de limpieza por habitación y asignado.</p>
+    </div>
+    <div class="page-header-right">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </div>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Week Navigation ═══ -->
+    <div class="week-nav">
+      <div class="week-nav-left">
+        <button type="button" class="nav-btn" (click)="prevWeek()">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <div class="week-label">
+          <span class="week-month">{{ getMonthLabel() }}</span>
+          <span class="week-range">{{ getWeekRange() }}</span>
+        </div>
+        <button type="button" class="nav-btn" (click)="nextWeek()">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+        <button type="button" class="btn-today" (click)="goToday()">
+          <span class="material-symbols-outlined">today</span>
+          Hoy
+        </button>
+      </div>
+      <div class="week-nav-right">
+        @let s = summary();
+        @if (s.total_tasks > 0) {
+          <div class="summary-chips">
+            @for (entry of s.by_status | keyvalue; track entry.key) {
+              <span class="summary-chip"
+                [style.--chip-color]="taskStatusColors[entry.key] || '#6f797d'">
+                <span class="summary-chip-dot"></span>
+                {{ entry.value }} {{ entry.key === 'maintenance' ? 'Mtto' : (entry.key === 'in_progress' ? 'Prog.' : (entry.key | titlecase)) }}
+              </span>
+            }
+            <span class="summary-total">{{ s.total_tasks }} tareas</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ═══ Staff Filter Chips ═══ -->
+    @let staff = staffList();
+    @if (staff.length) {
+      <div class="staff-bar">
+        <span class="staff-bar-label">Asignado:</span>
+        <button type="button" class="staff-chip"
+          [class.active]="assignedToFilter() === ''"
+          (click)="setStaffFilter('')">Todas</button>
+        @for (name of staff; track name) {
+          <button type="button" class="staff-chip"
+            [class.active]="assignedToFilter() === name"
+            (click)="setStaffFilter(name)">
+            <span class="material-symbols-outlined staff-chip-icon">person</span>
+            {{ name }}
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ═══ Calendar Content ═══ -->
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Cargando calendario..." />
+      }
+      @case ('error') {
+        <app-error-state
+          title="Error al cargar"
+          description="No se pudo obtener el calendario semanal."
+        />
+      }
+      @case ('empty') {
+        <app-empty-state
+          title="Sin datos"
+          description="No hay habitaciones registradas para esta propiedad."
+        />
+      }
+      @case ('success') {
+        @let days = weekDays();
+        @let roomList = rooms();
+        <div class="calendar-grid-wrap">
+          <div class="calendar-grid">
+            <!-- ═══ Header Row: Day Columns ═══ -->
+            <div class="grid-header grid-corner">
+              <span class="material-symbols-outlined grid-corner-icon">meeting_room</span>
+              <span class="grid-corner-label">Habitación</span>
+            </div>
+            @for (day of days; track day) {
+              @let h = formatDayHeader(day);
+              <div class="grid-header grid-day-header" [class.is-today]="h.isToday">
+                <span class="day-name">{{ h.dayName }}</span>
+                <span class="day-num" [class.today-badge]="h.isToday">{{ h.dayNum }}</span>
+              </div>
+            }
+
+            <!-- ═══ Room Rows ═══ -->
+            @for (room of roomList; track room.room_label) {
+              <!-- Room Label Cell -->
+              <div class="grid-cell grid-room-cell"
+                [style.--room-color]="room.status_color">
+                <div class="room-info">
+                  <span class="room-label-text">{{ room.room_label }}</span>
+                  <span class="room-status-dot" [style.--dot-color]="room.status_color"
+                    [title]="room.status_label"></span>
+                </div>
+                <span class="room-status-label">{{ room.status_label }}</span>
+              </div>
+
+              <!-- Day Cells -->
+              @for (day of days; track day) {
+                @let tasks = room.days[day];
+                @let count = taskCount(tasks);
+                <div class="grid-cell grid-day-cell"
+                  [class.has-tasks]="count > 0"
+                  [class.is-empty-day]="count === 0"
+                  (click)="count === 0 ? openQuickForm(room.room_label, day) : null"
+                  [title]="count > 0 ? count + ' tareas' : 'Hacer clic para agendar'">
+                  @if (count > 0) {
+                    <div class="day-tasks">
+                      @for (task of tasks; track task.id) {
+                        <div class="task-card"
+                          [style.--task-color]="getTaskType(task)"
+                          [title]="(taskTypeLabels[task.task_type] || task.task_type) + ' — ' + (task.assigned_to || 'sin asignar')">
+                          <div class="task-card-line">
+                            <span class="material-symbols-outlined task-icon">{{ taskTypeIcons[task.task_type] || 'cleaning_services' }}</span>
+                            <span class="task-type-label">{{ taskTypeLabels[task.task_type] || task.task_type }}</span>
+                          </div>
+                          @if (task.assigned_to) {
+                            <div class="task-assignee">
+                              <span class="material-symbols-outlined task-assignee-icon">person</span>
+                              <span>{{ task.assigned_to }}</span>
+                            </div>
+                          }
+                          @if (task.note) {
+                            <span class="task-note">{{ task.note }}</span>
+                          }
+                          @if (task.priority !== 'normal') {
+                            <span class="task-prio" [class]="priorityClass(task.priority)">
+                              {{ task.priority === 'urgent' ? 'Urgente' : task.priority === 'high' ? 'Alta' : 'Baja' }}
+                            </span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="empty-day-cell">
+                      <span class="material-symbols-outlined empty-day-icon">add_circle</span>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ═══ QUICK CREATE MODAL ═══ -->
+  <!-- ════════════════════════════════════════════════ -->
+  @if (showQuickForm()) {
+    @let target = quickFormTarget()!;
+    <div class="modal-overlay" (click)="closeQuickForm()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <span class="material-symbols-outlined modal-icon">add_task</span>
+            <div>
+              <h3>Agendar Tarea</h3>
+              <p class="modal-subtitle">Hab. <strong>{{ target.roomLabel }}</strong> · {{ target.date }}</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close" (click)="closeQuickForm()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form [formGroup]="quickForm" (submit)="$event.preventDefault(); submitQuickTask()" class="modal-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="qt-taskType">Tipo de tarea</label>
+              <select id="qt-taskType" formControlName="taskType">
+                <option value="cleaning">Limpieza</option>
+                <option value="deep_clean">Limpieza Profunda</option>
+                <option value="turnover">Rotación</option>
+                <option value="inspection">Inspección</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="qt-priority">Prioridad</label>
+              <select id="qt-priority" formControlName="priority">
+                <option value="low">Baja</option>
+                <option value="normal">Normal</option>
+                <option value="high">Alta</option>
+                <option value="urgent">Urgente</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="qt-assignedTo">Asignar a</label>
+              <input id="qt-assignedTo" type="text" formControlName="assignedTo" list="qt-staff-list" placeholder="Nombre del personal" />
+              <datalist id="qt-staff-list">
+                @for (name of commonStaff; track name) {
+                  <option [value]="name">{{ name }}</option>
+                }
+              </datalist>
+            </div>
+            <div class="form-group grow-2">
+              <label for="qt-note">Nota</label>
+              <input id="qt-note" type="text" formControlName="note" placeholder="Instrucciones adicionales" />
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="closeQuickForm()" [disabled]="quickFormBusy()">
+              <span class="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary" [disabled]="quickForm.invalid || quickFormBusy()">
+              @if (quickFormBusy()) {
+                <span class="material-symbols-outlined spin">sync</span>
+              } @else {
+                <span class="material-symbols-outlined">add_task</span>
+              }
+              Agendar Tarea
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
