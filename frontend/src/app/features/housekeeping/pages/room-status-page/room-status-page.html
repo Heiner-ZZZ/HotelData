@@ -84,6 +84,13 @@
   }
 
   @switch (viewState()) {
+    @case ('no-property') {
+      <div class="no-property-prompt">
+        <span class="material-symbols-outlined no-property-icon">meeting_room</span>
+        <h2>Selecciona una propiedad</h2>
+        <p>Usa el selector de propiedad arriba para ver el estado de las habitaciones.</p>
+      </div>
+    }
     @case ('loading') {
       <app-loading-state label="Cargando habitaciones..." />
     }

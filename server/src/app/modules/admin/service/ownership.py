@@ -13,7 +13,7 @@ from ._helpers import utc_now
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-HOTEL_ROLES = ("hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero")
+HOTEL_ROLES = ("hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "maintenance")
 
 
 def _serialize(value: Any) -> Any:

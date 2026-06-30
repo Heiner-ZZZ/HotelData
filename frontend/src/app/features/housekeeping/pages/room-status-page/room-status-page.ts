@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { lastValueFrom, switchMap } from 'rxjs';
+import { lastValueFrom, of, switchMap } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -172,7 +172,7 @@ export class RoomStatusPageComponent {
     stream: ({ params }) => {
       const { page, status, propId } = params as any;
       if (!propId) {
-        return this.api.getRoomStatus(undefined, status || undefined, page);
+        return of({ items: [], total: 0, page: 1, totalPages: 0, hasNext: false, hasPrev: false } as any);
       }
       return this.api.syncRoomStatus(propId).pipe(
         switchMap(() => this.api.getRoomStatus(propId, status || undefined, page)),
@@ -191,7 +191,8 @@ export class RoomStatusPageComponent {
   });
 
   readonly data = computed(() => this.resource.value() ?? null);
-  readonly viewState = computed<'loading' | 'error' | 'empty' | 'success'>(() => {
+  readonly viewState = computed<'loading' | 'error' | 'empty' | 'success' | 'no-property'>(() => {
+    if (!this.propId()) return 'no-property';
     const s = this.resource.status();
     if (s === 'loading' || s === 'idle') return 'loading';
     if (s === 'error') return 'error';
@@ -225,22 +226,22 @@ export class RoomStatusPageComponent {
   getActionLabel(action: QuickAction, item: RoomStatusItem): string {
     switch (action.actionType) {
       case 'startCleaning': return item.status === 'vacant_dirty' || item.status === 'occupied_dirty'
-        ? '🧹 Iniciar Limpieza' : '🔄 Re-lavado';
-      case 'completeCleaning': return action.id === 'reportDamage' ? '🔧 Reportar Daño' : '✅ Completar';
-      case 'approveCleaning': return item.status === 'cleaning_completed' ? '🔍 Inspeccionar' : '✅ Liberar';
-      case 'checkOut': return '🚪 Check-out';
-      case 'reportMaintenance': return '🔧 Solicitar Mantenimiento';
+        ? 'Iniciar Limpieza' : 'Re-lavado';
+      case 'completeCleaning': return action.id === 'reportDamage' ? 'Reportar Daño' : 'Completar';
+      case 'approveCleaning': return item.status === 'cleaning_completed' ? 'Inspeccionar' : 'Liberar';
+      case 'checkOut': return 'Check-out';
+      case 'reportMaintenance': return 'Solicitar Mantenimiento';
       case 'statusChange': {
         const map: Record<string, string> = {
-          occupied_clean: '🏨 Ocupar',
-          vacant_dirty: '🚪 Check-out',
-          occupied_dirty: '🔴 Sucia',
-          inspected: '🔍 Reparado - Inspeccionar',
-          out_of_service: '🛠️ En Reparación',
-          out_of_order: '⛔ Fuera de Orden',
-          maintenance_requested: '🔧 Solicitar Mtto',
-          vacant_clean: '✅ Liberar',
-          cleaning_in_progress: '🧹 Iniciar Limpieza',
+          occupied_clean: 'Ocupar',
+          vacant_dirty: 'Check-out',
+          occupied_dirty: 'Sucia',
+          inspected: 'Reparado - Inspeccionar',
+          out_of_service: 'En Reparaci\u00f3n',
+          out_of_order: 'Fuera de Orden',
+          maintenance_requested: 'Solicitar Mtto',
+          vacant_clean: 'Liberar',
+          cleaning_in_progress: 'Iniciar Limpieza',
         };
         return map[action.targetStatus ?? ''] ?? action.label;
       }

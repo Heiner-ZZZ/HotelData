@@ -45,6 +45,7 @@ BASE_ROLES = [
     ("gerente_hotel", "Gerente de hotel", "Consulta rendimiento y operacion de propiedades."),
     ("revenue_manager", "Revenue manager", "Analiza tarifas, promociones e ingresos."),
     ("marketing_hotelero", "Marketing hotelero", "Consulta promocion y rendimiento comercial."),
+    ("maintenance", "Mantenimiento", "Gestiona mantenimiento de habitaciones y propiedades."),
     ("cliente", "Cliente", "Usuario final planificado para busqueda y reservas."),
 ]
 
@@ -83,6 +84,7 @@ ROLE_PERMISSION_CODES = {
     "gerente_hotel": ["dashboard.read", "hotels.manage", "reservations.manage", "revenue.read"],
     "revenue_manager": ["dashboard.read", "revenue.read", "revenue.manage"],
     "marketing_hotelero": ["dashboard.read", "revenue.read"],
+    "maintenance": ["dashboard.read", "hotels.manage"],
     "cliente": ["dashboard.read"],
 }
 
