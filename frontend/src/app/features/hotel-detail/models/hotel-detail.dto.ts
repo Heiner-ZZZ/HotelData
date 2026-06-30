@@ -69,7 +69,21 @@ export interface HotelDetailDto {
     description?: string | null;
     highlights?: string | null;
     amenities_text?: string | null;
+    facilities?: {
+      meeting_rooms?: number;
+      fiber_optic?: string;
+      concierge_24h?: boolean;
+      gym?: boolean;
+      pool?: boolean;
+      parking?: boolean;
+      ev_charging?: boolean;
+      restaurant?: boolean;
+      business_center?: boolean;
+    };
+    latitude?: number;
+    longitude?: number;
   } | null;
+  review_count: number;
   reviews: Array<{
     review_id?: string;
     reviewer_name?: string;

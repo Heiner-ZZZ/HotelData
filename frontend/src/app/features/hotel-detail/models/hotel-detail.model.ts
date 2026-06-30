@@ -32,6 +32,20 @@ export interface HotelDetailViewModel {
   description: string;
   highlights: string;
   amenitiesTags: string[];
+  facilities: {
+    meetingRooms: number;
+    fiberOptic: string;
+    concierge24h: boolean;
+    gym: boolean;
+    pool: boolean;
+    parking: boolean;
+    evCharging: boolean;
+    restaurant: boolean;
+    businessCenter: boolean;
+  };
+  latitude: number;
+  longitude: number;
+  reviewCount: number;
   reviews: Array<{
     reviewerName: string;
     score: number;

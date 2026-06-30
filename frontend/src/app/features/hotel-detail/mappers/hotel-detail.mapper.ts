@@ -69,7 +69,14 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
       statusLabel: item.is_active ? 'Activa' : 'Inactiva',
       description: item.description || '',
-      features: item.features || [],
+      features: (item.features || []).reduce<string[]>((acc, f) => {
+        if (typeof f === 'string') { if (f.trim()) acc.push(f.trim()); return acc; }
+        const maybe = f as { label?: unknown } | null;
+        if (maybe?.label && typeof maybe.label === 'string' && maybe.label.trim()) {
+          acc.push(maybe.label.trim());
+        }
+        return acc;
+      }, []),
     })),
     policies: dto.hotel_policies
       ? [
@@ -90,6 +97,20 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',
     amenitiesTags: (dto.hotel_content?.amenities_text || '').split(',').map((s) => s.trim()).filter(Boolean),
+    facilities: {
+      meetingRooms: dto.hotel_content?.facilities?.meeting_rooms ?? 0,
+      fiberOptic: dto.hotel_content?.facilities?.fiber_optic ?? '—',
+      concierge24h: dto.hotel_content?.facilities?.concierge_24h ?? false,
+      gym: dto.hotel_content?.facilities?.gym ?? false,
+      pool: dto.hotel_content?.facilities?.pool ?? false,
+      parking: dto.hotel_content?.facilities?.parking ?? false,
+      evCharging: dto.hotel_content?.facilities?.ev_charging ?? false,
+      restaurant: dto.hotel_content?.facilities?.restaurant ?? false,
+      businessCenter: dto.hotel_content?.facilities?.business_center ?? false,
+    },
+    latitude: dto.hotel_content?.latitude ?? 0,
+    longitude: dto.hotel_content?.longitude ?? 0,
+    reviewCount: dto.review_count ?? 0,
     reviews: (dto.reviews || []).map((r) => ({
       reviewerName: r.reviewer_name || 'Anónimo',
       score: r.review_score || 0,

@@ -92,6 +92,7 @@ export class CheckOutsPageComponent {
   readonly errorMessage = signal('');
 
   readonly Math = Math;
+  protected readonly Number = Number;
 
   // ═══ Consumption summary modal ═══
   readonly showConsumptionModal = signal(false);
