@@ -32,13 +32,6 @@
       </div>
     </div>
   } @else {
-    @if (errorMessage()) {
-      <div class="surface-card error-banner">
-        <span class="material-symbols-outlined">error</span>
-        <p>{{ errorMessage() }}</p>
-      </div>
-    }
-
     @if (step() === 'details') {
       <form [formGroup]="form" (ngSubmit)="goToReview()" class="booking-form" novalidate>
         <section class="surface-card planner-section">
@@ -72,6 +65,27 @@
                     (endChange)="onEndDateChange($event)"
                   />
                 </div>
+
+                @if (form.controls.checkInDate.value && form.controls.checkOutDate.value) {
+                  <div class="times-section">
+                    <span class="times-section-label">
+                      <span class="material-symbols-outlined">schedule</span>
+                      Horario (opcional)
+                    </span>
+                    <div class="times-picker">
+                      <label class="time-box">
+                        <span class="material-symbols-outlined time-box-icon">login</span>
+                        <span class="time-box-label">Entrada</span>
+                        <input type="time" formControlName="checkInTime" class="time-input" />
+                      </label>
+                      <label class="time-box">
+                        <span class="material-symbols-outlined time-box-icon">logout</span>
+                        <span class="time-box-label">Salida</span>
+                        <input type="time" formControlName="checkOutTime" class="time-input" />
+                      </label>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
 
@@ -137,6 +151,13 @@
                 <span class="material-symbols-outlined">check_circle</span>
                 <span>{{ hotel.label }}</span>
               </div>
+
+              @if (preselectedRoomTypeName(); as rtName) {
+                <div class="avail-badge" style="--avail-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);">
+                  <span class="material-symbols-outlined avail-icon">meeting_room</span>
+                  <span>{{ rtName }}</span>
+                </div>
+              }
 
               @let avail = getHotelAvailabilityInfo(hotel.propId);
               @if (avail) {
@@ -426,11 +447,21 @@
             }
             <div class="review-item">
               <span class="review-label">Entrada</span>
-              <strong>{{ form.controls.checkInDate.value | date:'dd/MM/yyyy' }}</strong>
+              <strong>
+                {{ form.controls.checkInDate.value | date:'dd/MM/yyyy' }}
+                @if (form.controls.checkInTime.value) {
+                  <span class="review-time">a las {{ form.controls.checkInTime.value }}</span>
+                }
+              </strong>
             </div>
             <div class="review-item">
               <span class="review-label">Salida</span>
-              <strong>{{ form.controls.checkOutDate.value | date:'dd/MM/yyyy' }}</strong>
+              <strong>
+                {{ form.controls.checkOutDate.value | date:'dd/MM/yyyy' }}
+                @if (form.controls.checkOutTime.value) {
+                  <span class="review-time">a las {{ form.controls.checkOutTime.value }}</span>
+                }
+              </strong>
             </div>
             <div class="review-item">
               <span class="review-label">Estancia</span>

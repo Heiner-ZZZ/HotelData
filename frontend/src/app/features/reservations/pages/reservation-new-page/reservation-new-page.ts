@@ -7,6 +7,7 @@ import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'r
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { toast } from '../../../../core/toast/toast.service';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
@@ -35,6 +36,10 @@ export class ReservationNewPageComponent {
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
   readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review'>('details');
+
+  /** Room type ID and name passed from hotel detail page via query params */
+  readonly preselectedRoomTypeId = signal('');
+  readonly preselectedRoomTypeName = signal('');
 
   /** Availability status per hotel: 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types' */
   readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
@@ -138,6 +143,8 @@ export class ReservationNewPageComponent {
     guestPhone: [''],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
+    checkInTime: [''],
+    checkOutTime: [''],
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
@@ -149,6 +156,12 @@ export class ReservationNewPageComponent {
 
   constructor() {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
+    const prefixedRoomType = this.activatedRoute.snapshot.queryParamMap.get('room_type') ?? '';
+    const prefixedRoomTypeName = this.activatedRoute.snapshot.queryParamMap.get('room_type_name') ?? '';
+    if (prefixedRoomType) {
+      this.preselectedRoomTypeId.set(prefixedRoomType);
+      this.preselectedRoomTypeName.set(prefixedRoomTypeName);
+    }
     this._loadGuestSuggestions();
 
     // ── Search registered users on the backend when staff types ──
@@ -206,9 +219,8 @@ export class ReservationNewPageComponent {
           if (prefixedPropId > 0 && this.form.controls.checkInDate.value && this.form.controls.checkOutDate.value) {
             this.checkHotelAvailability(prefixedPropId);
           }
-        },
-        error: () => {
-          this.errorMessage.set('No fue posible cargar el formulario de reservas.');
+        },          error: () => {
+          toast('No fue posible cargar el formulario de reservas.', 'error', 6000);
           this.loading.set(false);
         }
       });
@@ -342,6 +354,8 @@ export class ReservationNewPageComponent {
       cedula: v.cedula,
       checkInDate: v.checkInDate,
       checkOutDate: v.checkOutDate,
+      checkInTime: v.checkInTime || undefined,
+      checkOutTime: v.checkOutTime || undefined,
       adults: v.adults,
       children: v.children,
       rooms: v.rooms,
@@ -349,6 +363,7 @@ export class ReservationNewPageComponent {
       couponCode: v.couponCode,
       specialRequests: v.specialRequests,
       selectedAmenities: [...this.selectedAmenities()],
+      roomTypeId: this.preselectedRoomTypeId() || undefined,
     };
   }
 
@@ -361,7 +376,7 @@ export class ReservationNewPageComponent {
     // ═══ GUARD: Verificar disponibilidad antes de enviar ═══
     const previewData = this.preview();
     if (previewData && !previewData.available) {
-      this.errorMessage.set('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.');
+      toast('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.', 'error', 6000);
       this.step.set('details');
       return;
     }
@@ -383,14 +398,13 @@ export class ReservationNewPageComponent {
           void this.router.navigate(['../confirmed', result.bookingId], { relativeTo: this.activatedRoute });
         },
         error: (error: ApiError) => {
-          // Mensaje amigable para el usuario, no el error técnico del backend
           const msg = error.message || '';
           if (msg.includes('No inventory data') || msg.includes('inventory')) {
-            this.errorMessage.set('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.');
+            toast('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.', 'error', 6000);
           } else if (msg.includes('available')) {
-            this.errorMessage.set('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.');
+            toast('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.', 'error', 6000);
           } else {
-            this.errorMessage.set(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.');
+            toast(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.', 'error', 6000);
           }
           this.submitting.set(false);
         }

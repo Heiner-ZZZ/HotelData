@@ -280,7 +280,6 @@
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>Etiqueta</th>
                     <th>N°</th>
                     <th>Piso</th>
                     <th>Tipo</th>
@@ -297,9 +296,8 @@
                       <td><code>{{ room.id }}</code></td>
                       <td>
                         <span class="material-symbols-outlined table-icon icon-data-blue">door_front</span>
-                        {{ room.roomLabel }}
+                        {{ room.roomNumber || '--' }}
                       </td>
-                      <td>{{ room.roomNumber || '--' }}</td>
                       <td>{{ room.floor || '--' }}</td>
                       <td>{{ room.roomTypeName }}</td>
                       <td>{{ room.view || '--' }}</td>

@@ -60,13 +60,21 @@ export class ReservationDetailPageComponent {
   readonly hotelProducts = signal<HotelProduct[]>([]);
   readonly lineItems = signal<BookingLineItem[]>([]);
   readonly lineItemsTotal = computed(() => this.lineItems().reduce((sum, li) => sum + li.total, 0));
+  /** Exclude 'Daños' from sellable products — damages are handled at checkout */
   readonly productsGrouped = computed(() => {
     const groups = new Map<string, HotelProduct[]>();
     for (const p of this.hotelProducts()) {
+      if (p.category === 'Daños') continue;
       if (!groups.has(p.category)) groups.set(p.category, []);
       groups.get(p.category)!.push(p);
     }
     return [...groups.entries()].map(([category, items]) => ({ category, items }));
+  });
+  readonly productCategories = computed(() => this.productsGrouped().map(g => g.category));
+  readonly selectedProductCategory = signal<string>('');
+  readonly filteredProducts = computed(() => {
+    const cat = this.selectedProductCategory();
+    return cat ? this.productsGrouped().find(g => g.category === cat)?.items ?? [] : [];
   });
   readonly addProductId = signal('');
   readonly addProductQty = signal(1);
@@ -74,7 +82,6 @@ export class ReservationDetailPageComponent {
   readonly removeItemSaving = signal<string | null>(null);
   readonly productError = signal('');
   readonly showProductModal = signal(false);
-  readonly showProductSelect = signal(false);
 
   readonly selectedProduct = computed(() => {
     const pid = this.addProductId();
@@ -90,7 +97,7 @@ export class ReservationDetailPageComponent {
   // Room assignment modal
   readonly showRoomModal = signal(false);
   readonly roomAssignmentState = signal<'loading' | 'success' | 'error' | 'idle'>('idle');
-  readonly availableRooms = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string }>>([]);
+  readonly availableRooms = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; room_status: string }>>([]);
   readonly assignedRoomIds = signal<string[]>([]);
   readonly selectedRoomIds = signal<Set<string>>(new Set());
   readonly roomAssignmentSaving = signal(false);
@@ -158,21 +165,21 @@ export class ReservationDetailPageComponent {
     this.showProductModal.set(true);
     this.addProductId.set('');
     this.addProductQty.set(1);
+    // Auto-select first category
+    const cats = this.productCategories();
+    if (cats.length > 0) {
+      this.selectedProductCategory.set(cats[0]);
+    }
   }
 
   closeProductModal() {
     this.showProductModal.set(false);
-    this.showProductSelect.set(false);
-  }
-
-  toggleProductSelect() {
-    this.showProductSelect.set(!this.showProductSelect());
+    this.selectedProductCategory.set('');
   }
 
   selectProduct(product: HotelProduct) {
     this.addProductId.set(product.productId);
     this.addProductQty.set(1);
-    this.showProductSelect.set(false);
   }
 
   addProductToBooking() {
