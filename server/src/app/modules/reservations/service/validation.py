@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from ._helpers import ReservationInput, _clean_text, _safe_int
@@ -40,6 +41,55 @@ def validate_reservation_input(payload: ReservationInput) -> list[str]:
     return errors
 
 
+def validate_date_format(check_in_date: str, check_out_date: str) -> list[str]:
+    """Validate that check_in_date and check_out_date are valid YYYY-MM-DD strings.
+
+    Returns a list of error messages (empty if valid).
+    """
+    errors: list[str] = []
+    try:
+        cin = datetime.strptime(check_in_date, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        errors.append(f"Invalid check_in_date format: '{check_in_date}' (expected YYYY-MM-DD)")
+        cin = None
+
+    try:
+        cout = datetime.strptime(check_out_date, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        errors.append(f"Invalid check_out_date format: '{check_out_date}' (expected YYYY-MM-DD)")
+        cout = None
+
+    if cin and cout:
+        if cout < cin:
+            errors.append("check_out_date must be greater than or equal to check_in_date")
+
+    return errors
+
+
+def _validate_policy_times(prop_id: int, check_in_time: str, check_out_time: str) -> list[str]:
+    """Validate check-in/out times against hotel policies."""
+    errors: list[str] = []
+    if not check_in_time and not check_out_time:
+        return errors  # No times provided, skip
+    from src.database.connection import get_database
+    db = get_database()
+    policy = db.hotel_policies.find_one(
+        {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "season_id": {"$in": ["", None]}},
+        {"_id": 0, "check_in_time": 1, "check_out_time": 1},
+    )
+    if not policy:
+        return errors
+    policy_ci = policy.get("check_in_time", "")
+    policy_co = policy.get("check_out_time", "")
+    if check_in_time and policy_ci:
+        if check_in_time < policy_ci:
+            errors.append(f"Check-in antes de lo permitido. El check-in es desde las {policy_ci}")
+    if check_out_time and policy_co:
+        if check_out_time > policy_co:
+            errors.append(f"Check-out después de lo permitido. El check-out es hasta las {policy_co}")
+    return errors
+
+
 def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: bool = False) -> ReservationInput:
     return ReservationInput(
         prop_id=_safe_int(form_data.get("prop_id")),
@@ -50,6 +100,8 @@ def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: 
         room_type_id=_clean_text(form_data.get("room_type_id")),
         check_in_date=_clean_text(form_data.get("check_in_date")),
         check_out_date=_clean_text(form_data.get("check_out_date")),
+        check_in_time=_clean_text(form_data.get("check_in_time")),
+        check_out_time=_clean_text(form_data.get("check_out_time")),
         adults=_safe_int(form_data.get("adults"), 1),
         children=_safe_int(form_data.get("children"), 0),
         rooms=_safe_int(form_data.get("rooms"), 1),

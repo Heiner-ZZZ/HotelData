@@ -372,6 +372,11 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     errors = validate_reservation_input(payload)
     if errors:
         raise ValueError("; ".join(errors))
+    # Validate check-in/out times against hotel policies
+    from ..validation import _validate_policy_times
+    time_errors = _validate_policy_times(payload.prop_id, payload.check_in_time, payload.check_out_time)
+    if time_errors:
+        raise ValueError("; ".join(time_errors))
 
     avail_error = _check_availability(
         payload.prop_id, payload.check_in_date, payload.check_out_date,
@@ -438,6 +443,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         "guest_email": payload.guest_email, "guest_phone": payload.guest_phone,
         "room_type_id": payload.room_type_id,
         "check_in_date": payload.check_in_date, "check_out_date": payload.check_out_date,
+        "check_in_time": payload.check_in_time, "check_out_time": payload.check_out_time,
         "adults": payload.adults, "children": payload.children, "rooms": payload.rooms,
         "comment": payload.comment, "special_requests": payload.special_requests,
         "total_price": total_price, "currency": currency, "total_nights": total_nights,
@@ -540,7 +546,7 @@ def modify_booking(
     room_type_id: str | None = None,
     rooms: int | None = None,
     comment: str | None = None,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
     selected_amenities: list[str] | None = None,
 ) -> dict[str, Any]:
     from ..validation import validate_date_format

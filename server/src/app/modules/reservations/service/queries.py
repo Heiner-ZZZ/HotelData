@@ -54,6 +54,11 @@ def list_bookings(
     user_filter = hotel_filter_from_user(user)
     if user_filter:
         filters.update(user_filter)
+    # Client role: filter by user_id so they only see their own bookings
+    if user and user.get("primary_role") == "cliente":
+        uid = user.get("_id")
+        if uid:
+            filters["user_id"] = str(uid)
     # Optional filters
     if status:
         filters["status"] = status
