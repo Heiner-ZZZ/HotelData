@@ -12,6 +12,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingApiService, type RoomStatusItem } from '../../services/housekeeping-api.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 
 // ─────────────────────────────────────────────────────────
 // 10 Statuses — Hotel Housekeeping Lifecycle
@@ -133,7 +134,7 @@ function getQuickActions(status: string): QuickAction[] {
 
 @Component({
   selector: 'app-room-status-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
   templateUrl: './room-status-page.html',
   styleUrl: './room-status-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -149,8 +150,8 @@ export class RoomStatusPageComponent {
 
   private readonly page = computed(() => Number(this.queryParams()?.get('page') ?? '1'));
   readonly statusFilter = computed(() => this.queryParams()?.get('status') ?? '');
-  private readonly propId = computed(() => Number(this.queryParams()?.get('prop_id') ?? '0'));
-  private readonly propLabel = computed(() => this.queryParams()?.get('prop_label') ?? '');
+  readonly propId = computed(() => Number(this.queryParams()?.get('prop_id') ?? '0'));
+  readonly propLabel = computed(() => this.queryParams()?.get('prop_label') ?? '');
 
   readonly statusOptions = STATUS_DEFS;
   readonly statusColors = STATUS_COLORS;

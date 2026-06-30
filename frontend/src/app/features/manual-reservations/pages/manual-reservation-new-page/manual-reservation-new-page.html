@@ -138,10 +138,10 @@
             </div>
           </div>
 
-          @if (form.errors?.['dateRangeInvalid'] && form.controls.checkOutDate.touched) {
+          @if (dateRangeError && form.controls.checkOutDate.touched) {
             <div class="alert alert-error" style="margin-top:-0.5rem">
               <span class="material-symbols-outlined">calendar_month</span>
-              <span>{{ form.errors?.['dateRangeInvalid'] }}</span>
+              <span>{{ dateRangeError }}</span>
             </div>
           }
 

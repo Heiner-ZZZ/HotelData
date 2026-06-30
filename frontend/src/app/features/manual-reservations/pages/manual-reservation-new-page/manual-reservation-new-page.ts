@@ -50,6 +50,12 @@ export class ManualReservationNewPageComponent {
   readonly today = new Date().toISOString().split('T')[0];
 
   // Templates for the hidden <input type="date"> trigger
+  /** Obtener el mensaje de error del validador dateRange, necesario porque form.errors?.['key'] no compila en Angular 22 */
+  get dateRangeError(): string | null {
+    const err = this.form.errors?.['dateRangeInvalid'];
+    return typeof err === 'string' ? err : null;
+  }
+
   readonly triggerMap = {
     checkIn: { forId: 'date-checkin' },
     checkOut: { forId: 'date-checkout' },

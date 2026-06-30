@@ -101,7 +101,7 @@
                   </td>
                   <td>
                     <app-status-badge
-                      [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'info' : 'warning'"
+                      [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'neutral' : 'warning'"
                       [label]="statusLabel[item.status] || item.status"
                     />
                   </td>
@@ -218,7 +218,7 @@
             <span class="material-symbols-outlined modal-icon">search</span>
             <h2>{{ item.item_name }}</h2>
             <app-status-badge
-              [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'info' : 'warning'"
+              [tone]="item.status === 'returned' ? 'success' : item.status === 'disposed' ? 'danger' : item.status === 'claimed' ? 'neutral' : 'warning'"
               [label]="statusLabel[item.status] || item.status"
             />
             <button type="button" class="modal-close" (click)="closeDetail()">

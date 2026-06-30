@@ -1,53 +1,58 @@
 <div class="op-cal">
   @if (loading()) {
     <div class="op-cal-loading">
-      <span>⏳</span>
+      <span class="material-symbols-outlined spin">progress_activity</span>
       Cargando calendario...
     </div>
   } @else if (data(); as cal) {
     <!-- ═══ Navigation ═══ -->
     <div class="op-cal-header">
       <button type="button" class="op-cal-nav" (click)="prevWeek.emit()" title="Semana anterior">
-        <span>◀</span>
+        <span class="material-symbols-outlined">chevron_left</span>
       </button>
       <h3 class="op-cal-title">{{ monthLabel() }}</h3>
       <button type="button" class="op-cal-nav" (click)="nextWeek.emit()" title="Semana siguiente">
-        <span>▶</span>
+        <span class="material-symbols-outlined">chevron_right</span>
       </button>
     </div>
 
     <!-- ═══ Badges operacionales ═══ -->
     <div class="op-cal-badges">
       <span class="op-badge" [class.is-ready]="cal.operational.policies_configured">
-        📋 Políticas
+        <span class="material-symbols-outlined op-badge-icon">policy</span>
+        Políticas
         @if (cal.operational.policies_configured) {
-          <span class="op-check">✓</span>
+          <span class="material-symbols-outlined op-check">check_circle</span>
         } @else {
-          <span class="op-x">○</span>
+          <span class="material-symbols-outlined op-x">radio_button_unchecked</span>
         }
       </span>
       <span class="op-badge" [class.is-ready]="cal.operational.rooms_configured">
-        🚪 {{ cal.roomCount }} Hab.
+        <span class="material-symbols-outlined op-badge-icon">meeting_room</span>
+        {{ cal.roomCount }} Hab.
         @if (cal.operational.rooms_configured) {
-          <span class="op-check">✓</span>
+          <span class="material-symbols-outlined op-check">check_circle</span>
         }
       </span>
       <span class="op-badge" [class.is-ready]="cal.operational.rates_configured">
-        💰 Tarifas
+        <span class="material-symbols-outlined op-badge-icon">payments</span>
+        Tarifas
         @if (cal.operational.rates_configured) {
-          <span class="op-check">✓</span>
+          <span class="material-symbols-outlined op-check">check_circle</span>
         }
       </span>
       <span class="op-badge" [class.is-ready]="cal.operational.inventory_configured">
-        📦 Inventario
+        <span class="material-symbols-outlined op-badge-icon">inventory_2</span>
+        Inventario
         @if (cal.operational.inventory_configured) {
-          <span class="op-check">✓</span>
+          <span class="material-symbols-outlined op-check">check_circle</span>
         }
       </span>
       <span class="op-badge" [class.is-ready]="cal.operational.promotions_active">
-        📢 Promos
+        <span class="material-symbols-outlined op-badge-icon">campaign</span>
+        Promos
         @if (cal.operational.promotions_active) {
-          <span class="op-check">✓</span>
+          <span class="material-symbols-outlined op-check">check_circle</span>
         }
       </span>
     </div>
@@ -69,24 +74,44 @@
             [class.has-data]="!!wd.data && (wd.data.hasRate || wd.data.hasPromotion || wd.data.hasInventory)"
           >
             <span class="op-cal-day">{{ wd.day }}</span>
-            @if (wd.data) {
-              @if (wd.data.hasRate) {
-                <span class="op-icon op-icon--rate" [title]="wd.data.bestRate != null ? 'Tarifa desde $' + wd.data.bestRate : 'Tarifas configuradas'">$</span>
-              }
-              @if (wd.data.hasPromotion) {
-                <span class="op-icon op-icon--promo" title="Promoción activa">%</span>
-              }
-              @if (wd.data.hasInventory && wd.data.totalRooms > 0) {
-                @if (wd.data.availableRooms > 0 && wd.data.blockedRooms === 0) {
-                  <span class="op-icon op-icon--avail" [title]="roomTooltip(wd.data)">D</span>
-                } @else if (wd.data.availableRooms > 0 && wd.data.blockedRooms > 0) {
-                  <span class="op-icon op-icon--mixed" [title]="roomTooltip(wd.data)">D</span>
-                  <span class="op-icon op-icon--blocked" [title]="roomTooltip(wd.data)">B</span>
-                } @else if (wd.data.blockedRooms > 0) {
-                  <span class="op-icon op-icon--blocked" [title]="roomTooltip(wd.data)">B</span>
+
+            <div class="op-cell-statuses">
+              @if (wd.data) {
+                @if (wd.data.hasRate) {
+                  <div class="op-status op-status--rate"
+                    [title]="wd.data.bestRate != null ? 'Tarifa desde $' + wd.data.bestRate : 'Tarifas configuradas'"
+                    (click)="$event.stopPropagation()">
+                    <span class="material-symbols-outlined op-status-icon">sell</span>
+                    <span class="op-status-text">{{ wd.data.rateCount }} tarifa{{ wd.data.rateCount !== 1 ? 's' : '' }}</span>
+                  </div>
+                }
+                @if (wd.data.hasPromotion) {
+                  <div class="op-status op-status--promo"
+                    title="Promoción activa"
+                    (click)="$event.stopPropagation()">
+                    <span class="material-symbols-outlined op-status-icon">local_offer</span>
+                    <span class="op-status-text">Promo</span>
+                  </div>
+                }
+                @if (wd.data.hasInventory && wd.data.totalRooms > 0) {
+                  @if (wd.data.availableRooms > 0 && wd.data.blockedRooms === 0) {
+                    <div class="op-status op-status--avail"
+                      [title]="roomTooltip(wd.data)"
+                      (click)="$event.stopPropagation()">
+                      <span class="material-symbols-outlined op-status-icon">check_circle</span>
+                      <span class="op-status-text">{{ wd.data.availableRooms }}/{{ wd.data.totalRooms }} libre{{ wd.data.availableRooms !== 1 ? 's' : '' }}</span>
+                    </div>
+                  } @else if (wd.data.blockedRooms > 0) {
+                    <div class="op-status op-status--blocked"
+                      [title]="roomTooltip(wd.data)"
+                      (click)="$event.stopPropagation()">
+                      <span class="material-symbols-outlined op-status-icon">block</span>
+                      <span class="op-status-text">{{ wd.data.blockedRooms }}/{{ wd.data.totalRooms }} bloqueada{{ wd.data.blockedRooms !== 1 ? 's' : '' }}</span>
+                    </div>
+                  }
                 }
               }
-            }
+            </div>
           </div>
         }
       </div>
@@ -94,18 +119,22 @@
 
     <!-- ═══ Legend ═══ -->
     <div class="op-cal-footer">
-      <span class="op-fi">
-        <span class="op-icon op-icon--rate">$</span> Tarifa
-      </span>
-      <span class="op-fi">
-        <span class="op-icon op-icon--promo">%</span> Promoción
-      </span>
-      <span class="op-fi">
-        <span class="op-icon op-icon--avail">D</span> Disponible
-      </span>
-      <span class="op-fi">
-        <span class="op-icon op-icon--blocked">B</span> Bloqueada
-      </span>
+      <div class="op-fi">
+        <span class="material-symbols-outlined op-fi-icon op-fi-icon--rate">sell</span>
+        <span>Tarifa</span>
+      </div>
+      <div class="op-fi">
+        <span class="material-symbols-outlined op-fi-icon op-fi-icon--promo">local_offer</span>
+        <span>Promoción</span>
+      </div>
+      <div class="op-fi">
+        <span class="material-symbols-outlined op-fi-icon op-fi-icon--avail">check_circle</span>
+        <span>Habitaciones libres</span>
+      </div>
+      <div class="op-fi">
+        <span class="material-symbols-outlined op-fi-icon op-fi-icon--blocked">block</span>
+        <span>Habitaciones bloqueadas</span>
+      </div>
     </div>
   }
 </div>
