@@ -1,7 +1,7 @@
 <article class="hotel-card surface-card">
-  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!imgError()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
-    @if (!imgError()) {
-      <img class="card-bg-img" [src]="picsumUrl()" alt="" loading="lazy" (error)="onImgError()" />
+  <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!fallbackImg()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
+    @if (!fallbackImg()) {
+      <img class="card-bg-img" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError()" />
     }
     <div class="media-overlay">
       <span class="media-chip">Hotel {{ hotel().id }}</span>
@@ -43,7 +43,12 @@
 
         <div class="inline-links">
           <a [routerLink]="['/hotels', hotel().id]" (click)="trackClick()">Ver más</a>
-          <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: hotel().id }">Comparar</a>
+          @if (!compareMode()) {
+            <button type="button" class="compare-link" (click)="toggleCompare()">
+              <span class="material-symbols-outlined">compare_arrows</span>
+              Comparar
+            </button>
+          }
         </div>
       </div>
 

@@ -1,482 +1,436 @@
 <div class="hotel-detail-page">
   @switch (viewState()) {
     @case ('loading') {
-      <app-loading-state label="Cargando detalle del hotel..." />
+      <div class="state-section">
+        <app-loading-state label="Cargando detalle del hotel..." />
+      </div>
     }
     @case ('error') {
-      <app-error-state
-        title="No fue posible cargar el detalle"
-        description="Intenta nuevamente o regresa a la búsqueda para abrir otra propiedad."
-      />
+      <div class="state-section">
+        <app-error-state
+          title="No fue posible cargar el detalle"
+          description="Intenta nuevamente o regresa a la búsqueda para abrir otra propiedad."
+        />
+      </div>
     }
     @case ('empty') {
-      <app-empty-state
-        title="No encontramos esa propiedad"
-        description="El hotel solicitado no existe o ya no tiene datos asociados."
-      />
+      <div class="state-section">
+        <app-empty-state
+          title="No encontramos esa propiedad"
+          description="El hotel solicitado no existe o ya no tiene datos asociados."
+        />
+      </div>
     }
     @default {
       @if (hotel(); as vm) {
-        <!-- Breadcrumbs -->
-        <nav class="breadcrumbs">
-          <a routerLink="/search" class="crumb">Inicio</a>
-          <span class="crumb-sep">/</span>
-          <a routerLink="/search" class="crumb">Resultados</a>
-          <span class="crumb-sep">/</span>
-          <span class="crumb crumb-current">{{ vm.name }}</span>
-        </nav>
 
-        <!-- Hero -->
-        <section class="hero-section">
-          <div class="hero-main">
-            <div class="hero-top">
-              <div class="hero-stars">
+        <!-- ═══════════════════════════════════════════════════
+             HERO: Bento Gallery
+             ═══════════════════════════════════════════════════ -->
+        @if (vm.galleryImages.length) {
+          <section class="bento-gallery">
+            <!-- Main large image -->
+            <div class="bento-main">
+              @if (!imageErrors().has('gallery-0')) {
+                <img [src]="vm.galleryImages[0]" [alt]="vm.name" loading="eager" (error)="onImageError('gallery-0')" />
+              } @else {
+                <div class="img-placeholder-lg">
+                  <span class="material-symbols-outlined">hotel</span>
+                </div>
+              }
+            </div>
+            <!-- Secondary images (hidden on mobile) -->
+            <div class="bento-side">
+              @for (url of vm.galleryImages.slice(1, 5); track url; let i = $index) {
+                <div class="bento-thumb">
+                  @if (!imageErrors().has('gallery-' + (i + 1))) {
+                    <img [src]="url" [alt]="vm.name + ' ' + (i + 2)" loading="lazy" (error)="onImageError('gallery-' + (i + 1))" />
+                  } @else {
+                    <div class="img-placeholder-sm">
+                      <span class="material-symbols-outlined">hotel</span>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- "View all" button overlay on last image -->
+              @if (vm.galleryImages.length > 5) {
+                <div class="bento-view-all">
+                  <span class="material-symbols-outlined">grid_view</span>
+                  Ver todas ({{ vm.galleryImages.length }})
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- ═══════════════════════════════════════════════════
+             BREADCRUMBS & TITLE
+             ═══════════════════════════════════════════════════ -->
+        <div class="page-head">
+          <nav class="breadcrumbs">
+            <a routerLink="/search" class="crumb">Destinos</a>
+            <span class="crumb-sep material-symbols-outlined">chevron_right</span>
+            <a routerLink="/search" class="crumb">{{ vm.location?.split(',')?.[0]?.trim() || 'Resultados' }}</a>
+            <span class="crumb-sep material-symbols-outlined">chevron_right</span>
+            <span class="crumb-current">{{ vm.name }}</span>
+          </nav>
+
+          <div class="title-row">
+            <div class="title-main">
+              <h1 class="hotel-title">{{ vm.name }}</h1>
+              <p class="hotel-location">
+                <span class="material-symbols-outlined loc-icon">location_on</span>
+                {{ vm.location }}
+                @if (vm.latitude && vm.longitude) {
+                  <a class="map-link" href="https://www.google.com/maps?q={{ vm.latitude }},{{ vm.longitude }}" target="_blank" rel="noopener">Ver en mapa</a>
+                }
+              </p>
+              <div class="stars-row">
                 @for (i of [1,2,3,4,5]; track i) {
-                  <span class="material-symbols-outlined star-icon" [class.star-filled]="i <= stars()" [class.star-empty]="i > stars()">star</span>
+                  <span class="material-symbols-outlined star-icon" [class.filled]="i <= stars()" [class.empty]="i > stars()">star</span>
                 }
               </div>
             </div>
-            <h1 class="hero-title">{{ vm.name }}</h1>
-            <p class="hero-location">
-              <span class="material-symbols-outlined loc-icon">public</span>
-              {{ vm.location }}
-            </p>
-          </div>
-          <div class="hero-side">
-            <div class="review-card">
-              <div class="review-score-badge">{{ vm.reviewLabel }}</div>
-              <div class="review-text">
-                <span class="review-rating">Score general</span>
-                <span class="review-source">{{ vm.sourceCollection }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Action Row -->
-        <div class="action-row">
-          <a routerLink="/search" class="secondary-link">
-            <span class="material-symbols-outlined act-icon">arrow_back</span>
-            Volver a búsqueda
-          </a>
-            <div class="action-row-right">
-              <button type="button" class="secondary-link" (click)="shareHotel()" aria-label="Compartir hotel">
-                <span class="material-symbols-outlined act-icon">share</span>
+            <div class="title-actions">
+              <button type="button" class="action-btn" (click)="shareHotel()" aria-label="Compartir">
+                <span class="material-symbols-outlined">share</span>
                 Compartir
               </button>
-              <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: vm.id }" class="secondary-link">
-                <span class="material-symbols-outlined act-icon">compare_arrows</span>
+              <a [routerLink]="['/hotels/compare']" [queryParams]="{ prop_id: vm.id }" class="action-btn">
+                <span class="material-symbols-outlined">compare_arrows</span>
                 Comparar
               </a>
-              <a [href]="'/reservations/new?prop_id=' + vm.id" class="primary-link">
-                <span class="material-symbols-outlined act-icon">calendar_add_on</span>
-                Solicitar reserva
-              </a>
             </div>
+          </div>
         </div>
 
-        <!-- Gallery -->
-        @if (vm.galleryImages.length) {
-          <section class="gallery-section">
-            <div class="gallery-scroll">
-              @for (url of vm.galleryImages; track url; let i = $index) {
-                <div class="gallery-item">
-                  @if (!imageErrors().has('gallery-' + i)) {
-                    <img [src]="url" [alt]="vm.name" loading="lazy" (error)="onImageError('gallery-' + i)" />
-                  } @else {
-                    <div class="gallery-fallback">
-                      <span class="material-symbols-outlined" style="font-size:3rem;color:var(--muted-text)">hotel</span>
+        <!-- ═══════════════════════════════════════════════════
+             TWO-COLUMN LAYOUT
+             ═══════════════════════════════════════════════════ -->
+        <div class="detail-grid">
+
+          <!-- ─── LEFT: Main Content ─── -->
+          <div class="detail-main">
+
+            <!-- KPI Stats Row -->
+            <section class="kpi-row">
+              <div class="kpi-card">
+                <span class="kpi-val">{{ vm.reviewLabel }}</span>
+                <span class="kpi-lbl">Puntuación</span>
+              </div>
+              @if (vm.facilities.meetingRooms > 0) {
+                <div class="kpi-card">
+                  <span class="kpi-val">{{ vm.facilities.meetingRooms }}</span>
+                  <span class="kpi-lbl">Salas de Juntas</span>
+                </div>
+              }
+              @if (vm.facilities.fiberOptic !== '—') {
+                <div class="kpi-card">
+                  <span class="kpi-val">{{ vm.facilities.fiberOptic }}</span>
+                  <span class="kpi-lbl">Fibra Óptica</span>
+                </div>
+              }
+              @if (vm.facilities.concierge24h) {
+                <div class="kpi-card">
+                  <span class="kpi-val">24/7</span>
+                  <span class="kpi-lbl">Conserjería</span>
+                </div>
+              }
+            </section>
+
+            <!-- Overview -->
+            <section id="overview" class="detail-section">
+              <h2 class="section-title">Descripción General</h2>
+              @if (vm.description) {
+                <p class="section-text">{{ vm.description }}</p>
+              }
+              @if (vm.highlights) {
+                <div class="highlight-box">
+                  <span class="material-symbols-outlined">star</span>
+                  <span>{{ vm.highlights }}</span>
+                </div>
+              }
+            </section>
+
+            <!-- Amenities -->
+            @if (vm.amenitiesTags.length) {
+              <section id="amenities" class="detail-section">
+                <h2 class="section-title">Servicios y Amenidades</h2>
+                <div class="amenities-grid">
+                  @for (tag of vm.amenitiesTags; track tag) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap">
+                        <span class="material-symbols-outlined amenity-icon">{{ amenityIcon(tag) }}</span>
+                      </div>
+                      <span class="amenity-label">{{ tag }}</span>
+                    </div>
+                  }
+                  <!-- Static facility icons -->
+                  @if (vm.facilities.gym) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">fitness_center</span></div>
+                      <span class="amenity-label">Gimnasio</span>
+                    </div>
+                  }
+                  @if (vm.facilities.pool) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">pool</span></div>
+                      <span class="amenity-label">Piscina</span>
+                    </div>
+                  }
+                  @if (vm.facilities.parking) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">local_parking</span></div>
+                      <span class="amenity-label">Parking</span>
+                    </div>
+                  }
+                  @if (vm.facilities.restaurant) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">restaurant</span></div>
+                      <span class="amenity-label">Restaurante</span>
+                    </div>
+                  }
+                  @if (vm.facilities.evCharging) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">ev_station</span></div>
+                      <span class="amenity-label">Carga Eléctrica</span>
+                    </div>
+                  }
+                  @if (vm.facilities.businessCenter) {
+                    <div class="amenity-item">
+                      <div class="amenity-icon-wrap"><span class="material-symbols-outlined amenity-icon">business_center</span></div>
+                      <span class="amenity-label">Business Center</span>
                     </div>
                   }
                 </div>
-              }
-            </div>
-          </section>
-        }
-
-        <!-- Description -->
-        @if (vm.description) {
-          <section class="description-section surface-card">
-            <h2 class="section-title">Descripción</h2>
-            <p class="description-text">{{ vm.description }}</p>
-            @if (vm.highlights) {
-              <div class="highlights-box">
-                <span class="material-symbols-outlined highlights-icon">star</span>
-                <span>{{ vm.highlights }}</span>
-              </div>
+              </section>
             }
-          </section>
-        }
 
-        <!-- Amenities -->
-        @if (vm.amenitiesTags.length) {
-          <section class="amenities-section surface-card">
-            <h2 class="section-title">Servicios e instalaciones</h2>
-            <div class="amenities-tags">
-              @for (tag of vm.amenitiesTags; track tag) {
-                <span class="amenity-tag">{{ tag }}</span>
-              }
-            </div>
-          </section>
-        }
-
-        <!-- Sticky Tabs -->
-        <nav class="sticky-tabs">
-          <button class="tab-btn" [class.tab-active]="activeTab() === 'overview'" (click)="scrollTo('overview')">Resumen</button>
-          <button class="tab-btn" [class.tab-active]="activeTab() === 'rooms'" (click)="scrollTo('rooms')">Habitaciones</button>
-          <button class="tab-btn" [class.tab-active]="activeTab() === 'rates'" (click)="scrollTo('rates')">Tarifas</button>
-          <button class="tab-btn" [class.tab-active]="activeTab() === 'policies'" (click)="scrollTo('policies')">Políticas</button>
-        </nav>
-
-        <!-- Overview -->
-        <section id="overview" class="detail-section">
-          <h2 class="section-title">Resumen de la Propiedad</h2>
-
-          <div class="kpi-grid">
-            <article class="kpi-card kpi-accent">
-              <span class="material-symbols-outlined kpi-icon">payments</span>
-              <div class="kpi-body">
-                <span class="kpi-label">Precio promedio</span>
-                <strong class="kpi-value">${{ vm.averagePrice }}</strong>
-              </div>
-            </article>
-            <article class="kpi-card">
-              <span class="material-symbols-outlined kpi-icon">meeting_room</span>
-              <div class="kpi-body">
-                <span class="kpi-label">Reservas</span>
-                <strong class="kpi-value">{{ vm.reservations }}</strong>
-                <span class="kpi-sub">{{ vm.conversionRate }}% de conversión</span>
-              </div>
-            </article>
-            <article class="kpi-card">
-              <span class="material-symbols-outlined kpi-icon">ads_click</span>
-              <div class="kpi-body">
-                <span class="kpi-label">Clicks</span>
-                <strong class="kpi-value">{{ vm.clicks }}</strong>
-                <span class="kpi-sub">{{ vm.clickRate }}% click rate</span>
-              </div>
-            </article>
-            <article class="kpi-card">
-              <span class="material-symbols-outlined kpi-icon">trending_up</span>
-              <div class="kpi-body">
-                <span class="kpi-label">Eventos totales</span>
-                <strong class="kpi-value">{{ vm.events }}</strong>
-                <span class="kpi-sub">{{ vm.promotions }} con promoción</span>
-              </div>
-            </article>
-          </div>
-
-          <!-- Basic Facts -->
-          <div class="facts-grid">
-            @for (fact of vm.basicFacts; track fact.label) {
-              <div class="fact-chip">
-                <span class="fact-chip-label">{{ fact.label }}</span>
-                <strong class="fact-chip-value">{{ fact.value }}</strong>
-              </div>
-            }
-          </div>
-
-          <!-- Data Tables Grid -->
-          <div class="data-grid">
-            <!-- Destinations -->
-            <article class="data-panel">
-              <div class="panel-head">
-                <span class="material-symbols-outlined panel-head-icon">map</span>
-                <h3>Destinos asociados</h3>
-              </div>
-              @if (vm.topDestinations.length) {
-                <div class="table-wrap">
-                  <table class="data-table">
-                    <thead>
-                      <tr><th>Destino</th><th>Eventos</th><th>Precio promedio</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (item of vm.topDestinations; track item.label) {
-                        <tr>
-                          <td>{{ item.label }}</td>
-                          <td>{{ item.events }}</td>
-                          <td>${{ item.avgPriceLabel }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else {
-                <app-empty-state icon="map" title="Sin destinos" description="No hay destinos asociados para este hotel." />
-              }
-            </article>
-
-            <!-- Visitor Countries -->
-            <article class="data-panel">
-              <div class="panel-head">
-                <span class="material-symbols-outlined panel-head-icon">globe</span>
-                <h3>Países visitantes</h3>
-              </div>
-              @if (vm.topVisitorCountries.length) {
-                <div class="table-wrap">
-                  <table class="data-table">
-                    <thead>
-                      <tr><th>Mercado</th><th>Eventos</th><th>Reservas</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (item of vm.topVisitorCountries; track item.id) {
-                        <tr>
-                          <td>
-                            {{ item.label }}
-                            <div class="record-sub">ID {{ item.id }}</div>
-                          </td>
-                          <td>{{ item.events }}</td>
-                          <td>{{ item.reservations }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else {
-                <app-empty-state icon="globe" title="Sin mercados" description="No hay países visitantes asociados." />
-              }
-            </article>
-
-            <!-- Channels -->
-            <article class="data-panel">
-              <div class="panel-head">
-                <span class="material-symbols-outlined panel-head-icon">devices</span>
-                <h3>Canales principales</h3>
-              </div>
-              @if (vm.topSites.length) {
-                <div class="table-wrap">
-                  <table class="data-table">
-                    <thead>
-                      <tr><th>Canal</th><th>Eventos</th><th>Clicks</th><th>Reservas</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (item of vm.topSites; track item.id) {
-                        <tr>
-                          <td>
-                            {{ item.label }}
-                            <div class="record-sub">ID {{ item.id }}</div>
-                          </td>
-                          <td>{{ item.events }}</td>
-                          <td>{{ item.clicks }}</td>
-                          <td>{{ item.reservations }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else {
-                <app-empty-state icon="devices" title="Sin canales" description="No hay canales asociados." />
-              }
-            </article>
-
-            <!-- Rates -->
-            <article class="data-panel">
-              <div class="panel-head">
-                <span class="material-symbols-outlined panel-head-icon">attach_money</span>
-                <h3>Tarifas configuradas</h3>
-              </div>
-              @if (vm.hotelRates.length) {
-                <div class="table-wrap">
-                  <table class="data-table">
-                    <thead>
-                      <tr><th>Fecha</th><th>Plan</th><th>Tarifa</th><th>Min stay</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (item of vm.hotelRates; track item.date + item.plan) {
-                        <tr>
-                          <td>{{ item.date }}</td>
-                          <td>{{ item.plan }}</td>
-                          <td>${{ item.amountLabel }}</td>
-                          <td>{{ item.minStayLabel }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else {
-                <app-empty-state icon="attach_money" title="Sin tarifas" description="No hay tarifas configuradas." />
-              }
-            </article>
-          </div>
-        </section>
-
-        <!-- Rooms -->
-        <section id="rooms" class="detail-section">
-          <h2 class="section-title">Habitaciones Disponibles</h2>
-          <p class="section-subtitle">Tipos de habitación y habitaciones físicas registradas.</p>
-
-          @if (vm.roomTypes.length) {
-            <div class="room-type-cards">
-              @for (item of vm.roomTypes; track item.id) {
-                <article class="surface-card room-type-card">
-                  <div class="room-type-head">
-                    <div class="room-type-head-left">
-                      <span class="material-symbols-outlined room-type-icon">meeting_room</span>
-                      <div>
-                        <strong class="room-type-name">{{ item.name }}</strong>
-                        <span class="room-type-id">{{ item.id }}</span>
+            <!-- Room Types -->
+            @if (vm.roomTypes.length) {
+              <section id="rooms" class="detail-section">
+                <h2 class="section-title">Tipos de Habitación</h2>
+                <div class="rooms-stack">
+                  @for (item of vm.roomTypes; track item.id) {
+                    <div class="room-card">
+                      <div class="room-img">
+                        <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
                       </div>
-                    </div>
-                    <span class="status-badge" [class.active]="item.statusLabel === 'Activa'" [class.inactive]="item.statusLabel !== 'Activa'">
-                      <span class="material-symbols-outlined badge-icon">{{ item.statusLabel === 'Activa' ? 'check_circle' : 'cancel' }}</span>
-                      {{ item.statusLabel }}
-                    </span>
-                  </div>
-
-                  <div class="room-type-details">
-                    <div class="room-type-detail-chip">
-                      <span class="material-symbols-outlined chip-icon">group</span>
-                      <span>{{ item.capacityLabel }}</span>
-                    </div>
-                    @if (item.description) {
-                      <p class="room-type-desc">{{ item.description }}</p>
-                    }
-                    @if (item.features.length) {
-                      <div class="room-type-features">
-                        @for (feat of item.features; track feat) {
-                          <span class="feature-tag">{{ feat }}</span>
+                      <div class="room-body">
+                        <div class="room-head">
+                          <h3 class="room-name">{{ item.name }}</h3>
+                          @if (item.statusLabel === 'Activa') {
+                            <span class="room-badge badge-recomendado">Disponible</span>
+                          }
+                        </div>
+                        <div class="room-specs">
+                          <span class="room-spec">
+                            <span class="material-symbols-outlined spec-icon">person</span>
+                            {{ item.capacityLabel }}
+                          </span>
+                        </div>
+                        @if (item.description) {
+                          <p class="room-desc">{{ item.description }}</p>
                         }
-                      </div>
-                    }
-                  </div>
-
-                  @let roomsOfType = vm.hotelRooms.filter(r => r.roomTypeId === item.id);
-                  @if (roomsOfType.length) {
-                    <div class="hotel-rooms-list">
-                      <span class="hotel-rooms-title">
-                        <span class="material-symbols-outlined">door_front</span>
-                        {{ roomsOfType.length }} habitación(es) física(s)
-                      </span>
-                      <div class="hotel-rooms-grid">
-                        @for (room of roomsOfType; track room.hotelRoomId) {
-                          <div class="hotel-room-card" [class.inactive]="!room.isActive">
-                            <div class="hotel-room-head">
-                              <span class="material-symbols-outlined hotel-room-icon">door_front</span>
-                              <strong class="hotel-room-number">{{ room.roomNumber || '—' }}</strong>
-                            </div>
-                            <div class="hotel-room-meta">
-                              @if (room.floor) {
-                                <span class="hotel-room-floor">Piso {{ room.floor }}</span>
-                              }
-                              @if (room.roomLabel !== room.roomNumber && room.roomLabel) {
-                                <span class="hotel-room-label">{{ room.roomLabel }}</span>
-                              }
-                            </div>
-                            <div class="hotel-room-status">
-                              <span class="status-dot" [class.active]="room.isActive" [class.inactive]="!room.isActive"></span>
-                              {{ room.isActive ? 'Disponible' : 'Inactiva' }}
-                            </div>
+                        @if (item.features.length) {
+                          <div class="room-features">
+                            @for (feat of item.features; track feat) {
+                              <span class="feature-chip">{{ feat }}</span>
+                            }
                           </div>
                         }
+                        <div class="room-footer">
+                          <div class="room-price">
+                            <span class="price-label">Precio por noche desde</span>
+                            <span class="price-val">Consultar</span>
+                          </div>
+                          <a [routerLink]="['/reservations/new']" [queryParams]="{ prop_id: vm.id, room_type: item.id, room_type_name: item.name }" class="btn-reserve">Reservar Ahora</a>
+                        </div>
                       </div>
                     </div>
-                  } @else {
-                    <div class="no-rooms-msg">
-                      <span class="material-symbols-outlined">info</span>
-                      <span>Sin habitaciones físicas registradas para este tipo.</span>
-                    </div>
                   }
-                </article>
-              }
-            </div>
-          } @else {
-            <app-empty-state icon="meeting_room" title="Sin habitaciones" description="No hay habitaciones configuradas para esta propiedad." />
-          }
-        </section>
+                </div>
+              </section>
+            }
 
-        <!-- Reviews -->
-        @if (vm.reviews.length) {
-          <section id="reviews" class="detail-section">
-            <h2 class="section-title">Reseñas de huéspedes</h2>
-            <div class="reviews-grid">
-              @for (rev of vm.reviews; track rev.reviewerName + rev.date) {
-                <article class="review-card-item surface-card">
-                  <div class="review-card-header">
-                    <div class="review-card-score" [class.score-high]="rev.score >= 8" [class.score-mid]="rev.score >= 5 && rev.score < 8" [class.score-low]="rev.score < 5">
-                      {{ rev.score }}
-                    </div>
-                    <div class="review-card-meta">
-                      <strong>{{ rev.reviewerName }}</strong>
-                      <span class="review-card-date">{{ rev.date }}</span>
-                    </div>
-                  </div>
-                  @if (rev.text) {
-                    <p class="review-card-text">{{ rev.text }}</p>
-                  }
-                </article>
-              }
-            </div>
-          </section>
-        }
-
-        <!-- Policies -->
-        <section id="policies" class="detail-section">
-          <h2 class="section-title">Políticas de la Propiedad</h2>
-          @if (vm.policies.length) {
-            <div class="policies-grid">
-              @for (policy of vm.policies; track policy.label) {
-                <div class="policy-card">
-                  <span class="material-symbols-outlined policy-icon">
-                    @switch (policy.label) {
-                      @case ('Check-in') { login }
-                      @case ('Check-out') { logout }
-                      @case ('Mascotas') { pets }
-                      @case ('Niños') { child_care }
-                      @default { info }
-                    }
-                  </span>
-                  <div class="policy-body">
-                    <span class="policy-label">{{ policy.label }}</span>
-                    <strong class="policy-value">{{ policy.value }}</strong>
+            <!-- Map Preview -->
+            @if (vm.latitude && vm.longitude) {
+              <section id="location" class="detail-section">
+                <h2 class="section-title">Ubicación</h2>
+                <div class="map-preview">
+                  <iframe
+                    [src]="mapUrl()"
+                    width="100%"
+                    height="300"
+                    style="border:0;border-radius:12px;"
+                    allowfullscreen=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                    title="Mapa de ubicación"
+                  ></iframe>
+                  <div class="map-card">
+                    <strong>Centro de negocios</strong>
+                    <p>{{ vm.location }}</p>
                   </div>
                 </div>
-              }
-            </div>
-            <div class="cancellation-card">
-              <span class="material-symbols-outlined canc-icon">undo</span>
-              <div class="canc-body">
-                <span class="canc-label">Política de cancelación</span>
-                <p class="canc-value">{{ vm.cancellationPolicy }}</p>
-              </div>
-            </div>
-          } @else {
-            <app-empty-state icon="policy" title="Sin políticas" description="No hay políticas configuradas para esta propiedad." />
-          }
-        </section>
+              </section>
+            }
 
-        <!-- Similar Hotels -->
-        <section class="detail-section">
-          <h2 class="section-title">Hoteles similares</h2>
-          @if (similarLoading()) {
-            <app-loading-state label="Buscando hoteles similares..." />
-          } @else if (similarHotels().length) {
-            <div class="similar-grid">
-              @for (item of similarHotels(); track item.id) {
-                <a [routerLink]="['/hotels', item.id]" class="similar-card">
-                  <div class="similar-img-wrap">
-                    @if (item.imageUrl && !imageErrors().has('sim-' + item.id)) {
-                      <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id)" />
-                    } @else {
-                      <span class="material-symbols-outlined img-placeholder">hotel</span>
+            <!-- Reviews -->
+            @if (vm.reviews.length) {
+              <section id="reviews" class="detail-section">
+                <div class="reviews-head">
+                  <h2 class="section-title">Reseñas de Clientes</h2>
+                  @if (vm.reviewCount > vm.reviews.length) {
+                    <a class="reviews-all-link" href="#">Ver todas ({{ vm.reviewCount }})</a>
+                  }
+                </div>
+                <div class="reviews-layout">
+                  <div class="reviews-score-card">
+                    <span class="score-big">{{ vm.reviewLabel }}</span>
+                    <div class="score-stars">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <span class="material-symbols-outlined score-star" [class.filled]="i <= stars()">star</span>
+                      }
+                    </div>
+                    <span class="score-count">Basado en {{ vm.reviewCount }} valoraciones verificadas</span>
+                  </div>
+                  <div class="reviews-list">
+                    @for (rev of vm.reviews.slice(0, 3); track rev.reviewerName + rev.date) {
+                      <div class="review-card">
+                        <div class="review-header">
+                          <span class="review-author">{{ rev.reviewerName }}</span>
+                          <span class="review-date">{{ rev.date | date:'d MMM' }}</span>
+                        </div>
+                        @if (rev.text) {
+                          <p class="review-text">"{{ rev.text }}"</p>
+                        }
+                      </div>
                     }
                   </div>
-                  <div class="similar-body">
-                    <strong class="similar-name">{{ item.name }}</strong>
-                    <div class="similar-meta">
-                      <span class="similar-stars">{{ item.stars }}★</span>
-                      <span class="similar-review">{{ item.reviewLabel }}</span>
+                </div>
+              </section>
+            }
+
+            <!-- Policies -->
+            @if (vm.policies.length) {
+              <section id="policies" class="detail-section">
+                <h2 class="section-title">Políticas de la Propiedad</h2>
+                <div class="policies-row">
+                  @for (policy of vm.policies; track policy.label) {
+                    <div class="policy-chip">
+                      <span class="material-symbols-outlined policy-chip-icon">
+                        @switch (policy.label) {
+                          @case ('Check-in') { login }
+                          @case ('Check-out') { logout }
+                          @case ('Mascotas') { pets }
+                          @case ('Niños') { child_care }
+                          @default { info }
+                        }
+                      </span>
+                      <div class="policy-chip-body">
+                        <span class="policy-chip-label">{{ policy.label }}</span>
+                        <strong class="policy-chip-val">{{ policy.value }}</strong>
+                      </div>
                     </div>
-                    <p class="similar-location">{{ item.location }}</p>
-                    <div class="similar-match">
-                      <span class="similar-score">{{ item.similarityScore }}%</span>
-                      <span class="similar-reason">{{ item.reason }}</span>
+                  }
+                </div>
+                @if (vm.cancellationPolicy && vm.cancellationPolicy !== 'N/D') {
+                  <div class="cancellation-box">
+                    <span class="material-symbols-outlined">undo</span>
+                    <div>
+                      <span class="canc-label">Cancelación</span>
+                      <p class="canc-val">{{ vm.cancellationPolicy }}</p>
                     </div>
                   </div>
-                </a>
-              }
+                }
+              </section>
+            }
+
+            <!-- Similar Hotels -->
+            @if (similarHotels().length) {
+              <section class="detail-section">
+                <h2 class="section-title">Hoteles similares</h2>
+                <div class="similar-grid">
+                  @for (item of similarHotels(); track item.id) {
+                    <a [routerLink]="['/hotels', item.id]" class="similar-card">
+                      <div class="similar-img">
+                        @if (item.imageUrl && !imageErrors().has('sim-' + item.id)) {
+                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id)" />
+                        } @else {
+                          <span class="material-symbols-outlined">hotel</span>
+                        }
+                      </div>
+                      <div class="similar-body">
+                        <strong class="similar-name">{{ item.name }}</strong>
+                        <div class="similar-meta">
+                          <span>{{ item.stars }}★</span>
+                          <span>{{ item.reviewLabel }}</span>
+                        </div>
+                      </div>
+                    </a>
+                  }
+                </div>
+              </section>
+            }
+
+          </div>
+
+          <!-- ─── RIGHT: Sticky Sidebar ─── -->
+          <aside class="detail-sidebar">
+            <div class="booking-card">
+              <h3 class="sidebar-title">Resumen de Reserva</h3>
+              <p class="sidebar-sub">Configura los parámetros para cotización final</p>
+
+              <div class="sidebar-fields">
+                <div class="sidebar-field">
+                  <span class="field-label">Fechas (Entrada - Salida)</span>
+                  <div class="field-display">
+                    <span class="material-symbols-outlined field-icon">calendar_month</span>
+                    <span>Seleccionar fechas</span>
+                  </div>
+                </div>
+                <div class="sidebar-field">
+                  <span class="field-label">Huéspedes</span>
+                  <div class="field-display">
+                    <span class="material-symbols-outlined field-icon">group</span>
+                    <span>2 Adultos, 0 Niños</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sidebar-divider"></div>
+
+              <div class="sidebar-total">
+                <span class="total-label">Reserva desde</span>
+                <span class="total-val">${{ vm.averagePrice }}</span>
+                <span class="total-unit">/noche</span>
+              </div>
+
+              <a [href]="'/reservations/new?prop_id=' + vm.id" class="btn-confirm">
+                Confirmar y Pagar
+              </a>
+              <div class="secure-badge">
+                <span class="material-symbols-outlined">security</span>
+                Pago 100% seguro SSL
+              </div>
             </div>
-          }
-        </section>
+
+
+          </aside>
+
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════
+             FOOTER — Minimal
+             ═══════════════════════════════════════════════════ -->
+        <footer class="page-footer page-footer--minimal">
+          <div class="footer-bottom">
+            <span>© 2026 HotelData Hub International. Todos los derechos reservados.</span>
+            <span>Español (ES)</span>
+          </div>
+        </footer>
+
       }
     }
   }

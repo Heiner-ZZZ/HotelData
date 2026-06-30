@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -8,14 +9,13 @@ import { TrackingService } from '../../../../core/tracking/tracking.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
 import { HotelDetailApiService } from '../../services/hotel-detail-api.service';
 
 @Component({
   selector: 'app-hotel-detail-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, RouterLink],
+  imports: [CurrencyPipe, DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink],
   templateUrl: './hotel-detail-page.html',
   styleUrl: './hotel-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -79,6 +79,29 @@ export class HotelDetailPageComponent {
       void navigator.clipboard.writeText(url);
     }
   };
+
+  readonly mapUrl = computed(() => {
+    const vm = this.hotel();
+    if (!vm || !vm.latitude || !vm.longitude) return '';
+    return `https://www.google.com/maps/embed/v1/view?key=&center=${vm.latitude},${vm.longitude}&zoom=14&language=es`;
+  });
+
+  amenityIcon(amenity: string): string {
+    const iconMap: Record<string, string> = {
+      wifi: 'wifi', internet: 'wifi', parking: 'local_parking', piscina: 'pool',
+      gimnasio: 'fitness_center', restaurante: 'restaurant', spa: 'spa',
+      desayuno: 'free_breakfast', aire: 'ac_unit', calefaccion: 'thermostat',
+      mascotas: 'pets', transporte: 'directions_car', lavanderia: 'local_laundry_service',
+      negocio: 'business_center', sala: 'meeting_room', eventos: 'celebration',
+      playa: 'beach_access', tour: 'explore', bar: 'local_bar',
+      tv: 'tv', minibar: 'liquor', caja: 'safe',
+      terraza: 'deck', jardin: 'yard', vistas: 'panorama',
+      'acceso silla': 'accessible', habitaciones: 'meeting_room',
+      recepcion: 'concierge', 'servicio hab': 'room_service',
+    };
+    const key = amenity.toLowerCase().trim();
+    return iconMap[key] || iconMap[Object.keys(iconMap).find(k => key.includes(k)) || ''] || 'stars';
+  }
 
   scrollTo(sectionId: string): void {
     this.activeTab.set(sectionId);
