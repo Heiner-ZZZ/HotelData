@@ -1,0 +1,13 @@
+<div class="hk-sub-nav">
+  @for (item of navItems; track item.href) {
+    <a
+      [routerLink]="item.href"
+      class="hk-sub-nav-link"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: false }"
+    >
+      <span class="material-symbols-outlined hk-nav-icon">{{ item.icon }}</span>
+      <span class="hk-nav-label">{{ item.label }}</span>
+    </a>
+  }
+</div>
