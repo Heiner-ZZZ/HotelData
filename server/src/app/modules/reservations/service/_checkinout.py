@@ -21,7 +21,7 @@ def update_check_in_datetime(
     *,
     check_in_date: str | None = None,
     check_in_time: str | None = None,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
 ) -> dict[str, Any]:
     """
     Update check-in date and/or time for an active booking.
@@ -89,7 +89,7 @@ def _generate_folio(prop_id: int) -> str:
 def complete_check_in(
     booking_id: str,
     *,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
     payment_method: str = "",
     ip_address: str = "",
     observations: str = "",
@@ -339,7 +339,7 @@ def complete_check_in(
 def complete_check_out(
     booking_id: str,
     *,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
     split_invoice: bool = False,
     ip_address: str = "",
     observations: str = "",

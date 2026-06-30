@@ -144,7 +144,7 @@ def save_check_in_detail(
     check_in_deposit_received: bool | None = None,
     check_in_privacy_signed: bool | None = None,
     check_in_observations: str | None = None,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
 ) -> dict[str, Any]:
     """Save check-in detail fields on booking_orders as a draft."""
     db = get_database()

@@ -205,7 +205,7 @@ def save_check_out_detail(
     check_out_payment_method: str | None = None,
     check_out_payment_ref: str | None = None,
     check_out_observations: str | None = None,
-    changed_by: str = "angular_api",
+    changed_by: str = "web",
 ) -> dict[str, Any]:
     """Save check-out detail fields on booking_orders as a draft."""
     db = get_database()

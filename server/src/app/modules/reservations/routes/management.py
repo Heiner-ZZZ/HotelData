@@ -50,7 +50,7 @@ def check_in_update_datetime_api(booking_id: str, payload: dict = Body(default={
             booking_id,
             check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
             check_in_time=str(payload["check_in_time"]) if payload.get("check_in_time") else None,
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -87,7 +87,7 @@ def check_in_save_detail_api(
             check_in_deposit_received=payload.get("check_in_deposit_received"),
             check_in_privacy_signed=payload.get("check_in_privacy_signed"),
             check_in_observations=payload.get("check_in_observations"),
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -114,7 +114,7 @@ def check_in_complete_api(
             check_in_deposit_received=payload.get("check_in_deposit_received"),
             check_in_privacy_signed=payload.get("check_in_privacy_signed"),
             check_in_observations=observations,
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
         )
 
         ip_address = ""
@@ -124,7 +124,7 @@ def check_in_complete_api(
 
         return complete_check_in(
             booking_id,
-            changed_by=str(payload.get("changed_by") or current_user.get("username", "angular_api")),
+            changed_by=str(payload.get("changed_by") or current_user.get("username", "web")),
             payment_method=str(payload.get("payment_method", "")),
             ip_address=ip_address,
             observations=observations,
@@ -181,7 +181,7 @@ def check_out_save_detail_api(
             check_out_payment_method=payload.get("check_out_payment_method"),
             check_out_payment_ref=payload.get("check_out_payment_ref"),
             check_out_observations=payload.get("check_out_observations"),
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -208,7 +208,7 @@ def check_out_complete_api(
             check_out_payment_method=payload.get("check_out_payment_method"),
             check_out_payment_ref=payload.get("check_out_payment_ref"),
             check_out_observations=observations,
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
         )
 
         ip_address = ""
@@ -218,7 +218,7 @@ def check_out_complete_api(
 
         return complete_check_out(
             booking_id,
-            changed_by=str(payload.get("changed_by") or current_user.get("username", "angular_api")),
+            changed_by=str(payload.get("changed_by") or current_user.get("username", "web")),
             split_invoice=bool(payload.get("split_invoice", False)),
             ip_address=ip_address,
             observations=observations,
@@ -301,10 +301,13 @@ def booking_available_rooms_api(
         if rt:
             room_type = rt
 
-    # Available physical rooms of this type
+    # Available physical rooms — filter by room_type if present, else return all rooms for the hotel
+    room_filter: dict[str, Any] = {"prop_id": prop_id, "is_active": True}
+    if room_type_id:
+        room_filter["room_type_id"] = room_type_id
     available_rooms = list(
         db.hotel_rooms.find(
-            {"prop_id": prop_id, "room_type_id": room_type_id, "is_active": True},
+            room_filter,
             {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "floor": 1},
         )
         .sort([("room_number", ASCENDING)])
@@ -375,7 +378,7 @@ def booking_assign_rooms_api(
         "status": booking.get("status", "confirmed"),
         "changed_at": now,
         "reason": f"rooms_assigned: {', '.join(room_ids)}",
-        "changed_by": current_user.get("username", "angular_api"),
+        "changed_by": current_user.get("username", "web"),
         "is_test": bool(booking.get("is_test")),
     })
 

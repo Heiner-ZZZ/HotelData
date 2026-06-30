@@ -162,6 +162,12 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     try:
+        # Use actual username instead of generic 'angular_api'
+        if not payload.get("created_by"):
+            payload["created_by"] = current_user.get("username", "web")
+        # Associate booking with the authenticated user
+        if not payload.get("user_id"):
+            payload["user_id"] = str(current_user.get("_id", ""))
         reservation_input = build_reservation_input(payload, source="angular_api")
         return create_booking(reservation_input)
     except ValueError as exc:
@@ -226,7 +232,7 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
     try:
         return cancel_booking(booking_id, reason=str(payload.get("reason") or "cancelled_by_user"),
-            changed_by=str(payload.get("changed_by") or "angular_api"))
+            changed_by=str(payload.get("changed_by") or current_user.get("username", "web")))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -265,7 +271,7 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
             room_type_id=str(payload["room_type_id"]) if payload.get("room_type_id") else None,
             rooms=int(payload["rooms"]) if payload.get("rooms") is not None else None,
             comment=str(payload["comment"]) if payload.get("comment") is not None else None,
-            changed_by=current_user.get("username", "angular_api"),
+            changed_by=current_user.get("username", "web"),
             selected_amenities=payload.get("selected_amenities"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
