@@ -54,9 +54,11 @@ export class HotelSearchPageComponent {
     return createHotelSearchFilters();
   });
 
-  readonly selectedCompareIds = computed(() =>
-    this.items().filter((h) => h.selected).map((h) => h.id)
-  );
+  readonly selectedCompareIds = computed(() => {
+    const fromUrl = this.currentFilters().compareIds;
+    const fromItems = this.items().filter((h) => h.selected).map((h) => h.id);
+    return [...new Set([...fromUrl, ...fromItems])];
+  });
 
   constructor() {
     this.activatedRoute.queryParamMap
@@ -140,6 +142,14 @@ export class HotelSearchPageComponent {
       items.map((h) => ({ ...h, selected: next.includes(h.id) }))
     );
     this.showCompareMode.set(next.length > 0);
+    // Sync compare IDs to URL so navigation preserves state
+    const filters = this.currentFilters();
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { ...this.toQueryParams(filters), compare_ids: next.length ? next.join(',') : null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   clearCompare() {
@@ -147,6 +157,14 @@ export class HotelSearchPageComponent {
       items.map((h) => ({ ...h, selected: false }))
     );
     this.showCompareMode.set(false);
+    // Clear compare_ids from URL
+    const filters = this.currentFilters();
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { ...this.toQueryParams(filters), compare_ids: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private toQueryParams(filters: HotelSearchFilters) {

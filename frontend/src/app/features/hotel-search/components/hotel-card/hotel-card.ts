@@ -17,14 +17,16 @@ export class HotelCardComponent {
   readonly compareMode = input(false);
   readonly compareSelected = output<number>();
 
-  readonly imgError = signal(false);
+  readonly fallbackImg = signal(false);
 
-  readonly picsumUrl = computed(() =>
-    `https://picsum.photos/seed/${this.hotel().id}/400/250`
-  );
+  readonly imageUrl = computed(() => {
+    const h = this.hotel();
+    if (h.imageUrl && !this.fallbackImg()) return h.imageUrl;
+    return `https://picsum.photos/seed/${h.id}/400/250`;
+  });
 
   onImgError() {
-    this.imgError.set(true);
+    this.fallbackImg.set(true);
   }
 
   readonly imageThemes = [
@@ -41,14 +43,17 @@ export class HotelCardComponent {
   get headlineMeta(): string {
     const starsValue = this.hotel().stars;
     const stars = typeof starsValue === 'number' ? `${starsValue.toFixed(1)} estrellas` : 'Categoría por confirmar';
-    return `ID ${this.hotel().id} · ${stars}`;
+    return `Hotel #${this.hotel().id} · ${stars}`;
   }
 
   get summaryText(): string {
-    const destinations = this.hotel().destinationLabels.length
-      ? `Ideal para ${this.hotel().destinationLabels.slice(0, 2).join(' y ')}.`
+    const h = this.hotel();
+    const destinations = h.destinationLabels.length
+      ? `Ideal para ${h.destinationLabels.slice(0, 2).join(' y ')}.`
       : 'Disponible para estancias urbanas y escapadas de viaje.';
-    return `${this.hotel().name}. ${destinations}`;
+    const review = h.reviewScore ? `Puntuación ${h.reviewScore.toFixed(1)}/10. ` : '';
+    const rooms = h.availableRoomTypesCount ? `${h.availableRoomTypesCount} tipo(s) de habitación disponible(s). ` : '';
+    return `${review}${rooms}${destinations}`;
   }
 
   get scoreLabel(): string {
@@ -59,10 +64,18 @@ export class HotelCardComponent {
     const stars = this.hotel().stars;
     if (typeof stars === 'number' && stars >= 4.5) return '9.0';
     if (typeof stars === 'number' && stars >= 4) return '8.7';
-    return '8.2';
+    if (typeof stars === 'number' && stars >= 3) return '8.0';
+    return '7.5';
   }
 
   get scoreTitle(): string {
+    const score = this.hotel().reviewScore;
+    if (score !== null && score !== undefined && Number.isFinite(score)) {
+      if (score >= 9) return 'Excepcional';
+      if (score >= 8) return 'Fabuloso';
+      if (score >= 7) return 'Muy bueno';
+      return 'Bueno';
+    }
     const stars = this.hotel().stars;
     if (typeof stars === 'number' && stars >= 4.5) return 'Excepcional';
     if (typeof stars === 'number' && stars >= 4) return 'Fabuloso';

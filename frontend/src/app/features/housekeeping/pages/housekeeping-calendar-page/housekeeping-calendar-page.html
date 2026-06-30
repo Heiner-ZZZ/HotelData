@@ -1,4 +1,6 @@
 <div class="hk-calendar">
+  <app-housekeeping-sub-nav />
+
   <!-- ═══ Page Header ═══ -->
   <div class="page-header">
     <div>
@@ -37,11 +39,12 @@
         @let s = summary();
         @if (s.total_tasks > 0) {
           <div class="summary-chips">
-            @for (entry of s.by_status | keyvalue; track entry.key) {
+            @for (entry of s.by_status | keyvalue; track $index) {
+              @let k = $any(entry).key;
               <span class="summary-chip"
-                [style.--chip-color]="taskStatusColors[entry.key] || '#6f797d'">
+                [style.--chip-color]="taskStatusColors[k] || '#6f797d'">
                 <span class="summary-chip-dot"></span>
-                {{ entry.value }} {{ entry.key === 'maintenance' ? 'Mtto' : (entry.key === 'in_progress' ? 'Prog.' : (entry.key | titlecase)) }}
+                {{ entry.value }} {{ k === 'maintenance' ? 'Mtto' : (k === 'in_progress' ? 'Prog.' : (k | titlecase)) }}
               </span>
             }
             <span class="summary-total">{{ s.total_tasks }} tareas</span>

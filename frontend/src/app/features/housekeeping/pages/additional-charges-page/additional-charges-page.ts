@@ -10,12 +10,13 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { HousekeepingApiService, type AdditionalChargeItem, type PaginatedResponse } from '../../services/housekeeping-api.service';
 import { ReservationsApiService } from '../../../reservations/services/reservations-api.service';
 
 @Component({
   selector: 'app-additional-charges-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, SlicePipe],
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, SlicePipe, HousekeepingSubNavComponent],
 
   templateUrl: './additional-charges-page.html',
   styleUrl: './additional-charges-page.scss',
