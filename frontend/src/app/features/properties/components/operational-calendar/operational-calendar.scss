@@ -1,7 +1,7 @@
 .op-cal {
   background: var(--surface);
   border: 1px solid var(--app-border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -9,10 +9,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem;
+  gap: 0.6rem;
+  padding: 2.5rem;
   color: var(--muted-text);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+
+  .spin {
+    font-size: 1.3rem;
+    animation: op-spin 800ms linear infinite;
+  }
+}
+
+@keyframes op-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ── Header ── */
@@ -20,8 +29,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  gap: 1.25rem;
+  padding: 0.9rem 1.25rem;
   border-bottom: 1px solid var(--app-border);
 }
 
@@ -29,21 +38,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem; height: 2rem;
-  border: none; border-radius: 6px;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: none;
+  border-radius: 8px;
   background: transparent;
   color: var(--muted-text);
   cursor: pointer;
   transition: all 150ms;
-  font-size: 1rem;
-  &:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+
+  .material-symbols-outlined {
+    font-size: 1.3rem;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
 }
 
 .op-cal-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  min-width: 140px;
+  min-width: 150px;
   text-align: center;
 }
 
@@ -51,8 +69,8 @@
 .op-cal-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
   border-bottom: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--bg) 40%, transparent);
 }
@@ -60,15 +78,15 @@
 .op-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: 20px;
-  font-size: 0.7rem;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
   font-weight: 600;
   background: var(--surface);
   border: 1px solid var(--app-border);
   color: var(--muted-text);
-  font-size: 0.85rem;
+  transition: border-color 180ms, background 180ms, color 180ms;
 
   &.is-ready {
     border-color: color-mix(in srgb, #16a34a 30%, transparent);
@@ -77,8 +95,21 @@
   }
 }
 
-.op-check { font-size: 0.75rem; color: #16a34a; }
-.op-x { font-size: 0.7rem; color: var(--muted-text); }
+.op-badge-icon {
+  font-size: 1.05rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400;
+}
+
+.op-check {
+  font-size: 1rem;
+  color: #16a34a;
+  font-variation-settings: 'FILL' 1;
+}
+
+.op-x {
+  font-size: 1rem;
+  color: var(--muted-text);
+}
 
 /* ── Day labels ── */
 .op-cal-labels {
@@ -88,9 +119,9 @@
 }
 
 .op-cal-label {
-  padding: 0.3rem 0.15rem;
+  padding: 0.5rem 0.25rem;
   text-align: center;
-  font-size: 0.6rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -114,12 +145,11 @@
 
 .op-cal-cell {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 0.25rem 0.3rem;
-  min-height: 1.8rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0.5rem 0.5rem 0.6rem;
+  min-height: 5rem;
   border-right: 1px solid var(--app-border);
   cursor: default;
   transition: background 100ms;
@@ -133,56 +163,70 @@
     border-radius: 4px;
   }
 
-  &--empty {
-    background: color-mix(in srgb, var(--bg) 50%, transparent);
-    min-height: 1.8rem;
+  &.has-data {
+    background: color-mix(in srgb, var(--bg) 30%, transparent);
   }
 }
 
 .op-cal-day {
-  font-size: 0.7rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--app-text);
-  line-height: 1;
+  line-height: 1.3;
+  margin-bottom: 2px;
 }
 
-.op-icon {
+/* ── Status badges inside cell ── */
+.op-cell-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.op-status {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  font-size: 0.6rem;
-  font-weight: 800;
-  line-height: 1;
-  padding: 0 3px;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.3;
   cursor: help;
+  transition: opacity 120ms;
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 0.85;
+  }
 
   &--rate {
-    background: color-mix(in srgb, #2563eb 12%, transparent);
+    background: color-mix(in srgb, #2563eb 10%, transparent);
     color: #2563eb;
   }
-
   &--promo {
-    background: color-mix(in srgb, #d97706 12%, transparent);
+    background: color-mix(in srgb, #d97706 10%, transparent);
     color: #d97706;
   }
-
   &--avail {
-    background: color-mix(in srgb, #16a34a 12%, transparent);
+    background: color-mix(in srgb, #16a34a 10%, transparent);
     color: #16a34a;
   }
-
   &--blocked {
-    background: color-mix(in srgb, #dc2626 12%, transparent);
+    background: color-mix(in srgb, #dc2626 10%, transparent);
     color: #dc2626;
   }
+}
 
-  &--mixed {
-    background: color-mix(in srgb, #d97706 12%, transparent);
-    color: #d97706;
-  }
+.op-status-icon {
+  font-size: 0.85rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400;
+}
+
+.op-status-text {
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 /* ── Footer legend ── */
@@ -190,18 +234,26 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.4rem 1rem;
+  gap: 1rem;
+  padding: 0.6rem 1.25rem;
   border-top: 1px solid var(--app-border);
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   color: var(--muted-text);
 }
 
 .op-fi {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  .op-icon { cursor: default; }
+  gap: 0.3rem;
+  font-weight: 500;
 }
 
+.op-fi-icon {
+  font-size: 1rem;
+  font-variation-settings: 'FILL' 0, 'wght' 400;
 
+  &--rate { color: #2563eb; }
+  &--promo { color: #d97706; }
+  &--avail { color: #16a34a; }
+  &--blocked { color: #dc2626; }
+}

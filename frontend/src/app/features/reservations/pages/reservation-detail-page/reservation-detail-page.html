@@ -611,69 +611,73 @@
                     </div>
                   }
                   @case ('success') {
-                    <!-- Product selector -->
-                    <div class="product-selector">
-                      <button type="button" class="product-dropdown" (click)="toggleProductSelect()">
+                    <!-- Product selector — vertical category nav on the right -->
+                    <div class="product-selector-layout">
+                      <!-- Left: products for selected category -->
+                      <div class="ps-products">
                         @if (selectedProduct(); as sp) {
-                          <div class="product-dropdown-selected">
+                          <div class="ps-selected-badge">
                             <strong>{{ sp.name }}</strong>
-                            <span class="product-price">{{ sp.unitPrice | currency:'USD' }}</span>
+                            <span class="ps-selected-price">{{ sp.unitPrice | currency:'USD' }}</span>
                           </div>
                         } @else {
-                          <span class="product-placeholder">Seleccionar producto...</span>
+                          <p class="ps-hint">Seleccioná una categoría para ver productos disponibles</p>
                         }
-                        <span class="material-symbols-outlined dropdown-arrow">
-                          {{ showProductSelect() ? 'expand_less' : 'expand_more' }}
-                        </span>
-                      </button>
 
-                      @if (showProductSelect()) {
-                        <div class="product-options">
-                          @for (group of productsGrouped(); track group.category) {
-                            <div class="product-group">
-                              <div class="product-group-label">{{ group.category }}</div>
-                              @for (prod of group.items; track prod.productId) {
-                                <button type="button" class="product-option"
-                                  (click)="selectProduct(prod)"
-                                  [class.is-selected]="addProductId() === prod.productId">
-                                  <div class="product-option-info">
-                                    <strong>{{ prod.name }}</strong>
-                                    @if (prod.description) {
-                                      <span class="product-desc">{{ prod.description }}</span>
-                                    }
-                                  </div>
-                                  <span class="product-option-price">{{ prod.unitPrice | currency:'USD' }}</span>
-                                </button>
-                              }
-                            </div>
+                        <div class="ps-product-list">
+                          @for (prod of filteredProducts(); track prod.productId) {
+                            <button type="button" class="ps-product-item"
+                              (click)="selectProduct(prod)"
+                              [class.is-selected]="addProductId() === prod.productId">
+                              <div class="ps-item-info">
+                                <strong>{{ prod.name }}</strong>
+                                @if (prod.description) {
+                                  <span class="ps-item-desc">{{ prod.description }}</span>
+                                }
+                              </div>
+                              <span class="ps-item-price">{{ prod.unitPrice | currency:'USD' }}</span>
+                            </button>
                           }
                         </div>
-                      }
-                    </div>
 
-                    <!-- Quantity selector -->
-                    @if (selectedProduct()) {
-                      <div class="qty-selector">
-                        <label>
-                          <span>Cantidad</span>
-                          <div class="qty-controls">
-                            <button type="button" (click)="addProductQty.update(q => Math.max(1, q - 1))" [disabled]="addProductQty() <= 1">
-                              <span class="material-symbols-outlined">remove</span>
-                            </button>
-                            <input type="number" [ngModel]="addProductQty()" (ngModelChange)="addProductQty.set(Math.max(1, $event))" min="1" />
-                            <button type="button" (click)="addProductQty.update(q => q + 1)">
-                              <span class="material-symbols-outlined">add</span>
-                            </button>
-                          </div>
-                        </label>
-                        @if (selectedProduct(); as sp) {
-                          <div class="qty-total">
-                            <span>Total:</span>
-                            <strong>{{ sp.unitPrice * addProductQty() | currency:'USD' }}</strong>
+                        <!-- Quantity selector -->
+                        @if (selectedProduct()) {
+                          <div class="qty-selector">
+                            <label>
+                              <span>Cantidad</span>
+                              <div class="qty-controls">
+                                <button type="button" (click)="addProductQty.update(q => Math.max(1, q - 1))" [disabled]="addProductQty() <= 1">
+                                  <span class="material-symbols-outlined">remove</span>
+                                </button>
+                                <input type="number" [ngModel]="addProductQty()" (ngModelChange)="addProductQty.set(Math.max(1, $event))" min="1" />
+                                <button type="button" (click)="addProductQty.update(q => q + 1)">
+                                  <span class="material-symbols-outlined">add</span>
+                                </button>
+                              </div>
+                            </label>
+                            @if (selectedProduct(); as sp) {
+                              <div class="qty-total">
+                                <span>Total:</span>
+                                <strong>{{ sp.unitPrice * addProductQty() | currency:'USD' }}</strong>
+                              </div>
+                            }
                           </div>
                         }
                       </div>
-                    }
+
+                      <!-- Right: vertical category nav -->
+                      <div class="ps-categories">
+                        <div class="ps-cat-title">Categorías</div>
+                        @for (cat of productCategories(); track cat) {
+                          <button type="button" class="ps-cat-item"
+                            [class.is-active]="selectedProductCategory() === cat"
+                            (click)="selectedProductCategory.set(cat); addProductId.set('');">
+                            <span class="ps-cat-label">{{ cat }}</span>
+                            <span class="ps-cat-count">{{ (productsGrouped().find(g => g.category === cat)?.items ?? []).length }}</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
                   }
                 }
               </div>

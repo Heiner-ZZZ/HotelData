@@ -35,6 +35,10 @@ export interface ReservationCreateInput {
   cedula?: string;
   checkInDate: string;
   checkOutDate: string;
+  /** Optional check-in time (HH:MM format). Validated against hotel policies. */
+  checkInTime?: string;
+  /** Optional check-out time (HH:MM format). Validated against hotel policies. */
+  checkOutTime?: string;
   adults: number;
   children: number;
   rooms: number;
@@ -42,6 +46,8 @@ export interface ReservationCreateInput {
   couponCode?: string;
   specialRequests?: string[];
   selectedAmenities?: string[];
+  /** Room type ID to pre-select a specific room type */
+  roomTypeId?: string;
 }
 
 export interface ReservationCreateResult {

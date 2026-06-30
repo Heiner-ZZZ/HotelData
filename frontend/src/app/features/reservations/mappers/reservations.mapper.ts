@@ -62,13 +62,16 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     cedula: input.cedula || '',
     check_in_date: input.checkInDate,
     check_out_date: input.checkOutDate,
+    check_in_time: input.checkInTime || '',
+    check_out_time: input.checkOutTime || '',
     adults: input.adults,
     children: input.children,
     rooms: input.rooms,
     comment: input.comment,
     coupon_code: input.couponCode,
     special_requests: input.specialRequests || [],
-    selected_amenities: input.selectedAmenities || []
+    selected_amenities: input.selectedAmenities || [],
+    room_type_id: input.roomTypeId || ''
   };
 }
 
