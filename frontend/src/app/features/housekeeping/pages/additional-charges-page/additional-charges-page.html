@@ -1,11 +1,20 @@
 <div class="hk-subpage">
   <app-housekeeping-sub-nav />
 
-  <app-page-header
-    eyebrow="Housekeeping"
-    title="Cargos adicionales"
-    description="Registrar cargos extra a reservas: room service, daños, extras (CU-O34)."
-  />
+  <!-- ═══ Page Header with Property Selector ═══ -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Cargos adicionales</h1>
+      <p class="page-subtitle">Registrar cargos extra a reservas: room service, daños, extras.</p>
+    </div>
+    <div class="page-header-right">
+      <app-property-selector
+        [selectedPropId]="propId()"
+        [selectedLabel]="propLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </div>
 
   @if (message()) {
     <div class="toast toast-success" (click)="message.set('')">
@@ -93,6 +102,13 @@
   }
 
   @switch (viewState()) {
+    @case ('no-property') {
+      <div class="no-property-prompt">
+        <span class="material-symbols-outlined no-property-icon">receipt_long</span>
+        <h2>Selecciona una propiedad</h2>
+        <p>Usa el selector de propiedad arriba para ver los cargos adicionales.</p>
+      </div>
+    }
     @case ('loading') {
       <app-loading-state label="Cargando cargos..." />
     }
