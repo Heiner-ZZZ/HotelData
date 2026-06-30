@@ -100,7 +100,7 @@ def open_shift(
 def close_shift(
     shift_id: str,
     cash_final: float = 0,
-    closed_by: str = "angular_api",
+    closed_by: str = "web",
 ) -> dict[str, Any] | None:
     """Close an open shift, calculating total_collected and cash difference."""
     db = get_database()

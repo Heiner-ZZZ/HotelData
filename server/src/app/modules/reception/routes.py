@@ -66,7 +66,7 @@ def shift_close_api(
 ):
     """Close an active shift with final cash count."""
     cash_final = float(payload.get("cash_final", 0) or 0)
-    closed_by = payload.get("closed_by") or current_user.get("username", "angular_api")
+    closed_by = payload.get("closed_by") or current_user.get("username", "web")
 
     try:
         result = close_shift(

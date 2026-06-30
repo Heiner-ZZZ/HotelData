@@ -208,14 +208,15 @@ def list_invoices(
         )
         enriched["guest_name"] = (booking_doc or {}).get("guest_name", "") if booking_doc else ""
 
-        # Hotel label
+        # Hotel label — use dim_hotels.display_name (commercial name)
         if prop_id:
-            ctx = db.hotel_booking_context.find_one(
-                {"prop_id": prop_id}, {"_id": 0, "hotel_label": 1}
+            hotel = db.dim_hotels.find_one(
+                {"prop_id": prop_id},
+                {"_id": 0, "display_name": 1, "hotel_name": 1}
             )
             enriched["hotel_label"] = (
-                ctx.get("hotel_label", "") if ctx else f"Hotel #{prop_id}"
-            )
+                hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel #{prop_id}"
+            ) if hotel else f"Hotel #{prop_id}"
         else:
             enriched["hotel_label"] = ""
 
@@ -343,10 +344,15 @@ def get_invoice(invoice_id: str) -> dict | None:
                 room_labels.append(r.get("room_label", "") or r.get("room_number", ""))
         enriched["room_labels"] = room_labels
 
-    # Hotel label
+    # Hotel label — use dim_hotels.display_name (commercial name)
     if prop_id:
-        ctx = db.hotel_booking_context.find_one({"prop_id": prop_id}, {"_id": 0, "hotel_label": 1})
-        enriched["hotel_label"] = ctx.get("hotel_label", "") if ctx else f"Hotel #{prop_id}"
+        hotel = db.dim_hotels.find_one(
+            {"prop_id": prop_id},
+            {"_id": 0, "display_name": 1, "hotel_name": 1}
+        )
+        enriched["hotel_label"] = (
+            hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel #{prop_id}"
+        ) if hotel else f"Hotel #{prop_id}"
     else:
         enriched["hotel_label"] = ""
 

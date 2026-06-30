@@ -142,7 +142,7 @@ def _hotel_content_for_detail(prop_id: int) -> dict[str, Any] | None:
     db = get_database()
     return db.hotel_content_pages.find_one(
         {"prop_id": prop_id},
-        {"_id": 0, "description": 1, "highlights": 1, "amenities_text": 1},
+        {"_id": 0, "description": 1, "highlights": 1, "amenities_text": 1, "facilities": 1, "latitude": 1, "longitude": 1},
     )
 
 
@@ -180,6 +180,8 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     item["hotel_images"] = _hotel_images_for_detail(prop_id)
     item["hotel_content"] = _hotel_content_for_detail(prop_id)
     item["reviews"] = _hotel_reviews_for_detail(prop_id)
+    reviews_full = list(db.reviews.find({"prop_id": prop_id}).limit(0))
+    item["review_count"] = len(reviews_full) if reviews_full else db.reviews.count_documents({"prop_id": prop_id})
     return item
 
 
