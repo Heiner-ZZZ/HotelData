@@ -248,3 +248,4 @@ deep_frontend_search_results.txt
 *.pfx
 secrets/
 credentials/
+nul
