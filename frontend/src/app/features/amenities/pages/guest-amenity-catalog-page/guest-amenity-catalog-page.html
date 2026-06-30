@@ -85,8 +85,8 @@
       <app-empty-state title="Sin amenities disponibles" description="No hay catálogo de amenities para esta reserva." />
     }
     @default {
-      @if (catalog(); as categories) {
-        @if (categories.length > 0) {
+      @if (catalog(); as catalogData) {
+        @if (catalogData.length > 0) {
           <!-- ═══ Search bar ═══ -->
           <div class="search-section">
             <div class="search-input-wrap">
@@ -118,7 +118,7 @@
           </div>
 
           <!-- ═══ Category filter chips ═══ -->
-          @if (categories.length > 1) {
+          @if ((categories() ?? []).length > 1) {
             <div class="category-chips-row">
               <button
                 type="button"
@@ -129,7 +129,7 @@
                 <span class="material-symbols-outlined">apps</span>
                 Todas
               </button>
-              @for (cat of categories; track cat) {
+              @for (cat of categories(); track cat) {
                 <button
                   type="button"
                   class="cat-chip"

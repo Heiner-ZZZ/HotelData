@@ -1,25 +1,5 @@
 <div class="public-shell">
   <app-top-nav />
-
-  <header class="public-header">
-    <div class="public-copy">
-      <p class="eyebrow">{{ heroContent().eyebrow }}</p>
-      <h1>{{ heroContent().title }}</h1>
-      <p class="lede">
-        {{ heroContent().lede }}
-      </p>
-    </div>
-
-    <div class="public-hero-card surface-card" aria-hidden="true">
-      <div class="hero-media"></div>
-      <div class="hero-glow"></div>
-      <div class="hero-caption">
-        <strong>{{ heroContent().cardTitle }}</strong>
-        <span>{{ heroContent().cardCopy }}</span>
-      </div>
-    </div>
-  </header>
-
   <main class="public-main">
     <router-outlet />
   </main>
