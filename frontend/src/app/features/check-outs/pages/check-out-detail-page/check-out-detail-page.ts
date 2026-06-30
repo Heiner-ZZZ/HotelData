@@ -67,6 +67,7 @@ export class CheckOutDetailPageComponent {
   readonly completeError = signal('');
 
   readonly Math = Math;
+  protected readonly Number = Number;
   readonly canComplete = signal(false);
   readonly checkoutDone = computed(() => this.data()?.stay_status === 'checked_out');
 

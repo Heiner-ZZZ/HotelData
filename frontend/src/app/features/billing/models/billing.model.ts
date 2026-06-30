@@ -35,6 +35,7 @@ export interface LineItem {
   itemId: string;
   productId?: string;
   name: string;
+  category?: string;
   quantity: number;
   unitPrice: number;
   total: number;

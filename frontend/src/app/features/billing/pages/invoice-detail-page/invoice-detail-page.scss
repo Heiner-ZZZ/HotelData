@@ -970,22 +970,155 @@
   line-height: 1.4;
 }
 
-/* ═══ Print Styles ═══ */
+/* ═══════════════════════════════════════════════
+   Print Styles — Corporate B/N Invoice
+   ═══════════════════════════════════════════════ */
 
 @media print {
+  /* ── Reset: remove all colors, icons, backgrounds ── */
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  /* ── Hide non-essential UI ── */
   .inv-header .inv-actions,
   .inv-card-actions,
   .inv-toast,
-  .inv-back {
+  .inv-back,
+  .inv-quick-card,
+  .inv-add-form,
+  .inv-btn-group,
+  .inv-btn,
+  .inv-remove-btn,
+  .inv-folio-card .inv-btn,
+  .inv-btn-full,
+  .material-symbols-outlined {
     display: none !important;
   }
 
+  /* ── Page reset ── */
   .inv-page {
     padding: 0;
+    max-width: 100%;
+  }
+
+  /* ── Remove colored backgrounds / borders ── */
+  .inv-card,
+  .inv-summary,
+  .inv-guest-bar,
+  .inv-folio-card,
+  .inv-card-header-bg,
+  .inv-quick-card {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  .inv-summary-bg {
+    display: none !important;
   }
 
   .inv-summary {
     break-inside: avoid;
-    border-color: #000;
+    border-color: #000 !important;
+  }
+
+  .inv-summary-amount {
+    color: #000 !important;
+  }
+
+  .inv-guest-bar {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  /* ── Status badges: text only, no color ── */
+  .inv-status-badge,
+  .bg-success,
+  .bg-danger,
+  .bg-warning {
+    border: 1px solid #000 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding: 1px 4px;
+    font-size: 0.6rem;
+  }
+
+  .inv-status-dot,
+  .dot-success,
+  .dot-danger,
+  .dot-warning {
+    display: none !important;
+  }
+
+  /* ── Table: clean B/N lines ── */
+  .inv-table thead th {
+    background: transparent !important;
+    color: #000 !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .inv-table tbody td {
+    border-bottom: 1px solid #ccc !important;
+  }
+
+  .inv-table tbody tr:hover {
+    background: transparent !important;
+  }
+
+  /* ── Payments: remove icon circles ── */
+  .inv-pay-icon {
+    display: none !important;
+  }
+
+  /* ── Paid/Pending colors to B/N ── */
+  .inv-pay-row.paid {
+    color: #000 !important;
+    .paid-amount { color: #000 !important; }
+  }
+
+  .inv-pay-row.pending {
+    color: #000 !important;
+    .pending-amount { color: #000 !important; }
+  }
+
+  /* ── Card headers: no bottom border ── */
+  .inv-card-header {
+    border-bottom: 1px solid #ccc !important;
+  }
+
+  /* ── Grid: single column for print ── */
+  .inv-grid {
+    display: block !important;
+  }
+
+  .inv-left,
+  .inv-right {
+    width: 100% !important;
+  }
+
+  .inv-right {
+    page-break-before: always;
+  }
+
+  /* ── Count badge: B/N ── */
+  .inv-count-badge {
+    border: 1px solid #000 !important;
+    background: transparent !important;
+  }
+
+  /* ── Card header icon hidden ── */
+  .inv-card-icon {
+    display: none !important;
+  }
+
+  .td-icon {
+    display: none !important;
   }
 }

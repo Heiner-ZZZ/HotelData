@@ -44,6 +44,7 @@ export class CheckInDetailPageComponent {
   // ── Wizard state ──
   readonly currentStep = signal(1);
   protected readonly Math = Math;
+  protected readonly Number = Number;
   readonly steps = STEPS;
 
   // ── Check-in fields ──
