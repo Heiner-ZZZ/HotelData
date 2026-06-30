@@ -111,38 +111,38 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Occupancy color classes for mini-calendar */
+/* Occupancy color classes — green monochromatic scale (operational calendar style) */
 .occ-0 {
-  background: #f3f4f6;
-  color: #9ca3af;
-}
-
-.occ-low {
-  background: #dcfce7;
+  background: #f0fdf4;
   color: #166534;
 }
 
+.occ-low {
+  background: #bbf7d0;
+  color: #14532d;
+}
+
 .occ-mid {
-  background: #fef9c3;
-  color: #854d0e;
+  background: #86efac;
+  color: #14532d;
 }
 
 .occ-high {
-  background: #fed7aa;
-  color: #9a3412;
+  background: #4ade80;
+  color: #052e16;
 }
 
 .occ-full {
-  background: #fecaca;
-  color: #991b1b;
+  background: #16a34a;
+  color: #fff;
 }
 
-/* Legend swatches for mini-calendar */
-.swatch-occ-0 { background: #f3f4f6; }
-.swatch-occ-low { background: #dcfce7; }
-.swatch-occ-mid { background: #fef9c3; }
-.swatch-occ-high { background: #fed7aa; }
-.swatch-occ-full { background: #fecaca; }
+/* Legend swatches — green monochromatic */
+.swatch-occ-0 { background: #f0fdf4; }
+.swatch-occ-low { background: #bbf7d0; }
+.swatch-occ-mid { background: #86efac; }
+.swatch-occ-high { background: #4ade80; }
+.swatch-occ-full { background: #16a34a; }
 
 .inv-cal-legend {
   display: flex;

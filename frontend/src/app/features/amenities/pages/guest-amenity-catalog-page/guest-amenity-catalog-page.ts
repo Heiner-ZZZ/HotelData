@@ -75,7 +75,7 @@ export class GuestAmenityCatalogPageComponent {
   readonly selectedCategory = signal<string | null>(null);
 
   /** Unique category names extracted from the catalog. */
-  readonly categories = computed(() => {
+  readonly categories = computed<string[]>(() => {
     return this.catalog().map((c) => c.category);
   });
 
