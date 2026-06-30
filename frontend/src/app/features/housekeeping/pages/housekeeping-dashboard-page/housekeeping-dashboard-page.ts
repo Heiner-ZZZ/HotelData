@@ -10,6 +10,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingApiService, type HousekeepingDashboard } from '../../services/housekeeping-api.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 
 const STATUS_LABELS: Record<string, string> = {
   vacant_dirty: 'Vacante Sucia',
@@ -51,7 +52,7 @@ const KPI_CARDS = [
 
 @Component({
   selector: 'app-housekeeping-dashboard-page',
-  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent],
+  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
   templateUrl: './housekeeping-dashboard-page.html',
   styleUrl: './housekeeping-dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

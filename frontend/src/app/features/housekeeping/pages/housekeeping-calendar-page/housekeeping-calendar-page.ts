@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -82,7 +83,7 @@ const COMMON_STAFF = [
 
 @Component({
   selector: 'app-housekeeping-calendar-page',
-  imports: [DatePipe, KeyValuePipe, TitleCasePipe, ReactiveFormsModule, PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
+  imports: [DatePipe, KeyValuePipe, TitleCasePipe, ReactiveFormsModule, PropertySelectorComponent, HousekeepingSubNavComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
   templateUrl: './housekeeping-calendar-page.html',
   styleUrl: './housekeeping-calendar-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -135,8 +136,8 @@ export class HousekeepingCalendarPageComponent {
   readonly weekDays = computed(() => this.calendarData()?.week_days ?? []);
   readonly rooms = computed(() => {
     const cal = this.calendarData()?.calendar;
-    if (!cal) return [];
-    return Object.values(cal);
+    if (!cal) return [] as CalendarRoomDay[];
+    return Object.values(cal) as CalendarRoomDay[];
   });
   readonly staffList = computed(() => this.calendarData()?.staff ?? []);
   readonly summary = computed(() => this.calendarData()?.summary ?? { total_tasks: 0, by_status: {} });

@@ -1,4 +1,6 @@
 <div class="hk-page">
+  <app-housekeeping-sub-nav />
+
   @switch (viewState()) {
     @case ('loading') { <app-loading-state label="Cargando housekeeping..." /> }
     @case ('error') { <app-error-state title="Error" description="No se pudo cargar el dashboard de housekeeping." /> }

@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -61,7 +62,7 @@ const COMMON_STAFF = [
   selector: 'app-housekeeping-tasks-page',
   imports: [
     EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
-    PropertySelectorComponent, ReactiveFormsModule,
+    PropertySelectorComponent, ReactiveFormsModule, HousekeepingSubNavComponent,
   ],
   templateUrl: './housekeeping-tasks-page.html',
   styleUrl: './housekeeping-tasks-page.scss',
@@ -270,13 +271,24 @@ export class HousekeepingTasksPageComponent {
   startEdit(item: HousekeepingTaskItem): void {
     this.editingId.set(item.id);
     this.showCreateForm.set(true);
-    this.createForm.setValue({
-      roomLabel: item.roomLabel,
-      taskType: item.taskType,
-      priority: item.priority,
+    // Map scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
+    let dt = todayLocalIso();
+    if (item.scheduledDate) {
+      try {
+        const d = new Date(item.scheduledDate);
+        if (!isNaN(d.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, '0');
+          dt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+      } catch { /* fallback to todayLocalIso */ }
+    }
+    this.createForm.patchValue({
+      roomLabel: item.roomLabel || '',
+      taskType: item.taskType || 'cleaning',
+      priority: item.priority || 'normal',
       assignedTo: item.assignedTo || '',
       note: item.note || '',
-      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 16) : todayLocalIso(),
+      scheduledDate: dt,
       status: item.status || 'pending',
     });
   }
