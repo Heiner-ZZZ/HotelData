@@ -1,27 +1,34 @@
 <div class="history-page">
-  <app-page-header
-    eyebrow="Housekeeping"
-    title="Historial de estados"
-    description="Auditoría de cambios de estado de cada habitación — timeline completo."
-  />
+  <app-housekeeping-sub-nav />
 
-  <!-- ═══ Filters ═══ -->
-  <section class="history-filters">
-    <label class="filter-field">
-      <span class="material-symbols-outlined">business</span>
-      <input type="number" placeholder="Prop ID" [ngModel]="editPropId()" (ngModelChange)="editPropId.set($event || 0)" />
-    </label>
-    <label class="filter-field">
-      <span class="material-symbols-outlined">meeting_room</span>
-      <input type="text" placeholder="Habitación" [ngModel]="editRoomLabel()" (ngModelChange)="editRoomLabel.set($event)" />
-    </label>
-    <label class="filter-field">
-      <span class="material-symbols-outlined">bookmark</span>
-      <input type="text" placeholder="Booking ID" [ngModel]="editBookingId()" (ngModelChange)="editBookingId.set($event)" />
-    </label>
-    <button type="button" class="filter-btn" (click)="applyFilters()">Filtrar</button>
-    <button type="button" class="filter-btn filter-btn-clear" (click)="clearFilters()">Limpiar</button>
-  </section>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Historial de estados</h1>
+      <p class="page-subtitle">Auditoría de cambios de estado de cada habitación — timeline completo.</p>
+    </div>
+    <div class="page-header-right">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </div>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filters ═══ -->
+    <section class="history-filters">
+      <label class="filter-field">
+        <span class="material-symbols-outlined">meeting_room</span>
+        <input type="text" placeholder="Habitación" [ngModel]="editRoomLabel()" (ngModelChange)="editRoomLabel.set($event)" />
+      </label>
+      <label class="filter-field">
+        <span class="material-symbols-outlined">bookmark</span>
+        <input type="text" placeholder="Booking ID" [ngModel]="editBookingId()" (ngModelChange)="editBookingId.set($event)" />
+      </label>
+      <button type="button" class="filter-btn" (click)="applyFilters()">Filtrar</button>
+      <button type="button" class="filter-btn filter-btn-clear" (click)="clearFilters()">Limpiar</button>
+    </section>
 
   @switch (viewState()) {
     @case ('loading') {
@@ -125,5 +132,6 @@
         }
       </section>
     }
+  }
   }
 </div>

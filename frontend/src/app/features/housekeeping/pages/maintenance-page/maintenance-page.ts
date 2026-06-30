@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -55,6 +56,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   imports: [
     DatePipe, KeyValuePipe, ReactiveFormsModule,
     PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
+    HousekeepingSubNavComponent,
   ],
   templateUrl: './maintenance-page.html',
   styleUrl: './maintenance-page.scss',

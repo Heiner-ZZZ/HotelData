@@ -12,6 +12,9 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 
 const STATUS_META: Record<string, { label: string; icon: string; color: string }> = {
   available:    { label: 'Disponible',    icon: 'check_circle',       color: '#16a34a' },
@@ -27,7 +30,7 @@ const STATUS_META: Record<string, { label: string; icon: string; color: string }
 
 @Component({
   selector: 'app-room-history-page',
-  imports: [DatePipe, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, RouterLink],
+  imports: [DatePipe, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, RouterLink, HousekeepingSubNavComponent],
   templateUrl: './room-history-page.html',
   styleUrl: './room-history-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +39,9 @@ export class RoomHistoryPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly propertyCtx = inject(PropertyContextService);
+
+  readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
 
   // ── URL params → signals (source of truth for filters & pagination) ──
   private readonly queryParams = toSignal(
@@ -55,7 +61,7 @@ export class RoomHistoryPageComponent {
   );
 
   // ── Reactive filter signals synced from URL (for input binding) ──
-  readonly propIdFilter = computed(() => this.queryParams().propId);
+  readonly selectedPropId = computed(() => this.queryParams().propId);
   readonly roomLabelFilter = computed(() => this.queryParams().roomLabel);
   readonly bookingIdFilter = computed(() => this.queryParams().bookingId);
   readonly currentPage = computed(() => this.queryParams().page);
@@ -111,6 +117,22 @@ export class RoomHistoryPageComponent {
       this.editPropId.set(Number(params.get('prop_id') ?? '0'));
       this.editRoomLabel.set(params.get('room_label') || '');
       this.editBookingId.set(params.get('booking_id') || '');
+    });
+  }
+
+  // ── Property selection ──
+  onPropSelected(event: { propId: number; label: string }): void {
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.selectedLabel.set(label);
+    if (event.propId) {
+      this.propertyCtx.setProperty(event.propId, label);
+    } else {
+      this.propertyCtx.clear();
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { prop_id: event.propId || null, prop_label: label || null, page: null },
+      queryParamsHandling: 'merge',
     });
   }
 
