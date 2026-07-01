@@ -334,13 +334,16 @@
                       <td class="cell-notes">{{ item.notes || '--' }}</td>
                       <td class="cell-action">
                         @if (item.canComplete) {
-                          <button type="button" class="btn-icon-only" (click)="completeCheckIn(item.bookingId)" aria-label="Completar check-in">
+                          <button type="button" class="btn-icon-only" (click)="completeCheckIn(item.bookingId)" aria-label="Completar check-in" title="Completar check-in">
                             <span class="material-symbols-outlined">login</span>
                           </button>
                         }
+                        <a [routerLink]="['/management/check-ins', item.bookingId]" class="btn-icon-only" aria-label="Ver detalle" title="Ver detalle">
+                          <span class="material-symbols-outlined">open_in_new</span>
+                        </a>
                       </td>
                       <td class="cell-action">
-                        <button type="button" class="btn-icon-only btn-edit-time" (click)="openEditDateTime(item)" aria-label="Editar fecha/hora">
+                        <button type="button" class="btn-icon-only btn-edit-time" (click)="openEditDateTime(item)" aria-label="Editar fecha/hora" title="Editar fecha/hora">
                           <span class="material-symbols-outlined">edit_calendar</span>
                         </button>
                       </td>

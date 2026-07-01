@@ -189,51 +189,87 @@
               </div>
 
               <div class="ciw-checks">
+                <!-- Documento -->
                 <label class="ciw-check" [class.ciw-checked]="documentVerified()">
                   <input type="checkbox"
                     [checked]="documentVerified()"
                     (change)="documentVerified.set($any($event.target).checked)" />
-                  <span>Documento Verificado</span>
+                  <span class="ciw-check-content">
+                    <span class="material-symbols-outlined ciw-check-item-icon">badge</span>
+                    <span class="ciw-check-text">Documento Verificado</span>
+                  </span>
                   @if (documentVerified()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
                   }
                 </label>
+
+                <!-- Llaves -->
                 <label class="ciw-check" [class.ciw-checked]="keysDelivered()">
                   <input type="checkbox"
                     [checked]="keysDelivered()"
                     (change)="keysDelivered.set($any($event.target).checked)" />
-                  <span>Llaves Entregadas</span>
+                  <span class="ciw-check-content">
+                    <span class="material-symbols-outlined ciw-check-item-icon">vpn_key</span>
+                    <span class="ciw-check-text">Entrega de Llaves</span>
+                  </span>
                   @if (keysDelivered()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
                   }
                 </label>
-                <label class="ciw-check" [class.ciw-checked]="depositReceived()">
+
+                <!-- Depósito -->
+                <label class="ciw-check" [class.ciw-checked]="depositReceived()" [class.ciw-check-billing]="depositReceived()">
                   <input type="checkbox"
                     [checked]="depositReceived()"
                     (change)="depositReceived.set($any($event.target).checked)" />
-                  <span>Depósito Recibido</span>
+                  <span class="ciw-check-content">
+                    <span class="material-symbols-outlined ciw-check-item-icon">payments</span>
+                    <span class="ciw-check-text">Depósito Recibido</span>
+                  </span>
                   @if (depositReceived()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
                   }
                 </label>
+                @if (depositReceived()) {
+                  <div class="ciw-check-hint">
+                    <span class="material-symbols-outlined ciw-hint-icon">receipt_long</span>
+                    <span>Depósito registrado. <a routerLink="/management/billing" class="ciw-billing-link">Ir a Facturación</a> para gestionar el pago.</span>
+                  </div>
+                }
+
+                <!-- Políticas -->
                 <label class="ciw-check" [class.ciw-checked]="privacySigned()">
                   <input type="checkbox"
                     [checked]="privacySigned()"
                     (change)="privacySigned.set($any($event.target).checked)" />
-                  <span>Políticas Aceptadas</span>
+                  <span class="ciw-check-content">
+                    <span class="material-symbols-outlined ciw-check-item-icon">gavel</span>
+                    <span class="ciw-check-text">Políticas Aceptadas</span>
+                  </span>
                   @if (privacySigned()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
                   }
                 </label>
-                <label class="ciw-check" [class.ciw-checked]="paymentPending()">
+
+                <!-- Pago Pendiente -->
+                <label class="ciw-check" [class.ciw-checked]="paymentPending()" [class.ciw-check-billing]="paymentPending()">
                   <input type="checkbox"
                     [checked]="paymentPending()"
                     (change)="paymentPending.set($any($event.target).checked)" />
-                  <span>Pago Pendiente</span>
+                  <span class="ciw-check-content">
+                    <span class="material-symbols-outlined ciw-check-item-icon">credit_score</span>
+                    <span class="ciw-check-text">Pago Pendiente</span>
+                  </span>
                   @if (paymentPending()) {
                     <span class="ciw-check-icon material-symbols-outlined">check_circle</span>
                   }
                 </label>
+                @if (paymentPending()) {
+                  <div class="ciw-check-hint">
+                    <span class="material-symbols-outlined ciw-hint-icon">receipt_long</span>
+                    <span>Pago pendiente registrado. <a routerLink="/management/billing" class="ciw-billing-link">Ir a Facturación</a> para completar el cobro.</span>
+                  </div>
+                }
               </div>
             </section>
           }
@@ -309,16 +345,26 @@
                 </button>
               }
               @if (currentStep() === 5) {
-                <button type="button" class="ciw-btn ciw-btn-success"
-                  (click)="completeCheckIn()" [disabled]="completing() || !allRoomsAvailable()">
-                  @if (completing()) {
-                    <span class="material-symbols-outlined spinning">sync</span>
-                    Procesando...
-                  } @else {
-                    <span class="material-symbols-outlined">check_circle</span>
-                    Realizar Check-In
-                  }
-                </button>
+                @if (isPastDate()) {
+                  <div class="ciw-past-date-block">
+                    <span class="material-symbols-outlined">event_busy</span>
+                    <div>
+                      <strong>Fecha de check-in ya pasó</strong>
+                      <p>No se puede realizar check-in porque la fecha de llegada ({{ data()?.check_in_date }}) es anterior a hoy. Contacta al administrador del hotel para ajustar la fecha.</p>
+                    </div>
+                  </div>
+                } @else {
+                  <button type="button" class="ciw-btn ciw-btn-success"
+                    (click)="completeCheckIn()" [disabled]="completing()">
+                    @if (completing()) {
+                      <span class="material-symbols-outlined spinning">sync</span>
+                      Procesando...
+                    } @else {
+                      <span class="material-symbols-outlined">check_circle</span>
+                      Realizar Check-In
+                    }
+                  </button>
+                }
               }
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
@@ -58,10 +58,23 @@ export class CheckInDetailPageComponent {
   readonly privacySigned = signal(false);
   readonly observations = signal('');
 
+  // ── Past-date validation ──
+  readonly isPastDate = computed(() => {
+    const d = this.data();
+    if (!d?.check_in_date) return false;
+    const checkIn = new Date(d.check_in_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return checkIn < today;
+  });
+
   // ── Completion ──
   readonly completing = signal(false);
   readonly completeError = signal('');
   readonly checkinDone = computed(() => this.data()?.stay_status === 'checked_in');
+
+  // ── Completion guard (button disabled while processing) ──
+  // `completing()` is used directly in the template
 
   // ── Financial computed ──
   readonly totalPrice = computed(() => this.data()?.total_price ?? 0);
@@ -79,7 +92,7 @@ export class CheckInDetailPageComponent {
     return d?.assigned_rooms?.map((r) => ({
       label: r.room_label || r.room_number || r.hotel_room_id,
       status: r.room_status || 'unknown',
-      ok: (r.room_status || 'unknown') === 'available',
+      ok: (r.room_status || 'unknown') === 'available' || (r.room_status || 'unknown') === 'vacant_clean',
     })) ?? [];
   });
 
@@ -91,15 +104,23 @@ export class CheckInDetailPageComponent {
   readonly canGoNext = computed(() => {
     const step = this.currentStep();
     if (step === 5) return true;
-    return true; // all steps navigable
+    // Block going to completion if it's a past date
+    if (step === 4 && this.isPastDate()) return false;
+    return true;
   });
 
+  // ── Persistence key ──
+  private storageKey = '';
+  private readonly STORAGE_PREFIX = 'ciw_draft_';
+
   constructor() {
+    // Restore any draft from localStorage
     this.activatedRoute.paramMap
       .pipe(
         map((params) => params.get('bookingId') ?? ''),
         distinctUntilChanged(),
         map((bookingId) => {
+          this.storageKey = this.STORAGE_PREFIX + bookingId;
           this.viewState.set('loading');
           return bookingId;
         }),
@@ -109,6 +130,7 @@ export class CheckInDetailPageComponent {
       .subscribe({
         next: (detail) => {
           this.data.set(detail);
+          // Always restore backend-saved fields first
           this.arrivalTime.set(detail.check_in_arrival_time || '');
           this.hasCompanions.set(detail.check_in_has_companions || false);
           this.companionsCount.set(detail.check_in_companions_count || 0);
@@ -118,6 +140,8 @@ export class CheckInDetailPageComponent {
           this.depositReceived.set(detail.check_in_deposit_received || false);
           this.privacySigned.set(detail.check_in_privacy_signed || false);
           this.observations.set(detail.check_in_observations || '');
+          // Then overlay localStorage draft (if newer)
+          this._restoreDraft();
           if (detail.stay_status === 'checked_in') this.currentStep.set(5);
           this.viewState.set('success');
         },
@@ -125,10 +149,77 @@ export class CheckInDetailPageComponent {
           this.viewState.set(err.status === 404 ? 'empty' : 'error');
         },
       });
+
+    // Persist wizard fields to localStorage on every change
+    effect(() => {
+      // Read all signals to trigger tracking
+      const draft = {
+        step: this.currentStep(),
+        arrivalTime: this.arrivalTime(),
+        hasCompanions: this.hasCompanions(),
+        companionsCount: this.companionsCount(),
+        documentVerified: this.documentVerified(),
+        keysDelivered: this.keysDelivered(),
+        paymentPending: this.paymentPending(),
+        depositReceived: this.depositReceived(),
+        privacySigned: this.privacySigned(),
+        observations: this.observations(),
+      };
+      this._persistDraft(draft);
+    });
+  }
+
+  private _persistDraft(draft: Record<string, unknown>): void {
+    if (!this.storageKey) return;
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(draft));
+    } catch {
+      // localStorage full or unavailable — silently ignore
+    }
+  }
+
+  private _restoreDraft(): void {
+    if (!this.storageKey) return;
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Record<string, unknown>;
+      if (saved['arrivalTime']) this.arrivalTime.set(String(saved['arrivalTime']));
+      if (typeof saved['hasCompanions'] === 'boolean') this.hasCompanions.set(saved['hasCompanions']);
+      if (typeof saved['companionsCount'] === 'number') this.companionsCount.set(saved['companionsCount']);
+      if (typeof saved['documentVerified'] === 'boolean') this.documentVerified.set(saved['documentVerified']);
+      if (typeof saved['keysDelivered'] === 'boolean') this.keysDelivered.set(saved['keysDelivered']);
+      if (typeof saved['paymentPending'] === 'boolean') this.paymentPending.set(saved['paymentPending']);
+      if (typeof saved['depositReceived'] === 'boolean') this.depositReceived.set(saved['depositReceived']);
+      if (typeof saved['privacySigned'] === 'boolean') this.privacySigned.set(saved['privacySigned']);
+      if (saved['observations']) this.observations.set(String(saved['observations']));
+      if (typeof saved['step'] === 'number' && saved['step'] >= 1 && saved['step'] <= 5) {
+        this.currentStep.set(saved['step']);
+      }
+    } catch {
+      // Ignore corrupt localStorage data
+    }
+  }
+
+  /** Clear the draft from localStorage after successful check-in. */
+  private _clearDraft(): void {
+    if (!this.storageKey) return;
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch {
+      // ignore
+    }
   }
 
   goToStep(n: number): void {
-    if (n >= 1 && n <= 5) this.currentStep.set(n);
+    if (n >= 1 && n <= 5) {
+      // Don't allow skipping to step 5 if it's a past date (show warning on step 4 instead)
+      if (n === 5 && this.isPastDate()) {
+        this.currentStep.set(4);
+        return;
+      }
+      this.currentStep.set(n);
+    }
   }
 
   nextStep(): void {
@@ -141,7 +232,7 @@ export class CheckInDetailPageComponent {
 
   completeCheckIn(): void {
     const d = this.data();
-    if (!d || this.completing()) return;
+    if (!d || this.completing() || !this.keysDelivered()) return;
     this.completing.set(true);
     this.completeError.set('');
 
@@ -161,6 +252,7 @@ export class CheckInDetailPageComponent {
       .subscribe({
         next: (result) => {
           this.completing.set(false);
+          this._clearDraft();
           this.successMessage.set(`Check-in completado — Folio: ${result.folio || 'N/A'}`);
           this.currentStep.set(5);
           // Reload
@@ -181,7 +273,7 @@ export class CheckInDetailPageComponent {
 
   roomStatusColor(status: string): string {
     const map: Record<string, string> = {
-      available: '#16a34a', occupied: '#006076', cleaning: '#d97706',
+      available: '#16a34a', vacant_clean: '#16a34a', occupied: '#006076', cleaning: '#d97706',
       clean: '#059669', inspected: '#4338ca', dirty: '#92400e',
       maintenance: '#ba1a1a', out_of_order: '#ba1a1a', out_of_service: '#6f797d',
     };
@@ -190,7 +282,7 @@ export class CheckInDetailPageComponent {
 
   roomStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      available: 'Disponible', occupied: 'Ocupada', cleaning: 'Limpieza',
+      available: 'Disponible', vacant_clean: 'Disponible', occupied: 'Ocupada', cleaning: 'Limpieza',
       clean: 'Limpia', inspected: 'Inspeccionada', dirty: 'Sucia',
       maintenance: 'Mantenimiento', out_of_order: 'Fuera Servicio',
       out_of_service: 'Fuera Servicio',

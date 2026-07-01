@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -32,7 +32,7 @@ function shiftDate(iso: string, days: number): string {
 
 @Component({
   selector: 'app-check-ins-page',
-  imports: [DatePipe, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [DatePipe, KpiChartComponent, ReactiveFormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, RouterLink],
   templateUrl: './check-ins-page.html',
   styleUrl: './check-ins-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
