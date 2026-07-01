@@ -55,6 +55,7 @@ export class RatesApiService {
     currency: string;
     roomTypeId?: string;
     isActive: boolean;
+    eligibleRoles?: string[];
   }) {
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rates/plans`,
@@ -65,7 +66,8 @@ export class RatesApiService {
         base_rate: payload.baseRate,
         currency: payload.currency,
         room_type_id: payload.roomTypeId || '',
-        is_active: payload.isActive
+        is_active: payload.isActive,
+        eligible_roles: payload.eligibleRoles ?? []
       },
       { withCredentials: true }
     );
@@ -78,6 +80,7 @@ export class RatesApiService {
     currency: string;
     roomTypeId?: string;
     isActive: boolean;
+    eligibleRoles?: string[];
   }) {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
@@ -87,7 +90,8 @@ export class RatesApiService {
         base_rate: payload.baseRate,
         currency: payload.currency,
         room_type_id: payload.roomTypeId || '',
-        is_active: payload.isActive
+        is_active: payload.isActive,
+        eligible_roles: payload.eligibleRoles ?? []
       },
       { withCredentials: true }
     );

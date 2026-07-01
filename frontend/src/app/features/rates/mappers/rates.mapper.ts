@@ -19,7 +19,8 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       baseRate: plan.base_rate,
       currency: plan.currency,
       roomTypeId: plan.room_type_id,
-      activeLabel: plan.is_active ? 'Sí' : 'No'
+      activeLabel: plan.is_active ? 'Sí' : 'No',
+      eligibleRoles: plan.eligible_roles ?? []
     })),
     calendar: dto.calendar.map((item) => ({
       date: item.date,

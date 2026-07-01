@@ -38,6 +38,7 @@ export interface RatePlanItem {
   currency: string;
   roomTypeId?: string;
   activeLabel: string;
+  eligibleRoles?: string[];
 }
 
 export interface RateCalendarItem {

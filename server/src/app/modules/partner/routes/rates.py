@@ -14,6 +14,7 @@ from src.app.modules.partner.services import (
     delete_corporate_contract,
     delete_rate_plan,
     delete_seasonal_rule,
+    filter_eligible_plans,
     generate_calendar_from_rules,
     list_corporate_contracts,
     list_partner_hotels,
@@ -74,12 +75,15 @@ def rates_options_api(
         detail = partner_hotel_rates(require_prop_id(prop_id))
         if detail is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        user_role = current_user.get("primary_role", "")
+        eligible_plans = filter_eligible_plans(detail.get("rate_plans", []), user_role=user_role)
         response["rate_plans"] = [
             {
                 "rate_plan_id": item["rate_plan_id"],
                 "name": item.get("name") or item["rate_plan_id"],
+                "eligible_roles": item.get("eligible_roles", []),
             }
-            for item in detail.get("rate_plans", [])
+            for item in eligible_plans
         ]
     return response
 
@@ -104,6 +108,7 @@ def rates_plan_create_api(
             tax_included=payload.get("tax_included", False),
             tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
+            eligible_roles=payload.get("eligible_roles"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -133,6 +138,7 @@ def rates_plan_update_api(
             tax_included=payload.get("tax_included", False),
             tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
+            eligible_roles=payload.get("eligible_roles"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:

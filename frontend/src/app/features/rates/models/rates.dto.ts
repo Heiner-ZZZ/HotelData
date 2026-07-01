@@ -17,6 +17,7 @@ export interface RatesDto {
     currency: string;
     room_type_id?: string;
     is_active: boolean;
+    eligible_roles?: string[];
     updated_at_label?: string;
   }>;
   calendar: Array<{
