@@ -675,6 +675,66 @@ tbody tr:hover {
   &:not(.high):not(.med) { color: var(--danger); }
 }
 
+/* ── Reservations breakdown ── */
+.res-breakdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.res-amount {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+
+  strong { font-size: 0.95rem; }
+}
+
+.res-source {
+  font-size: 0.6rem;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.res-current strong {
+  color: var(--accent);
+}
+
+.res-plus, .res-eq {
+  color: var(--muted-text);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.res-total {
+  font-size: 0.95rem;
+}
+
+/* ── Info tooltip ── */
+.info-tip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.info-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+  opacity: 0.65;
+  margin-left: 0.2rem;
+  transition: opacity 0.15s;
+
+  .info-tip:hover & {
+    opacity: 1;
+    color: var(--accent);
+  }
+}
+
 .row-actions {
   display: flex;
   gap: 0.25rem;

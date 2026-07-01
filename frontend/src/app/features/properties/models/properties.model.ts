@@ -13,12 +13,15 @@ export interface PropertyListItem {
   manualOverride: boolean;
   profileBadge: string;
   operationalScore: number;
-  operationalChecks: Array<{ label: string; ready: boolean }>;
+  operationalChecks: OperationalCheck[];
   performance: {
     searches: number;
     clicks: number;
     reservations: number;
     grossRevenueLabel: string;
+    includesOperationalBookings?: boolean;
+    historicalReservations?: number;
+    operationalReservations?: number;
   };
 }
 
@@ -34,6 +37,13 @@ export interface PropertiesListViewModel {
   hasNext: boolean;
 }
 
+export interface OperationalCheck {
+  label: string;
+  ready: boolean;
+  count: number;
+  detail: string;
+}
+
 export interface PropertyDetailViewModel {
   propId: number;
   displayName: string;
@@ -43,7 +53,7 @@ export interface PropertyDetailViewModel {
   profileBadge: string;
   originalGeneratedName: string;
   operationalScore: number;
-  operationalChecks: Array<{ label: string; ready: boolean }>;
+  operationalChecks: OperationalCheck[];
   heroMetrics: Array<{ label: string; value: string; detail: string }>;
   profileFacts: Array<{ label: string; value: string }>;
   masterFacts: Array<{ label: string; value: string }>;

@@ -195,8 +195,9 @@
             <tr>
               <th>Propiedad</th>
               <th class="col-center">Estado</th>
-              <th>Pipeline</th>
-              <th class="col-right">Yield Score</th>
+              <th class="col-center">⭐ Rating</th>
+              <th class="col-right">💰 Rendimiento</th>
+              <th class="col-center">🛏️ Unds.</th>
               <th class="col-right"></th>
             </tr>
           </thead>
@@ -210,30 +211,56 @@
                     </div>
                     <div class="prop-info">
                       <strong>{{ item.displayName }}</strong>
-                      <div class="prop-badges">
-                        <span class="status-badge-pill" [class.success]="item.manualOverride" [class.info]="!item.manualOverride">
-                          {{ item.profileBadge }}
-                        </span>
-                        <span class="status-badge-pill" [class.success]="item.operationalScore >= 80" [class.warning]="item.operationalScore >= 40 && item.operationalScore < 80" [class.danger]="item.operationalScore < 40">
-                          Score operativo {{ item.operationalScore }}
-                        </span>
-                      </div>
-                      <span class="prop-sub">{{ item.unitCount ? item.unitCount + ' Unidades' : '' }}{{ item.location ? ' &middot; ' + item.location : '' }}</span>
-                      <span class="prop-sub">Políticas {{ item.operationalChecks[0].ready ? 'Sí' : 'No' }} · Habitaciones {{ item.operationalChecks[1].ready ? 'Sí' : 'No' }} · Tarifas {{ item.operationalChecks[2].ready ? 'Sí' : 'No' }} · Inventario {{ item.operationalChecks[3].ready ? 'Sí' : 'No' }} · Promociones {{ item.operationalChecks[4].ready ? 'Sí' : 'No' }}</span>
+                      <span class="prop-sub">{{ item.location ? item.location : '' }}</span>
+                      <span class="prop-sub prop-checks">
+                        <span class="check-dot" [class.ok]="item.operationalChecks[0].ready" [class.no]="!item.operationalChecks[0].ready" title="Políticas"></span>
+                        <span class="check-dot" [class.ok]="item.operationalChecks[1].ready" [class.no]="!item.operationalChecks[1].ready" title="Habitaciones"></span>
+                        <span class="check-dot" [class.ok]="item.operationalChecks[2].ready" [class.no]="!item.operationalChecks[2].ready" title="Tarifas"></span>
+                        <span class="check-dot" [class.ok]="item.operationalChecks[3].ready" [class.no]="!item.operationalChecks[3].ready" title="Inventario"></span>
+                        <span class="check-dot" [class.ok]="item.operationalChecks[4].ready" [class.no]="!item.operationalChecks[4].ready" title="Promociones"></span>
+                        <span class="score-badge" [class.success]="item.operationalScore >= 80" [class.warning]="item.operationalScore >= 40 && item.operationalScore < 80" [class.danger]="item.operationalScore < 40">{{ item.operationalScore }}</span>
+                      </span>
                     </div>
                   </a>
                 </td>
                 <td class="col-center">
                   <span class="status-badge-pill" [class]="statusBadgeClass(item.status)">{{ item.status }}</span>
                 </td>
-                <td>
-                  <div class="pipeline-cell">
-                    <span class="pulse-dot" [class]="item.syncStatus === 'SYNC_ACTIVE' ? 'green' : 'yellow'"></span>
-                    <span class="pipeline-text">{{ item.syncStatus }}: {{ item.syncLatencyMs }}ms</span>
+                <td class="col-center">
+                  <div class="rating-cell">
+                    <span class="stars">{{ item.starsLabel }}</span>
+                    <span class="review-score">{{ item.reviewScoreLabel }}</span>
                   </div>
                 </td>
                 <td class="col-right">
-                  <span class="yield-score" [class.high]="item.yieldScore >= 80" [class.med]="item.yieldScore >= 50 && item.yieldScore < 80">{{ item.yieldScore }}%</span>
+                  <div class="revenue-cell">
+                    <span class="revenue-amount">{{ item.performance.grossRevenueLabel }}</span>
+                    <span class="reservations-count">
+                      @if (item.performance.includesOperationalBookings) {
+                        <span class="res-breakdown">
+                          <span class="res-amount">
+                            <span class="res-source">históricas</span>
+                            <strong>{{ item.performance.historicalReservations }}</strong>
+                          </span>
+                          <span class="res-plus">+</span>
+                          <span class="res-amount res-current">
+                            <span class="res-source">actuales</span>
+                            <strong>{{ item.performance.operationalReservations }}</strong>
+                          </span>
+                          <span class="res-eq">=</span>
+                          <strong class="res-total">{{ (item.performance.historicalReservations ?? 0) + (item.performance.operationalReservations ?? 0) }}</strong>
+                        </span>
+                        <span class="info-tip" title="Históricas: datos del dataset original de búsquedas. Actuales: reservas operacionales del sistema.">
+                          <span class="material-symbols-outlined info-icon">info</span>
+                        </span>
+                      } @else {
+                        {{ item.performance.reservations }} reserva(s)
+                      }
+                    </span>
+                  </div>
+                </td>
+                <td class="col-center">
+                  <span class="unit-count">{{ item.unitCount }}</span>
                 </td>
                 <td class="col-right">
                   <div class="row-actions">
@@ -248,7 +275,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="empty-row">No se encontraron propiedades</td>
+                <td colspan="6" class="empty-row">No se encontraron propiedades</td>
               </tr>
             }
           </tbody>

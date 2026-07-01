@@ -8,6 +8,9 @@ export interface PropertyPerformanceDto {
   review_score_label: string;
   conversion_rate: number;
   click_rate: number;
+  includes_operational_bookings?: boolean;
+  historical_reservations?: number;
+  operational_reservations?: number;
 }
 
 export interface PropertyListItemDto {

@@ -19,19 +19,23 @@ import type {
   PropertiesListViewModel
 } from '../models/properties.model';
 
-function mapOperationalChecks(operational?: {
+interface OperationalDto {
   policies_configured?: boolean;
   rooms_configured?: boolean;
   rates_configured?: boolean;
   inventory_configured?: boolean;
   promotions_active?: boolean;
-}) {
+  counts?: Record<string, number>;
+}
+
+function mapOperationalChecks(operational?: OperationalDto) {
+  const c = operational?.counts ?? ({} as Record<string, number>);
   return [
-    { label: 'Políticas', ready: operational?.policies_configured ?? false },
-    { label: 'Habitaciones', ready: operational?.rooms_configured ?? false },
-    { label: 'Tarifas', ready: operational?.rates_configured ?? false },
-    { label: 'Inventario', ready: operational?.inventory_configured ?? false },
-    { label: 'Promociones', ready: operational?.promotions_active ?? false }
+    { label: 'Políticas', ready: operational?.policies_configured ?? false, count: c['hotel_policies'] ?? 0, detail: `${c['hotel_policies'] ?? 0} configurada(s)` },
+    { label: 'Habitaciones', ready: operational?.rooms_configured ?? false, count: c['hotel_rooms'] ?? 0, detail: `${c['hotel_rooms'] ?? 0} activa(s)` },
+    { label: 'Tarifas', ready: operational?.rates_configured ?? false, count: c['hotel_rate_calendar_today'] ?? 0, detail: `${c['hotel_rate_calendar_today'] ?? 0} para HOY` },
+    { label: 'Inventario', ready: operational?.inventory_configured ?? false, count: c['room_inventory_calendar_today'] ?? 0, detail: `${c['room_inventory_calendar_today'] ?? 0} registros HOY` },
+    { label: 'Promociones', ready: operational?.promotions_active ?? false, count: c['promotion_campaigns_active_today'] ?? 0, detail: `${c['promotion_campaigns_active_today'] ?? 0} activa(s) HOY` },
   ];
 }
 
@@ -56,7 +60,10 @@ function mapPropertyListItem(item: PropertiesListResponseDto['items'][number]): 
       searches: item.performance.searches,
       clicks: item.performance.clicks,
       reservations: item.performance.reservations,
-      grossRevenueLabel: item.performance.gross_revenue_label
+      grossRevenueLabel: item.performance.gross_revenue_label,
+      includesOperationalBookings: item.performance.includes_operational_bookings ?? false,
+      historicalReservations: item.performance.historical_reservations ?? item.performance.reservations,
+      operationalReservations: item.performance.operational_reservations ?? 0
     }
   };
 }
