@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { DecimalPipe, NgStyle } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
-import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation } from '../../models/reception-calendar.model';
+import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../../models/reception-calendar.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -28,7 +28,7 @@ export class ReceptionCalendarComponent {
   readonly error = signal(false);
   readonly calendarData = signal<ReceptionCalendarData | null>(null);
 
-  /** Currently visible date range for navigation. */
+  /** Currently visible date range for navigation (7-day view). */
   readonly viewStartDate = signal('');
   readonly viewEndDate = signal('');
 
@@ -78,11 +78,11 @@ export class ReceptionCalendarComponent {
 
   readonly totalDays = computed(() => this.calendarDays().length);
 
-  /** CSS grid-template-columns value for grid rows. */
+  /** CSS grid-template-columns value for grid rows (wider cells for 7 days). */
   readonly gridCols = computed(() => {
     const n = this.totalDays();
     if (n === 0) return '';
-    return `150px repeat(${n}, minmax(32px, 1fr))`;
+    return `140px repeat(${n}, minmax(60px, 1fr))`;
   });
 
   constructor() {
@@ -97,6 +97,16 @@ export class ReceptionCalendarComponent {
     }, { allowSignalWrites: true });
   }
 
+  /** Get the Monday of the current week. */
+  private _weekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    d.setDate(diff);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+
   /** Public method for retry button. */
   loadCalendar() {
     this._loadCalendar();
@@ -109,7 +119,13 @@ export class ReceptionCalendarComponent {
     this.loading.set(true);
     this.error.set(false);
 
-    this.api.getReceptionCalendar(propId).subscribe({
+    // 7-day view: current week (Monday to Sunday)
+    const today = new Date();
+    const start = this._weekStart(today);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
+    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
       next: (data) => {
         this.calendarData.set(data);
         this.today.set(data.today);
@@ -121,17 +137,21 @@ export class ReceptionCalendarComponent {
     });
   }
 
-  navigateWeeks(days: number) {
+  private _toIsoDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  navigateWeek(direction: -1 | 1) {
     const propId = this.propId();
     if (!propId) return;
 
     const start = new Date(this.viewStartDate() + 'T12:00:00');
-    start.setDate(start.getDate() + days);
+    start.setDate(start.getDate() + direction * 7);
     const end = new Date(start);
-    end.setDate(end.getDate() + 27);
+    end.setDate(end.getDate() + 6);
 
     this.loading.set(true);
-    this.api.getReceptionCalendar(propId, start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)).subscribe({
+    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
       next: (data) => {
         this.calendarData.set(data);
         this.viewStartDate.set(data.startDate);
@@ -142,18 +162,17 @@ export class ReceptionCalendarComponent {
     });
   }
 
-  goToday() {
+  goThisWeek() {
     const propId = this.propId();
     if (!propId) return;
 
     const today = new Date();
-    const start = new Date(today);
-    start.setDate(start.getDate() - 14);
-    const end = new Date(today);
-    end.setDate(end.getDate() + 14);
+    const start = this._weekStart(today);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
 
     this.loading.set(true);
-    this.api.getReceptionCalendar(propId, start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)).subscribe({
+    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
       next: (data) => {
         this.calendarData.set(data);
         this.viewStartDate.set(data.startDate);
@@ -244,11 +263,11 @@ export class ReceptionCalendarComponent {
     return time || '--:--';
   }
 
-  /** Total reservations across all room types. */
+  /** Total reservations across all rooms. */
   readonly totalReservations = computed(() => {
     const data = this.calendarData();
     if (!data) return 0;
-    return data.roomTypes.reduce((sum, rt) => sum + rt.reservations.length, 0);
+    return data.rooms.reduce((sum, rm) => sum + rm.reservations.length, 0);
   });
 
   // ─── Drag-and-Drop handlers ───
@@ -268,52 +287,6 @@ export class ReceptionCalendarComponent {
   onDragEnd() {
     this.dragBookingId.set(null);
     this.dragOverRoom.set(null);
-  }
-
-  onRowDragOver(r: ReceptionCalendarReservation, event: DragEvent) {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
-    }
-    this.dragOverRoom.set(r.roomNumber);
-  }
-
-  onRowDragLeave(r: ReceptionCalendarReservation) {
-    if (this.dragOverRoom() === r.roomNumber) {
-      this.dragOverRoom.set(null);
-    }
-  }
-
-  onRowDrop(targetReservation: ReceptionCalendarReservation, event: DragEvent) {
-    event.preventDefault();
-    this.dragOverRoom.set(null);
-
-    const sourceBookingId = this.dragBookingId();
-    if (!sourceBookingId) return;
-
-    // Find source reservation from calendar data
-    const source = this._findReservation(sourceBookingId);
-    if (!source) { this.dragBookingId.set(null); return; }
-
-    // Don't drop on same room
-    if (source.hotelRoomId && source.hotelRoomId === targetReservation.hotelRoomId) {
-      this.dragBookingId.set(null);
-      return;
-    }
-
-    const targetRoomId = targetReservation.hotelRoomId;
-    if (!targetRoomId || !source.hotelRoomId) {
-      this.dragBookingId.set(null);
-      return;
-    }
-
-    // Conflict detection: warn if target row has an active reservation
-    if (targetReservation.visualStatus === 'active' || targetReservation.visualStatus === 'upcoming') {
-      this.reassignConflict.set(targetReservation);
-      return;
-    }
-
-    this._executeReassign(source, targetRoomId, targetReservation.roomNumber);
   }
 
   confirmReassign() {
@@ -363,16 +336,16 @@ export class ReceptionCalendarComponent {
   private _findReservation(bookingId: string): ReceptionCalendarReservation | null {
     const data = this.calendarData();
     if (!data) return null;
-    for (const rt of data.roomTypes) {
-      for (const r of rt.reservations) {
+    for (const rm of data.rooms) {
+      for (const r of rm.reservations) {
         if (r.bookingId === bookingId) return r;
       }
     }
     return null;
   }
 
-  isDragOver(roomNumber: string): boolean {
-    return this.dragOverRoom() === roomNumber && this.dragBookingId() !== null;
+  isDragOverByRoomId(hotelRoomId: string): boolean {
+    return this.dragOverRoom() === hotelRoomId && this.dragBookingId() !== null;
   }
 
   isDragging(r: ReceptionCalendarReservation): boolean {
@@ -381,5 +354,51 @@ export class ReceptionCalendarComponent {
 
   canDrag(r: ReceptionCalendarReservation): boolean {
     return (r.visualStatus === 'upcoming' || r.visualStatus === 'active') && !!r.hotelRoomId;
+  }
+
+  /** Handle drop on any room (even empty) by hotel_room_id. */
+  onRowDropByRoomId(targetHotelRoomId: string, targetRoomNumber: string, event: DragEvent) {
+    event.preventDefault();
+    this.dragOverRoom.set(null);
+
+    const sourceBookingId = this.dragBookingId();
+    if (!sourceBookingId) return;
+
+    const source = this._findReservation(sourceBookingId);
+    if (!source) { this.dragBookingId.set(null); return; }
+
+    if (!source.hotelRoomId) {
+      this.dragBookingId.set(null);
+      return;
+    }
+
+    // Find target room in data
+    const data = this.calendarData();
+    const targetRoom = data?.rooms.find(rm => rm.hotelRoomId === targetHotelRoomId);
+    const hasActiveReservation = targetRoom?.reservations.some(
+      r => r.visualStatus === 'active' || r.visualStatus === 'upcoming'
+    );
+
+    if (hasActiveReservation) {
+      this.reassignConflict.set(targetRoom!.reservations[0]);
+      return;
+    }
+
+    this._executeReassign(source, targetHotelRoomId, targetRoomNumber);
+  }
+
+  /** Override: track dragOver by hotel_room_id too */
+  onRowDragOver(roomId: string, event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dragOverRoom.set(roomId);
+  }
+
+  onRowDragLeave(roomId: string) {
+    if (this.dragOverRoom() === roomId) {
+      this.dragOverRoom.set(null);
+    }
   }
 }

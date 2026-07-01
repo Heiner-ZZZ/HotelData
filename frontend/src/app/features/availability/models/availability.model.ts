@@ -20,6 +20,7 @@ export interface AvailabilityRoomType {
 
 export interface AvailabilityInventoryItem {
   date: string;
+  roomTypeId: string;
   roomTypeName: string;
   totalRooms: number;
   availableRooms: number;

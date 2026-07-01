@@ -1,355 +1,218 @@
-<!-- ═══ Reception Calendar — occupancy bars by room type ═══ -->
-<section class="reception-calendar">
-
-  <!-- ─── Loading ─── -->
+<section class="rc">
   @if (loading()) {
-    <div class="rc-skeleton">
-      <div class="sk-header">
-        <div class="sk-line sk-w-200"></div>
-        <div class="sk-line sk-w-120"></div>
-      </div>
-      @for (r of [1,2,3]; track r) {
-        <div class="sk-room-row">
-          <div class="sk-rt-label"><div class="sk-line sk-w-140"></div></div>
-          <div class="sk-bar-area">
-            <div class="sk-bar" style="width: 35%"></div>
-            <div class="sk-bar sk-bar-offset" style="width: 25%"></div>
-          </div>
-        </div>
-      }
+    <div class="rc-loading">
+      <span class="material-symbols-outlined rc-spin">progress_activity</span>
+      <span>Cargando calendario…</span>
     </div>
-  }
-
-  <!-- ─── Error ─── -->
-  @if (error() && !loading()) {
+  } @else if (error()) {
     <div class="rc-error">
       <span class="material-symbols-outlined">error_outline</span>
-      <span>No se pudieron cargar las reservas. Intenta de nuevo.</span>
-      <button type="button" class="rc-retry-btn" (click)="loadCalendar()">
-        <span class="material-symbols-outlined">refresh</span>
-        Reintentar
-      </button>
+      <span>No se pudieron cargar las reservas.</span>
+      <button type="button" class="rc-retry" (click)="loadCalendar()">Reintentar</button>
     </div>
-  }
-
-  <!-- ─── Calendar content ─── -->
-  @if (!loading() && !error() && calendarData(); as data) {
-    @if (data.roomTypes.length === 0) {
+  } @else if (calendarData(); as data) {
+    @if (data.rooms.length === 0) {
       <app-empty-state
         icon="event_available"
-        title="Sin reservas en este período"
-        description="No se encontraron reservas para el rango de fechas seleccionado."
+        title="Sin reservas esta semana"
+        description="No hay reservas para el periodo seleccionado."
       />
     } @else {
-
-      <!-- Navigation controls -->
+      <!-- Navigation -->
       <div class="rc-nav">
-        <button type="button" class="rc-nav-btn" (click)="navigateWeeks(-14)" title="4 semanas atrás">
+        <button type="button" class="rc-nav-btn" (click)="navigateWeek(-1)">
           <span class="material-symbols-outlined">chevron_left</span>
         </button>
-        <button type="button" class="rc-nav-btn rc-today-btn" (click)="goToday()" title="Ir a hoy">
+        <button type="button" class="rc-nav-btn rc-nav-today" (click)="goThisWeek()">
           <span class="material-symbols-outlined">today</span>
-          Hoy
+          Esta semana
         </button>
-        <button type="button" class="rc-nav-btn" (click)="navigateWeeks(14)" title="4 semanas adelante">
+        <button type="button" class="rc-nav-btn" (click)="navigateWeek(1)">
           <span class="material-symbols-outlined">chevron_right</span>
         </button>
 
-        <!-- Drag-and-drop status toast -->
-        @if (reassigning()) {
-          <div class="rc-toast rc-toast-info">
-            <span class="material-symbols-outlined rc-toast-icon">progress_activity</span>
-            <span>Reasignando habitación…</span>
-          </div>
-        }
+        <span class="rc-nav-range">{{ viewStartDate() }} — {{ viewEndDate() }}</span>
+
+        <div class="rc-spacer"></div>
+
         @if (reassignSuccess(); as msg) {
-          <div class="rc-toast rc-toast-success">
-            <span class="material-symbols-outlined rc-toast-icon">check_circle</span>
-            <span>{{ msg }}</span>
-          </div>
+          <span class="rc-toast rc-toast-success">{{ msg }}</span>
         }
         @if (reassignError(); as msg) {
-          <div class="rc-toast rc-toast-error">
-            <span class="material-symbols-outlined rc-toast-icon">error</span>
-            <span>{{ msg }}</span>
-          </div>
+          <span class="rc-toast rc-toast-error">{{ msg }}</span>
         }
 
-        <!-- Legend -->
         <div class="rc-legend">
-          <span class="rc-legend-item">
-            <span class="rc-legend-swatch swatch-active"></span>
-            Vigente
-          </span>
-          <span class="rc-legend-item">
-            <span class="rc-legend-swatch swatch-upcoming"></span>
-            Próxima
-          </span>
-          <span class="rc-legend-item">
-            <span class="rc-legend-swatch swatch-past"></span>
-            Finalizada
-          </span>
+          <span class="rc-legend-item"><span class="rc-dot rc-dot-active"></span>Vigente</span>
+          <span class="rc-legend-item"><span class="rc-dot rc-dot-upcoming"></span>Próxima</span>
+          <span class="rc-legend-item"><span class="rc-dot rc-dot-past"></span>Finalizada</span>
         </div>
-      </div>        @if (dragBookingId(); as bid) {
-          <div class="rc-drag-hint">
-            <span class="material-symbols-outlined">drag_indicator</span>
-            Arrastrando reserva — suéltalo sobre otra habitación para reasignar
-          </div>
-        }
+      </div>
 
-        <!-- Calendar grid — div-based for CSS Grid bar spanning -->
-        <div class="rc-grid-wrap">
-        <!-- Day header row -->
-        <div class="rc-day-header-row" [style.grid-template-columns]="gridCols()">
-          <div class="rc-room-label-cell">Tipo · Habitación</div>
+      @if (dragBookingId()) {
+        <div class="rc-drag-hint">
+          <span class="material-symbols-outlined">drag_indicator</span>
+          Arrastra sobre otra habitación para reasignar
+        </div>
+      }
+
+      <!-- Calendar Grid -->
+      <div class="rc-grid">
+        <!-- Header -->
+        <div class="rc-header" [style.grid-template-columns]="gridCols()">
+          <div class="rc-cell rc-cell-label">Puerta</div>
           @for (day of calendarDays(); track day.date) {
-            <div class="rc-day-cell"
-                 [class.rc-day-today]="day.isToday"
-                 [class.rc-day-weekend]="day.isWeekend">
+            <div class="rc-cell rc-cell-day"
+                 [class.rc-cell-today]="day.isToday"
+                 [class.rc-cell-weekend]="day.isWeekend">
               <span class="rc-day-name">{{ day.dayName }}</span>
               <span class="rc-day-num">{{ day.day }}</span>
             </div>
           }
         </div>
 
-        <!-- One section per room type -->
-        @for (rt of data.roomTypes; track rt.roomTypeId) {
-          <!-- Room type label -->
-          <div class="rc-rt-label-row" [style.grid-template-columns]="gridCols()">
-            <div class="rc-rt-label-inner" [style.grid-column]="'1 / ' + (totalDays() + 2)">
-              <span class="material-symbols-outlined rc-rt-icon">hotel</span>
-              <span class="rc-rt-name">{{ rt.roomTypeName }}</span>
-              <span class="rc-rt-count">{{ rt.reservations.length }} reserva(s)</span>
+        <!-- Individual room rows -->
+        @for (rm of data.rooms; track rm.hotelRoomId) {
+          <div class="rc-row"
+               [style.grid-template-columns]="gridCols()"
+               [class.rc-row-drag-over]="isDragOverByRoomId(rm.hotelRoomId)"
+               [class.rc-row-drag-src]="rm.reservations.some(r => isDragging(r))"
+               (dragover)="onRowDragOver(rm.hotelRoomId, $event)"
+               (dragleave)="onRowDragLeave(rm.hotelRoomId)"
+               (drop)="onRowDropByRoomId(rm.hotelRoomId, rm.roomNumber, $event)">
+            <div class="rc-cell rc-cell-label">
+              <span class="rc-room-num">{{ rm.roomNumber }}</span>
+              <span class="rc-room-type">{{ rm.roomTypeName }}</span>
             </div>
-          </div>
 
-          <!-- Reservations for this room type -->
-          @for (r of rt.reservations; track r.bookingId) {
-            <div class="rc-res-row"
-                 [style.grid-template-columns]="gridCols()"
-                 [class.rc-drag-over]="isDragOver(r.roomNumber)"
-                 [class.rc-drag-source]="isDragging(r)"
-                 (dragover)="onRowDragOver(r, $event)"
-                 (dragleave)="onRowDragLeave(r)"
-                 (drop)="onRowDrop(r, $event)">
-              <div class="rc-room-label-cell">
-                <span class="rc-room-number">{{ r.roomNumber || '--' }}</span>
-                <span class="rc-room-type-sm">{{ rt.roomTypeName }}</span>
+            @for (day of calendarDays(); track day.date) {
+              <div class="rc-cell rc-cell-bg"
+                   [class.rc-cell-today]="day.isToday"
+                   [class.rc-cell-weekend]="day.isWeekend"
+                   [class.rc-cell-occupied]="rm.reservations.length > 0">
               </div>
+            }
 
-              <!-- Day grid cells (background) -->
-              @for (day of calendarDays(); track day.date) {
-                <div class="rc-day-bg-cell"
-                     [class.rc-day-today]="day.isToday"
-                     [class.rc-day-weekend]="day.isWeekend">
+            @if (rm.reservations.length > 0) {
+              @for (r of rm.reservations; track r.bookingId) {
+                <div class="rc-bar"
+                     [class]="barColorClass(r.visualStatus)"
+                     [class.rc-bar-drag]="canDrag(r)"
+                     [class.rc-bar-dragging]="isDragging(r)"
+                     [ngStyle]="barGridStyle(r)"
+                     [title]="barTooltip(r)"
+                     [attr.draggable]="canDrag(r) ? 'true' : null"
+                     (dragstart)="onDragStart(r, $event)"
+                     (dragend)="onDragEnd()"
+                     (click)="openDetail(r, $event)">
+                  <span class="rc-bar-name">{{ r.guestName }}</span>
+                  <span class="rc-bar-times">{{ r.checkInTime || '--:--' }} → {{ r.checkOutTime || '--:--' }}</span>
                 </div>
               }
-
-              <!-- Bar spanning across cells (absolute positioned within the row) -->
-              <div class="rc-bar"
-                   [class]="barColorClass(r.visualStatus)"
-                   [class.rc-bar-draggable]="canDrag(r)"
-                   [class.rc-bar-dragging]="isDragging(r)"
-                   [ngStyle]="barGridStyle(r)"
-                   [title]="barTooltip(r)"
-                   [attr.draggable]="canDrag(r) ? 'true' : null"
-                   (dragstart)="onDragStart(r, $event)"
-                   (dragend)="onDragEnd()"
-                   (click)="openDetail(r, $event)">
-                @if (canDrag(r)) {
-                  <span class="rc-drag-handle material-symbols-outlined" title="Arrastrar para reasignar">drag_indicator</span>
-                }
-                <div class="rc-bar-inner">
-                  <span class="rc-bar-guest">{{ r.guestName }}</span>
-                  <div class="rc-bar-meta">
-                    <span class="rc-meta-item" title="Huéspedes">
-                      <span class="material-symbols-outlined rc-meta-icon">person</span>
-                      {{ r.adults + r.children }}
-                    </span>
-                    <span class="rc-meta-item" title="Días">
-                      <span class="material-symbols-outlined rc-meta-icon">wb_sunny</span>
-                      {{ r.totalNights + 1 }}
-                    </span>
-                    <span class="rc-meta-item" title="Noches">
-                      <span class="material-symbols-outlined rc-meta-icon">nights_stay</span>
-                      {{ r.totalNights }}
-                    </span>
-                    @if (r.checkInTime) {
-                      <span class="rc-meta-item rc-time-item" title="Check-in">
-                        <span class="material-symbols-outlined rc-meta-icon">login</span>
-                        {{ formatTime(r.checkInTime) }}
-                      </span>
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
+            }
+          </div>
         }
       </div>
 
       <!-- Summary -->
       <div class="rc-summary">
-        <span class="rc-summary-item">
-          <span class="material-symbols-outlined rc-summary-icon">hotel</span>
-          {{ data.roomTypes.length }} tipo(s) de habitación
-        </span>
-        <span class="rc-summary-divider"></span>
-        <span class="rc-summary-item">
-          <span class="material-symbols-outlined rc-summary-icon">group</span>
-          {{ totalReservations() }} reserva(s)
-        </span>
+        <span>{{ data.rooms.length }} habitación(es) · {{ totalReservations() }} reserva(s)</span>
       </div>
     }
   }
 
-  <!-- ─── Detail modal ─── -->
+  <!-- Detail Modal -->
   @if (selectedReservation(); as r) {
-    <div class="rc-modal-backdrop" (click)="closeDetail()">
-      <article class="rc-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="rc-backdrop" (click)="closeDetail()">
+      <div class="rc-modal" role="dialog" (click)="$event.stopPropagation()">
         <div class="rc-modal-head">
-          <div class="rc-modal-head-info">
-            <span class="rc-modal-status" [class]="'status-badge status-' + r.visualStatus">
-              {{ statusLabel(r.visualStatus) }}
-            </span>
-            <h2>{{ r.guestName }}</h2>
-            <p class="rc-modal-subtitle">
-              Reserva <code>{{ r.bookingId }}</code>
-            </p>
+          <div>
+            <span class="rc-badge rc-badge-{{ r.visualStatus }}">{{ statusLabel(r.visualStatus) }}</span>
+            <h3>{{ r.guestName }}</h3>
+            <span class="rc-modal-id">{{ r.bookingId }}</span>
           </div>
-          <button type="button" class="rc-modal-close" (click)="closeDetail()" title="Cerrar">
+          <button type="button" class="rc-modal-close" (click)="closeDetail()">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
-
         <div class="rc-modal-body">
           @if (detailLoading()) {
-            <div class="rc-modal-loading">
+            <div class="rc-loading-inline">
               <span class="material-symbols-outlined rc-spin">progress_activity</span>
-              <span>Cargando detalle…</span>
+              <span>Cargando…</span>
             </div>
           } @else {
             <div class="rc-detail-grid">
-              <div class="rc-detail-item">
-                <span class="material-symbols-outlined rc-detail-icon">calendar_today</span>
-                <div>
-                  <span class="rc-detail-label">Check-in</span>
-                  <span class="rc-detail-value">{{ r.checkInDate }} {{ formatTime(r.checkInTime) }}</span>
-                </div>
+              <div>
+                <span class="rc-detail-label">Check-in</span>
+                <span class="rc-detail-value">{{ r.checkInDate }} {{ formatTime(r.checkInTime) }}</span>
               </div>
-              <div class="rc-detail-item">
-                <span class="material-symbols-outlined rc-detail-icon">event_busy</span>
-                <div>
-                  <span class="rc-detail-label">Check-out</span>
-                  <span class="rc-detail-value">{{ r.checkOutDate }} {{ formatTime(r.checkOutTime) }}</span>
-                </div>
+              <div>
+                <span class="rc-detail-label">Check-out</span>
+                <span class="rc-detail-value">{{ r.checkOutDate }} {{ formatTime(r.checkOutTime) }}</span>
               </div>
-              <div class="rc-detail-item">
-                <span class="material-symbols-outlined rc-detail-icon">person</span>
-                <div>
-                  <span class="rc-detail-label">Huéspedes</span>
-                  <span class="rc-detail-value">{{ r.adults }} adulto(s) + {{ r.children }} niño(s)</span>
-                </div>
+              <div>
+                <span class="rc-detail-label">Huéspedes</span>
+                <span class="rc-detail-value">{{ r.adults }} adulto(s) + {{ r.children }} niño(s)</span>
               </div>
-              <div class="rc-detail-item">
-                <span class="material-symbols-outlined rc-detail-icon">nights_stay</span>
-                <div>
-                  <span class="rc-detail-label">Noches</span>
-                  <span class="rc-detail-value">{{ r.totalNights }}</span>
-                </div>
+              <div>
+                <span class="rc-detail-label">Noches</span>
+                <span class="rc-detail-value">{{ r.totalNights }}</span>
               </div>
-              <div class="rc-detail-item">
-                <span class="material-symbols-outlined rc-detail-icon">door_front</span>
-                <div>
-                  <span class="rc-detail-label">Habitación</span>
-                  <span class="rc-detail-value">{{ r.roomNumber || 'Sin asignar' }}</span>
-                </div>
+              <div>
+                <span class="rc-detail-label">Habitación</span>
+                <span class="rc-detail-value">{{ r.roomNumber || 'Sin asignar' }}</span>
               </div>
               @if (r.totalPrice != null) {
-                <div class="rc-detail-item">
-                  <span class="material-symbols-outlined rc-detail-icon">payments</span>
-                  <div>
-                    <span class="rc-detail-label">Total</span>
-                    <span class="rc-detail-value">{{ r.totalPrice | number:'1.2-2' }} {{ r.currency }}</span>
-                  </div>
+                <div>
+                  <span class="rc-detail-label">Total</span>
+                  <span class="rc-detail-value">{{ r.totalPrice | number:'1.2-2' }} {{ r.currency }}</span>
                 </div>
               }
             </div>
-
             @if (detailData(); as d) {
               @if (d.hotel) {
-                <div class="rc-detail-extra">
-                  <span class="material-symbols-outlined rc-detail-icon">hotel</span>
-                  <div>
-                    <span class="rc-detail-label">Hotel</span>
-                    <span class="rc-detail-value">{{ d.hotel.hotel_label }}</span>
-                  </div>
-                </div>
-              }
-              @if (d.guest?.guest_email) {
-                <div class="rc-detail-extra">
-                  <span class="material-symbols-outlined rc-detail-icon">email</span>
-                  <div>
-                    <span class="rc-detail-label">Email</span>
-                    <span class="rc-detail-value">{{ d.guest.guest_email }}</span>
-                  </div>
-                </div>
-              }
-              @if (d.guest?.guest_phone) {
-                <div class="rc-detail-extra">
-                  <span class="material-symbols-outlined rc-detail-icon">phone</span>
-                  <div>
-                    <span class="rc-detail-label">Teléfono</span>
-                    <span class="rc-detail-value">{{ d.guest.guest_phone }}</span>
-                  </div>
+                <div class="rc-detail-row">
+                  <span class="rc-detail-label">Hotel</span>
+                  <span class="rc-detail-value">{{ d.hotel.hotel_label }}</span>
                 </div>
               }
             }
-
             <div class="rc-modal-actions">
-              <a [routerLink]="['/management/recepcion', r.bookingId]" class="rc-btn rc-btn-primary">
-                <span class="material-symbols-outlined">open_in_new</span>
-                Ver detalle completo
+              <a [routerLink]="['/management/check-ins', r.bookingId]" class="rc-btn rc-btn-primary">
+                <span class="material-symbols-outlined">login</span>
+                Ir a Check-In
               </a>
-              <button type="button" class="rc-btn rc-btn-secondary" (click)="closeDetail()">
-                Cerrar
-              </button>
+              <a [routerLink]="['/management/check-outs', r.bookingId]" class="rc-btn rc-btn-secondary">
+                <span class="material-symbols-outlined">logout</span>
+                Ir a Check-Out
+              </a>
+              <button type="button" class="rc-btn rc-btn-secondary" (click)="closeDetail()">Cerrar</button>
             </div>
           }
         </div>
-      </article>
+      </div>
     </div>
   }
-  <!-- ─── Conflict confirmation modal ─── -->
+
+  <!-- Conflict Modal -->
   @if (reassignConflict(); as conflict) {
-    <div class="rc-modal-backdrop" (click)="cancelReassign()">
-      <article class="rc-modal rc-modal-conflict" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="rc-backdrop" (click)="cancelReassign()">
+      <div class="rc-modal" role="dialog" (click)="$event.stopPropagation()">
         <div class="rc-modal-head">
-          <div class="rc-modal-head-info">
-            <span class="rc-modal-status status-upcoming">Conflicto de habitación</span>
-            <h2>Esta habitación ya tiene una reserva</h2>
-          </div>
-          <button type="button" class="rc-modal-close" (click)="cancelReassign()" title="Cerrar">
+          <h3>Habitación ocupada</h3>
+          <button type="button" class="rc-modal-close" (click)="cancelReassign()">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
         <div class="rc-modal-body">
-          <p style="margin:0;color:var(--muted-text);font-size:0.88rem;line-height:1.5;">
-            La habitación <strong>{{ conflict.roomNumber }}</strong> tiene una reserva de
-            <strong>{{ conflict.guestName }}</strong> ({{ conflict.visualStatus === 'active' ? 'vigente' : 'próxima' }}).
-            ¿Deseas reasignar de todas formas?
-          </p>
+          <p>La habitación <strong>{{ conflict.roomNumber }}</strong> ya tiene una reserva de <strong>{{ conflict.guestName }}</strong>. ¿Reasignar de todas formas?</p>
           <div class="rc-modal-actions">
-            <button type="button" class="rc-btn rc-btn-secondary" (click)="cancelReassign()">
-              Cancelar
-            </button>
-            <button type="button" class="rc-btn rc-btn-primary" (click)="confirmReassign()">
-              <span class="material-symbols-outlined">swap_horiz</span>
-              Reasignar de todas formas
-            </button>
+            <button type="button" class="rc-btn rc-btn-secondary" (click)="cancelReassign()">Cancelar</button>
+            <button type="button" class="rc-btn rc-btn-primary" (click)="confirmReassign()">Reasignar</button>
           </div>
         </div>
-      </article>
+      </div>
     </div>
   }
 </section>

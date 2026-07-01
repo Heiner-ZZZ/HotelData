@@ -60,7 +60,6 @@ const _roomNumbersByType = (rooms: HotelRoomInfo[]) => {
       return !isNaN(na) && !isNaN(nb) ? na - nb : a.localeCompare(b);
     });
   }
-  console.log('[roomNumbersByType] map keys:', [...map.keys()], 'rooms count:', rooms.length);
   return map;
 };
 
