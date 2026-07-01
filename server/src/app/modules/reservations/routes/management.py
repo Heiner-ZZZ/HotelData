@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
 from pymongo import ASCENDING
 
@@ -18,6 +18,8 @@ from src.app.modules.reservations.service import (
 )
 from src.app.modules.reservations.service._helpers import utc_now
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
+from src.app.modules.housekeeping.schemas import AdditionalChargeCreate
+from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -228,9 +230,74 @@ def check_out_complete_api(
             discount=float(payload.get("check_out_discount", 0) or 0),
             discount_reason=str(payload.get("check_out_discount_reason", "") or ""),
             damages_found=bool(payload.get("check_out_damages_found", False)),
+            keys_returned=bool(payload.get("check_out_keys_returned", False)),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# POS — Add charges during active stay
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@management_api_router.post("/bookings/{booking_id}/pos-charge", status_code=201)
+def booking_pos_charge_api(
+    booking_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """POS: add a charge to an actively checked-in booking during the stay.
+
+    Validates that the booking is currently checked in before posting the charge.
+    The charge is auto-posted to the guest's folio.
+
+    Payload:
+    {
+      "concept": "Minibar",
+      "amount": 15.00,
+      "quantity": 1,
+      "category": "minibar",  // optional, auto-inferred
+      "note": "Coca-Cola, agua, cerveza"
+    }
+    """
+    db = get_database()
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "stay_status": 1, "prop_id": 1, "guest_name": 1, "status": 1},
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+    if booking.get("stay_status") != "checked_in":
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se pueden agregar cargos POS a una reserva en estado '{booking.get('stay_status', 'desconocido')}'. "
+                   f"Solo reservas con check-in activo (estancia en curso) pueden recibir cargos."
+        )
+
+    concept = str(payload.get("concept", "")).strip()
+    amount = float(payload.get("amount", 0) or 0)
+    if not concept or amount <= 0:
+        raise HTTPException(status_code=400, detail="'concept' y 'amount' (>0) son requeridos")
+
+    charge = AdditionalChargeCreate(
+        booking_id=booking_id,
+        prop_id=int(booking["prop_id"]),
+        concept=concept,
+        amount=amount,
+        quantity=int(payload.get("quantity", 1)),
+        category=str(payload.get("category", "")),
+        note=str(payload.get("note", "")),
+    )
+    result = create_additional_charge(charge)
+    if result is None:
+        raise HTTPException(status_code=400, detail="No se pudo crear el cargo")
+
+    _logger.info(
+        "POS charge added to booking %s (guest: %s): $%.2f — %s",
+        booking_id, booking.get("guest_name", ""), amount, concept,
+    )
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────────

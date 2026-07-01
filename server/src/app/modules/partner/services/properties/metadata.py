@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.modules.partner.services._common import clean_text, hotel_display_name, now_utc
+from src.app.modules.partner.services._common import _resolve_country_label, _resolve_country_name, clean_text, hotel_display_name, now_utc
 from src.database.connection import get_database
 
 
@@ -63,8 +63,7 @@ def profile_payload(hotel: dict[str, Any]) -> dict[str, Any]:
         "prop_id": prop_id,
         "hotel_name": clean_text(hotel.get("hotel_name")) or hotel_display_name(hotel, prop_id),
         "display_name": hotel_display_name(hotel, prop_id),
-        "display_country_label": hotel.get("display_country_label")
-        or (f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else ""),
+        "display_country_label": _resolve_country_label(hotel),
         "original_generated_name": hotel_generated_name(hotel, prop_id),
         "manual_override": bool(hotel.get("manual_override", False)),
         "name_source": hotel.get("name_source") or "generated_from_id",
