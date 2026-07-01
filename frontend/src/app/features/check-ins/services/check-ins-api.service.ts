@@ -81,7 +81,7 @@ export class CheckInsApiService {
       `${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/complete`,
       payload,
       { withCredentials: true }
-    );
+    ).pipe(catchAuthError());
   }
 }
 

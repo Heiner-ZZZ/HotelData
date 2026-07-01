@@ -353,25 +353,210 @@
           }
         }
 
-        <!-- ══════ COMPLETED STATE ══════ -->
+        <!-- ══════ COMPLETED STATE — VISTA DETALLADA ══════ -->
         @if (checkoutDone()) {
-          <div class="co-completed">
-            <div class="co-completed-icon"><span class="material-symbols-outlined">check_circle</span></div>
-            <h2>Check-out completado</h2>
-            <div class="co-completed-details">
-              <div class="co-completed-row"><span>Folio</span><span>{{ vm.folio || '—' }}</span></div>
-              <div class="co-completed-row"><span>Huésped</span><span>{{ vm.guest_name }}</span></div>
-              <div class="co-completed-row"><span>Habitación</span><span>{{ roomLabel(vm.assigned_rooms[0]) }}</span></div>
-              @if (vm.check_out_by) { <div class="co-completed-row"><span>Atendido por</span><span>{{ vm.check_out_by }}</span></div> }
-              @if (vm.check_out_time_actual) { <div class="co-completed-row"><span>Hora de salida</span><span>{{ vm.check_out_time_actual }} hrs</span></div> }
-              <div class="co-completed-row"><span>Total</span><span>{{ grandTotal() | currency:currency() }}</span></div>
-              <div class="co-completed-row"><span>Pagado</span><span>{{ balanceDue() <= 0 ? 'Sí' : (totalPaid() | currency:currency()) }}</span></div>
+          <div class="co-checked-out-banner">
+            <span class="material-symbols-outlined">check_circle</span>
+            Check-out completado — Folio {{ vm.folio }}
+          </div>
+
+          <div class="co-grid">
+            <div class="co-col-main">
+              <!-- Guest Info -->
+              <div class="co-card">
+                <div class="co-card-head"><h2><span class="material-symbols-outlined">person</span> Huésped</h2></div>
+                <div class="co-stay-summary">
+                  <div class="co-stay-row">
+                    <span class="co-stay-label">Nombre</span>
+                    <span class="co-stay-val">{{ vm.guest_name }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label">Documento</span>
+                    <span class="co-stay-val">{{ vm.cedula || '—' }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label">Email</span>
+                    <span class="co-stay-val">{{ vm.guest_email }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label">Teléfono</span>
+                    <span class="co-stay-val">{{ vm.guest_phone || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stay Details -->
+              <div class="co-card">
+                <div class="co-card-head"><h2><span class="material-symbols-outlined">meeting_room</span> Estancia</h2></div>
+                <div class="co-stay-summary">
+                  <div class="co-stay-row">
+                    <span class="co-stay-label"><span class="material-symbols-outlined">meeting_room</span> Habitación</span>
+                    <span class="co-stay-val">
+                      @for (r of vm.assigned_rooms; track r.hotel_room_id; let last = $last) {
+                        {{ roomLabel(r) }}@if (!last) {, }
+                      }
+                    </span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label"><span class="material-symbols-outlined">bed</span> Tipo</span>
+                    <span class="co-stay-val">{{ vm.room_type_name }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label"><span class="material-symbols-outlined">calendar_today</span> Check-In</span>
+                    <span class="co-stay-val">{{ vm.check_in_date }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label"><span class="material-symbols-outlined">calendar_today</span> Check-Out</span>
+                    <span class="co-stay-val">{{ vm.check_out_date }}</span>
+                  </div>
+                  <div class="co-stay-row">
+                    <span class="co-stay-label"><span class="material-symbols-outlined">night_stay</span> Noches</span>
+                    <span class="co-stay-val">{{ vm.total_nights }}</span>
+                  </div>
+                  @if (vm.check_out_time_actual) {
+                    <div class="co-stay-row">
+                      <span class="co-stay-label"><span class="material-symbols-outlined">schedule</span> Hora salida</span>
+                      <span class="co-stay-val">{{ vm.check_out_time_actual }} hrs</span>
+                    </div>
+                  }
+                  @if (vm.check_out_by) {
+                    <div class="co-stay-row">
+                      <span class="co-stay-label"><span class="material-symbols-outlined">badge</span> Atendió</span>
+                      <span class="co-stay-val">{{ vm.check_out_by }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Charges Breakdown -->
+              @if (vm.charges.length > 0) {
+                <div class="co-card">
+                  <div class="co-card-head"><h2><span class="material-symbols-outlined">receipt_long</span> Cargos adicionales</h2></div>
+                  <div class="co-table-wrap">
+                    <table class="co-table">
+                      <thead>
+                        <tr><th>Concepto</th><th>Categoría</th><th class="cell-right">Monto</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (charge of vm.charges; track charge.concept + charge.created_at) {
+                          <tr class="co-table-row">
+                            <td>
+                              <span class="co-item-name">{{ charge.concept }}</span>
+                              @if (charge.note) { <span class="co-item-note">{{ charge.note }}</span> }
+                            </td>
+                            <td>
+                              <span class="material-symbols-outlined co-liq-icon">{{ categoryIcon(charge.category) }}</span>
+                              {{ categoryLabel(charge.category) }}
+                            </td>
+                            <td class="cell-right cell-amount">{{ charge.total | currency:currency() }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              <!-- Observations -->
+              @if (vm.check_out_observations) {
+                <div class="co-card">
+                  <div class="co-card-head"><h2><span class="material-symbols-outlined">edit_note</span> Observaciones</h2></div>
+                  <p style="margin:0;font-size:13px;color:var(--text-secondary,#374151);white-space:pre-wrap">{{ vm.check_out_observations }}</p>
+                </div>
+              }
             </div>
-            <div class="co-completed-actions">
-              <a routerLink="/management/check-outs" class="co-btn-outline">Volver a check-outs</a>
-              <button class="co-inv-btn co-inv-primary" (click)="successMessage.set('Factura emitida correctamente')">
-                <span class="material-symbols-outlined">receipt</span> Emitir Factura
-              </button>
+
+            <div class="co-col-side">
+              <!-- Financial Summary -->
+              <div class="co-card">
+                <div class="co-card-head"><h2><span class="material-symbols-outlined">account_balance</span> Liquidación</h2></div>
+                <div class="co-summary-rows">
+                  <div class="co-summary-row">
+                    <span>Alojamiento</span>
+                    <span class="co-summary-val">{{ roomTotal() | currency:currency() }}</span>
+                  </div>
+                  @if (chargesTotal() > 0) {
+                    <div class="co-summary-row">
+                      <span>Extras</span>
+                      <span class="co-summary-val">+ {{ chargesTotal() | currency:currency() }}</span>
+                    </div>
+                  }
+                  @if (lateFee() > 0) {
+                    <div class="co-summary-row">
+                      <span>Late Checkout</span>
+                      <span class="co-summary-val">+ {{ lateFee() | currency:currency() }}</span>
+                    </div>
+                  }
+                  @if (discountVal() > 0) {
+                    <div class="co-summary-row">
+                      <span>Descuento{{ discountReason() ? ': ' + discountReason() : '' }}</span>
+                      <span class="co-summary-val">− {{ discountVal() | currency:currency() }}</span>
+                    </div>
+                  }
+                  <div class="co-summary-divider"></div>
+                  <div class="co-summary-row co-summary-grand">
+                    <span>TOTAL</span>
+                    <span class="co-summary-val co-val-grand">{{ grandTotal() | currency:currency() }}</span>
+                  </div>
+                  @if (hasExistingPayments()) {
+                    <div class="co-summary-row">
+                      <span>Pagado</span>
+                      <span class="co-summary-val">− {{ totalPaid() | currency:currency() }}</span>
+                    </div>
+                    <div class="co-summary-divider"></div>
+                    <div class="co-balance-box">
+                      <span class="co-balance-label">SALDO</span>
+                      <span class="co-balance-val" [style.color]="balanceDue() <= 0 ? '#065f46' : '#ba1a1a'">
+                        {{ balanceDue() <= 0 ? 'CANCELADO' : (balanceDue() | currency:currency()) }}
+                      </span>
+                    </div>
+                  } @else {
+                    <div class="co-summary-row co-summary-deposit">
+                      @if (depositDeducted() > 0) {
+                        <span>Depósito aplicado</span>
+                        <span class="co-summary-val">− {{ depositDeducted() | currency:currency() }}</span>
+                      }
+                    </div>
+                    <div class="co-balance-box">
+                      <span class="co-balance-label">SALDO</span>
+                      <span class="co-balance-val" [style.color]="balanceDue() <= 0 ? '#065f46' : '#ba1a1a'">
+                        {{ balanceDue() <= 0 ? 'CANCELADO' : (balanceDue() | currency:currency()) }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Payment Method -->
+              <div class="co-card">
+                <div class="co-card-head"><h2><span class="material-symbols-outlined">payments</span> Pago</h2></div>
+                <div class="co-stay-summary">
+                  <div class="co-stay-row">
+                    <span class="co-stay-label">Método</span>
+                    <span class="co-stay-val">
+                      @switch (vm.check_out_payment_method) {
+                        @case ('credit_card') { Tarjeta Crédito / Débito }
+                        @case ('cash') { Efectivo (Caja Principal) }
+                        @case ('transfer') { Transferencia Bancaria }
+                        @case ('mixed') { Pago Mixto }
+                        @default { {{ vm.check_out_payment_method || '—' }} }
+                      }
+                    </span>
+                  </div>
+                  @if (vm.check_out_payment_ref) {
+                    <div class="co-stay-row">
+                      <span class="co-stay-label">Referencia</span>
+                      <span class="co-stay-val co-ref">{{ vm.check_out_payment_ref }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <a routerLink="/management/check-outs" class="co-cta" style="text-decoration:none">
+                <span class="material-symbols-outlined">arrow_back</span>
+                Volver a check-outs
+              </a>
             </div>
           </div>
         }

@@ -293,8 +293,8 @@ export class CheckOutDetailPageComponent {
     });
   }
 
-  roomLabel(r: CheckOutDetailDto['assigned_rooms'][number]): string {
-    return r.room_label || r.room_number || r.hotel_room_id;
+  roomLabel(r: CheckOutDetailDto['assigned_rooms'][number] | undefined): string {
+    return r?.room_label || r?.room_number || r?.hotel_room_id || '—';
   }
 
   nightsArray(n: number): number[] {

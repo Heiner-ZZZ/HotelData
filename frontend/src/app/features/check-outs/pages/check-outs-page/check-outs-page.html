@@ -268,7 +268,7 @@
                       <td class="cell-notes">{{ item.notes || '--' }}</td>
                       <td class="cell-action">
                         @if (item.canComplete) {
-                          <button type="button" class="btn-icon-only" (click)="openConsumptionModal(item)" aria-label="Completar check-out">
+                          <button type="button" class="btn-icon-only" (click)="openConsumptionModal(item)" aria-label="Completar check-out" title="Completar check-out">
                             <span class="material-symbols-outlined">logout</span>
                           </button>
                         }
@@ -277,6 +277,9 @@
                             <span class="material-symbols-outlined">rate_review</span>
                           </button>
                         }
+                        <a [routerLink]="['/management/check-outs', item.bookingId]" class="btn-icon-only" aria-label="Ver detalle" title="Ver detalle de check-out">
+                          <span class="material-symbols-outlined">open_in_new</span>
+                        </a>
                       </td>
                     </tr>
                   }
