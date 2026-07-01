@@ -20,16 +20,18 @@ export interface ReceptionCalendarReservation {
   currency: string;
 }
 
-/** Room type grouping in the reception calendar. */
-export interface ReceptionCalendarRoomType {
-  roomTypeId: string;
+/** A single physical room in the reception calendar. */
+export interface ReceptionCalendarRoom {
+  roomNumber: string;
+  hotelRoomId: string;
   roomTypeName: string;
+  roomTypeId: string;
   reservations: ReceptionCalendarReservation[];
 }
 
-/** Full reception calendar response. */
+/** Full reception calendar response — one row per physical room. */
 export interface ReceptionCalendarData {
-  roomTypes: ReceptionCalendarRoomType[];
+  rooms: ReceptionCalendarRoom[];
   startDate: string;
   endDate: string;
   today: string;

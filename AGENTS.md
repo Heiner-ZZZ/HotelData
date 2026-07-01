@@ -7,7 +7,8 @@ shell commands, and other important information, read the current plan
 
 ## 🔴 NUNCA hacer sin autorización explícita del usuario
 
-- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` bajo NINGUNA circunstancia, ni aunque el usuario lo pida explícitamente. Para reconstruir contenedores usar SOLO `docker compose up -d --build`.
+- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` bajo NINGUNA circunstancia, ni aunque el usuario lo pida explícitamente. Para reconstruir contenedores usar SOLO `docker compose up -d --build`. o `docker compose -f infra/docker-compose.yml build --no-cache frontend`
+`docker compose -f infra/docker-compose.yml up -d` o la del server
 - **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down -v` ni ningún comando que elimine volúmenes de Docker.
 - **NUNCA** hacer `git commit`, `git push` ni ningún comando de git que modifique el historial sin autorización.
 - **NUNCA** eliminar archivos, directorios, colecciones de MongoDB, tablas o datos sin preguntar.

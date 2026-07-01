@@ -28,13 +28,15 @@ import type {
   ReservationsListDto
 } from '../models/reservations.dto';
 import type { ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
-import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoomType } from '../models/reception-calendar.model';
+import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../models/reception-calendar.model';
 
-/** Raw API response (snake_case) for reception calendar. */
+/** Raw API response (snake_case) for reception calendar — rooms instead of types. */
 interface ReceptionCalendarDto {
-  room_types: Array<{
-    room_type_id: string;
+  rooms: Array<{
+    room_number: string;
+    hotel_room_id: string;
     room_type_name: string;
+    room_type_id: string;
     reservations: Array<{
       booking_id: string;
       guest_name: string;
@@ -63,10 +65,12 @@ interface ReceptionCalendarDto {
 
 function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData {
   return {
-    roomTypes: dto.room_types.map(rt => ({
-      roomTypeId: rt.room_type_id,
-      roomTypeName: rt.room_type_name,
-      reservations: rt.reservations.map(mapReceptionReservation),
+    rooms: dto.rooms.map(rm => ({
+      roomNumber: rm.room_number,
+      hotelRoomId: rm.hotel_room_id,
+      roomTypeName: rm.room_type_name,
+      roomTypeId: rm.room_type_id,
+      reservations: rm.reservations.map(mapReceptionReservation),
     })),
     startDate: dto.start_date,
     endDate: dto.end_date,
@@ -74,7 +78,7 @@ function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData 
   };
 }
 
-function mapReceptionReservation(r: ReceptionCalendarDto['room_types'][number]['reservations'][number]): ReceptionCalendarReservation {
+function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reservations'][number]): ReceptionCalendarReservation {
   return {
     bookingId: r.booking_id,
     guestName: r.guest_name,
