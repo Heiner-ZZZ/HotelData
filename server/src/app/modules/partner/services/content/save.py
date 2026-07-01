@@ -188,17 +188,7 @@ def save_partner_hotel_policies(
     if detail is None:
         return None
 
-    # RF-006: Validate check-out > check-in
-    ci = _parse_time(check_in_time)
-    co = _parse_time(check_out_time)
-    if ci and co:
-        ci_parts = ci.split(":")
-        co_parts = co.split(":")
-        ci_minutes = int(ci_parts[0]) * 60 + int(ci_parts[1])
-        co_minutes = int(co_parts[0]) * 60 + int(co_parts[1])
-        if co_minutes <= ci_minutes:
-            raise ValueError("El check-out debe ser posterior al check-in.")
-
+    # Check-out y check-in son días distintos, no se comparan
     db = get_database()
     clean_room_type = clean_text(room_type_id)
     clean_season = clean_text(season_id)

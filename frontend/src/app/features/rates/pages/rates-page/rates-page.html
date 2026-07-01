@@ -102,13 +102,17 @@
                     <span class="material-symbols-outlined panel-head-icon icon-calendar-purple">calendar_view_month</span>
                     <div>
                       <h2>Calendario reciente</h2>
-                      <p>{{ overviewCalendarItems().length }} fila(s) vigentes (hoy en adelante).</p>
+                      <p>{{ overviewCalendarItems().length }} fila(s) {{ showPastDates() ? 'totales' : 'vigentes (hoy en adelante)' }}.</p>
                     </div>
+                    <button type="button" class="toggle-past-btn" (click)="showPastDates.set(!showPastDates())" [class.active]="showPastDates()">
+                      <span class="material-symbols-outlined">{{ showPastDates() ? 'filter_alt_off' : 'history' }}</span>
+                      {{ showPastDates() ? 'Solo vigentes' : 'Mostrar pasadas' }}
+                    </button>
                   </div>
                   @if (overviewCalendarItems().length) {
                     <app-rate-calendar-table [items]="overviewCalendarItems()" />
                   } @else {
-                    <app-empty-state icon="calendar_month" title="Sin tarifas vigentes" description="No hay tarifas desde hoy en adelante." />
+                    <app-empty-state icon="calendar_month" title="Sin tarifas" description="{{ showPastDates() ? 'No hay tarifas registradas.' : 'No hay tarifas desde hoy en adelante.' }}" />
                   }
                 </section>
 

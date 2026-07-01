@@ -36,7 +36,9 @@ export class ReservationTimelineComponent {
 
   readonly showReviewForm = computed(() => {
     const vm = this.reservation();
-    const isCompleted = vm.status === 'checked_out' || vm.stayStatus === 'checked_out';
+    const isCompleted =
+      vm.status === 'checked_out' || vm.stayStatus === 'checked_out' ||
+      vm.status === 'completed' || vm.stayStatus === 'completed';
     return isCompleted && !this.reviewSuccess() && !this.isStaff();
   });
 

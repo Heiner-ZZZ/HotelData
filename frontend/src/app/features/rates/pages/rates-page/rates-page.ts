@@ -106,11 +106,16 @@ export class RatesPageComponent {
   readonly ratePlanOptions = computed<RatePlanOption[]>(() =>
     (this.viewModel()?.ratePlans ?? []).map((p) => ({ id: p.id, label: p.name }))
   );
-  /** Calendar items for overview table — only today and future. */
+  /** Calendar items for overview table — today+future by default, all dates when showPastDates is on. */
   readonly overviewCalendarItems = computed<import('../../models/rates.model').RateCalendarItem[]>(() => {
+    const items = this.viewModel()?.calendar ?? [];
+    if (this.showPastDates()) return items;
     const today = new Date().toISOString().slice(0, 10);
-    return (this.viewModel()?.calendar ?? []).filter((c) => c.date >= today);
+    return items.filter((c) => c.date >= today);
   });
+  /** Toggle to show/hide past dates in the overview calendar */
+  readonly showPastDates = signal(false);
+
   readonly message = signal('');
   readonly errorMessage = signal('');
 
