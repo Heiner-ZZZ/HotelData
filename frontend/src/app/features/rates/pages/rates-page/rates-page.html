@@ -102,13 +102,13 @@
                     <span class="material-symbols-outlined panel-head-icon icon-calendar-purple">calendar_view_month</span>
                     <div>
                       <h2>Calendario reciente</h2>
-                      <p>{{ vm.calendar.length }} fila(s) visibles.</p>
+                      <p>{{ overviewCalendarItems().length }} fila(s) vigentes (hoy en adelante).</p>
                     </div>
                   </div>
-                  @if (vm.calendar.length) {
-                    <app-rate-calendar-table [items]="vm.calendar" />
+                  @if (overviewCalendarItems().length) {
+                    <app-rate-calendar-table [items]="overviewCalendarItems()" />
                   } @else {
-                    <app-empty-state icon="calendar_month" title="Sin tarifas todavía" description="Carga la primera tarifa por fecha." />
+                    <app-empty-state icon="calendar_month" title="Sin tarifas vigentes" description="No hay tarifas desde hoy en adelante." />
                   }
                 </section>
 

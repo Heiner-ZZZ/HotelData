@@ -106,6 +106,11 @@ export class RatesPageComponent {
   readonly ratePlanOptions = computed<RatePlanOption[]>(() =>
     (this.viewModel()?.ratePlans ?? []).map((p) => ({ id: p.id, label: p.name }))
   );
+  /** Calendar items for overview table — only today and future. */
+  readonly overviewCalendarItems = computed<import('../../models/rates.model').RateCalendarItem[]>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return (this.viewModel()?.calendar ?? []).filter((c) => c.date >= today);
+  });
   readonly message = signal('');
   readonly errorMessage = signal('');
 

@@ -65,9 +65,9 @@ export class PoliciesPageComponent {
   readonly roomTypeOptions = signal<PolicyRoomTypeOption[]>([]);
 
   readonly policyForm = this.formBuilder.nonNullable.group({
-    checkInTime: ['', [Validators.required]],
-    checkOutTime: ['', [Validators.required]],
-    cancellationPolicy: ['', [Validators.required]],
+    checkInTime: [''],
+    checkOutTime: [''],
+    cancellationPolicy: [''],
     cancellationHours: [0, [Validators.min(0), Validators.max(720)]],
     petsAllowed: [false],
     petFee: [0, [Validators.min(0)]],
