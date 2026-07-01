@@ -5,6 +5,7 @@ from __future__ import annotations
 from .plans import (
     create_rate_plan,
     delete_rate_plan,
+    filter_eligible_plans,
     list_rate_plans_for_prop,
     partner_hotel_rates,
     update_rate_plan,
@@ -32,6 +33,7 @@ from .contracts import (
 __all__ = [
     "partner_hotel_rates",
     "create_rate_plan",
+    "filter_eligible_plans",
     "update_rate_plan",
     "delete_rate_plan",
     "list_rate_plans_for_prop",
