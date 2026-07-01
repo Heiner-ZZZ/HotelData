@@ -106,6 +106,49 @@ def destination_display_name(destination: dict[str, Any] | None, destination_id:
     )
 
 
+def _resolve_country_name(country_id: int | None) -> str:
+    """Resolve a prop_country_id to its display name from dim_visitor_countries.
+
+    The geo-catalog admin page (/admin/geo-catalog) lets admins set
+    country_display_name per visitor_location_country_id. This function
+    queries that collection first, falling back to a generic label.
+    """
+    if country_id is None:
+        return "N/D"
+    db = get_database()
+    country = db.dim_visitor_countries.find_one(
+        {"visitor_location_country_id": country_id},
+        {"_id": 0, "country_display_name": 1, "country_name": 1, "visitor_country_label": 1},
+    )
+    if country:
+        return (
+            country.get("country_display_name")
+            or country.get("country_name")
+            or country.get("visitor_country_label")
+            or f"Mercado hotelero {country_id}"
+        )
+    return f"Mercado hotelero {country_id}"
+
+
+def _resolve_country_label(hotel: dict[str, Any] | None) -> str:
+    """Resolve the best country display name for a hotel dict.
+
+    Priority:
+      1. display_country_label IF it's a proper name (not the "Mercado hotelero" fallback)
+      2. _resolve_country_name from dim_visitor_countries
+      3. "N/D" as last resort
+    """
+    if not hotel:
+        return "N/D"
+    manual_label = hotel.get("display_country_label") or ""
+    # If the stored label is the old fallback, ignore it and resolve fresh
+    if manual_label.startswith("Mercado hotelero"):
+        manual_label = ""
+    if manual_label:
+        return manual_label
+    return _resolve_country_name(hotel.get("prop_country_id"))
+
+
 def active_fact_collection() -> tuple[Collection, str]:
     db = get_database()
     if db.fact_hotel_reservations.estimated_document_count() > 0:

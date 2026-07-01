@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from src.app.modules.partner.services._common import (
+    _resolve_country_label,
+    _resolve_country_name,
     active_fact_collection,
     destination_display_name,
     hotel_display_name,
@@ -48,7 +50,7 @@ def partner_hotel_detail(prop_id: int, user: dict[str, Any] | None = None) -> di
             **hotel,
             "prop_id": prop_id,
             "display_name": hotel_display_name(hotel, prop_id),
-            "country_display_name": hotel.get("display_country_label") or (f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else "N/D"),
+            "country_display_name": _resolve_country_label(hotel),
             "review_score_label": number(hotel.get("prop_review_score")),
             "manual_override": bool(hotel.get("manual_override", False)),
             "name_source": hotel.get("name_source") or "generated_from_id",

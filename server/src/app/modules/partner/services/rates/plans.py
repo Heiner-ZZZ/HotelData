@@ -31,6 +31,8 @@ def _rate_plans_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
     for item in items:
         item["base_rate_label"] = money(item.get("base_rate"))
         item["updated_at_label"] = iso_label(item.get("updated_at"))
+        if "eligible_roles" not in item:
+            item["eligible_roles"] = []
     return items
 
 
@@ -77,6 +79,7 @@ def create_rate_plan(
     tax_included: Any = False,
     tax_rate: float = 0.0,
     is_active: Any = True,
+    eligible_roles: list[str] | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -106,6 +109,7 @@ def create_rate_plan(
         "tax_included": safe_bool(tax_included),
         "tax_rate": round(max(0.0, min(100.0, float(tax_rate or 0))), 2),
         "is_active": safe_bool(is_active),
+        "eligible_roles": eligible_roles or [],
         "updated_at": now_utc(),
     }
     register_action(
@@ -139,6 +143,7 @@ def update_rate_plan(
     tax_included: Any = False,
     tax_rate: float = 0.0,
     is_active: Any = True,
+    eligible_roles: list[str] | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
@@ -163,6 +168,7 @@ def update_rate_plan(
         "tax_included": safe_bool(tax_included),
         "tax_rate": round(max(0.0, min(100.0, float(tax_rate or 0))), 2),
         "is_active": safe_bool(is_active),
+        "eligible_roles": eligible_roles if eligible_roles is not None else [],
         "updated_at": now_utc(),
     }
     register_action(
@@ -221,6 +227,30 @@ def delete_rate_plan(rate_plan_id: str, changed_by: str = "system") -> dict[str,
 
 def list_rate_plans_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
     return _rate_plans_for_prop(prop_id, limit=limit)
+
+
+def filter_eligible_plans(
+    plans: list[dict[str, Any]],
+    user_role: str | None = None,
+) -> list[dict[str, Any]]:
+    """Filter rate plans based on user role eligibility.
+
+    - If a plan has eligible_roles=[], it's available to ALL users (no restriction).
+    - If a plan has specific roles (e.g. ["corporate", "partner"]), only users
+      with primary_role in that list can see it.
+    - Super admin always sees everything.
+    """
+    if not user_role or user_role == "super_admin":
+        return plans
+    filtered: list[dict[str, Any]] = []
+    for plan in plans:
+        eligible = plan.get("eligible_roles") or []
+        if not eligible:
+            # No restriction → visible to everyone
+            filtered.append(plan)
+        elif user_role in eligible:
+            filtered.append(plan)
+    return filtered
 
 
 def partner_hotel_rates(prop_id: int) -> dict[str, Any] | None:

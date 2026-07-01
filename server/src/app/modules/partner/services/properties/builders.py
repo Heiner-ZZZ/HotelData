@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.modules.partner.services._common import hotel_display_name, number
+from src.app.modules.partner.services._common import _resolve_country_label, _resolve_country_name, hotel_display_name, number
 from src.app.modules.partner.services.properties.metadata import profile_badge
 from src.app.modules.partner.services.properties.performance import performance_for_prop, property_yield_score
 from src.database.connection import get_database
@@ -30,11 +30,7 @@ def build_fact_backed_hotel(prop_id: int) -> dict[str, Any] | None:
         "hotel_name": "Hotel no especificado",
         "display_name": generated_name,
         "hotel_label": generated_name,
-        "display_country_label": (
-            f"Mercado hotelero {sample.get('prop_country_id')}"
-            if sample.get("prop_country_id") is not None
-            else ""
-        ),
+        "display_country_label": _resolve_country_name(sample.get("prop_country_id")),
         "prop_country_id": sample.get("prop_country_id"),
         "prop_starrating": sample.get("prop_starrating"),
         "prop_review_score": sample.get("prop_review_score"),
@@ -53,7 +49,7 @@ def synthetic_hotel(prop_id: int) -> dict[str, Any]:
     country = "N/D"
     sample = db.fact_hotel_reservations.find_one({"prop_id": prop_id}, {"_id": 0, "prop_country_id": 1})
     if sample and sample.get("prop_country_id") is not None:
-        country = f"Mercado hotelero {sample['prop_country_id']}"
+        country = _resolve_country_name(sample["prop_country_id"])
     yield_score = property_yield_score(perf)
     return {
         "prop_id": prop_id,
@@ -77,11 +73,7 @@ def enriched_property_row(hotel: dict[str, Any] | None, prop_id: int) -> dict[st
     from src.app.modules.partner.services.dashboard.operations import _operational_flags
 
     operational = _operational_flags(prop_id)
-    country = base_hotel.get("display_country_label") or (
-        f"Mercado hotelero {base_hotel.get('prop_country_id')}"
-        if base_hotel.get("prop_country_id") is not None
-        else "N/D"
-    )
+    country = _resolve_country_label(base_hotel)
     yield_score = property_yield_score(perf)
     status = "Operational" if yield_score >= 70 else ("Under Review" if yield_score >= 40 else "Maintenance")
     sync_status = "SYNC_ACTIVE"

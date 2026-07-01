@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from src.database.connection import get_database
@@ -12,27 +13,37 @@ def _collection_count(collection_name: str, filters: dict[str, Any] | None = Non
 
 def _operational_flags(prop_id: int) -> dict[str, Any]:
     db = get_database()
+    today_str = date.today().isoformat()
+
+    # ── Checks sin dependencia de fecha ──
     policies_count = int(db.hotel_policies.count_documents({"prop_id": prop_id}))
-    room_types_count = int(db.room_types.count_documents({"prop_id": prop_id}))
-    hotel_rooms_count = int(db.hotel_rooms.count_documents({"prop_id": prop_id}))
-    rate_plans_count = int(db.rate_plans.count_documents({"prop_id": prop_id}))
-    inventory_count = int(db.room_inventory_calendar.count_documents({"prop_id": prop_id}))
-    content_count = int(db.hotel_content_pages.count_documents({"prop_id": prop_id}))
-    image_count = int(db.hotel_images.count_documents({"prop_id": prop_id}))
-    promotions_count = int(db.promotion_campaigns.count_documents({"prop_id": prop_id, "is_active": True}))
+    hotel_rooms_count = int(db.hotel_rooms.count_documents({"prop_id": prop_id, "is_active": True}))
+
+    # ── Checks DEL DÍA ──
+    rates_today = int(db.hotel_rate_calendar.count_documents({"prop_id": prop_id, "date": today_str}))
+    inventory_today = int(db.room_inventory_calendar.count_documents({"prop_id": prop_id, "date": today_str}))
+
+    # Promociones activas que cubren hoy
+    promotions_count = int(db.promotion_campaigns.count_documents({
+        "prop_id": prop_id,
+        "is_active": True,
+        "start_date": {"$lte": today_str},
+        "end_date": {"$gte": today_str},
+    }))
     coupon_count = int(db.coupon_codes.count_documents({"prop_id": prop_id, "is_active": True}))
 
     policies_ready = policies_count > 0
-    rooms_ready = room_types_count > 0
-    rates_ready = rate_plans_count > 0
-    inventory_ready = inventory_count > 0
+    rooms_ready = hotel_rooms_count > 0
+    rates_ready = rates_today > 0
+    inventory_ready = inventory_today > 0
     promotions_ready = promotions_count > 0 or coupon_count > 0
 
     score = 0
-    score += 25 if policies_ready else 0
-    score += 25 if rooms_ready else 0
-    score += 25 if rates_ready else 0
-    score += 25 if inventory_ready else 0
+    score += 20 if policies_ready else 0
+    score += 20 if rooms_ready else 0
+    score += 20 if rates_ready else 0
+    score += 20 if inventory_ready else 0
+    score += 20 if promotions_ready else 0
 
     return {
         "policies_configured": policies_ready,
@@ -43,11 +54,10 @@ def _operational_flags(prop_id: int) -> dict[str, Any]:
         "operational_score": score,
         "counts": {
             "hotel_policies": policies_count,
-            "room_types": room_types_count,
             "hotel_rooms": hotel_rooms_count,
-            "rate_plans": rate_plans_count,
-            "room_inventory_calendar": inventory_count,
-            "promotion_campaigns": promotions_count,
+            "hotel_rate_calendar_today": rates_today,
+            "room_inventory_calendar_today": inventory_today,
+            "promotion_campaigns_active_today": promotions_count,
             "coupon_codes": coupon_count,
         },
     }
