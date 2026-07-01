@@ -136,15 +136,16 @@
                     </div>
                     <div class="ops-module-body">
                       <span class="ops-module-label">{{ check.label }}</span>
+                      <span class="ops-module-count">{{ check.count }}</span>
                       @if (check.ready) {
                         <span class="ops-module-badge ops-module-badge--ok">
                           <span class="material-symbols-outlined">check_circle</span>
-                          Listo
+                          {{ check.detail }}
                         </span>
                       } @else {
                         <span class="ops-module-badge ops-module-badge--pending">
                           <span class="material-symbols-outlined">radio_button_unchecked</span>
-                          Pendiente
+                          Sin datos
                         </span>
                       }
                     </div>

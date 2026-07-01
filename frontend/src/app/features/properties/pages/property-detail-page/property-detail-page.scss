@@ -571,6 +571,17 @@
   min-width: 0;
 }
 
+.ops-module-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--app-text);
+  line-height: 1;
+
+  .ops-module--ready & {
+    color: var(--success);
+  }
+}
+
 .ops-module-label {
   font-size: 0.72rem;
   font-weight: 600;

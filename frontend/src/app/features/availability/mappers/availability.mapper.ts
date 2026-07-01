@@ -48,6 +48,7 @@ function mapRoomType(item: AvailabilityDto['room_types'][number]): AvailabilityR
 function mapInventoryItem(item: AvailabilityDto['inventory_items'][number]): AvailabilityInventoryItem {
   return {
     date: item.date,
+    roomTypeId: item.room_type_id,
     roomTypeName: item.room_type_name,
     totalRooms: item.total_rooms,
     availableRooms: item.available_rooms,

@@ -39,6 +39,8 @@ export class AvailabilityDataTablesComponent {
   readonly filterRoomType = signal('');
   readonly filterDateFrom = signal('');
   readonly filterDateTo = signal('');
+  readonly hidePastDates = signal(true);
+  readonly todayStr = new Date().toISOString().slice(0, 10);
   readonly calendarMonth = signal(new Date().getMonth());
   readonly calendarYear = signal(new Date().getFullYear());
 
@@ -62,6 +64,10 @@ export class AvailabilityDataTablesComponent {
     if (rt) items = items.filter(i => i.roomTypeName === rt);
     if (from) items = items.filter(i => i.date >= from);
     if (to) items = items.filter(i => i.date <= to);
+    // By default hide past dates
+    if (this.hidePastDates()) {
+      items = items.filter(i => i.date >= this.todayStr);
+    }
     items.sort((a, b) => a.date.localeCompare(b.date) || a.roomTypeName.localeCompare(b.roomTypeName));
     return items;
   });
@@ -74,10 +80,17 @@ export class AvailabilityDataTablesComponent {
     return this.filteredItems().slice(start, start + this.pageSize);
   });
 
-  roomNumbersFor(roomTypeName: string): string[] {
-    const result = this.roomNumbersByType().get(roomTypeName) ?? [];
-    if (result.length === 0) {
-      console.log('[roomNumbersFor] NOT FOUND:', roomTypeName, 'available keys:', [...this.roomNumbersByType().keys()]);
+  roomNumbersFor(roomTypeId: string, roomTypeName: string): string[] {
+    const map = this.roomNumbersByType();
+    // Primary lookup by roomTypeId (more reliable)
+    let result = map.get(roomTypeId) ?? [];
+    // Fallback: try by name if ID didn't match
+    if (result.length === 0 && roomTypeName) {
+      result = map.get(roomTypeName) ?? [];
+    }
+    // Only log if hotel rooms have loaded but BOTH lookups failed
+    if (result.length === 0 && map.size > 0) {
+      console.log('[roomNumbersFor] NOT FOUND — id:', roomTypeId, 'name:', roomTypeName, 'available keys:', [...map.keys()]);
     }
     return result;
   }
