@@ -32,6 +32,7 @@ from src.app.modules.reservations.service import (
 from datetime import datetime, timedelta
 
 from src.app.modules.reservations.service.lifecycle.create import _check_availability, _calculate_total_price, validate_coupon_code
+from src.app.modules.partner.services.rates.plans import filter_eligible_plans
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -159,9 +160,72 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+def _validate_rate_plan_eligibility(
+    payload: dict,
+    user_role: str,
+) -> str | None:
+    """Check if the rate plans for the selected dates/room type are eligible for the user role."""
+    if not user_role or user_role == "super_admin":
+        return None
+    prop_id = payload.get("prop_id")
+    room_type_id = payload.get("room_type_id", "")
+    check_in = payload.get("check_in_date", "")
+    check_out = payload.get("check_out_date", "")
+    if not all([prop_id, check_in, check_out]):
+        return None
+    db = get_database()
+    try:
+        cin = datetime.strptime(check_in, "%Y-%m-%d")
+        cout = datetime.strptime(check_out, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+    total_nights = max(1, (cout - cin).days)
+    dates = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(total_nights)]
+
+    match: dict[str, object] = {"prop_id": prop_id, "date": {"$in": dates}}
+    if room_type_id:
+        match["room_type_id"] = room_type_id
+    records = list(
+        db.hotel_rate_calendar.find(match, {"_id": 0, "rate_plan_id": 1}).limit(50)
+    )
+    # Collect unique rate_plan_ids
+    plan_ids: set[str] = set()
+    for r in records:
+        pid = r.get("rate_plan_id", "")
+        if pid:
+            plan_ids.add(pid)
+    if not plan_ids:
+        return None
+    # Fetch the plans
+    plans = list(
+        db.rate_plans.find(
+            {"rate_plan_id": {"$in": list(plan_ids)}},
+            {"_id": 0, "rate_plan_id": 1, "name": 1, "eligible_roles": 1},
+        )
+    )
+    eligible_plans = filter_eligible_plans(plans, user_role=user_role)
+    if len(eligible_plans) < len(plans):
+        # Some plans are not eligible
+        ineligible_names: list[str] = []
+        eligible_ids = {p["rate_plan_id"] for p in eligible_plans if "rate_plan_id" in p}
+        for plan in plans:
+            if plan.get("rate_plan_id") not in eligible_ids:
+                ineligible_names.append(plan.get("name") or plan.get("rate_plan_id", "?"))
+        return (
+            "No tienes acceso a los planes tarifarios de este hotel. "
+            f"Plan(es) no elegible(s): {', '.join(ineligible_names)}."
+        )
+    return None
+
+
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     try:
+        # Validate rate plan eligibility for user role
+        user_role = current_user.get("primary_role", "")
+        elig_error = _validate_rate_plan_eligibility(payload, user_role)
+        if elig_error:
+            raise ValueError(elig_error)
         # Use actual username instead of generic 'angular_api'
         if not payload.get("created_by"):
             payload["created_by"] = current_user.get("username", "web")

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+import secrets
+import threading
+from datetime import date, datetime
 from typing import Any
 
 from src.database.connection import get_database
-
-import secrets
 
 from ..notifications import notify_guest_invoice, notify_guest_status_change, notify_staff_check_event
 from ._helpers import CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES, utc_now
@@ -71,7 +72,7 @@ def update_check_in_datetime(
     return {"booking_id": booking_id, "updated": True}
 
 
-_CHECKIN_ALLOWED_ROOM_STATUSES = {"available"}
+_CHECKIN_ALLOWED_ROOM_STATUSES = {"available", "vacant_clean", "vacant", "clean"}
 _CHECKIN_REJECTED_STATUSES = {"dirty", "maintenance", "out_of_order", "out_of_service"}
 
 
@@ -80,7 +81,6 @@ def _generate_folio(prop_id: int) -> str:
 
     Format: FOL-{prop_id}-{YYMMDD}-{random4}
     """
-    from datetime import datetime
     date_part = datetime.now().strftime("%y%m%d")
     random_part = secrets.token_hex(2).upper()
     return f"FOL-{prop_id}-{date_part}-{random_part}"
@@ -105,6 +105,23 @@ def complete_check_in(
     )
     if not booking:
         raise ValueError("booking not found")
+
+    # ── Validate check-in date is not in the past ──
+    check_in_date_str = booking.get("check_in_date", "")
+    if check_in_date_str:
+        try:
+            check_in_date = date.fromisoformat(check_in_date_str)
+            today = date.today()
+            if check_in_date < today:
+                raise ValueError(
+                    f"No se puede realizar check-in para una fecha pasada. "
+                    f"La fecha de check-in ({check_in_date_str}) es anterior a hoy ({today.isoformat()})."
+                )
+        except ValueError as exc:
+            # Re-raise our own validation errors; pass through ValueError from date parsing
+            if str(exc).startswith("No se puede"):
+                raise
+            logger.warning("Could not parse check_in_date '%s' for booking %s", check_in_date_str, booking_id)
 
     # ── Validate room status before allowing check-in ──
     assigned_rooms: list[str] = booking.get("assigned_rooms") or []
@@ -188,40 +205,23 @@ def complete_check_in(
         audit_entry["observations"] = observations
     db.booking_status_history.insert_one(audit_entry)
 
-    # ── Notify guest on check-in ──
+    # ── Notify guest on check-in (async — never block API response) ──
     if booking:
-        try:
-            guest_email = (booking.get("guest_email") or "").strip()
-            if guest_email and not booking.get("is_test"):
-                notify_guest_status_change(
-                    booking_id=booking_id,
-                    guest_name=booking.get("guest_name", ""),
-                    guest_email=guest_email,
-                    new_status="checked_in",
-                    prop_id=int(booking.get("prop_id", 0)),
-                    check_in_date=booking.get("check_in_date", ""),
-                    check_out_date=booking.get("check_out_date", ""),
-                    total_price=booking.get("total_price"),
-                    currency=booking.get("currency", "USD"),
-                    total_nights=int(booking.get("total_nights", 0)),
-                )
-        except Exception:
-            logger.exception("Failed to notify guest on check-in for booking %s", booking_id)
+        guest_email = (booking.get("guest_email") or "").strip()
+        if guest_email and not booking.get("is_test"):
+            threading.Thread(
+                target=_notify_guest_check_in,
+                args=(booking_id, booking),
+                daemon=True,
+            ).start()
 
-    # ── Notify staff on check-in ──
+    # ── Notify staff on check-in (async) ──
     if booking and not booking.get("is_test"):
-        try:
-            notify_staff_check_event(
-                event_type="check_in",
-                prop_id=int(booking.get("prop_id", 0)),
-                booking_id=booking_id,
-                guest_name=booking.get("guest_name", ""),
-                check_in_date=booking.get("check_in_date", ""),
-                check_out_date=booking.get("check_out_date", ""),
-                total_nights=int(booking.get("total_nights", 0)),
-            )
-        except Exception:
-            logger.exception("Failed to notify staff on check-in for booking %s", booking_id)
+        threading.Thread(
+            target=_notify_staff_check_in,
+            args=(booking_id, booking),
+            daemon=True,
+        ).start()
 
     # ── Register transaction on active shift ──
     if booking and not booking.get("is_test"):
@@ -336,6 +336,43 @@ def complete_check_in(
     return {"booking_id": booking_id, "stay_status": "checked_in", "folio": folio, "folio_number": folio_id, "invoice_id": invoice_id}
 
 
+def _notify_guest_check_in(booking_id: str, booking: dict[str, Any]) -> None:
+    """Fire-and-forget: notify guest about check-in."""
+    try:
+        guest_email = (booking.get("guest_email") or "").strip()
+        if guest_email:
+            notify_guest_status_change(
+                booking_id=booking_id,
+                guest_name=booking.get("guest_name", ""),
+                guest_email=guest_email,
+                new_status="checked_in",
+                prop_id=int(booking.get("prop_id", 0)),
+                check_in_date=booking.get("check_in_date", ""),
+                check_out_date=booking.get("check_out_date", ""),
+                total_price=booking.get("total_price"),
+                currency=booking.get("currency", "USD"),
+                total_nights=int(booking.get("total_nights", 0)),
+            )
+    except Exception:
+        logger.exception("Failed to notify guest on check-in for booking %s", booking_id)
+
+
+def _notify_staff_check_in(booking_id: str, booking: dict[str, Any]) -> None:
+    """Fire-and-forget: notify staff about check-in."""
+    try:
+        notify_staff_check_event(
+            event_type="check_in",
+            prop_id=int(booking.get("prop_id", 0)),
+            booking_id=booking_id,
+            guest_name=booking.get("guest_name", ""),
+            check_in_date=booking.get("check_in_date", ""),
+            check_out_date=booking.get("check_out_date", ""),
+            total_nights=int(booking.get("total_nights", 0)),
+        )
+    except Exception:
+        logger.exception("Failed to notify staff on check-in for booking %s", booking_id)
+
+
 def complete_check_out(
     booking_id: str,
     *,
@@ -349,7 +386,15 @@ def complete_check_out(
     discount: float = 0,
     discount_reason: str = "",
     damages_found: bool = False,
+    keys_returned: bool = False,
 ) -> dict[str, Any]:
+    # ── Validate keys_returned BEFORE any database writes ──
+    if not keys_returned:
+        raise ValueError(
+            "No se puede completar el check-out sin registrar la devolución de llaves. "
+            "Marca 'Llaves devueltas' en el paso de verificación antes de cerrar la estancia."
+        )
+
     db = get_database()
 
     # Fetch booking before update (need data for notification)
@@ -370,6 +415,7 @@ def complete_check_out(
         "check_out_date_actual": changed_at.strftime("%Y-%m-%d"),
         "check_out_time_actual": changed_at.strftime("%H:%M"),
         "check_out_by": changed_by,
+        "check_out_keys_returned": True,
     }
     if payment_method:
         checkout_set["check_out_payment_method"] = payment_method

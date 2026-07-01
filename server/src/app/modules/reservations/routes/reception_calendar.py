@@ -101,33 +101,23 @@ def reception_calendar_api(
     if not end_date:
         end_date = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d")
 
-    # Fetch room types for this property
-    room_types_docs = list(
-        db.room_types.find(
-            {"prop_id": prop_id},
-            {"_id": 0, "room_type_id": 1, "name": 1},
-        ).sort([("name", 1)])
-    )
-
-    rt_map = {rt["room_type_id"]: rt["name"] for rt in room_types_docs}
-
-    # Build a lookup map: hotel_room_id → {room_number, room_label}
-    # assigned_rooms in booking_orders stores hotel_room_id values
+    # Fetch ALL active physical rooms for this property (one row per door)
     hotel_rooms_docs = list(
         db.hotel_rooms.find(
             {"prop_id": prop_id, "is_active": True},
-            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1},
-        )
+            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_id": 1, "room_type_name": 1},
+        ).sort([("room_number", 1)])
     )
-    room_id_map: dict[str, dict[str, str]] = {}
-    for hr in hotel_rooms_docs:
-        room_id_map[hr["hotel_room_id"]] = {
-            "room_number": hr.get("room_number", ""),
-            "room_label": hr.get("room_label", ""),
-        }
 
-    # Fetch all bookings that overlap the date range
-    # A booking overlaps if check_in_date <= end_date AND check_out_date >= start_date
+    # Resolve room type names
+    rt_name_lookup: dict[str, str] = {}
+    for rt in db.room_types.find({"prop_id": prop_id}, {"_id": 0, "room_type_id": 1, "name": 1}):
+        rt_name_lookup[rt["room_type_id"]] = rt.get("name", "")
+
+    # Build map: hotel_room_id → list of reservations assigned to that room
+    bookings_by_room: dict[str, list[dict[str, Any]]] = {hr["hotel_room_id"]: [] for hr in hotel_rooms_docs}
+
+    # Fetch bookings that overlap the date range
     bookings = list(
         db.booking_orders.find(
             {
@@ -155,59 +145,60 @@ def reception_calendar_api(
         )
     )
 
-    # Group by room_type_id
-    grouped: dict[str, list[dict[str, Any]]] = {}
+    # Place each booking into the rooms it is assigned to
     for b in bookings:
-        rt_id = b.get("room_type_id") or "unknown"
-        if rt_id not in grouped:
-            grouped[rt_id] = []
-
-        visual = _reservation_status_label(b, today_str)
         assigned = b.get("assigned_rooms") or []
-        # assigned_rooms contains hotel_room_id values — resolve display names
-        hotel_room_id = assigned[0] if assigned else ""
-        resolved = room_id_map.get(hotel_room_id, {}) if hotel_room_id else {}
-        room_number = resolved.get("room_number") or resolved.get("room_label") or hotel_room_id
+        if not assigned:
+            continue  # unassigned bookings don't appear on the calendar
 
         check_in_time_str = b.get("check_in_time") or ""
         check_out_time_str = b.get("check_out_time") or ""
+        visual = _reservation_status_label(b, today_str)
 
-        grouped[rt_id].append({
-            "booking_id": b.get("booking_id", ""),
-            "guest_name": b.get("guest_name", ""),
-            "adults": int(b.get("adults") or 1),
-            "children": int(b.get("children") or 0),
-            "check_in_date": (b.get("check_in_date") or "")[:10],
-            "check_in_time": check_in_time_str,
-            "check_in_fraction": _parse_time_fraction(check_in_time_str),
-            "check_out_date": (b.get("check_out_date") or "")[:10],
-            "check_out_time": check_out_time_str,
-            "check_out_fraction": _parse_time_fraction(check_out_time_str),
-            "total_nights": int(b.get("total_nights") or 0),
-            "status": b.get("status", ""),
-            "visual_status": visual,
-            "assigned_rooms": assigned,
-            "room_number": room_number,
-            "hotel_room_id": hotel_room_id,
-            "total_price": b.get("total_price"),
-            "currency": b.get("currency", "USD"),
-        })
+        for hrid in assigned:
+            if hrid not in bookings_by_room:
+                continue
+            hr = next((hr for hr in hotel_rooms_docs if hr["hotel_room_id"] == hrid), None)
+            room_num = hr.get("room_label") or hr.get("room_number") or hrid if hr else hrid
 
-    # Build final response
-    result_room_types = []
-    for rt in room_types_docs:
-        rt_id = rt["room_type_id"]
-        reservations = grouped.get(rt_id, [])
-        # Sort by check_in_date then check_in_time
-        reservations.sort(key=lambda r: (r["check_in_date"], r.get("check_in_time") or ""))
-        result_room_types.append({
-            "room_type_id": rt_id,
-            "room_type_name": rt["name"],
-            "reservations": reservations,
-        })
+            bookings_by_room[hrid].append({
+                "booking_id": b.get("booking_id", ""),
+                "guest_name": b.get("guest_name", ""),
+                "adults": int(b.get("adults") or 1),
+                "children": int(b.get("children") or 0),
+                "check_in_date": (b.get("check_in_date") or "")[:10],
+                "check_in_time": check_in_time_str,
+                "check_in_fraction": _parse_time_fraction(check_in_time_str),
+                "check_out_date": (b.get("check_out_date") or "")[:10],
+                "check_out_time": check_out_time_str,
+                "check_out_fraction": _parse_time_fraction(check_out_time_str),
+                "total_nights": int(b.get("total_nights") or 0),
+                "status": b.get("status", ""),
+                "visual_status": visual,
+                "assigned_rooms": assigned,
+                "hotel_room_id": hrid,
+                "room_number": room_num,
+                "total_price": b.get("total_price"),
+                "currency": b.get("currency", "USD"),
+            })
+
+    # Build response: one entry per physical room (even if empty)
+    result_rooms = [
+        {
+            "room_number": hr.get("room_label") or hr.get("room_number") or hr["hotel_room_id"],
+            "hotel_room_id": hr["hotel_room_id"],
+            "room_type_name": hr.get("room_type_name") or rt_name_lookup.get(hr.get("room_type_id", ""), ""),
+            "room_type_id": hr.get("room_type_id", ""),
+            "reservations": sorted(
+                bookings_by_room[hr["hotel_room_id"]],
+                key=lambda r: (r["check_in_date"], r.get("check_in_time") or ""),
+            ),
+        }
+        for hr in hotel_rooms_docs
+    ]
 
     return {
-        "room_types": result_room_types,
+        "rooms": result_rooms,
         "start_date": start_date,
         "end_date": end_date,
         "today": today_str,

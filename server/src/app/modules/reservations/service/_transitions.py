@@ -153,7 +153,12 @@ def _deduct_inventory(
     rooms: int,
     room_type_id: str,
 ) -> None:
-    """Decrement available_rooms in room_inventory_calendar for the stay dates."""
+    """Decrement available_rooms in room_inventory_calendar for the stay dates.
+
+    Uses atomic find_one_and_update with optimistic locking:
+    only decrements if available_rooms >= rooms.
+    Raises ValueError if any date has insufficient inventory.
+    """
     try:
         check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
         check_out = datetime.strptime(check_out_date, "%Y-%m-%d")
@@ -163,10 +168,33 @@ def _deduct_inventory(
     db = get_database()
     dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((check_out - check_in).days)]
     for date_str in dates:
-        db.room_inventory_calendar.update_one(
-            {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
+        result = db.room_inventory_calendar.find_one_and_update(
+            {
+                "prop_id": prop_id,
+                "room_type_id": room_type_id,
+                "date": date_str,
+                "available_rooms": {"$gte": rooms},  # Optimistic lock
+            },
             {"$inc": {"available_rooms": -rooms}},
+            projection={"_id": 0, "available_rooms": 1},
         )
+        if result is None:
+            # Check if the record exists at all
+            existing = db.room_inventory_calendar.find_one(
+                {"prop_id": prop_id, "room_type_id": room_type_id, "date": date_str},
+                {"_id": 0, "available_rooms": 1},
+            )
+            if existing is None:
+                raise ValueError(
+                    f"No hay datos de inventario para la fecha {date_str}. "
+                    f"No se puede confirmar la reserva sin inventario disponible."
+                )
+            else:
+                current_avail = existing.get("available_rooms", 0)
+                raise ValueError(
+                    f"Inventario insuficiente para {date_str}: "
+                    f"se requieren {rooms} habitación(es) pero solo hay {current_avail} disponible(s)."
+                )
 
 
 def _restore_inventory(
@@ -310,12 +338,18 @@ def _transition_status(
                     "Inventory conflict when confirming %s: %s", booking_id, avail_error
                 )
             else:
-                # Inventory available → deduct
+                # Inventory available → deduct with optimistic locking
                 try:
                     _deduct_inventory(prop_id, check_in, check_out, rooms, room_type)
                     logger.info(
                         "Inventory deducted for booking %s (%d rooms from %s to %s)",
                         booking_id, rooms, check_in, check_out,
+                    )
+                except ValueError as inv_err:
+                    result["inventory_conflict"] = True
+                    result["inventory_warning"] = str(inv_err)
+                    logger.warning(
+                        "Inventory conflict for booking %s: %s", booking_id, inv_err
                     )
                 except Exception:
                     logger.exception("Failed to deduct inventory for booking %s", booking_id)
