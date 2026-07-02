@@ -99,8 +99,8 @@
               <label for="roomLabel">Habitación/Área <span class="required">*</span></label>
               <select id="roomLabel" formControlName="roomLabel">
                 <option value="">Seleccionar habitación…</option>
-                @for (r of roomLabels(); track r) {
-                  <option [value]="r">{{ r }}</option>
+                @for (r of roomItems(); track r.id) {
+                  <option [value]="r.roomNumber || r.roomLabel">{{ r.roomNumber || r.roomLabel }}{{ r.roomTypeId ? ' (' + r.roomTypeId + ')' : '' }}</option>
                 }
               </select>
             </div>
@@ -221,7 +221,8 @@
                 <tr>
                   <th class="th-title">Título</th>
                   <th class="th-room">Habitación</th>
-                  <th class="th-type">Tipo</th>
+                  <th class="th-type">Tipo Hab.</th>
+                  <th class="th-task-type">Tipo Tarea</th>
                   <th class="th-prio">Prioridad</th>
                   <th class="th-status">Estado</th>
                   <th class="th-date">Programado</th>
@@ -241,11 +242,21 @@
 
                     <!-- Room -->
                     <td class="td-room">
-                      <span class="room-badge">{{ item.roomLabel }}</span>
+                      <div class="room-cell">
+                        <span class="room-badge">{{ item.roomNumber || item.roomLabel }}</span>
+                        @if (item.roomTypeId) {
+                          <span class="room-type-label">{{ item.roomTypeId }}</span>
+                        }
+                      </div>
                     </td>
 
-                    <!-- Type -->
+                    <!-- Room Type -->
                     <td class="td-type">
+                      <span class="type-label">{{ item.roomTypeId || '—' }}</span>
+                    </td>
+
+                    <!-- Task Type -->
+                    <td class="td-task-type">
                       <span class="type-label">{{ taskTypeLabels[item.taskType] || item.taskType }}</span>
                     </td>
 

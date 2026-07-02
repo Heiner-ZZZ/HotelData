@@ -11,7 +11,7 @@ import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-n
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { HousekeepingApiService, type HousekeepingTaskItem } from '../../services/housekeeping-api.service';
+import { HousekeepingApiService, type HousekeepingTaskItem, type RoomStatusItem, type StaffUser } from '../../services/housekeeping-api.service';
 
 function todayLocalIso(): string {
   const now = new Date();
@@ -51,12 +51,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   inspection: 'Inspección',
 };
 
-/** Common housekeeping staff names for the assigned-to dropdown. */
-const COMMON_STAFF = [
-  'María García', 'Juan Pérez', 'Ana López', 'Carlos Ruiz',
-  'Sofía Martínez', 'Pedro Hernández', 'Laura Sánchez', 'Miguel Torres',
-  'Gabriela Flores', 'Diego Ramírez',
-];
+
 
 @Component({
   selector: 'app-housekeeping-tasks-page',
@@ -103,8 +98,8 @@ export class HousekeepingTasksPageComponent {
     },
   });
 
-  readonly roomLabels = computed(() =>
-    (this.roomsResource.value()?.items ?? []).map((r: any) => r.roomNumber || r.roomLabel),
+  readonly roomItems = computed<RoomStatusItem[]>(() =>
+    (this.roomsResource.value()?.items ?? []),
   );
 
   // ── Tasks resource ──
@@ -189,7 +184,19 @@ export class HousekeepingTasksPageComponent {
   readonly priorityLabels = PRIORITY_LABELS;
   readonly taskTypeIcons = TASK_TYPE_ICONS;
   readonly taskTypeLabels = TASK_TYPE_LABELS;
-  readonly commonStaff = COMMON_STAFF;
+  // ── Staff resource (real users instead of hardcoded) ──
+  readonly staffResource = rxResource<any, any>({
+    params: () => this.selectedPropId() || undefined,
+    stream: ({ params }) => {
+      const pid = params as any;
+      if (!pid) return new Observable(sub => { sub.next({ staff: [] }); sub.complete(); });
+      return this.api.getStaff(pid);
+    },
+  });
+
+  readonly staffUsers = computed<StaffUser[]>(() =>
+    this.staffResource.value()?.staff ?? [],
+  );
 
   // ── Property selection ──
   onPropSelected(event: { propId: number; label: string }): void {
@@ -293,18 +300,42 @@ export class HousekeepingTasksPageComponent {
     });
   }
 
+  /** Get display name for a room option. */
+  displayRoom(r: RoomStatusItem): string {
+    const num = r.roomNumber || r.roomLabel;
+    const type = r.roomTypeId ? ` (${r.roomTypeId})` : '';
+    return `${num}${type}`;
+  }
+
+  /** Get display name for a staff user. */
+  displayStaff(u: StaffUser): string {
+    return u.display_name || u.username;
+  }
+
   cancelForm(): void {
     this.showCreateForm.set(false);
     this.editingId.set(null);
+  }
+
+  // ── Helper: resolve room metadata from selected roomLabel ──
+  private resolveRoomMeta(label: string): { room_type_id: string; room_number: string } {
+    const room = this.roomItems().find(r => (r.roomNumber || r.roomLabel) === label);
+    return {
+      room_type_id: room?.roomTypeId || '',
+      room_number: room?.roomNumber || '',
+    };
   }
 
   async submitTask(): Promise<void> {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
+    const roomMeta = this.resolveRoomMeta(val.roomLabel);
     const payload = {
       prop_id: this.selectedPropId() || 0,
       room_label: val.roomLabel,
+      room_type_id: roomMeta.room_type_id,
+      room_number: roomMeta.room_number,
       task_type: val.taskType,
       assigned_to: val.assignedTo || undefined,
       priority: val.priority,

@@ -97,9 +97,9 @@
           <select class="filter-select"
             [value]="assignedToFilter()"
             (change)="onAssignedToChange(($any($event.target).value))">
-            <option value="">Todas las camareras</option>
-            @for (name of commonStaff; track name) {
-              <option [value]="name">{{ name }}</option>
+            <option value="">Todos los asignados</option>
+            @for (u of staffUsers(); track u.username) {
+              <option [value]="displayStaff(u)">{{ displayStaff(u) }}</option>
             }
           </select>
         </div>
@@ -131,8 +131,8 @@
               <label for="roomLabel">Habitación <span class="required">*</span></label>
               <select id="roomLabel" formControlName="roomLabel">
                 <option value="">Seleccionar habitación…</option>
-                @for (r of roomLabels(); track r) {
-                  <option [value]="r">{{ r }}</option>
+                @for (r of roomItems(); track r.id) {
+                  <option [value]="r.roomNumber || r.roomLabel">{{ displayRoom(r) }}</option>
                 }
               </select>
             </div>
@@ -167,8 +167,8 @@
               <label for="assignedTo">Asignar a</label>
               <input id="assignedTo" type="text" formControlName="assignedTo" list="staff-list" placeholder="Nombre del personal" />
               <datalist id="staff-list">
-                @for (name of commonStaff; track name) {
-                  <option [value]="name">{{ name }}</option>
+                @for (u of staffUsers(); track u.username) {
+                  <option [value]="displayStaff(u)">{{ displayStaff(u) }} ({{ u.primary_role }})</option>
                 }
               </datalist>
             </div>
@@ -249,11 +249,13 @@
               <thead>
                 <tr>
                   <th class="th-room">Habitación</th>
-                  <th class="th-type">Tipo</th>
+                  <th class="th-type">Tipo Hab.</th>
+                  <th class="th-task">Tarea</th>
                   <th class="th-prio">Prioridad</th>
                   <th class="th-assign">Asignado</th>
                   <th class="th-status">Estado</th>
-                  <th class="th-date">Programado</th>
+                  <th class="th-assign">Asignado</th>
+                <th class="th-date">Programado</th>
                   <th class="th-actions">Acciones</th>
                 </tr>
               </thead>
@@ -263,12 +265,20 @@
                     <!-- Room -->
                     <td class="td-room">
                       <div class="room-cell">
-                        <span class="room-badge">{{ item.roomLabel }}</span>
+                        <span class="room-badge">{{ item.roomNumber || item.roomLabel }}</span>
+                        @if (item.roomTypeId) {
+                          <span class="room-type-label">{{ item.roomTypeId }}</span>
+                        }
                       </div>
                     </td>
 
-                    <!-- Type -->
+                    <!-- Room Type -->
                     <td class="td-type">
+                      <span class="type-label">{{ item.roomTypeId || '—' }}</span>
+                    </td>
+
+                    <!-- Task Type -->
+                    <td class="td-task">
                       <div class="type-cell">
                         <span class="material-symbols-outlined type-icon">{{ taskTypeIcons[item.taskType] || 'cleaning_services' }}</span>
                         <span>{{ taskTypeLabels[item.taskType] || item.taskType }}</span>

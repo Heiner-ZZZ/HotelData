@@ -587,6 +587,14 @@
 
 .unassigned { color: #6f797d; opacity: 0.5; }
 
+.room-type-label {
+  display: block;
+  font-size: 0.68rem;
+  color: #6f797d;
+  margin-top: 1px;
+  line-height: 1.2;
+}
+
 // ── Status badge ──
 
 .status-badge {
