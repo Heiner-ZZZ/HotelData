@@ -135,6 +135,91 @@ def reservation_availability_check_api(
     }
 
 
+@api_router.get("/rate-plans")
+def available_rate_plans_api(
+    prop_id: int = Query(..., ge=1),
+    check_in: str = Query(...),
+    check_out: str = Query(...),
+    room_type_id: str = Query(default=""),
+    current_user: dict = Depends(require_login),
+):
+    """Return available rate plans for a hotel + date range + optional room type.
+
+    Each plan includes its calendar rates so the user can compare prices.
+    """
+    db = get_database()
+    try:
+        cin = datetime.strptime(check_in, "%Y-%m-%d")
+        cout = datetime.strptime(check_out, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    dates = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(max(1, (cout - cin).days))]
+
+    # Find distinct rate_plan_ids in the calendar for this prop + dates
+    match: dict[str, Any] = {"prop_id": prop_id, "date": {"$in": dates}}
+    if room_type_id:
+        match["room_type_id"] = room_type_id
+
+    calendar_entries = list(
+        db.hotel_rate_calendar.find(match, {"_id": 0, "rate_plan_id": 1, "rate_amount": 1, "date": 1, "currency": 1})
+        .sort([("rate_plan_id", 1), ("date", 1)])
+    )
+
+    if not calendar_entries:
+        return {"rate_plans": []}
+
+    # Group by rate_plan_id
+    plan_groups: dict[str, dict[str, Any]] = {}
+    for entry in calendar_entries:
+        pid = entry.get("rate_plan_id", "")
+        if not pid:
+            continue
+        if pid not in plan_groups:
+            plan_groups[pid] = {
+                "rate_plan_id": pid,
+                "rates": [],
+                "avg_rate": 0.0,
+                "currency": entry.get("currency", "USD"),
+            }
+        plan_groups[pid]["rates"].append({
+            "date": entry["date"],
+            "rate_amount": entry["rate_amount"],
+        })
+
+    # Calculate average rate per plan and enrich with plan metadata
+    plan_ids = list(plan_groups.keys())
+    plans_meta = list(db.rate_plans.find(
+        {"rate_plan_id": {"$in": plan_ids}},
+        {"_id": 0, "rate_plan_id": 1, "name": 1, "description": 1, "base_rate": 1, "currency": 1, "is_active": 1},
+    ))
+    meta_by_id = {p["rate_plan_id"]: p for p in plans_meta}
+
+    result = []
+    for pid, group in plan_groups.items():
+        meta = meta_by_id.get(pid, {})
+        rates = group["rates"]
+        avg_rate = round(sum(r["rate_amount"] for r in rates) / len(rates), 2) if rates else 0
+        total = round(sum(r["rate_amount"] for r in rates), 2)
+        result.append({
+            "rate_plan_id": pid,
+            "name": meta.get("name", pid),
+            "description": meta.get("description", ""),
+            "base_rate": meta.get("base_rate"),
+            "currency": group["currency"] or meta.get("currency", "USD"),
+            "is_active": meta.get("is_active", True),
+            "avg_rate_per_night": avg_rate,
+            "total_price": total,
+            "nights": len(rates),
+        })
+
+    # Filter out inactive plans and sort by price
+    result = [p for p in result if p["is_active"]]
+    result.sort(key=lambda p: p["total_price"])
+
+    return {"rate_plans": result}
+
+
 @api_router.post("/preview")
 def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     try:
@@ -150,6 +235,7 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
             reservation_input.prop_id, reservation_input.room_type_id,
             reservation_input.check_in_date, reservation_input.check_out_date, reservation_input.rooms,
             adults=reservation_input.adults, children=reservation_input.children,
+            rate_plan_id=reservation_input.rate_plan_id or None,
         )
         return {
             "available": avail_error is None, "availability_message": avail_error,
@@ -233,6 +319,9 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
         if not payload.get("user_id"):
             payload["user_id"] = str(current_user.get("_id", ""))
         reservation_input = build_reservation_input(payload, source="angular_api")
+        # Store the selected rate_plan_id in the booking payload
+        if reservation_input.rate_plan_id:
+            payload["rate_plan_id"] = reservation_input.rate_plan_id
         return create_booking(reservation_input)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

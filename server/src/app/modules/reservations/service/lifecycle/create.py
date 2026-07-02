@@ -148,9 +148,11 @@ def _calculate_total_price(
     adults: int = 2,
     children: int = 0,
     discount_percent: int | None = None,
+    rate_plan_id: str | None = None,
 ) -> tuple[float | None, str, int, float, float, bool]:
     """Calculate booking price with occupancy and tax support.
 
+    If rate_plan_id is provided, filters calendar entries to that plan.
     Returns (total_price, currency, total_nights, tax_rate, tax_amount, tax_included).
     """
     db = get_database()
@@ -160,14 +162,16 @@ def _calculate_total_price(
     except (ValueError, TypeError):
         return None, "USD", 0, 0.0, 0.0, False
 
-    total_nights = max(1, (check_out - check_in).days)  # Same-day stays count as 1 night
+    total_nights = max(1, (check_out - check_in).days)
     dates = [(check_in + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(total_nights)]
     match: dict[str, Any] = {"prop_id": prop_id, "date": {"$in": dates}}
     if room_type_id:
         match["room_type_id"] = room_type_id
+    if rate_plan_id:
+        match["rate_plan_id"] = rate_plan_id
 
     records = list(
-        db.hotel_rate_calendar.find(match, {"_id": 0, "date": 1, "rate_amount": 1, "currency": 1}).sort("date", 1)
+        db.hotel_rate_calendar.find(match, {"_id": 0, "date": 1, "rate_amount": 1, "currency": 1, "rate_plan_id": 1}).sort("date", 1)
     )
     if not records:
         return None, "USD", total_nights, 0.0, 0.0, False
@@ -425,6 +429,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         payload.rooms,
         adults=payload.adults, children=payload.children,
         discount_percent=discount_percent,
+        rate_plan_id=payload.rate_plan_id or None,
     )
 
     # ── Corporate contract pricing ──

@@ -8,6 +8,7 @@ from src.app.modules.revenue.services import (
     conversion_overview,
     create_promotion_campaign,
     create_rate_plan,
+    get_rate_plan,
     hotel_rates_overview,
     list_property_campaigns,
     module_status,
@@ -64,6 +65,15 @@ def rates_options_api(
         overview = hotel_rates_overview(prop_id)
         response["rate_plans"] = overview.get("rate_plans", [])
     return response
+
+
+@api_router.get("/rates/plans/{plan_id}")
+def get_rate_plan_api(plan_id: str):
+    """Get a single rate plan by its rate_plan_id."""
+    result = get_rate_plan(plan_id)
+    if result is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Plan tarifario no encontrado")
+    return result
 
 
 @api_router.post("/rates/plans", status_code=http_status.HTTP_201_CREATED)
