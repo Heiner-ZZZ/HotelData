@@ -244,7 +244,7 @@
                             <span class="price-label">Precio por noche desde</span>
                             <span class="price-val">Consultar</span>
                           </div>
-                          <a [routerLink]="['/reservations/new']" [queryParams]="{ prop_id: vm.id, room_type: item.id, room_type_name: item.name }" class="btn-reserve">Reservar Ahora</a>
+                          <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id, room_type: item.id, room_type_name: item.name }" class="btn-reserve">Reservar Ahora</a>
                         </div>
                       </div>
                     </div>
@@ -407,7 +407,7 @@
                 <span class="total-unit">/noche</span>
               </div>
 
-              <a [href]="'/reservations/new?prop_id=' + vm.id" class="btn-confirm">
+              <a [routerLink]="['/account/bookings/new']" [queryParams]="{ prop_id: vm.id }" class="btn-confirm">
                 Confirmar y Pagar
               </a>
               <div class="secure-badge">

@@ -71,7 +71,8 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     coupon_code: input.couponCode,
     special_requests: input.specialRequests || [],
     selected_amenities: input.selectedAmenities || [],
-    room_type_id: input.roomTypeId || ''
+    room_type_id: input.roomTypeId || '',
+    rate_plan_id: input.ratePlanId || ''
   };
 }
 

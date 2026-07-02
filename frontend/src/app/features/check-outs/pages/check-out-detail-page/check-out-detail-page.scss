@@ -451,6 +451,542 @@
   border: 1px solid #fde68a;
 }
 
+// ─── Step Wizard ───
+.co-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 28px;
+  padding: 12px 16px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+}
+.co-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  min-width: 64px;
+  transition: all 0.2s;
+  position: relative;
+  &:disabled { cursor: default; opacity: 0.5; }
+  &.active .co-step-num {
+    background: var(--primary, #107a95);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(16, 122, 149, 0.3);
+  }
+  &.done .co-step-num {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  &:hover:not(:disabled):not(.active) .co-step-num {
+    background: #f1f5f9;
+  }
+}
+.co-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-container-low, #f1f5f9);
+  color: var(--muted-text, #6b7280);
+  transition: all 0.2s;
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+.co-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text, #6b7280);
+  white-space: nowrap;
+  .co-step.active & { color: var(--primary, #107a95); }
+  .co-step.done & { color: #065f46; }
+}
+.co-step-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--border, #e5e7eb);
+  flex-shrink: 0;
+  &.active { background: var(--primary, #107a95); }
+}
+
+// ─── Step Card ───
+.co-step-card {
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.co-step-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--primary, #107a95);
+  color: #fff;
+  margin-bottom: 12px;
+}
+.co-step-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 16px;
+}
+
+// ─── Step Actions ───
+.co-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+// ─── Buttons ───
+.co-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--primary, #107a95);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  &:hover { opacity: 0.9; }
+  &:active { transform: scale(0.98); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.co-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-primary, #374151);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: var(--hover, #f1f5f9);
+    border-color: var(--muted-text, #9ca3af);
+  }
+  &:active { transform: scale(0.98); }
+}
+
+// ─── Confirm Box (Step 1) ───
+.co-confirm-box {
+  text-align: center;
+  margin-top: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+}
+.co-confirm-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 16px;
+}
+.co-confirm-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.co-btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #374151);
+  .material-symbols-outlined { font-size: 20px; }
+  &:hover { border-color: var(--muted-text, #9ca3af); }
+  &.selected {
+    border-width: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  &.co-btn-si.selected {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  &.co-btn-no.selected {
+    border-color: #d97706;
+    background: #fffbeb;
+    color: #92400e;
+  }
+}
+
+// ─── Quick Charges (Step 2) ───
+.co-quick-charges {
+  margin-bottom: 16px;
+}
+.co-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.co-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary, #374151);
+  transition: all 0.15s;
+  .material-symbols-outlined {
+    font-size: 22px;
+    color: var(--primary, #107a95);
+  }
+  &:hover {
+    border-color: var(--primary, #107a95);
+    background: #f0f9ff;
+    box-shadow: 0 1px 4px rgba(16, 122, 149, 0.12);
+  }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ─── Custom Charge Form (Step 2) ───
+.co-custom-charge {
+  margin-bottom: 16px;
+}
+.co-toggle-charge-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px dashed var(--border, #d1d5db);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary, #107a95);
+  transition: all 0.15s;
+  .material-symbols-outlined { font-size: 18px; }
+  &:hover {
+    background: #f0f9ff;
+    border-style: solid;
+  }
+}
+.co-charge-form {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: #f9fafb;
+}
+.co-charge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.co-cf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.co-cf-wide {
+  grid-column: 1 / -1;
+}
+.co-btn-charge-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--primary, #107a95);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.co-form-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #991b1b;
+  margin-bottom: 10px;
+  .material-symbols-outlined { font-size: 16px; }
+}
+
+// ─── Current Charges chips (Step 2) ───
+.co-current-charges {
+  margin-top: 16px;
+}
+.co-charge-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.co-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0369a1;
+}
+.co-cat-chip-icon {
+  font-size: 14px;
+}
+
+// ─── Liquidation Table (Step 3) ───
+.co-liq-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+.co-liq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-text, #6b7280);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    background: var(--surface-container-low, #f9fafb);
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border, #f3f4f6);
+    vertical-align: middle;
+  }
+  .cell-right { text-align: right; }
+}
+.co-liq-icon {
+  font-size: 14px;
+  color: var(--muted-text, #6b7280);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.co-row-late td {
+  color: #92400e;
+}
+.co-row-discount td {
+  color: #065f46;
+}
+
+// ─── Liquidation Summary (Step 3) ───
+.co-liq-summary {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+.co-liq-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--text-primary, #374151);
+}
+.co-liq-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+.co-liq-tax {
+  font-size: 12px;
+  color: var(--muted-text, #6b7280);
+}
+.co-liq-divider {
+  height: 1px;
+  background: var(--border, #e5e7eb);
+  margin: 6px 0;
+}
+.co-liq-grand {
+  font-weight: 700;
+  font-size: 15px;
+  .co-liq-val { font-size: 16px; color: var(--text-primary, #111827); }
+}
+.co-liq-paid {
+  font-size: 12px;
+  color: #065f46;
+}
+.co-liq-balance {
+  font-weight: 700;
+  .co-liq-val { color: #b45309; }
+}
+
+// ─── Payment inline (Step 3) ───
+.co-liq-payment {
+  margin-top: 8px;
+}
+.co-liq-pay-row {
+  display: flex;
+  gap: 8px;
+  .co-select { flex: 1; }
+  .co-input { flex: 1; }
+}
+
+// ─── Invoice Actions (Step 4) ───
+.co-invoice-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.co-inv-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  .material-symbols-outlined {
+    font-size: 28px;
+    color: var(--muted-text, #6b7280);
+  }
+  &:hover {
+    border-color: var(--primary, #107a95);
+    background: #f0f9ff;
+    .material-symbols-outlined { color: var(--primary, #107a95); }
+  }
+}
+.co-inv-primary {
+  border-color: var(--primary, #107a95);
+  background: #f0f9ff;
+  .material-symbols-outlined { color: var(--primary, #107a95); }
+}
+.co-inv-btn-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+.co-inv-btn-sub {
+  font-size: 10px;
+  color: var(--muted-text, #6b7280);
+  text-align: center;
+}
+
+// ─── Close / Complete (Step 5) ───
+.co-close-desc {
+  font-size: 13px;
+  color: var(--muted-text, #6b7280);
+  margin: 0 0 12px;
+}
+.co-auto-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.co-auto-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #0369a1;
+  .material-symbols-outlined {
+    font-size: 16px;
+    color: #059669;
+  }
+  strong { color: var(--text-primary, #111827); }
+}
+.co-close-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.co-damage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  .co-label { margin-bottom: 0; }
+}
+.co-damage-toggle {
+  display: flex;
+  gap: 4px;
+}
+.co-dmg-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #374151);
+  transition: all 0.15s;
+  &:hover { background: var(--hover, #f1f5f9); }
+  &.active { border-color: var(--primary, #107a95); background: #f0f9ff; }
+}
+.co-dmg-danger.active {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 // ─── Spinning animation ───
 .spinning {
   animation: spin 1s linear infinite;

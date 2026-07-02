@@ -13,7 +13,7 @@ import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-n
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { HousekeepingApiService, type MaintenanceTaskItem } from '../../services/housekeeping-api.service';
+import { HousekeepingApiService, type MaintenanceTaskItem, type RoomStatusItem } from '../../services/housekeeping-api.service';
 
 function todayLocalIso(): string {
   const now = new Date();
@@ -78,7 +78,7 @@ export class MaintenancePageComponent {
   readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
 
   // ── Room labels (for create form select) ──
-  readonly roomLabels = signal<string[]>([]);
+  readonly roomItems = signal<RoomStatusItem[]>([]);
 
   // ── Maintenance resource ──
   readonly maintenanceResource = rxResource<any, any>({
@@ -94,11 +94,11 @@ export class MaintenancePageComponent {
     stream: ({ params }) => {
       const { propId, status, page } = params as any;
 
-      // Sync rooms + fetch room labels (side effect via subscribe)
+      // Sync rooms + fetch room items with metadata
       this.api.syncRoomStatus(propId).subscribe({
         next: () => {
           this.api.getRoomStatus(propId, undefined, 1).subscribe({
-            next: (roomData) => this.roomLabels.set(roomData.items.map(r => r.roomNumber || r.roomLabel)),
+            next: (roomData) => this.roomItems.set(roomData.items),
             error: () => {},
           });
         },
@@ -240,13 +240,24 @@ export class MaintenancePageComponent {
     this.editingId.set(null);
   }
 
+  private resolveRoomMeta(label: string): { room_type_id: string; room_number: string } {
+    const room = this.roomItems().find(r => (r.roomNumber || r.roomLabel) === label);
+    return {
+      room_type_id: room?.roomTypeId || '',
+      room_number: room?.roomNumber || '',
+    };
+  }
+
   async submitTask(): Promise<void> {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
+    const roomMeta = this.resolveRoomMeta(val.roomLabel);
     const payload = {
       prop_id: this.selectedPropId() || 0,
       room_label: val.roomLabel,
+      room_type_id: roomMeta.room_type_id,
+      room_number: roomMeta.room_number,
       task_type: val.taskType,
       title: val.title,
       description: val.description || undefined,

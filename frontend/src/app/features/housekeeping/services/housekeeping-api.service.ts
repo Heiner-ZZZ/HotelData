@@ -31,6 +31,8 @@ export interface HousekeepingTaskItem {
   id: string;
   propId: number;
   roomLabel: string;
+  roomTypeId: string;
+  roomNumber: string;
   taskType: string;
   status: string;
   assignedTo: string;
@@ -45,6 +47,8 @@ export interface MaintenanceTaskItem {
   id: string;
   propId: number;
   roomLabel: string;
+  roomTypeId: string;
+  roomNumber: string;
   taskType: string;
   title: string;
   description: string;
@@ -54,6 +58,14 @@ export interface MaintenanceTaskItem {
   autoBlock: boolean;
   createdAt: string;
   completedAt: string | null;
+}
+
+export interface StaffUser {
+  username: string;
+  display_name: string;
+  email: string;
+  primary_role: string;
+  assigned_hotels: number[];
 }
 
 export interface RoomStatusHistoryEntry {
@@ -327,6 +339,13 @@ export class HousekeepingApiService {
     if (roomLabel) params = params.set('room_label', roomLabel);
     if (bookingId) params = params.set('booking_id', bookingId);
     return this.http.get<PaginatedResponse<RoomStatusHistoryEntry>>(`${this.baseUrl}/room-status/history`, { params, withCredentials: true });
+  }
+
+  // ── Staff users ──
+
+  getStaff(propId?: number) {
+    const params = propId ? new HttpParams().set('prop_id', String(propId)) : undefined;
+    return this.http.get<{ staff: StaffUser[] }>(`${this.baseUrl}/staff`, { params, withCredentials: true });
   }
 
   syncRoomStatus(propId: number) {
