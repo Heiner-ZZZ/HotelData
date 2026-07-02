@@ -25,6 +25,8 @@ def create_housekeeping_task(payload: HousekeepingTaskCreate) -> dict[str, Any]:
     doc = {
         "prop_id": payload.prop_id,
         "room_label": payload.room_label,
+        "room_type_id": payload.room_type_id or "",
+        "room_number": payload.room_number or "",
         "task_type": payload.task_type,
         "status": status,
         "assigned_to": payload.assigned_to,
@@ -117,6 +119,8 @@ def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> d
 
     set_data = {
         "room_label": payload.room_label,
+        "room_type_id": payload.room_type_id or "",
+        "room_number": payload.room_number or "",
         "task_type": payload.task_type,
         "assigned_to": payload.assigned_to or "",
         "priority": payload.priority,
@@ -202,6 +206,9 @@ def delete_housekeeping_task(task_id: str) -> dict[str, Any] | None:
 
 def _enrich_hk_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
+    # camelCase aliases for frontend
+    doc["roomTypeId"] = doc.get("room_type_id", "")
+    doc["roomNumber"] = doc.get("room_number", "")
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])

@@ -4,7 +4,7 @@ from typing import Any
 
 from pymongo import ReturnDocument
 
-from src.app.modules.partner.services._common import clean_text, normalize_label, now_utc, register_content_change
+from src.app.modules.partner.services._common import clean_text, normalize_label, now_utc, register_content_change, safe_bool
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.content.amenities import _amenity_category
 from src.app.modules.partner.services.content.queries import content_page_for_prop
@@ -188,7 +188,10 @@ def save_partner_hotel_policies(
     if detail is None:
         return None
 
-    # Check-out y check-in son días distintos, no se comparan
+    # Check-out y check-in son días distintos (ej. 15:00 / 12:00), no se comparan
+    ci = _parse_time(check_in_time)
+    co = _parse_time(check_out_time)
+
     db = get_database()
     clean_room_type = clean_text(room_type_id)
     clean_season = clean_text(season_id)

@@ -161,6 +161,7 @@ def _record_earnings(booking: dict, invoice_total: float) -> None:
 
 def list_invoices(
     booking_id: str | None = None,
+    prop_id: int | None = None,
     status: str | None = None,
     q: str | None = None,
     date_from: str | None = None,
@@ -171,6 +172,8 @@ def list_invoices(
     db = get_database()
     query: dict = {}
 
+    if prop_id:
+        query["prop_id"] = prop_id
     if booking_id:
         booking = _find_booking(booking_id)
         booking_str_id = booking.get("booking_id") if booking else booking_id

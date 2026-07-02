@@ -52,6 +52,7 @@ def create_invoice_api(
 @api_router.get("/invoices")
 def list_invoices_api(
     booking_id: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = Query(default=None),
     date_from: str | None = Query(default=None),
@@ -61,7 +62,7 @@ def list_invoices_api(
     current_user: dict = Depends(require_login),
 ):
     return list_invoices(
-        booking_id=booking_id, status=status_filter, q=q,
+        booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
 
