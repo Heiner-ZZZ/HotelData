@@ -1,0 +1,992 @@
+// ============================================================================
+// HOTELDATA HUB - Modelo de Datos (dbdiagram.io DSL)
+// Generado desde MongoDB - Julio 2026
+// ============================================================================
+// Pegar en https://dbdiagram.io para generar el diagrama ER
+// ============================================================================
+
+// ============================================================================
+// 1. DIMENSIONES (Analytics / Estrella)
+// ============================================================================
+
+Table dim_hotels {
+  prop_id int [pk]
+  prop_country_id int
+  prop_starrating int
+  prop_review_score decimal
+  prop_brand_bool bool
+  prop_location_score1 decimal
+  hotel_label varchar(255)
+  loaded_at timestamp
+  manual_override bool
+  name_source varchar(50)
+  original_generated_name varchar(255)
+  description text
+  display_country_label varchar(255)
+  display_name varchar(255)
+  hotel_name varchar(255)
+  updated_at timestamp
+  updated_by varchar(100)
+  verified_at timestamp
+}
+
+Table dim_destinations {
+  srch_destination_id int [pk]
+  destination_label varchar(255)
+  loaded_at timestamp
+  destination_display_name varchar(255)
+  destination_name varchar(255)
+}
+
+Table dim_visitor_countries {
+  visitor_location_country_id int [pk]
+  visitor_country_label varchar(255)
+  loaded_at timestamp
+  country_display_name varchar(255)
+  country_name varchar(255)
+}
+
+Table dim_sites {
+  site_id int [pk]
+  site_label varchar(255)
+  loaded_at timestamp
+}
+
+Table dim_dates {
+  date_key int [pk]
+  date date
+  year int
+  month int
+  day int
+  day_of_week int
+  loaded_at timestamp
+}
+
+Table dim_promotions {
+  promotion_flag bool [pk]
+  promotion_label varchar(50)
+}
+
+Table dim_click_status {
+  click_bool bool [pk]
+  click_status varchar(50)
+}
+
+Table dim_reservation_status {
+  reserva_bool bool [pk]
+  reservation_status varchar(50)
+}
+
+Table dim_occupancy_profile {
+  occupancy_profile_id varchar(50) [pk]
+  srch_adults_count int
+  srch_children_count int
+  srch_room_count int
+  occupancy_label varchar(255)
+  loaded_at timestamp
+}
+
+Table dim_stay_length_category {
+  stay_length_category_id varchar(50) [pk]
+  stay_length_category varchar(100)
+  min_nights int
+  max_nights int
+}
+
+Table dim_booking_window_category {
+  booking_window_category_id varchar(50) [pk]
+  booking_window_category varchar(100)
+  min_days int
+  max_days int
+}
+
+Table dim_price_category {
+  price_category_id varchar(50) [pk]
+  price_category varchar(100)
+  min_price_usd decimal
+  max_price_usd decimal
+}
+
+// ============================================================================
+// 2. TABLA DE HECHOS
+// ============================================================================
+
+Table fact_hotel_reservations {
+  id bigserial [pk]
+  source_record_id varchar(100)
+  srch_id int [not null]
+  date_time timestamp
+  date_key int [ref: > dim_dates.date_key]
+  site_id int [ref: > dim_sites.site_id]
+  visitor_location_country_id int [ref: > dim_visitor_countries.visitor_location_country_id]
+  visitor_hist_starrating decimal
+  visitor_hist_adr_usd decimal
+  prop_country_id int
+  prop_id int [ref: > dim_hotels.prop_id]
+  prop_starrating int
+  prop_review_score decimal
+  prop_brand_bool bool
+  prop_location_score1 decimal
+  price_usd decimal [not null]
+  promotion_flag bool [ref: > dim_promotions.promotion_flag]
+  srch_destination_id int [ref: > dim_destinations.srch_destination_id]
+  srch_length_of_stay int
+  srch_booking_window int
+  srch_adults_count int
+  srch_children_count int
+  srch_room_count int
+  click_bool bool [ref: > dim_click_status.click_bool]
+  reserva_bool bool [ref: > dim_reservation_status.reserva_bool]
+  reservas_brutas_usd decimal
+  occupancy_profile_id varchar(50) [ref: > dim_occupancy_profile.occupancy_profile_id]
+  stay_length_category_id varchar(50) [ref: > dim_stay_length_category.stay_length_category_id]
+  booking_window_category_id varchar(50) [ref: > dim_booking_window_category.booking_window_category_id]
+  price_category_id varchar(50) [ref: > dim_price_category.price_category_id]
+  loaded_at timestamp
+  execution_id varchar(100)
+  phase varchar(20)
+}
+
+// ============================================================================
+// 3. SEGURIDAD
+// ============================================================================
+
+Table users {
+  id varchar(24) [pk]
+  username varchar(100) [unique, not null]
+  email varchar(255) [unique, not null]
+  password_hash varchar(255) [not null]
+  display_name varchar(255)
+  primary_role varchar(50)
+  is_active bool [default: true]
+  email_verified bool [default: false]
+  failed_login_attempts int [default: 0]
+  locked_until timestamp
+  must_change_password bool [default: false]
+  temporary_password bool [default: false]
+  role_ids text
+  settings text
+  created_at timestamp
+  updated_at timestamp
+  updated_by varchar(100)
+  created_by varchar(255)
+}
+
+Table roles {
+  id varchar(24) [pk]
+  role_name varchar(50) [unique, not null]
+  display_name varchar(100)
+  description text
+  is_system bool [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table permissions {
+  id varchar(24) [pk]
+  permission_code varchar(100) [unique, not null]
+  description text
+  is_system bool [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table role_permissions {
+  role_id varchar(24) [ref: > roles.id]
+  permission_id varchar(24) [ref: > permissions.id]
+  role_name varchar(50)
+  permission_code varchar(100)
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table user_sessions {
+  id varchar(24) [pk]
+  session_token_hash varchar(64) [unique]
+  session_token varchar(255) [unique]
+  user_id varchar(24) [ref: > users.id]
+  username varchar(100)
+  email varchar(255)
+  is_active bool [default: true]
+  ip_address varchar(45)
+  user_agent text
+  remember_me bool [default: false]
+  end_reason varchar(50)
+  created_at timestamp
+  expires_at timestamp
+  ended_at timestamp
+  last_activity_at timestamp
+}
+
+Table user_activity_logs {
+  id varchar(24) [pk]
+  event_key varchar(100) [unique]
+  user_id varchar(24)
+  username varchar(100)
+  email varchar(255)
+  action varchar(100) [not null]
+  module varchar(50)
+  details text
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp
+}
+
+Table refresh_tokens {
+  id varchar(24) [pk]
+  token_hash varchar(64) [unique]
+  user_id varchar(24) [ref: > users.id]
+  created_at timestamp
+  expires_at timestamp
+  used bool [default: false]
+}
+
+Table password_recovery_tokens {
+  id varchar(24) [pk]
+  token_hash varchar(64) [unique]
+  user_id varchar(24)
+  created_at timestamp
+  expires_at timestamp
+}
+
+Table email_verification_tokens {
+  id varchar(24) [pk]
+  token_hash varchar(64) [unique]
+  created_at timestamp
+  expires_at timestamp
+}
+
+Table two_factor_codes {
+  id varchar(24) [pk]
+  user_id varchar(24)
+  code varchar(10)
+  created_at timestamp
+  expires_at timestamp
+}
+
+Table user_2fa {
+  id varchar(24) [pk]
+  user_id varchar(24) [unique]
+  secret varchar(255)
+  enabled bool [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ============================================================================
+// 4. PARTNER / CONTENIDO
+// ============================================================================
+
+Table hotel_images {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  image_url varchar(500) [not null]
+  title varchar(255)
+  source varchar(50)
+  demo_seed bool [default: false]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (prop_id, image_url) [unique]
+  }
+}
+
+Table hotel_policies {
+  id varchar(24) [pk]
+  prop_id int [unique, not null, ref: > dim_hotels.prop_id]
+  room_type_id varchar(100)
+  check_in_time varchar(10)
+  check_out_time varchar(10)
+  cancellation_policy text
+  pet_policy text
+  children_policy text
+  extra_bed_policy text
+  payment_policy text
+  house_rules text
+  source varchar(50)
+  demo_seed bool
+  min_stay int
+  max_stay int
+  cancellation_hours int
+  children_allowed bool
+  pets_allowed bool
+  pet_fee decimal
+  extra_bed_fee decimal
+  season_id varchar(50)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table hotel_content_pages {
+  id varchar(24) [pk]
+  prop_id int [unique, not null, ref: > dim_hotels.prop_id]
+  description text
+  highlights text
+  amenities_text text
+  active_amenities text
+  amenities_catalog text
+  room_amenities text
+  amenity_prices text
+  source varchar(50)
+  demo_seed bool
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table hotel_content_changes {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  entity_type varchar(50)
+  action varchar(50)
+  payload text
+  changed_by varchar(100)
+  changed_at timestamp
+}
+
+Table hotel_profile_changes {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  field varchar(100)
+  old_value text
+  new_value text
+  changed_by varchar(100)
+  changed_at timestamp
+  reason text
+  source varchar(100)
+}
+
+// ============================================================================
+// 5. INVENTARIO
+// ============================================================================
+
+Table room_types {
+  id varchar(24) [pk]
+  room_type_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  name varchar(255)
+  description text
+  max_adults int
+  max_children int
+  base_capacity int
+  base_rate decimal
+  is_active bool [default: true]
+  room_number varchar(20)
+  floor varchar(10)
+  view varchar(100)
+  smoking bool
+  accessible bool
+  is_roh bool [default: false]
+  features text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table hotel_rooms {
+  id varchar(24) [pk]
+  hotel_room_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
+  room_label varchar(100)
+  room_number varchar(20)
+  floor varchar(10)
+  view varchar(100)
+  smoking bool
+  accessible bool
+  is_active bool [default: true]
+  is_roh bool [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table room_inventory_calendar {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_type_id varchar(100) [not null, ref: > room_types.room_type_id]
+  date date [not null]
+  total_rooms int
+  available_rooms int
+  blocked_rooms int [default: 0]
+  version int [default: 1]
+  is_deleted bool [default: false]
+  deleted_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (prop_id, room_type_id, date) [unique]
+  }
+}
+
+Table room_availability_blocks {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
+  start_date date [not null]
+  end_date date
+  reason varchar(255)
+  blocked_rooms int
+  room_numbers text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table blackout_dates {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_type_id varchar(100)
+  room_label varchar(100)
+  start_date timestamp [not null]
+  end_date timestamp
+  source varchar(50)
+  reason text
+  created_at timestamp
+}
+
+Table room_features {
+  id varchar(24) [pk]
+  label varchar(100) [unique, not null]
+  category varchar(50)
+}
+
+Table hotel_products {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  product_id varchar(100) [not null]
+  category varchar(50)
+
+  Indexes {
+    (prop_id, product_id) [unique]
+  }
+}
+
+Table platform_earnings {
+  id varchar(24) [pk]
+  booking_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  commission_pct decimal
+  booking_total decimal
+  commission_amount decimal
+  status varchar(50)
+  created_at timestamp
+}
+
+// ============================================================================
+// 6. RESERVACIONES
+// ============================================================================
+
+Table booking_orders {
+  id varchar(24) [pk]
+  booking_id varchar(100) [unique, not null]
+  user_id varchar(24)
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  status varchar(50) [not null]
+  booking_source varchar(50)
+  guest_name varchar(255)
+  guest_email varchar(255)
+  guest_phone varchar(50)
+  room_type_id varchar(100)
+  check_in_date date
+  check_out_date date
+  adults int
+  children int [default: 0]
+  rooms int [default: 1]
+  comment text
+  special_requests text
+  total_price decimal
+  currency varchar(10) [default: 'USD']
+  total_nights int
+  coupon_code varchar(50)
+  discount_percent decimal
+  original_total_price decimal
+  stay_status varchar(50)
+  is_test bool [default: false]
+  created_by varchar(100)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table booking_guests {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  guest_name varchar(255)
+  guest_email varchar(255)
+  guest_phone varchar(50)
+  is_primary bool [default: false]
+  is_test bool [default: false]
+  created_at timestamp
+}
+
+Table booking_room_guests {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  room_index int [not null]
+  guests text
+  created_at timestamp
+  updated_at timestamp
+  is_test bool [default: false]
+
+  Indexes {
+    (booking_id, room_index) [unique]
+  }
+}
+
+Table booking_status_history {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  status varchar(50) [not null]
+  changed_at timestamp
+  reason varchar(100)
+  changed_by varchar(100)
+  is_test bool [default: false]
+}
+
+Table manual_reservations {
+  id varchar(24) [pk]
+  manual_reservation_id varchar(100) [unique, not null]
+  booking_id varchar(100) [ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  created_at timestamp
+}
+
+Table notification_log {
+  id varchar(24) [pk]
+  notification_type varchar(100) [not null]
+  recipient_email varchar(255)
+  recipient_name varchar(255)
+  booking_id varchar(100)
+  prop_id int
+  status varchar(50)
+  error_message text
+  created_at timestamp
+}
+
+// ============================================================================
+// 7. REVENUE
+// ============================================================================
+
+Table rate_plans {
+  id varchar(24) [pk]
+  rate_plan_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  name varchar(255)
+  base_rate decimal
+  is_active bool [default: true]
+  eligible_roles text
+}
+
+Table hotel_rate_calendar {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  rate_plan_id varchar(100) [not null, ref: > rate_plans.rate_plan_id]
+  date date [not null]
+  rate_amount decimal
+  is_closed bool [default: false]
+
+  Indexes {
+    (prop_id, rate_plan_id, date) [unique]
+  }
+}
+
+Table rate_rules {
+  id varchar(24) [pk]
+  rule_id varchar(100) [unique, not null]
+  rate_plan_id varchar(100) [ref: > rate_plans.rate_plan_id]
+  prop_id int [ref: > dim_hotels.prop_id]
+  name varchar(255)
+  price_override decimal
+  start_date date
+  end_date date
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table promotion_campaigns {
+  id varchar(24) [pk]
+  campaign_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  name varchar(255)
+  description text
+  discount_percent int
+  start_date date
+  end_date date
+  is_active bool [default: true]
+  coupon_count int [default: 0]
+  coupons_used int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table coupon_codes {
+  id varchar(24) [pk]
+  coupon_code varchar(50) [unique, not null]
+  campaign_id varchar(100) [not null, ref: > promotion_campaigns.campaign_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  discount_percent int
+  is_active bool [default: true]
+  used bool [default: false]
+  used_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ============================================================================
+// 8. REVIEWS
+// ============================================================================
+
+Table reviews {
+  id varchar(24) [pk]
+  booking_id varchar(100) [ref: > booking_orders.booking_id]
+  prop_id int [ref: > dim_hotels.prop_id]
+  user_id varchar(24)
+  rating int
+  title varchar(255)
+  comment text
+  moderation_status varchar(50)
+  staff_response text
+  staff_response_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table fact_reviews {
+  id varchar(24) [pk]
+  booking_id varchar(100) [ref: > booking_orders.booking_id]
+  prop_id int [ref: > dim_hotels.prop_id]
+  user_id varchar(24)
+  rating int
+  title varchar(255)
+  comment text
+  moderation_status varchar(50)
+  staff_response text
+  staff_response_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table review_reports {
+  id varchar(24) [pk]
+  review_id varchar(24)
+  reported_by varchar(100)
+  reason text
+  description text
+  status varchar(50)
+  created_at timestamp
+}
+
+// ============================================================================
+// 9. HOUSEKEEPING
+// ============================================================================
+
+Table room_status_log {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  hotel_room_id varchar(100)
+  room_type_id varchar(100)
+  room_label varchar(100)
+  room_number varchar(20)
+  status varchar(50) [not null]
+  note text
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (prop_id, hotel_room_id) [unique]
+  }
+}
+
+Table room_status_history {
+  id varchar(24) [pk]
+  prop_id int [ref: > dim_hotels.prop_id]
+  room_label varchar(100)
+  old_status varchar(50)
+  new_status varchar(50)
+  note text
+  changed_by varchar(100)
+  created_at timestamp
+}
+
+Table housekeeping_tasks {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_label varchar(100)
+  task_type varchar(50)
+  status varchar(50)
+  assigned_to varchar(100)
+  priority varchar(20) [default: 'normal']
+  note text
+  scheduled_date timestamp
+  created_at timestamp
+  completed_at timestamp
+  updated_at timestamp
+}
+
+Table maintenance_tasks {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  room_label varchar(100)
+  task_type varchar(50)
+  title varchar(255)
+  description text
+  status varchar(50)
+  priority varchar(20) [default: 'normal']
+  scheduled_date date
+  created_at timestamp
+  completed_at timestamp
+  updated_at timestamp
+}
+
+Table additional_charges {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  concept varchar(255)
+  amount decimal
+  quantity int [default: 1]
+  total decimal
+  note text
+  created_at timestamp
+}
+
+// ============================================================================
+// 10. FACTURACION
+// ============================================================================
+
+Table reservation_invoices {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  invoice_number varchar(100) [unique, not null]
+  subtotal decimal
+  taxes decimal
+  total decimal
+  status varchar(50)
+  notes text
+  issued_at timestamp
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table reservation_payments {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  invoice_id varchar(24) [ref: > reservation_invoices.id]
+  amount decimal
+  method varchar(50)
+  status varchar(50)
+  reference varchar(100)
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table fact_reservation_invoices {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null]
+  prop_id int [not null]
+  invoice_number varchar(100) [unique, not null]
+  subtotal decimal
+  taxes decimal
+  total decimal
+  status varchar(50)
+  notes text
+  issued_at timestamp
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table fact_reservation_payments {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null]
+  prop_id int [not null]
+  invoice_id varchar(24)
+  amount decimal
+  method varchar(50)
+  status varchar(50)
+  reference varchar(100)
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table guest_folios {
+  id varchar(24) [pk]
+  folio_number varchar(100) [unique, not null]
+  booking_id varchar(100) [unique, not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  guest_name varchar(255)
+  guest_email varchar(255)
+  room_label varchar(100)
+  hotel_label varchar(255)
+  check_in_date date
+  check_out_date date
+  status varchar(50)
+  total_room decimal [default: 0]
+  total_charges decimal [default: 0]
+  total_discounts decimal [default: 0]
+  total_payments decimal [default: 0]
+  total_due decimal [default: 0]
+  postings text
+  posting_count int [default: 0]
+  invoice_id varchar(24)
+  created_at timestamp
+  closed_at timestamp
+  closed_by varchar(100)
+  updated_at timestamp
+}
+
+// ============================================================================
+// 11. MODULOS ADICIONALES
+// ============================================================================
+
+Table geo_catalog {
+  id varchar(24) [pk]
+  type varchar(50) [not null]
+  code varchar(50) [not null]
+  name varchar(255)
+  iso_code varchar(10)
+  country_code varchar(10)
+  state_code varchar(10)
+  latitude decimal
+  longitude decimal
+  is_active bool [default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  Indexes {
+    (type, code) [unique]
+  }
+}
+
+Table reception_shifts {
+  id varchar(24) [pk]
+  prop_id int [ref: > dim_hotels.prop_id]
+  shift_type varchar(50)
+  status varchar(50)
+  start_time timestamp
+  end_time timestamp
+  employee_name varchar(255)
+  notes text
+}
+
+Table lost_and_found {
+  id varchar(24) [pk]
+  prop_id int [ref: > dim_hotels.prop_id]
+  booking_id varchar(100) [ref: > booking_orders.booking_id]
+  status varchar(50)
+  description text
+  location_found varchar(255)
+  reported_by varchar(100)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table click_events {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  source varchar(50)
+  user_id varchar(100)
+  clicked_at timestamp
+}
+
+// ============================================================================
+// 12. ETL / CONTROL
+// ============================================================================
+
+Table etl_executions {
+  execution_id varchar(100) [pk]
+  phase varchar(20)
+  executed_at timestamp
+  started_at timestamp
+  completed_at timestamp
+  duration_seconds decimal
+  status varchar(20)
+  database varchar(50)
+  source text
+  records_processed int
+  records_rejected int
+  loaded_collections text
+  final_counts text
+}
+
+Table data_quality_reports {
+  id varchar(24) [pk]
+  execution_id varchar(100)
+  phase varchar(20)
+  generated_at timestamp
+  source text
+  source_rows int
+  valid_fact_records int
+  invalid_fact_records int
+  rejected_records int
+  valid_dimension_records int
+  invalid_dimension_records int
+  completeness_score decimal
+  dimensions text
+  schema text
+  extract text
+  parquet text
+}
+
+Table audit_log {
+  id varchar(24) [pk]
+  timestamp timestamp [not null]
+  prop_id int [ref: > dim_hotels.prop_id]
+  entity_type varchar(50)
+  entity_id varchar(100)
+  action varchar(50)
+  summary text
+  changed_by varchar(100)
+  metadata text
+}
+
+Table kpi_summary {
+  id varchar(24) [pk]
+  updated_at timestamp
+  payload text
+}
+
+Table system_catalogs {
+  id varchar(24) [pk]
+  catalog_type varchar(50)
+  code varchar(50)
+  label varchar(255)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table system_config {
+  id varchar(24) [pk]
+  default_commission_pct decimal
+  default_iva_pct decimal
+  updated_at timestamp
+  updated_by varchar(100)
+}
+
+Table amenity_stock {
+  id varchar(24) [pk]
+  prop_id int
+  amenity_label varchar(100)
+  room_type_id varchar(100)
+  quantity int
+
+  Indexes {
+    (prop_id, amenity_label, room_type_id) [unique]
+  }
+}
+
+Table commission_rates {
+  id varchar(24) [pk]
+  prop_id int [unique]
+  commission_pct decimal
+}
+
+Table tax_rates {
+  id varchar(24) [pk]
+  country_id varchar(10) [unique]
+  country_name varchar(100)
+  tax_pct decimal
+}
