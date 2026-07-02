@@ -91,6 +91,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../lost-and-found/lost-and-found.routes').then((m) => m.LOST_AND_FOUND_ROUTES)
   },
   {
+    path: 'stay-inbox',
+    loadComponent: () =>
+      import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)

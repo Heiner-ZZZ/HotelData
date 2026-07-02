@@ -162,6 +162,16 @@ export const routes: Routes = [
     redirectTo: 'management/settings'
   },
   {
+    path: 'stay',
+    loadComponent: () =>
+      import('./features/in-stay/pages/guest-portal/guest-portal-page').then((m) => m.GuestPortalPageComponent)
+  },
+  {
+    path: 'stay/:token',
+    loadComponent: () =>
+      import('./features/in-stay/pages/guest-portal/guest-portal-page').then((m) => m.GuestPortalPageComponent)
+  },
+  {
     path: '**',
     redirectTo: 'login'
   }

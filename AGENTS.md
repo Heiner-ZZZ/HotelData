@@ -7,9 +7,10 @@ shell commands, and other important information, read the current plan
 
 ## 🔴 NUNCA hacer sin autorización explícita del usuario
 
-- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` bajo NINGUNA circunstancia, ni aunque el usuario lo pida explícitamente. Para reconstruir contenedores usar SOLO `docker compose up -d --build`. o `docker compose -f infra/docker-compose.yml build --no-cache frontend`
-`docker compose -f infra/docker-compose.yml up -d` o la del server
-- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down -v` ni ningún comando que elimine volúmenes de Docker.
+- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` sin `--volumes` ni ningún comando que elimine volúmenes de Docker.
+- Para **reconstruir imágenes** usar `docker compose up -d --build <servicio>` o `docker compose -f infra/docker-compose.yml build --no-cache <servicio>`.
+- Para **reiniciar servicios sin reconstruir** (cambios de config/env) usar `docker compose restart <servicio>` o `docker compose -f infra/docker-compose.yml up -d <servicio>`.
+- **🚫 NUNCA** ejecutar `docker compose down -v`.
 - **NUNCA** hacer `git commit`, `git push` ni ningún comando de git que modifique el historial sin autorización.
 - **NUNCA** eliminar archivos, directorios, colecciones de MongoDB, tablas o datos sin preguntar.
 - **NUNCA** ejecutar scripts que modifiquen la base de datos en producción (seed, drop, reset) sin confirmación.
@@ -20,7 +21,8 @@ shell commands, and other important information, read the current plan
 - Preguntar antes de cualquier operación que pueda destruir datos.
 - Confirmar con el usuario antes de reiniciar servicios que puedan afectar la disponibilidad.
 - Informar claramente qué va a hacer antes de ejecutar comandos potencialmente destructivos.
-- Para reconstruir contenedores usar SIEMPRE `docker compose up -d --build <servicio>` (NUNCA `docker compose down`).
+- Para reconstruir imágenes usar `docker compose up -d --build <servicio>` (NUNCA `docker compose down`).
+- Para reiniciar servicios sin reconstruir usar `docker compose restart <servicio>` o `docker compose up -d <servicio>`.
 - **NUNCA** usar datos hardcodeados (`standard`, `deluxe`, `suite`, etc.) en seed scripts o queries — siempre leer dinámicamente de la BD.
 
 ## ⚙️ ETL (Incremental)

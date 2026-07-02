@@ -1,9 +1,10 @@
 <div class="management-shell">
   <app-sidebar-nav />
-  <div class="management-right">
+  <div class="management-right" #scrollContainer>
     <app-management-top-nav />
     <main class="management-content">
       <router-outlet />
     </main>
+    <app-scroll-to-top />
   </div>
 </div>

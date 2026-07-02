@@ -60,6 +60,8 @@ from src.app.modules.lost_and_found.routes import api_router as lost_and_found_a
 from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
 from src.app.modules.notifications.routes import router as notifications_router
 from src.app.modules.reception.routes import api_router as reception_api_router
+from src.app.modules.instay.routes import guest_router as instay_guest_router
+from src.app.modules.instay.routes import staff_router as instay_staff_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -152,6 +154,8 @@ def create_app() -> FastAPI:
     app.include_router(lost_and_found_module_router)
     app.include_router(notifications_router)
     app.include_router(crud_router)
+    app.include_router(instay_guest_router)
+    app.include_router(instay_staff_router)
     return app
 
 
@@ -176,6 +180,8 @@ async def lifespan(app: FastAPI):
     ensure_auth_collections()
     ensure_room_features_collections()
     ensure_lost_and_found_collections()
+    from src.app.modules.instay.routes import ensure_stay_collections
+    ensure_stay_collections()
     ensure_audit_indexes()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield

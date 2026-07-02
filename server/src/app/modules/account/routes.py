@@ -158,7 +158,8 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
         raise HTTPException(
             status_code=400,
             detail="El email ya está registrado por otro usuario.",
-        )    if new_email != old_email:
+        )
+    if new_email != old_email:
         try:
             _send_email_change_verification(current_user, old_email, new_email)
         except Exception:
