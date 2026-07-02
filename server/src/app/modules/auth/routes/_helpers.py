@@ -130,98 +130,46 @@ def _send_verification_code(email: str, display_name: str, code: str) -> None:
     settings = get_settings()
     base_url = (settings.app_base_url or "https://hoteldata.app").rstrip("/")
 
+    from src.app.email.templates import base_layout
+
+    # Build square digit boxes
     digits_html = ""
     for i, digit in enumerate(code):
-        padding = "padding-left:8px;" if i > 0 else ""
+        margin_left = "margin-left:6px;" if i > 0 else ""
         digits_html += (
-            f'<td style="width:48px;height:56px;text-align:center;'
-            f'font-size:28px;font-weight:800;font-family:monospace;'
-            f'color:#162033;background:#f7faff;border:2px solid #d8e0eb;'
-            f'border-radius:8px;padding:0;{padding}">'
+            f'<td style="width:44px;height:52px;text-align:center;'
+            f'font-size:26px;font-weight:700;font-family:monospace;'
+            f'color:#191c1e;background:#f7f9fb;border:1px solid #d0d5d8;'
+            f'{margin_left}">'
             f'{digit}'
-            f'</td>\n'
+            f'</td>'
         )
 
-    html = f"""<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Tu código de verificación — HotelData</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f3f6fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f6fb;padding:24px 0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px">
-          <tr>
-            <td align="center" style="padding:0 0 20px">
-              <img src="{base_url}/assets/logo-hoteldata.png" alt="HotelData Hub" width="200" style="display:block;max-width:200px;height:auto;border:0">
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#ffffff;border-radius:12px;padding:40px 36px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="padding:0 0 8px">
-                    <span style="display:inline-block;background:#eef4ff;color:#1463ff;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:6px 16px;border-radius:20px">Código de verificación</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding:0 0 20px">
-                    <h1 style="margin:0;font-size:22px;font-weight:700;color:#162033">Tu código de verificación</h1>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 20px;font-size:15px;line-height:1.7;color:#5f6f87;text-align:center">
-                    Hola <strong style="color:#162033">{display_name}</strong>,<br><br>
-                    Usa el siguiente código para completar tu registro en <strong>HotelData Hub</strong>:
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding:0 0 24px">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto">
-                      <tr>
-                        {digits_html}
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 24px;font-size:13px;line-height:1.6;color:#8a99b0;text-align:center">
-                    Este código expira en <strong>{PENDING_TTL_MINUTES} minutos</strong>.<br>
-                    Si no solicitaste este registro, ignora este mensaje.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 16px">
-                    <hr style="border:0;border-top:1px solid #e8ecf2;margin:0">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0;font-size:13px;line-height:1.6;color:#8a99b0;text-align:center">
-                    ¿Problemas con el código?
-                    <a href="{base_url}/register" style="color:#1463ff;text-decoration:underline">Solicita uno nuevo</a>.
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 0 0">
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#8a99b0">
-                © 2026 HotelData Hub. Todos los derechos reservados.<br>
-                Este es un correo automático, por favor no respondas a este mensaje.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-    send_email(email, "Tu código de verificación — HotelData", html)
+    body = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{display_name}</strong>,</p>\n'
+        f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Usa el siguiente codigo para completar tu registro en HotelData Hub:\n'
+        f'</p>\n'
+        f'<table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 20px">\n'
+        f'  <tr>{digits_html}</tr>\n'
+        f'</table>\n'
+        f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Este codigo expira en <strong>{PENDING_TTL_MINUTES} minutos</strong>.<br>'
+        f'Si no solicitaste este registro, ignora este mensaje.'
+        f'</p>'
+    )
+
+    html = base_layout(
+        "Verifica tu correo electronico",
+        body,
+        logo_url=base_url,
+        footer_note=(
+            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "No compartas este codigo con nadie."
+        ),
+    )
+    send_email(email, "Tu codigo de verificacion — HotelData", html)
 
 
 def _send_recovery_email(user: dict, token: str) -> None:
@@ -229,79 +177,30 @@ def _send_recovery_email(user: dict, token: str) -> None:
     base_url = (settings.app_base_url or "https://hoteldata.app").rstrip("/")
     reset_link = f"{base_url}/reset?token={token}"
 
-    html = f"""<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Recupera tu contraseña — HotelData</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f3f6fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f6fb;padding:24px 0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px">
-          <tr>
-            <td align="center" style="padding:0 0 20px">
-              <img src="{base_url}/assets/logo-hoteldata.png" alt="HotelData Hub" width="200" style="display:block;max-width:200px;height:auto;border:0">
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#ffffff;border-radius:12px;padding:40px 36px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="padding:0 0 8px">
-                    <span style="display:inline-block;background:#fef3e2;color:#b45a1c;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:6px 16px;border-radius:20px">Recuperación de contraseña</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding:0 0 20px">
-                    <h1 style="margin:0;font-size:22px;font-weight:700;color:#162033">Restablece tu contraseña</h1>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 20px;font-size:15px;line-height:1.7;color:#5f6f87;text-align:center">
-                    Hola <strong style="color:#162033">{user.get('display_name') or user.get('username')}</strong>,<br><br>
-                    Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>HotelData Hub</strong>.
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="padding:0 0 24px">
-                    <a href="{reset_link}" style="display:inline-block;background:#1463ff;color:#ffffff;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700">Restablecer contraseña</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 24px;font-size:13px;line-height:1.6;color:#8a99b0;text-align:center">
-                    Este enlace expira en <strong>{RECOVERY_TOKEN_TTL_MINUTES} minuto(s)</strong>.<br>
-                    Si no solicitaste este cambio, ignora este mensaje.
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 16px">
-                    <hr style="border:0;border-top:1px solid #e8ecf2;margin:0">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0;font-size:13px;line-height:1.6;color:#8a99b0;text-align:center">
-                    ¿No puedes hacer clic? Copia este enlace en tu navegador:<br>
-                    <span style="color:#1463ff;word-break:break-all;font-size:12px">{reset_link}</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 0 0">
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#8a99b0">
-                © 2026 HotelData Hub. Todos los derechos reservados.<br>
-                Este es un correo automático, por favor no respondas a este mensaje.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-    send_email(user.get("email", ""), "Recupera tu contraseña — HotelData", html)
+    from src.app.email.templates import base_layout, cta_button
+
+    display_name = user.get("display_name") or user.get("username") or "Usuario"
+    body = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{display_name}</strong>,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Recibimos una solicitud para restablecer la contrasena de tu cuenta '
+        f'en HotelData Hub.\n'
+        f'</p>\n'
+        f'{cta_button(reset_link, "Restablecer contrasena")}\n'
+        f'<p style="margin:20px 0 0;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Este enlace expira en <strong>{RECOVERY_TOKEN_TTL_MINUTES} minuto(s)</strong>.<br>'
+        f'Si no solicitaste este cambio, ignora este mensaje.'
+        f'</p>'
+    )
+
+    html = base_layout(
+        "Restablece tu contrasena",
+        body,
+        logo_url=base_url,
+        footer_note=(
+            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Si no solicitaste restablecer tu contrasena, ignora este correo."
+        ),
+    )
+    send_email(user.get("email", ""), "Recupera tu contrasena — HotelData", html)

@@ -6,6 +6,7 @@ from typing import Any
 from bson import ObjectId
 from pymongo.database import Database
 
+from config.settings import get_settings
 from src.app.email.service import send_email
 from src.database.connection import get_database
 
@@ -110,6 +111,7 @@ def terminate_user_sessions(user_id_str: str, acting_user: dict[str, Any]) -> di
 
 def notify_new_login(user: dict[str, Any], ip_address: str | None, user_agent: str | None) -> None:
     db = get_database()
+    settings = get_settings()
     email = user.get("email", "")
     if not email:
         return
@@ -127,19 +129,28 @@ def notify_new_login(user: dict[str, Any], ip_address: str | None, user_agent: s
             known_ips.add(s["ip_address"])
 
     if ip_address and ip_address not in known_ips and known_ips:
-        html = f"""<!DOCTYPE html>
-<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
-<h2 style="color:#1463ff">HotelData — Nuevo inicio de sesión</h2>
-<p>Se detectó un inicio de sesión en tu cuenta desde una ubicación o dispositivo no reconocido.</p>
-<table style="width:100%;border-collapse:collapse;margin:16px 0">
-<tr><td style="padding:8px;background:#f3f6fb;font-weight:600">IP</td><td style="padding:8px">{ip_address or "Desconocida"}</td></tr>
-<tr><td style="padding:8px;background:#f3f6fb;font-weight:600">Dispositivo</td><td style="padding:8px">{user_agent or "Desconocido"}</td></tr>
-<tr><td style="padding:8px;background:#f3f6fb;font-weight:600">Fecha</td><td style="padding:8px">{_now().strftime("%Y-%m-%d %H:%M UTC")}</td></tr>
-</table>
-<p>Si fuiste tú, ignora este mensaje. Si no reconoces esta actividad, cambia tu contraseña inmediatamente.</p>
-<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
-</body></html>"""
-        send_email(email, "Nuevo inicio de sesión — HotelData", html)
+        from src.app.email.templates import base_layout, detail_row, detail_table
+        rows = detail_table(
+            "Detalles del inicio de sesion",
+            detail_row("IP", ip_address or "Desconocida")
+            + detail_row("Dispositivo", user_agent or "Desconocido")
+            + detail_row("Fecha", _now().strftime("%Y-%m-%d %H:%M UTC")),
+        )
+        body = (
+            f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+            f'Se detecto un inicio de sesion en tu cuenta desde una ubicacion o dispositivo no reconocido.</p>\n'
+            f'{rows}\n'
+            f'<p style="margin:16px 0 0;font-size:13px;color:#6f797d;line-height:1.5">'
+            f'Si fuiste tu, ignora este mensaje. Si no reconoces esta actividad, cambia tu contrasena inmediatamente.'
+            f'</p>'
+        )
+        html = base_layout(
+            "Nuevo inicio de sesion detectado",
+            body,
+            logo_url=settings.app_base_url,
+            footer_note="Mantén tu contrasena segura y no la compartas con nadie.",
+        )
+        send_email(email, "Nuevo inicio de sesion — HotelData", html)
 
 
 def _fmt(val: Any) -> str:

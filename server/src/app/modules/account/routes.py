@@ -158,22 +158,26 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
         raise HTTPException(
             status_code=400,
             detail="El email ya está registrado por otro usuario.",
-        )
-
-    if new_email != old_email:
+        )    if new_email != old_email:
         try:
             _send_email_change_verification(current_user, old_email, new_email)
         except Exception:
             pass
         if old_email:
             try:
-                html = f"""<!DOCTYPE html>
-<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
-<h2 style="color:#1463ff">HotelData — Correo electrónico actualizado</h2>
-<p>El correo de tu cuenta fue cambiado de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>
-<p>Si no realizaste este cambio, contacta al soporte de inmediato.</p>
-<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
-</body></html>"""
+                from src.app.email.templates import base_layout
+                body = (
+                    f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+                    f'El correo de tu cuenta fue cambiado de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>\n'
+                    f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+                    f'Si no realizaste este cambio, contacta al soporte de inmediato.'
+                    f'</p>'
+                )
+                html = base_layout(
+                    "Correo electronico actualizado",
+                    body,
+                    logo_url=settings.app_base_url,
+                )
                 send_email(old_email, "Tu correo fue cambiado — HotelData", html)
             except Exception:
                 pass
@@ -292,17 +296,28 @@ def _send_email_change_verification(user: dict, old_email: str, new_email: str) 
         "used": False,
     })
     link = f"{settings.app_base_url}/verify-email?token={token}"
-    html = f"""<!DOCTYPE html>
-<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
-<h2 style="color:#1463ff">HotelData — Verifica tu nuevo correo</h2>
-<p>Has solicitado cambiar tu correo de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>
-<p>Haz clic en el siguiente enlace para confirmar el cambio:</p>
-<p style="text-align:center;margin:32px 0">
-  <a href="{link}" style="background:#1463ff;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:700">Verificar correo</a>
-</p>
-<p>Si no solicitaste este cambio, ignora este mensaje.</p>
-<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
-</body></html>"""
+
+    from src.app.email.templates import base_layout, cta_button
+    body = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Has solicitado cambiar tu correo de <strong>{old_email}</strong> a <strong>{new_email}</strong>.</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Haz clic en el siguiente enlace para confirmar el cambio:'
+        f'</p>\n'
+        f'{cta_button(link, "Verificar correo")}\n'
+        f'<p style="margin:20px 0 0;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Si no solicitaste este cambio, ignora este mensaje.'
+        f'</p>'
+    )
+    html = base_layout(
+        "Verifica tu nuevo correo",
+        body,
+        logo_url=settings.app_base_url,
+        footer_note=(
+            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "El enlace expirara en 7 dias."
+        ),
+    )
     try:
         send_email(new_email, "Verifica tu nuevo correo — HotelData", html)
     except Exception:

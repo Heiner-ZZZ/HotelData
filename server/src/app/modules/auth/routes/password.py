@@ -129,14 +129,20 @@ def reset_password(request: Request, payload: dict = Body(...)):
         if email:
             from config.settings import get_settings
             from src.app.email.service import send_email
-            html = f"""<!DOCTYPE html>
-<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
-<h2 style="color:#1463ff">HotelData — Contraseña restablecida</h2>
-<p>Tu contraseña fue restablecida exitosamente.</p>
-<p>Si no realizaste este cambio, contacta al soporte de inmediato.</p>
-<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
-</body></html>"""
-            send_email(email, "Tu contraseña fue restablecida — HotelData", html)
+            from src.app.email.templates import base_layout
+            body = (
+                f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+                f'Tu contrasena fue restablecida exitosamente.</p>\n'
+                f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+                f'Si no realizaste este cambio, contacta al soporte de inmediato.'
+                f'</p>'
+            )
+            html = base_layout(
+                "Contrasena restablecida",
+                body,
+                logo_url=get_settings().app_base_url,
+            )
+            send_email(email, "Tu contrasena fue restablecida — HotelData", html)
     except Exception:
         pass
 

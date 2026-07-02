@@ -239,19 +239,16 @@
                       @if (item.performance.includesOperationalBookings) {
                         <span class="res-breakdown">
                           <span class="res-amount">
-                            <span class="res-source">históricas</span>
+                            <span class="material-symbols-outlined res-info-icon" title="Reservas historicas del dataset original de busquedas">info</span>
                             <strong>{{ item.performance.historicalReservations }}</strong>
                           </span>
                           <span class="res-plus">+</span>
                           <span class="res-amount res-current">
-                            <span class="res-source">actuales</span>
+                            <span class="material-symbols-outlined res-info-icon" title="Reservas operacionales del sistema activo">info</span>
                             <strong>{{ item.performance.operationalReservations }}</strong>
                           </span>
                           <span class="res-eq">=</span>
                           <strong class="res-total">{{ (item.performance.historicalReservations ?? 0) + (item.performance.operationalReservations ?? 0) }}</strong>
-                        </span>
-                        <span class="info-tip" title="Históricas: datos del dataset original de búsquedas. Actuales: reservas operacionales del sistema.">
-                          <span class="material-symbols-outlined info-icon">info</span>
                         </span>
                       } @else {
                         {{ item.performance.reservations }} reserva(s)
