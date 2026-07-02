@@ -5,20 +5,22 @@
     description="Gestiona las salidas del día y registra salidas de huéspedes."
   />
 
-  <!-- KPI Chart: Check-outs by hotel today -->
-  @if (opStats(); as stats) {
-    <section class="surface-card kpi-chart-section">
-      @if (stats.check_outs_by_hotel.length > 0) {
-        <app-kpi-chart
-          title="Check-outs del día por hotel"
-          [labels]="stats.check_outs_by_hotel.map(h => h.label)"
-          [datasets]="[{ label: 'Check-outs hoy', data: stats.check_outs_by_hotel.map(h => h.count) }]"
-          [showLegend]="false"
-          [height]="200"
-          type="line"
-        />
-      }
-    </section>
+  <!-- KPI Chart: Check-outs by hotel today — hidden in single-hotel mode -->
+  @if (!propertyCtx.singleHotelMode()) {
+    @if (opStats(); as stats) {
+      <section class="surface-card kpi-chart-section">
+        @if (stats.check_outs_by_hotel.length > 0) {
+          <app-kpi-chart
+            title="Check-outs del día por hotel"
+            [labels]="stats.check_outs_by_hotel.map(h => h.label)"
+            [datasets]="[{ label: 'Check-outs hoy', data: stats.check_outs_by_hotel.map(h => h.count) }]"
+            [showLegend]="false"
+            [height]="200"
+            type="line"
+          />
+        }
+      </section>
+    }
   }
 
   @if (message()) {

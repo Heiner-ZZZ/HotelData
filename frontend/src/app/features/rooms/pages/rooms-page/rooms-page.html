@@ -11,21 +11,23 @@
     (propIdChange)="onPropSelected($event)"
   />
 
-  <!-- KPI Chart: Top 5 Hotels by Room Count -->
-  @if (selectedPropId() === 0) {
-    <section class="surface-card kpi-chart-section">
-      <app-kpi-chart
-        title="Top 5 Hoteles con más habitaciones"
-        [labels]="topHotels().map(h => h.label)"
-        [datasets]="[
-          { label: 'Tipos de habitación', data: topHotels().map(h => h.room_types) },
-          { label: 'Habitaciones físicas', data: topHotels().map(h => h.physical_rooms) }
-        ]"
-        [showLegend]="true"
-        [height]="220"
-        type="line"
-      />
-    </section>
+  <!-- KPI Chart: Top 5 Hotels by Room Count — hidden in single-hotel mode -->
+  @if (!propertyCtx.singleHotelMode()) {
+    @if (selectedPropId() === 0) {
+      <section class="surface-card kpi-chart-section">
+        <app-kpi-chart
+          title="Top 5 Hoteles con más habitaciones"
+          [labels]="topHotels().map(h => h.label)"
+          [datasets]="[
+            { label: 'Tipos de habitación', data: topHotels().map(h => h.room_types) },
+            { label: 'Habitaciones físicas', data: topHotels().map(h => h.physical_rooms) }
+          ]"
+          [showLegend]="true"
+          [height]="220"
+          type="line"
+        />
+      </section>
+    }
   }
 
   @switch (viewState()) {
