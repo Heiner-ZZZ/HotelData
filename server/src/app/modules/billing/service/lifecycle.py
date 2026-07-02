@@ -568,11 +568,14 @@ def create_payment(payload: PaymentCreate) -> dict | None:
 
 def list_payments(
     booking_id: str | None = None,
+    prop_id: int | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
     db = get_database()
     query: dict = {}
+    if prop_id:
+        query["prop_id"] = prop_id
     if booking_id:
         booking = _find_booking(booking_id)
         booking_str_id = booking.get("booking_id") if booking else booking_id

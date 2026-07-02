@@ -193,11 +193,12 @@ def create_payment_api(
 @api_router.get("/payments")
 def list_payments_api(
     booking_id: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    return list_payments(booking_id=booking_id, page=page, page_size=page_size)
+    return list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
 
 
 @api_router.get("/payments/{payment_id}")
