@@ -50,6 +50,7 @@ export const routes: Routes = [
       },
       {
         path: 'reservations',
+        pathMatch: 'full',
         redirectTo: '/account/bookings'
       }
     ]

@@ -23,6 +23,11 @@ export const ACCOUNT_ROUTES: Routes = [
       import('./pages/profile-page/profile-page').then((m) => m.ProfilePageComponent)
   },
   {
+    path: 'notifications',
+    loadComponent: () =>
+      import('../notifications/pages/notifications-page/notifications-page').then((m) => m.NotificationsPageComponent)
+  },
+  {
     path: 'billing',
     loadChildren: () =>
       import('../billing/client-billing.routes').then((m) => m.CLIENT_BILLING_ROUTES)
