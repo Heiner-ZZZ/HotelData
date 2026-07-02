@@ -679,25 +679,30 @@ tbody tr:hover {
 .res-breakdown {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   font-size: 0.82rem;
 }
 
 .res-amount {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
+  gap: 0.15rem;
   line-height: 1.1;
 
   strong { font-size: 0.95rem; }
 }
 
-.res-source {
-  font-size: 0.6rem;
+.res-info-icon {
+  font-size: 0.75rem;
   color: var(--muted-text);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
+  opacity: 0.5;
+  cursor: help;
+  transition: opacity 0.15s, color 0.15s;
+
+  &:hover {
+    opacity: 1;
+    color: var(--accent);
+  }
 }
 
 .res-current strong {
