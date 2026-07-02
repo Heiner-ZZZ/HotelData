@@ -23,6 +23,13 @@
   width: fit-content;
 }
 
+// ── Property Selector Bar ──
+
+.invl-prop-bar {
+  display: flex;
+  align-items: center;
+}
+
 .invl-nav-link {
   display: inline-flex;
   align-items: center;

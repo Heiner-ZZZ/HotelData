@@ -10,6 +10,16 @@
     <a routerLink="/management/billing/payments" class="invl-nav-link">Pagos</a>
   </div>
 
+  <!-- ═══ Property Selector ═══ -->
+  <div class="invl-prop-bar">
+    <app-property-selector
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </div>
+
+  @if (selectedPropId()) {
   <!-- ═══ Stats Cards ═══ -->
   @let s = stats();
   @if (s) {
@@ -204,5 +214,11 @@
         </div>
       </section>
     }
+  }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar las facturas por hotel."
+    />
   }
 </div>

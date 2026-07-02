@@ -12,8 +12,9 @@ export class BillingApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getInvoices(page: number, filters?: { status?: string; q?: string; date_from?: string; date_to?: string }) {
+  getInvoices(page: number, filters?: { prop_id?: number; status?: string; q?: string; date_from?: string; date_to?: string }) {
     let params = new HttpParams().set('page', String(page));
+    if (filters?.prop_id) params = params.set('prop_id', String(filters.prop_id));
     if (filters?.status) params = params.set('status', filters.status);
     if (filters?.q) params = params.set('q', filters.q);
     if (filters?.date_from) params = params.set('date_from', filters.date_from);

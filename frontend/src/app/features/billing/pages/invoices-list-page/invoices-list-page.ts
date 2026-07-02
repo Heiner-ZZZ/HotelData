@@ -4,6 +4,8 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -14,7 +16,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-invoices-list-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent],
+  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent],
   templateUrl: './invoices-list-page.html',
   styleUrl: './invoices-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,10 +25,13 @@ export class InvoicesListPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly billingApi = inject(BillingApiService);
   private readonly router = inject(Router);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
 
+  readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
+  readonly selectedLabel = signal(this.activatedRoute.snapshot.queryParamMap.get('prop_label') ?? '');
   readonly currentPage = computed(() => Math.max(1, Number(this.qp()?.get('page') ?? '1')));
   readonly statusFilter = computed(() => this.qp()?.get('status') ?? '');
   readonly searchQuery = computed(() => this.qp()?.get('q') ?? '');
@@ -42,14 +47,19 @@ export class InvoicesListPageComponent {
 
   // ── Invoices resource ──
   readonly invoicesResource = rxResource<any, any>({
-    params: () => ({
-      page: this.currentPage(),
-      status: this.statusFilter() || undefined,
-      q: this.searchQuery() || undefined,
-      dateFrom: this.dateFrom() || undefined,
-      dateTo: this.dateTo() || undefined,
-    }),
+    params: () => {
+      const pid = this.selectedPropId();
+      return {
+        propId: pid || undefined,
+        page: this.currentPage(),
+        status: this.statusFilter() || undefined,
+        q: this.searchQuery() || undefined,
+        dateFrom: this.dateFrom() || undefined,
+        dateTo: this.dateTo() || undefined,
+      };
+    },
     stream: ({ params }) => this.billingApi.getInvoices((params as any).page, {
+      prop_id: (params as any).propId,
       status: (params as any).status,
       q: (params as any).q,
       date_from: (params as any).dateFrom,
@@ -76,6 +86,22 @@ export class InvoicesListPageComponent {
     if (this.dateFrom() || this.dateTo()) c++;
     return c;
   });
+
+  // ── Property selection ──
+  onPropSelected(event: { propId: number; label: string }): void {
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.selectedLabel.set(label);
+    if (event.propId) {
+      this.propertyCtx.setProperty(event.propId, label);
+    } else {
+      this.propertyCtx.clear();
+    }
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { prop_id: event.propId || null, prop_label: label || null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
 
   // ── Navigation helpers ──
 
