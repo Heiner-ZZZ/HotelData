@@ -96,6 +96,8 @@ class RoomStatusLogResponse(BaseModel):
 class HousekeepingTaskCreate(BaseModel):
     prop_id: int
     room_label: str
+    room_type_id: str = ""
+    room_number: str = ""
     task_type: str = "cleaning"  # cleaning, deep_clean, turnover, inspection
     assigned_to: str = ""
     priority: str = "normal"  # low, normal, high, urgent
@@ -108,6 +110,8 @@ class HousekeepingTaskResponse(BaseModel):
     id: str = Field(alias="_id")
     prop_id: int
     room_label: str
+    room_type_id: str = ""
+    room_number: str = ""
     task_type: str
     status: str
     assigned_to: str
@@ -120,6 +124,8 @@ class HousekeepingTaskResponse(BaseModel):
 class MaintenanceTaskCreate(BaseModel):
     prop_id: int
     room_label: str
+    room_type_id: str = ""
+    room_number: str = ""
     task_type: str  # preventive, corrective, inspection
     title: str
     description: str = ""
@@ -133,6 +139,8 @@ class MaintenanceTaskResponse(BaseModel):
     id: str = Field(alias="_id")
     prop_id: int
     room_label: str
+    room_type_id: str = ""
+    room_number: str = ""
     task_type: str
     title: str
     description: str

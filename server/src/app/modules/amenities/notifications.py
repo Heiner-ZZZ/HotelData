@@ -14,6 +14,7 @@ from typing import Any
 
 from config.settings import get_settings
 from src.app.email.service import send_email
+from src.app.email.templates import base_layout, detail_row, detail_table, cta_button
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
@@ -121,55 +122,30 @@ def notify_staff_amenity_request(
         amount = item.get("amount", 0)
         free = item.get("free", False)
         if free:
-            items_rows += (
-                f'<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'{label}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">x{qty}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#16a34a">Gratis</td></tr>'
-            )
+            items_rows += detail_row(label, f"x{qty} — Gratis")
         else:
-            items_rows += (
-                f'<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'{label}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">x{qty}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'<strong>${amount:.2f}</strong></td></tr>'
-            )
+            items_rows += detail_row(label, f"x{qty} — ${amount:.2f}")
 
     body = (
-        f'<p style="margin:0 0 20px;font-size:15px;color:#374151">Hola <strong>{{STAFF_NAME}}</strong>,</p>\n'
-        f'<p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.5">\n'
-        f'  El huésped <strong>{guest_name}</strong> ha solicitado servicios adicionales '
+        f'<p style="margin:0 0 20px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{{STAFF_NAME}}</strong>,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  El huesped <strong>{guest_name}</strong> ha solicitado servicios adicionales '
         f'para su estancia en <strong>{hotel_label}</strong>.\n'
         f'</p>\n'
-        f'<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;'
-        f'border-radius:12px;overflow:hidden;margin-bottom:20px">\n'
-        f'  <tr><td style="background:#f9fafb;padding:10px 14px;font-size:13px;font-weight:600;'
-        f'color:#374151;border-bottom:1px solid #e5e7eb" colspan="3">📋 Artículos solicitados</td></tr>\n'
-        f'  <tr>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Artículo</td>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Cant.</td>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Total</td>\n'
-        f'  </tr>\n'
-        f'{items_rows}'
-        f'</table>\n'
-        f'<table width="100%" cellpadding="0" cellspacing="0">\n'
-        f'  <tr><td style="padding:8px 0;font-size:14px;color:#4b5563">\n'
-        f'    <strong>Total cargos:</strong> ${total:.2f}\n'
-        f'  </td></tr>\n'
-        f'  <tr>\n'
-        f'    <td align="center" style="padding-top:16px">\n'
-        f'      <a href="{detail_url}" '
-        f'style="display:inline-block;padding:12px 28px;background:#1463ff;color:#fff;'
-        f'text-decoration:none;border-radius:10px;font-size:15px;font-weight:600">\n'
-        f'        Ver reserva →\n'
-        f'      </a>\n'
-        f'    </td>\n'
-        f'  </tr>\n'
-        f'</table>'
+        f'{detail_table("Articulos solicitados", items_rows)}\n'
+        f'<p style="margin:0 0 16px;font-size:14px;color:#191c1e">\n'
+        f'  <strong>Total cargos:</strong> ${total:.2f}\n'
+        f'</p>\n'
+        f'{cta_button(detail_url, "Ver reserva")}'
     )
 
-    html = _base_layout("🛎️ Solicitud de amenities", body)
+    html = base_layout(
+        "Solicitud de servicios",
+        body,
+        logo_url=settings.app_base_url,
+        footer_note="El staff del hotel recibira esta notificacion para preparar los articulos solicitados.",
+    )
 
     for email, name in recipients:
         status = "error"
@@ -179,7 +155,7 @@ def notify_staff_amenity_request(
             total_items = len(items)
             ok = send_email(
                 email,
-                f"🛎️ Solicitud de amenities — {guest_name} ({total_items} artículo{'s' if total_items != 1 else ''})",
+                f"Solicitud de servicios — {guest_name} ({total_items} articulo{'s' if total_items != 1 else ''})",
                 final_html,
             )
             if ok:
@@ -230,8 +206,6 @@ def notify_guest_amenity_request(
     settings = get_settings()
 
     total_items = len(items)
-    paid_items = [i for i in items if not i.get("free")]
-    free_items = [i for i in items if i.get("free")]
 
     # Build items table rows
     items_rows = ""
@@ -241,60 +215,38 @@ def notify_guest_amenity_request(
         amount = item.get("amount", 0)
         free = item.get("free", False)
         if free:
-            items_rows += (
-                f'<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'{label}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">x{qty}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#16a34a;font-weight:600">Gratis</td></tr>'
-            )
+            items_rows += detail_row(label, f"x{qty} — Gratis")
         else:
-            items_rows += (
-                f'<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'{label}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">x{qty}</td>'
-                f'<td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">'
-                f'<strong>${amount:.2f}</strong></td></tr>'
-            )
+            items_rows += detail_row(label, f"x{qty} — ${amount:.2f}")
 
     charges_summary = ""
-    if paid_items:
+    if total > 0:
         charges_summary = (
-            f'<p style="margin:16px 0 0;font-size:14px;color:#4b5563">'
-            f'<strong>Total cargos:</strong> ${total:.2f} — los cargos se liquidarán al momento del check-out.'
-            f'</p>'
-        )
-    if free_items:
-        charges_summary += (
-            f'<p style="margin:6px 0 0;font-size:13px;color:#16a34a">'
-            f'🌟 {len(free_items)} artículo(s) gratuito(s) incluido(s) en tu solicitud.'
+            f'<p style="margin:16px 0 0;font-size:13px;color:#6f797d">'
+            f'<strong>Total cargos:</strong> ${total:.2f} — los cargos se liquidaran al momento del check-out.'
             f'</p>'
         )
 
     body = (
-        f'<p style="margin:0 0 20px;font-size:15px;color:#374151">Hola <strong>{guest_name}</strong>,</p>\n'
-        f'<p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.5">\n'
+        f'<p style="margin:0 0 20px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{guest_name}</strong>,</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
         f'  Hemos recibido tu solicitud de servicios adicionales para tu estancia en '
-        f'<strong>{hotel_label}</strong>. El staff del hotel preparará los artículos solicitados.\n'
+        f'<strong>{hotel_label}</strong>. El staff del hotel preparara los articulos solicitados.\n'
         f'</p>\n'
-        f'<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;'
-        f'border-radius:12px;overflow:hidden;margin-bottom:20px">\n'
-        f'  <tr><td style="background:#f9fafb;padding:10px 14px;font-size:13px;font-weight:600;'
-        f'color:#374151;border-bottom:1px solid #e5e7eb" colspan="3">📋 Artículos solicitados</td></tr>\n'
-        f'  <tr>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Artículo</td>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Cant.</td>\n'
-        f'    <td style="padding:6px 12px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb">Importe</td>\n'
-        f'  </tr>\n'
-        f'{items_rows}'
-        f'</table>\n'
-        f'{charges_summary}'
+        f'{detail_table("Articulos solicitados", items_rows)}\n'
+        f'{charges_summary}\n'
         f'<p style="margin:16px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">'
-        f'Si tienes alguna pregunta, contacta directamente con la recepción del hotel.'
+        f'Si tienes alguna pregunta, contacta directamente con la recepcion del hotel.'
         f'</p>'
     )
 
-    html = _base_layout("🛎️ Solicitud de servicios confirmada", body)
-    subject = f"🛎️ Solicitud de servicios — {hotel_label} ({total_items} artículo{'s' if total_items != 1 else ''})"
+    html = base_layout(
+        "Solicitud de servicios confirmada",
+        body,
+        logo_url=settings.app_base_url,
+    )
+    subject = f"Solicitud de servicios — {hotel_label} ({total_items} articulo{'s' if total_items != 1 else ''})"
 
     status = "error"
     error_msg = ""
@@ -329,33 +281,3 @@ def notify_guest_amenity_request(
         status=status,
         error_message=error_msg,
     )
-
-
-def _base_layout(headline: str, body_content: str) -> str:
-    """Return a complete email HTML wrapped in the HotelData branded layout."""
-    return f"""<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-</head>
-<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-  <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:32px auto">
-    <tr>
-      <td style="background:linear-gradient(135deg,#1463ff,#0a3d9e);border-radius:16px 16px 0 0;padding:24px 32px;text-align:center">
-        <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700">🏨 HotelData</h1>
-        <p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:14px">{headline}</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="background:#fff;padding:32px;border-radius:0 0 16px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
-        {body_content}
-        <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.4">
-          Este es un mensaje automático de HotelData Hub.<br>
-          El staff del hotel recibirá esta notificación para preparar los artículos solicitados.
-        </p>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""

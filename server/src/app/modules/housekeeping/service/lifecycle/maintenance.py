@@ -86,6 +86,8 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
     doc = {
         "prop_id": payload.prop_id,
         "room_label": payload.room_label,
+        "room_type_id": payload.room_type_id or "",
+        "room_number": payload.room_number or "",
         "task_type": payload.task_type,
         "title": payload.title,
         "description": payload.description,
@@ -137,6 +139,8 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
     
     set_data = {
         "room_label": payload.room_label,
+        "room_type_id": payload.room_type_id or "",
+        "room_number": payload.room_number or "",
         "task_type": payload.task_type,
         "title": payload.title,
         "description": payload.description or "",
@@ -206,6 +210,9 @@ def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
 
 def _enrich_mt_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
+    # camelCase aliases for frontend
+    doc["roomTypeId"] = doc.get("room_type_id", "")
+    doc["roomNumber"] = doc.get("room_number", "")
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])

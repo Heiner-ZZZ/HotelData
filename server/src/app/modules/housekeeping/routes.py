@@ -463,6 +463,33 @@ def weekly_calendar_api(
     )
 
 
+@api_router.get("/staff")
+def housekeeping_staff_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_login),
+):
+    """Return staff users assigned to a property who have maintenance/housekeeping roles.
+
+    Used by the housekeeping tasks page to populate the assigned-to dropdown
+    instead of hardcoded names.
+    """
+    from src.database.connection import get_database
+    db = get_database()
+
+    roles = ["maintenance", "housekeeping"]
+    query: dict = {"primary_role": {"$in": roles}, "is_active": True}
+    if prop_id:
+        query["assigned_hotels"] = prop_id
+
+    users = list(
+        db.users.find(
+            query,
+            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role": 1, "assigned_hotels": 1},
+        ).sort("display_name", 1)
+    )
+    return {"staff": users}
+
+
 @api_router.get("/upcoming-events")
 def upcoming_events_api(
     prop_id: int | None = Query(default=None, ge=1),
