@@ -41,8 +41,9 @@ export class BillingApiService {
     return this.http.post(`${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/cancel`, {}, { withCredentials: true });
   }
 
-  getPayments(page: number) {
-    const params = new HttpParams().set('page', String(page));
+  getPayments(page: number, filters?: { prop_id?: number }) {
+    let params = new HttpParams().set('page', String(page));
+    if (filters?.prop_id) params = params.set('prop_id', String(filters.prop_id));
     return this.http
       .get<PaymentsListDto>(`${this.apiConfig.baseUrl}/billing/payments`, { params, withCredentials: true })
       .pipe(map(dto => mapPaymentsList(dto)));
