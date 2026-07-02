@@ -64,6 +64,10 @@ export class PoliciesPageComponent {
   readonly selectedRoomTypeId = signal('');
   readonly roomTypeOptions = signal<PolicyRoomTypeOption[]>([]);
 
+  /** Hotel-level check-in/check-out — never overridden by room-type policies. */
+  private hotelCheckInTime = '';
+  private hotelCheckOutTime = '';
+
   readonly policyForm = this.formBuilder.nonNullable.group({
     checkInTime: [''],
     checkOutTime: [''],
@@ -123,9 +127,17 @@ export class PoliciesPageComponent {
       this.roomTypeOptions.set(policies.roomTypes);
       this.selectedRoomTypeId.set(policies.roomTypeId);
       this.propertyCtx.setProperty(policies.propId, policies.hotelName);
+
+      // Save hotel-level check-in/check-out (always take first non-empty value)
+      if (!policies.roomTypeId || !this.hotelCheckInTime) {
+        this.hotelCheckInTime = policies.checkInTime;
+        this.hotelCheckOutTime = policies.checkOutTime;
+      }
+
       this.policyForm.setValue({
-        checkInTime: policies.checkInTime,
-        checkOutTime: policies.checkOutTime,
+        // Check-in/check-out: always use hotel-level values (global, not per-room)
+        checkInTime: this.hotelCheckInTime || policies.checkInTime,
+        checkOutTime: this.hotelCheckOutTime || policies.checkOutTime,
         cancellationPolicy: policies.cancellationPolicy,
         cancellationHours: policies.cancellationHours,
         petsAllowed: policies.petsAllowed,
@@ -184,6 +196,14 @@ export class PoliciesPageComponent {
       return;
     }
     const raw = this.policyForm.getRawValue();
+
+    // Update hotel-level check-in/check-out whenever saved (regardless of room type)
+    this.hotelCheckInTime = raw.checkInTime;
+    this.hotelCheckOutTime = raw.checkOutTime;
+
+    const propId = current.propId;
+    const rtId = this.selectedRoomTypeId();
+
     const payload = mapPoliciesPayload({
       ...current,
       checkInTime: raw.checkInTime,
@@ -201,14 +221,12 @@ export class PoliciesPageComponent {
       paymentPolicy: raw.paymentPolicy,
       petPolicy: raw.petPolicy,
       houseRules: raw.houseRules,
-      roomTypeId: raw.roomTypeId,
+      roomTypeId: rtId,
     });
     this.api
       .savePolicies(payload)
       .pipe(
         switchMap(() => {
-          const propId = current.propId;
-          const rtId = this.selectedRoomTypeId();
           return rtId ? this.api.getPolicies(propId, rtId) : this.api.getPolicies(propId);
         }),
         takeUntilDestroyed(this.destroyRef),
