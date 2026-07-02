@@ -174,6 +174,56 @@
                 </div>
               }
             </div>
+
+            <!-- Rate Plan Selector -->
+            @if (availableRatePlans().length > 0) {
+              <div class="rate-plan-section">
+                <div class="rate-plan-head">
+                  <span class="material-symbols-outlined rate-plan-head-icon">sell</span>
+                  <span class="rate-plan-head-label">Elige tu tarifa</span>
+                  @if (ratePlansLoading()) {
+                    <span class="material-symbols-outlined loading-spin">sync</span>
+                  }
+                </div>
+                <div class="rate-plan-grid">
+                  @for (plan of availableRatePlans(); track plan.ratePlanId) {
+                    <label class="rate-plan-card"
+                      [class.is-selected]="selectedRatePlanId() === plan.ratePlanId"
+                      (click)="selectRatePlan(plan.ratePlanId)">
+                      <input type="radio"
+                        name="ratePlan"
+                        [value]="plan.ratePlanId"
+                        [checked]="selectedRatePlanId() === plan.ratePlanId"
+                        (change)="selectRatePlan(plan.ratePlanId)"
+                        style="display: none" />
+                      <div class="rate-plan-card-head">
+                        <span class="rate-plan-name">{{ plan.name }}</span>
+                        <span class="rate-plan-price">{{ plan.totalPrice | currency:plan.currency }}</span>
+                      </div>
+                      @if (plan.description) {
+                        <p class="rate-plan-desc">{{ plan.description }}</p>
+                      }
+                      <div class="rate-plan-meta">
+                        <span class="rate-plan-avg">{{ plan.avgRatePerNight | currency:plan.currency }} /noche</span>
+                        <span class="rate-plan-nights">{{ plan.nights }} {{ plan.nights === 1 ? 'noche' : 'noches' }}</span>
+                      </div>
+                      @if (selectedRatePlanId() === plan.ratePlanId) {
+                        <span class="rate-plan-check">
+                          <span class="material-symbols-outlined">check_circle</span>
+                        </span>
+                      }
+                    </label>
+                  }
+                </div>
+              </div>
+            } @else if (ratePlansLoading()) {
+              <div class="rate-plan-section">
+                <div class="rate-plan-head">
+                  <span class="material-symbols-outlined loading-spin">sync</span>
+                  <span>Cargando tarifas disponibles...</span>
+                </div>
+              </div>
+            }
           }
         </section>
 

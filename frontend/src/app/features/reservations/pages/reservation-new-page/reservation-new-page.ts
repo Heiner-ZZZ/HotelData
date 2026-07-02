@@ -9,7 +9,7 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
-import type { ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
+import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
 import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amenities/models/guest-amenity.dto';
@@ -63,6 +63,11 @@ export class ReservationNewPageComponent {
   readonly amenityCatalogLoading = signal(false);
   readonly selectedAmenities = signal<Set<string>>(new Set());
   readonly amenityCatalogError = signal('');
+
+  /** Available rate plans for selected hotel + dates */
+  readonly availableRatePlans = signal<RatePlanOption[]>([]);
+  readonly ratePlansLoading = signal(false);
+  readonly selectedRatePlanId = signal('');
 
   readonly isStaff = computed(() => {
     const role = this.authService.currentUser()?.primaryRole;
@@ -266,6 +271,7 @@ export class ReservationNewPageComponent {
         if (propId && checkOut) {
           this.checkHotelAvailability(propId);
         }
+        this._loadRatePlans();
       });
 
     this.form.controls.checkOutDate.valueChanges
@@ -279,6 +285,7 @@ export class ReservationNewPageComponent {
         if (propId && checkIn) {
           this.checkHotelAvailability(propId);
         }
+        this._loadRatePlans();
       });
   }
 
@@ -312,6 +319,44 @@ export class ReservationNewPageComponent {
   backToDetails() {
     this.step.set('details');
   }
+
+  /** Load available rate plans when hotel and dates are selected */
+  private _loadRatePlans(): void {
+    const propId = this.form.controls.propId.value;
+    const checkIn = this.form.controls.checkInDate.value;
+    const checkOut = this.form.controls.checkOutDate.value;
+    if (!propId || !checkIn || !checkOut) {
+      this.availableRatePlans.set([]);
+      return;
+    }
+    this.ratePlansLoading.set(true);
+    this.reservationsApi.getAvailableRatePlans(
+      propId, checkIn, checkOut,
+      this.preselectedRoomTypeId() || undefined,
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => {
+        this.availableRatePlans.set(result.rate_plans || []);
+        this.ratePlansLoading.set(false);
+        // Auto-select first plan if none selected
+        const plans = result.rate_plans || [];
+        if (plans.length > 0 && !this.selectedRatePlanId()) {
+          this.selectedRatePlanId.set(plans[0].ratePlanId);
+        }
+      },
+      error: () => this.ratePlansLoading.set(false),
+    });
+  }
+
+  /** Select a rate plan */
+  selectRatePlan(planId: string): void {
+    this.selectedRatePlanId.set(planId);
+  }
+
+  /** Get the currently selected rate plan */
+  readonly selectedRatePlan = computed(() => {
+    const id = this.selectedRatePlanId();
+    return this.availableRatePlans().find(p => p.ratePlanId === id) || null;
+  });
 
   private _loadAmenityCatalog(propId: number) {
     if (!propId) return;
@@ -364,6 +409,7 @@ export class ReservationNewPageComponent {
       specialRequests: v.specialRequests,
       selectedAmenities: [...this.selectedAmenities()],
       roomTypeId: this.preselectedRoomTypeId() || undefined,
+      ratePlanId: this.selectedRatePlanId() || undefined,
     };
   }
 

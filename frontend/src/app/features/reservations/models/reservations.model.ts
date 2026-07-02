@@ -48,6 +48,21 @@ export interface ReservationCreateInput {
   selectedAmenities?: string[];
   /** Room type ID to pre-select a specific room type */
   roomTypeId?: string;
+  /** Rate plan ID to select a specific pricing plan */
+  ratePlanId?: string;
+}
+
+/** A rate plan option with pricing for a specific date range */
+export interface RatePlanOption {
+  ratePlanId: string;
+  name: string;
+  description: string;
+  baseRate: number | null;
+  currency: string;
+  isActive: boolean;
+  avgRatePerNight: number;
+  totalPrice: number;
+  nights: number;
 }
 
 export interface ReservationCreateResult {

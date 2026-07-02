@@ -27,7 +27,7 @@ import type {
   ReservationStatsDto,
   ReservationsListDto
 } from '../models/reservations.dto';
-import type { ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
+import type { RatePlanOption, ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
 import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../models/reception-calendar.model';
 
 /** Raw API response (snake_case) for reception calendar — rooms instead of types. */
@@ -303,6 +303,33 @@ export class ReservationsApiService {
       params,
       withCredentials: true,
     }).pipe(map(dto => mapReceptionCalendar(dto)));
+  }
+
+  /** Fetch available rate plans for a hotel + dates + optional room type */
+  getAvailableRatePlans(propId: number, checkIn: string, checkOut: string, roomTypeId?: string) {
+    let params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('check_in', checkIn)
+      .set('check_out', checkOut);
+    if (roomTypeId) {
+      params = params.set('room_type_id', roomTypeId);
+    }
+    return this.http.get<{ rate_plans: any[] }>(
+      `${this.apiConfig.baseUrl}/reservations/rate-plans`,
+      { params, withCredentials: true }
+    ).pipe(map(dto => ({
+      rate_plans: (dto.rate_plans || []).map(p => ({
+        ratePlanId: p.rate_plan_id,
+        name: p.name,
+        description: p.description,
+        baseRate: p.base_rate,
+        currency: p.currency,
+        isActive: p.is_active,
+        avgRatePerNight: p.avg_rate_per_night,
+        totalPrice: p.total_price,
+        nights: p.nights,
+      })),
+    })));
   }
 
   /** Check if a hotel has inventory/availability for a given date range */

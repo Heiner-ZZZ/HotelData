@@ -222,15 +222,17 @@
 
 .times-picker {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .time-box {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  padding: 0.5rem 0.75rem;
+  gap: 0.35rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--surface);
@@ -248,34 +250,36 @@
 }
 
 .time-box-icon {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: var(--accent);
   font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 22;
   flex-shrink: 0;
 }
 
 .time-box-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--muted-text);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .time-input {
-  flex: 1;
-  min-width: 0;
+  width: 110px;
+  max-width: 100%;
+  min-width: 80px;
   border: none;
   background: transparent;
-  padding: 0.15rem 0;
-  font-size: 0.88rem;
+  padding: 0.1rem 0;
+  font-size: 0.85rem;
   color: var(--app-text);
   font-weight: 500;
   outline: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .time-input::-webkit-calendar-picker-indicator {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: pointer;
   margin-left: 2px;
 }
@@ -283,6 +287,16 @@
 @media (max-width: 600px) {
   .times-picker {
     flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .time-box {
+    width: 100%;
+  }
+
+  .time-input {
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -579,6 +593,126 @@
   color: var(--muted-text);
   font-size: 1.15rem;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 22;
+}
+
+/* ── Rate Plan Selector ── */
+
+.rate-plan-section {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.rate-plan-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.rate-plan-head-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 22;
+}
+
+.rate-plan-head-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.rate-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.55rem;
+}
+
+.rate-plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 160ms ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--app-border) 50%, var(--accent) 50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  &.is-selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+}
+
+.rate-plan-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.rate-plan-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.rate-plan-price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.rate-plan-desc {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  line-height: 1.35;
+}
+
+.rate-plan-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--muted-text);
+  margin-top: 0.15rem;
+}
+
+.rate-plan-avg {
+  font-weight: 600;
+}
+
+.rate-plan-nights {
+  opacity: 0.7;
+}
+
+.rate-plan-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  color: var(--accent);
+
+  .material-symbols-outlined {
+    font-size: 1.25rem;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 22;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  }
+}
+
+@media (max-width: 600px) {
+  .rate-plan-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Hotel Chip ── */
