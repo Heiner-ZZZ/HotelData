@@ -17,6 +17,7 @@ import type { CheckInRowViewModel, CheckInsViewModel } from '../../models/check-
 import type { CheckInsDto } from '../../models/check-ins.dto';
 import { CheckInsApiService, type DateHistoryEntry } from '../../services/check-ins-api.service';
 import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { mapCheckIns } from '../../mappers/check-ins.mapper';
 
 function todayIso(): string {
@@ -44,6 +45,7 @@ export class CheckInsPageComponent {
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: Operational stats ──
   readonly opStats = signal<OperationalStatsResponse | null>(null);

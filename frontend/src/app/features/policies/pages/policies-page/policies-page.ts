@@ -44,7 +44,7 @@ export class PoliciesPageComponent {
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
-  private readonly propertyCtx = inject(PropertyContextService);
+  readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: Operational stats ──
   readonly opStats = signal<OperationalStatsResponse | null>(null);

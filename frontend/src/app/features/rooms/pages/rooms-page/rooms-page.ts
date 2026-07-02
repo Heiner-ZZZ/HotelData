@@ -45,7 +45,7 @@ export class RoomsPageComponent {
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
-  private readonly propertyCtx = inject(PropertyContextService);
+  readonly propertyCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);

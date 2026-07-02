@@ -19,6 +19,7 @@ import type { CheckOutRowViewModel, CheckOutsViewModel } from '../../models/chec
 import type { CheckOutsDto } from '../../models/check-outs.dto';
 import { CheckOutsApiService, type BookingCharge, type DateHistoryEntry } from '../../services/check-outs-api.service';
 import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { mapCheckOuts } from '../../mappers/check-outs.mapper';
 
 function todayIso(): string {
@@ -48,6 +49,7 @@ export class CheckOutsPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly formBuilder = inject(FormBuilder);
+  readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: Operational stats ──
   readonly opStats = signal<OperationalStatsResponse | null>(null);

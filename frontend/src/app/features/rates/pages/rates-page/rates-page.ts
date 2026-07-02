@@ -69,7 +69,7 @@ export class RatesPageComponent {
   private readonly api = inject(RatesApiService);
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly propertyCtx = inject(PropertyContextService);
+  readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: 7-day rate trend ──
   readonly rateTrend = signal<RateTrendResponse | null>(null);
