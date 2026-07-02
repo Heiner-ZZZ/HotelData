@@ -7,10 +7,7 @@
 .view-toggle-bar {
   display: flex;
   gap: 0;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
+  border-bottom: 2px solid var(--app-border);
   width: fit-content;
 }
 
@@ -20,13 +17,14 @@
   gap: 0.4rem;
   padding: 0.5rem 1rem;
   border: 0;
-  border-radius: 8px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
   background: transparent;
   color: var(--muted-text);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: color 150ms ease, border-color 150ms ease;
   font-family: inherit;
 
   .material-symbols-outlined {
@@ -36,16 +34,14 @@
 
   &:hover {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
   }
 
   &.is-active {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(20, 99, 255, 0.25);
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 
     .material-symbols-outlined {
-      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
     }
   }
 }
@@ -504,8 +500,87 @@ td {
   vertical-align: top;
 }
 
-button,
-.primary-link,
+/* ─── List header ─── */
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+}
+
+.list-count {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  margin-right: auto;
+}
+
+.page-info {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  min-width: 3rem;
+  text-align: center;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted-text);
+    cursor: pointer;
+    transition: background 0.12s;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      color: var(--accent);
+    }
+    &:disabled { opacity: 0.3; cursor: default; }
+
+    .material-symbols-outlined { font-size: 1.1rem; }
+  }
+}
+
+/* ─── Action button base styles ─── */
+.action-row button,
+.more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.primary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 8px;
+  text-decoration: none;
+  background: var(--accent);
+  color: #fff;
+}
+
 .secondary-link {
   display: inline-flex;
   align-items: center;
@@ -513,41 +588,159 @@ button,
   min-height: 2.5rem;
   padding: 0 0.875rem;
   border-radius: 8px;
-}
-
-button {
-  border: 1px solid var(--app-border);
-  background: var(--surface);
-  color: var(--app-text);
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.primary-link,
-.secondary-link,
-.inline-link {
-  display: inline-flex;
-  align-items: center;
   text-decoration: none;
-}
-
-.primary-link {
-  background: var(--accent);
-  color: #fff;
-}
-
-.secondary-link {
   border: 1px solid var(--app-border);
   background: var(--surface);
   color: var(--app-text);
 }
 
-.inline-link {
-  color: var(--accent);
+/* ─── Clean reservation list (like staff inbox) ─── */
+.reservation-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.reservation-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--app-border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 8px;
+  }
+
+  &:last-child { border-bottom: none; }
+
+  &.is-pending {
+    background: color-mix(in srgb, var(--warning, #f59e0b) 4%, transparent);
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 8px;
+  }
+}
+
+.row-primary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.row-booking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 150px;
+
+  code {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+}
+
+.row-hotel {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+.row-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 120px;
+
+  span:first-child {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+}
+
+.row-email {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+.row-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.row-arrow {
+  color: var(--muted-text);
+  font-size: 0.75rem;
+}
+
+.row-status {
+  min-width: 80px;
+  text-align: center;
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 99px;
+  white-space: nowrap;
+
+  &.status-pending { background: #fef3c7; color: #92400e; }
+  &.status-confirmed { background: #dcfce7; color: #166534; }
+  &.status-checkedin { background: #dbeafe; color: #1e40af; }
+  &.status-checkedout { background: #f3e8ff; color: #6b21a8; }
+  &.status-muted { background: #f3f4f6; color: #6b7280; }
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.row-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &.confirm {
+    color: var(--muted-text);
+    &:hover:not(:disabled) { background: #dcfce7; color: #166534; }
+  }
+  &.reject {
+    color: var(--muted-text);
+    &:hover:not(:disabled) { background: #fee2e2; color: #991b1b; }
+  }
+  &:disabled { opacity: 0.3; cursor: default; }
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+.row-chevron {
+  font-size: 1.15rem;
+  color: var(--muted-text);
+  opacity: 0.4;
 }
 
 /* ─── Stats bar ─── */

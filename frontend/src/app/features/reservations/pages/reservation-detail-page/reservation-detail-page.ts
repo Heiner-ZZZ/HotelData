@@ -17,6 +17,7 @@ import type { ReservationDetailViewModel } from '../../models/reservations.model
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { ProductsApiService } from '../../../admin/services/products-api.service';
 import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
+import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
 
 interface EditForm {
   checkInDate: string;
@@ -38,6 +39,7 @@ export class ReservationDetailPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly productsApi = inject(ProductsApiService);
+  private readonly instayApi = inject(InStayApiService);
   private readonly router = inject(Router);
 
   readonly viewState = signal<ViewState>('loading');
@@ -406,6 +408,20 @@ export class ReservationDetailPageComponent {
         this.roomAssignmentSaving.set(false);
         this.roomAssignmentMessage.set('Error al asignar habitaciones');
       }
+    });
+  }
+
+  goToInStay(bookingId: string) {
+    this.instayApi.getMyStaySession(bookingId).subscribe({
+      next: (session) => {
+        if (session.token) {
+          this.router.navigate(['/stay', session.token]);
+        }
+      },
+      error: () => {
+        this.successMessage.set('No se pudo acceder a Mi Estancia. ¿Ya hiciste check-in?');
+        setTimeout(() => this.successMessage.set(''), 5000);
+      },
     });
   }
 

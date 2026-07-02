@@ -11,6 +11,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
 import { ReservationsApiService, type DateHistoryEntry } from '../../services/reservations-api.service';
@@ -41,6 +42,7 @@ export class ReservationsListPageComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<ReservationsListViewModel | null>(null);
@@ -58,11 +60,14 @@ export class ReservationsListPageComponent {
     return !role || role === 'cliente';
   });
 
-  /** View toggle: 'list' (default) or 'calendar' (occupancy bars). */
-  readonly viewMode = signal<'list' | 'calendar'>('list');
-  /** Property ID for the calendar view. */
+  /** View toggle: 'calendar' (default) or 'list'. */
+  readonly viewMode = signal<'list' | 'calendar'>('calendar');
+  /** Property ID for hotel selection (required before showing any view). */
   readonly calendarPropId = signal(0);
   readonly calendarPropLabel = signal('');
+
+  /** True when a hotel has been selected via the property selector. */
+  readonly hotelSelected = computed(() => this.calendarPropId() > 0);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     createdDate: ['', [Validators.required]]
@@ -79,6 +84,16 @@ export class ReservationsListPageComponent {
   onCalendarPropSelected(event: { propId: number; label: string }) {
     this.calendarPropId.set(event.propId);
     this.calendarPropLabel.set(event.label);
+    if (event.propId) {
+      this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
+    } else {
+      this.propertyCtx.clear();
+    }
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { prop_id: event.propId || null, page: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   onCalendarReservationClick(reservation: any) {
@@ -104,14 +119,16 @@ export class ReservationsListPageComponent {
         map((params) => ({
           page: Number(params.get('page') ?? '1'),
           createdDate: params.get('date') || '',
-          status: params.get('status') || ''
+          status: params.get('status') || '',
+          propId: Number(params.get('prop_id') ?? '0'),
         })),
-        distinctUntilChanged((a, b) => a.page === b.page && a.createdDate === b.createdDate && a.status === b.status),
-        switchMap(({ page, createdDate, status }) => {
+        distinctUntilChanged((a, b) => a.page === b.page && a.createdDate === b.createdDate && a.status === b.status && a.propId === b.propId),
+        switchMap(({ page, createdDate, status, propId }) => {
           this.viewState.set('loading');
           this.currentDateFilter.set(createdDate || '');
           this.currentStatusFilter.set(status || '');
-          return this.reservationsApi.getReservations(page, createdDate || undefined, status || undefined);
+          if (propId) this.calendarPropId.set(propId);
+          return this.reservationsApi.getReservations(page, createdDate || undefined, status || undefined, propId || undefined);
         }),
         takeUntilDestroyed(this.destroyRef)
       )

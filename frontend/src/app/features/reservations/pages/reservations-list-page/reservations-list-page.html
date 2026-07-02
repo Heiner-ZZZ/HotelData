@@ -5,43 +5,38 @@
     description="Gestión de reservas, check-in y calendario de ocupación por hotel."
   />
 
-  <!-- View toggle: Lista / Calendario (solo staff) -->
-  @if (!isClient()) {
+  <!-- Hotel selector (siempre visible primero) -->
+  <app-property-selector
+    [selectedPropId]="calendarPropId()"
+    [selectedLabel]="calendarPropLabel()"
+    (propIdChange)="onCalendarPropSelected($event)"
+  />
+
+  <!-- View toggle: solo después de elegir hotel -->
+  @if (hotelSelected() && !isClient()) {
     <div class="view-toggle-bar">
+      <button type="button" class="view-toggle-btn"
+              [class.is-active]="viewMode() === 'calendar'"
+              (click)="setViewMode('calendar')">
+        <span class="material-symbols-outlined">calendar_view_week</span>
+        Calendario
+      </button>
       <button type="button" class="view-toggle-btn"
               [class.is-active]="viewMode() === 'list'"
               (click)="setViewMode('list')">
         <span class="material-symbols-outlined">view_list</span>
         Lista de reservas
       </button>
-      <button type="button" class="view-toggle-btn"
-              [class.is-active]="viewMode() === 'calendar'"
-              (click)="setViewMode('calendar')">
-        <span class="material-symbols-outlined">calendar_view_week</span>
-        Calendario de ocupación
-      </button>
     </div>
   }
 
-  <!-- ═══ Calendar view ═══ -->
-  @if (viewMode() === 'calendar') {
+  <!-- ═══ Calendar view (default) ═══ -->
+  @if (viewMode() === 'calendar' && hotelSelected()) {
     <div class="calendar-section">
-      <app-property-selector
-        [selectedPropId]="calendarPropId()"
-        [selectedLabel]="calendarPropLabel()"
-        (propIdChange)="onCalendarPropSelected($event)"
-      />
-
       @if (calendarPropId() > 0) {
         <app-reception-calendar
           [propId]="calendarPropId()"
           (reservationClick)="onCalendarReservationClick($event)"
-        />
-      } @else {
-        <app-empty-state
-          icon="hotel"
-          title="Selecciona un hotel"
-          description="Usa el buscador de arriba para ver el calendario de ocupación de un hotel específico."
         />
       }
     </div>
@@ -229,99 +224,69 @@
       }
       @default {
         @if (data(); as vm) {
-          <section class="surface-card panel">
-            <div class="panel-head">
-              <div>
-                <h2>Reservas creadas</h2>
-                <p>{{ vm.total }} registros · página {{ vm.page }} de {{ vm.totalPages || 1 }}</p>
-              </div>
-              <div class="pagination-bar">
-                <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
-                  <span class="material-symbols-outlined btn-icon">chevron_left</span>
-                  Anterior
-                </button>
-                <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
-                  Siguiente
-                  <span class="material-symbols-outlined btn-icon">chevron_right</span>
-                </button>
-              </div>
+          <div class="list-header">
+            <h2>Reservas</h2>
+            <span class="list-count">{{ vm.total }} registros</span>
+            <div class="pagination-bar">
+              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <span class="page-info">{{ vm.page }} / {{ vm.totalPages || 1 }}</span>
+              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
             </div>
+          </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Booking ID</th><th>Hotel</th><th>Huésped</th><th>Fechas</th><th>Habitaciones</th><th>Status</th><th>Origen</th><th>Acción</th></tr>
-                </thead>
-                <tbody>
-                  @for (item of vm.items; track item.bookingId) {
-                    <tr [class.row-pending]="item.status === 'pending'">
-                      <td><code>{{ item.bookingId }}</code></td>
-                      <td>{{ item.hotelLabel }}</td>
-                      <td>{{ item.guestName }}<div class="muted-cell">{{ item.guestEmail }}</div></td>
-                      <td>{{ item.checkInDate }}<div class="muted-cell">{{ item.checkOutDate }}</div></td>
-                      <td class="cell-rooms">
-                        @if (item.roomsAssignedCount > 0) {
-                          <span class="rooms-indicator rooms-assigned" title="{{ item.roomsAssignedCount }} habitación(es) asignada(s)">
-                            <span class="material-symbols-outlined">meeting_room</span>
-                            <span>{{ item.roomsAssignedCount }} asignada{{ item.roomsAssignedCount !== 1 ? 's' : '' }}</span>
-                          </span>
-                        } @else if (['pending', 'confirmed'].includes(item.status)) {
-                          <span class="rooms-indicator rooms-pending" title="Sin habitaciones asignadas">
-                            <span class="material-symbols-outlined">meeting_room</span>
-                            <span>Pendiente</span>
-                          </span>
-                        } @else {
-                          <span class="rooms-indicator rooms-na" title="No aplica">
-                            <span class="material-symbols-outlined">meeting_room</span>
-                            <span>--</span>
-                          </span>
-                        }
-                      </td>
-                      <td>
-                        @if (item.status === 'pending') {
-                          <span class="badge badge-warning">Pendiente</span>
-                        } @else if (item.status === 'confirmed') {
-                          <span class="badge badge-success">Confirmada</span>
-                        } @else if (item.status === 'cancelled' || item.status === 'rejected') {
-                          <span class="badge badge-muted">{{ item.status }}</span>
-                        } @else {
-                          <span class="badge badge-info">{{ item.status }}</span>
-                        }
-                      </td>
-                      <td>{{ item.bookingSource }}</td>
-                      <td class="cell-actions">
-                        @if (item.status === 'pending' && isStaff()) {
-                          <button type="button" class="btn-icon-only btn-confirm"
-                            (click)="confirmReservation(item.bookingId)"
-                            [disabled]="confirmingId() === item.bookingId || rejectingId() === item.bookingId"
-                            title="Confirmar reserva">
-                            @if (confirmingId() === item.bookingId) {
-                              <span class="material-symbols-outlined spin">progress_activity</span>
-                            } @else {
-                              <span class="material-symbols-outlined">check_circle</span>
-                            }
-                          </button>
-                          <button type="button" class="btn-icon-only btn-reject"
-                            (click)="rejectReservation(item.bookingId)"
-                            [disabled]="confirmingId() === item.bookingId || rejectingId() === item.bookingId"
-                            title="Rechazar reserva">
-                            @if (rejectingId() === item.bookingId) {
-                              <span class="material-symbols-outlined spin">progress_activity</span>
-                            } @else {
-                              <span class="material-symbols-outlined">cancel</span>
-                            }
-                          </button>
-                        }
-                        <a [routerLink]="[item.bookingId]" class="btn-icon-only" title="Ver detalle">
-                          <span class="material-symbols-outlined">visibility</span>
-                        </a>
-                      </td>
-                    </tr>
+          <div class="reservation-list">
+            @for (item of vm.items; track item.bookingId) {
+              <a [routerLink]="[item.bookingId]" class="reservation-row" [class.is-pending]="item.status === 'pending'">
+                <div class="row-primary">
+                  <div class="row-booking">
+                    <code>{{ item.bookingId }}</code>
+                    <span class="row-hotel">{{ item.hotelLabel }}</span>
+                  </div>
+                  <div class="row-guest">
+                    <span>{{ item.guestName }}</span>
+                    <span class="row-email">{{ item.guestEmail }}</span>
+                  </div>
+                  <div class="row-dates">
+                    <span>{{ item.checkInDate }}</span>
+                    <span class="row-arrow">→</span>
+                    <span>{{ item.checkOutDate }}</span>
+                  </div>
+                  <div class="row-status">
+                    @if (item.status === 'pending') {
+                      <span class="status-badge status-pending">Pendiente</span>
+                    } @else if (item.status === 'confirmed') {
+                      <span class="status-badge status-confirmed">Confirmada</span>
+                    } @else if (item.status === 'checked_in') {
+                      <span class="status-badge status-checkedin">Check-in</span>
+                    } @else if (item.status === 'checked_out') {
+                      <span class="status-badge status-checkedout">Check-out</span>
+                    } @else {
+                      <span class="status-badge status-muted">{{ item.status }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="row-actions">
+                  @if (item.status === 'pending' && isStaff()) {
+                    <button type="button" class="row-action-btn confirm"
+                      (click)="$event.preventDefault(); confirmReservation(item.bookingId)"
+                      [disabled]="confirmingId() === item.bookingId" title="Confirmar">
+                      <span class="material-symbols-outlined">check_circle</span>
+                    </button>
+                    <button type="button" class="row-action-btn reject"
+                      (click)="$event.preventDefault(); rejectReservation(item.bookingId)"
+                      [disabled]="rejectingId() === item.bookingId" title="Rechazar">
+                      <span class="material-symbols-outlined">cancel</span>
+                    </button>
                   }
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  <span class="row-chevron material-symbols-outlined">chevron_right</span>
+                </div>
+              </a>
+            }
+          </div>
         }
       }
     }
