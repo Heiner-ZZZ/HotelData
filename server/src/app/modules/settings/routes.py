@@ -149,14 +149,20 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
     try:
         email = current_user.get("email", "")
         if email:
-            html = f"""<!DOCTYPE html>
-<html><body style="font-family:sans-serif;padding:24px;max-width:480px;margin:0 auto">
-<h2 style="color:#1463ff">HotelData — Contraseña actualizada</h2>
-<p>Tu contraseña fue cambiada exitosamente.</p>
-<p>Si no realizaste este cambio, contacta al soporte de inmediato.</p>
-<hr><p style="color:#5f6f87;font-size:0.85rem">HotelData Hub</p>
-</body></html>"""
-            send_email(email, "Tu contraseña fue cambiada — HotelData", html)
+            from src.app.email.templates import base_layout
+            body = (
+                f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+                f'Tu contrasena fue cambiada exitosamente.</p>\n'
+                f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+                f'Si no realizaste este cambio, contacta al soporte de inmediato.'
+                f'</p>'
+            )
+            html = base_layout(
+                "Contrasena actualizada",
+                body,
+                logo_url=settings.app_base_url,
+            )
+            send_email(email, "Tu contrasena fue cambiada — HotelData", html)
     except Exception:
         pass
 

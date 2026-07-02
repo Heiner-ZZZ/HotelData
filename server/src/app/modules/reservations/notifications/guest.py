@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from config.settings import get_settings
-from src.app.email.service import send_email
 from src.database.connection import get_database
+from src.app.email.service import send_email
+from src.app.email.templates import status_badge
 from ..email_templates import guest_invoice_html, guest_status_change_html
 
 logger = logging.getLogger(__name__)
@@ -61,41 +62,41 @@ def notify_guest_status_change(
     detail_url = f"{settings.app_base_url}/reservations/{booking_id}"
 
     if new_status == "confirmed":
-        subject = f"✅ Reserva confirmada — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#dcfce7;color:#166534;font-size:13px;font-weight:700">✅ CONFIRMADA</span>'
-        headline = "¡Tu reserva ha sido confirmada!"
-        body_intro = "Tu solicitud de reserva ha sido <strong>confirmada</strong> por el hotel. ¡Prepara tus maletas!"
+        subject = f"Reserva confirmada — {booking_id}"
+        badge_html = status_badge("CONFIRMADA", bg_color="#dcfce7", text_color="#166534")
+        headline = "Tu reserva ha sido confirmada"
+        body_intro = 'Tu solicitud de reserva ha sido <strong>confirmada</strong> por el hotel. Prepara tus maletas.'
     elif new_status == "rejected":
-        subject = f"❌ Reserva rechazada — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#fee2e2;color:#991b1b;font-size:13px;font-weight:700">❌ RECHAZADA</span>'
+        subject = f"Reserva rechazada — {booking_id}"
+        badge_html = status_badge("RECHAZADA", bg_color="#fee2e2", text_color="#991b1b")
         headline = "Tu reserva no pudo ser confirmada"
-        body_intro = "Lamentablemente, tu solicitud de reserva ha sido <strong>rechazada</strong> por el hotel."
+        body_intro = 'Tu solicitud de reserva ha sido <strong>rechazada</strong> por el hotel.'
         if reason and reason not in ("rejected_by_staff", ""):
             body_intro += f" Motivo: {reason}."
         body_intro += " Te invitamos a buscar otras opciones disponibles."
     elif new_status == "cancelled":
-        subject = f"↩️ Reserva cancelada — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#f3f4f6;color:#6b7280;font-size:13px;font-weight:700">↩️ CANCELADA</span>'
+        subject = f"Reserva cancelada — {booking_id}"
+        badge_html = status_badge("CANCELADA", bg_color="#f3f4f6", text_color="#6b7280")
         headline = "Tu reserva ha sido cancelada"
-        body_intro = "Tu solicitud de reserva ha sido <strong>cancelada</strong>."
+        body_intro = 'Tu solicitud de reserva ha sido <strong>cancelada</strong>.'
         if reason and reason not in ("cancelled_by_user", ""):
             body_intro += f" Motivo: {reason}."
         body_intro += " Si necesitas ayuda, contacta al hotel directamente."
     elif new_status == "modified":
-        subject = f"✏️ Reserva modificada — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#fef3c7;color:#92400e;font-size:13px;font-weight:700">✏️ MODIFICADA</span>'
+        subject = f"Reserva modificada — {booking_id}"
+        badge_html = status_badge("MODIFICADA", bg_color="#fef3c7", text_color="#92400e")
         headline = "Tu reserva ha sido modificada"
-        body_intro = "Tu reserva ha sido <strong>modificada</strong> exitosamente. Por favor revisa los nuevos detalles."
+        body_intro = 'Tu reserva ha sido <strong>modificada</strong> exitosamente. Por favor revisa los nuevos detalles.'
     elif new_status == "checked_in":
-        subject = f"🔑 Check-in confirmado — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#dbeafe;color:#1e40af;font-size:13px;font-weight:700">🔑 CHECK-IN</span>'
-        headline = "¡Tu check-in ha sido confirmado!"
-        body_intro = "Tu <strong>check-in</strong> ha sido registrado exitosamente. ¡Esperamos que disfrutes tu estancia!"
+        subject = f"Check-in confirmado — {booking_id}"
+        badge_html = status_badge("CHECK-IN", bg_color="#dbeafe", text_color="#1e40af")
+        headline = "Tu check-in ha sido confirmado"
+        body_intro = 'Tu <strong>check-in</strong> ha sido registrado exitosamente. Esperamos que disfrutes tu estancia.'
     elif new_status == "checked_out":
-        subject = f"👋 Check-out confirmado — {booking_id}"
-        badge_html = '<span style="display:inline-block;padding:4px 14px;border-radius:12px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700">👋 CHECK-OUT</span>'
+        subject = f"Check-out confirmado — {booking_id}"
+        badge_html = status_badge("CHECK-OUT", bg_color="#f0fdf4", text_color="#166534")
         headline = "Tu check-out ha sido completado"
-        body_intro = "Tu <strong>check-out</strong> ha sido procesado. Esperamos que hayas tenido una excelente estancia."
+        body_intro = 'Tu <strong>check-out</strong> ha sido procesado. Esperamos que hayas tenido una excelente estancia.'
     else:
         logger.warning("Unsupported status '%s' for guest notification — skipping", new_status)
         return
@@ -195,7 +196,7 @@ def notify_guest_invoice(
 
     status = "error"
     error_msg = ""
-    subject = f"🧾 Tu factura {invoice_number} ya está disponible"
+    subject = f"Tu factura {invoice_number} ya esta disponible"
     try:
         ok = send_email(guest_email, subject, html)
         if ok:
@@ -218,4 +219,3 @@ def notify_guest_invoice(
         status=status,
         error_message=error_msg,
     )
-

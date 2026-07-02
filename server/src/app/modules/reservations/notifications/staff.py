@@ -131,7 +131,7 @@ def notify_staff_new_booking(
         error_msg = ""
         try:
             html = html_template.replace("{{STAFF_NAME}}", name)
-            ok = send_email(email, f"🔔 Nueva reserva pendiente — {booking_id}", html)
+            ok = send_email(email, f"Nueva reserva pendiente — {booking_id}", html)
             if ok:
                 logger.info("Notification sent to %s (%s) for booking %s", name, email, booking_id)
                 status = "sent"
@@ -205,7 +205,6 @@ def notify_staff_check_event(
     )
 
     is_check_in = event_type == "check_in"
-    subject_prefix = "🔑" if is_check_in else "👋"
     action_past = "check-in" if is_check_in else "check-out"
     notification_type = "staff_check_in" if is_check_in else "staff_check_out"
 
@@ -214,7 +213,7 @@ def notify_staff_check_event(
         error_msg = ""
         try:
             html = html_template.replace("{{STAFF_NAME}}", name)
-            ok = send_email(email, f"{subject_prefix} Huésped completó {action_past} — {booking_id}", html)
+            ok = send_email(email, f"Huesped completo {action_past} — {booking_id}", html)
             if ok:
                 logger.info("Staff check-event notification sent to %s (%s) for booking %s", name, email, booking_id)
                 status = "sent"
