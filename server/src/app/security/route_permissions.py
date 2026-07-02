@@ -12,7 +12,7 @@ class AccessRule:
     roles: tuple[str, ...] = ()
 
 
-PUBLIC_PREFIXES = ("/static", "/api/hotels")
+PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest")
 PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code", "/api/auth/refresh", "/api/auth/me", "/api/auth/status", "/api/auth/recover", "/api/auth/reset", "/api/auth/recover/reset", "/auth/logout")
 
 
@@ -61,6 +61,10 @@ ROUTE_RULES = [
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "auditor_datos", "operador_datos"),
     ),
     AccessRule("/api/account", roles=("cliente", "super_admin", "admin_sistema")),
+    AccessRule("/api/stay",
+        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel",
+               "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos", "maintenance"),
+    ),
     AccessRule("/api/settings",
         roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos", "maintenance"),
     ),

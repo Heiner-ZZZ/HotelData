@@ -1,52 +1,64 @@
-<div class="ps-autocomplete">
-  <div class="ps-input-wrapper">
-    <span class="ps-icon material-symbols-outlined">hotel</span>
-    <input
-      type="text"
-      class="ps-input"
-      placeholder="Buscar propiedad..."
-      [value]="filterText()"
-      (input)="onFilterChange($any($event.target).value)"
-      (focus)="onInputFocus()"
-    />
-    <span
-      class="ps-toggle material-symbols-outlined"
-      [class.ps-loading]="propertyLoading()"
-    >unfold_more</span>
+@if (singleMode()) {
+  <div class="ps-static">
+    <span class="ps-static-icon material-symbols-outlined">hotel</span>
+    <span class="ps-static-label">{{ singleHotelLabel() }}</span>
   </div>
+} @else if (ctx.mode() === 'none') {
+  <div class="ps-none">
+    <span class="material-symbols-outlined">block</span>
+    <span>Sin hoteles asignados</span>
+  </div>
+} @else if (visible()) {
+  <div class="ps-autocomplete">
+    <div class="ps-input-wrapper">
+      <span class="ps-icon material-symbols-outlined">hotel</span>
+      <input
+        type="text"
+        class="ps-input"
+        placeholder="Buscar propiedad..."
+        [value]="filterText()"
+        (input)="onFilterChange($any($event.target).value)"
+        (focus)="onInputFocus()"
+      />
+      <span
+        class="ps-toggle material-symbols-outlined"
+        [class.ps-loading]="propertyLoading()"
+      >unfold_more</span>
+    </div>
 
-  @if (dropdownOpen()) {
-    <ul class="ps-dropdown" (scroll)="onScroll($event)">
-      @if (authRequired()) {
-        <li class="ps-auth-required">
-          <span class="material-symbols-outlined">lock</span>
-          <span>Sesión expirada. <a href="/login" class="ps-login-link">Inicia sesión</a></span>
-        </li>
-      } @else if (propertyLoading() && !propertyOptions().length) {
-        <li class="ps-loading-item">
-          <span class="ps-spinner"></span>
-          Cargando...
-        </li>
-      } @else if (!propertyOptions().length) {
-        <li class="ps-loading-item">Sin resultados</li>
-      } @else {
-        @for (option of propertyOptions(); track option.propId) {
-          <li
-            class="ps-option"
-            [class.ps-selected]="option.propId === selectedPropId"
-            (click)="selectProperty(option)"
-          >
-            <span class="material-symbols-outlined">hotel</span>
-            <span>{{ option.label }}</span>
+    @if (dropdownOpen()) {
+      <ul class="ps-dropdown" (scroll)="onScroll($event)">
+        @if (authRequired()) {
+          <li class="ps-auth-required">
+            <span class="material-symbols-outlined">lock</span>
+            <span>Sesión expirada. <a href="/login" class="ps-login-link">Inicia sesión</a></span>
           </li>
-        }
-        @if (propertyLoading()) {
+        } @else if (propertyLoading() && !propertyOptions().length) {
           <li class="ps-loading-item">
             <span class="ps-spinner"></span>
             Cargando...
           </li>
+        } @else if (!propertyOptions().length) {
+          <li class="ps-loading-item">Sin resultados</li>
+        } @else {
+          @for (option of propertyOptions(); track option.propId) {
+            <li
+              class="ps-option"
+              [class.ps-selected]="option.propId === selectedPropId"
+              (click)="selectProperty(option)"
+            >
+              <span class="material-symbols-outlined">hotel</span>
+              <span>{{ option.label }}</span>
+            </li>
+          }
+          @if (propertyLoading()) {
+            <li class="ps-loading-item">
+              <span class="ps-spinner"></span>
+              Cargando...
+            </li>
+          }
         }
-      }
-    </ul>
-  }
-</div>
+      </ul>
+    }
+  </div>
+}

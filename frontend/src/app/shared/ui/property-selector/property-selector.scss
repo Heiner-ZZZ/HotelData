@@ -126,3 +126,55 @@
     transform: rotate(360deg);
   }
 }
+
+/* ── Static (single-hotel mode) ── */
+
+.ps-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+  user-select: none;
+}
+
+.ps-static-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.ps-static-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── None mode (no assigned hotels) ── */
+
+.ps-none {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--danger);
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  }
+}

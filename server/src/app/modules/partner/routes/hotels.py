@@ -46,6 +46,60 @@ def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user
     return list_partner_hotels(q, page=page, page_size=10, user=current_user)
 
 
+@api_router.get("/properties/context")
+def properties_context_api(
+    current_user: dict = Depends(require_login),
+):
+    """Return the property context for the current user.
+
+    Determines the access mode:
+    - "all": super_admin, admin_sistema — can browse all hotels
+    - "single": user has exactly 1 assigned hotel → auto-select
+    - "multi": user has 2+ assigned hotels → show limited selector
+    """
+    from src.app.security.hotel_filter import assigned_hotels_for_user, UNFILTERED_ROLES
+    from src.app.modules.partner.services.properties.listing import list_partner_hotels
+
+    role = (current_user or {}).get("primary_role", "")
+
+    # Roles sin restricción (super_admin, admin_sistema, cliente)
+    if role in UNFILTERED_ROLES:
+        return {"mode": "all", "assigned_properties": [], "default_prop_id": 0}
+
+    assigned = assigned_hotels_for_user(current_user)
+
+    if not assigned:
+        # Tiene rol restringido pero sin assigned_hotels → no puede ver nada
+        return {"mode": "none", "assigned_properties": [], "default_prop_id": 0}
+
+    # Obtener nombres de los hoteles asignados
+    results = list_partner_hotels("", page=1, page_size=200, user=current_user)
+    properties = []
+    for item in results.get("items", []):
+        prop_id = item.get("prop_id")
+        if prop_id and prop_id in assigned:
+            properties.append({
+                "prop_id": prop_id,
+                "label": item.get("display_name") or item.get("hotel_name") or f"Hotel {prop_id}",
+            })
+
+    # Ordenar por prop_id para consistencia
+    properties.sort(key=lambda p: p["prop_id"])
+
+    if len(assigned) == 1:
+        return {
+            "mode": "single",
+            "assigned_properties": properties,
+            "default_prop_id": properties[0]["prop_id"] if properties else assigned[0],
+        }
+
+    return {
+        "mode": "multi",
+        "assigned_properties": properties,
+        "default_prop_id": 0,
+    }
+
+
 @api_router.get("/properties/options")
 def properties_options_api(
     q: str = Query(default=""),
