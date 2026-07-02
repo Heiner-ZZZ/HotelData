@@ -52,6 +52,32 @@
   opacity: 0.5;
 }
 
+/* ── Hotel badge (single mode) ── */
+
+.topbar-hotel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  user-select: none;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400;
+  }
+}
+
 /* ── Right section ── */
 .topbar-right {
   display: flex;

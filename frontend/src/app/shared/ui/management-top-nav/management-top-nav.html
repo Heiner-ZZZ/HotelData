@@ -10,6 +10,13 @@
         }
       }
     </nav>
+
+    @if (singleHotelMode() && hotelLabel()) {
+      <div class="topbar-hotel">
+        <span class="material-symbols-outlined">hotel</span>
+        <span>{{ hotelLabel() }}</span>
+      </div>
+    }
   </div>
 
   <div class="topbar-right">

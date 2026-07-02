@@ -64,6 +64,12 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel']
         },
         {
+          label: 'Estancias Activas',
+          href: '/management/stay-inbox',
+          icon: 'meeting_room',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel']
+        },
+        {
           label: 'Check-outs',
           href: '/management/check-outs',
           icon: 'logout',
@@ -128,7 +134,7 @@ export class SidebarNavComponent {
           href: '/management/audit-log',
           icon: 'history_toggle_off',
           allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos']
-        }
+        },
       ]
     },
     {

@@ -92,6 +92,9 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
     return labels[role] || role.replace(/_/g, ' ');
   });
 
+  readonly singleHotelMode = computed(() => this.propertyCtx.singleHotelMode());
+  readonly hotelLabel = computed(() => this.propertyCtx.currentPropLabel());
+
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const url = this.currentUrl();
     const qp = this.currentQueryParams();
@@ -103,9 +106,12 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
       const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');
       return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/'), queryParams: propQp };
     });
-    const propLabel = this.propertyCtx.currentPropLabel();
-    if (propLabel) {
-      crumbs.push({ label: propLabel, path: '', queryParams: undefined });
+    // En modo single, el hotel se muestra como badge aparte, no en el breadcrumb
+    if (!this.propertyCtx.singleHotelMode()) {
+      const propLabel = this.propertyCtx.currentPropLabel();
+      if (propLabel) {
+        crumbs.push({ label: propLabel, path: '', queryParams: undefined });
+      }
     }
     return crumbs;
   });
