@@ -80,3 +80,13 @@ def create_rate_plan(
         return_document=ReturnDocument.AFTER,
     )
     return document
+
+
+def get_rate_plan(plan_id: str) -> dict[str, Any] | None:
+    """Get a single rate plan by its rate_plan_id."""
+    db = get_database()
+    doc = db.rate_plans.find_one({"rate_plan_id": plan_id}, {"_id": 0})
+    if doc:
+        doc["hotel_label"] = _hotel_label(doc["prop_id"])
+        doc["base_rate_label"] = _money(doc.get("base_rate"))
+    return doc

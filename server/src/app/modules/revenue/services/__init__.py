@@ -10,13 +10,14 @@ from src.app.modules.revenue.services.promotions import (
     toggle_promotion_campaign,
     update_promotion_campaign,
 )
-from src.app.modules.revenue.services.rate_plans import create_rate_plan, rate_plans_overview
+from src.app.modules.revenue.services.rate_plans import create_rate_plan, get_rate_plan, rate_plans_overview
 
 __all__ = [
     "conversion_overview",
     "create_promotion_campaign",
     "create_rate_plan",
     "ensure_revenue_collections",
+    "get_rate_plan",
     "hotel_rates_overview",
     "list_property_campaigns",
     "module_status",
