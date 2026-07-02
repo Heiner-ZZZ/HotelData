@@ -1,0 +1,90 @@
+<div class="notif-page">
+  <app-page-header
+    eyebrow="Centro de notificaciones"
+    title="Notificaciones"
+    description="Historial de notificaciones de tus reservas y actividades."
+  />
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando notificaciones..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar las notificaciones"
+        description="Intenta nuevamente más tarde."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        icon="notifications_off"
+        title="Sin notificaciones"
+        description="Aún no tienes notificaciones. Cuando haya actividad en tus reservas, aparecerán aquí."
+      />
+    }
+    @default {
+      @if (data(); as vm) {
+        <!-- Stats bar -->
+        <div class="notif-stats">
+          <div class="notif-stat">
+            <span class="notif-stat-val">{{ vm.total }}</span>
+            <span class="notif-stat-lbl">Total</span>
+          </div>
+          @if (vm.unreadCount > 0) {
+            <div class="notif-stat notif-stat-unread">
+              <span class="notif-stat-val">{{ vm.unreadCount }}</span>
+              <span class="notif-stat-lbl">Sin leer</span>
+            </div>
+          }
+        </div>
+
+        <!-- List -->
+        <div class="notif-list">
+          @for (item of vm.items; track item.createdAt) {
+            <div class="notif-card" [class.notif-unread]="item.isUnread">
+              <div class="notif-card-icon" [style.color]="iconColor(item.statusTone)">
+                <span class="material-symbols-outlined">{{ notificationIcon(item.notificationType) }}</span>
+              </div>
+              <div class="notif-card-body">
+                <div class="notif-card-head">
+                  <span class="notif-card-title">{{ item.typeLabel }}</span>
+                  <span class="notif-card-time">{{ item.createdAt | date:'d MMM yyyy, HH:mm' }}</span>
+                </div>
+                @if (item.bookingId) {
+                  <a [routerLink]="['/account/bookings', item.bookingId]" class="notif-card-booking">
+                    <span class="material-symbols-outlined">book_online</span>
+                    Reserva {{ item.bookingId }}
+                  </a>
+                }
+              </div>
+              @if (item.isUnread) {
+                <span class="notif-dot"></span>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Pagination -->
+        @if (vm.totalPages > 1) {
+          <div class="notif-pagination">
+            <button type="button"
+              class="notif-page-btn"
+              [disabled]="currentPage() <= 1"
+              (click)="goToPage(currentPage() - 1)">
+              <span class="material-symbols-outlined">chevron_left</span>
+              Anterior
+            </button>
+            <span class="notif-page-info">Página {{ currentPage() }} de {{ vm.totalPages }}</span>
+            <button type="button"
+              class="notif-page-btn"
+              [disabled]="currentPage() >= vm.totalPages"
+              (click)="goToPage(currentPage() + 1)">
+              Siguiente
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        }
+      }
+    }
+  }
+</div>
