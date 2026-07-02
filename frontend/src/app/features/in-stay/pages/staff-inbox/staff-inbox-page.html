@@ -1,0 +1,166 @@
+<div class="staff-inbox">
+  <div class="inbox-header">
+    <h1>
+      <span class="material-symbols-outlined">inbox</span>
+      Bandeja de Recepción
+    </h1>
+    <div class="inbox-badges">
+      <span class="badge">{{ getUnreadCount() }} mensajes</span>
+      <span class="badge pending">{{ pendingCount }} solicitudes</span>
+    </div>
+  </div>
+
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
+
+  <nav class="inbox-tabs">
+    <button class="tab" [class.active]="activeTab() === 'chat'" (click)="setTab('chat')">
+      <span class="material-symbols-outlined">chat</span>
+      Chat en vivo
+      @if (getUnreadCount() > 0) {
+        <span class="tab-count">{{ getUnreadCount() }}</span>
+      }
+    </button>
+    <button class="tab" [class.active]="activeTab() === 'requests'" (click)="setTab('requests')">
+      <span class="material-symbols-outlined">concierge</span>
+      Solicitudes
+      @if (pendingCount > 0) {
+        <span class="tab-count">{{ pendingCount }}</span>
+      }
+    </button>
+  </nav>
+
+  @if (activeTab() === 'chat') {
+    <div class="chat-inbox">
+      @if (!selectedRoom()) {
+        <!-- Conversation List -->
+        @if (loading()) {
+          <div class="inbox-loading">Cargando conversaciones...</div>
+        } @else if (conversations().length === 0) {
+          <div class="inbox-empty">
+            <span class="material-symbols-outlined">chat</span>
+            <p>No hay conversaciones activas</p>
+          </div>
+        } @else {
+          <div class="conversation-list">
+            @for (conv of conversations(); track conv._id) {
+              <button class="conv-item" (click)="selectConversation(conv._id)">
+                <div class="conv-room">
+                  <span class="material-symbols-outlined">meeting_room</span>
+                  Hab. {{ conv._id }}
+                </div>
+                <div class="conv-info">
+                  <span class="conv-guest">{{ conv.guest_name || 'Huésped' }}</span>
+                  <span class="conv-preview">{{ conv.last_sender === 'staff' ? 'Tú: ' : '' }}{{ conv.last_message }}</span>
+                </div>
+                <div class="conv-meta">
+                  @if (conv.unread > 0) {
+                    <span class="unread-badge">{{ conv.unread }}</span>
+                  }
+                  <span class="conv-time">{{ conv.last_time | date:'HH:mm' }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      } @else {
+        <!-- Chat Detail View -->
+        <div class="chat-detail">
+          <div class="chat-detail-header">
+            <button class="back-btn" (click)="backToConversations()">
+              <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <span class="detail-room">Hab. {{ selectedRoom() }}</span>
+          </div>
+
+          <div class="chat-detail-messages">
+            @for (msg of messages(); track msg._id) {
+              <div class="msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
+                <div class="msg-bubble">
+                  @if (msg.sender === 'staff' && msg.staff_name) {
+                    <div class="msg-author">{{ msg.staff_name }}</div>
+                  }
+                  <div class="msg-text">{{ msg.message }}</div>
+                  <div class="msg-time">{{ msg.created_at | date:'dd/MM HH:mm' }}</div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="chat-detail-input">
+            <input
+              type="text"
+              placeholder="Responder..."
+              [ngModel]="replyInput()"
+              (ngModelChange)="replyInput.set($event)"
+              (keydown.enter)="sendReply()"
+            />
+            <button class="btn-reply" (click)="sendReply()" [disabled]="sendingReply() || !replyInput().trim()">
+              <span class="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'requests') {
+    <div class="requests-inbox">
+      <div class="request-filters">
+        @for (f of ['pending', 'in_progress', 'completed']; track f) {
+          <button class="filter-btn" [class.active]="requestFilter() === f" (click)="filterRequests(f)">
+            {{ f === 'pending' ? 'Pendientes' : f === 'in_progress' ? 'En proceso' : 'Completadas' }}
+          </button>
+        }
+      </div>
+
+      @if (requests().length === 0) {
+        <div class="inbox-empty">
+          <span class="material-symbols-outlined">check_circle</span>
+          <p>No hay solicitudes {{ requestFilter() === 'pending' ? 'pendientes' : 'en este estado' }}</p>
+        </div>
+      } @else {
+        <div class="requests-list">
+          @for (req of requests(); track req._id) {
+            <div class="request-card">
+              <div class="req-header">
+                <div class="req-meta">
+                  <span class="req-type">{{ req.request_type_label }}</span>
+                  <span class="req-from">Hab. {{ req.room_label }} — {{ req.booking_id }}</span>
+                </div>
+                <span class="req-status" [class]="'status-' + req.status">{{ req.status_label }}</span>
+              </div>
+              @if (req.description) {
+                <p class="req-desc">{{ req.description }}</p>
+              }
+              <div class="req-actions">
+                @if (req.status === 'pending') {
+                  <button class="action-btn primary" (click)="updateRequest(req, 'in_progress')">
+                    <span class="material-symbols-outlined">handyman</span>
+                    Tomar
+                  </button>
+                }
+                @if (req.status === 'in_progress') {
+                  <button class="action-btn success" (click)="updateRequest(req, 'completed')">
+                    <span class="material-symbols-outlined">check</span>
+                    Completar
+                  </button>
+                }
+                @if (req.status === 'pending' || req.status === 'in_progress') {
+                  <button class="action-btn cancel" (click)="updateRequest(req, 'cancelled')">
+                    <span class="material-symbols-outlined">close</span>
+                    Cancelar
+                  </button>
+                }
+              </div>
+              <span class="req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

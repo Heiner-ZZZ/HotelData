@@ -1,0 +1,327 @@
+<div class="guest-portal">
+  @if (loading()) {
+    <div class="portal-loading">
+      <div class="loading-spinner"></div>
+      <p>Cargando Mi Estancia...</p>
+    </div>
+  } @else if (error(); as err) {
+    <div class="portal-error">
+      <span class="material-symbols-outlined error-icon">link_off</span>
+      <h2>Enlace no válido</h2>
+      <p>{{ err }}</p>
+      <p class="error-hint">Si estás en el hotel, llama a recepción para obtener un nuevo código.</p>
+    </div>
+  } @else if (portalData(); as data) {
+    <!-- ── Header ── -->
+    <header class="portal-header">
+      <div class="header-top">
+        <div class="hotel-badge">
+          <span class="material-symbols-outlined">hotel</span>
+          <span class="hotel-name">{{ data.compendium.hotel_name || 'Hotel' }}</span>
+        </div>
+        <div class="room-badge">
+          <span class="material-symbols-outlined">meeting_room</span>
+          Hab. {{ data.session.room_label }}
+        </div>
+      </div>
+      <div class="guest-greeting">
+        <h1>Bienvenido{{ data.session.guest_name ? ', ' + data.session.guest_name : '' }}</h1>
+        <div class="stay-dates">
+          <span class="material-symbols-outlined">calendar_today</span>
+          {{ data.session.check_in | date:'dd MMM' }} – {{ data.session.check_out | date:'dd MMM yyyy' }}
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Tab Navigation ── -->
+    <nav class="tab-nav">
+      @for (tab of tabs(); track tab.id) {
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === tab.id"
+          (click)="setTab(tab.id)"
+        >
+          <span class="material-symbols-outlined">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+          @if (tab.badge && tab.badge > 0) {
+            <span class="tab-badge">{{ tab.badge }}</span>
+          }
+        </button>
+      }
+    </nav>
+
+    <!-- ── Tab Content ── -->
+    <main class="tab-content">
+
+      <!-- ═══ COMPENDIUM ═══ -->
+      @if (activeTab() === 'compendium') {
+        <section class="compendium-section">
+          @if (data.compendium.wifi_ssid) {
+            <div class="comp-card wifi-card">
+              <div class="comp-card-icon"><span class="material-symbols-outlined">wifi</span></div>
+              <div class="comp-card-body">
+                <h3>WiFi</h3>
+                <div class="wifi-detail">
+                  <span class="detail-label">Red:</span>
+                  <span class="detail-value">{{ data.compendium.wifi_ssid }}</span>
+                </div>
+                @if (data.compendium.wifi_password) {
+                  <div class="wifi-detail">
+                    <span class="detail-label">Contraseña:</span>
+                    <span class="detail-value password-value">{{ data.compendium.wifi_password }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="comp-grid">
+            @if (data.compendium.breakfast_hours) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">restaurant</span></div>
+                <div class="comp-card-body">
+                  <h3>Desayuno</h3>
+                  <p>{{ data.compendium.breakfast_hours }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.restaurant_hours) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">lunch_dining</span></div>
+                <div class="comp-card-body">
+                  <h3>Restaurante</h3>
+                  <p>{{ data.compendium.restaurant_hours }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.gym_hours) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">fitness_center</span></div>
+                <div class="comp-card-body">
+                  <h3>Gimnasio</h3>
+                  <p>{{ data.compendium.gym_hours }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.pool_hours) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">pool</span></div>
+                <div class="comp-card-body">
+                  <h3>Alberca</h3>
+                  <p>{{ data.compendium.pool_hours }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.hotel_phone) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">call</span></div>
+                <div class="comp-card-body">
+                  <h3>Teléfono</h3>
+                  <p>{{ data.compendium.hotel_phone }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.parking_info) {
+              <div class="comp-card">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">local_parking</span></div>
+                <div class="comp-card-body">
+                  <h3>Estacionamiento</h3>
+                  <p>{{ data.compendium.parking_info }}</p>
+                </div>
+              </div>
+            }
+            @if (data.compendium.emergency_contact) {
+              <div class="comp-card emergency">
+                <div class="comp-card-icon"><span class="material-symbols-outlined">emergency</span></div>
+                <div class="comp-card-body">
+                  <h3>Emergencias</h3>
+                  <p>{{ data.compendium.emergency_contact }}</p>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (data.compendium.policies.length > 0) {
+            <div class="comp-section-title">
+              <span class="material-symbols-outlined">description</span>
+              Políticas del hotel
+            </div>
+            <div class="policies-list">
+              @for (policy of data.compendium.policies; track $index) {
+                <div class="policy-item">
+                  <strong>{{ policy.title || policy.cancellation_policy || 'Política' }}</strong>
+                  <p>{{ policy.description || '' }}</p>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      <!-- ═══ SERVICES ═══ -->
+      @if (activeTab() === 'services') {
+        <section class="services-section">
+          <div class="section-header">
+            <h2>Solicitudes de servicio</h2>
+          </div>
+
+          @if (!requestDone()) {
+            <div class="request-form">
+              <div class="form-group">
+                <label for="req-type">¿Qué necesitas?</label>
+                <select id="req-type" [ngModel]="requestType()" (ngModelChange)="requestType.set($event)">
+                  @for (rt of requestTypes; track rt.value) {
+                    <option [value]="rt.value">{{ rt.label }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="req-desc">Detalle (opcional)</label>
+                <textarea
+                  id="req-desc"
+                  rows="3"
+                  placeholder="Ej: 2 toallas extra, por favor"
+                  [ngModel]="requestDesc()"
+                  (ngModelChange)="requestDesc.set($event)"
+                ></textarea>
+              </div>
+              <button class="btn-primary" (click)="submitRequest()" [disabled]="sendingRequest() || !requestDesc().trim()">
+                @if (sendingRequest()) {
+                  <span class="material-symbols-outlined spin">sync</span>
+                  Enviando...
+                } @else {
+                  <span class="material-symbols-outlined">send</span>
+                  Solicitar
+                }
+              </button>
+            </div>
+          } @else {
+            <div class="request-success">
+              <span class="material-symbols-outlined">check_circle</span>
+              <p>¡Solicitud enviada! Recepción la recibió y te atenderá pronto.</p>
+            </div>
+          }
+
+          @if (requests().length > 0) {
+            <div class="requests-history">
+              <h3>Mis solicitudes</h3>
+              @for (req of requests(); track req._id) {
+                <div class="request-card" [class.completed]="req.status === 'completed'">
+                  <div class="req-header">
+                    <span class="req-type">{{ req.request_type_label }}</span>
+                    <span class="req-status" [class]="'status-' + req.status">{{ req.status_label }}</span>
+                  </div>
+                  @if (req.description) {
+                    <p class="req-desc">{{ req.description }}</p>
+                  }
+                  @if (req.staff_response) {
+                    <div class="req-response">
+                      <span class="material-symbols-outlined">reply</span>
+                      {{ req.staff_response }}
+                    </div>
+                  }
+                  <span class="req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      <!-- ═══ CHAT ═══ -->
+      @if (activeTab() === 'chat') {
+        <section class="chat-section">
+          <div class="chat-header">
+            <span class="material-symbols-outlined">support_agent</span>
+            <span>Chat con Recepción</span>
+          </div>
+
+          <div class="chat-messages" #chatContainer>
+            @if (messages().length === 0) {
+              <div class="chat-empty">
+                <span class="material-symbols-outlined">chat</span>
+                <p>No hay mensajes aún. ¡Escríbenos!</p>
+              </div>
+            }
+            @for (msg of messages(); track msg._id) {
+              <div class="chat-msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
+                <div class="msg-bubble">
+                  @if (msg.sender === 'staff' && msg.staff_name) {
+                    <div class="msg-author">{{ msg.staff_name }}</div>
+                  }
+                  <div class="msg-text">{{ msg.message }}</div>
+                  <div class="msg-time">{{ msg.created_at | date:'HH:mm' }}</div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="chat-input-bar">
+            <input
+              type="text"
+              placeholder="Escribe tu mensaje..."
+              [ngModel]="chatInput()"
+              (ngModelChange)="chatInput.set($event)"
+              (keydown.enter)="sendMessage()"
+            />
+            <button class="btn-send" (click)="sendMessage()" [disabled]="sendingChat() || !chatInput().trim()">
+              <span class="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </section>
+      }
+
+      <!-- ═══ CHARGES ═══ -->
+      @if (activeTab() === 'charges') {
+        <section class="charges-section">
+          <div class="section-header">
+            <h2>Cargos a la habitación</h2>
+          </div>
+
+          @if (data.charges.length === 0) {
+            <div class="charges-empty">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <p>No tienes cargos adicionales registrados.</p>
+            </div>
+          } @else {
+            <div class="charges-list">
+              @for (charge of data.charges; track $index) {
+                <div class="charge-item">
+                  <div class="charge-info">
+                    <span class="charge-concept">{{ charge.concept }}</span>
+                    <span class="charge-category">{{ charge.category }}</span>
+                    <span class="charge-date">{{ charge.created_at | date:'dd/MM' }}</span>
+                  </div>
+                  <div class="charge-amount">
+                    @if (charge.quantity > 1) {
+                      <span class="charge-qty">{{ charge.quantity }} × {{ charge.amount | currency }}</span>
+                    }
+                    <strong>{{ charge.total | currency }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="charges-total">
+              <span>Total cargos</span>
+              <strong>{{ getChargesTotal() | currency }}</strong>
+            </div>
+          }
+
+          <div class="charges-note">
+            <span class="material-symbols-outlined">info</span>
+            Los cargos se liquidarán al momento del check-out.
+          </div>
+        </section>
+      }
+
+    </main>
+
+    <!-- ── Footer ── -->
+    <footer class="portal-footer">
+      <p>HotelData — Mi Estancia</p>
+      <p class="footer-hours">
+        Check-in: {{ data.compendium.check_in_time }} &middot; Check-out: {{ data.compendium.check_out_time }}
+      </p>
+    </footer>
+  }
+</div>
