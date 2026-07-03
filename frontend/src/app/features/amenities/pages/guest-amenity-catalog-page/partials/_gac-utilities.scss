@@ -1,0 +1,10 @@
+/* ═══ Utilities ═══ */
+.bottom-spacer {
+  height: 24px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
