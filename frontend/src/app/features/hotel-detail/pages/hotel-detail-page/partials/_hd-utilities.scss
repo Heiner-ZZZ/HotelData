@@ -1,0 +1,19 @@
+/* ═══ Highlight Box ═══ */
+.highlight-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--primary, #006076) 6%, transparent);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--on-surface-variant, #3f484c);
+  line-height: 1.5;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--primary, #006076);
+    flex-shrink: 0;
+  }
+}

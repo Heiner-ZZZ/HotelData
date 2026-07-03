@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -100,23 +100,41 @@ export class PoliciesPageComponent {
       error: () => {},
     });
 
+    // Carga por query param (navegación manual con prop_id en URL)
     this.route.queryParamMap
       .pipe(
         map((params) => Number(params.get('prop_id') ?? '0')),
         distinctUntilChanged(),
-        switchMap((propId) => {
-          this.viewState.set('loading');
-          this.message.set('');
-          this.errorMessage.set('');
-          this.selectedRoomTypeId.set('');
-          return propId > 0 ? this.api.getPolicies(propId) : of(null);
-        }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe({
+      .subscribe((propId) => this.loadPolicies(propId));
+
+    // Auto-carga en modo single-hotel: cuando el contexto esté ready,
+    // cargar automáticamente sin esperar navegación
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && this.selectedPropId() !== propId) {
+          this.loadPolicies(propId);
+        }
+      }
+    });
+  }
+
+  private loadPolicies(propId: number) {
+    this.viewState.set('loading');
+    this.message.set('');
+    this.errorMessage.set('');
+    this.selectedRoomTypeId.set('');
+
+    if (propId > 0) {
+      this.api.getPolicies(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (policies) => this.onPoliciesLoaded(policies),
         error: () => this.viewState.set('error'),
       });
+    } else {
+      this.onPoliciesLoaded(null);
+    }
   }
 
   private onPoliciesLoaded(policies: PoliciesViewModel | null) {

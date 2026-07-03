@@ -440,8 +440,21 @@ readonly sidebarSections: SidebarSection[] = [
         this.message.set('');
         this.errorMessage.set('');
         this.propertyCtx.setProperty(data.propId, data.hotelLabel);
+      }      }, { allowSignalWrites: true });
+
+    // Auto-carga en modo single-hotel: si no hay prop_id en URL pero el contexto
+    // está ready, navegar con el propId del contexto
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && !this.routePropId()) {
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { prop_id: propId },
+          });
+        }
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   onPropSelected(event: { propId: number; label: string }): void {
