@@ -24,278 +24,37 @@
           [description]="'Estado actual: ' + vm.status + '.'"
         />
 
-        <div class="action-row">
-          <a routerLink="/reservations" class="secondary-link">Volver</a>
-          @if (canConfirm()) {
-            <button type="button" class="btn-action btn-confirm" (click)="confirmReservation()" [disabled]="confirmPending()">
-              <span class="material-symbols-outlined btn-icon">check_circle</span>
-              {{ confirmPending() ? 'Confirmando...' : 'Confirmar reserva' }}
-            </button>
-            <button type="button" class="btn-action btn-reject" (click)="rejectReservation()" [disabled]="rejectPending()">
-              <span class="material-symbols-outlined btn-icon">cancel</span>
-              {{ rejectPending() ? 'Rechazando...' : 'Rechazar reserva' }}
-            </button>
-          }
-          @if (vm.canCancel && todayStr() < vm.checkInDate) {
-            <button type="button" class="btn-action btn-cancel" (click)="cancelReservation()" [disabled]="cancelPending()">
-              <span class="material-symbols-outlined btn-icon">block</span>
-              Cancelar solicitud
-            </button>
-          }
-          @if (canEdit() && !editMode()) {
-            <button type="button" class="btn-action btn-edit" (click)="toggleEdit()">
-              <span class="material-symbols-outlined btn-icon">edit</span>
-              Modificar
-            </button>
-          }
-          @if (isStaff() && ['confirmed', 'checked_in'].includes(vm.status)) {
-            <button type="button" class="btn-action btn-rooms" (click)="openRoomModal()">
-              <span class="material-symbols-outlined btn-icon">meeting_room</span>
-              Asignar habitaciones
-            </button>
-          }
-          @if (vm.status === 'checked_in') {
-            <a [routerLink]="['/account/bookings', vm.bookingId, 'amenities']" class="btn-action btn-amenities">
-              <span class="material-symbols-outlined btn-icon">spa</span>
-              Solicitar amenities
-            </a>
-            <button type="button" class="btn-action btn-instay" (click)="goToInStay(vm.bookingId)">
-              <span class="material-symbols-outlined btn-icon">meeting_room</span>
-              Mi Estancia
-            </button>
-          }
-        </div>
+        <app-rd-hero
+          [vm]="vm"
+          [todayStr]="todayStr()"
+          [canConfirm]="canConfirm() || false"
+          [canEdit]="canEdit()"
+          [isStaff]="isStaff()"
+          [editMode]="editMode()"
+          [cancelPending]="cancelPending()"
+          [confirmPending]="confirmPending()"
+          [rejectPending]="rejectPending()"
+          (confirm)="confirmReservation()"
+          (reject)="rejectReservation()"
+          (cancel)="cancelReservation()"
+          (toggleEdit)="toggleEdit()"
+          (openRoomModal)="openRoomModal()"
+          (goToInStay)="goToInStay($event)"
+        />
 
-          <section class="hero-grid">
-            <article class="surface-card hero-card">
-              <div class="hero-card-icon-wrap" style="--card-accent: var(--accent)">
-                <span class="material-symbols-outlined">business</span>
-              </div>
-              <div class="hero-card-content">
-                <span class="stat-label">Hotel</span>
-                <strong>{{ vm.hotelLabel }}</strong>
-              </div>
-            </article>
+        <app-rd-info-panels [vm]="vm" />
 
-            <article class="surface-card hero-card" [class.hero-status-pending]="vm.status === 'pending'"
-                     [class.hero-status-confirmed]="vm.status === 'confirmed'"
-                     [class.hero-status-checked-in]="vm.status === 'checked_in'"
-                     [class.hero-status-checked-out]="vm.status === 'checked_out'"
-                     [class.hero-status-cancelled]="vm.status === 'cancelled'"
-                     [class.hero-status-rejected]="vm.status === 'rejected'">
-              <div class="hero-card-icon-wrap">
-                @switch (vm.status) {
-                  @case ('pending') { <span class="material-symbols-outlined">pending</span> }
-                  @case ('confirmed') { <span class="material-symbols-outlined">check_circle</span> }
-                  @case ('checked_in') { <span class="material-symbols-outlined">vpn_key</span> }
-                  @case ('checked_out') { <span class="material-symbols-outlined">logout</span> }
-                  @case ('cancelled') { <span class="material-symbols-outlined">cancel</span> }
-                  @case ('rejected') { <span class="material-symbols-outlined">block</span> }
-                  @default { <span class="material-symbols-outlined">info</span> }
-                }
-              </div>
-              <div class="hero-card-content">
-                <span class="stat-label">Estado</span>
-                <strong>
-                  @switch (vm.status) {
-                    @case ('pending') { Pendiente }
-                    @case ('confirmed') { Confirmada }
-                    @case ('checked_in') { Checked-In }
-                    @case ('checked_out') { Checked-Out }
-                    @case ('cancelled') { Cancelada }
-                    @case ('rejected') { Rechazada }
-                    @default { {{ vm.status }} }
-                  }
-                </strong>
-              </div>
-            </article>
-
-            <article class="surface-card hero-card">
-              <div class="hero-card-icon-wrap" style="--card-accent: #a78bfa">
-                <span class="material-symbols-outlined">language</span>
-              </div>
-              <div class="hero-card-content">
-                <span class="stat-label">Origen</span>
-                <strong>
-                  @switch (vm.bookingSource) {
-                    @case ('angular_api') { Plataforma Web }
-                    @case ('manual_partner') { Reserva Manual Partner }
-                    @case ('reception_physical') { Recepción Física }
-                    @case ('manual') { Registro Manual }
-                    @default { {{ vm.bookingSource }} }
-                  }
-                </strong>
-              </div>
-            </article>
-
-            @if (vm.totalPrice !== null) {
-              <article class="surface-card hero-card">
-                <div class="hero-card-icon-wrap" style="--card-accent: var(--success)">
-                  <span class="material-symbols-outlined">payments</span>
-                </div>
-                <div class="hero-card-content">
-                  <span class="stat-label">Total</span>
-                  <strong>
-                    @if (vm.discountPercent) {
-                      <span style="text-decoration: line-through; opacity: 0.7; font-weight: normal; margin-right: 4px; font-size: 0.9em;">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
-                      {{ vm.totalPrice | currency:vm.currency }} <span style="font-size: 0.8em; font-weight: normal;">(-{{ vm.discountPercent }}%)</span>
-                    } @else {
-                      {{ vm.totalPrice | currency:vm.currency }}
-                    }
-                  </strong>
-                </div>
-              </article>
-            }
-
-            @if (vm.amenitiesCount > 0) {
-              <article class="surface-card hero-card">
-                <div class="hero-card-icon-wrap" style="--card-accent: #f59e0b">
-                  <span class="material-symbols-outlined">spa</span>
-                </div>
-                <div class="hero-card-content">
-                  <span class="stat-label">Amenities solicitados</span>
-                  <strong>{{ vm.amenitiesCount }} {{ vm.amenitiesCount === 1 ? 'servicio' : 'servicios' }}</strong>
-                  @if (vm.amenitiesTotal > 0) {
-                    <span class="hero-card-sub">{{ vm.amenitiesTotal | currency:'USD' }}</span>
-                  }
-                </div>
-              </article>
-            }
-          </section>
-
-        <section class="insight-grid">
-          <article class="surface-card panel">
-            <h2>Solicitud</h2>
-            <div class="table-wrap">
-              <table>
-                <tbody>
-                  <tr><th>Prop ID</th><td>{{ vm.propId }}</td></tr>
-                  @if (vm.roomType; as rt) {
-                    <tr><th>Tipo de habitación</th><td>{{ rt.name }}</td></tr>
-                  }
-                  <tr><th>Fechas</th><td>{{ vm.checkInDate }} a {{ vm.checkOutDate }}</td></tr>
-                  <tr><th>Ocupación</th><td>{{ vm.occupancyLabel }}</td></tr>
-                  <tr><th>Comentario</th><td>{{ vm.comment }}</td></tr>
-                  @if (vm.specialRequests && vm.specialRequests.length > 0) {
-                    <tr><th>Peticiones</th><td>
-                      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        @for (req of vm.specialRequests; track req) {
-                          <span style="background: var(--surface-2); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: var(--text-2);">{{ req }}</span>
-                        }
-                      </div>
-                    </td></tr>
-                  }
-                  <tr><th>Creada</th><td>{{ vm.createdAt }}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <article class="surface-card panel">
-            <h2>Huésped principal</h2>
-            <div class="table-wrap">
-              <table>
-                <tbody>
-                  <tr><th>Nombre</th><td>{{ vm.guestName }}</td></tr>
-                  <tr><th>Email</th><td>{{ vm.guestEmail }}</td></tr>
-                  @if (vm.guestPhone) {
-                    <tr><th>Teléfono</th><td>{{ vm.guestPhone }}</td></tr>
-                  }
-                  @if (vm.guestCedula) {
-                    <tr><th>Cédula</th><td><strong>{{ vm.guestCedula }}</strong></td></tr>
-                  }
-                  @if (vm.totalPrice !== null) {
-                    <tr>
-                      <th>Total</th>
-                      <td>
-                        @if (vm.discountPercent) {
-                          <span style="text-decoration: line-through; opacity: 0.7; margin-right: 4px;">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
-                          <strong>{{ vm.totalPrice | currency:vm.currency }}</strong> <span style="color: var(--color-success); font-weight: bold;">(-{{ vm.discountPercent }}%)</span>
-                        } @else {
-                          {{ vm.totalPrice | currency:vm.currency }}
-                        }
-                        ({{ vm.totalNights }} {{ vm.totalNights === 1 ? 'noche' : 'noches' }})
-                      </td>
-                    </tr>
-                  }
-                  <tr><th>Reserva manual</th><td>{{ vm.isManual ? 'Sí' : 'No' }}</td></tr>
-                  @if (vm.manualReservationId) {
-                    <tr><th>Manual ID</th><td>{{ vm.manualReservationId }}</td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-
-        @if (vm.priceBreakdown; as pb) {
-          <section class="surface-card panel price-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">receipt_long</span>
-                <h2>Desglose de precios</h2>
-              </div>
-              <span class="panel-badge">{{ pb.source === 'calendar' ? 'Tarifas reales' : 'Estimado' }}</span>
-            </div>
-            <div class="table-wrap">
-              <table class="breakdown-table">
-                <thead><tr><th>Fecha</th><th>Tarifa noche</th><th>Habitaciones</th><th class="cell-right">Subtotal</th></tr></thead>
-                <tbody>
-                  @for (night of pb.nights; track night.date) {
-                    <tr>
-                      <td>{{ night.date | date:'dd/MM/yyyy' }}</td>
-                      <td>{{ night.rate | currency:pb.currency }}</td>
-                      <td>{{ night.rooms }}</td>
-                      <td class="cell-right">{{ night.nightTotal | currency:pb.currency }}</td>
-                    </tr>
-                  }
-                </tbody>
-                <tfoot>
-                  <tr class="foot-subtotal"><td colspan="3">Subtotal</td><td class="cell-right">{{ pb.subtotal | currency:pb.currency }}</td></tr>
-                  <tr class="foot-taxes"><td colspan="3">IVA ({{ pb.ivaRate | percent }})</td><td class="cell-right">{{ pb.taxes | currency:pb.currency }}</td></tr>
-                  <tr class="foot-total"><td colspan="3">Total</td><td class="cell-right total-value">{{ pb.total | currency:pb.currency }}</td></tr>
-                </tfoot>
-              </table>
-            </div>
-          </section>
-        }
+        <app-rd-financial-panels [vm]="vm" />
 
         @if (editMode()) {
-          <section class="surface-card panel edit-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">edit</span>
-                <h2>Modificar reserva</h2>
-              </div>
-            </div>
-            @if (editError()) {
-              <div class="edit-error">{{ editError() }}</div>
-            }
-            <div class="edit-form-grid">
-              <label class="edit-field">
-                <span>Check-in</span>
-                <input type="date" [ngModel]="editForm().checkInDate" (ngModelChange)="editForm.update(f => ({...f, checkInDate: $event}))" />
-              </label>
-              <label class="edit-field">
-                <span>Check-out</span>
-                <input type="date" [ngModel]="editForm().checkOutDate" (ngModelChange)="editForm.update(f => ({...f, checkOutDate: $event}))" />
-              </label>
-              <label class="edit-field">
-                <span>Habitaciones</span>
-                <input type="number" min="1" max="10" [ngModel]="editForm().rooms" (ngModelChange)="editForm.update(f => ({...f, rooms: $event}))" />
-              </label>
-              <label class="edit-field edit-field-wide">
-                <span>Comentario</span>
-                <input type="text" [ngModel]="editForm().comment" (ngModelChange)="editForm.update(f => ({...f, comment: $event}))" />
-              </label>
-            </div>
-            <div class="edit-actions">
-              <button type="button" class="btn-cancel-edit" (click)="toggleEdit()">Cancelar</button>
-              <button type="button" class="btn-save-edit" (click)="saveEdit()" [disabled]="editSaving()">
-                {{ editSaving() ? 'Guardando...' : 'Guardar cambios' }}
-              </button>
-            </div>
-          </section>
+          <app-rd-edit-form
+            [form]="editForm()"
+            [editSaving]="editSaving()"
+            [editError]="editError()"
+            (cancelEdit)="toggleEdit()"
+            (saveEdit)="saveEdit()"
+            (fieldChange)="handleFieldChange($event)"
+          />
         }
 
         @if (data(); as current) {
@@ -306,515 +65,62 @@
           />
         }
 
-        @if (vm.invoice; as inv) {
-          <section class="surface-card panel invoice-panel">
-            <div class="invoice-panel-header">
-              <div class="invoice-panel-title">
-                <span class="material-symbols-outlined">receipt_long</span>
-                <h2>Facturación</h2>
-              </div>
-              <app-status-badge
-                [tone]="inv.status === 'paid' ? 'success' : inv.status === 'cancelled' ? 'danger' : 'warning'"
-                [label]="inv.status === 'paid' ? 'Pagada' : inv.status === 'cancelled' ? 'Anulada' : 'Pendiente de pago'" />
-            </div>
-            <div class="invoice-summary-grid">
-              <div class="inv-info"><span class="inv-label">Factura</span><strong class="inv-value">{{ inv.invoiceNumber }}</strong></div>
-              <div class="inv-info"><span class="inv-label">Subtotal</span><strong class="inv-value">{{ inv.subtotal | currency:'USD' }}</strong></div>
-              <div class="inv-info"><span class="inv-label">IVA (16%)</span><strong class="inv-value">{{ inv.taxes | currency:'USD' }}</strong></div>
-              <div class="inv-info inv-info-total"><span class="inv-label">Total</span><strong class="inv-value">{{ inv.total | currency:'USD' }}</strong></div>
-            </div>
-            <div class="invoice-actions">
-              <button type="button" class="btn-invoice" (click)="goToInvoice(inv.id)"><span class="material-symbols-outlined">visibility</span> Ver factura completa</button>
-              @if (inv.status === 'issued') {
-                <a [routerLink]="['/account/billing', inv.id]" class="btn-pay-invoice"><span class="material-symbols-outlined">lock</span> Pagar ahora</a>
-              }
-            </div>
-          </section>
-        }
+        <app-rd-invoice-panel
+          [vm]="vm"
+          (goToInvoice)="goToInvoice($event)"
+        />
 
-        <!-- ═══ Additional Charges ═══ -->
-        @if (vm.additionalCharges.length > 0) {
-          <section class="surface-card panel charges-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">receipt</span>
-                <h2>Cargos por amenities y consumos</h2>
-              </div>
-              <span class="panel-badge">{{ vm.additionalCharges.length }} cargo(s)</span>
-            </div>
-            <div class="table-wrap">
-              <table class="charges-table">
-                <thead>
-                  <tr>
-                    <th>Concepto</th>
-                    <th>Cant.</th>
-                    <th>Precio</th>
-                    <th class="cell-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (c of vm.additionalCharges; track c.createdAt + c.concept) {
-                    <tr>
-                      <td>
-                        <strong>{{ c.concept }}</strong>
-                        @if (c.note) {
-                          <div class="charge-note">{{ c.note }}</div>
-                        }
-                      </td>
-                      <td>{{ c.quantity }}</td>
-                      <td>{{ c.amount | currency:'USD' }}</td>
-                      <td class="cell-right">{{ c.total | currency:'USD' }}</td>
-                    </tr>
-                  }
-                </tbody>
-                @if (vm.totalCharges > 0) {
-                  <tfoot>
-                    <tr class="foot-total">
-                      <td colspan="3">Total cargos</td>
-                      <td class="cell-right total-value">{{ vm.totalCharges | currency:'USD' }}</td>
-                    </tr>
-                  </tfoot>
-                }
-              </table>
-            </div>
-          </section>
-        }
+        <app-rd-products-section
+          [canAddProducts]="canAddProducts() || false"
+          [productsState]="productsState()"
+          [lineItemsState]="lineItemsState()"
+          [lineItems]="lineItems()"
+          [lineItemsTotal]="lineItemsTotal()"
+          [removeItemSaving]="removeItemSaving()"
+          (openProductModal)="openProductModal()"
+          (removeLineItem)="removeLineItem($event)"
+        />
 
-        <!-- ═══ Financial Summary ═══ -->
-        @if (vm.totalPrice !== null) {
-          <section class="surface-card panel financial-summary">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">account_balance</span>
-                <h2>Resumen financiero</h2>
-              </div>
-            </div>
-            <div class="financial-summary-body">
-              <div class="summary-row">
-                <span>Habitación ({{ vm.totalNights }} {{ vm.totalNights === 1 ? 'noche' : 'noches' }})</span>
-                <span class="summary-amount">
-                  @if (vm.discountPercent) {
-                    <span class="summary-original">{{ vm.originalTotalPrice | currency:vm.currency }}</span>
-                    {{ vm.totalPrice | currency:vm.currency }}
-                  } @else {
-                    {{ vm.totalPrice | currency:vm.currency }}
-                  }
-                </span>
-              </div>
-              @if (vm.additionalCharges.length > 0) {
-                <div class="summary-row summary-row-charges">
-                  <span>Consumos adicionales ({{ vm.additionalCharges.length }} {{ vm.additionalCharges.length === 1 ? 'cargo' : 'cargos' }})</span>
-                  <span class="summary-amount">+ {{ vm.totalCharges | currency:vm.currency }}</span>
-                </div>
-              }
-              <div class="summary-divider-row"></div>
-              <div class="summary-row summary-row-total">
-                <span>Total</span>
-                <span class="summary-amount summary-amount-grand">{{ (vm.totalPrice + vm.totalCharges) | currency:vm.currency }}</span>
-              </div>
-            </div>
-          </section>
-        }
+        <app-rd-assigned-rooms [vm]="vm" />
 
-        <!-- ═══ Products / Add-on Services ═══ -->
-        @if (canAddProducts() && productsState() !== 'loading') {
-          <section class="surface-card panel products-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">shopping_cart</span>
-                <h2>Servicios adicionales</h2>
-              </div>
-              @if (productsState() === 'success' || productsState() === 'empty') {
-                <button type="button" class="btn-add-product" (click)="openProductModal()">
-                  <span class="material-symbols-outlined">add</span>
-                  Agregar servicio
-                </button>
-              }
-            </div>
+        <app-rd-history-panel [vm]="vm" />
 
-            <!-- Line items list -->
-            @switch (lineItemsState()) {
-              @case ('loading') {
-                <div class="products-loading">
-                  <span class="material-symbols-outlined loading-spin">sync</span>
-                  <span>Cargando servicios...</span>
-                </div>
-              }
-              @case ('error') {
-                <div class="products-error">Error al cargar servicios adicionales.</div>
-              }
-              @case ('empty') {
-                <p class="products-empty">No hay servicios adicionales registrados en esta reserva.</p>
-              }
-              @case ('success') {
-                <div class="line-items-list">
-                  @for (item of lineItems(); track item.itemId) {
-                    <div class="line-item-row">
-                      <div class="line-item-info">
-                        <div class="line-item-head">
-                          <strong>{{ item.name }}</strong>
-                          <span class="line-item-qty">x{{ item.quantity }}</span>
-                        </div>
-                        <div class="line-item-meta">
-                          <span>{{ item.unitPrice | currency:'USD' }} c/u</span>
-                          <span class="line-item-added">añadido {{ item.addedAt | date:'dd/MM HH:mm' }}</span>
-                        </div>
-                      </div>
-                      <div class="line-item-total-wrap">
-                        <span class="line-item-total">{{ item.total | currency:'USD' }}</span>
-                        <button type="button" class="btn-remove-li"
-                          (click)="removeLineItem(item.itemId)"
-                          [disabled]="removeItemSaving() === item.itemId"
-                          aria-label="Eliminar servicio">
-                          @if (removeItemSaving() === item.itemId) {
-                            <span class="material-symbols-outlined loading-spin">sync</span>
-                          } @else {
-                            <span class="material-symbols-outlined">close</span>
-                          }
-                        </button>
-                      </div>
-                    </div>
-                  }
-                </div>
-                @if (lineItemsTotal() > 0) {
-                  <div class="line-items-summary">
-                    <span>Total servicios adicionales</span>
-                    <strong>{{ lineItemsTotal() | currency:'USD' }}</strong>
-                  </div>
-                }
-              }
-            }
-          </section>
-        }
+        <app-rd-product-modal
+          [show]="showProductModal()"
+          [productsState]="productsState()"
+          [productsGrouped]="productsGrouped()"
+          [productCategories]="productCategories()"
+          [selectedProductCategory]="selectedProductCategory()"
+          [filteredProducts]="filteredProducts()"
+          [selectedProduct]="selectedProduct()"
+          [addProductId]="addProductId()"
+          [addProductQty]="addProductQty()"
+          [addProductSaving]="addProductSaving()"
+          [productError]="productError()"
+          (close)="closeProductModal()"
+          (selectCategory)="selectedProductCategory.set($event); addProductId.set('')"
+          (selectProduct)="selectProduct($event)"
+          (qtyDecrease)="addProductQty.update(q => Math.max(1, q - 1))"
+          (qtyIncrease)="addProductQty.update(q => q + 1)"
+          (qtyChange)="addProductQty.set(Math.max(1, $event))"
+          (addToBooking)="addProductToBooking()"
+        />
 
-        <!-- ═══ Assigned Rooms with Status ═══ -->
-        @if (vm.assignedRooms.length > 0) {
-          <section class="surface-card panel assigned-rooms-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">meeting_room</span>
-                <h2>Habitaciones asignadas</h2>
-              </div>
-              <span class="panel-badge">{{ vm.assignedRooms.length }} habitación(es)</span>
-            </div>
-            <div class="table-wrap">
-              <table class="assigned-rooms-table">
-                <thead>
-                  <tr>
-                    <th>Habitación</th>
-                    <th>Número</th>
-                    <th>Piso</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (r of vm.assignedRooms; track r.hotelRoomId) {
-                    <tr>
-                      <td><strong>{{ r.roomLabel || r.hotelRoomId }}</strong></td>
-                      <td>{{ r.roomNumber || '--' }}</td>
-                      <td>{{ r.floor || '--' }}</td>
-                      <td>
-                        <span class="room-status-badge"
-                          [class.rs-available]="r.roomStatus === 'available'"
-                          [class.rs-occupied]="r.roomStatus === 'occupied'"
-                          [class.rs-cleaning]="r.roomStatus === 'cleaning'"
-                          [class.rs-clean]="r.roomStatus === 'clean'"
-                          [class.rs-inspected]="r.roomStatus === 'inspected'"
-                          [class.rs-dirty]="r.roomStatus === 'dirty'"
-                          [class.rs-maintenance]="r.roomStatus === 'maintenance'"
-                          [class.rs-out]="r.roomStatus === 'out_of_order' || r.roomStatus === 'out_of_service'"
-                          [class.rs-unknown]="r.roomStatus === 'unknown'"
-                        >
-                          <span class="rs-dot"></span>
-                          <span>
-                            @switch (r.roomStatus) {
-                              @case ('available') { Disponible }
-                              @case ('occupied') { Ocupada }
-                              @case ('cleaning') { Limpieza }
-                              @case ('clean') { Limpia }
-                              @case ('inspected') { Inspeccionada }
-                              @case ('dirty') { Sucia }
-                              @case ('maintenance') { Mantenimiento }
-                              @case ('out_of_order') { Fuera de orden }
-                              @case ('out_of_service') { Fuera de servicio }
-                              @default { {{ r.roomStatus }} }
-                            }
-                          </span>
-                        </span>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
-        }
-
-        @if (vm.cancellationPolicy; as policy) {
-          <section class="surface-card panel policy-panel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="material-symbols-outlined panel-icon">gavel</span>
-                <h2>Política de cancelación</h2>
-              </div>
-            </div>
-            <p class="policy-text">{{ policy }}</p>
-          </section>
-        }
-
-        <section class="surface-card panel">
-          <h2>Historial de estado</h2>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Status</th><th>Fecha</th><th>Motivo</th><th>Cambiado por</th></tr></thead>
-              <tbody>
-                @for (item of vm.history; track item.status + item.changedAt + item.reason) {
-                  <tr><td>{{ item.status }}</td><td>{{ item.changedAt }}</td><td>{{ item.reason }}</td><td>{{ item.changedBy }}</td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- ═══ Products Modal ═══ -->
-        @if (showProductModal()) {
-          <div class="modal-overlay" (click)="closeProductModal()">
-            <div class="modal-panel product-modal" (click)="$event.stopPropagation()">
-              <div class="modal-head">
-                <span class="material-symbols-outlined modal-head-icon">shopping_cart</span>
-                <div>
-                  <h2>Agregar servicio</h2>
-                  <p>Seleccioná un producto para agregar a la reserva</p>
-                </div>
-                <button type="button" class="modal-close" (click)="closeProductModal()" aria-label="Cerrar">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                @if (productError()) {
-                  <div class="toast toast-error" style="margin-bottom: 12px;">{{ productError() }}</div>
-                }
-                @switch (productsState()) {
-                  @case ('loading') {
-                    <div class="loading-shade-sm">
-                      <span class="material-symbols-outlined loading-spin">sync</span>
-                      <span>Cargando productos disponibles...</span>
-                    </div>
-                  }
-                  @case ('error') {
-                    <div class="error-msg">
-                      <span class="material-symbols-outlined">error</span>
-                      <span>No se pudieron cargar los productos del hotel.</span>
-                    </div>
-                  }
-                  @case ('empty') {
-                    <div class="empty-rooms">
-                      <span class="material-symbols-outlined">inventory_2</span>
-                      <p>No hay productos disponibles para este hotel.</p>
-                      <p class="hint">Configurá los productos en Gestión &gt; Productos.</p>
-                    </div>
-                  }
-                  @case ('success') {
-                    <!-- Product selector — vertical category nav on the right -->
-                    <div class="product-selector-layout">
-                      <!-- Left: products for selected category -->
-                      <div class="ps-products">
-                        @if (selectedProduct(); as sp) {
-                          <div class="ps-selected-badge">
-                            <strong>{{ sp.name }}</strong>
-                            <span class="ps-selected-price">{{ sp.unitPrice | currency:'USD' }}</span>
-                          </div>
-                        } @else {
-                          <p class="ps-hint">Seleccioná una categoría para ver productos disponibles</p>
-                        }
-
-                        <div class="ps-product-list">
-                          @for (prod of filteredProducts(); track prod.productId) {
-                            <button type="button" class="ps-product-item"
-                              (click)="selectProduct(prod)"
-                              [class.is-selected]="addProductId() === prod.productId">
-                              <div class="ps-item-info">
-                                <strong>{{ prod.name }}</strong>
-                                @if (prod.description) {
-                                  <span class="ps-item-desc">{{ prod.description }}</span>
-                                }
-                              </div>
-                              <span class="ps-item-price">{{ prod.unitPrice | currency:'USD' }}</span>
-                            </button>
-                          }
-                        </div>
-
-                        <!-- Quantity selector -->
-                        @if (selectedProduct()) {
-                          <div class="qty-selector">
-                            <label>
-                              <span>Cantidad</span>
-                              <div class="qty-controls">
-                                <button type="button" (click)="addProductQty.update(q => Math.max(1, q - 1))" [disabled]="addProductQty() <= 1">
-                                  <span class="material-symbols-outlined">remove</span>
-                                </button>
-                                <input type="number" [ngModel]="addProductQty()" (ngModelChange)="addProductQty.set(Math.max(1, $event))" min="1" />
-                                <button type="button" (click)="addProductQty.update(q => q + 1)">
-                                  <span class="material-symbols-outlined">add</span>
-                                </button>
-                              </div>
-                            </label>
-                            @if (selectedProduct(); as sp) {
-                              <div class="qty-total">
-                                <span>Total:</span>
-                                <strong>{{ sp.unitPrice * addProductQty() | currency:'USD' }}</strong>
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-
-                      <!-- Right: vertical category nav -->
-                      <div class="ps-categories">
-                        <div class="ps-cat-title">Categorías</div>
-                        @for (cat of productCategories(); track cat) {
-                          <button type="button" class="ps-cat-item"
-                            [class.is-active]="selectedProductCategory() === cat"
-                            (click)="selectedProductCategory.set(cat); addProductId.set('');">
-                            <span class="ps-cat-label">{{ cat }}</span>
-                            <span class="ps-cat-count">{{ (productsGrouped().find(g => g.category === cat)?.items ?? []).length }}</span>
-                          </button>
-                        }
-                      </div>
-                    </div>
-                  }
-                }
-              </div>
-              <div class="modal-actions">
-                <button type="button" class="btn-secondary" (click)="closeProductModal()">Cancelar</button>
-                <button type="button" class="btn-primary"
-                  (click)="addProductToBooking()"
-                  [disabled]="addProductSaving() || !selectedProduct()">
-                  @if (addProductSaving()) {
-                    <span class="material-symbols-outlined loading-spin">sync</span>
-                    Agregando...
-                  } @else {
-                    <span class="material-symbols-outlined">add_shopping_cart</span>
-                    Agregar a la reserva
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-
-        <!-- ═══ Room Assignment Modal ═══ -->
-        @if (showRoomModal()) {
-          <div class="modal-overlay" (click)="closeRoomModal()">
-            <div class="modal-panel room-modal" (click)="$event.stopPropagation()">
-              <div class="modal-head">
-                <span class="material-symbols-outlined modal-head-icon">meeting_room</span>
-                <div>
-                  <h2>Asignar habitaciones</h2>
-                  <p>{{ vm.bookingId }} — {{ vm.hotelLabel }}</p>
-                </div>
-                <button type="button" class="modal-close" (click)="closeRoomModal()" aria-label="Cerrar">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                @if (roomAssignmentState() === 'loading') {
-                  <div class="loading-shade-sm">
-                    <span class="material-symbols-outlined loading-spin">sync</span>
-                    <span>Cargando habitaciones disponibles...</span>
-                  </div>
-                } @else if (roomAssignmentState() === 'error') {
-                  <div class="error-msg">
-                    <span class="material-symbols-outlined">error</span>
-                    <span>No se pudieron cargar las habitaciones disponibles.</span>
-                  </div>
-                } @else {
-                  @if (roomAssignmentMessage()) {
-                    <div class="toast toast-error" style="margin-bottom: 12px;">{{ roomAssignmentMessage() }}</div>
-                  }
-                  <div class="room-assignment-info">
-                    <span class="badge-required">Requiere {{ roomsRequired() }} habitación(es)</span>
-                    <span class="badge-selected">{{ selectedRoomIds().size }} seleccionada(s)</span>
-                  </div>
-                  @if (availableRooms().length === 0) {
-                    <div class="empty-rooms">
-                      <span class="material-symbols-outlined">meeting_room</span>
-                      <p>No hay habitaciones físicas disponibles para esta reserva.</p>
-                      <p class="hint">Configura las habitaciones en Gestión &gt; Habitaciones primero.</p>
-                    </div>
-                  } @else {
-                    <div class="rooms-checklist">
-                      @for (room of availableRooms(); track room.hotel_room_id) {
-                        <label class="room-check-item" [class.is-selected]="selectedRoomIds().has(room.hotel_room_id)" [class.is-assigned]="assignedRoomIds().includes(room.hotel_room_id)">
-                          <input type="checkbox"
-                            [checked]="selectedRoomIds().has(room.hotel_room_id)"
-                            (change)="toggleRoomSelection(room.hotel_room_id)"
-                            [disabled]="assignedRoomIds().includes(room.hotel_room_id) && !selectedRoomIds().has(room.hotel_room_id)" />
-                          <span class="material-symbols-outlined room-icon">door_front</span>
-                          <div class="room-info">
-                            <strong>{{ room.room_label || room.room_number || room.hotel_room_id }}</strong>
-                            <div class="room-meta">
-                              @if (room.room_number) {
-                                <span class="room-number">N° {{ room.room_number }}</span>
-                              }
-                              @if (room.floor) {
-                                <span class="room-floor">Piso {{ room.floor }}</span>
-                              }
-                            </div>
-                            <span class="room-status-badge room-status-badge--sm"
-                              [class.rs-available]="room.room_status === 'available'"
-                              [class.rs-occupied]="room.room_status === 'occupied'"
-                              [class.rs-cleaning]="room.room_status === 'cleaning'"
-                              [class.rs-clean]="room.room_status === 'clean'"
-                              [class.rs-inspected]="room.room_status === 'inspected'"
-                              [class.rs-dirty]="room.room_status === 'dirty'"
-                              [class.rs-maintenance]="room.room_status === 'maintenance'"
-                              [class.rs-out]="room.room_status === 'out_of_order' || room.room_status === 'out_of_service'"
-                              [class.rs-unknown]="!room.room_status || room.room_status === 'unknown'">
-                              <span class="rs-dot"></span>
-                              <span>
-                                @switch (room.room_status) {
-                                  @case ('available') { Disponible }
-                                  @case ('occupied') { Ocupada }
-                                  @case ('cleaning') { Limpieza }
-                                  @case ('clean') { Limpia }
-                                  @case ('inspected') { Inspeccionada }
-                                  @case ('dirty') { Sucia }
-                                  @case ('maintenance') { Mantenimiento }
-                                  @case ('out_of_order') { Fuera de orden }
-                                  @case ('out_of_service') { Fuera de servicio }
-                                  @default { {{ room.room_status || 'Desconocido' }} }
-                                }
-                              </span>
-                            </span>
-                          </div>
-                          @if (assignedRoomIds().includes(room.hotel_room_id)) {
-                            <span class="assigned-badge">Asignada</span>
-                          }
-                        </label>
-                      }
-                    </div>
-                  }
-                }
-              </div>
-              <div class="modal-actions">
-                <button type="button" class="btn-secondary" (click)="closeRoomModal()">Cancelar</button>
-                <button type="button" class="btn-primary"
-                  (click)="saveRoomAssignment()"
-                  [disabled]="roomAssignmentSaving() || selectedRoomIds().size === 0">
-                  @if (roomAssignmentSaving()) {
-                    <span class="material-symbols-outlined loading-spin">sync</span>
-                    Asignando...
-                  } @else {
-                    <span class="material-symbols-outlined">check</span>
-                    Asignar {{ selectedRoomIds().size }} habitación(es)
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-
+        <app-rd-room-modal
+          [show]="showRoomModal()"
+          [bookingId]="vm.bookingId"
+          [hotelLabel]="vm.hotelLabel"
+          [assignmentState]="roomAssignmentState()"
+          [availableRooms]="availableRooms()"
+          [assignedRoomIds]="assignedRoomIds()"
+          [selectedRoomIds]="selectedRoomIds()"
+          [roomsRequired]="roomsRequired()"
+          [saving]="roomAssignmentSaving()"
+          [message]="roomAssignmentMessage()"
+          (close)="closeRoomModal()"
+          (toggleRoom)="toggleRoomSelection($event)"
+          (save)="saveRoomAssignment()"
+        />
       }
     }
   }

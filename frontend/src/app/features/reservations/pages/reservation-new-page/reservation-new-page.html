@@ -8,11 +8,8 @@
     <div class="step-indicator">
       <div class="step-dot" [class.is-active]="step() === 'details'" [class.is-done]="step() === 'review'">
         <span class="step-number">
-          @if (step() === 'review') {
-            <span class="material-symbols-outlined">check</span>
-          } @else {
-            1
-          }
+          @if (step() === 'review') { <span class="material-symbols-outlined">check</span> }
+          @else { 1 }
         </span>
         <span class="step-label">Detalles</span>
       </div>
@@ -34,435 +31,50 @@
   } @else {
     @if (step() === 'details') {
       <form [formGroup]="form" (ngSubmit)="goToReview()" class="booking-form" novalidate>
-        <section class="surface-card planner-section">
-          <div class="planner-grid">
-            <label class="planner-field" [class.field-error]="form.controls.propId.invalid && form.controls.propId.touched">
-              <span class="material-symbols-outlined planner-icon">location_on</span>
-              <div class="planner-copy">
-                <span class="planner-label">Hotel</span>
-                <div class="select-wrap planner-select-wrap">
-                  <select formControlName="propId" aria-label="Hotel">
-                    <option [ngValue]="0">¿A dónde quieres ir?</option>
-                    @for (option of hotelOptions(); track option.propId) {
-                      <option [ngValue]="option.propId">{{ option.label }}</option>
-                    }
-                  </select>
-                  <span class="material-symbols-outlined select-arrow">expand_more</span>
-                </div>
-              </div>
-            </label>
+        <app-rn-planner-section
+          [form]="form"
+          [hotelOptions]="hotelOptions()"
+          [selectedHotel]="selectedHotel()"
+          [preselectedRoomTypeName]="preselectedRoomTypeName()"
+          [today]="today"
+          [checkInDate]="form.controls.checkInDate.value || ''"
+          [checkOutDate]="form.controls.checkOutDate.value || ''"
+          [adults]="form.controls.adults.value"
+          [children]="form.controls.children.value"
+          [rooms]="form.controls.rooms.value"
+          [computedNights]="computedNights()"
+          [availabilityInfo]="selectedHotel() ? getHotelAvailabilityInfo(selectedHotel()!.propId) : null"
+          [ratePlans]="availableRatePlans()"
+          [ratePlansLoading]="ratePlansLoading()"
+          [selectedRatePlanId]="selectedRatePlanId()"
+          (startDateChange)="onStartDateChange($event)"
+          (endDateChange)="onEndDateChange($event)"
+          (adjust)="handleAdjust($event)"
+          (ratePlanSelect)="selectRatePlan($event)"
+        />
 
-            <div class="planner-field planner-field--dates">
-              <span class="material-symbols-outlined planner-icon">calendar_month</span>
-              <div class="planner-copy">
-                <span class="planner-label">Fechas</span>
-                <div class="planner-dates">
-                  <app-date-range-picker
-                    [minDate]="today"
-                    [startDate]="form.controls.checkInDate.value || ''"
-                    [endDate]="form.controls.checkOutDate.value || ''"
-                    (startChange)="onStartDateChange($event)"
-                    (endChange)="onEndDateChange($event)"
-                  />
-                </div>
-
-                @if (form.controls.checkInDate.value && form.controls.checkOutDate.value) {
-                  <div class="times-section">
-                    <span class="times-section-label">
-                      <span class="material-symbols-outlined">schedule</span>
-                      Horario (opcional)
-                    </span>
-                    <div class="times-picker">
-                      <label class="time-box">
-                        <span class="material-symbols-outlined time-box-icon">login</span>
-                        <span class="time-box-label">Entrada</span>
-                        <input type="time" formControlName="checkInTime" class="time-input" />
-                      </label>
-                      <label class="time-box">
-                        <span class="material-symbols-outlined time-box-icon">logout</span>
-                        <span class="time-box-label">Salida</span>
-                        <input type="time" formControlName="checkOutTime" class="time-input" />
-                      </label>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="planner-field planner-field--occupancy">
-              <span class="material-symbols-outlined planner-icon">person</span>
-              <div class="planner-copy">
-                <span class="planner-label">Huéspedes</span>
-                <strong class="planner-value">
-                  {{ form.controls.adults.value + form.controls.children.value }} persona{{ form.controls.adults.value + form.controls.children.value === 1 ? '' : 's' }},
-                  {{ form.controls.rooms.value }} habitaci{{ form.controls.rooms.value === 1 ? 'ón' : 'ones' }}
-                </strong>
-                <div class="planner-steppers">
-                  <div class="mini-stepper">
-                    <span class="mini-stepper-label">Adultos</span>
-                    <div class="stepper">
-                      <button type="button" class="stepper-btn" (click)="adjustValue('adults', -1)" [disabled]="form.controls.adults.value <= 1">
-                        <span class="material-symbols-outlined">remove</span>
-                      </button>
-                      <span class="stepper-value">{{ form.controls.adults.value }}</span>
-                      <button type="button" class="stepper-btn" (click)="adjustValue('adults', 1)" [disabled]="form.controls.adults.value >= 20">
-                        <span class="material-symbols-outlined">add</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="mini-stepper">
-                    <span class="mini-stepper-label">Niños</span>
-                    <div class="stepper">
-                      <button type="button" class="stepper-btn" (click)="adjustValue('children', -1)" [disabled]="form.controls.children.value <= 0">
-                        <span class="material-symbols-outlined">remove</span>
-                      </button>
-                      <span class="stepper-value">{{ form.controls.children.value }}</span>
-                      <button type="button" class="stepper-btn" (click)="adjustValue('children', 1)" [disabled]="form.controls.children.value >= 10">
-                        <span class="material-symbols-outlined">add</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="mini-stepper">
-                    <span class="mini-stepper-label">Habitaciones</span>
-                    <div class="stepper">
-                      <button type="button" class="stepper-btn" (click)="adjustValue('rooms', -1)" [disabled]="form.controls.rooms.value <= 1">
-                        <span class="material-symbols-outlined">remove</span>
-                      </button>
-                      <span class="stepper-value">{{ form.controls.rooms.value }}</span>
-                      <button type="button" class="stepper-btn" (click)="adjustValue('rooms', 1)" [disabled]="form.controls.rooms.value >= 10">
-                        <span class="material-symbols-outlined">add</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button type="button" class="planner-cta" #guestCta (click)="guestSection.scrollIntoView({ behavior: 'smooth', block: 'start' })">
-              Continuar
-            </button>
-          </div>
-
-          @if (selectedHotel(); as hotel) {
-            <div class="planner-meta">
-              <div class="hotel-chip">
-                <span class="material-symbols-outlined">check_circle</span>
-                <span>{{ hotel.label }}</span>
-              </div>
-
-              @if (preselectedRoomTypeName(); as rtName) {
-                <div class="avail-badge" style="--avail-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);">
-                  <span class="material-symbols-outlined avail-icon">meeting_room</span>
-                  <span>{{ rtName }}</span>
-                </div>
-              }
-
-              @let avail = getHotelAvailabilityInfo(hotel.propId);
-              @if (avail) {
-                <div class="avail-badge" [style.--avail-color]="avail.color">
-                  <span class="material-symbols-outlined avail-icon">{{ avail.icon }}</span>
-                  <span>{{ avail.label }}</span>
-                </div>
-              }
-
-              @if (computedNights() > 0) {
-                <div class="nights-badge">
-                  <span class="material-symbols-outlined">nightstay</span>
-                  <span><strong>{{ computedNights() }}</strong> {{ computedNights() === 1 ? 'noche' : 'noches' }}</span>
-                </div>
-              }
-            </div>
-
-            <!-- Rate Plan Selector -->
-            @if (availableRatePlans().length > 0) {
-              <div class="rate-plan-section">
-                <div class="rate-plan-head">
-                  <span class="material-symbols-outlined rate-plan-head-icon">sell</span>
-                  <span class="rate-plan-head-label">Elige tu tarifa</span>
-                  @if (ratePlansLoading()) {
-                    <span class="material-symbols-outlined loading-spin">sync</span>
-                  }
-                </div>
-                <div class="rate-plan-grid">
-                  @for (plan of availableRatePlans(); track plan.ratePlanId) {
-                    <label class="rate-plan-card"
-                      [class.is-selected]="selectedRatePlanId() === plan.ratePlanId"
-                      (click)="selectRatePlan(plan.ratePlanId)">
-                      <input type="radio"
-                        name="ratePlan"
-                        [value]="plan.ratePlanId"
-                        [checked]="selectedRatePlanId() === plan.ratePlanId"
-                        (change)="selectRatePlan(plan.ratePlanId)"
-                        style="display: none" />
-                      <div class="rate-plan-card-head">
-                        <span class="rate-plan-name">{{ plan.name }}</span>
-                        <span class="rate-plan-price">{{ plan.totalPrice | currency:plan.currency }}</span>
-                      </div>
-                      @if (plan.description) {
-                        <p class="rate-plan-desc">{{ plan.description }}</p>
-                      }
-                      <div class="rate-plan-meta">
-                        <span class="rate-plan-avg">{{ plan.avgRatePerNight | currency:plan.currency }} /noche</span>
-                        <span class="rate-plan-nights">{{ plan.nights }} {{ plan.nights === 1 ? 'noche' : 'noches' }}</span>
-                      </div>
-                      @if (selectedRatePlanId() === plan.ratePlanId) {
-                        <span class="rate-plan-check">
-                          <span class="material-symbols-outlined">check_circle</span>
-                        </span>
-                      }
-                    </label>
-                  }
-                </div>
-              </div>
-            } @else if (ratePlansLoading()) {
-              <div class="rate-plan-section">
-                <div class="rate-plan-head">
-                  <span class="material-symbols-outlined loading-spin">sync</span>
-                  <span>Cargando tarifas disponibles...</span>
-                </div>
-              </div>
-            }
-          }
-        </section>
-
-        <section #guestSection class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">person</span>
-            <div>
-              <h2>Datos del huésped</h2>
-              @if (isClient()) {
-                <p>Información de tu perfil (no editable)</p>
-              } @else {
-                <p>Información de contacto del viajero principal</p>
-              }
-            </div>
-          </div>
-
-          <div class="field-group two-col">
-            <label class="field guest-field" [class.field-error]="form.controls.guestName.invalid && form.controls.guestName.touched">
-              <span class="field-label">Nombre completo</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">badge</span>
-                <input formControlName="guestName"
-                       [placeholder]="isClient() ? '' : 'Buscar cliente registrado...'"
-                       autocomplete="name"
-                       [attr.readonly]="isClient() || null"
-                       [class.readonly-field]="isClient()"
-                       (focus)="guestSearchFocused.set(true); toggleGuestDropdown(true)"
-                       (blur)="guestSearchFocused.set(false); toggleGuestDropdown(false)"
-                       (input)="showGuestDropdown.set(true); userSearch$.next($any($event.target).value)" />
-              </div>
-              @if (form.controls.guestName.invalid && form.controls.guestName.touched) {
-                <span class="field-error-msg">El nombre es obligatorio</span>
-              }
-              @if (showGuestDropdown() && (filteredGuestSuggestions().length > 0 || apiSearching())) {
-                <div class="guest-dropdown">
-                  @if (apiSearching()) {
-                    <div class="guest-option guest-loading">
-                      <span class="material-symbols-outlined loading-spin">sync</span>
-                      <span>Buscando usuarios...</span>
-                    </div>
-                  }
-                  @for (g of filteredGuestSuggestions(); track g.email) {
-                    <button type="button" class="guest-option" [class.is-api]="g.source === 'api'" (mousedown)="selectGuest(g)">
-                      <span class="material-symbols-outlined guest-option-icon">person</span>
-                      <div class="guest-option-info">
-                        <strong>{{ g.name }}</strong>
-                        <span>{{ g.email }}</span>
-                        @if (g.cedula) {
-                          <span class="guest-cedula">Cédula: {{ g.cedula }}</span>
-                        }
-                      </div>
-                      @if (g.source === 'api') {
-                        <span class="guest-source-badge">Registrado</span>
-                      }
-                    </button>
-                  }
-                </div>
-              }
-            </label>
-
-            <label class="field" [class.field-error]="form.controls.guestEmail.invalid && form.controls.guestEmail.touched">
-              <span class="field-label">Correo electrónico</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">mail</span>
-                <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email"
-                       [attr.readonly]="isClient() || null"
-                       [class.readonly-field]="isClient()" />
-              </div>
-              @if (form.controls.guestEmail.invalid && form.controls.guestEmail.touched) {
-                <span class="field-error-msg">Ingresa un correo válido</span>
-              }
-            </label>
-          </div>
-
-          <div class="field-group two-col">
-            <label class="field">
-              <span class="field-label">Teléfono (opcional)</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">phone</span>
-                <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" />
-              </div>
-            </label>
-
-            <label class="field">
-              <span class="field-label">Cédula / Identificación</span>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-prefix">badge</span>
-                <input formControlName="cedula" type="text" placeholder="Ej: 123456789" />
-              </div>
-            </label>
-          </div>
-        </section>
-
-        <section class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">room_service</span>
-            <div>
-              <h2>Peticiones especiales</h2>
-              <p>Opciones comunes requeridas por el huésped (sujetas a disponibilidad)</p>
-            </div>
-          </div>
-          <div class="field-group checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Cama extra', $event)" />
-              <span>Cama extra</span>
-            </label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Cuna para bebé', $event)" />
-              <span>Cuna para bebé</span>
-            </label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Accesibilidad (silla de ruedas)', $event)" />
-              <span>Accesibilidad</span>
-            </label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Mascotas (Pet friendly)', $event)" />
-              <span>Pet friendly</span>
-            </label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Piso alto', $event)" />
-              <span>Piso alto</span>
-            </label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" (change)="toggleSpecialRequest('Llegada tarde', $event)" />
-              <span>Llegada tarde</span>
-            </label>
-          </div>
-        </section>
-
-        @if (selectedHotel()) {
-          <section class="surface-card form-section">
-            <div class="section-head">
-              <span class="material-symbols-outlined section-icon">spa</span>
-              <div>
-                <h2>Servicios adicionales</h2>
-                <p>Amenidades con costo adicional disponibles para tu estancia</p>
-              </div>
-            </div>
-            @if (amenityCatalogLoading()) {
-              <div class="loading-shade-sm" style="padding: 16px; text-align: center;">
-                <span class="material-symbols-outlined loading-spin">sync</span>
-                <span>Cargando servicios...</span>
-              </div>
-            } @else if (amenityCatalog().length > 0) {
-              <div class="amenity-selector" style="display: flex; flex-direction: column; gap: 12px;">
-                @for (cat of amenityCatalog(); track cat.category) {
-                  <div>
-                    <strong style="display: block; margin-bottom: 8px; text-transform: capitalize; color: var(--text-2); font-size: 0.85rem;">{{ cat.category }}</strong>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                      @for (item of cat.items; track item.label) {
-                        @if (item.active) {
-                          <label class="amenity-chip"
-                            [class.is-selected]="selectedAmenities().has(item.label)"
-                            style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none;">
-                            <input type="checkbox"
-                              [checked]="selectedAmenities().has(item.label)"
-                              (change)="toggleAmenity(item.label)"
-                              style="display: none;" />
-                            <span>{{ item.label }}</span>
-                            @if (item.unit_price > 0) {
-                              <span style="font-weight: 700; color: var(--accent);">{{ item.unit_price | currency:'USD' }}</span>
-                            } @else {
-                              <span style="color: #16a34a; font-size: 0.8rem;">Gratis</span>
-                            }
-                          </label>
-                        }
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            } @else if (amenityCatalogError()) {
-              <p style="color: var(--text-2); font-size: 0.85rem;">{{ amenityCatalogError() }}</p>
-            } @else {
-              <p style="color: var(--text-2); font-size: 0.85rem;">No hay servicios adicionales disponibles para este hotel.</p>
-            }
-          </section>
-        }
-
-        <section class="surface-card form-section">
-          <div class="section-head">
-            <span class="material-symbols-outlined section-icon">notes</span>
-            <div>
-              <h2>Comentario</h2>
-              <p>Requerimientos especiales (opcional)</p>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label class="field">
-              <div class="input-wrap">
-                <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
-              </div>
-            </label>
-          </div>
-        </section>
-
-        @if (isClient()) {
-          <section class="surface-card form-section">
-            <div class="section-head">
-              <span class="material-symbols-outlined section-icon">local_activity</span>
-              <div>
-                <h2>Código Promocional</h2>
-                <p>¿Tienes un cupón de descuento?</p>
-              </div>
-            </div>
-            <div class="field-group">
-              <label class="field">
-                <div class="input-wrap promo-wrap" style="display: flex; gap: 8px; border: none; background: transparent; padding: 0;">
-                  <input formControlName="couponCode" placeholder="Ej: VERANO20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
-                  <button type="button" class="btn-secondary" (click)="validateCoupon()" [disabled]="couponValidating()">
-                    @if (couponValidating()) {
-                      <span class="material-symbols-outlined loading-spin">sync</span>
-                    } @else {
-                      Aplicar
-                    }
-                  </button>
-                </div>
-                @if (couponStatus(); as status) {
-                  <span class="field-message" [class.field-error-msg]="!status.valid" style="margin-top: 8px; display: block; font-weight: 500;" [style.color]="status.valid ? 'var(--color-success)' : ''">
-                    {{ status.message }}
-                    @if (status.valid) {
-                      (-{{ status.discountPercent }}%)
-                    }
-                  </span>
-                }
-              </label>
-            </div>
-          </section>
-        }
+        <app-rn-guest-section
+          [form]="form"
+          [isClient]="isClient()"
+          [selectedHotel]="selectedHotel()"
+          [amenityLoading]="amenityCatalogLoading()"
+          [amenityCatalog]="amenityCatalog()"
+          [amenityError]="amenityCatalogError()"
+          [selectedAmenities]="selectedAmenities()"
+          [couponValidating]="couponValidating()"
+          [couponStatus]="couponStatus()"
+          [specialRequestsOptions]="specialRequestOptions"
+          (toggleRequest)="handleToggleRequest($event)"
+          (toggleAmenity)="toggleAmenity($event)"
+          (validateCoupon)="validateCoupon()"
+        />
 
         <div class="form-footer">
           <button type="button" class="btn-secondary" routerLink="/reservations">
-            <span class="material-symbols-outlined">close</span>
-            Cancelar
+            <span class="material-symbols-outlined">close</span> Cancelar
           </button>
           <button type="submit" class="btn-primary" [disabled]="form.invalid">
-            <span class="material-symbols-outlined">chevron_right</span>
-            Revisar solicitud
+            <span class="material-symbols-outlined">chevron_right</span> Revisar solicitud
           </button>
         </div>
       </form>
@@ -470,128 +82,37 @@
 
     @if (step() === 'review') {
       <div class="review-container">
-        <section class="surface-card review-card">
-          <div class="review-card-head">
-            <span class="material-symbols-outlined review-icon">description</span>
-            <h2>Resumen de solicitud</h2>
-          </div>
-
-          <div class="review-grid">
-            <div class="review-item">
-              <span class="review-label">Hotel</span>
-              <strong>{{ selectedHotel()?.label || '—' }}</strong>
-            </div>
-            <div class="review-item">
-              <span class="review-label">Huésped</span>
-              <strong>{{ form.controls.guestName.value }}</strong>
-            </div>
-            <div class="review-item">
-              <span class="review-label">Email</span>
-              <strong>{{ form.controls.guestEmail.value }}</strong>
-            </div>
-            @if (form.controls.guestPhone.value) {
-              <div class="review-item">
-                <span class="review-label">Teléfono</span>
-                <strong>{{ form.controls.guestPhone.value }}</strong>
-              </div>
-            }
-            <div class="review-item">
-              <span class="review-label">Entrada</span>
-              <strong>
-                {{ form.controls.checkInDate.value | date:'dd/MM/yyyy' }}
-                @if (form.controls.checkInTime.value) {
-                  <span class="review-time">a las {{ form.controls.checkInTime.value }}</span>
-                }
-              </strong>
-            </div>
-            <div class="review-item">
-              <span class="review-label">Salida</span>
-              <strong>
-                {{ form.controls.checkOutDate.value | date:'dd/MM/yyyy' }}
-                @if (form.controls.checkOutTime.value) {
-                  <span class="review-time">a las {{ form.controls.checkOutTime.value }}</span>
-                }
-              </strong>
-            </div>
-            <div class="review-item">
-              <span class="review-label">Estancia</span>
-              <strong>{{ roomSummary().nights }} {{ roomSummary().nights === 1 ? 'noche' : 'noches' }}</strong>
-            </div>
-            <div class="review-item">
-              <span class="review-label">Ocupación</span>
-              <strong>{{ roomSummary().adults }} adulto(s) · {{ roomSummary().children }} niño(s) · {{ roomSummary().rooms }} habitación(es)</strong>
-            </div>
-            @if (form.controls.comment.value) {
-              <div class="review-item review-item-span">
-                <span class="review-label">Comentario</span>
-                <strong>{{ form.controls.comment.value }}</strong>
-              </div>
-            }
-            @if (form.controls.specialRequests.value.length > 0) {
-              <div class="review-item review-item-span">
-                <span class="review-label">Peticiones Especiales</span>
-                <strong>{{ form.controls.specialRequests.value.join(', ') }}</strong>
-              </div>
-            }
-            @if (selectedAmenities().size > 0) {
-              <div class="review-item review-item-span">
-                <span class="review-label">Servicios adicionales</span>
-                <strong>{{ [...selectedAmenities()].join(', ') }}</strong>
-              </div>
-            }
-            @if (form.controls.couponCode.value) {
-              <div class="review-item">
-                <span class="review-label">Cupón</span>
-                <strong>{{ form.controls.couponCode.value | uppercase }}</strong>
-              </div>
-            }
-          </div>
-
-          @if (preview(); as p) {
-            @if (p.available && p.totalPrice !== null) {
-              <div class="review-total">
-                <span>Total estimado</span>
-                <strong>
-                  @if (couponStatus()?.valid) {
-                    <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
-                    <span>{{ p.totalPrice * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
-                  } @else {
-                    {{ p.totalPrice | currency:p.currency }}
-                  }
-                  <span style="font-size: 0.8em; font-weight: normal; margin-left: 4px;">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
-                </strong>
-              </div>
-            } @else if (!p.available) {
-              <div class="review-total review-total-error">
-                <span class="material-symbols-outlined">error</span>
-                <strong>{{ p.availabilityMessage || 'Habitación no disponible' }}</strong>
-              </div>
-            }
-          } @else if (previewing()) {
-            <div class="review-total">
-              <span class="material-symbols-outlined loading-spin">sync</span>
-              <strong>Calculando disponibilidad...</strong>
-            </div>
-          } @else if (computedNights() > 0) {
-            <div class="review-total">
-              <span>Total de la estancia</span>
-              <strong>{{ computedNights() }} {{ computedNights() === 1 ? 'noche' : 'noches' }}</strong>
-            </div>
-          }
-        </section>
+        <app-rn-review-section
+          [selectedHotel]="selectedHotel()"
+          [guestName]="form.controls.guestName.value"
+          [guestEmail]="form.controls.guestEmail.value"
+          [guestPhone]="form.controls.guestPhone.value"
+          [checkInDate]="form.controls.checkInDate.value"
+          [checkOutDate]="form.controls.checkOutDate.value"
+          [checkInTime]="form.controls.checkInTime.value"
+          [checkOutTime]="form.controls.checkOutTime.value"
+          [adults]="form.controls.adults.value"
+          [children]="form.controls.children.value"
+          [rooms]="form.controls.rooms.value"
+          [nights]="computedNights()"
+          [comment]="form.controls.comment.value"
+          [specialRequests]="form.controls.specialRequests.value"
+          [selectedAmenities]="selectedAmenities()"
+          [couponCode]="form.controls.couponCode.value"
+          [couponStatus]="couponStatus()"
+          [preview]="preview()"
+          [previewing]="previewing()"
+        />
 
         <div class="form-footer">
           <button type="button" class="btn-secondary" (click)="backToDetails()">
-            <span class="material-symbols-outlined">arrow_back</span>
-            Editar datos
+            <span class="material-symbols-outlined">arrow_back</span> Editar datos
           </button>
           <button type="button" class="btn-primary" (click)="submit()" [disabled]="submitting() || !(preview()?.available ?? true)">
             @if (submitting()) {
-              <span class="material-symbols-outlined loading-spin">sync</span>
-              Enviando...
+              <span class="material-symbols-outlined loading-spin">sync</span> Enviando...
             } @else {
-              <span class="material-symbols-outlined">send</span>
-              Confirmar y enviar
+              <span class="material-symbols-outlined">send</span> Confirmar y enviar
             }
           </button>
         </div>

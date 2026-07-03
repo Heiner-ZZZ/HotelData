@@ -12,6 +12,16 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ReservationTimelineComponent } from './components/reservation-timeline';
+import { RdHeroComponent } from './partials/rd-hero';
+import { RdInfoPanelsComponent } from './partials/rd-info-panels';
+import { RdFinancialPanelsComponent } from './partials/rd-financial-panels';
+import { RdEditFormComponent } from './partials/rd-edit-form';
+import { RdInvoicePanelComponent } from './partials/rd-invoice-panel';
+import { RdProductsSectionComponent } from './partials/rd-products-section';
+import { RdAssignedRoomsComponent } from './partials/rd-assigned-rooms';
+import { RdHistoryPanelComponent } from './partials/rd-history-panel';
+import { RdProductModalComponent } from './partials/rd-product-modal';
+import { RdRoomModalComponent } from './partials/rd-room-modal';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationDetailViewModel } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
@@ -28,7 +38,10 @@ interface EditForm {
 
 @Component({
   selector: 'app-reservation-detail-page',
-  imports: [CurrencyPipe, DatePipe, PercentPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent, RouterLink, StatusBadgeComponent, FormsModule],
+  imports: [CurrencyPipe, DatePipe, PercentPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent, RouterLink, StatusBadgeComponent, FormsModule,
+    RdHeroComponent, RdInfoPanelsComponent, RdFinancialPanelsComponent, RdEditFormComponent,
+    RdInvoicePanelComponent, RdProductsSectionComponent, RdAssignedRoomsComponent,
+    RdHistoryPanelComponent, RdProductModalComponent, RdRoomModalComponent],
   templateUrl: './reservation-detail-page.html',
   styleUrl: './reservation-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -248,6 +261,11 @@ export class ReservationDetailPageComponent {
       this.editError.set('');
       this.editMode.set(true);
     }
+  }
+
+  /** Handle field changes from the edit form partial */
+  handleFieldChange(data: { field: 'checkInDate' | 'checkOutDate' | 'rooms' | 'comment'; value: string | number }) {
+    this.editForm.update(f => ({ ...f, [data.field]: data.value }));
   }
 
   saveEdit() {

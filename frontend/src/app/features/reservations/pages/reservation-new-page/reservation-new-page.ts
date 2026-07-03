@@ -9,6 +9,9 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
+import { RnPlannerSectionComponent } from './partials/rn-planner-section';
+import { RnGuestSectionComponent } from './partials/rn-guest-section';
+import { RnReviewSectionComponent } from './partials/rn-review-section';
 import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
@@ -16,7 +19,8 @@ import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amen
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, DateRangePickerComponent, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, UpperCasePipe, DateRangePickerComponent, ReactiveFormsModule, RouterLink,
+    RnPlannerSectionComponent, RnGuestSectionComponent, RnReviewSectionComponent],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -138,6 +142,15 @@ export class ReservationNewPageComponent {
       default: return null;
     }
   }
+
+  readonly specialRequestOptions = [
+    { value: 'Cama extra', label: 'Cama extra' },
+    { value: 'Cuna para bebé', label: 'Cuna para bebé' },
+    { value: 'Accesibilidad (silla de ruedas)', label: 'Accesibilidad' },
+    { value: 'Mascotas (Pet friendly)', label: 'Pet friendly' },
+    { value: 'Piso alto', label: 'Piso alto' },
+    { value: 'Llegada tarde', label: 'Llegada tarde' },
+  ];
 
   readonly today = new Date().toISOString().split('T')[0];
 
@@ -525,9 +538,11 @@ export class ReservationNewPageComponent {
     }, 150);
   }
 
-  adjustValue(field: 'adults' | 'children' | 'rooms', delta: number) {
+  /** Wrapper for rn-planner-section adjust output — casts string to union type */
+  handleAdjust(data: { field: string; delta: number }) {
+    const field = data.field as 'adults' | 'children' | 'rooms';
     const control = this.form.controls[field];
-    const newValue = control.value + delta;
+    const newValue = control.value + data.delta;
     control.setValue(newValue);
     control.markAsDirty();
   }
@@ -564,8 +579,12 @@ export class ReservationNewPageComponent {
     });
   }
 
-  toggleSpecialRequest(request: string, event: Event) {
-    const isChecked = (event.target as HTMLInputElement).checked;
+  /** Wrapper for the rn-guest-section partial output format */
+  handleToggleRequest(data: { request: string; checked: boolean }) {
+    this._updateSpecialRequest(data.request, data.checked);
+  }
+
+  private _updateSpecialRequest(request: string, isChecked: boolean) {
     const current = this.form.controls.specialRequests.value;
     if (isChecked && !current.includes(request)) {
       this.form.controls.specialRequests.setValue([...current, request]);
