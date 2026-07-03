@@ -1,152 +1,275 @@
 .review-detail-page {
-  display: grid;
-  gap: 1.5rem;
-}
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
 
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.875rem;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--app-text);
-  cursor: pointer;
-  width: fit-content;
-}
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    color: #475569;
+    transition: all 0.15s;
 
-.success-banner {
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: #e6f7ee;
-  border: 1px solid #b7e0c8;
-  color: #0f8a60;
-}
+    &:hover {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+  }
 
-.error-banner {
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: #fff2f1;
-  border: 1px solid #f5c8c3;
-  color: #c93d32;
-}
+  .success-banner, .error-banner {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .success-banner { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .error-banner { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
-.panel { padding: 1.5rem; }
+  .surface-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
 
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
+  .panel { margin-bottom: 20px; }
 
-.review-meta {
-  display: grid;
-  gap: 0.25rem;
-}
+  .review-card {
+    padding: 24px;
 
-.review-user { font-weight: 600; }
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
 
-.stars { color: var(--warning); font-weight: 600; }
+    .review-meta {
+      .review-user { font-weight: 600; font-size: 16px; color: #0f172a; }
+      .stars { color: #f59e0b; font-size: 14px; margin-top: 2px; }
+      .muted-text { color: #94a3b8; font-size: 12px; margin-top: 2px; }
+      .hotel-tag {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 12px; color: #64748b; margin-top: 4px;
+        span { font-size: 14px; }
+      }
+    }
 
-.muted-text { color: var(--muted-text); font-size: 0.85rem; }
+    .review-badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
 
-.review-comment {
-  line-height: 1.6;
-  margin-top: 0.5rem;
-}
+    .sentiment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
 
-h3, h4 { margin: 0 0 0.5rem; }
+      &.sentiment-positive { background: #f0fdf4; color: #166534; }
+      &.sentiment-neutral  { background: #fefce8; color: #a16207; }
+      &.sentiment-negative { background: #fef2f2; color: #991b1b; }
 
-.action-row {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
+      .sentiment-score { opacity: 0.7; }
+      .sentiment-conf { opacity: 0.5; font-weight: 400; }
+    }
 
-.btn-approve, .btn-reject, .btn-respond {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  color: #fff;
+    h3 { font-size: 18px; color: #0f172a; margin: 0 0 8px; }
+    .review-comment {
+      color: #334155; line-height: 1.6; font-size: 14px; margin: 0;
+    }
 
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-}
+    /* ─── Service Ratings Section ─── */
+    .service-ratings-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
 
-.btn-approve { background: var(--success); }
-.btn-reject { background: var(--danger); }
-.btn-respond { background: var(--accent); }
+      h4 {
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin: 0 0 16px;
+      }
 
-.response-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  resize: vertical;
-  font-family: inherit;
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
-  box-sizing: border-box;
-}
+      .service-ratings-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
 
-.existing-response {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: var(--surface-soft);
-  border-radius: 8px;
-}
+        .service-rating-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          padding: 16px 12px;
+          background: #fafafa;
+          border: 1px solid #f1f5f9;
+          border-radius: 10px;
+          transition: background 0.15s;
 
-.moderate-section, .respond-section {
-  display: grid;
-  gap: 0.5rem;
-}
+          &:hover { background: #f8fafc; }
 
-.review-badges {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+          .service-icon {
+            font-size: 24px;
+            color: #64748b;
+          }
 
-.sentiment-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
+          .service-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+          }
 
-.sentiment-positive {
-  background: #e6f7ee;
-  color: #0f8a60;
-  border: 1px solid #b7e0c8;
-}
+          .service-face {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
 
-.sentiment-neutral {
-  background: #fef9e7;
-  color: #b8860b;
-  border: 1px solid #f0d78c;
-}
+            .face-icon-display {
+              font-size: 28px;
+              transition: color 0.2s;
+            }
+            .face-label-display {
+              font-size: 9px;
+              font-weight: 500;
+              white-space: nowrap;
+            }
+            .face-bad { color: #ef4444; }
+            .face-neutral { color: #f59e0b; }
+            .face-good { color: #22c55e; }
+            .face-none { color: #d1d5db; }
+          }
+        }
+      }
+    }
+  }
 
-.sentiment-negative {
-  background: #fff2f1;
-  color: #c93d32;
-  border: 1px solid #f5c8c3;
-}
+  /* ─── Moderation Section ─── */
+  .moderate-section {
+    padding: 24px;
 
-.sentiment-score {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
+    h4 { margin: 0 0 4px; font-size: 16px; color: #0f172a; }
+    .muted-text { color: #94a3b8; font-size: 13px; margin: 0 0 16px; }
 
-.sentiment-conf {
-  font-size: 0.7rem;
-  opacity: 0.6;
+    .already-moderated {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px; background: #f8fafc; border-radius: 8px;
+      font-size: 13px; color: #64748b;
+    }
+
+    .rejection-field {
+      display: block; margin-bottom: 16px;
+      .field-label { font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px; display: block; }
+      .rejection-textarea {
+        width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0;
+        border-radius: 8px; font-size: 13px; font-family: inherit;
+        resize: vertical; min-height: 60px;
+
+        &:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+      }
+    }
+
+    .action-row { display: flex; gap: 10px; }
+
+    .btn-approve, .btn-reject {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+
+      .btn-icon { font-size: 16px; }
+    }
+    .btn-approve { background: #16a34a; color: white; &:hover { background: #15803d; } }
+    .btn-reject { background: #dc2626; color: white; &:hover { background: #b91c1c; } }
+  }
+
+  /* ─── Response Section ─── */
+  .respond-section {
+    padding: 24px;
+
+    h4 { margin: 0 0 4px; font-size: 16px; color: #0f172a; }
+    .muted-text { color: #94a3b8; font-size: 13px; margin: 0 0 16px; }
+
+    .response-textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0;
+      border-radius: 8px; font-size: 13px; font-family: inherit;
+      resize: vertical; min-height: 80px; margin-bottom: 12px;
+
+      &:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+    }
+
+    .btn-respond {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      background: #2563eb; color: white; transition: all 0.15s;
+
+      .btn-icon { font-size: 16px; }
+      &:hover:not(:disabled) { background: #1d4ed8; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    .existing-response {
+      margin-top: 16px; padding: 12px; background: #f8fafc;
+      border-radius: 8px; font-size: 13px;
+
+      strong { display: block; margin-bottom: 4px; color: #475569; }
+      p { margin: 0; color: #334155; }
+    }
+  }
+
+  /* ─── Confirmation Dialog ─── */
+  .confirm-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+
+    .confirm-dialog {
+      background: white; border-radius: 12px; padding: 28px;
+      max-width: 400px; width: 90%; text-align: center;
+
+      .confirm-icon {
+        margin-bottom: 12px;
+        span { font-size: 40px; color: #2563eb; }
+      }
+
+      h4 { margin: 0 0 8px; font-size: 18px; color: #0f172a; }
+      p { color: #64748b; font-size: 13px; margin: 0 0 24px; line-height: 1.5; }
+
+      .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+      .btn-cancel {
+        padding: 10px 20px; border: 1px solid #e2e8f0; border-radius: 8px;
+        background: white; font-size: 13px; cursor: pointer;
+        &:hover { background: #f8fafc; }
+      }
+
+      .btn-confirm {
+        padding: 10px 20px; border: none; border-radius: 8px;
+        font-size: 13px; font-weight: 500; cursor: pointer; color: white;
+      }
+      .btn-confirm-approve { background: #16a34a; &:hover { background: #15803d; } }
+      .btn-confirm-reject { background: #dc2626; &:hover { background: #b91c1c; } }
+    }
+  }
 }

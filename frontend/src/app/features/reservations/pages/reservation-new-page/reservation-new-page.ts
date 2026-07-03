@@ -7,7 +7,7 @@ import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'r
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
@@ -32,6 +32,7 @@ export class ReservationNewPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly loading = signal(true);
   readonly submitting = signal(false);
@@ -238,7 +239,7 @@ export class ReservationNewPageComponent {
             this.checkHotelAvailability(prefixedPropId);
           }
         },          error: () => {
-          toast('No fue posible cargar el formulario de reservas.', 'error', 6000);
+          this.toast.show('No fue posible cargar el formulario de reservas.', 'error', 6000);
           this.loading.set(false);
         }
       });
@@ -435,7 +436,7 @@ export class ReservationNewPageComponent {
     // ═══ GUARD: Verificar disponibilidad antes de enviar ═══
     const previewData = this.preview();
     if (previewData && !previewData.available) {
-      toast('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.', 'error', 6000);
+      this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.', 'error', 6000);
       this.step.set('details');
       return;
     }
@@ -459,11 +460,11 @@ export class ReservationNewPageComponent {
         error: (error: ApiError) => {
           const msg = error.message || '';
           if (msg.includes('No inventory data') || msg.includes('inventory')) {
-            toast('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.', 'error', 6000);
+            this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.', 'error', 6000);
           } else if (msg.includes('available')) {
-            toast('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.', 'error', 6000);
+            this.toast.show('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.', 'error', 6000);
           } else {
-            toast(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.', 'error', 6000);
+            this.toast.show(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.', 'error', 6000);
           }
           this.submitting.set(false);
         }

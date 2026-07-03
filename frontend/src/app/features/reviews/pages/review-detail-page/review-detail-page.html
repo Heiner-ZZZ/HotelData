@@ -65,6 +65,95 @@
 
           <h3>{{ r.title || 'Sin título' }}</h3>
           <p class="review-comment">{{ r.comment || 'Sin comentario' }}</p>
+
+          @if (r.serviceRatings) {
+            <div class="service-ratings-section">
+              <h4>Valoración por servicios</h4>
+              <div class="service-ratings-grid">
+                <div class="service-rating-item">
+                  <span class="material-symbols-outlined service-icon">cleaning_services</span>
+                  <span class="service-label">Housekeeping</span>
+                  <div class="service-face">
+                    <span class="material-symbols-outlined face-icon-display"
+                      [class.face-good]="(r.serviceRatings.housekeeping ?? 0) >= 4"
+                      [class.face-neutral]="(r.serviceRatings.housekeeping ?? 0) === 3"
+                      [class.face-bad]="(r.serviceRatings.housekeeping ?? 0) >= 1 && (r.serviceRatings.housekeeping ?? 0) <= 2"
+                      [class.face-none]="!(r.serviceRatings.housekeeping ?? 0)">
+                      {{
+                        !(r.serviceRatings.housekeeping ?? 0) ? 'sentiment_neutral' :
+                        r.serviceRatings.housekeeping === 1 ? 'sentiment_very_dissatisfied' :
+                        r.serviceRatings.housekeeping === 2 ? 'sentiment_dissatisfied' :
+                        r.serviceRatings.housekeeping === 3 ? 'sentiment_neutral' :
+                        r.serviceRatings.housekeeping === 4 ? 'sentiment_satisfied' :
+                        'sentiment_very_satisfied'
+                      }}
+                    </span>
+                    <span class="face-label-display">{{
+                      !(r.serviceRatings.housekeeping ?? 0) ? '—' :
+                      r.serviceRatings.housekeeping === 1 ? 'Muy malo' :
+                      r.serviceRatings.housekeeping === 2 ? 'Malo' :
+                      r.serviceRatings.housekeeping === 3 ? 'Regular' :
+                      r.serviceRatings.housekeeping === 4 ? 'Bueno' : 'Excelente'
+                    }}</span>
+                  </div>
+                </div>
+                <div class="service-rating-item">
+                  <span class="material-symbols-outlined service-icon">restaurant</span>
+                  <span class="service-label">F&amp;B</span>
+                  <div class="service-face">
+                    <span class="material-symbols-outlined face-icon-display"
+                      [class.face-good]="(r.serviceRatings.foodBeverage ?? 0) >= 4"
+                      [class.face-neutral]="(r.serviceRatings.foodBeverage ?? 0) === 3"
+                      [class.face-bad]="(r.serviceRatings.foodBeverage ?? 0) >= 1 && (r.serviceRatings.foodBeverage ?? 0) <= 2"
+                      [class.face-none]="!(r.serviceRatings.foodBeverage ?? 0)">
+                      {{
+                        !(r.serviceRatings.foodBeverage ?? 0) ? 'sentiment_neutral' :
+                        r.serviceRatings.foodBeverage === 1 ? 'sentiment_very_dissatisfied' :
+                        r.serviceRatings.foodBeverage === 2 ? 'sentiment_dissatisfied' :
+                        r.serviceRatings.foodBeverage === 3 ? 'sentiment_neutral' :
+                        r.serviceRatings.foodBeverage === 4 ? 'sentiment_satisfied' :
+                        'sentiment_very_satisfied'
+                      }}
+                    </span>
+                    <span class="face-label-display">{{
+                      !(r.serviceRatings.foodBeverage ?? 0) ? '—' :
+                      r.serviceRatings.foodBeverage === 1 ? 'Muy malo' :
+                      r.serviceRatings.foodBeverage === 2 ? 'Malo' :
+                      r.serviceRatings.foodBeverage === 3 ? 'Regular' :
+                      r.serviceRatings.foodBeverage === 4 ? 'Bueno' : 'Excelente'
+                    }}</span>
+                  </div>
+                </div>
+                <div class="service-rating-item">
+                  <span class="material-symbols-outlined service-icon">concierge</span>
+                  <span class="service-label">Staff</span>
+                  <div class="service-face">
+                    <span class="material-symbols-outlined face-icon-display"
+                      [class.face-good]="(r.serviceRatings.staff ?? 0) >= 4"
+                      [class.face-neutral]="(r.serviceRatings.staff ?? 0) === 3"
+                      [class.face-bad]="(r.serviceRatings.staff ?? 0) >= 1 && (r.serviceRatings.staff ?? 0) <= 2"
+                      [class.face-none]="!(r.serviceRatings.staff ?? 0)">
+                      {{
+                        !(r.serviceRatings.staff ?? 0) ? 'sentiment_neutral' :
+                        r.serviceRatings.staff === 1 ? 'sentiment_very_dissatisfied' :
+                        r.serviceRatings.staff === 2 ? 'sentiment_dissatisfied' :
+                        r.serviceRatings.staff === 3 ? 'sentiment_neutral' :
+                        r.serviceRatings.staff === 4 ? 'sentiment_satisfied' :
+                        'sentiment_very_satisfied'
+                      }}
+                    </span>
+                    <span class="face-label-display">{{
+                      !(r.serviceRatings.staff ?? 0) ? '—' :
+                      r.serviceRatings.staff === 1 ? 'Muy malo' :
+                      r.serviceRatings.staff === 2 ? 'Malo' :
+                      r.serviceRatings.staff === 3 ? 'Regular' :
+                      r.serviceRatings.staff === 4 ? 'Bueno' : 'Excelente'
+                    }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
         </section>
 
         <!-- RF-005: Moderation section (only for marketing_hotelero / super_admin) -->

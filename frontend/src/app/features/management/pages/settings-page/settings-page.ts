@@ -9,8 +9,7 @@ import {
   THEME_OPTIONS,
 } from '../../settings/models/settings.model';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { ThemeService } from '../../../../core/theme/theme.service';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 
 @Component({
@@ -25,7 +24,7 @@ export class SettingsPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly settingsApi = inject(SettingsApiService);
   private readonly authService = inject(AuthService);
-  private readonly themeService = inject(ThemeService);
+  private readonly toast = inject(ToastService);
 
   readonly currentUser = this.authService.currentUser;
 
@@ -75,7 +74,7 @@ export class SettingsPageComponent {
           this.loading.set(false);
         },
         error: () => {
-          toast('No se pudieron cargar las configuraciones.', 'error');
+          this.toast.error('No se pudieron cargar las configuraciones.');
           this.loading.set(false);
         },
       });
@@ -104,11 +103,11 @@ export class SettingsPageComponent {
           this.settings.set(updated);
           localStorage.setItem('hoteldata-default-dashboard', updated.defaultDashboard);
           this.applyTheme(updated.theme);
-          toast('Configuración guardada correctamente.', 'success', 3000);
+          this.toast.success('Configuración guardada correctamente.');
           this.saving.set(false);
         },
         error: (err: { message?: string }) => {
-          toast(err.message || 'No se pudieron guardar los cambios.', 'error');
+          this.toast.error(err.message || 'No se pudieron guardar los cambios.');
           this.saving.set(false);
         },
       });
@@ -129,7 +128,7 @@ export class SettingsPageComponent {
 
     const { currentPassword, newPassword, confirmPassword } = this.passwordForm.getRawValue();
     if (newPassword !== confirmPassword) {
-      toast('Las contraseñas no coinciden.', 'error');
+      this.toast.error('Las contraseñas no coinciden.');
       return;
     }
 
@@ -140,12 +139,12 @@ export class SettingsPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          toast('Contraseña actualizada correctamente.', 'success');
+          this.toast.success('Contraseña actualizada correctamente.');
           this.passwordForm.reset();
           this.changingPassword.set(false);
         },
         error: (err: { message?: string }) => {
-          toast(err.message || 'Error al cambiar la contraseña.', 'error');
+          this.toast.error(err.message || 'Error al cambiar la contraseña.');
           this.changingPassword.set(false);
         },
       });
