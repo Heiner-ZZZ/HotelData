@@ -15,6 +15,7 @@ from src.app.modules.reviews.service import (
     delete_review,
     ensure_reviews_collections,
     get_hotel_reviews,
+    get_reputation_dashboard,
     get_review,
     list_reviews,
     moderate_review,
@@ -220,7 +221,6 @@ def reputation_dashboard_api(
     days: int = Query(default=30, ge=1, le=365),
 ):
     """Return reputation dashboard data: GRI, departmental sentiment, recent feedback."""
-    from src.app.modules.reviews.service.lifecycle.reports import get_reputation_dashboard
     return get_reputation_dashboard(prop_id=prop_id, days=days)
 
 

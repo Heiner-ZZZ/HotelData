@@ -516,7 +516,7 @@ class TestConfirmReject:
         from src.app.modules.reservations.service._transitions import confirm_booking
         bid = self._create_test_booking()
         confirm_booking(bid)
-        with pytest.raises(ValueError, match="cannot transition from 'confirmed'"):
+        with pytest.raises(ValueError, match="Transición inválida|Confirmada"):
             confirm_booking(bid)
 
     def test_reject_booking_success(self, db, seeded_hotel):
@@ -541,7 +541,7 @@ class TestConfirmReject:
         from src.app.modules.reservations.service._transitions import confirm_booking, reject_booking
         bid = self._create_test_booking()
         confirm_booking(bid)
-        with pytest.raises(ValueError, match="cannot transition from 'confirmed'"):
+        with pytest.raises(ValueError, match="Transición inválida|Confirmada"):
             reject_booking(bid)
 
 
