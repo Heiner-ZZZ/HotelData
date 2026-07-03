@@ -1,0 +1,51 @@
+/* ═══ Fiscal Info ═══ */
+.inv-fiscal-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6f797d;
+  margin: 0;
+}
+
+.inv-fiscal-dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  dt { font-size: 0.68rem; color: #6f797d; }
+  dd { margin: 0; font-size: 0.78rem; color: #191c1e; display: flex; align-items: center; gap: 0.3rem; }
+}
+
+/* ═══ Guest Info Bar ═══ */
+.inv-guest-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding: 0.65rem 0.9rem;
+  background: #f7f9fb;
+  border: 1px solid #e0e3e5;
+  border-radius: 0.5rem;
+}
+
+.inv-guest-item { display: flex; flex-direction: column; gap: 0.05rem; }
+.inv-guest-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #6f797d; }
+.inv-guest-value { font-size: 0.85rem; font-weight: 500; color: #191c1e; }
+
+/* ═══ Count Badge ═══ */
+.inv-count-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #6f797d;
+  background: #eceef0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+}

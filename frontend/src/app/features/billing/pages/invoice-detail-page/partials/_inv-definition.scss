@@ -1,0 +1,32 @@
+/* ═══ Definition List ═══ */
+.inv-dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  dt {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6f797d;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #191c1e;
+  }
+}
+
+.dd-bold { font-weight: 600; }
+.dd-mono { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 0.8rem; }
+.dd-mono-sm { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 0.72rem; word-break: break-all; }
+.break-all { word-break: break-all; }

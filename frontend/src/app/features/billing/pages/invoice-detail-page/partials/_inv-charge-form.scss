@@ -1,0 +1,42 @@
+/* ═══ Add Charge Form ═══ */
+.inv-add-form {
+  border-color: #006076;
+  background: #fafcff;
+}
+
+.inv-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  @media (max-width: 500px) { grid-template-columns: 1fr; }
+}
+
+.inv-field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.inv-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6f797d;
+}
+
+.inv-input {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #bec8cd;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #191c1e;
+  background: #fff;
+  transition: border-color 0.12s;
+
+  &:focus {
+    outline: none;
+    border-color: #006076;
+    box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.1);
+  }
+}
+
+.inv-preview { font-size: 0.8rem; color: #3f484c; padding: 0.3rem 0; strong { color: #006076; font-size: 0.9rem; } }
+.inv-add-actions { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.35rem; }

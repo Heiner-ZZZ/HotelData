@@ -1,0 +1,53 @@
+/* ═══ Card ═══ */
+.inv-card {
+  background: #ffffff;
+  border: 1px solid #e0e3e5;
+  border-radius: 0.75rem;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid #eceef0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #191c1e;
+}
+
+.inv-card-header-bg {
+  margin: -1.15rem -1.15rem 0;
+  padding: 0.85rem 1.15rem;
+  background: #f7f9fb;
+  border-bottom: 1px solid #e0e3e5;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.inv-card-icon {
+  font-size: 1.15rem;
+  color: #006076;
+  flex-shrink: 0;
+}
+
+.inv-card-actions {
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 0.85rem 1.15rem;
+}
+
+/* ═══ Bento (Emisor / Receptor) ═══ */
+.inv-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  @media (max-width: 500px) {
+    grid-template-columns: 1fr;
+  }
+}
