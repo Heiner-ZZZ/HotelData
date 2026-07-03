@@ -1,6 +1,15 @@
 import { formatDateTime } from '../../../shared/utils/date-format.util';
-import type { ReviewDetailDto, ReviewItemDto, ReviewsListDto } from '../models/reviews.dto';
-import type { ReviewDetailViewModel, ReviewListItem, ReviewsListViewModel } from '../models/reviews.model';
+import type { ReviewDetailDto, ReviewItemDto, ReviewsListDto, ServiceRatingsDto } from '../models/reviews.dto';
+import type { ReviewDetailViewModel, ReviewListItem, ReviewsListViewModel, ServiceRatings, ReputationDashboard, DepartmentalSentiment, RecentFeedbackItem, DailyCount } from '../models/reviews.model';
+
+function mapServiceRatings(sr?: ServiceRatingsDto | null): ServiceRatings | null {
+  if (!sr) return null;
+  return {
+    housekeeping: sr.housekeeping ?? null,
+    foodBeverage: sr.food_beverage ?? null,
+    staff: sr.staff ?? null,
+  };
+}
 
 function mapReviewItem(item: ReviewItemDto): ReviewListItem {
   return {
@@ -15,6 +24,7 @@ function mapReviewItem(item: ReviewItemDto): ReviewListItem {
     staffResponse: item.staff_response,
     sentimentLabel: item.sentiment_label,
     sentimentScore: item.sentiment_score,
+    serviceRatings: mapServiceRatings(item.service_ratings),
     createdAt: formatDateTime(item.created_at),
   };
 }
@@ -48,7 +58,39 @@ export function mapReviewDetail(dto: ReviewDetailDto): ReviewDetailViewModel {
     sentimentScore: dto.sentiment_score,
     sentimentConfidence: dto.sentiment_confidence,
     sentimentAnalyzedAt: dto.sentiment_analyzed_at,
+    serviceRatings: mapServiceRatings(dto.service_ratings),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+  };
+}
+
+/** Map reputation dashboard from API snake_case to camelCase. */
+export function mapReputationDashboard(dto: any): ReputationDashboard {
+  return {
+    gri: dto.gri ?? 0,
+    griTarget: dto.gri_target ?? 90,
+    griChange: dto.gri_change ?? 0,
+    totalReviews: dto.total_reviews ?? 0,
+    departmental: (dto.departmental ?? []).map((dept: any) => ({
+      key: dept.key,
+      label: dept.label,
+      icon: dept.icon,
+      score: dept.score,
+      positivePct: dept.positive_pct ?? 0,
+      neutralPct: dept.neutral_pct ?? 0,
+      negativePct: dept.negative_pct ?? 0,
+      totalRatings: dept.total_ratings ?? 0,
+    })),
+    recentFeedback: (dto.recent_feedback ?? []).map((fb: any) => ({
+      id: fb.id,
+      userName: fb.user_name ?? 'Huésped',
+      rating: fb.rating ?? 0,
+      comment: fb.comment ?? '',
+      createdAt: fb.created_at ?? '',
+    })),
+    dailyCounts: (dto.daily_counts ?? []).map((dc: any) => ({
+      date: dc.date,
+      count: dc.count ?? 0,
+    })),
   };
 }

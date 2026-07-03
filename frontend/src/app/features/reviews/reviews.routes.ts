@@ -7,6 +7,11 @@ export const REVIEWS_ROUTES: Routes = [
       import('./pages/reviews-list-page/reviews-list-page').then(m => m.ReviewsListPageComponent),
   },
   {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./pages/reputation-dashboard-page/reputation-dashboard-page').then(m => m.ReputationDashboardPageComponent),
+  },
+  {
     path: ':reviewId',
     loadComponent: () =>
       import('./pages/review-detail-page/review-detail-page').then(m => m.ReviewDetailPageComponent),

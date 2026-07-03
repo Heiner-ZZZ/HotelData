@@ -8,6 +8,12 @@ export interface ReviewsListDto {
   has_next: boolean;
 }
 
+export interface ServiceRatingsDto {
+  housekeeping?: number | null;
+  food_beverage?: number | null;
+  staff?: number | null;
+}
+
 export interface ReviewItemDto {
   _id: string;
   booking_id: string;
@@ -24,6 +30,7 @@ export interface ReviewItemDto {
   sentiment_score: number | null;
   sentiment_confidence: number | null;
   sentiment_analyzed_at: string | null;
+  service_ratings?: ServiceRatingsDto | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +51,7 @@ export interface ReviewDetailDto {
   sentiment_score: number | null;
   sentiment_confidence: number | null;
   sentiment_analyzed_at: string | null;
+  service_ratings?: ServiceRatingsDto | null;
   created_at: string;
   updated_at: string;
 }

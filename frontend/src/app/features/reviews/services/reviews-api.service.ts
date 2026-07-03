@@ -3,8 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapReviewDetail, mapReviewsList } from '../mappers/reviews.mapper';
+import { mapReviewDetail, mapReviewsList, mapReputationDashboard } from '../mappers/reviews.mapper';
 import type { ReviewDetailDto, ReviewsListDto } from '../models/reviews.dto';
+import type { ReputationDashboard } from '../models/reviews.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReviewsApiService {
@@ -41,8 +42,19 @@ export class ReviewsApiService {
     );
   }
 
-  // RF-001: Create a review as an unauthenticated guest (post-stay)
-  createGuestReview(payload: { booking_id: string; prop_id: number; rating: number; title?: string; comment?: string }) {
+  // Create a review with optional service ratings
+  createReview(payload: {
+    booking_id: string;
+    prop_id: number;
+    rating: number;
+    title?: string;
+    comment?: string;
+    service_ratings?: {
+      housekeeping?: number | null;
+      food_beverage?: number | null;
+      staff?: number | null;
+    };
+  }) {
     return this.http.post(
       `${this.apiConfig.baseUrl}/reviews/guest`,
       payload,
@@ -50,7 +62,37 @@ export class ReviewsApiService {
     );
   }
 
-  // RF-006: Get top approved reviews for a hotel (public, no auth)
+  // Create a review as staff (on behalf of guest)
+  createStaffReview(payload: {
+    booking_id: string;
+    prop_id: number;
+    rating: number;
+    title?: string;
+    comment?: string;
+    service_ratings?: {
+      housekeeping?: number | null;
+      food_beverage?: number | null;
+      staff?: number | null;
+    };
+  }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/reviews/staff`,
+      payload,
+      { withCredentials: true },
+    );
+  }
+
+  // Get reputation dashboard data
+  getReputationDashboard(propId?: number, days: number = 30) {
+    let params = new HttpParams().set('days', String(days));
+    if (propId) params = params.set('prop_id', String(propId));
+    return this.http.get<any>(
+      `${this.apiConfig.baseUrl}/reviews/reputation/dashboard`,
+      { params, withCredentials: true },
+    ).pipe(map(dto => mapReputationDashboard(dto)));
+  }
+
+  // Get top approved reviews for a hotel (public, no auth)
   getHotelReviews(propId: number) {
     return this.http.get<ReviewDetailDto[]>(
       `${this.apiConfig.baseUrl}/hotels/${propId}/reviews`,
