@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, inject, NgZone, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, NgZone, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -19,6 +19,11 @@ import { RoomsApiService } from '../../services/rooms-api.service';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 import { KpiApiService, type TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
+import { RpKpiGridComponent } from './partials/rp-kpi-grid';
+import { RpCreateFormComponent } from './partials/rp-create-form';
+import { RpTablesComponent } from './partials/rp-tables';
+import { RpDeleteModalComponent } from './partials/rp-delete-modal';
+import { RpEditModalComponent } from './partials/rp-edit-modal';
 
 @Component({
   selector: 'app-rooms-page',
@@ -32,7 +37,12 @@ import { KpiApiService, type TopHotelRoomsItem } from '../../../../shared/servic
     ReactiveFormsModule,
     RoomTypeTableComponent,
     RouterLink,
-    AiSuggestDirective
+    AiSuggestDirective,
+    RpKpiGridComponent,
+    RpCreateFormComponent,
+    RpTablesComponent,
+    RpDeleteModalComponent,
+    RpEditModalComponent
   ],
   templateUrl: './rooms-page.html',
   styleUrl: './rooms-page.scss',
@@ -159,6 +169,10 @@ export class RoomsPageComponent {
   readonly featurePanelOpen = signal(true);
   readonly featureSearchQuery = signal('');
 
+  /** Bound function references for passing to partial components */
+  readonly isFeatureSelectedFn = (label: string) => this.isFeatureSelected(label);
+  readonly getFeaturePriceFn = (label: string) => this.getFeaturePrice(label);
+
   /** Filtered feature catalog based on search query (matches by label or category). */
   readonly filteredFeatureCatalog = computed(() => {
     const query = this.featureSearchQuery().toLowerCase().trim();
@@ -177,19 +191,39 @@ export class RoomsPageComponent {
   });
 
   constructor() {
+    // Carga por query param (navegación manual con prop_id en URL)
     this.route.queryParamMap
       .pipe(
         map((params) => Number(params.get('prop_id') ?? '0')),
         distinctUntilChanged(),
-        switchMap((propId) => {
-          this.viewState.set('loading');
-          this.message.set('');
-          this.errorMessage.set('');
-          return propId > 0 ? this.api.getRooms(propId) : of(null);
-        }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
+      .subscribe((propId) => this.loadRooms(propId));
+
+    // Auto-carga en modo single-hotel
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && this.selectedPropId() !== propId) {
+          this.loadRooms(propId);
+        }
+      }
+    });
+
+    // Load top hotels KPI
+    this.kpiApi.getTopHotelsByRooms(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
+      error: () => this.topHotelsState.set('error'),
+    });
+  }
+
+  private loadRooms(propId: number) {
+    this.viewState.set('loading');
+    this.message.set('');
+    this.errorMessage.set('');
+
+    if (propId > 0) {
+      this.api.getRooms(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (rooms) => {
           if (rooms) {
             this.viewModel.set(rooms);
@@ -205,12 +239,11 @@ export class RoomsPageComponent {
         },
         error: () => this.viewState.set('error')
       });
-
-    // Load top hotels KPI
-    this.kpiApi.getTopHotelsByRooms(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
-      error: () => this.topHotelsState.set('error'),
-    });
+    } else {
+      this.viewModel.set(null);
+      this.viewState.set('empty');
+      this.propertyCtx.clear();
+    }
   }
 
   onPropSelected(event: { propId: number; label: string }) {
