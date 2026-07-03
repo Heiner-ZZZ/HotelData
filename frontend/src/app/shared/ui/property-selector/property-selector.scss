@@ -158,6 +158,29 @@
   text-overflow: ellipsis;
 }
 
+/* ── Static loading / subtle variants ── */
+
+.ps-static-loading {
+  opacity: 0.55;
+  animation: ps-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ps-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.65; }
+}
+
+.ps-static-subtle {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 8%, transparent);
+  min-width: 42px;
+  justify-content: center;
+}
+
+.ps-static-subtle .ps-static-icon {
+  margin: 0;
+}
+
 /* ── None mode (no assigned hotels) ── */
 
 .ps-none {

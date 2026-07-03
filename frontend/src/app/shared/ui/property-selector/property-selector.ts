@@ -65,9 +65,19 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
   readonly singleHotelLabel = computed(() => {
     if (!this.ctx.ready()) return '';
     if (this.ctx.singleHotelMode()) {
-      return this.ctx.currentPropLabel() || this.selectedLabel || 'Hotel asignado';
+      // Prefer context label, fallback to Input, never show generic placeholder
+      const label = this.ctx.currentPropLabel() || this.selectedLabel;
+      return label || '';
     }
     return '';
+  });
+
+  /** True while the context hasn't loaded yet — show subtle loading indicator. */
+  readonly loading = computed(() => !this.ctx.ready());
+
+  /** True while single mode is loading — show subtle indicator instead of empty space. */
+  readonly singleModeLoading = computed(() => {
+    return !this.ctx.ready();
   });
 
   constructor() {

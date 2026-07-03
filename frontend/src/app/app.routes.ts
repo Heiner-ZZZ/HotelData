@@ -84,6 +84,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/management/management.routes').then((m) => m.MANAGEMENT_ROUTES)
       },
+      {
+        path: 'hr',
+        loadChildren: () =>
+          import('./features/hr/hr.routes').then((m) => m.HR_ROUTES)
+      },
     ]
   },
   {
