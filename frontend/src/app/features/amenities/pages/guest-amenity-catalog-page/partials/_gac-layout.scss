@@ -1,0 +1,10 @@
+.guest-amenity-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px 140px;
+  transition: padding-bottom 0.3s;
+
+  &.cart-drawer-open {
+    padding-bottom: 380px;
+  }
+}

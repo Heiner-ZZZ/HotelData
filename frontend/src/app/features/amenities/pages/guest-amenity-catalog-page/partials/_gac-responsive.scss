@@ -1,0 +1,84 @@
+/* ═══ Responsive ═══ */
+@media (max-width: 600px) {
+  .guest-amenity-page {
+    padding: 0 12px 130px;
+
+    &.cart-drawer-open {
+      padding-bottom: 420px;
+    }
+  }
+
+  .hero-header {
+    padding: 16px 0 4px;
+  }
+
+  .hero-title {
+    font-size: 1.15rem;
+  }
+
+  .hero-desc {
+    font-size: 0.8rem;
+  }
+
+  .booking-info-card {
+    padding: 12px 14px;
+    gap: 8px 16px;
+    font-size: 0.82rem;
+  }
+
+  .search-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cat-chip {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+
+  .category-header {
+    padding: 14px 14px;
+  }
+
+  .cat-icon-wrap {
+    width: 32px;
+    height: 32px;
+
+    .cat-icon {
+      font-size: 17px;
+    }
+  }
+
+  .amenity-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .amenity-icon-box {
+    display: none;
+  }
+
+  .amenity-actions {
+    align-self: flex-end;
+  }
+
+  .cart-summary-text {
+    display: none;
+  }
+
+  .btn-request {
+    padding: 11px 16px;
+    font-size: 0.82rem;
+  }
+
+  .cart-drawer-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .cart-item-qty-controls {
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,78 @@
+/* ═══ Hero header ═══ */
+.hero-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0 8px;
+  margin-bottom: 16px;
+}
+
+.btn-back-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--surface-2);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-1);
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    transform: translateX(-2px);
+  }
+
+  .material-symbols-outlined {
+    font-size: 22px;
+  }
+}
+
+.hero-text {
+  flex: 1;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-1);
+  line-height: 1.3;
+}
+
+.hero-desc {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-3);
+}
+
+.hero-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+}
