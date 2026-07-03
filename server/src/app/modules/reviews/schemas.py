@@ -12,12 +12,19 @@ class ModuleStatus(BaseModel):
     description: str
 
 
+class ServiceRatings(BaseModel):
+    housekeeping: int | None = Field(default=None, ge=1, le=5)
+    food_beverage: int | None = Field(default=None, ge=1, le=5)
+    staff: int | None = Field(default=None, ge=1, le=5)
+
+
 class ReviewCreate(BaseModel):
     booking_id: str
     prop_id: int
     rating: int = Field(ge=1, le=5)
     title: str = ""
     comment: str = ""
+    service_ratings: ServiceRatings | None = None
 
 
 class ReviewResponse(BaseModel):

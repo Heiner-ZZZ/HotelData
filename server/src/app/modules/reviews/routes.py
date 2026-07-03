@@ -214,6 +214,16 @@ def list_review_reports_api(
     return list_review_reports(status=status, page=page, page_size=page_size)
 
 
+@api_router.get("/reputation/dashboard")
+def reputation_dashboard_api(
+    prop_id: int | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    """Return reputation dashboard data: GRI, departmental sentiment, recent feedback."""
+    from src.app.modules.reviews.service.lifecycle.reports import get_reputation_dashboard
+    return get_reputation_dashboard(prop_id=prop_id, days=days)
+
+
 @api_router.delete("/{review_id}", status_code=204)
 def delete_review_api(review_id: str):
     deleted = delete_review(review_id)

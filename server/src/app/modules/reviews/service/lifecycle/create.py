@@ -34,7 +34,7 @@ def _validate_booking(payload: ReviewCreate) -> tuple[dict, ObjectId, str] | Non
 
 
 def _build_review_doc(payload, user_id_obj, sentiment):
-    return {
+    doc = {
         "booking_id": ObjectId(payload.booking_id),
         "prop_id": payload.prop_id,
         "user_id": user_id_obj,
@@ -51,6 +51,13 @@ def _build_review_doc(payload, user_id_obj, sentiment):
         "sentiment_confidence": sentiment["confidence"],
         "sentiment_analyzed_at": _now().isoformat(),
     }
+    if payload.service_ratings:
+        doc["service_ratings"] = {
+            "housekeeping": payload.service_ratings.housekeeping,
+            "food_beverage": payload.service_ratings.food_beverage,
+            "staff": payload.service_ratings.staff,
+        }
+    return doc
 
 
 def _notify_review_created(prop_id, review_id, rating, title, comment, guest_name):

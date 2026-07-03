@@ -1,4 +1,4 @@
-"""Review report operations (report inappropriate reviews)."""
+"""Review report operations (report inappropriate reviews) and reputation dashboard."""
 
 from __future__ import annotations
 
@@ -88,6 +88,121 @@ def create_review_report(
         logger.exception("Failed to log report audit for review %s", review_id)
 
     return _enrich_report(doc)
+
+
+def get_reputation_dashboard(
+    prop_id: int | None = None,
+    days: int = 30,
+) -> dict:
+    """Return reputation dashboard data: GRI, departmental sentiment, recent feedback, and trends."""
+    from datetime import datetime, timedelta, timezone
+    from math import ceil
+
+    db = get_database()
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    query: dict = {"created_at": {"$gte": since}, "moderation_status": "approved"}
+    if prop_id:
+        query["prop_id"] = prop_id
+
+    cursor = db[COLLECTION].find(query).sort("created_at", -1)
+    reviews = list(cursor)
+
+    total = len(reviews)
+    if total == 0:
+        return {
+            "gri": 0,
+            "gri_target": 90.0,
+            "gri_change": 0,
+            "total_reviews": 0,
+            "departmental": [],
+            "recent_feedback": [],
+            "daily_counts": [],
+        }
+
+    # Global Review Index
+    avg_rating = sum(r.get("rating", 0) for r in reviews) / total
+    gri = round((avg_rating / 5) * 100, 1)
+
+    # Departmental sentiment from service_ratings
+    dept_data: dict[str, list[int]] = {"housekeeping": [], "food_beverage": [], "staff": []}
+    for r in reviews:
+        sr = r.get("service_ratings") or {}
+        for dept in dept_data:
+            val = sr.get(dept)
+            if val is not None:
+                dept_data[dept].append(val)
+
+    dept_labels = {
+        "housekeeping": "Housekeeping",
+        "food_beverage": "F&B",
+        "staff": "Staff",
+    }
+    dept_icons = {
+        "housekeeping": "cleaning_services",
+        "food_beverage": "restaurant",
+        "staff": "concierge",
+    }
+    departmental = []
+    for dept, ratings in dept_data.items():
+        if ratings:
+            avg = sum(ratings) / len(ratings)
+            pct = round((avg / 5) * 100)
+            positive = sum(1 for r in ratings if r >= 4)
+            neutral = sum(1 for r in ratings if r == 3)
+            negative = sum(1 for r in ratings if r <= 2)
+            total_r = len(ratings)
+            departmental.append({
+                "key": dept,
+                "label": dept_labels.get(dept, dept),
+                "icon": dept_icons.get(dept, "star"),
+                "score": pct,
+                "positive_pct": round(positive / total_r * 100),
+                "neutral_pct": round(neutral / total_r * 100),
+                "negative_pct": round(negative / total_r * 100),
+                "total_ratings": total_r,
+            })
+
+    # Recent feedback (last 10)
+    recent = []
+    for r in reviews[:10]:
+        recent.append({
+            "id": str(r["_id"]),
+            "user_name": r.get("user_display_name", "Huésped"),
+            "rating": r.get("rating", 0),
+            "comment": (r.get("comment") or "")[:150],
+            "created_at": r.get("created_at").isoformat() if hasattr(r.get("created_at"), "isoformat") else str(r.get("created_at", "")),
+        })
+
+    # Daily counts for trend chart
+    from collections import Counter
+    day_counts: Counter = Counter()
+    for r in reviews:
+        dt = r.get("created_at")
+        if hasattr(dt, "strftime"):
+            day_counts[dt.strftime("%Y-%m-%d")] += 1
+    daily_counts = [{"date": d, "count": c} for d, c in sorted(day_counts.items())]
+
+    # GRI change (compare first half vs second half of period)
+    gri_change = 0
+    if len(reviews) >= 4:
+        mid = len(reviews) // 2
+        first_half = [r.get("rating", 0) for r in reviews[mid:]]
+        second_half = [r.get("rating", 0) for r in reviews[:mid]]
+        if first_half and second_half:
+            avg_first = sum(first_half) / len(first_half)
+            avg_second = sum(second_half) / len(second_half)
+            gri_change = round(((avg_second - avg_first) / 5) * 100, 1)
+
+    return {
+        "gri": gri,
+        "gri_target": 90.0,
+        "gri_change": gri_change,
+        "total_reviews": total,
+        "departmental": departmental,
+        "recent_feedback": recent,
+        "daily_counts": daily_counts,
+    }
 
 
 def list_review_reports(
