@@ -1,0 +1,32 @@
+/* ═══ Two-Column Layout ═══ */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 360px;
+  }
+}
+
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--on-surface, #191c1e);
+  margin: 0 0 16px;
+}
+
+.section-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--on-surface-variant, #3f484c);
+  max-width: 720px;
+  margin: 0;
+}

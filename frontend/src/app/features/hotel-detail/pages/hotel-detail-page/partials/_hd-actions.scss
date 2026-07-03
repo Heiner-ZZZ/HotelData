@@ -1,0 +1,26 @@
+/* ═══ Title Actions ═══ */
+.title-actions { display: flex; gap: 8px; }
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--outline-variant, #bec8cd);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface-variant, #3f484c);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+
+  &:hover {
+    background: var(--surface-container-low, #f2f4f6);
+    border-color: var(--primary, #006076);
+    color: var(--primary, #006076);
+  }
+
+  .material-symbols-outlined { font-size: 18px; }
+}
