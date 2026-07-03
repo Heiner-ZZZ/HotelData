@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import csv
-import io
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -18,21 +15,22 @@ from src.app.modules.reservations.service import (
     get_booking_detail,
     get_check_in_status,
     get_room_guests,
-    hotel_booking_context,
-    list_bookings,
     list_reservation_dates,
     modify_booking,
     reservation_hotel_options,
     save_room_guests,
-    validate_reservation_input,
     confirm_booking,
     reject_booking,
     get_reservation_stats,
 )
-from datetime import datetime, timedelta
-
-from src.app.modules.reservations.service.lifecycle.create import _check_availability, _calculate_total_price, validate_coupon_code
-from src.app.modules.partner.services.rates.plans import filter_eligible_plans
+from src.app.modules.reservations.service.lifecycle.create import validate_coupon_code
+from src.app.modules.reservations.routes.reservations_impl import (
+    check_hotel_availability,
+    list_rate_plans_with_rates,
+    validate_rate_plan_eligibility,
+    export_reservations_csv,
+    preview_reservation,
+)
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -84,55 +82,7 @@ def reservation_availability_check_api(
     current_user: dict = Depends(require_login),
 ):
     """Check if a hotel has room types and inventory available for a given date range."""
-    db = get_database()
-
-    # 1. Check if the hotel has room types
-    room_types_count = db.room_types.count_documents({"prop_id": prop_id})
-    has_room_types = room_types_count > 0
-
-    # 2. Check if there's inventory for the date range
-    try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid date format; expected YYYY-MM-DD")
-
-    dates = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(max(1, (cout - cin).days))]
-
-    if not has_room_types:
-        return {
-            "hasInventory": False, "hasRoomTypes": False,
-            "totalRooms": 0, "availableRooms": 0,
-            "message": "El hotel no tiene tipos de habitación configurados.",
-        }
-
-    # Count total inventory rows for this hotel across the date range
-    inventory_records = list(
-        db.room_inventory_calendar.find(
-            {"prop_id": prop_id, "date": {"$in": dates}},
-            {"_id": 0, "available_rooms": 1, "total_rooms": 1},
-        )
-    )
-
-    if not inventory_records:
-        return {
-            "hasInventory": False, "hasRoomTypes": True,
-            "totalRooms": 0, "availableRooms": 0,
-            "message": "No hay datos de inventario para las fechas seleccionadas.",
-        }
-
-    total_rooms = max(r.get("total_rooms", 0) or 0 for r in inventory_records)
-    min_available = min(r.get("available_rooms", 0) or 0 for r in inventory_records)
-    has_inventory = min_available > 0
-
-    return {
-        "hasInventory": has_inventory,
-        "hasRoomTypes": True,
-        "totalRooms": total_rooms,
-        "availableRooms": min_available,
-        "message": f"{min_available} habitación(es) disponible(s) en las fechas seleccionadas." if has_inventory
-                   else "Sin disponibilidad en las fechas seleccionadas.",
-    }
+    return check_hotel_availability(prop_id, check_in, check_out)
 
 
 @api_router.get("/rate-plans")
@@ -143,183 +93,27 @@ def available_rate_plans_api(
     room_type_id: str = Query(default=""),
     current_user: dict = Depends(require_login),
 ):
-    """Return available rate plans for a hotel + date range + optional room type.
-
-    Each plan includes its calendar rates so the user can compare prices.
-    """
-    db = get_database()
-    try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid date format")
-
-    dates = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(max(1, (cout - cin).days))]
-
-    # Find distinct rate_plan_ids in the calendar for this prop + dates
-    match: dict[str, Any] = {"prop_id": prop_id, "date": {"$in": dates}}
-    if room_type_id:
-        match["room_type_id"] = room_type_id
-
-    calendar_entries = list(
-        db.hotel_rate_calendar.find(match, {"_id": 0, "rate_plan_id": 1, "rate_amount": 1, "date": 1, "currency": 1})
-        .sort([("rate_plan_id", 1), ("date", 1)])
-    )
-
-    if not calendar_entries:
-        return {"rate_plans": []}
-
-    # Group by rate_plan_id
-    plan_groups: dict[str, dict[str, Any]] = {}
-    for entry in calendar_entries:
-        pid = entry.get("rate_plan_id", "")
-        if not pid:
-            continue
-        if pid not in plan_groups:
-            plan_groups[pid] = {
-                "rate_plan_id": pid,
-                "rates": [],
-                "avg_rate": 0.0,
-                "currency": entry.get("currency", "USD"),
-            }
-        plan_groups[pid]["rates"].append({
-            "date": entry["date"],
-            "rate_amount": entry["rate_amount"],
-        })
-
-    # Calculate average rate per plan and enrich with plan metadata
-    plan_ids = list(plan_groups.keys())
-    plans_meta = list(db.rate_plans.find(
-        {"rate_plan_id": {"$in": plan_ids}},
-        {"_id": 0, "rate_plan_id": 1, "name": 1, "description": 1, "base_rate": 1, "currency": 1, "is_active": 1},
-    ))
-    meta_by_id = {p["rate_plan_id"]: p for p in plans_meta}
-
-    result = []
-    for pid, group in plan_groups.items():
-        meta = meta_by_id.get(pid, {})
-        rates = group["rates"]
-        avg_rate = round(sum(r["rate_amount"] for r in rates) / len(rates), 2) if rates else 0
-        total = round(sum(r["rate_amount"] for r in rates), 2)
-        result.append({
-            "rate_plan_id": pid,
-            "name": meta.get("name", pid),
-            "description": meta.get("description", ""),
-            "base_rate": meta.get("base_rate"),
-            "currency": group["currency"] or meta.get("currency", "USD"),
-            "is_active": meta.get("is_active", True),
-            "avg_rate_per_night": avg_rate,
-            "total_price": total,
-            "nights": len(rates),
-        })
-
-    # Filter out inactive plans and sort by price
-    result = [p for p in result if p["is_active"]]
-    result.sort(key=lambda p: p["total_price"])
-
-    return {"rate_plans": result}
+    """Return available rate plans for a hotel + date range + optional room type."""
+    return list_rate_plans_with_rates(prop_id, check_in, check_out, room_type_id)
 
 
 @api_router.post("/preview")
 def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
-    try:
-        reservation_input = build_reservation_input(payload, source="angular_api")
-        errors = validate_reservation_input(reservation_input)
-        if errors:
-            raise ValueError("; ".join(errors))
-        avail_error = _check_availability(
-            reservation_input.prop_id, reservation_input.check_in_date,
-            reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,
-        )
-        total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
-            reservation_input.prop_id, reservation_input.room_type_id,
-            reservation_input.check_in_date, reservation_input.check_out_date, reservation_input.rooms,
-            adults=reservation_input.adults, children=reservation_input.children,
-            rate_plan_id=reservation_input.rate_plan_id or None,
-        )
-        return {
-            "available": avail_error is None, "availability_message": avail_error,
-            "total_price": total_price, "currency": currency, "total_nights": total_nights,
-            "tax_rate": tax_rate, "tax_amount": tax_amount, "tax_included": tax_included,
-        }
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-
-def _validate_rate_plan_eligibility(
-    payload: dict,
-    user_role: str,
-) -> str | None:
-    """Check if the rate plans for the selected dates/room type are eligible for the user role."""
-    if not user_role or user_role == "super_admin":
-        return None
-    prop_id = payload.get("prop_id")
-    room_type_id = payload.get("room_type_id", "")
-    check_in = payload.get("check_in_date", "")
-    check_out = payload.get("check_out_date", "")
-    if not all([prop_id, check_in, check_out]):
-        return None
-    db = get_database()
-    try:
-        cin = datetime.strptime(check_in, "%Y-%m-%d")
-        cout = datetime.strptime(check_out, "%Y-%m-%d")
-    except (ValueError, TypeError):
-        return None
-    total_nights = max(1, (cout - cin).days)
-    dates = [(cin + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(total_nights)]
-
-    match: dict[str, object] = {"prop_id": prop_id, "date": {"$in": dates}}
-    if room_type_id:
-        match["room_type_id"] = room_type_id
-    records = list(
-        db.hotel_rate_calendar.find(match, {"_id": 0, "rate_plan_id": 1}).limit(50)
-    )
-    # Collect unique rate_plan_ids
-    plan_ids: set[str] = set()
-    for r in records:
-        pid = r.get("rate_plan_id", "")
-        if pid:
-            plan_ids.add(pid)
-    if not plan_ids:
-        return None
-    # Fetch the plans
-    plans = list(
-        db.rate_plans.find(
-            {"rate_plan_id": {"$in": list(plan_ids)}},
-            {"_id": 0, "rate_plan_id": 1, "name": 1, "eligible_roles": 1},
-        )
-    )
-    eligible_plans = filter_eligible_plans(plans, user_role=user_role)
-    if len(eligible_plans) < len(plans):
-        # Some plans are not eligible
-        ineligible_names: list[str] = []
-        eligible_ids = {p["rate_plan_id"] for p in eligible_plans if "rate_plan_id" in p}
-        for plan in plans:
-            if plan.get("rate_plan_id") not in eligible_ids:
-                ineligible_names.append(plan.get("name") or plan.get("rate_plan_id", "?"))
-        return (
-            "No tienes acceso a los planes tarifarios de este hotel. "
-            f"Plan(es) no elegible(s): {', '.join(ineligible_names)}."
-        )
-    return None
+    return preview_reservation(payload)
 
 
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     try:
-        # Validate rate plan eligibility for user role
         user_role = current_user.get("primary_role", "")
-        elig_error = _validate_rate_plan_eligibility(payload, user_role)
+        elig_error = validate_rate_plan_eligibility(payload, user_role)
         if elig_error:
             raise ValueError(elig_error)
-        # Use actual username instead of generic 'angular_api'
         if not payload.get("created_by"):
             payload["created_by"] = current_user.get("username", "web")
-        # Associate booking with the authenticated user
         if not payload.get("user_id"):
             payload["user_id"] = str(current_user.get("_id", ""))
         reservation_input = build_reservation_input(payload, source="angular_api")
-        # Store the selected rate_plan_id in the booking payload
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
         return create_booking(reservation_input)
@@ -351,26 +145,12 @@ def reservation_export_api(
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_login),
 ):
-    db = get_database()
-    filters: dict[str, Any] = {}
-    if status_filter:
-        filters["status"] = status_filter
-    if prop_id:
-        filters["prop_id"] = prop_id
-    bookings = list(db.booking_orders.find(filters, {"_id": 0}).sort([("created_at", -1)]))
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Booking ID", "Prop ID", "Status", "Guest Name", "Guest Email", "Guest Phone",
-                      "Check-in", "Check-out", "Adults", "Children", "Rooms",
-                      "Total Price", "Currency", "Total Nights", "Booking Source", "Created At", "Comment"])
-    for b in bookings:
-        writer.writerow([b.get(k, "") for k in ("booking_id", "prop_id", "status", "guest_name", "guest_email",
-            "guest_phone", "check_in_date", "check_out_date", "adults", "children", "rooms",
-            "total_price", "currency", "total_nights", "booking_source", "created_at", "comment")])
-    output.seek(0)
-    raw_date = str(bookings[0].get("created_at", "export"))[:10] if bookings else "export"
-    return StreamingResponse(iter([output.getvalue()]), media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=reservas_{raw_date}.csv"})
+    output, raw_date = export_reservations_csv(status_filter=status_filter, prop_id=prop_id)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=reservas_{raw_date}.csv"},
+    )
 
 
 @api_router.get("/{booking_id}")
