@@ -1,0 +1,59 @@
+/* ═══ Table ═══ */
+.inv-card-table { padding: 0; overflow: hidden; }
+.inv-table-wrap { overflow-x: auto; }
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.inv-table thead th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6f797d;
+  background: #fafafa;
+  border-bottom: 1px solid #e0e3e5;
+  white-space: nowrap;
+}
+
+.th-num { text-align: right !important; width: 6rem; }
+
+.inv-table tbody td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #eceef0;
+  vertical-align: middle;
+}
+
+.inv-table tbody tr:last-child td { border-bottom: none; }
+.inv-table tbody tr:hover { background: #f7f9fb; }
+
+.td-name { font-weight: 600; color: #191c1e; font-size: 0.82rem; }
+.td-sub { font-size: 0.7rem; color: #6f797d; margin-top: 0.1rem; }
+.td-num { text-align: right; font-size: 0.82rem; color: #191c1e; }
+.mono { font-family: 'JetBrains Mono', 'Consolas', monospace; font-variant-numeric: tabular-nums; }
+.td-icon { font-size: 0.9rem; color: #006076; vertical-align: middle; margin-right: 0.3rem; }
+.td-total { font-weight: 600; }
+.th-act { width: 2.5rem; text-align: center !important; }
+
+.inv-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #ba1a1a;
+  cursor: pointer;
+  transition: all 0.1s;
+
+  &:hover { background: rgba(186, 26, 26, 0.08); }
+  &:disabled { opacity: 0.3; cursor: not-allowed; }
+  .material-symbols-outlined { font-size: 0.85rem; }
+}
