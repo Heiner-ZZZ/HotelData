@@ -1,0 +1,92 @@
+/* ═══ Print Styles — Corporate B/N Invoice ═══ */
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  .inv-header .inv-actions,
+  .inv-card-actions,
+  .inv-toast,
+  .inv-back,
+  .inv-quick-card,
+  .inv-add-form,
+  .inv-btn-group,
+  .inv-btn,
+  .inv-remove-btn,
+  .inv-folio-card .inv-btn,
+  .inv-btn-full,
+  .material-symbols-outlined {
+    display: none !important;
+  }
+
+  .inv-page { padding: 0; max-width: 100%; }
+
+  .inv-card,
+  .inv-summary,
+  .inv-guest-bar,
+  .inv-folio-card,
+  .inv-card-header-bg,
+  .inv-quick-card {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  .inv-summary-bg { display: none !important; }
+  .inv-summary { break-inside: avoid; border-color: #000 !important; }
+  .inv-summary-amount { color: #000 !important; }
+
+  .inv-guest-bar { border: 1px solid #ccc !important; background: transparent !important; }
+
+  .inv-status-badge,
+  .bg-success,
+  .bg-danger,
+  .bg-warning {
+    border: 1px solid #000 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding: 1px 4px;
+    font-size: 0.6rem;
+  }
+
+  .inv-status-dot,
+  .dot-success,
+  .dot-danger,
+  .dot-warning { display: none !important; }
+
+  .inv-table thead th {
+    background: transparent !important;
+    color: #000 !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .inv-table tbody td { border-bottom: 1px solid #ccc !important; }
+  .inv-table tbody tr:hover { background: transparent !important; }
+
+  .inv-pay-icon { display: none !important; }
+
+  .inv-pay-row.paid {
+    color: #000 !important;
+    .paid-amount { color: #000 !important; }
+  }
+
+  .inv-pay-row.pending {
+    color: #000 !important;
+    .pending-amount { color: #000 !important; }
+  }
+
+  .inv-card-header { border-bottom: 1px solid #ccc !important; }
+  .inv-grid { display: block !important; }
+  .inv-left, .inv-right { width: 100% !important; }
+  .inv-right { page-break-before: always; }
+
+  .inv-count-badge { border: 1px solid #000 !important; background: transparent !important; }
+  .inv-card-icon { display: none !important; }
+  .td-icon { display: none !important; }
+}

@@ -1,0 +1,19 @@
+/* ═══ Folio Card ═══ */
+.inv-folio-card {
+  border-color: #006076;
+  background: linear-gradient(135deg, #fafcff 0%, #f2f8fc 100%);
+}
+
+.inv-folio-card-header { display: flex; align-items: center; gap: 0.65rem; }
+
+.inv-folio-icon {
+  font-size: 1.35rem;
+  color: #006076;
+  background: rgba(0, 96, 118, 0.08);
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+}
+
+.inv-folio-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: #3f484c; }
+.inv-folio-number { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #006076; }
+.inv-folio-desc { font-size: 0.72rem; color: #6f797d; margin: 0; line-height: 1.4; }

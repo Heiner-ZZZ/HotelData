@@ -1,0 +1,23 @@
+/* ═══ Split Layout Grid ═══ */
+.inv-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inv-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.inv-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
