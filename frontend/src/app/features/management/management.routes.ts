@@ -76,6 +76,16 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../housekeeping/housekeeping.routes').then((m) => m.HOUSEKEEPING_ROUTES)
   },
   {
+    path: 'hr',
+    loadChildren: () =>
+      import('../hr/hr.routes').then((m) => m.HR_ROUTES)
+  },
+  {
+    path: 'expenses',
+    loadChildren: () =>
+      import('../expenses/expenses.routes').then((m) => m.EXPENSES_ROUTES)
+  },
+  {
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports-page/reports-page').then((m) => m.ManagementReportsPageComponent)

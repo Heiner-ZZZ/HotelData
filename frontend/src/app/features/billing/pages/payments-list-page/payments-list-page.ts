@@ -11,7 +11,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { PaymentsListViewModel } from '../../models/billing.model';
@@ -33,6 +33,7 @@ export class PaymentsListPageComponent {
   private readonly billingApi = inject(BillingApiService);
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly toast = inject(ToastService);
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
@@ -101,12 +102,12 @@ export class PaymentsListPageComponent {
     this.billingApi.refundPayment(paymentId)
       .subscribe({
         next: () => {
-          toast('Pago reembolsado correctamente.', 'dark', 4000);
+          this.toast.show('Pago reembolsado correctamente.', 'info', 4000);
           this.refundingId.set(null);
           this.paymentsResource.reload();
         },
         error: (err: ApiError) => {
-          toast(err.message || 'Error al reembolsar el pago.', 'error', 5000);
+          this.toast.show(err.message || 'Error al reembolsar el pago.', 'error', 5000);
           this.refundingId.set(null);
         },
       });

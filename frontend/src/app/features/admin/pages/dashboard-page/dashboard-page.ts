@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -43,6 +43,7 @@ export class DashboardPageComponent {
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly earningsApi = inject(EarningsApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<DashboardViewModel | null>(null);
@@ -136,14 +137,14 @@ export class DashboardPageComponent {
       .subscribe({
         next: (result) => {
           if (result.ok) {
-            toast(result.display_message, 'dark', 5000);
+            this.toast.show(result.display_message, 'info', 5000);
             this.loadDashboard();
           } else {
-            toast('No se pudieron actualizar los indicadores.', 'error', 5000);
+            this.toast.show('No se pudieron actualizar los indicadores.', 'error', 5000);
           }
         },
         error: (err: ApiError) => {
-          toast(err.message || 'Error al refrescar los indicadores del panel.', 'error', 5000);
+          this.toast.show(err.message || 'Error al refrescar los indicadores del panel.', 'error', 5000);
         },
       });
   }

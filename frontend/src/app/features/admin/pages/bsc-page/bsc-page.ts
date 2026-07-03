@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -26,6 +26,7 @@ import { BscApiService } from '../../services/bsc-api.service';
 export class BscPageComponent {
   private readonly api = inject(BscApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<BscViewModel | null>(null);
@@ -78,7 +79,7 @@ export class BscPageComponent {
     a.download = `bsc-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast('Reporte BSC exportado como CSV.', 'dark', 4000);
+    this.toast.show('Reporte BSC exportado como CSV.', 'info', 4000);
   }
 
   private loadBsc() {

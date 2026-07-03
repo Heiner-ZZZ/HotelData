@@ -9,7 +9,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { Destination } from '../../models/map.model';
 import { MapApiService } from '../../services/map-api.service';
@@ -31,6 +31,7 @@ export class DestinationEditorPageComponent {
   private readonly api = inject(MapApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly toast = inject(ToastService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly destination = signal<Destination | null>(null);
@@ -101,7 +102,7 @@ export class DestinationEditorPageComponent {
       next: (updated) => {
         this.destination.set(updated);
         this.saved.set(true);
-        toast('Destino actualizado correctamente.', 'dark', 4000);
+        this.toast.show('Destino actualizado correctamente.', 'info', 4000);
       },
       error: (err) => {
         this.errorMessage.set(err.message || 'Error al guardar el destino.');
