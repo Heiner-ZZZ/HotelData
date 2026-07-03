@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
@@ -176,6 +176,19 @@ export class CheckOutsPageComponent {
     });
 
     // Data fetching is handled declaratively via httpResource above
+
+    // Auto-carga en modo single-hotel
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && !this.routeParams().propId) {
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { prop_id: propId, date: this.operationDate() },
+          });
+        }
+      }
+    });
   }
 
   navigateDate(days: number): void {

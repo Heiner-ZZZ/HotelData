@@ -11,10 +11,29 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { CheckOutsApiService, type CheckOutDetailDto } from '../../services/check-outs-api.service';
+import { CoHeaderComponent } from './partials/co-header';
+import { CoStepBreadcrumbComponent } from './partials/co-step-breadcrumb';
+import { CoStepSummaryComponent } from './partials/co-step-summary';
+import { CoStepChargesComponent } from './partials/co-step-charges';
+import { CoStepSettlementComponent } from './partials/co-step-settlement';
+import { CoStepInvoiceComponent } from './partials/co-step-invoice';
+import { CoStepCloseComponent } from './partials/co-step-close';
+import { CoCompletedViewComponent } from './partials/co-completed-view';
 
 @Component({
   selector: 'app-check-out-detail-page',
-  imports: [CurrencyPipe, DatePipe, KeyValuePipe, FormsModule, RouterLink, LoadingStateComponent, ErrorStateComponent, EmptyStateComponent],
+  imports: [
+    CurrencyPipe, DatePipe, KeyValuePipe, FormsModule, RouterLink,
+    LoadingStateComponent, ErrorStateComponent, EmptyStateComponent,
+    CoHeaderComponent,
+    CoStepBreadcrumbComponent,
+    CoStepSummaryComponent,
+    CoStepChargesComponent,
+    CoStepSettlementComponent,
+    CoStepInvoiceComponent,
+    CoStepCloseComponent,
+    CoCompletedViewComponent
+  ],
   templateUrl: './check-out-detail-page.html',
   styleUrl: './check-out-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -102,6 +121,40 @@ export class CheckOutDetailPageComponent {
   });
 
   readonly currency = computed(() => this.data()?.currency ?? 'USD');
+
+  // ── Category entries for partials ──
+  readonly chargeCategoryEntries = computed(() => {
+    const d = this.data();
+    if (!d?.charges_by_category) return [];
+    return Object.entries(d.charges_by_category).map(([key, items]: [string, any]) => ({
+      key,
+      items,
+      label: this.categoryLabel(key),
+      icon: this.categoryIcon(key),
+      total: this.categoryTotal(key),
+    }));
+  });
+
+  readonly chargeDetailEntries = computed(() => {
+    const d = this.data();
+    if (!d?.charges) return [];
+    return d.charges.map((c: any) => ({
+      ...c,
+      categoryIcon: this.categoryIcon(c.category),
+      categoryLabel: this.categoryLabel(c.category),
+    }));
+  });
+
+  readonly paymentMethodLabel = computed(() => {
+    const method = this.data()?.check_out_payment_method;
+    const labels: Record<string, string> = {
+      credit_card: 'Tarjeta Crédito / Débito',
+      cash: 'Efectivo (Caja Principal)',
+      transfer: 'Transferencia Bancaria',
+      mixed: 'Pago Mixto',
+    };
+    return labels[method || ''] || method || '—';
+  });
 
   // ── Category config ──
   readonly categoryLabels: Record<string, string> = {
