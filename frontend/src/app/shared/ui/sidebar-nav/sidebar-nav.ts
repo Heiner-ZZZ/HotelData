@@ -124,6 +124,12 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'auditor_datos']
         },
         {
+          label: 'Libro Mayor',
+          href: '/management/expenses/ledger',
+          icon: 'account_balance',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'auditor_datos']
+        },
+        {
           label: 'Reportes',
           href: '/management/reports',
           icon: 'bar_chart',
@@ -135,6 +141,16 @@ export class SidebarNavComponent {
           icon: 'history_toggle_off',
           allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos']
         },
+      ]
+    },
+    {
+      id: 'rrhh',
+      label: 'RRHH',
+      icon: 'group',
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'],
+      items: [
+        { label: 'Empleados', href: '/management/hr/directory', icon: 'badge' },
+        { label: 'Alta', href: '/management/hr/onboarding', icon: 'person_add' },
       ]
     },
     {

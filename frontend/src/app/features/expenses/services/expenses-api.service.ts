@@ -45,4 +45,26 @@ export class ExpensesApiService {
   getCategories() {
     return this.http.get<any[]>(`${this.apiConfig.baseUrl}/expenses/categories`, { withCredentials: true });
   }
+
+  // ─── Ledger ───
+
+  getLedgerTransactions(propId: number, page: number = 1, pageSize: number = 50, sortField: string = 'tx_date', sortOrder: string = 'desc') {
+    let params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('page', String(page))
+      .set('page_size', String(pageSize))
+      .set('sort_field', sortField)
+      .set('sort_order', sortOrder);
+    return this.http.get<any>(`${this.apiConfig.baseUrl}/expenses/ledger`, { params, withCredentials: true });
+  }
+
+  getLedgerFolios(propId: number) {
+    let params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<any>(`${this.apiConfig.baseUrl}/expenses/ledger/folios`, { params, withCredentials: true });
+  }
+
+  getLedgerSummary(propId: number) {
+    let params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<any>(`${this.apiConfig.baseUrl}/expenses/ledger/summary`, { params, withCredentials: true });
+  }
 }

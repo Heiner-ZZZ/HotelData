@@ -26,4 +26,9 @@ export const EXPENSES_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/invoice-detail-page/invoice-detail-page').then(m => m.InvoiceDetailPageComponent),
   },
+  {
+    path: 'ledger',
+    loadComponent: () =>
+      import('./pages/ledger-page/ledger-page').then(m => m.LedgerPageComponent),
+  },
 ];

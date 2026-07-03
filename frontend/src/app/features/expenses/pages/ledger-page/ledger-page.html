@@ -1,0 +1,158 @@
+<div class="ledger-shell">
+  <app-page-header
+    eyebrow="Control Financiero"
+    title="Libro Mayor / Diario"
+    description="Registro contable de todas las transacciones del hotel."
+  />
+
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="selectedLabel()"
+    (propIdChange)="onPropSelected($event)"
+  />
+
+  @if (selectedPropId()) {
+    <!-- ═══ KPI Strip ═══ -->
+    @if (summary(); as s) {
+      <div class="kpi-strip">
+        <div class="kpi-item">
+          <span class="kpi-label">Gastos Totales (Mes)</span>
+          <span class="kpi-value mono">{{ s.totalDebits | currency:'USD':'symbol':'1.0-0' }}</span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item">
+          <span class="kpi-label">Balance Neto</span>
+          <span class="kpi-value mono" [class.text-danger]="s.netBalance < 0" [class.text-success]="s.netBalance >= 0">
+            {{ s.netBalance | currency:'USD':'symbol':'1.0-2' }}
+          </span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item">
+          <span class="kpi-label">Pendientes</span>
+          <span class="kpi-value mono text-warning">{{ s.pendingCount }}</span>
+          <span class="kpi-sub">(Auditados: {{ s.auditedCount }})</span>
+        </div>
+        @if (s.discrepancyCount > 0) {
+          <div class="kpi-divider"></div>
+          <div class="kpi-item">
+            <span class="kpi-label">Discrepancias</span>
+            <span class="kpi-value mono text-danger">{{ s.discrepancyCount }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ Multi-pane: Ledger + Folio Sidebar ═══ -->
+    <div class="ledger-layout">
+      <!-- Center: AG Grid Ledger -->
+      <div class="ledger-pane">
+        <div class="ledger-toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">Transacciones</span>
+            <span class="badge badge-balanced" title="Libro balanceado">BALANCED</span>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-box">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                placeholder="Buscar transacción, folio, cuenta..."
+                (input)="onFilterChange($event)"
+                class="search-input"
+              />
+            </div>
+            <button class="btn-icon" title="Exportar CSV">
+              <span class="material-symbols-outlined">download</span>
+            </button>
+            <button class="btn-icon" title="Ajuste manual">
+              <span class="material-symbols-outlined">post_add</span>
+            </button>
+          </div>
+        </div>
+
+        <ag-grid-angular
+          class="ledger-grid ag-theme-quartz-dark"
+          [rowData]="[]"
+          [columnDefs]="columnDefs"
+          [defaultColDef]="defaultColDef"
+          [rowClassRules]="rowClassRules"
+          [pagination]="true"
+          [paginationPageSize]="50"
+          [paginationPageSizeSelector]="[25, 50, 100]"
+          [rowSelection]="'single'"
+          [enableCellTextSelection]="true"
+          [suppressRowClickSelection]="true"
+          [headerHeight]="36"
+          [rowHeight]="40"
+          [domLayout]="'normal'"
+          style="height: 100%; width: 100%;"
+          (gridReady)="onGridReady($event)"
+          (rowClicked)="onRowClicked($event)"
+        />
+      </div>
+
+      <!-- Right: Folio Viewer -->
+      <aside class="folio-pane">
+        <!-- Selected Folio Detail -->
+        @if (selectedFolio(); as folio) {
+          <div class="folio-card">
+            <div class="folio-header">
+              <span class="material-symbols-outlined">receipt_long</span>
+              <span class="folio-title">Folio {{ folio.folioRef }}</span>
+            </div>
+            <div class="folio-balance">
+              <span class="folio-balance-label">Balance Pendiente</span>
+              <span class="folio-balance-value mono" [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
+                {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+              </span>
+            </div>
+            <div class="folio-info">
+              <div class="folio-info-row">
+                <span class="folio-info-label">Transacciones</span>
+                <span class="folio-info-value">{{ folio.transactionCount }}</span>
+              </div>
+            </div>
+            <div class="folio-actions">
+              <button class="btn btn-outline btn-sm"><span class="material-symbols-outlined">swap_horiz</span> Transferir</button>
+              <button class="btn btn-outline btn-sm"><span class="material-symbols-outlined">call_split</span> Dividir</button>
+              <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">payments</span> Pagar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="folio-card folio-empty">
+            <span class="material-symbols-outlined folio-empty-icon">touch_app</span>
+            <p>Selecciona una transacción para ver su folio</p>
+          </div>
+        }
+
+        <!-- Active Folios List -->
+        <div class="folios-list">
+          <h3 class="folios-list-title">Folios Activos</h3>
+          @for (f of folios(); track f.folioRef) {
+            <div
+              class="folios-list-item"
+              [class.folio-selected]="selectedFolio()?.folioRef === f.folioRef"
+              (click)="selectedFolio.set(f)"
+            >
+              <div class="folio-item-left">
+                <span class="folio-item-ref">{{ f.folioRef }}</span>
+                <span class="folio-item-tx">{{ f.transactionCount }} tx</span>
+              </div>
+              <span class="folio-item-balance mono" [class.text-danger]="f.balance > 0" [class.text-success]="f.balance <= 0">
+                {{ f.balance | currency:'USD':'symbol':'1.0-2' }}
+              </span>
+            </div>
+          } @empty {
+            <p class="folios-empty">Sin folios activos</p>
+          }
+        </div>
+      </aside>
+    </div>
+  } @else {
+    <div class="ledger-empty">
+      <span class="material-symbols-outlined">account_balance</span>
+      <h2>Selecciona una propiedad</h2>
+      <p>El Libro Mayor requiere un hotel activo para mostrar sus transacciones contables.</p>
+    </div>
+  }
+</div>
