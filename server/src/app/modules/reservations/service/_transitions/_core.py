@@ -7,8 +7,9 @@ import secrets
 from typing import Any
 
 from src.database.connection import get_database
+from src.app.core.state_machine import booking_sm
 from .._helpers import utc_now
-from ..notifications import notify_guest_status_change
+from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.billing.service import generate_invoice_for_booking
 from src.app.modules.reservations.service._transitions._inventory import (
     _auto_assign_rooms,
@@ -23,24 +24,19 @@ def _transition_status(
     booking_id: str,
     *,
     target_status: str,
-    allowed_current: str | set[str],
     reason: str,
     changed_by: str,
     extra_updates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Generic status transition with validation and history logging."""
+    """Transition a booking's status using the central booking StateMachine."""
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if booking is None:
         raise ValueError("booking not found")
 
     current = booking.get("status")
-    allowed = {allowed_current} if isinstance(allowed_current, str) else set(allowed_current)
-    if current not in allowed:
-        raise ValueError(
-            f"cannot transition from '{current}' to '{target_status}'; "
-            f"allowed current statuses: {', '.join(sorted(allowed))}"
-        )
+    # Use central StateMachine for validation
+    booking_sm.validate_transition(current, target_status)
 
     if target_status == "confirmed":
         if extra_updates is None:
@@ -155,7 +151,7 @@ def confirm_booking(
 ) -> dict[str, Any]:
     """Transition a booking from 'pending' to 'confirmed'."""
     return _transition_status(
-        booking_id, target_status="confirmed", allowed_current="pending",
+        booking_id, target_status="confirmed",
         reason=reason, changed_by=changed_by,
     )
 
@@ -165,6 +161,6 @@ def reject_booking(
 ) -> dict[str, Any]:
     """Transition a booking from 'pending' to 'rejected'."""
     return _transition_status(
-        booking_id, target_status="rejected", allowed_current="pending",
+        booking_id, target_status="rejected",
         reason=reason, changed_by=changed_by,
     )

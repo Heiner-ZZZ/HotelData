@@ -211,7 +211,7 @@ def complete_check_out(
         try:
             guest_email = (booking.get("guest_email") or "").strip()
             if guest_email:
-                from ..notifications import notify_guest_invoice
+                from src.app.modules.reservations.notifications import notify_guest_invoice
                 inv = db.reservation_invoices.find_one(
                     {"booking_id": booking_id},
                     {"_id": 1, "invoice_number": 1, "total": 1},

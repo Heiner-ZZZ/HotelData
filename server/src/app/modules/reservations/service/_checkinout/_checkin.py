@@ -9,17 +9,15 @@ from typing import Any
 
 from src.database.connection import get_database
 from .._helpers import utc_now
-from ..notifications import notify_guest_status_change
+from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.reservations.service._checkinout._helpers import (
     _generate_folio,
     _notify_guest_check_in,
     _notify_staff_check_in,
 )
+from src.app.core.state_machine import CHECKIN_ALLOWED_ROOM_STATUSES, CHECKIN_REJECTED_ROOM_STATUSES
 
 logger = logging.getLogger(__name__)
-
-_CHECKIN_ALLOWED_ROOM_STATUSES = {"available", "vacant_clean", "vacant", "clean"}
-_CHECKIN_REJECTED_STATUSES = {"dirty", "maintenance", "out_of_order", "out_of_service"}
 
 
 def update_check_in_datetime(
@@ -127,13 +125,13 @@ def complete_check_in(
                 if not label:
                     continue
                 status = room_status_map.get(label, "unknown")
-                if status not in _CHECKIN_ALLOWED_ROOM_STATUSES:
+                if status not in CHECKIN_ALLOWED_ROOM_STATUSES:
                     blocked.append(f"{label} ({status})")
             if blocked:
                 raise ValueError(
                     f"No se puede realizar el check-in. Las siguientes habitaciones no están disponibles: "
-                    f"{', '.join(blocked)}. Solo se permite check-in en habitaciones en estado 'available'. "
-                    f"Estados rechazados: {', '.join(sorted(_CHECKIN_REJECTED_STATUSES))}."
+                    f"{', '.join(blocked)}. Solo se permite check-in en habitaciones en estado 'vacante_limpia' o 'vacante_sucia'. "
+                    f"Estados rechazados: {', '.join(sorted(CHECKIN_REJECTED_ROOM_STATUSES))}."
                 )
 
     changed_at = utc_now()

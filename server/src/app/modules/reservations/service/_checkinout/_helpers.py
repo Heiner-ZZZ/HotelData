@@ -9,7 +9,7 @@ from typing import Any
 
 from src.database.connection import get_database
 from .._helpers import utc_now
-from ..notifications import notify_guest_status_change, notify_staff_check_event
+from src.app.modules.reservations.notifications import notify_guest_status_change, notify_staff_check_event
 
 logger = logging.getLogger(__name__)
 
