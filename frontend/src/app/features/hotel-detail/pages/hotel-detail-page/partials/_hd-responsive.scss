@@ -1,0 +1,9 @@
+/* ═══ Responsive ═══ */
+@media (max-width: 600px) {
+  .hotel-title { font-size: 26px; }
+  .title-actions { width: 100%; justify-content: flex-end; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .amenities-grid { grid-template-columns: repeat(2, 1fr); }
+  .reviews-layout { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+}

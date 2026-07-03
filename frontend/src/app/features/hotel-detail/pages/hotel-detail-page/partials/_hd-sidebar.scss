@@ -1,0 +1,73 @@
+/* ═══ Sidebar ═══ */
+.detail-sidebar {
+  @media (min-width: 1024px) {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+}
+
+.booking-card {
+  background: #fff;
+  border: 1px solid var(--outline-variant, #bec8cd);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+.sidebar-title { font-size: 20px; font-weight: 600; margin: 0 0 2px; color: var(--on-surface, #191c1e); }
+.sidebar-sub { font-size: 13px; color: var(--outline, #6f797d); margin: 0 0 20px; }
+.sidebar-fields { display: flex; flex-direction: column; gap: 12px; }
+
+.sidebar-field {
+  .field-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--on-surface-variant, #3f484c); margin-bottom: 4px; }
+  .field-display { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface, #f7f9fb); border: 1px solid var(--outline-variant, #bec8cd); border-radius: 8px; font-size: 14px; color: var(--on-surface, #191c1e); }
+}
+
+.field-icon { font-size: 18px; color: var(--outline, #6f797d); }
+.sidebar-divider { height: 1px; background: var(--outline-variant, #bec8cd); margin: 20px 0; }
+
+.sidebar-total {
+  text-align: center;
+  margin-bottom: 20px;
+
+  .total-label { display: block; font-size: 12px; color: var(--outline, #6f797d); font-weight: 600; margin-bottom: 4px; }
+  .total-val { display: block; font-size: 36px; font-weight: 700; color: var(--primary, #006076); line-height: 1; }
+  .total-unit { font-size: 14px; color: var(--on-surface-variant, #3f484c); }
+}
+
+.btn-confirm {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--primary, #006076);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.15s;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary, #006076) 25%, transparent);
+
+  &:hover { opacity: 0.92; }
+  &:active { transform: scale(0.98); }
+}
+
+.secure-badge { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--outline, #6f797d); .material-symbols-outlined { font-size: 16px; } }
+
+/* ─── Promo card ─── */
+.promo-card {
+  padding: 24px;
+  background: color-mix(in srgb, var(--primary, #006076) 10%, transparent);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.promo-icon { font-size: 36px; color: var(--primary, #006076); margin-bottom: 8px; }
+.promo-title { font-size: 18px; font-weight: 700; color: var(--on-surface, #191c1e); margin: 0 0 6px; }
+.promo-text { font-size: 13px; color: var(--on-surface-variant, #3f484c); line-height: 1.5; margin: 0 0 16px; }
+.promo-btn { padding: 10px 20px; background: var(--on-surface, #191c1e); color: var(--surface-bright, #f7f9fb); border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; &:hover { opacity: 0.88; } }
