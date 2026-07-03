@@ -83,6 +83,12 @@ from src.app.modules.reception import ensure_reception_collections
 from src.app.modules.global_settings.service import ensure_global_settings_collections
 from src.app.modules.geo_catalog.service import ensure_geo_collections
 from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
+from src.app.modules.hr.service.collections import ensure_hr_collections
+from src.app.modules.hr.routes import api_router as hr_api_router
+from src.app.modules.hr.routes import router as hr_module_router
+from src.app.modules.expenses.service.collections import ensure_expenses_collections
+from src.app.modules.expenses.routes import api_router as expenses_api_router
+from src.app.modules.expenses.routes import router as expenses_module_router
 import logging
 
 from config.settings import get_settings
@@ -153,9 +159,13 @@ def create_app() -> FastAPI:
     app.include_router(lost_and_found_api_router)
     app.include_router(lost_and_found_module_router)
     app.include_router(notifications_router)
-    app.include_router(crud_router)
+    app.include_router(hr_api_router)
+    app.include_router(hr_module_router)
+    app.include_router(expenses_api_router)
+    app.include_router(expenses_module_router)
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
+    app.include_router(crud_router)
     return app
 
 
@@ -180,6 +190,8 @@ async def lifespan(app: FastAPI):
     ensure_auth_collections()
     ensure_room_features_collections()
     ensure_lost_and_found_collections()
+    ensure_hr_collections()
+    ensure_expenses_collections()
     from src.app.modules.instay.routes import ensure_stay_collections
     ensure_stay_collections()
     ensure_audit_indexes()

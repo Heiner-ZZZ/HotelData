@@ -5,7 +5,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
-import { toast } from '../../../../core/toast/toast.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { MonitoringViewModel, ServiceStatusCard } from '../../models/monitoring.model';
@@ -28,6 +28,7 @@ import type { ActionResponseDto } from '../../models/monitoring.dto';
 export class MonitoringPageComponent implements OnInit {
   private readonly api = inject(MonitoringApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly viewState = signal<ViewState>('loading');
@@ -92,14 +93,14 @@ export class MonitoringPageComponent implements OnInit {
         const nativeInput = this.fileInput()?.nativeElement;
         if (nativeInput) nativeInput.value = '';
         this.actionMessage.set(result.display_message);
-        toast(result.display_message, 'dark', 5000);
+        this.toast.show(result.display_message, 'info', 5000);
         setTimeout(() => this.loadData(), 300);
       },
       error: (err: ApiError) => {
         this.uploadBusy.set(false);
         const msg = err.message || 'Error al subir el archivo.';
         this.actionError.set(msg);
-        toast(msg, 'error', 5000);
+        this.toast.show(msg, 'error', 5000);
       },
     });
   }
@@ -226,18 +227,18 @@ export class MonitoringPageComponent implements OnInit {
         this.actionBusy.set(false);
         if (result.ok) {
           this.actionMessage.set(result.display_message);
-          toast(result.display_message, 'dark', 5000);
+          this.toast.show(result.display_message, 'info', 5000);
           setTimeout(() => this.loadData(), 500);
         } else {
           this.actionError.set(result.display_message);
-          toast(result.display_message + (result.summary_output ? ' — ' + result.summary_output : ''), 'error', 6000);
+          this.toast.show(result.display_message + (result.summary_output ? ' — ' + result.summary_output : ''), 'error', 6000);
         }
       },
       error: (err: ApiError) => {
         this.actionBusy.set(false);
         const msg = err.message || 'Error al ejecutar la acción.';
         this.actionError.set(msg);
-        toast(msg, 'error', 5000);
+        this.toast.show(msg, 'error', 5000);
       },
     });
   }
