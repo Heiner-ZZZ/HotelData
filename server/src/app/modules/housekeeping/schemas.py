@@ -64,14 +64,15 @@ ROOM_STATUS_COLORS: dict[str, str] = {
 
 
 def is_valid_transition(old_status: str, new_status: str) -> bool:
-    """Check if a room status transition is valid per the hotel cycle."""
-    allowed = ROOM_STATUS_TRANSITIONS.get(old_status, [])
-    return new_status in allowed
+    """Check if a room status transition is valid per the central StateMachine."""
+    from src.app.core.state_machine import room_sm
+    return room_sm.can_transition(old_status, new_status)
 
 
 def get_valid_next_statuses(current_status: str) -> list[str]:
-    """Return valid next states for a given current status."""
-    return ROOM_STATUS_TRANSITIONS.get(current_status, [])
+    """Return valid next states for a given current status, from central StateMachine."""
+    from src.app.core.state_machine import room_sm
+    return room_sm.get_valid_next_states(current_status)
 
 
 class RoomStatusLogCreate(BaseModel):

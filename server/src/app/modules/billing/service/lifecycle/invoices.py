@@ -9,6 +9,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+from src.app.core.state_machine import invoice_sm
 from src.app.modules.billing.schemas import InvoiceCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
     _enrich_invoice,
@@ -452,8 +453,18 @@ def cancel_invoice(invoice_id: str) -> dict | None:
     except (InvalidId, Exception):
         return None
 
+    inv = db[INVOICES].find_one({"_id": doc_id}, {"status": 1})
+    if not inv:
+        return None
+
+    # Validate with central StateMachine
+    try:
+        invoice_sm.validate_transition(inv.get("status", ""), "cancelled")
+    except ValueError:
+        return None
+
     doc = db[INVOICES].find_one_and_update(
-        {"_id": doc_id, "status": "issued"},
+        {"_id": doc_id, "status": inv["status"]},
         {"$set": {"status": "cancelled", "updated_at": _now()}},
         return_document=ReturnDocument.AFTER,
     )

@@ -9,6 +9,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+from src.app.core.state_machine import payment_sm
 from src.app.modules.billing.schemas import PaymentCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
     _enrich_invoice,
@@ -106,8 +107,18 @@ def refund_payment(payment_id: str) -> dict | None:
     except (InvalidId, Exception):
         return None
 
+    existing_pay = db[PAYMENTS].find_one({"_id": pay_id}, {"status": 1})
+    if not existing_pay:
+        return None
+
+    # Validate with central StateMachine
+    try:
+        payment_sm.validate_transition(existing_pay.get("status", ""), "refunded")
+    except ValueError:
+        return None
+
     pay = db[PAYMENTS].find_one_and_update(
-        {"_id": pay_id, "status": "confirmed"},
+        {"_id": pay_id, "status": existing_pay["status"]},
         {"$set": {"status": "refunded", "updated_at": _now()}},
         return_document=ReturnDocument.AFTER,
     )
