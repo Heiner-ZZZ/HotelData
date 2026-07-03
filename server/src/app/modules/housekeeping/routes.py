@@ -37,6 +37,14 @@ from src.app.modules.housekeeping.service import (
     update_room_status_bulk,
     upsert_room_status,
 )
+from src.app.modules.housekeeping.routes_impl import (
+    extract_cleaning_approve_params,
+    extract_cleaning_complete_params,
+    extract_cleaning_start_params,
+    query_housekeeping_staff,
+    validate_bulk_update,
+    validate_sync_payload,
+)
 from src.app.security.dependencies import require_login
 
 router = APIRouter(prefix="/modules/housekeeping", tags=["modules-housekeeping"])
@@ -116,12 +124,7 @@ def room_status_bulk_api(
     current_user: dict = Depends(require_login),
 ):
     """Update status for multiple rooms at once."""
-    prop_id = payload.get("prop_id")
-    room_labels = payload.get("room_labels", [])
-    new_status = payload.get("status", "available")
-    note = payload.get("note", "")
-    if not prop_id or not room_labels:
-        raise HTTPException(status_code=400, detail="prop_id y room_labels son requeridos")
+    prop_id, room_labels, new_status, note = validate_bulk_update(payload)
     count = update_room_status_bulk(prop_id, room_labels, new_status, note)
     return {"ok": True, "updated_count": count}
 
@@ -132,9 +135,7 @@ def room_status_sync_api(
     current_user: dict = Depends(require_login),
 ):
     """Auto‑seed room_status_log from hotel_rooms for a property."""
-    prop_id = payload.get("prop_id")
-    if not prop_id:
-        raise HTTPException(status_code=400, detail="prop_id es requerido")
+    prop_id = validate_sync_payload(payload)
     return sync_room_status_from_hotel_rooms(prop_id)
 
 
@@ -343,15 +344,8 @@ def cleaning_start_api(
       "task_id": "optional"
     }
     """
-    prop_id = int(payload.get("prop_id", 0))
-    room_label = payload.get("room_label", "")
-    if not prop_id or not room_label:
-        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
-    result = start_cleaning(
-        prop_id, room_label,
-        assigned_to=payload.get("assigned_to", ""),
-        task_id=payload.get("task_id"),
-    )
+    prop_id, room_label, assigned_to, task_id = extract_cleaning_start_params(payload)
+    result = start_cleaning(prop_id, room_label, assigned_to=assigned_to, task_id=task_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Habitación no encontrada")
     return result
@@ -381,20 +375,13 @@ def cleaning_complete_api(
     If damage_found or needs_maintenance → auto-creates maintenance task
     and blocks the room. If lost_object_found → auto-creates Lost & Found entry.
     """
-    prop_id = int(payload.get("prop_id", 0))
-    room_label = payload.get("room_label", "")
-    if not prop_id or not room_label:
-        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
+    cp = extract_cleaning_complete_params(payload)
     result = complete_cleaning(
-        prop_id, room_label,
-        assigned_to=payload.get("assigned_to", ""),
-        observations=payload.get("observations", ""),
-        damage_found=bool(payload.get("damage_found", False)),
-        damage_description=payload.get("damage_description", ""),
-        lost_object_found=bool(payload.get("lost_object_found", False)),
-        lost_object_description=payload.get("lost_object_description", ""),
-        needs_maintenance=bool(payload.get("needs_maintenance", False)),
-        maintenance_description=payload.get("maintenance_description", ""),
+        cp["prop_id"], cp["room_label"],
+        assigned_to=cp["assigned_to"], observations=cp["observations"],
+        damage_found=cp["damage_found"], damage_description=cp["damage_description"],
+        lost_object_found=cp["lost_object_found"], lost_object_description=cp["lost_object_description"],
+        needs_maintenance=cp["needs_maintenance"], maintenance_description=cp["maintenance_description"],
     )
     return result
 
@@ -415,16 +402,8 @@ def cleaning_approve_api(
       "set_occupied": false  // true si el huésped ya está dentro
     }
     """
-    prop_id = int(payload.get("prop_id", 0))
-    room_label = payload.get("room_label", "")
-    if not prop_id or not room_label:
-        raise HTTPException(status_code=400, detail="prop_id y room_label son requeridos")
-    result = approve_cleaning(
-        prop_id, room_label,
-        inspected_by=payload.get("inspected_by", "supervisor"),
-        note=payload.get("note", ""),
-        set_occupied=bool(payload.get("set_occupied", False)),
-    )
+    prop_id, room_label, inspected_by, note, set_occupied = extract_cleaning_approve_params(payload)
+    result = approve_cleaning(prop_id, room_label, inspected_by=inspected_by, note=note, set_occupied=set_occupied)
     if result is None:
         raise HTTPException(status_code=404, detail="Habitación no encontrada")
     return result
@@ -468,26 +447,9 @@ def housekeeping_staff_api(
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_login),
 ):
-    """Return staff users assigned to a property who have maintenance/housekeeping roles.
-
-    Used by the housekeeping tasks page to populate the assigned-to dropdown
-    instead of hardcoded names.
-    """
-    from src.database.connection import get_database
-    db = get_database()
-
-    roles = ["maintenance", "housekeeping"]
-    query: dict = {"primary_role": {"$in": roles}, "is_active": True}
-    if prop_id:
-        query["assigned_hotels"] = prop_id
-
-    users = list(
-        db.users.find(
-            query,
-            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role": 1, "assigned_hotels": 1},
-        ).sort("display_name", 1)
-    )
-    return {"staff": users}
+    """Return staff users assigned to a property who have maintenance/housekeeping roles."""
+    staff = query_housekeeping_staff(prop_id=prop_id)
+    return {"staff": staff}
 
 
 @api_router.get("/upcoming-events")
