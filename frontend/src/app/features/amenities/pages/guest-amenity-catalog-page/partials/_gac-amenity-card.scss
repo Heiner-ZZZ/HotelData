@@ -1,0 +1,139 @@
+/* ═══ Amenity card ═══ */
+.amenity-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: all 0.25s;
+  background: var(--surface-1);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+  }
+
+  &.is-in-cart {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface-1));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  &.is-out-of-stock {
+    opacity: 0.5;
+  }
+}
+
+.stock-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: calc(var(--stock-ratio, 1) * 100%);
+    background: var(--stock-color, #16a34a);
+    border-radius: 0 2px 2px 0;
+    transition: width 0.5s ease;
+  }
+}
+
+.amenity-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  flex-shrink: 0;
+
+  .amenity-item-icon {
+    font-size: 22px;
+    color: var(--accent);
+  }
+}
+
+.amenity-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.amenity-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.amenity-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-1);
+}
+
+.badge-active {
+  display: inline-block;
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.amenity-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+
+.price-icon,
+.stock-icon {
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+.amenity-price {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.amenity-free {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.amenity-stock {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.78rem;
+
+  &.stock-low {
+    color: #dc2626;
+    font-weight: 600;
+  }
+}
