@@ -16,6 +16,8 @@
     "@angular/forms": "^22.0.0",
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
+    "ag-grid-angular": "^36.0.0",
+    "ag-grid-community": "^36.0.0",
     "chart.js": "^4.5.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

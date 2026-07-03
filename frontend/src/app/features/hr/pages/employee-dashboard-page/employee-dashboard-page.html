@@ -1,0 +1,235 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Portal del Empleado — Employee Self-Service Dashboard
+     Filosofía Stitch: bento grid, jerarquía clara, KPIs accionables
+     ═══════════════════════════════════════════════════════════ -->
+
+@if (portal(); as data) {
+<div class="portal-shell">
+
+  <!-- ── Page Header ── -->
+  <header class="portal-header">
+    <div class="portal-header-left">
+      <h1 class="portal-title">Portal del Empleado</h1>
+      <p class="portal-subtitle">
+        Bienvenido/a, <strong>{{ data.employee.fullName }}</strong>
+        — {{ data.employee.position }}
+        @if (data.employee.department) { &middot; {{ data.employee.department }} }
+      </p>
+    </div>
+    <div class="portal-header-right">
+      <div class="portal-clock">
+        <span class="clock-time">{{ currentTime() }}</span>
+        <span class="clock-date">{{ currentDate() }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Bento Grid ── -->
+  <div class="portal-grid">
+
+    <!-- ═══ Check-in / Shift Card (col 1–4) ═══ -->
+    <section class="card shift-card">
+      <div class="shift-glow"></div>
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="material-symbols-outlined card-title-icon">badge</span>
+          Estado Actual
+        </h2>
+        @if (data.currentShift; as shift) {
+          <span class="badge" [class]="shift.status === 'active' ? 'badge badge-active' : 'badge badge-pending'">
+            <span class="material-symbols-outlined badge-icon">schedule</span>
+            {{ shift.status === 'active' ? 'En Turno' : 'Pendiente' }}
+          </span>
+        }
+      </div>
+
+      @if (data.currentShift; as shift) {
+        <div class="shift-details">
+          <div class="shift-detail-row">
+            <span class="material-symbols-outlined shift-detail-icon">work</span>
+            <div class="shift-detail-text">
+              <span class="shift-detail-label">TURNO ASIGNADO</span>
+              <span class="shift-detail-value">{{ shift.scheduledStart }} – {{ shift.scheduledEnd }}</span>
+            </div>
+          </div>
+          <div class="shift-detail-row">
+            <span class="material-symbols-outlined shift-detail-icon">location_on</span>
+            <div class="shift-detail-text">
+              <span class="shift-detail-label">UBICACIÓN</span>
+              <span class="shift-detail-value">{{ shift.area || 'Recepción Principal, Lobby' }}</span>
+            </div>
+          </div>
+          @if (shift.notes) {
+            <div class="shift-detail-row shift-notes">
+              <span class="material-symbols-outlined shift-detail-icon">sticky_note_2</span>
+              <div class="shift-detail-text">
+                <span class="shift-detail-label">NOTAS</span>
+                <span class="shift-detail-value">{{ shift.notes }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <button class="btn btn-primary btn-checkin" (click)="doCheckIn()" [disabled]="shiftLoading()">
+          <span class="material-symbols-outlined">
+            {{ shift.status === 'active' ? 'logout' : 'how_to_reg' }}
+          </span>
+          {{ shift.status === 'active' ? 'Finalizar Turno (Check-out)' : 'Confirmar Asistencia (Check-in)' }}
+        </button>
+      } @else {
+        <div class="shift-empty">
+          <span class="material-symbols-outlined shift-empty-icon">event_busy</span>
+          <p>Sin turno programado para hoy</p>
+        </div>
+      }
+    </section>
+
+    <!-- ═══ Productivity KPIs (col 5–12) ═══ -->
+    <section class="card kpi-section">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="material-symbols-outlined card-title-icon">monitoring</span>
+          Productividad de Turno
+        </h2>
+        <span class="card-meta">Actualizado ahora</span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">VENTAS GENERADAS</span>
+          <span class="kpi-value" style="font-family: 'JetBrains Mono', monospace">{{ data.kpis.salesFormatted }}</span>
+          <span class="kpi-trend" [class.kpi-trend-up]="data.kpis.sales > 0">
+            @if (data.kpis.sales > 0) {
+              <span class="material-symbols-outlined">trending_up</span>
+              Operando
+            } @else {
+              <span class="material-symbols-outlined">remove</span>
+              Sin actividad
+            }
+          </span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">COBROS REALIZADOS</span>
+          <span class="kpi-value" style="font-family: 'JetBrains Mono', monospace">{{ data.kpis.payments }}</span>
+          <span class="kpi-trend">Transacciones exitosas</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">UPSELLING</span>
+          <span class="kpi-value" style="font-family: 'JetBrains Mono', monospace">{{ data.kpis.upsells }}</span>
+          <span class="kpi-trend" [class.kpi-trend-warn]="data.kpis.upsells < data.kpis.upsellsTarget">
+            <span class="material-symbols-outlined">star</span>
+            Objetivo: {{ data.kpis.upsellsTarget }}
+            @if (data.kpis.upsells >= data.kpis.upsellsTarget) {
+              <span class="material-symbols-outlined kpi-goal-met">check_circle</span>
+            }
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Weekly Calendar (col 1–8) ═══ -->
+    <section class="card calendar-section">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="material-symbols-outlined card-title-icon">calendar_month</span>
+          Calendario Semanal
+        </h2>
+        <button class="btn btn-link">Ver Mes Completo</button>
+      </div>
+      <div class="roster-table-wrap">
+        <table class="roster-table">
+          <thead>
+            <tr>
+              <th class="col-day">DÍA</th>
+              <th class="col-shift">TURNO</th>
+              <th class="col-area">ÁREA</th>
+              <th class="col-status">ESTADO</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of data.weeklyRoster; track entry.date) {
+              <tr [class.roster-today]="entry.isToday" [class.roster-rest]="entry.status === 'rest'">
+                <td class="cell-day">
+                  <span class="day-name">{{ entry.day }}</span>
+                  <span class="day-num">{{ entry.dayNumber }}</span>
+                </td>
+                <td class="cell-shift">
+                  @if (entry.shiftStart) {
+                    {{ entry.shiftStart }} – {{ entry.shiftEnd }}
+                  } @else {
+                    <span style="color: var(--text-muted, #6f797d)">—</span>
+                  }
+                </td>
+                <td class="cell-area">
+                  {{ entry.area || 'Libre' }}
+                </td>
+                <td class="cell-status">
+                  <span class="status-chip" [class.status-today]="entry.isToday" [class.status-rest]="entry.status === 'rest'" [class.status-active]="entry.status === 'active'" [class.status-completed]="entry.status === 'completed'">
+                    {{ entry.isToday ? 'Hoy' : entry.status === 'rest' ? 'Descanso' : entry.status === 'completed' ? 'Completado' : 'Programado' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ Sidebar: Payroll + Timeline (col 9–12) ═══ -->
+    <aside class="portal-sidebar">
+      <!-- Payroll -->
+      <div class="card payroll-card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <span class="material-symbols-outlined card-title-icon">account_balance_wallet</span>
+            Nómina Acumulada
+          </h3>
+        </div>
+        <span class="payroll-period">{{ data.payroll.periodLabel }}</span>
+        <div class="payroll-hours-row">
+          <span class="payroll-hours" style="font-family: 'JetBrains Mono', monospace">{{ data.payroll.workedHours }} hrs</span>
+          <span class="payroll-target">de {{ data.payroll.targetHours }} hrs</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="data.payroll.progressPct"></div>
+        </div>
+        <span class="progress-label">Progreso {{ data.payroll.progressPct }}%</span>
+        <button class="btn btn-outline btn-sm btn-full" style="margin-top: 16px">
+          <span class="material-symbols-outlined">receipt_long</span>
+          Ver Recibos Anteriores
+        </button>
+      </div>
+
+      <!-- Recent History Timeline -->
+      <div class="card timeline-card">
+        <h3 class="card-title" style="margin-bottom: 16px">Historial Reciente</h3>
+        @if (data.recentEvents.length) {
+          <ul class="timeline">
+            @for (event of data.recentEvents; track $index) {
+              <li class="timeline-item">
+                <div class="timeline-dot" [class]="'dot-' + event.type">
+                  <span class="material-symbols-outlined">{{ event.icon }}</span>
+                </div>
+                <div class="timeline-content">
+                  <span class="timeline-label">{{ event.label }}</span>
+                  <span class="timeline-detail">{{ event.detail }}</span>
+                  <span class="timeline-time">{{ event.timestamp | date:'EEE, d MMM — HH:mm' }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p style="color: var(--text-muted, #6f797d); text-align: center; padding: 24px 0">Sin actividad reciente</p>
+        }
+      </div>
+    </aside>
+
+  </div><!-- /portal-grid -->
+
+</div>
+} @else {
+  <!-- Loading state -->
+  <div class="portal-loading">
+    <div class="portal-loading-spinner"></div>
+    <p>Cargando portal del empleado...</p>
+  </div>
+}
