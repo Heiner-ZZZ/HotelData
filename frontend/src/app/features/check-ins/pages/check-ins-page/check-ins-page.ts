@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
@@ -132,8 +132,21 @@ export class CheckInsPageComponent {
     });
 
     // Sync operationDate signal from route params when they change
-    // This is needed because the date navigation buttons modify the URL
     this.routeParams(); // consume the signal to track reactivity
+
+    // Auto-carga en modo single-hotel: si no hay prop_id en URL pero el contexto
+    // está ready, navegar con el propId del contexto
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && !this.routeParams().propId) {
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { prop_id: propId, date: this.operationDate() },
+          });
+        }
+      }
+    });
   }
 
   navigateDate(days: number): void {

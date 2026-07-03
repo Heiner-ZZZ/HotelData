@@ -18,6 +18,11 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { ProfileSecurityComponent } from './components/profile-security';
+import { PpHeroComponent } from './partials/pp-hero';
+import { PpTabBarComponent } from './partials/pp-tab-bar';
+import { PpPersonalFormComponent } from './partials/pp-personal-form';
+import { PpAvatarSectionComponent } from './partials/pp-avatar-section';
+import { PpTravelSectionComponent } from './partials/pp-travel-section';
 import type { ProfileViewModel } from '../../models/profile.model';
 import type { SelectOption } from '../../models/profile.model';
 import {
@@ -34,7 +39,9 @@ import { ProfileApiService } from '../../services/profile-api.service';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ProfileSecurityComponent, ReactiveFormsModule],
+  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ProfileSecurityComponent, ReactiveFormsModule,
+    PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent,
+    PpAvatarSectionComponent, PpTravelSectionComponent],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -206,8 +213,9 @@ export class ProfilePageComponent {
     });
   }
 
-  setTab(tab: 'personal' | 'contact' | 'preferences' | 'social'): void {
-    this.activeTab.set(tab);
+  /** Wrapper for PpTabBarComponent — casts string to union type */
+  handleSetTab(tab: string): void {
+    this.activeTab.set(tab as 'personal' | 'contact' | 'preferences' | 'social');
   }
 
   onDragOver(event: DragEvent): void {
