@@ -1,0 +1,24 @@
+/* ── Review Step ── */
+.review-card { padding: 1.15rem; display: grid; gap: 1rem; }
+.review-card-head { display: flex; align-items: center; gap: 0.55rem; }
+.review-card-head h2 { margin: 0; font-size: 0.9rem; }
+.review-icon { font-size: 1.15rem; color: var(--accent); font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 22; }
+
+.review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem 1rem; }
+.review-item { display: grid; gap: 0.1rem; }
+.review-item-span { grid-column: 1 / -1; }
+.review-label { font-size: 0.7rem; color: var(--muted-text); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.review-item strong { font-size: 0.85rem; font-weight: 600; color: var(--app-text); word-break: break-word; }
+
+.review-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid var(--app-border);
+}
+
+.review-total span { font-size: 0.8rem; color: var(--muted-text); }
+.review-total strong { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+.review-total-error { color: var(--error, #e53935); gap: 0.5rem; justify-content: center; }
+.review-total-error strong { color: var(--error, #e53935); font-size: 0.85rem; font-weight: 600; }

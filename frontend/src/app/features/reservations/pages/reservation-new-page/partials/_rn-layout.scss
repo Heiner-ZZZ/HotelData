@@ -1,0 +1,13 @@
+.booking-page {
+  display: grid;
+  gap: 1rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0.25rem 0 2rem;
+}
+
+.booking-form,
+.review-container {
+  display: grid;
+  gap: 0.85rem;
+}

@@ -1,0 +1,14 @@
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .booking-page { padding: 0 0 1.5rem; }
+  .booking-header { flex-direction: column; align-items: flex-start; }
+  .step-indicator { width: 100%; }
+  .field-group.two-col { grid-template-columns: 1fr; }
+  .planner-grid { grid-template-columns: 1fr; }
+  .planner-field { min-height: auto; }
+  .planner-cta { min-height: 54px; }
+  .occupancy-grid { grid-template-columns: 1fr; }
+  .review-grid { grid-template-columns: 1fr; }
+  .form-footer { flex-direction: column; }
+  .btn-primary, .btn-secondary { justify-content: center; }
+}

@@ -1,0 +1,11 @@
+/* ── Error Banner ── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid var(--danger);
+}
+
+.error-banner .material-symbols-outlined { color: var(--danger); font-size: 1.15rem; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+.error-banner p { margin: 0; color: var(--danger); font-size: 0.82rem; }

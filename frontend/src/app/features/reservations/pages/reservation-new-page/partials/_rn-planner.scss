@@ -1,0 +1,78 @@
+/* ── Planner Section ── */
+.planner-section { display: grid; gap: 0.85rem; padding: 1rem; }
+
+.planner-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1.35fr) auto;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) and (min-width: 601px) {
+  .planner-grid { grid-template-columns: 1fr 1fr; }
+  .planner-cta { grid-column: span 2; justify-self: stretch; text-align: center; }
+}
+
+.planner-field--dates { min-width: 270px; }
+
+.planner-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: var(--surface);
+  min-height: 84px;
+}
+
+.planner-field.field-error { border-color: var(--danger); }
+.planner-icon { margin-top: 0.15rem; font-size: 1.35rem; color: var(--accent); font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24; }
+.planner-copy { display: grid; gap: 0.28rem; min-width: 0; flex: 1; }
+.planner-label { font-size: 0.78rem; color: var(--muted-text); font-weight: 600; }
+
+.planner-select-wrap select,
+.planner-dates input {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: auto;
+  box-shadow: none;
+  font-size: 0.98rem;
+  color: var(--app-text);
+}
+
+.planner-select-wrap select:focus,
+.planner-dates input:focus { outline: none; box-shadow: none; }
+.planner-select-wrap .select-arrow { right: 0; }
+
+.planner-dates { display: flex; align-items: center; gap: 0.35rem; width: 100%; flex-wrap: nowrap; }
+.planner-dates input { border: none; background: transparent; padding: 0.2rem 0; width: 105px; max-width: 100%; font-size: 0.88rem; color: var(--app-text); font-weight: 500; outline: none; }
+.planner-dates input::-webkit-calendar-picker-indicator { opacity: 0.75; cursor: pointer; margin-left: 2px; }
+.planner-separator { color: var(--muted-text); font-weight: 600; padding: 0 2px; }
+.planner-value { font-size: 0.98rem; color: var(--app-text); font-weight: 500; }
+.planner-steppers { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.15rem; }
+.mini-stepper { display: grid; gap: 0.25rem; }
+.mini-stepper-label { font-size: 0.68rem; color: var(--muted-text); font-weight: 600; }
+.planner-field--occupancy .stepper { border-radius: 999px; }
+.planner-field--occupancy .stepper-btn { width: 28px; height: 28px; }
+.planner-field--occupancy .stepper-value { min-width: 28px; font-size: 0.82rem; }
+
+.planner-cta {
+  align-self: center;
+  justify-self: start;
+  min-width: 120px;
+  min-height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0 1.35rem;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.planner-cta:hover { background: #0d4fcf; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20, 99, 255, 0.22); }
+.planner-meta { display: flex; flex-wrap: wrap; gap: 0.65rem; }
