@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from src.app.security.session import ensure_utc
+
 
 def parse_iso_datetime(value: str | None) -> datetime | None:
     if not value:
@@ -16,6 +18,5 @@ def is_stale_timestamp(value: str | None, *, minutes: int) -> bool:
     parsed = parse_iso_datetime(value)
     if parsed is None:
         return False
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+    parsed = ensure_utc(parsed)
     return datetime.now(timezone.utc) - parsed > timedelta(minutes=minutes)

@@ -177,6 +177,53 @@ def pay_invoice_api(
     return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}
 
 
+@api_router.post("/invoices/{invoice_id}/email")
+def send_invoice_email_api(
+    invoice_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Send the invoice to the guest by email."""
+    from bson import ObjectId
+    from src.app.modules.reservations.notifications.guest import notify_guest_invoice
+
+    db = get_database()
+    try:
+        inv = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+
+    booking_id = inv.get("booking_id", "")
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1,
+         "check_in_date": 1, "check_out_date": 1, "total_nights": 1},
+    )
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+
+    guest_email = booking.get("guest_email", "")
+    if not guest_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El huésped no tiene correo electrónico registrado")
+
+    notify_guest_invoice(
+        booking_id=booking_id,
+        guest_name=booking.get("guest_name", ""),
+        guest_email=guest_email,
+        prop_id=int(inv.get("prop_id", 0)),
+        check_in_date=booking.get("check_in_date", ""),
+        check_out_date=booking.get("check_out_date", ""),
+        total_nights=int(booking.get("total_nights", 0)),
+        invoice_id=str(inv["_id"]),
+        invoice_number=inv.get("invoice_number", ""),
+        invoice_total=float(inv.get("total", 0)),
+        currency=inv.get("currency", "USD"),
+    )
+    return {"ok": True, "message": f"Factura enviada a {guest_email}"}
+
+
 # --- Payments (admin/staff) ---
 
 @api_router.post("/payments", status_code=201)

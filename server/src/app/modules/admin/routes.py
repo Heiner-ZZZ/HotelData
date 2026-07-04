@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
+
+from src.app.security.session import ensure_utc
 
 from src.app.modules.admin.service import (
     build_security_section_pdf,
@@ -245,13 +247,13 @@ def notifications_list_api(
     date_filter: dict[str, datetime] = {}
     if start_date:
         try:
-            date_filter["$gte"] = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+            date_filter["$gte"] = ensure_utc(datetime.fromisoformat(start_date))
         except ValueError:
             pass
     if end_date:
         try:
             # Include the full end_date day: set to 23:59:59 UTC
-            dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+            dt = ensure_utc(datetime.fromisoformat(end_date))
             date_filter["$lte"] = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
         except ValueError:
             pass

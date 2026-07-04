@@ -6,7 +6,7 @@ import hashlib
 import random
 import re as _re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -18,14 +18,16 @@ from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
     create_user_session,
+    ensure_utc,
     find_user_by_identifier,
     get_current_user,
     get_session,
     invalidate_session,
     invalidate_user_sessions,
     log_user_activity,
-    verify_password,
     password_context,
+    utc_now,
+    verify_password,
 )
 from src.database.connection import get_database
 
@@ -36,9 +38,8 @@ REFRESH_TOKEN_TTL_DAYS = 30
 PENDING_TTL_MINUTES = 15
 RECOVERY_TOKEN_TTL_MINUTES = 60
 
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
+# Backward-compatible alias — prefer utc_now() directly
+_now = utc_now
 
 
 def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:
@@ -67,10 +68,9 @@ def _check_account_locked(db: Any, user: dict) -> None:
     if locked_until:
         if isinstance(locked_until, str):
             locked_until = datetime.fromisoformat(locked_until.replace("Z", "+00:00"))
-        if locked_until.tzinfo is None:
-            locked_until = locked_until.replace(tzinfo=timezone.utc)
-        if locked_until > _now():
-            remaining = int((locked_until - _now()).total_seconds() // 60)
+        locked_until = ensure_utc(locked_until)
+        if locked_until > utc_now():
+            remaining = int((locked_until - utc_now()).total_seconds() // 60)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
                 detail=f"Cuenta bloqueada por múltiples intentos fallidos. Intenta de nuevo en {remaining} minuto(s).",
@@ -84,7 +84,7 @@ def _record_failed_attempt(db: Any, identifier: str) -> None:
     attempts = (user.get("failed_login_attempts") or 0) + 1
     update: dict[str, Any] = {"failed_login_attempts": attempts}
     if attempts >= LOCK_ATTEMPTS:
-        update["locked_until"] = _now() + timedelta(minutes=LOCK_MINUTES)
+        update["locked_until"] = utc_now() + timedelta(minutes=LOCK_MINUTES)
     db.users.update_one({"_id": user["_id"]}, {"$set": update})
 
 
@@ -119,8 +119,8 @@ def _create_refresh_token(db: Any, user: dict) -> str:
     db.refresh_tokens.insert_one({
         "token_hash": token_hash,
         "user_id": user["_id"],
-        "created_at": _now(),
-        "expires_at": _now() + timedelta(days=REFRESH_TOKEN_TTL_DAYS),
+        "created_at": utc_now(),
+        "expires_at": utc_now() + timedelta(days=REFRESH_TOKEN_TTL_DAYS),
         "used": False,
     })
     return token

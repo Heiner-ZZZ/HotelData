@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException, Request
 from pymongo.errors import DuplicateKeyError
 
-from src.app.security.session import password_context, log_user_activity
+from src.app.security.session import ensure_utc, password_context, log_user_activity
 from src.database.connection import get_database
 
 from ._helpers import (
@@ -156,7 +156,8 @@ def confirm_code(
     if not pending:
         raise HTTPException(status_code=404, detail="No hay registro pendiente para este correo. Solicita un nuevo código.")
 
-    if pending["expires_at"] < _now():
+    expires_at = ensure_utc(pending.get("expires_at"))
+    if expires_at and expires_at < _now():
         db.pending_registrations.delete_one({"email": email})
         raise HTTPException(status_code=400, detail="El código expiró. Solicita un nuevo registro.")
 
