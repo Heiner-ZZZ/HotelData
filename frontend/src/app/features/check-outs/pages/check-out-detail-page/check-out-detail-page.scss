@@ -684,6 +684,117 @@
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
+// ─── Quick Editor (Step 2, inline below quick buttons) ───
+.co-quick-editor {
+  margin-top: 12px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  animation: qe-slide-in 0.18s ease;
+}
+.co-qe-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 12px;
+}
+.co-qe-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.co-qe-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text, #6b7280);
+}
+.co-qe-input {
+  width: 80px;
+  padding: 8px 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary, #111827);
+  text-align: center;
+  transition: border-color 0.15s;
+  &:focus {
+    outline: none;
+    border-color: var(--primary, #107a95);
+    box-shadow: 0 0 0 2px rgba(16, 122, 149, 0.15);
+  }
+  /* Keep native spinner, it's useful for quantity selection */
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    opacity: 1;
+  }
+}
+.co-qe-total {
+  font-size: 13px;
+  color: var(--text-secondary, #374151);
+  padding-bottom: 8px;
+  strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--primary, #107a95);
+  }
+}
+.co-qe-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.co-qe-cancel {
+  padding: 8px 20px;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: var(--hover, #f3f4f6);
+    border-color: var(--muted-text, #9ca3af);
+  }
+  &:active { transform: scale(0.98); }
+}
+.co-qe-confirm {
+  padding: 8px 24px;
+  background: var(--primary, #107a95);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  &:hover { opacity: 0.9; }
+  &:active { transform: scale(0.98); }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes qe-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 // ─── Custom Charge Form (Step 2) ───
 .co-custom-charge {
   margin-bottom: 16px;

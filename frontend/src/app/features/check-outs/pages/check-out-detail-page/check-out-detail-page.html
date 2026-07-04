@@ -1,9 +1,5 @@
 <div class="co-page">
 
-  @if (successMessage()) {
-    <div class="toast toast-success">{{ successMessage() }}</div>
-  }
-
   @switch (viewState()) {
     @case ('loading') { <app-loading-state label="Cargando..." /> }
     @case ('error')   { <app-error-state title="Error" description="No se pudo cargar la liquidación." /> }
@@ -68,6 +64,7 @@
             (chargeNoteChange)="chargeNote.set($event)"
             (addCharge)="addCharge()"
             (quickCharge)="quickCharge($event.cat, $event.concept, $event.amount)"
+            (deleteCharge)="removeCharge($event)"
             (prev)="prevStep()"
             (next)="nextStep()"
           />
@@ -100,9 +97,14 @@
           <app-co-step-invoice
             [guestEmail]="vm.guest_email"
             [splitInvoice]="splitInvoice()"
+            [bookingId]="vm.booking_id"
+            [propId]="vm.prop_id"
+            [subtotal]="subtotal()"
+            [taxes]="taxes()"
             (prev)="prevStep()"
             (next)="nextStep()"
             (splitInvoiceChange)="splitInvoice.set($event)"
+            (invoiceEmitted)="onInvoiceEmitted()"
           />
         }
 
@@ -153,6 +155,8 @@
             [paymentMethod]="vm.check_out_payment_method"
             [paymentRef]="vm.check_out_payment_ref"
             [paymentMethodLabel]="paymentMethodLabel()"
+            [propId]="vm.prop_id"
+            [backDate]="vm.check_out_date"
           />
         }
 

@@ -11,6 +11,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { CheckOutsApiService, type CheckOutDetailDto } from '../../services/check-outs-api.service';
+import { STAY_CHECKED_OUT } from '../../../reservations/utils/reservation-status.util';
 import { CoHeaderComponent } from './partials/co-header';
 import { CoStepBreadcrumbComponent } from './partials/co-step-breadcrumb';
 import { CoStepSummaryComponent } from './partials/co-step-summary';
@@ -46,7 +47,6 @@ export class CheckOutDetailPageComponent {
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<CheckOutDetailDto | null>(null);
-  readonly successMessage = signal('');
   readonly errorMessage = signal('');
 
   // ── Step wizard ──
@@ -89,7 +89,7 @@ export class CheckOutDetailPageComponent {
   readonly Math = Math;
   protected readonly Number = Number;
   readonly canComplete = signal(false);
-  readonly checkoutDone = computed(() => this.data()?.stay_status === 'checked_out');
+  readonly checkoutDone = computed(() => this.data()?.stay_status === STAY_CHECKED_OUT);
 
   // ── Computed financials ──
   readonly roomTotal = computed(() => this.data()?.total_price ?? 0);
@@ -205,8 +205,8 @@ export class CheckOutDetailPageComponent {
           this.paymentMethod.set(detail.check_out_payment_method || 'credit_card');
           this.paymentRef.set(detail.check_out_payment_ref || '');
           this.observations.set(detail.check_out_observations || '');
-          this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== 'checked_out');
-          if (detail.stay_status === 'checked_out') this.currentStep.set(5);
+          this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== STAY_CHECKED_OUT);
+          if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
           this.viewState.set('success');
         },
         error: (err: ApiError) => {
@@ -226,6 +226,33 @@ export class CheckOutDetailPageComponent {
 
   prevStep(): void {
     if (this.currentStep() > 1) this.goToStep(this.currentStep() - 1);
+  }
+
+  onInvoiceEmitted(): void {
+    const d = this.data();
+    if (!d) return;
+    this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (updated) => this.data.set(updated),
+    });
+  }
+
+  removeCharge(chargeId: string): void {
+    if (!chargeId) return;
+    this.chargeSaving.set(true);
+    this.api.deleteCharge(chargeId).subscribe({
+      next: () => {
+        const d = this.data();
+        if (d) {
+          this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (updated) => { this.data.set(updated); this.chargeSaving.set(false); },
+            error: () => this.chargeSaving.set(false),
+          });
+        } else {
+          this.chargeSaving.set(false);
+        }
+      },
+      error: () => this.chargeSaving.set(false),
+    });
   }
 
   setCorrect(val: boolean): void {
@@ -333,7 +360,6 @@ export class CheckOutDetailPageComponent {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => {
         this.completing.set(false);
-        this.successMessage.set(`✅ Check-out completado — Folio ${d.folio || ''}`);
         this.canComplete.set(false);
         this.goToStep(5);
         this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

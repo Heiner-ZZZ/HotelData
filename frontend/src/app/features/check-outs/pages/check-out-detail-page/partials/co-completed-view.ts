@@ -126,7 +126,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
           </div>
         }
 
-        <a routerLink="/management/check-outs" class="co-cta" style="text-decoration:none">
+        <a [routerLink]="['/management/check-outs']"
+           [queryParams]="{prop_id: propId(), date: backDate()}"
+           class="co-cta" style="text-decoration:none">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a check-outs
         </a>
@@ -162,4 +164,6 @@ export class CoCompletedViewComponent {
   readonly paymentMethod = input('');
   readonly paymentRef = input('');
   readonly paymentMethodLabel = input('');
+  readonly propId = input<number>(0);
+  readonly backDate = input('');
 }

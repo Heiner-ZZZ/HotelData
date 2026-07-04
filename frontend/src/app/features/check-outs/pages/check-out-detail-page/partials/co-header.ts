@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { STAY_CHECKED_OUT } from '../../../../reservations/utils/reservation-status.util';
 
 @Component({
   selector: 'app-co-header',
@@ -9,7 +10,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     <div class="co-header">
       <div>
         <div class="co-eyebrow">
-          @if (stayStatus() === 'checked_out') {
+          @if (stayStatus() === STAY_CHECKED_OUT) {
             <span class="co-badge completed">Check-Out Completado</span>
           } @else {
             <span class="co-badge in-house">In House</span>
@@ -34,4 +35,5 @@ export class CoHeaderComponent {
   readonly totalNights = input(0);
   readonly checkInDate = input<string>('');
   readonly checkOutDate = input<string>('');
+  protected readonly STAY_CHECKED_OUT = STAY_CHECKED_OUT;
 }
