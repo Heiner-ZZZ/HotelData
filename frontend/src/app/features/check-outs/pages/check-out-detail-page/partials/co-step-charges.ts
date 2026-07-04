@@ -1,11 +1,11 @@
-import { CurrencyPipe, KeyValuePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-co-step-charges',
   standalone: true,
-  imports: [CurrencyPipe, KeyValuePipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="co-card co-step-card">

@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 @Component({
   selector: 'app-co-step-settlement',
   standalone: true,
-  imports: [CurrencyPipe, KeyValuePipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="co-card co-step-card">

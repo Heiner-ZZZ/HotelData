@@ -23,7 +23,7 @@ import { CoCompletedViewComponent } from './partials/co-completed-view';
 @Component({
   selector: 'app-check-out-detail-page',
   imports: [
-    CurrencyPipe, DatePipe, KeyValuePipe, FormsModule, RouterLink,
+    FormsModule,
     LoadingStateComponent, ErrorStateComponent, EmptyStateComponent,
     CoHeaderComponent,
     CoStepBreadcrumbComponent,

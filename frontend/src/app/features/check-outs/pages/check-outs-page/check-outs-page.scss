@@ -2,15 +2,15 @@
 // Check-Outs Page — Split into partials
 // ═══════════════════════════════════════════════════════════
 
-@import 'partials/co-layout';
-@import 'partials/co-navbar';
-@import 'partials/co-property-filter';
-@import 'partials/co-summary';
-@import 'partials/co-data-table';
-@import 'partials/co-review-modal';
-@import 'partials/co-more-menu';
-@import 'partials/co-history';
-@import 'partials/co-consumption-modal';
-@import 'partials/co-modal-core';
-@import 'partials/co-utilities';
-@import 'partials/co-responsive';
+@use 'partials/co-layout';
+@use 'partials/co-navbar';
+@use 'partials/co-property-filter';
+@use 'partials/co-summary';
+@use 'partials/co-data-table';
+@use 'partials/co-review-modal';
+@use 'partials/co-more-menu';
+@use 'partials/co-history';
+@use 'partials/co-consumption-modal';
+@use 'partials/co-modal-core';
+@use 'partials/co-utilities';
+@use 'partials/co-responsive';
