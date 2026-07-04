@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { distinctUntilChanged, map, switchMap, tap } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -28,6 +29,7 @@ import { ReservationsApiService } from '../../services/reservations-api.service'
 import { ProductsApiService } from '../../../admin/services/products-api.service';
 import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
+import { canAssignRooms, canEditBooking } from '../../utils/reservation-status.util';
 
 interface EditForm {
   checkInDate: string;
@@ -53,6 +55,7 @@ export class ReservationDetailPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly productsApi = inject(ProductsApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly instayApi = inject(InStayApiService);
   private readonly router = inject(Router);
 
@@ -107,7 +110,7 @@ export class ReservationDetailPageComponent {
 
   readonly canAddProducts = computed(() => {
     const vm = this.data();
-    return vm && ['confirmed', 'checked_in'].includes(vm.status) && this.isStaff();
+    return vm && canAssignRooms(vm.status) && this.isStaff();
   });
 
   // Room assignment modal
@@ -143,9 +146,7 @@ export class ReservationDetailPageComponent {
   readonly canEdit = computed(() => {
     const vm = this.data();
     if (!vm) return false;
-    if (['cancelled', 'rejected', 'checked_in', 'checked_out'].includes(vm.status)) return false;
-    const today = this.todayStr();
-    return today < vm.checkOutDate;
+    return canEditBooking(vm.status, vm.stayStatus, this.todayStr(), vm.checkOutDate);
   });
 
   constructor() {
@@ -226,9 +227,16 @@ export class ReservationDetailPageComponent {
     });
   }
 
-  removeLineItem(itemId: string) {
+  async removeLineItem(itemId: string, itemName: string) {
     const vm = this.data();
     if (!vm) return;
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar producto',
+      message: `¿Eliminar "${itemName}" de la reserva?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.productError.set('');
     this.removeItemSaving.set(itemId);
     this.productsApi.removeLineItem(vm.bookingId, itemId).pipe(
@@ -308,9 +316,16 @@ export class ReservationDetailPageComponent {
       });
   }
 
-  cancelReservation() {
+  async cancelReservation() {
     const current = this.data();
     if (!current || !current.canCancel || this.cancelPending()) return;
+    const ok = await this.confirmDialog.open({
+      title: 'Cancelar reserva',
+      message: `¿Cancelar la reserva de ${current.guestName}?`,
+      confirmLabel: 'Cancelar reserva',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.cancelPending.set(true);
     this.reservationsApi
       .cancelReservation(current.bookingId)

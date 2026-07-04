@@ -48,7 +48,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
                   <div class="line-item-total-wrap">
                     <span class="line-item-total">{{ item.total | currency:'USD' }}</span>
                     <button type="button" class="btn-remove-li"
-                      (click)="removeLineItem.emit(item.itemId)"
+                      (click)="removeLineItem.emit({ itemId: item.itemId, itemName: item.name })"
                       [disabled]="removeItemSaving() === item.itemId"
                       aria-label="Eliminar servicio">
                       @if (removeItemSaving() === item.itemId) {
@@ -82,5 +82,5 @@ export class RdProductsSectionComponent {
   readonly removeItemSaving = input<string | null>(null);
 
   readonly openProductModal = output<void>();
-  readonly removeLineItem = output<string>();
+  readonly removeLineItem = output<{ itemId: string; itemName: string }>();
 }

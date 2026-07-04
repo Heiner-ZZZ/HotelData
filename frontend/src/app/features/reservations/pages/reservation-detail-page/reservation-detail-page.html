@@ -78,7 +78,7 @@
           [lineItemsTotal]="lineItemsTotal()"
           [removeItemSaving]="removeItemSaving()"
           (openProductModal)="openProductModal()"
-          (removeLineItem)="removeLineItem($event)"
+          (removeLineItem)="removeLineItem($event.itemId, $event.itemName)"
         />
 
         <app-rd-assigned-rooms [vm]="vm" />

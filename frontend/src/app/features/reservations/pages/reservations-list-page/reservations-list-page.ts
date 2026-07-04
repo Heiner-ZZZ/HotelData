@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -16,6 +17,10 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
 import { ReservationsApiService, type DateHistoryEntry } from '../../services/reservations-api.service';
 import { ReceptionCalendarComponent } from '../../components/reception-calendar/reception-calendar';
+import {
+  getBookingStatusLabel, getBookingStatusIcon, getListRowCss,
+  isPending, isConfirmed, isCheckedIn, isCheckedOut, isCancelled,
+} from '../../utils/reservation-status.util';
 
 function todayIso(): string {
   const d = new Date();
@@ -42,6 +47,7 @@ export class ReservationsListPageComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
@@ -99,6 +105,16 @@ export class ReservationsListPageComponent {
   onCalendarReservationClick(reservation: any) {
     // Could navigate to reservation detail or keep modal open
   }
+
+  /** Expose status helpers to template */
+  protected getStatusLabel = getBookingStatusLabel;
+  protected getStatusIcon = getBookingStatusIcon;
+  protected getListRowCss = getListRowCss;
+  protected isBookingPending = isPending;
+  protected isBookingConfirmed = isConfirmed;
+  protected isCheckedIn = isCheckedIn;
+  protected isCheckedOut = isCheckedOut;
+  protected isBookingCancelled = isCancelled;
 
   // Inline confirm/reject
   readonly confirmingId = signal<string | null>(null);
@@ -228,6 +244,26 @@ export class ReservationsListPageComponent {
       relativeTo: this.activatedRoute,
       queryParams: { status: status || null, date: createdDate || null, page: page > 1 ? page : null }
     });
+  }
+
+  async confirmWithDialog(bookingId: string, guestName: string): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Confirmar reserva',
+      message: `¿Confirmar la reserva de "${guestName}"?`,
+      confirmLabel: 'Confirmar',
+      variant: 'default',
+    });
+    if (ok) this.confirmReservation(bookingId);
+  }
+
+  async rejectWithDialog(bookingId: string, guestName: string): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Rechazar reserva',
+      message: `¿Rechazar la reserva de "${guestName}"?`,
+      confirmLabel: 'Rechazar',
+      variant: 'danger',
+    });
+    if (ok) this.rejectReservation(bookingId);
   }
 
   confirmReservation(bookingId: string): void {

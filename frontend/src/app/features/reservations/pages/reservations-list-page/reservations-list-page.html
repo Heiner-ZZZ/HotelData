@@ -242,7 +242,7 @@
 
           <div class="reservation-list">
             @for (item of vm.items; track item.bookingId) {
-              <a [routerLink]="[item.bookingId]" class="reservation-row" [class.is-pending]="item.status === 'pending'">
+              <a [routerLink]="[item.bookingId]" class="reservation-row" [class.is-pending]="getListRowCss(item.status)">
                 <div class="row-primary">
                   <div class="row-booking">
                     <code>{{ item.bookingId }}</code>
@@ -258,28 +258,20 @@
                     <span>{{ item.checkOutDate }}</span>
                   </div>
                   <div class="row-status">
-                    @if (item.status === 'pending') {
-                      <span class="status-badge status-pending">Pendiente</span>
-                    } @else if (item.status === 'confirmed') {
-                      <span class="status-badge status-confirmed">Confirmada</span>
-                    } @else if (item.status === 'checked_in') {
-                      <span class="status-badge status-checkedin">Check-in</span>
-                    } @else if (item.status === 'checked_out') {
-                      <span class="status-badge status-checkedout">Check-out</span>
-                    } @else {
-                      <span class="status-badge status-muted">{{ item.status }}</span>
-                    }
+                    <span class="status-badge" [class.status-pending]="isBookingPending(item.status)" [class.status-confirmed]="isBookingConfirmed(item.status)" [class.status-checkedin]="isCheckedIn(item.status)" [class.status-checkedout]="isCheckedOut(item.status)" [class.status-muted]="isBookingCancelled(item.status)">
+                      {{ getStatusLabel(item.status) }}
+                    </span>
                   </div>
                 </div>
                 <div class="row-actions">
-                  @if (item.status === 'pending' && isStaff()) {
+                  @if (isBookingPending(item.status) && isStaff()) {
                     <button type="button" class="row-action-btn confirm"
-                      (click)="$event.preventDefault(); confirmReservation(item.bookingId)"
+                      (click)="$event.preventDefault(); confirmWithDialog(item.bookingId, item.guestName)"
                       [disabled]="confirmingId() === item.bookingId" title="Confirmar">
                       <span class="material-symbols-outlined">check_circle</span>
                     </button>
                     <button type="button" class="row-action-btn reject"
-                      (click)="$event.preventDefault(); rejectReservation(item.bookingId)"
+                      (click)="$event.preventDefault(); rejectWithDialog(item.bookingId, item.guestName)"
                       [disabled]="rejectingId() === item.bookingId" title="Rechazar">
                       <span class="material-symbols-outlined">cancel</span>
                     </button>
