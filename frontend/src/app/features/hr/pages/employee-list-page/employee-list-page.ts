@@ -12,7 +12,7 @@ import { HrApiService } from '../../services/hr-api.service';
 @Component({
   selector: 'app-employee-list-page',
   standalone: true,
-  imports: [RouterLink, FormsModule, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent, StatusBadgeComponent],
+  imports: [RouterLink, FormsModule, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="employee-page" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
@@ -74,7 +74,7 @@ import { HrApiService } from '../../services/hr-api.service';
                   @for (emp of vm.items; track emp.id) {
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                       <td style="padding: 12px 16px; font-weight: 500;">
-                        <a [routerLink]="[emp.id]" style="color: #2563eb; text-decoration: none;">{{ emp.fullName }}</a>
+                        <a [routerLink]="['/management/hr', emp.id]" style="color: #2563eb; text-decoration: none;">{{ emp.fullName }}</a>
                       </td>
                       <td style="padding: 12px 16px; color: #475569;">{{ emp.department || '—' }}</td>
                       <td style="padding: 12px 16px; color: #475569;">{{ emp.position || '—' }}</td>
@@ -86,7 +86,7 @@ import { HrApiService } from '../../services/hr-api.service';
                         </span>
                       </td>
                       <td style="padding: 12px 16px;">
-                        <a [routerLink]="[emp.id]" style="display: flex; align-items: center; gap: 4px; color: #2563eb; text-decoration: none; font-size: 12px;">
+                        <a [routerLink]="['/management/hr', emp.id]" style="display: flex; align-items: center; gap: 4px; color: #2563eb; text-decoration: none; font-size: 12px;">
                           <span class="material-symbols-outlined" style="font-size: 14px;">visibility</span> Ver
                         </a>
                       </td>

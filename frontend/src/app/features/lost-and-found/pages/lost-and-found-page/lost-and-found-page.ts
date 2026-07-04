@@ -17,8 +17,8 @@ import { LostAndFoundApiService } from '../../services/lost-and-found-api.servic
 
 @Component({
   selector: 'app-lost-and-found-page',
-  imports: [CurrencyPipe, DatePipe, SlicePipe, FormsModule, EmptyStateComponent, ErrorStateComponent,
-    LoadingStateComponent, PageHeaderComponent, RouterLink, StatusBadgeComponent],
+  imports: [DatePipe, SlicePipe, FormsModule, EmptyStateComponent, ErrorStateComponent,
+    LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
   templateUrl: './lost-and-found-page.html',
   styleUrl: './lost-and-found-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

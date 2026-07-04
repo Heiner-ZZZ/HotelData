@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { switchMap } from 'rxjs';
-import { DatePipe } from '@angular/common';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -11,7 +10,7 @@ import { HrApiService } from '../../services/hr-api.service';
 @Component({
   selector: 'app-employee-detail-page',
   standalone: true,
-  imports: [RouterLink, DatePipe, PageHeaderComponent, LoadingStateComponent],
+  imports: [PageHeaderComponent, LoadingStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div style="max-width: 800px; margin: 0 auto; padding: 24px;">

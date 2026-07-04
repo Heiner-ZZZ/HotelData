@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ClientNotificationsService } from '../../services/notifications.service';
@@ -8,7 +7,7 @@ import type { ClientNotification } from '../../models/notifications.model';
 
 @Component({
   selector: 'app-notification-bell',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink],
   templateUrl: './notification-bell.html',
   styleUrl: './notification-bell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

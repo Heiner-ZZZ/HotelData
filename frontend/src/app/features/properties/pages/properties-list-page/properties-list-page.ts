@@ -17,7 +17,6 @@ import { PropertiesApiService } from '../../services/properties-api.service';
   selector: 'app-properties-list-page',
   imports: [
     DecimalPipe,
-    EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
