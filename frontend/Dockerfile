@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
+# Regenerate version.json with build timestamp for update detection
+RUN echo "{\"build\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}" > src/assets/version.json
 RUN npm run build
 
 FROM nginx:alpine

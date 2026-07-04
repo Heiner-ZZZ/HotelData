@@ -1,12 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, inject, DestroyRef } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { ToastContainerComponent } from './shared/ui/toast/toast';
+import { VersionBannerComponent } from './shared/ui/version-banner/version-banner';
+import { VersionCheckService } from './core/services/version-check.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ToastContainerComponent],
+  imports: [RouterOutlet, ToastContainerComponent, VersionBannerComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {}
+export class App {
+  constructor() {
+    inject(VersionCheckService).startPolling(inject(DestroyRef));
+  }
+}
