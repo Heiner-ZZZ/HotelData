@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LoadingStateComponent } from '../../../../../shared/ui/loading-state/loading-state';
 import type { ReservationDetailViewModel } from '../../../models/reservations.model';
 import { ReservationsApiService } from '../../../services/reservations-api.service';
+import { effectiveStayStatus } from '../../../utils/reservation-status.util';
 
 interface RoomGuestEntry {
   roomIndex: number;
@@ -36,9 +37,8 @@ export class ReservationTimelineComponent {
 
   readonly showReviewForm = computed(() => {
     const vm = this.reservation();
-    const isCompleted =
-      vm.status === 'checked_out' || vm.stayStatus === 'checked_out' ||
-      vm.status === 'completed' || vm.stayStatus === 'completed';
+    const effective = effectiveStayStatus(vm.stayStatus, vm.status);
+    const isCompleted = effective === 'checked_out' || vm.status === 'completed';
     return isCompleted && !this.reviewSuccess() && !this.isStaff();
   });
 

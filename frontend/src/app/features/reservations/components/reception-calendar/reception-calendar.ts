@@ -28,7 +28,7 @@ export class ReceptionCalendarComponent {
   readonly error = signal(false);
   readonly calendarData = signal<ReceptionCalendarData | null>(null);
 
-  /** Currently visible date range for navigation (7-day view). */
+  /** Currently visible date range for navigation (14-day view). */
   readonly viewStartDate = signal('');
   readonly viewEndDate = signal('');
 
@@ -119,11 +119,11 @@ export class ReceptionCalendarComponent {
     this.loading.set(true);
     this.error.set(false);
 
-    // 7-day view: current week (Monday to Sunday)
+    // 14-day view: current week + next week (Monday to Sunday)
     const today = new Date();
     const start = this._weekStart(today);
     const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + 13);
 
     this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
       next: (data) => {
@@ -146,9 +146,10 @@ export class ReceptionCalendarComponent {
     if (!propId) return;
 
     const start = new Date(this.viewStartDate() + 'T12:00:00');
+    // Navigate in 7-day steps but always show a 14-day window
     start.setDate(start.getDate() + direction * 7);
     const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + 13);
 
     this.loading.set(true);
     this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
@@ -169,7 +170,7 @@ export class ReceptionCalendarComponent {
     const today = new Date();
     const start = this._weekStart(today);
     const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + 13);
 
     this.loading.set(true);
     this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({

@@ -2,6 +2,11 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import {
+  canAssignRooms as _canAssignRooms, canShowMiEstancia, effectiveStayStatus,
+  getBookingStatusIcon, getBookingStatusLabel, getBookingStatusCss,
+} from '../../../utils/reservation-status.util';
+
 @Component({
   selector: 'app-rd-hero',
   standalone: true,
@@ -32,13 +37,13 @@ import { RouterLink } from '@angular/router';
           Modificar
         </button>
       }
-      @if (isStaff() && vm() && ['confirmed', 'checked_in'].includes(vm()!.status)) {
+      @if (isStaff() && vm() && canAssignRooms(vm()!.status)) {
         <button type="button" class="btn-action btn-rooms" (click)="openRoomModal.emit()">
           <span class="material-symbols-outlined btn-icon">meeting_room</span>
           Asignar habitaciones
         </button>
       }
-      @if (vm()?.status === 'checked_in') {
+      @if (showMiEstancia()) {
         <a [routerLink]="['/account/bookings', vm()!.bookingId, 'amenities']" class="btn-action btn-amenities">
           <span class="material-symbols-outlined btn-icon">spa</span>
           Solicitar amenities
@@ -64,34 +69,16 @@ import { RouterLink } from '@angular/router';
       <article class="surface-card hero-card"
         [class.hero-status-pending]="vm()?.status === 'pending'"
         [class.hero-status-confirmed]="vm()?.status === 'confirmed'"
-        [class.hero-status-checked-in]="vm()?.status === 'checked_in'"
+        [class.hero-status-checked-in]="effectiveStatus() === 'checked_in'"
         [class.hero-status-checked-out]="vm()?.status === 'checked_out'"
         [class.hero-status-cancelled]="vm()?.status === 'cancelled'"
         [class.hero-status-rejected]="vm()?.status === 'rejected'">
         <div class="hero-card-icon-wrap">
-          @switch (vm()?.status) {
-            @case ('pending') { <span class="material-symbols-outlined">pending</span> }
-            @case ('confirmed') { <span class="material-symbols-outlined">check_circle</span> }
-            @case ('checked_in') { <span class="material-symbols-outlined">vpn_key</span> }
-            @case ('checked_out') { <span class="material-symbols-outlined">logout</span> }
-            @case ('cancelled') { <span class="material-symbols-outlined">cancel</span> }
-            @case ('rejected') { <span class="material-symbols-outlined">block</span> }
-            @default { <span class="material-symbols-outlined">info</span> }
-          }
+          <span class="material-symbols-outlined">{{ statusIcon() }}</span>
         </div>
         <div class="hero-card-content">
           <span class="stat-label">Estado</span>
-          <strong>
-            @switch (vm()?.status) {
-              @case ('pending') { Pendiente }
-              @case ('confirmed') { Confirmada }
-              @case ('checked_in') { Checked-In }
-              @case ('checked_out') { Checked-Out }
-              @case ('cancelled') { Cancelada }
-              @case ('rejected') { Rechazada }
-              @default { {{ vm()?.status }} }
-            }
-          </strong>
+          <strong>{{ statusLabel() }}</strong>
         </div>
       </article>
 
@@ -166,4 +153,29 @@ export class RdHeroComponent {
   readonly toggleEdit = output<void>();
   readonly openRoomModal = output<void>();
   readonly goToInStay = output<string>();
+
+  /** Effective stay status combining stay_status fallback to status */
+  protected readonly effectiveStatus = computed(() =>
+    effectiveStayStatus(this.vm()?.stayStatus, this.vm()?.status),
+  );
+
+  /** Whether to show the "Mi Estancia" button */
+  protected readonly showMiEstancia = computed(() =>
+    canShowMiEstancia(this.vm()?.stayStatus, this.vm()?.status),
+  );
+
+  /** Material icon for the current status */
+  protected readonly statusIcon = computed(() =>
+    getBookingStatusIcon(this.effectiveStatus()),
+  );
+
+  /** Human-readable label for the current status */
+  protected readonly statusLabel = computed(() =>
+    getBookingStatusLabel(this.effectiveStatus()),
+  );
+
+  /** Expose utility function as a method so the template can call it */
+  protected canAssignRooms(status: string | undefined | null): boolean {
+    return _canAssignRooms(status);
+  }
 }

@@ -205,6 +205,10 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       reason: item.reason,
       changedBy: item.changed_by
     })),
-    stayStatus: dto.booking.stay_status || dto.booking.status,
+    // stay_status is the operational stay phase (checked_in, checked_out, etc.)
+    // It is NOT a fallback for booking.status. If undefined, leave undefined.
+    // The frontend should use `effectiveStayStatus()` from reservation-status.util
+    // when it needs a combined fallback value.
+    stayStatus: dto.booking.stay_status ?? undefined,
   };
 }
