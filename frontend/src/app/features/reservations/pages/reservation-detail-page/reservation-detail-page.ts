@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -44,7 +44,8 @@ interface EditForm {
     RdHistoryPanelComponent, RdProductModalComponent, RdRoomModalComponent],
   templateUrl: './reservation-detail-page.html',
   styleUrl: './reservation-detail-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
 })
 export class ReservationDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);

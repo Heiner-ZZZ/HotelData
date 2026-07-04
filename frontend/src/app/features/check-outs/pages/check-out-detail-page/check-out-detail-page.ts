@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, KeyValuePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +36,8 @@ import { CoCompletedViewComponent } from './partials/co-completed-view';
   ],
   templateUrl: './check-out-detail-page.html',
   styleUrl: './check-out-detail-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
 })
 export class CheckOutDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);

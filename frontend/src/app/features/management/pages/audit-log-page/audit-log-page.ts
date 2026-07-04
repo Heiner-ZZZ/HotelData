@@ -11,8 +11,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { API_CONFIG } from '../../../../core/api/api.config';
@@ -20,6 +18,13 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import {
+  buildReportShell,
+  buildSummaryGrid,
+  buildTable,
+  esc,
+} from '../../../../shared/utils/report-html-templates';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 
 interface AuditEntry {
@@ -71,6 +76,7 @@ export class AuditLogPageComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly reports = inject(ReportsExportService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<AuditResponse | null>(null);
@@ -278,185 +284,142 @@ export class AuditLogPageComponent {
   });
 
   readonly exportingPdf = signal(false);
+  readonly exportingXlsx = signal(false);
 
   async exportPdf(): Promise<void> {
     this.exportingPdf.set(true);
     try {
       const d = this.data();
       if (!d || !d.items.length) return;
-
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
-      const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageW = doc.internal.pageSize.getWidth();
-      const margin = 18;
-      const contentW = pageW - margin * 2;
-
-      const addFooter = (pdf: jsPDF, pageNum: number, totalPages: number) => {
-        const h = pdf.internal.pageSize.getHeight();
-        pdf.setDrawColor(200, 200, 200);
-        pdf.line(margin, h - 22, pageW - margin, h - 22);
-        pdf.setFontSize(7);
-        pdf.setTextColor(140, 140, 140);
-        pdf.text('CONFIDENCIAL — Este documento contiene información sensible del sistema HotelData.', margin, h - 16);
-        pdf.text(`Generado: ${dateStr} ${timeStr}`, margin, h - 12);
-        pdf.text(`Página ${pageNum} de ${totalPages}`, pageW - margin, h - 12, { align: 'right' });
-        pdf.text('HotelData — Sistema de Gestión Hotelera', margin, h - 8);
-      };
-
-      // ─── HEADER ───
-      doc.setFillColor(25, 60, 120);
-      doc.rect(0, 0, pageW, 38, 'F');
-      doc.setFontSize(18);
-      doc.setTextColor(255, 255, 255);
-      doc.text('HotelData', margin, 16);
-      doc.setFontSize(9);
-      doc.setTextColor(200, 215, 240);
-      doc.text('Sistema de Gestión Hotelera', margin, 22);
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text('REPORTE DE AUDITORÍA', pageW - margin, 16, { align: 'right' });
-      doc.setFontSize(8);
-      doc.setTextColor(200, 215, 240);
-      doc.text('Registro Centralizado de Acciones', pageW - margin, 22, { align: 'right' });
-
-      doc.setFillColor(45, 120, 220);
-      doc.rect(0, 38, pageW, 2, 'F');
-
-      let y = 50;
-
-      // ─── FILTERS INFO ───
       const fv = this.filterForm.getRawValue();
-      const hasFilters = fv.entityType || fv.action || fv.propId || fv.fromDate || fv.toDate;
-      if (hasFilters) {
-        doc.setFillColor(245, 247, 250);
-        doc.roundedRect(margin, y, contentW, hasFilters ? 16 : 14, 3, 3, 'F');
-        doc.setFontSize(7);
-        doc.setTextColor(100, 110, 130);
-        doc.text('FILTROS APLICADOS', margin + 6, y + 5);
-        y += 9;
-        doc.setFontSize(8);
-        doc.setTextColor(60, 60, 60);
-        const filters: string[] = [];
-        if (fv.entityType) filters.push(`Entidad: ${this.getEntityLabel(fv.entityType)}`);
-        if (fv.action) filters.push(`Acción: ${this.getActionLabel(fv.action)}`);
-        if (fv.propId) filters.push(`Propiedad: #${fv.propId}`);
-        if (fv.fromDate) filters.push(`Desde: ${fv.fromDate}`);
-        if (fv.toDate) filters.push(`Hasta: ${fv.toDate}`);
-        doc.text(filters.join('  |  '), margin + 6, y);
-        y += 10;
-      }
+      const entityTypes = [...new Set(d.items.map((i) => i.entity_type))];
+      const actions = [...new Set(d.items.map((i) => i.action))];
+      const users = [...new Set(d.items.map((i) => i.changed_by))];
 
-      // ─── SUMMARY ───
-      doc.setFontSize(7);
-      doc.setTextColor(100, 110, 130);
-      doc.text('RESUMEN', margin, y);
-      y += 5;
-
-      const entityTypes = [...new Set(d.items.map(i => i.entity_type))];
-      const actions = [...new Set(d.items.map(i => i.action))];
-      const users = [...new Set(d.items.map(i => i.changed_by))];
-      const summaryItems: [string, string][] = [
-        ['Total de registros', String(d.total)],
-        ['Registros en página', String(d.items.length)],
-        ['Página', `${d.page} de ${d.pages || 1}`],
-        ['Entidades', entityTypes.map(t => this.getEntityLabel(t)).join(', ')],
-        ['Acciones', actions.map(a => this.getActionLabel(a)).join(', ')],
-        ['Usuarios', users.join(', ')],
-      ];
-
-      let sx = margin;
-      let sy = y;
-      const colW = contentW / 2;
-      summaryItems.forEach((item, idx) => {
-        if (idx > 0 && idx % 2 === 0) { sx = margin; sy += 10; }
-        doc.setFontSize(7);
-        doc.setTextColor(100, 110, 130);
-        doc.text(item[0], sx, sy);
-        doc.setFontSize(9);
-        doc.setTextColor(30, 30, 30);
-        doc.text(item[1], sx, sy + 4);
-        sx += colW;
-      });
-
-      y = sy + 14;
-
-      // ─── TABLE ───
-      doc.setFontSize(7);
-      doc.setTextColor(100, 110, 130);
-      doc.text('DETALLE DE REGISTROS', margin, y);
-      y += 3;
-
-      const tableData = d.items.map(entry => [
-        this.getEntityLabel(entry.entity_type),
-        this.getActionLabel(entry.action),
-        (entry.summary || '').substring(0, 80),
-        entry.changed_by,
-        new Date(entry.timestamp).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      const grid = buildSummaryGrid([
+        { label: 'Total de registros', value: String(d.total), tone: 'neutral' },
+        { label: 'En esta página', value: String(d.items.length), tone: 'neutral' },
+        { label: 'Página', value: `${d.page} de ${d.pages || 1}`, tone: 'neutral' },
+        { label: 'Entidades únicas', value: String(entityTypes.length), tone: 'neutral' },
+        { label: 'Acciones únicas', value: String(actions.length), tone: 'neutral' },
+        { label: 'Usuarios', value: String(users.length), tone: 'neutral' },
       ]);
 
-      autoTable(doc, {
-        startY: y,
-        margin: { left: margin, right: margin },
-        head: [['Entidad', 'Acción', 'Resumen', 'Usuario', 'Fecha']],
-        body: tableData,
-        styles: {
-          fontSize: 7.5,
-          cellPadding: 3,
-          textColor: [40, 40, 40],
-          lineColor: [220, 225, 235],
-          lineWidth: 0.3,
-        },
-        headStyles: {
-          fillColor: [25, 60, 120],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 7.5,
-        },
-        alternateRowStyles: {
-          fillColor: [248, 249, 252],
-        },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 28 },
-          2: { cellWidth: 'auto' },
-          3: { cellWidth: 28 },
-          4: { cellWidth: 38, halign: 'right' },
-        },
-        didDrawPage: (data) => {
-          addFooter(doc, data.pageNumber, doc.getNumberOfPages());
-        },
+      const metaRows = [
+        { label: 'Total', value: String(d.total) },
+        { label: 'Página', value: `${d.page} de ${d.pages || 1}` },
+      ];
+      if (fv.entityType) metaRows.push({ label: 'Entidad', value: this.getEntityLabel(fv.entityType) });
+      if (fv.action) metaRows.push({ label: 'Acción', value: this.getActionLabel(fv.action) });
+      if (fv.propId) metaRows.push({ label: 'Propiedad', value: `#${fv.propId}` });
+      if (fv.fromDate) metaRows.push({ label: 'Desde', value: fv.fromDate });
+      if (fv.toDate) metaRows.push({ label: 'Hasta', value: fv.toDate });
+
+      const table = buildTable(
+        [
+          { label: 'Entidad', align: 'left' },
+          { label: 'Acción', align: 'left' },
+          { label: 'Resumen', align: 'left' },
+          { label: 'Usuario', align: 'left' },
+          { label: 'Fecha', align: 'right' },
+        ],
+        d.items.map((entry) => [
+          this.getEntityLabel(entry.entity_type),
+          this.getActionLabel(entry.action),
+          (entry.summary || '').substring(0, 100),
+          entry.changed_by,
+          new Date(entry.timestamp).toLocaleString('es-MX', {
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+          }),
+        ])
+      );
+
+      const signatureHtml = `
+        <div style="display:flex; justify-content:space-between; margin-top: 16mm; padding-top: 10mm;">
+          <div style="text-align:center; width: 45%;">
+            <div style="border-top: 0.6pt solid #888; padding-top: 2mm;">Responsable de Auditoría</div>
+          </div>
+          <div style="text-align:center; width: 45%;">
+            <div style="border-top: 0.6pt solid #888; padding-top: 2mm;">Director de Operaciones</div>
+          </div>
+        </div>`;
+
+      const bodyHtml = grid + `<h2>Detalle de registros</h2>` + table + signatureHtml;
+      const html = buildReportShell({
+        title: 'Reporte de Auditoría',
+        subtitle: 'Registro Centralizado de Acciones',
+        metaRows,
+        bodyHtml,
       });
 
-      // Signature section
-      const afterTable = (doc as any).lastAutoTable?.finalY ?? y + 20;
-      if (afterTable < 240) {
-        let sigY = afterTable + 15;
-        doc.setDrawColor(180, 180, 180);
-        doc.setLineWidth(0.3);
-        doc.line(margin, sigY, margin + 60, sigY);
-        doc.line(pageW / 2 + 10, sigY, pageW / 2 + 70, sigY);
-        sigY += 5;
-        doc.setFontSize(7);
-        doc.setTextColor(100, 110, 130);
-        doc.text('Responsable de Auditoría', margin + 30, sigY, { align: 'center' });
-        doc.text('Director de Operaciones', pageW / 2 + 40, sigY, { align: 'center' });
-      }
-
-      // Final footer on all pages
-      const totalPages = doc.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        addFooter(doc, i, totalPages);
-      }
-
-      doc.save(`auditoria-sistema-${now.toISOString().slice(0, 10)}.pdf`);
-    } catch {
-      // Silently fail
+      await this.reports.exportPdf(html, `auditoria-sistema-${new Date().toISOString().slice(0, 10)}`);
+    } catch (err) {
+      console.error('[Audit] PDF export failed', err);
     } finally {
       this.exportingPdf.set(false);
+    }
+  }
+
+  async exportXlsx(): Promise<void> {
+    this.exportingXlsx.set(true);
+    try {
+      const d = this.data();
+      if (!d || !d.items.length) return;
+      const fv = this.filterForm.getRawValue();
+      const entityTypes = [...new Set(d.items.map((i) => i.entity_type))];
+      const actions = [...new Set(d.items.map((i) => i.action))];
+      const users = [...new Set(d.items.map((i) => i.changed_by))];
+
+      await this.reports.exportXlsx({
+        filename: `auditoria-sistema-${new Date().toISOString().slice(0, 10)}`,
+        sheet_title: 'Reporte de Auditoría — Sistema HotelData',
+        sheets: [
+          {
+            name: 'Resumen',
+            headers: [{ label: 'Métrica' }, { label: 'Valor' }],
+            rows: [
+              ['Total de registros', d.total] as any,
+              ['Registros en página', d.items.length] as any,
+              ['Página actual', `${d.page} de ${d.pages || 1}`] as any,
+              ['Entidades únicas', entityTypes.length] as any,
+              ['Acciones únicas', actions.length] as any,
+              ['Usuarios únicos', users.length] as any,
+              ['Filtro Entidad', fv.entityType ? this.getEntityLabel(fv.entityType) : '—'] as any,
+              ['Filtro Acción', fv.action ? this.getActionLabel(fv.action) : '—'] as any,
+              ['Filtro Propiedad', fv.propId ? `#${fv.propId}` : '—'] as any,
+              ['Desde', fv.fromDate || '—'] as any,
+              ['Hasta', fv.toDate || '—'] as any,
+            ],
+            column_widths: { A: 32, B: 36 },
+          },
+          {
+            name: 'Registros',
+            headers: [
+              { label: 'Fecha' },
+              { label: 'Entidad' },
+              { label: 'Acción' },
+              { label: 'Entidad ID' },
+              { label: 'Resumen' },
+              { label: 'Usuario' },
+              { label: 'Propiedad' },
+            ],
+            rows: d.items.map((entry) => [
+              new Date(entry.timestamp).toLocaleString('es-MX'),
+              this.getEntityLabel(entry.entity_type),
+              this.getActionLabel(entry.action),
+              entry.entity_id,
+              entry.summary || '',
+              entry.changed_by,
+              entry.prop_id,
+            ]) as any[],
+            column_widths: { A: 22, B: 24, C: 22, D: 22, E: 50, F: 22, G: 14 },
+          },
+        ],
+      });
+    } catch (err) {
+      console.error('[Audit] XLSX export failed', err);
+    } finally {
+      this.exportingXlsx.set(false);
     }
   }
 
