@@ -1,142 +1,177 @@
 """
-Seed ledger_transactions collection with realistic hotel PMS data.
+Generate real double-entry ledger transactions from guest_folios postings.
+Each folio posting produces 2 journal entries (debit + credit).
+
 Run: docker compose exec server python -m scripts.seed_ledger
 """
-import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from src.database.connection import get_database
+from src.app.modules.expenses.service.collections import LEDGER_COLLECTION
 
-LEDGER_COLLECTION = "ledger_transactions"
+# ═══ Posting type → (debit_account, credit_account, cost_center) ═══
+POSTING_ACCOUNT_MAP = {
+    "room": {
+        "Habitación": ("1030", "Cuentas por Cobrar Huéspedes", "4010", "Ingresos por Alojamiento", "Recepción"),
+    },
+    "charge": {
+        "Restaurante": ("1030", "Cuentas por Cobrar Huéspedes", "4020", "Ingresos por Alimentos y Bebidas", "Alimentos y Bebidas"),
+        "Bar": ("1030", "Cuentas por Cobrar Huéspedes", "4020", "Ingresos por Alimentos y Bebidas", "Alimentos y Bebidas"),
+        "Room Service": ("1030", "Cuentas por Cobrar Huéspedes", "4020", "Ingresos por Alimentos y Bebidas", "Alimentos y Bebidas"),
+        "Minibar": ("1030", "Cuentas por Cobrar Huéspedes", "4020", "Ingresos por Alimentos y Bebidas", "Alimentos y Bebidas"),
+        "Spa": ("1030", "Cuentas por Cobrar Huéspedes", "4030", "Ingresos por Servicios", "Spa"),
+        "Lavandería": ("1030", "Cuentas por Cobrar Huéspedes", "4030", "Ingresos por Servicios", "Lavandería"),
+        "Parking": ("1030", "Cuentas por Cobrar Huéspedes", "4030", "Ingresos por Servicios", "Estacionamiento"),
+        "Llamadas": ("1030", "Cuentas por Cobrar Huéspedes", "4030", "Ingresos por Servicios", "General"),
+        "Mascotas": ("1030", "Cuentas por Cobrar Huéspedes", "4030", "Ingresos por Servicios", "General"),
+        "Daños": ("1030", "Cuentas por Cobrar Huéspedes", "4040", "Otros Ingresos Operativos", "General"),
+        "Late Check-Out": ("1030", "Cuentas por Cobrar Huéspedes", "4040", "Otros Ingresos Operativos", "Recepción"),
+        "Otros": ("1030", "Cuentas por Cobrar Huéspedes", "4040", "Otros Ingresos Operativos", "General"),
+    },
+    "payment": {
+        "_default": ("1010", "Caja General", "1030", "Cuentas por Cobrar Huéspedes", "Recepción"),
+    },
+    "discount": {
+        "_default": ("6010", "Descuentos por Promoción", "1030", "Cuentas por Cobrar Huéspedes", "Recepción"),
+    },
+    "adjustment": {
+        "_default": ("6020", "Ajustes por Cortesía", "1030", "Cuentas por Cobrar Huéspedes", "Recepción"),
+    },
+}
 
-ACCOUNTS = [
-    ("4010.ROOM.REV", "Cargo Alojamiento"),
-    ("4020.FNB.REV", "Servicio Restaurante"),
-    ("4021.FNB.BAR", "Bar y Bebidas"),
-    ("4022.FNB.ROOM", "Room Service"),
-    ("4030.SPA.REV", "Spa y Bienestar"),
-    ("4040.PARK.REV", "Estacionamiento"),
-    ("4050.LNDRY.REV", "Lavandería"),
-    ("1010.CASH.CC", "Pago Tarjeta Crédito"),
-    ("1020.CASH.DB", "Pago Débito"),
-    ("1030.CASH.EF", "Pago Efectivo"),
-    ("1040.CASH.TR", "Transferencia Bancaria"),
-    ("5010.EXP.UTIL", "Servicios Públicos"),
-    ("5015.EXP.MNT", "Mantenimiento"),
-    ("5020.EXP.CLEAN", "Productos Limpieza"),
-    ("5030.EXP.LNDRY", "Lavandería Externa"),
-    ("5040.EXP.MKT", "Marketing"),
-    ("5050.EXP.ADMIN", "Gastos Administrativos"),
-]
 
-USERS = ["SYS_AUTO", "M.DOE", "J.SMITH", "A.LOPEZ", "R.GARCIA", "S.ADMIN"]
-STATUSES = ["audited", "audited", "audited", "audited", "pending", "pending", "discrepancy"]
+def _resolve_accounts(posting_type: str, category: str) -> tuple | None:
+    """Return (debit_code, debit_name, credit_code, credit_name, cost_center) or None."""
+    type_map = POSTING_ACCOUNT_MAP.get(posting_type)
+    if not type_map:
+        return None
 
-def seed_ledger(prop_id: int = 1, count: int = 80):
+    if posting_type in ("payment", "discount", "adjustment"):
+        return type_map["_default"]
+
+    # For 'room' and 'charge', look up by category
+    cat_map = type_map.get(category)
+    if cat_map:
+        return cat_map
+
+    # Fallback: treat unknown charge categories as "Otros"
+    fallback = type_map.get("Otros")
+    if fallback:
+        return fallback
+
+    return None
+
+
+def _generate_journal_id(seq: int) -> str:
+    return f"JE-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{seq:04d}"
+
+
+def seed():
     db = get_database()
-    existing = db[LEDGER_COLLECTION].count_documents({"prop_id": prop_id})
+    existing = db[LEDGER_COLLECTION].count_documents({})
     if existing > 0:
-        print(f"[SKIP] {existing} ledger transactions already exist for prop_id={prop_id}")
+        print(f"[CLEAR] Removing {existing} old hardcoded ledger entries...")
+        db[LEDGER_COLLECTION].delete_many({})
+
+    folios = list(db.guest_folios.find().sort("created_at", 1))
+    if not folios:
+        print("[SKIP] No guest_folios found — nothing to generate from")
         return
 
-    now = datetime.now(timezone.utc)
-    folio_counter = 1040
-    docs = []
-    balance_map: dict[str, float] = {}
+    journal_seq = 0
+    total_entries = 0
 
-    for i in range(count):
-        days_ago = count - i
-        tx_date = now - timedelta(days=days_ago, hours=random.randint(6, 22),
-                                   minutes=random.randint(0, 59))
-        is_payment = random.random() < 0.3
+    for folio in folios:
+        folio_number = folio.get("folio_number", "")
+        booking_id = folio.get("booking_id", "")
+        prop_id = folio.get("prop_id", 0)
+        guest_name = folio.get("guest_name", "")
+        postings = folio.get("postings", [])
 
-        account_code, account_name = random.choice(ACCOUNTS)
-        if is_payment:
-            account_code = random.choice(["1010.CASH.CC", "1020.CASH.DB", "1030.CASH.EF", "1040.CASH.TR"])
-            account_name = {
-                "1010.CASH.CC": "Pago Tarjeta Crédito",
-                "1020.CASH.DB": "Pago Débito",
-                "1030.CASH.EF": "Pago Efectivo",
-                "1040.CASH.TR": "Transferencia Bancaria",
-            }[account_code]
+        for posting in postings:
+            ptype = posting.get("type", "charge")
+            category = posting.get("category", "Otros")
+            concept = posting.get("concept", "")
+            amount = float(posting.get("amount", 0) or 0)
+            posted_at = posting.get("posted_at")
+            reference_id = posting.get("reference_id", "")
 
-        # Every ~5 transactions, start a new folio
-        if i % 5 == 0:
-            folio_counter += 1
-        folio_ref = f"F-{folio_counter}"
+            if amount <= 0 or not posted_at:
+                continue
 
-        description = account_name
-        if account_code.startswith("4010"):
-            description = f"Cargo Alojamiento Noche {random.randint(1, 5)}"
-        elif account_code.startswith("402"):
-            description = random.choice([
-                "Cena Restaurante", "Desayuno Buffet", "Room Service Cena",
-                "Bar Piscina", "Minibar Habitación",
-            ])
+            accounts = _resolve_accounts(ptype, category)
+            if not accounts:
+                continue
 
-        debit = 0.0
-        credit = 0.0
-        amount = round(random.uniform(15, 450), 2)
+            debit_code, debit_name, credit_code, credit_name, cost_center = accounts
+            journal_seq += 1
+            journal_id = _generate_journal_id(journal_seq)
 
-        if is_payment:
-            credit = amount
-        else:
-            debit = amount
+            tx_date = posted_at if isinstance(posted_at, datetime) else datetime.now(timezone.utc)
+            accounting_period = tx_date.strftime("%Y-%m")
 
-        balance_map[folio_ref] = balance_map.get(folio_ref, 0) + debit - credit
+            # Entry 1: DEBIT
+            db[LEDGER_COLLECTION].insert_one({
+                "journal_entry_id": journal_id,
+                "entry_type": "auto",
+                "tx_date": tx_date,
+                "account_code": debit_code,
+                "account_name": debit_name,
+                "description": f"{concept} [{guest_name}]",
+                "debit": round(amount, 2),
+                "credit": 0.0,
+                "cost_center": cost_center,
+                "folio_ref": folio_number,
+                "booking_id": booking_id,
+                "prop_id": int(prop_id) if prop_id else 1,
+                "guest_name": guest_name,
+                "accounting_period": accounting_period,
+                "source": "folio_posting",
+                "source_id": str(posting.get("posting_id", "")),
+                "status": "audited",
+                "notes": "",
+                "created_at": tx_date,
+            })
 
-        status = random.choice(STATUSES)
+            # Entry 2: CREDIT
+            db[LEDGER_COLLECTION].insert_one({
+                "journal_entry_id": journal_id,
+                "entry_type": "auto",
+                "tx_date": tx_date,
+                "account_code": credit_code,
+                "account_name": credit_name,
+                "description": f"{concept} [{guest_name}]",
+                "debit": 0.0,
+                "credit": round(amount, 2),
+                "cost_center": cost_center,
+                "folio_ref": folio_number,
+                "booking_id": booking_id,
+                "prop_id": int(prop_id) if prop_id else 1,
+                "guest_name": guest_name,
+                "accounting_period": accounting_period,
+                "source": "folio_posting",
+                "source_id": str(posting.get("posting_id", "")),
+                "status": "audited",
+                "notes": "",
+                "created_at": tx_date,
+            })
 
-        doc = {
-            "tx_date": tx_date,
-            "folio_ref": folio_ref,
-            "description": description,
-            "account_code": account_code,
-            "account_name": account_name,
-            "debit": debit,
-            "credit": credit,
-            "status": status,
-            "prop_id": prop_id,
-            "user": random.choice(USERS),
-            "notes": "" if status != "discrepancy" else "Posible duplicado — requiere revisión",
-            "created_at": tx_date,
-        }
-        docs.append(doc)
+            total_entries += 2
 
-    if docs:
-        db[LEDGER_COLLECTION].insert_many(docs)
-        print(f"[OK] Inserted {len(docs)} ledger transactions for prop_id={prop_id}")
+    print(f"[OK] Generated {total_entries} double-entry ledger transactions from {len(folios)} guest folios ({journal_seq} journal entries)")
 
-    # Also seed for prop_id=2 (multi-hotel testing)
-    docs2 = []
-    folio_counter2 = 2000
-    for i in range(40):
-        days_ago = 40 - i
-        tx_date = now - timedelta(days=days_ago, hours=random.randint(6, 22),
-                                   minutes=random.randint(0, 59))
-        if i % 4 == 0: folio_counter2 += 1
-        account_code, account_name = random.choice(ACCOUNTS)
-        debit = round(random.uniform(10, 300), 2) if not account_code.startswith("10") else 0
-        credit = round(random.uniform(10, 300), 2) if account_code.startswith("10") else 0
-        docs2.append({
-            "tx_date": tx_date,
-            "folio_ref": f"F-{folio_counter2}",
-            "description": account_name,
-            "account_code": account_code,
-            "account_name": account_name,
-            "debit": debit,
-            "credit": credit,
-            "status": random.choice(STATUSES),
-            "prop_id": 2,
-            "user": random.choice(USERS),
-            "notes": "",
-            "created_at": tx_date,
-        })
-    if docs2:
-        db[LEDGER_COLLECTION].insert_many(docs2)
-        print(f"[OK] Inserted {len(docs2)} ledger transactions for prop_id=2")
+    # Also generate from existing reservation_invoices
+    invoice_entries = 0
+    invoices = list(db.reservation_invoices.find())
+    if invoices:
+        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+        for inv in invoices:
+            n = generate_ledger_from_invoice(inv)
+            invoice_entries += n
+        print(f"[OK] Generated {invoice_entries} ledger entries from {len(invoices)} reservation invoices")
+
+    print(f"[DONE] Total ledger entries: {total_entries + invoice_entries}")
 
 
 if __name__ == "__main__":
-    seed_ledger(prop_id=1, count=80)
-    seed_ledger(prop_id=2, count=40)
+    seed()
