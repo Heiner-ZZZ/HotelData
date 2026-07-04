@@ -1,21 +1,29 @@
 export interface LedgerTransaction {
   id: string;
+  journalEntryId: string;
+  entryType: 'auto' | 'manual';
   txDate: string;
-  folioRef: string;
-  description: string;
   accountCode: string;
   accountName: string;
+  description: string;
   debit: number;
   credit: number;
   balance: number;
-  status: 'audited' | 'pending' | 'discrepancy';
+  costCenter: string;
+  folioRef: string;
+  bookingId: string;
   propId: number | null;
-  user: string;
+  guestName: string;
+  source: string;
+  sourceId: string;
+  accountingPeriod: string;
+  status: 'audited' | 'pending' | 'discrepancy';
   notes: string;
   createdAt: string;
 }
 
 export interface LedgerFolio {
+  folioId: string;
   folioRef: string;
   guestName: string;
   room: string;
@@ -23,16 +31,18 @@ export interface LedgerFolio {
   checkOut: string;
   balance: number;
   transactionCount: number;
+  bookingId: string;
+  status: string;
 }
 
 export interface LedgerSummary {
   totalDebits: number;
   totalCredits: number;
-  netBalance: number;
+  trialBalanceDiff: number;
+  isBalanced: boolean;
   transactionCount: number;
-  pendingCount: number;
-  auditedCount: number;
-  discrepancyCount: number;
+  journalEntryCount: number;
+  revenueBreakdown: Array<{ accountCode: string; total: number }>;
 }
 
 export interface LedgerListResponse {
@@ -43,4 +53,89 @@ export interface LedgerListResponse {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+}
+
+export interface TrialBalanceRow {
+  accountCode: string;
+  accountName: string;
+  accountType: string;
+  normalBalance: string;
+  totalDebits: number;
+  totalCredits: number;
+  balance: number;
+  txCount: number;
+  isZeroBalance: boolean;
+}
+
+export interface TrialBalance {
+  rows: TrialBalanceRow[];
+  totals: {
+    totalDebits: number;
+    totalCredits: number;
+    difference: number;
+    isBalanced: boolean;
+  };
+  filters: { propId: number | null; accountingPeriod: string | null };
+  accountCount: number;
+}
+
+export interface StatementLine {
+  accountCode: string;
+  accountName: string;
+  debits: number;
+  credits: number;
+  net: number;
+}
+
+export interface StatementSection {
+  lines: StatementLine[];
+  total: number;
+}
+
+export interface IncomeStatement {
+  period: string | null;
+  propId: number;
+  revenue: StatementSection;
+  discounts: StatementSection;
+  netRevenue: number;
+  costs: StatementSection;
+  netIncome: number;
+}
+
+export interface BalanceSheet {
+  period: string | null;
+  propId: number;
+  assets: StatementSection;
+  liabilities: StatementSection;
+  equity: StatementSection;
+  netIncome: number;
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+}
+
+export interface ChartAccount {
+  accountCode: string;
+  accountName: string;
+  description: string;
+  normalBalance: string;
+}
+
+export interface FolioPosting {
+  postingId: string;
+  type: 'room' | 'charge' | 'discount' | 'payment' | 'adjustment';
+  category: string;
+  concept: string;
+  amount: number;
+  quantity: number;
+  unitPrice: number;
+  referenceId: string;
+  referenceType: string;
+  postedAt: string;
+}
+
+export interface FolioPostingsResponse {
+  folioId: string;
+  folioRef: string;
+  guestName: string;
+  postings: FolioPosting[];
 }

@@ -34,6 +34,10 @@ Chart.register(...registerables);
           style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #2563eb; color: white; border-radius: 8px; font-size: 13px; font-weight: 500; text-decoration: none;">
           <span class="material-symbols-outlined" style="font-size: 16px;">add</span> Nueva Factura
         </a>
+        <a [routerLink]="['/management/expenses/ledger']"
+          style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #006076; color: white; border-radius: 8px; font-size: 13px; font-weight: 500; text-decoration: none;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">account_balance</span> Libro Mayor
+        </a>
       </div>
 
       @switch (viewState()) {
