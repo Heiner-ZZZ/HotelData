@@ -1,0 +1,161 @@
+/* ═══ P&L Waterfall Chart — modern financial dashboard ═══ */
+.pnl-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--card-border, #e2e8f0);
+  background: linear-gradient(180deg, #fafcfd 0%, #f5f7fa 100%);
+}
+.pnl-chart-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  .pnl-chart-icon {
+    font-size: 20px;
+    color: #006076;
+  }
+  span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #475569;
+  }
+}
+
+/* ── Waterfall row ── */
+.pnl-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  position: relative;
+}
+.pnl-bar-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  .material-symbols-outlined { font-size: 16px; }
+}
+.pnl-bar-revenue .pnl-bar-icon {
+  background: #dcfce7;
+  color: #166534;
+}
+.pnl-bar-discount .pnl-bar-icon {
+  background: #fef3c7;
+  color: #92400e;
+}
+.pnl-bar-cost .pnl-bar-icon {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.pnl-bar-net .pnl-bar-icon {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.pnl-bar-net.pnl-net-profit .pnl-bar-icon {
+  background: #dcfce7;
+  color: #166534;
+}
+.pnl-bar-net.pnl-net-loss .pnl-bar-icon {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.pnl-bar-label {
+  width: 85px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: 1.2;
+  small {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}
+.pnl-bar-track {
+  flex: 1;
+  height: 32px;
+  background: #e8ecf1;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+}
+.pnl-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 3px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+.pnl-bar-fill-inner {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.pnl-bar-revenue .pnl-bar-fill {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 1px 4px rgba(22, 163, 74, 0.3);
+}
+.pnl-bar-discount .pnl-bar-fill {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.3);
+}
+.pnl-bar-cost .pnl-bar-fill {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.3);
+}
+.pnl-net-profit .pnl-bar-fill {
+  background: linear-gradient(90deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
+}
+.pnl-net-loss .pnl-bar-fill {
+  background: linear-gradient(90deg, #f43f5e 0%, #e11d48 100%);
+  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.35);
+}
+
+.pnl-bar-value {
+  width: 110px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.2;
+  small {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    color: #94a3b8;
+    font-family: inherit;
+  }
+}
+
+.pnl-bar-net {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 2px solid #e2e8f0;
+  .pnl-bar-label { font-weight: 700; font-size: 12.5px; }
+  .pnl-bar-track { height: 38px; border-radius: 10px; }
+  .pnl-bar-value { font-size: 14px; }
+}

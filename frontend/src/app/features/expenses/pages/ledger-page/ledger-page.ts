@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, s
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AgGridAngular } from 'ag-grid-angular';
-import type { ColDef, GridReadyEvent, GridApi, ColumnHeaderClickedEvent, AutoGroupColumnDef } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent, GridApi, ColumnHeaderClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
@@ -13,7 +13,6 @@ import {
   buildReportShell,
   buildSummaryGrid,
   buildTable,
-  esc,
   fmtUsd,
 } from '../../../../shared/utils/report-html-templates';
 import { ExpensesApiService } from '../../services/expenses-api.service';
@@ -21,7 +20,7 @@ import type { LedgerTransaction, LedgerSummary, TrialBalance, IncomeStatement, B
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
-/** Synthetic group row inserted into tree data for journal entry grouping. */
+/** Synthetic group row inserted into the flat array for journal-entry grouping. */
 interface JournalEntryGroupRow extends LedgerTransaction {
   __groupRow: true;
   __childCount: number;
@@ -65,8 +64,10 @@ export class LedgerPageComponent {
   readonly selectedColumnId = signal<string | null>(null);
   readonly pinnedColumns = signal<{ left: string[]; right: string[] }>({ left: [], right: [] });
   readonly groupedMode = signal(true);
-  /** Tree data rows (group headers + leaf transactions). */
+  /** Visible rows after grouping + per-JE expansion filtering. Community-only. */
   readonly treeData = signal<TreeRow[]>([]);
+  /** Set of journalEntryIds that are currently expanded. Empty before first load. */
+  readonly expandedGroups = signal<Set<string>>(new Set());
 
   /** Column visibility dropdown state. */
   readonly columnsDropdownOpen = signal(false);
@@ -75,152 +76,14 @@ export class LedgerPageComponent {
 
   readonly theme = themeQuartz;
 
-  readonly autoGroupColumnDef: ColDef<TreeRow> = {
-    headerName: 'Asiento (JE)',
-    minWidth: 420,
-    cellRendererParams: {
-      innerRenderer: (params: any) => {
-        const d = params.data;
-        if (!d?.__groupRow) return '';
-        const jeId = d.journalEntryId || '';
-        const debit = d.__groupDebit || 0;
-        const credit = d.__groupCredit || 0;
-        const usd = (n: number) => '$' + n.toFixed(2);
-        const wrapper = document.createElement('span');
-        wrapper.style.display = 'inline-flex';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.gap = '6px';
-        const jeSpan = document.createElement('span');
-        jeSpan.style.fontFamily = "'JetBrains Mono', monospace";
-        jeSpan.style.fontWeight = '700';
-        jeSpan.style.fontSize = '12.5px';
-        jeSpan.style.color = '#191c1e';
-        jeSpan.textContent = jeId;
-        wrapper.appendChild(jeSpan);
-        const pill = document.createElement('span');
-        pill.style.display = 'inline-flex';
-        pill.style.alignItems = 'center';
-        pill.style.gap = '5px';
-        pill.style.padding = '1px 8px';
-        pill.style.background = '#f1f5f9';
-        pill.style.borderRadius = '5px';
-        pill.style.fontSize = '10.5px';
-        pill.style.fontWeight = '600';
-        pill.style.fontFamily = "'JetBrains Mono', monospace";
-        const dLabel = document.createElement('span');
-        dLabel.style.color = '#166534';
-        dLabel.textContent = 'D: ' + usd(debit);
-        const sep = document.createElement('span');
-        sep.style.color = '#cbd5e1';
-        sep.textContent = '|';
-        const cLabel = document.createElement('span');
-        cLabel.style.color = '#991b1b';
-        cLabel.textContent = 'C: ' + usd(credit);
-        pill.appendChild(dLabel);
-        pill.appendChild(sep);
-        pill.appendChild(cLabel);
-        wrapper.appendChild(pill);
-        return wrapper;
-      },
-    },
-  };
+  /** Has the user manually toggled any group's expansion? Once true, we
+   *  stop auto-expanding new JE groups on data reload. */
+  private expansionUserTouched = false;
 
-  /** Builds tree-data path so AG Grid renders parent-group / child-leaf hierarchy.
-   *  Group rows: [journalEntryId]
-   *  Leaf rows:  [journalEntryId, uniqueRowId] */
-  getDataPath = (data: TreeRow): string[] => {
-    if ((data as JournalEntryGroupRow).__groupRow) {
-      return [data.journalEntryId];
-    }
-    const id = (data as any).id || (data as any)._id || '';
-    return [data.journalEntryId, String(id)];
-  };
-
-  readonly columnDefs: ColDef<LedgerTransaction>[] = [
-    {
-      field: 'txDate', headerName: 'Fecha', minWidth: 125, sort: 'desc',
-      headerClass: 'col-even', cellClass: 'cell-mono cell-date col-even',
-      valueFormatter: (p) => {
-        const d = new Date(p.value);
-        if (isNaN(d.getTime())) {
-          const fallback = new Date(p.value + 'T00:00:00');
-          if (isNaN(fallback.getTime())) return (p.value ?? '').slice(0, 10);
-          const fd = fallback.getDate().toString().padStart(2, '0');
-          const fm = (fallback.getMonth() + 1).toString().padStart(2, '0');
-          return fd + '-' + fm + ' 00:00';
-        }
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return day + '-' + month + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      },
-    },
-    {
-      field: 'journalEntryId', headerName: 'Asiento', minWidth: 175, sortable: true,
-      headerClass: 'col-odd', cellClass: 'cell-mono cell-journal col-odd',
-      cellRenderer: (p: any) => {
-        const isDebit = p.data.debit > 0;
-        const container = document.createElement('span');
-        const tag = document.createElement('span');
-        tag.className = 'je-tag ' + (isDebit ? 'je-debit' : 'je-credit');
-        tag.textContent = isDebit ? 'D' : 'C';
-        container.appendChild(tag);
-        container.appendChild(document.createTextNode(' ' + (p.value ?? '')));
-        return container;
-      },
-    },
-    {
-      field: 'accountCode', headerName: 'Cuenta', minWidth: 80, sortable: true, filter: true,
-      headerClass: 'col-even', cellClass: 'cell-mono cell-account col-even',
-    },
-    {
-      field: 'description', headerName: 'Descripción', minWidth: 220,
-      sortable: true, filter: true,
-      headerClass: 'col-odd',
-      cellRenderer: (p: any) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'cell-desc col-odd';
-        const label = document.createElement('span');
-        label.className = 'desc-label';
-        label.textContent = p.value ?? '';
-        const sub = document.createElement('span');
-        sub.className = 'desc-sub';
-        sub.textContent = p.data.guestName ?? '';
-        wrapper.appendChild(label);
-        wrapper.appendChild(sub);
-        return wrapper;
-      },
-    },
-    {
-      field: 'costCenter', headerName: 'Ctro. Costo', minWidth: 110, sortable: true, filter: true,
-      headerClass: 'col-even', cellClass: 'cell-cost-center col-even',
-    },
-    {
-      field: 'debit', headerName: 'Débito', minWidth: 105, sortable: true,
-      headerClass: 'col-odd',
-      valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
-      cellClass: 'cell-mono cell-debit col-odd',
-    },
-    {
-      field: 'credit', headerName: 'Crédito', minWidth: 105, sortable: true,
-      headerClass: 'col-even',
-      valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
-      cellClass: 'cell-mono cell-credit col-even',
-    },
-    {
-      field: 'balance', headerName: 'Balance', minWidth: 115, sortable: true,
-      headerClass: 'col-odd',
-      valueFormatter: (p) => '$' + ((p.value ?? 0) as number).toFixed(2),
-      cellClass: 'cell-mono cell-balance col-odd',
-    },
-    {
-      field: 'accountingPeriod', headerName: 'Período', minWidth: 85, sortable: true, filter: true,
-      headerClass: 'col-even', cellClass: 'cell-mono cell-period col-even',
-    },
-    {
-      field: 'folioRef', headerName: 'Folio / Factura', minWidth: 135, sortable: true, filter: true,
-      headerClass: 'col-odd', cellClass: 'cell-folio col-odd',
-    },
-  ];
+  /** Declarations declared as `!` so the cellRenderer closures can call
+   *  back into the component (this.toggleGroupExpansion, etc.). Built
+   *  in the constructor. */
+  columnDefs!: ColDef<LedgerTransaction>[];
 
   readonly defaultColDef: ColDef = {
     resizable: true,
@@ -230,6 +93,8 @@ export class LedgerPageComponent {
   };
   readonly rowClassRules = {
     'row-credit': (p: any) => p.data?.credit > 0,
+    'je-group-row': (p: any) => p.data?.__groupRow === true,
+    'je-child-row': (p: any) => p.data?.__isChild === true,
   };
 
   getRowId = (params: any) => {
@@ -239,6 +104,8 @@ export class LedgerPageComponent {
   };
 
   constructor() {
+    this.columnDefs = this.buildColumnDefs();
+
     const propId = this.ctx.currentPropId();
     if (propId) {
       this.selectedPropId.set(propId);
@@ -246,6 +113,173 @@ export class LedgerPageComponent {
       this.loadAll();
     }
   }
+
+  // ─── Column definitions (constructed so cellRenderer has `this`) ───
+
+  private buildColumnDefs(): ColDef<LedgerTransaction>[] {
+    return [
+      {
+        field: 'txDate', headerName: 'Fecha', minWidth: 125, sort: 'desc',
+        headerClass: 'col-even', cellClass: 'cell-mono cell-date col-even',
+        valueFormatter: (p) => {
+          const d = new Date(p.value);
+          if (isNaN(d.getTime())) {
+            const fallback = new Date(p.value + 'T00:00:00');
+            if (isNaN(fallback.getTime())) return (p.value ?? '').slice(0, 10);
+            const fd = fallback.getDate().toString().padStart(2, '0');
+            const fm = (fallback.getMonth() + 1).toString().padStart(2, '0');
+            return fd + '-' + fm + ' 00:00';
+          }
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          return day + '-' + month + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        },
+      },
+      {
+        field: 'journalEntryId', headerName: 'Asiento', minWidth: 420, sortable: true,
+        headerClass: 'col-odd', cellClass: 'cell-mono cell-journal col-odd',
+        cellRenderer: (p: any) => this.renderJournalCell(p),
+      },
+      {
+        field: 'accountCode', headerName: 'Cuenta', minWidth: 80, sortable: true, filter: true,
+        headerClass: 'col-even', cellClass: 'cell-mono cell-account col-even',
+      },
+      {
+        field: 'description', headerName: 'Descripción', minWidth: 220,
+        sortable: true, filter: true,
+        headerClass: 'col-odd',
+        cellRenderer: (p: any) => {
+          // Skip the expensive renderer for synthetic group rows (their description is empty).
+          if (p.data?.__groupRow) return '';
+          const wrapper = document.createElement('div');
+          wrapper.className = 'cell-desc col-odd';
+          const label = document.createElement('span');
+          label.className = 'desc-label';
+          label.textContent = p.value ?? '';
+          const sub = document.createElement('span');
+          sub.className = 'desc-sub';
+          sub.textContent = p.data?.guestName ?? '';
+          wrapper.appendChild(label);
+          wrapper.appendChild(sub);
+          return wrapper;
+        },
+      },
+      {
+        field: 'costCenter', headerName: 'Ctro. Costo', minWidth: 110, sortable: true, filter: true,
+        headerClass: 'col-even', cellClass: 'cell-cost-center col-even',
+      },
+      {
+        field: 'debit', headerName: 'Débito', minWidth: 105, sortable: true,
+        headerClass: 'col-odd',
+        valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
+        cellClass: 'cell-mono cell-debit col-odd',
+      },
+      {
+        field: 'credit', headerName: 'Crédito', minWidth: 105, sortable: true,
+        headerClass: 'col-even',
+        valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
+        cellClass: 'cell-mono cell-credit col-even',
+      },
+      {
+        field: 'balance', headerName: 'Balance', minWidth: 115, sortable: true,
+        headerClass: 'col-odd',
+        valueFormatter: (p) => '$' + ((p.value ?? 0) as number).toFixed(2),
+        cellClass: 'cell-mono cell-balance col-odd',
+      },
+      {
+        field: 'accountingPeriod', headerName: 'Período', minWidth: 85, sortable: true, filter: true,
+        headerClass: 'col-even', cellClass: 'cell-mono cell-period col-even',
+      },
+      {
+        field: 'folioRef', headerName: 'Folio / Factura', minWidth: 135, sortable: true, filter: true,
+        headerClass: 'col-odd', cellClass: 'cell-folio col-odd',
+      },
+    ];
+  }
+
+  /** Renderer for the journal-entry column. Branches on data.__groupRow to
+   *  show chevron + JE pill for synthetic groups, and the existing
+   *  D/C tag + jeId for leaf rows. */
+  private renderJournalCell(p: any): HTMLElement {
+    if (p.data?.__groupRow) return this.renderGroupRowCell(p.data as JournalEntryGroupRow);
+    return this.renderLeafRowCell(p);
+  }
+
+  private renderGroupRowCell(data: JournalEntryGroupRow): HTMLElement {
+    const jeId = data.journalEntryId || '';
+    const isExpanded = this.expandedGroups().has(jeId);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cell-group-row';
+
+    const chev = document.createElement('span');
+    chev.className = 'group-chevron';
+    chev.textContent = isExpanded ? '\u25BC' : '\u25B6'; // ▼ / ▶
+    chev.title = isExpanded ? 'Contraer hijos' : 'Expandir hijos';
+    chev.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleGroupExpansion(jeId);
+    });
+    wrapper.appendChild(chev);
+
+    const jeSpan = document.createElement('span');
+    jeSpan.className = 'group-je-id mono';
+    jeSpan.textContent = jeId;
+    wrapper.appendChild(jeSpan);
+
+    const childBadge = document.createElement('span');
+    childBadge.className = 'group-child-badge';
+    childBadge.textContent = `${data.__childCount} movs`;
+    wrapper.appendChild(childBadge);
+
+    const pill = document.createElement('span');
+    pill.className = 'group-dc-pill';
+    const usd = (n: number) => '$' + n.toFixed(2);
+    const dLabel = document.createElement('span');
+    dLabel.className = 'group-dc-debit';
+    dLabel.textContent = 'D: ' + usd(data.__groupDebit || 0);
+    const sep = document.createElement('span');
+    sep.className = 'group-dc-sep';
+    sep.textContent = '|';
+    const cLabel = document.createElement('span');
+    cLabel.className = 'group-dc-credit';
+    cLabel.textContent = 'C: ' + usd(data.__groupCredit || 0);
+    pill.appendChild(dLabel);
+    pill.appendChild(sep);
+    pill.appendChild(cLabel);
+    wrapper.appendChild(pill);
+    return wrapper;
+  }
+
+  private renderLeafRowCell(p: any): HTMLElement {
+    const isDebit = p.data?.debit > 0;
+    const container = document.createElement('span');
+    const tag = document.createElement('span');
+    tag.className = 'je-tag ' + (isDebit ? 'je-debit' : 'je-credit');
+    tag.textContent = isDebit ? 'D' : 'C';
+    container.appendChild(tag);
+    container.appendChild(document.createTextNode(' ' + (p.value ?? '')));
+    return container;
+  }
+
+  // ─── Expansion logic ───
+
+  /** Toggle expansion of a single JE group. Rebuilds treeData so the
+   *  grid picks up the visibility change via AG Grid's reactive
+   *  rowData binding. */
+  toggleGroupExpansion(jeId: string): void {
+    if (!jeId) return;
+    const next = new Set(this.expandedGroups());
+    if (next.has(jeId)) {
+      next.delete(jeId);
+    } else {
+      next.add(jeId);
+    }
+    this.expandedGroups.set(next);
+    this.expansionUserTouched = true;
+    this.rebuildTreeData();
+  }
+
+  // ─── Standard event handlers / column utilities (unchanged) ───
 
   onPropSelected(event: { propId: number; label: string }) {
     this.selectedPropId.set(event.propId);
@@ -308,7 +342,6 @@ export class LedgerPageComponent {
     const left = state.filter(c => c.pinned === 'left').map(c => c.colId);
     const right = state.filter(c => c.pinned === 'right').map(c => c.colId);
     this.pinnedColumns.set({ left, right });
-    // Also sync visibility
     const vis: Record<string, boolean> = {};
     for (const c of state) {
       if (c.colId !== 'ag-Grid-AutoColumn') {
@@ -357,6 +390,11 @@ export class LedgerPageComponent {
     const propId = this.selectedPropId();
     if (!propId) return;
     this.loading.set(true);
+    // Drop stale expansion state whenever data reloads. Without this, JEs
+    // added by a new period filter would silently default to collapsed,
+    // and toggles from a previous hotel would carry over.
+    this.expandedGroups.set(new Set());
+    this.expansionUserTouched = false;
 
     this.api.getLedgerSummary(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (s) => this.summary.set(s),
@@ -427,7 +465,7 @@ export class LedgerPageComponent {
     this.rebuildTreeData();
   }
 
-  // ─── CSV Export (respects grouping) ───
+  // ─── CSV Export ───
 
   exportLedgerCsv(): void {
     const gridApi = this.gridApi();
@@ -452,11 +490,23 @@ export class LedgerPageComponent {
       return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
-    if (!this.groupedMode()) {
-      // Flat mode: export all rows from grid API
-      gridApi.forEachNodeAfterFilterAndSort((node) => {
-        const d = node.data as LedgerTransaction;
-        if (!d) return;
+    gridApi.forEachNodeAfterFilterAndSort((node) => {
+      const d = node.data as TreeRow | undefined;
+      if (!d) return;
+      const isGroup = (d as JournalEntryGroupRow).__groupRow;
+      if (isGroup) {
+        const g = d as JournalEntryGroupRow;
+        rows.push([
+          '', '', esc(g.journalEntryId), '',
+          `JE ${g.journalEntryId} — ${g.__childCount} movs`,
+          '', '',
+          g.__groupDebit ? usd(g.__groupDebit) : '',
+          g.__groupCredit ? usd(g.__groupCredit) : '',
+          usd(g.__groupDebit - g.__groupCredit),
+          '', '',
+        ]);
+        rows.push([]);
+      } else {
         rows.push([
           fmtDate(d.txDate),
           d.debit > 0 ? 'D' : 'C',
@@ -471,51 +521,8 @@ export class LedgerPageComponent {
           esc(d.accountingPeriod),
           esc(d.folioRef),
         ]);
-      });
-    } else {
-      // Grouped mode: group header with subtotals, children only if expanded
-      gridApi.forEachNodeAfterFilterAndSort((node) => {
-        const d = node.data as TreeRow;
-        if (!d) return;
-        const isGroup = (d as JournalEntryGroupRow).__groupRow;
-        if (isGroup) {
-          const g = d as JournalEntryGroupRow;
-          // Always emit group header with subtotals
-          rows.push([
-            '', '', esc(g.journalEntryId), '',
-            `JE ${g.journalEntryId} — ${g.__childCount} movs`,
-            '', '',
-            g.__groupDebit ? usd(g.__groupDebit) : '',
-            g.__groupCredit ? usd(g.__groupCredit) : '',
-            usd(g.__groupDebit - g.__groupCredit),
-            '', '',
-          ]);
-          // Emit children only if group is expanded
-          if (node.expanded && node.childrenAfterFilter) {
-            for (const child of node.childrenAfterFilter) {
-              const c = child.data as LedgerTransaction;
-              if (!c || (c as any).__groupRow) continue;
-              rows.push([
-                fmtDate(c.txDate),
-                c.debit > 0 ? 'D' : 'C',
-                esc(c.journalEntryId),
-                esc(c.accountCode),
-                esc(c.description),
-                esc(c.guestName),
-                esc(c.costCenter),
-                c.debit ? usd(c.debit) : '',
-                c.credit ? usd(c.credit) : '',
-                usd(c.balance ?? 0),
-                esc(c.accountingPeriod),
-                esc(c.folioRef),
-              ]);
-            }
-          }
-          // Separator after group
-          rows.push([]);
-        }
-      });
-    }
+      }
+    });
 
     const csv = rows.map(r => r.join(',')).join('\n');
     const bom = '\uFEFF';
@@ -530,8 +537,10 @@ export class LedgerPageComponent {
     URL.revokeObjectURL(url);
   }
 
+  // ─── Tree (grouped view) builder ───
+
   private rebuildTreeData(flatItems?: LedgerTransaction[]): void {
-    const items = flatItems ?? this.rowData();
+    const items = flatItems ?? [...this.rowData()];
     if (!items.length) {
       this.rowData.set([]);
       this.treeData.set([]);
@@ -544,7 +553,6 @@ export class LedgerPageComponent {
       return;
     }
 
-    // Sort by journalEntryId descending, then by date descending within group
     const sorted = [...items].sort((a, b) => {
       const jeA = a.journalEntryId || '';
       const jeB = b.journalEntryId || '';
@@ -552,22 +560,34 @@ export class LedgerPageComponent {
       return new Date(b.txDate).getTime() - new Date(a.txDate).getTime();
     });
 
-    const tree: TreeRow[] = [];
+    // Auto-expand everything on first load. After the user starts
+    // toggling, their preferences are preserved.
+    if (!this.expansionUserTouched) {
+      const allJEs = new Set<string>();
+      for (const row of sorted) {
+        if (row.journalEntryId) allJEs.add(row.journalEntryId);
+      }
+      this.expandedGroups.set(allJEs);
+    }
+
+    const expanded = this.expandedGroups();
+    const visible: TreeRow[] = [];
     let currentJE = '';
     let groupBuffer: LedgerTransaction[] = [];
 
     const flushGroup = () => {
       if (groupBuffer.length === 0) return;
       const first = groupBuffer[0];
-      const groupRow: JournalEntryGroupRow = {
+      const jeId = first.journalEntryId || '';
+      visible.push({
         ...first,
         __groupRow: true,
         __childCount: groupBuffer.length,
         __groupDebit: groupBuffer.reduce((s, r) => s + (r.debit || 0), 0),
         __groupCredit: groupBuffer.reduce((s, r) => s + (r.credit || 0), 0),
-        // Override ID so group row is unique (avoid collision with first child)
-        ...(first as any).id !== undefined ? { id: '__je__' + (first.journalEntryId || '') } : {},
-        ...(first as any)._id !== undefined ? { _id: '__je__' + (first.journalEntryId || '') } : {},
+        // Distinctive ID prefix to avoid collisions with real `_id` values
+        // (especially important for ObjectIds from MongoDB transactions).
+        id: ('__ledger_grp__' + jeId) as any,
         accountCode: '',
         description: '',
         debit: 0,
@@ -576,9 +596,12 @@ export class LedgerPageComponent {
         costCenter: '',
         folioRef: '',
         guestName: '',
-      };
-      tree.push(groupRow);
-      tree.push(...groupBuffer);
+      } as JournalEntryGroupRow);
+      if (expanded.has(jeId)) {
+        for (const child of groupBuffer) {
+          visible.push({ ...child, __isChild: true } as any);
+        }
+      }
       groupBuffer = [];
     };
 
@@ -592,7 +615,7 @@ export class LedgerPageComponent {
     }
     flushGroup();
 
-    this.treeData.set(tree);
+    this.treeData.set(visible);
   }
 
   // ─── Tooltip helpers ───
@@ -811,7 +834,7 @@ export class LedgerPageComponent {
     const filename = `balance-general_${propLabel.replace(/\s+/g, '_')}_${period.replace(/\s+/g, '_')}`.toLowerCase();
 
     const grid = buildSummaryGrid([
-      { label: 'Total activos', value: fmtUsd(bs.assets.total), tone: bs.assets.total > 0 ? 'neutral' : 'neutral' },
+      { label: 'Total activos', value: fmtUsd(bs.assets.total), tone: 'neutral' },
       { label: 'Total pasivos', value: fmtUsd(bs.liabilities.total), tone: bs.liabilities.total > 0 ? 'warning' : 'neutral' },
       { label: 'Patrimonio', value: fmtUsd(bs.equity.total) },
       { label: 'Resultado del período', value: fmtUsd(bs.netIncome), tone: bs.netIncome >= 0 ? 'positive' : 'negative' },
