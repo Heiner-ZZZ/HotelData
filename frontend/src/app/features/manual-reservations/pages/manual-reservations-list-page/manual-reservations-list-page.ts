@@ -14,7 +14,7 @@ import { ManualReservationApiService } from '../../services/manual-reservation-a
 
 @Component({
   selector: 'app-manual-reservations-list-page',
-  imports: [CurrencyPipe, DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, RouterLink],
+  imports: [CurrencyPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, RouterLink],
   templateUrl: './manual-reservations-list-page.html',
   styleUrl: './manual-reservations-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

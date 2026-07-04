@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -26,6 +27,7 @@ import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-rep
 export class ManagementReportsPageComponent {
   private readonly api = inject(ManagementReportsApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reports = inject(ReportsExportService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly viewModel = signal<ManagementReportsViewModel | null>(null);
@@ -42,14 +44,14 @@ export class ManagementReportsPageComponent {
   exportExcel() {
     const vm = this.viewModel();
     if (vm) {
-      exportToExcel(vm).catch((err) => console.error('[Reports] Excel export failed', err));
+      exportToExcel(vm, this.reports).catch((err) => console.error('[Reports] Excel export failed', err));
     }
   }
 
   exportPdf() {
     const vm = this.viewModel();
     if (vm) {
-      exportToPdf(vm).catch((err) => console.error('[Reports] PDF export failed', err));
+      exportToPdf(vm, this.reports).catch((err) => console.error('[Reports] PDF export failed', err));
     }
   }
 

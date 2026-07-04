@@ -1,12 +1,8 @@
-import { inject } from '@angular/core';
-
 import { ReportsExportService } from '../../../shared/services/reports-export.service';
 import {
   buildReportShell,
   buildSummaryGrid,
   buildTable,
-  esc,
-  fmtUsd,
 } from '../../../shared/utils/report-html-templates';
 import type { ManagementReportsViewModel } from '../models/management-reports.model';
 
@@ -106,9 +102,15 @@ function buildManagementReportHtml(data: ReportData): string {
  * Backend-delegated Excel export: POSTs structured sheets to
  * `/api/reports/xlsx` (Pandas + OpenPyXL on the backend) and triggers a
  * download in the browser.
+ *
+ * NOTE: the ReportsExportService is passed in by the caller because
+ * `inject()` is only valid inside an Angular injection context (it
+ * throws when invoked from a button-click handler).
  */
-export async function exportToExcel(data: ReportData): Promise<void> {
-  const reports = inject(ReportsExportService);
+export async function exportToExcel(
+  data: ReportData,
+  reports: ReportsExportService,
+): Promise<void> {
   const filename = `reporte-operativo_${formatDate()}`;
   await reports.exportXlsx({
     filename,
@@ -158,16 +160,17 @@ export async function exportToExcel(data: ReportData): Promise<void> {
  * Backend-delegated PDF export: builds an HTML document with full CSS3
  * styling and POSTs it to `/api/reports/pdf` (WeasyPrint).
  */
-export async function exportToPdf(data: ReportData): Promise<void> {
-  const reports = inject(ReportsExportService);
+export async function exportToPdf(
+  data: ReportData,
+  reports: ReportsExportService,
+): Promise<void> {
   const html = buildManagementReportHtml(data);
   await reports.exportPdf(html, `reporte-operativo_${formatDate()}`, 'Reporte Operativo HotelData');
 }
 
 /**
- * DOCX export — kept simple: the legacy implementation generated a
- * Word-compatible HTML blob. We now generate it the same way but slightly
- * more polished via the same report shell approach.
+ * DOCX export — kept simple. We now generate it from the same report shell
+ * with @page rules stripped so Word can render it as a normal document.
  */
 export async function exportToDocx(data: ReportData): Promise<void> {
   const html = buildManagementReportHtml(data)

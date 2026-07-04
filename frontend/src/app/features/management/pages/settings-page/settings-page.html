@@ -41,7 +41,7 @@
             <label for="currentPassword">Contraseña actual</label>
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon">lock</span>
-              <input id="currentPassword" type="password" formControlName="currentPassword" placeholder="••••••••" />
+              <input id="currentPassword" type="password" formControlName="currentPassword" placeholder="••••••••" autocomplete="current-password" />
             </div>
             @if (passwordForm.controls.currentPassword.invalid && passwordForm.controls.currentPassword.touched) {
               <span class="field-error">La contraseña actual es obligatoria</span>
@@ -53,7 +53,7 @@
               <label for="newPassword">Nueva contraseña</label>
               <div class="input-wrap">
                 <span class="material-symbols-outlined input-icon">enhanced_encryption</span>
-                <input id="newPassword" type="password" formControlName="newPassword" placeholder="Mínimo 8 caracteres" />
+                <input id="newPassword" type="password" formControlName="newPassword" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
               </div>
               @if (passwordForm.controls.newPassword.invalid && passwordForm.controls.newPassword.touched) {
                 <span class="field-error">Debe tener al menos 8 caracteres</span>
@@ -64,7 +64,7 @@
               <label for="confirmPassword">Confirmar contraseña</label>
               <div class="input-wrap">
                 <span class="material-symbols-outlined input-icon">check_circle</span>
-                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repite la nueva" />
+                <input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repite la nueva" autocomplete="new-password" />
               </div>
               @if (passwordForm.controls.confirmPassword.invalid && passwordForm.controls.confirmPassword.touched) {
                 <span class="field-error">Debes confirmar la contraseña</span>
