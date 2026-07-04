@@ -41,17 +41,23 @@ export class ManagementReportsPageComponent {
 
   exportExcel() {
     const vm = this.viewModel();
-    if (vm) exportToExcel(vm);
+    if (vm) {
+      exportToExcel(vm).catch((err) => console.error('[Reports] Excel export failed', err));
+    }
   }
 
   exportPdf() {
     const vm = this.viewModel();
-    if (vm) exportToPdf(vm);
+    if (vm) {
+      exportToPdf(vm).catch((err) => console.error('[Reports] PDF export failed', err));
+    }
   }
 
   exportDocx() {
     const vm = this.viewModel();
-    if (vm) exportToDocx(vm);
+    if (vm) {
+      exportToDocx(vm).catch((err) => console.error('[Reports] DOCX export failed', err));
+    }
   }
 
   private load() {

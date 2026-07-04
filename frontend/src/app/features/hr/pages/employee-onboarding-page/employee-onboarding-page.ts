@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HrApiService } from '../../services/hr-api.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
 @Component({
   selector: 'app-employee-onboarding-page',
@@ -272,11 +273,19 @@ import { PropertySelectorComponent } from '../../../../shared/ui/property-select
                 <span class="material-symbols-outlined" style="font-size: 16px; color: #2563eb;">hotel</span>
                 <span style="font-size: 12px; font-weight: 600; color: #0f172a;">Asignación a Hotel</span>
               </div>
-              <app-property-selector
-                [selectedPropId]="form.propId ?? 0"
-                (propIdChange)="onHotelSelected($event)">
-              </app-property-selector>
-              <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">El empleado será asignado a esta propiedad.</p>
+              @if (hasCurrentHotel) {
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #166534;">
+                  <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">check_circle</span>
+                  Asignado automáticamente a <strong>{{ propCtx.currentPropLabel() }}</strong>
+                </div>
+                <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">El nuevo empleado trabajará en el mismo hotel que tú.</p>
+              } @else {
+                <app-property-selector
+                  [selectedPropId]="form.propId ?? 0"
+                  (propIdChange)="onHotelSelected($event)">
+                </app-property-selector>
+                <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">Selecciona el hotel al que se asignará el empleado.</p>
+              }
             </div>
           </div>
         </div>
@@ -287,6 +296,7 @@ import { PropertySelectorComponent } from '../../../../shared/ui/property-select
 export class EmployeeOnboardingPageComponent {
   private readonly hrApi = inject(HrApiService);
   private readonly router = inject(Router);
+  readonly propCtx = inject(PropertyContextService);
 
   readonly step = signal(1);
   readonly submitting = signal(false);
@@ -318,13 +328,18 @@ export class EmployeeOnboardingPageComponent {
     emergencyContact: '',
     emergencyPhone: '',
     notes: '',
-    propId: null as number | null,
+    propId: this.propCtx.currentPropId() || null as number | null,
     replacesEmployee: false,
     replacesEmployeeId: '',
     transferShifts: false,
     transferPermissions: false,
     transferTasks: false,
   };
+
+  /** Whether the current user already has a property selected — auto-assign to that hotel */
+  get hasCurrentHotel(): boolean {
+    return (this.propCtx.currentPropId() ?? 0) > 0 || (this.form.propId ?? 0) > 0;
+  }
 
   onHotelSelected(event: { propId: number; label: string }) {
     this.form.propId = event.propId || null;

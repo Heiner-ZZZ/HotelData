@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -22,12 +22,29 @@ import { HrApiService } from '../../services/hr-api.service';
         description="Consulta, busca y gestiona el personal del hotel."
       />
 
-      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px; position: relative;">
           <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #94a3b8;">search</span>
           <input type="text" [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Buscar por nombre, documento o email..."
             style="width: 100%; padding: 8px 12px 8px 34px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: inherit; box-sizing: border-box; outline: none;" />
         </div>
+        <select [(ngModel)]="selectedDepartment" (change)="onFilterChange()"
+          style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: inherit; color: #475569; background: white; min-width: 160px; cursor: pointer; outline: none;">
+          <option value="">Todos los departamentos</option>
+          @for (dept of departments(); track dept.id) {
+            <option [value]="dept.name">{{ dept.name }}</option>
+          }
+        </select>
+        <select [(ngModel)]="selectedStatus" (change)="onFilterChange()"
+          style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: inherit; color: #475569; background: white; min-width: 130px; cursor: pointer; outline: none;">
+          <option value="">Todos los estados</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </select>
+        <button type="button" (click)="clearFilters()"
+          style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; font-family: inherit; color: #64748b; background: white; cursor: pointer;">
+          <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">filter_list_off</span>
+        </button>
         <button type="button" (click)="createEmployee()"
           style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
           <span class="material-symbols-outlined" style="font-size: 16px;">person_add</span>
@@ -97,7 +114,7 @@ import { HrApiService } from '../../services/hr-api.service';
     </div>
   `
 })
-export class EmployeeListPageComponent {
+export class EmployeeListPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly hrApi = inject(HrApiService);
   private readonly router = inject(Router);
@@ -106,15 +123,40 @@ export class EmployeeListPageComponent {
   readonly viewState = signal<'loading' | 'success' | 'empty' | 'error'>('loading');
   readonly data = signal<any>(null);
   readonly searchTerm = signal('');
+  readonly selectedDepartment = signal('');
+  readonly selectedStatus = signal('');
   readonly currentPage = signal(1);
+  readonly departments = signal<{ id: string; name: string }[]>([]);
 
-  constructor() {
+  ngOnInit() {
+    this.loadDepartments();
     this.loadEmployees();
+  }
+
+  private loadDepartments() {
+    this.hrApi.getDepartments()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (depts) => this.departments.set(depts),
+        error: () => {},
+      });
+  }
+
+  private resolveIsActive(): boolean | undefined {
+    const val = this.selectedStatus();
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return undefined;
   }
 
   loadEmployees() {
     this.viewState.set('loading');
-    this.hrApi.getEmployees(this.searchTerm(), undefined, undefined, this.currentPage())
+    this.hrApi.getEmployees(
+      this.searchTerm() || undefined,
+      this.selectedDepartment() || undefined,
+      this.resolveIsActive(),
+      this.currentPage(),
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
@@ -131,6 +173,18 @@ export class EmployeeListPageComponent {
       this.currentPage.set(1);
       this.loadEmployees();
     }, 300);
+  }
+
+  onFilterChange() {
+    this.currentPage.set(1);
+    this.loadEmployees();
+  }
+
+  clearFilters() {
+    this.selectedDepartment.set('');
+    this.selectedStatus.set('');
+    this.currentPage.set(1);
+    this.loadEmployees();
   }
 
   goToPage(page: number) {
