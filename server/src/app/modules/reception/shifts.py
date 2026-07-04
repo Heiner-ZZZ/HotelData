@@ -97,12 +97,38 @@ def open_shift(
     return _enrich_shift(doc)
 
 
+def _calc_payment_breakdown(transactions: list[dict]) -> dict[str, Any]:
+    """Calculate totals by payment method from shift transactions."""
+    breakdown: dict[str, float] = {}
+    for txn in transactions:
+        if txn.get("type") in ("check_out", "payment"):
+            method = txn.get("payment_method", "other").lower().strip()
+            if method not in ("cash", "card", "transfer", "other"):
+                method = "other"
+            amount = float(txn.get("amount", 0) or 0)
+            breakdown[method] = round(breakdown.get(method, 0) + amount, 2)
+    return {
+        "cash": breakdown.get("cash", 0),
+        "card": breakdown.get("card", 0),
+        "transfer": breakdown.get("transfer", 0),
+        "other": breakdown.get("other", 0),
+        "total": round(sum(breakdown.values()), 2),
+    }
+
+
 def close_shift(
     shift_id: str,
     cash_final: float = 0,
     closed_by: str = "web",
+    deposits: list[dict] | None = None,
 ) -> dict[str, Any] | None:
-    """Close an open shift, calculating total_collected and cash difference."""
+    """Close an open shift, calculating total_collected, cash difference,
+    and payment method breakdown.
+
+    Args:
+        deposits: Optional list of deposit records made during the shift.
+                  Each item: {"amount": float, "method": str, "notes": str}
+    """
     db = get_database()
     now = _now_iso()
 
@@ -112,20 +138,32 @@ def close_shift(
     if shift.get("status") != "open":
         raise ValueError("Shift is already closed")
 
+    transactions = shift.get("transactions", [])
     total_collected = sum(
         float(txn.get("amount", 0) or 0)
-        for txn in shift.get("transactions", [])
+        for txn in transactions
         if txn.get("type") in ("check_out", "payment")
     )
 
+    # Calculate payment method breakdown
+    payment_breakdown = _calc_payment_breakdown(transactions)
+
+    # Calculate deposit totals
+    deposit_total = 0.0
+    if deposits:
+        deposit_total = round(sum(float(d.get("amount", 0)) for d in deposits), 2)
+
     cash_diff = round(float(cash_final) - float(shift.get("cash_initial", 0)), 2)
-    cash_expected = round(total_collected, 2)
+    cash_expected = round(payment_breakdown["cash"], 2)
 
     update = {
         "$set": {
             "status": "closed",
             "cash_final": round(float(cash_final), 2),
             "total_collected": round(total_collected, 2),
+            "payment_breakdown": payment_breakdown,
+            "deposit_total": deposit_total,
+            "deposits": deposits or [],
             "closed_by": closed_by,
             "closed_at": now,
             "end_time": now,
@@ -134,7 +172,7 @@ def close_shift(
     db[RECEPTION_SHIFTS_COLLECTION].update_one({"_id": ObjectId(shift_id)}, update)
 
     logger.info(
-        "Shift closed — id=%s cash_final=%.2f collected=%.2f diff=%.2f expected=%.2f",
+        "Shift closed — id=%s cash_final=%.2f collected=%.2f diff=%.2f cash_expected=%.2f",
         shift_id, cash_final, total_collected, cash_diff, cash_expected,
     )
 
@@ -142,6 +180,8 @@ def close_shift(
     enriched = _enrich_shift(result)
     enriched["cash_difference"] = cash_diff
     enriched["cash_expected"] = cash_expected
+    enriched["payment_breakdown"] = payment_breakdown
+    enriched["deposit_total"] = deposit_total
     return enriched
 
 

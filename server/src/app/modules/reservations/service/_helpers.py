@@ -5,10 +5,25 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from src.app.core.state_machine import booking_sm, stay_sm
 
-ALLOWED_STATUSES = {"pending", "confirmed", "cancelled", "rejected"}
-CHECKIN_COMPLETED_STATUSES = {"checked_in", "checked_out"}
-CHECKOUT_COMPLETED_STATUSES = {"checked_out"}
+
+# ── Reservation (booking.status) lifecycle ──
+# Derived from the central booking StateMachine so we never drift.
+ALLOWED_STATUSES = set(booking_sm.states) - {"checked_in", "checked_out"}
+
+# ── Stay (booking.stay_status) lifecycle ──
+# Derived from the central stay StateMachine.
+STAY_CHECKED_IN = "checked_in"
+STAY_CHECKED_OUT = "checked_out"
+STAY_NOSHOW = "no_show"
+STAY_PENDING = "pending"
+
+# Completed statuses — a stay is considered "completed" for check-in
+# when it has reached checked_in or checked_out; for check-out only
+# when it has reached checked_out.
+CHECKIN_COMPLETED_STAY_STATUSES = {STAY_CHECKED_IN, STAY_CHECKED_OUT}
+CHECKOUT_COMPLETED_STAY_STATUSES = {STAY_CHECKED_OUT}
 
 
 @dataclass

@@ -8,7 +8,7 @@ from pymongo import ASCENDING
 from src.database.connection import get_database
 from src.app.modules.partner.services import partner_hotel_policies
 
-from ._helpers import _safe_int, _clean_text, CHECKIN_COMPLETED_STATUSES, CHECKOUT_COMPLETED_STATUSES
+from ._helpers import _safe_int, _clean_text, CHECKIN_COMPLETED_STAY_STATUSES, CHECKOUT_COMPLETED_STAY_STATUSES
 from .queries import hotel_booking_context
 from ._hotel_options import reservation_hotel_options
 from ._history_lookup import _booking_history_lookup, _guest_lookup, _derived_stay_status, _reservation_status_label
@@ -71,7 +71,7 @@ def _operational_item(
         "notes": comment or "Sin notas",
         "total_price": booking.get("total_price") or 0,
         "balance_label": "N/D",
-        "can_complete": stay_status not in (CHECKIN_COMPLETED_STATUSES if flow == "check_in" else CHECKOUT_COMPLETED_STATUSES)
+        "can_complete": stay_status not in (CHECKIN_COMPLETED_STAY_STATUSES if flow == "check_in" else CHECKOUT_COMPLETED_STAY_STATUSES)
         and booking.get("status") not in {"cancelled", "rejected"},
         "history_count": len(history),
     }

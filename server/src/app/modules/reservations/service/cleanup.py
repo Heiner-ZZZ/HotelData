@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from src.database.connection import get_database
+from src.app.security.session import ensure_utc
 
 from src.app.modules.reservations.notifications import notify_guest_status_change
 from ._helpers import utc_now
@@ -111,7 +112,7 @@ def _calculate_cancellation_penalty(
                 "hours_until_checkin": None, "cancellation_hours": 0}
 
     try:
-        checkin_dt = datetime.strptime(check_in_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        checkin_dt = ensure_utc(datetime.strptime(check_in_date, "%Y-%m-%d"))
     except (ValueError, TypeError):
         return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
                 "hours_until_checkin": None, "cancellation_hours": cancellation_hours}

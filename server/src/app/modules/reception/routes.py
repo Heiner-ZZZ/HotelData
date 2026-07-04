@@ -64,16 +64,19 @@ def shift_close_api(
     payload: dict = Body(default={}),
     current_user: dict = Depends(require_login),
 ):
-    """Close an active shift with final cash count."""
+    """Close an active shift with final cash count and optional deposits."""
     cash_final = float(payload.get("cash_final", 0) or 0)
     closed_by = payload.get("closed_by") or current_user.get("username", "web")
+    deposits = payload.get("deposits") or None
 
     try:
         result = close_shift(
             shift_id=shift_id,
             cash_final=cash_final,
             closed_by=closed_by,
+            deposits=deposits,
         )
+        pbreak = result.get("payment_breakdown", {})
         return {
             "shift": result,
             "message": "Turno cerrado",
@@ -84,6 +87,14 @@ def shift_close_api(
                 "cash_difference": result.get("cash_difference", 0),
                 "cash_expected": result.get("cash_expected", 0),
                 "transaction_count": len(result.get("transactions", [])),
+                "payment_breakdown": {
+                    "cash": pbreak.get("cash", 0),
+                    "card": pbreak.get("card", 0),
+                    "transfer": pbreak.get("transfer", 0),
+                    "other": pbreak.get("other", 0),
+                    "total": pbreak.get("total", 0),
+                },
+                "deposit_total": result.get("deposit_total", 0),
             },
         }
     except ValueError as exc:
