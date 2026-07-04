@@ -8,6 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -66,6 +67,7 @@ export class MaintenancePageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly fb = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
 
@@ -358,7 +360,14 @@ export class MaintenancePageComponent {
     }
   }
 
-  async deleteMaintenanceItem(taskId: string): Promise<void> {
+  async deleteMaintenanceItem(taskId: string, title: string): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar mantenimiento',
+      message: `¿Eliminar la tarea de mantenimiento "${title}"?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await lastValueFrom(this.api.deleteMaintenance(taskId));
       this.message.set('🗑️ Mantenimiento eliminado');

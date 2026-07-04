@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, i
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray } from '@angular/cdk/drag-drop';
 import { isDevMode } from '@angular/core';
+import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { PropertiesApiService } from '../../../services/properties-api.service';
 
 export interface GalleryImage {
@@ -18,6 +19,7 @@ export interface GalleryImage {
 })
 export class ImageGalleryComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertiesApi = inject(PropertiesApiService);
 
   readonly propId = input.required<number>();
@@ -129,7 +131,14 @@ export class ImageGalleryComponent {
     });
   }
 
-  removeImage(imageUrl: string) {
+  async removeImage(imageUrl: string) {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar imagen',
+      message: '¿Eliminar esta imagen de la galería?',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const current = this.images();
     this.propertiesApi.deleteImage(this.propId(), imageUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
