@@ -1,178 +1,330 @@
-<div class="staff-inbox">
-  <div class="inbox-header">
+<div class="si-container">
+  <!-- ═══ HEADER ═══ -->
+  <header class="si-header">
     <h1>
-      <span class="material-symbols-outlined">inbox</span>
-      Bandeja de Recepción
+      <span class="material-symbols-outlined si-header-icon">inbox</span>
+      Centro de Mensajería
     </h1>
-    <div class="inbox-badges">
-      <span class="badge">{{ getUnreadCount() }} mensajes</span>
-      <span class="badge pending">{{ pendingCount }} solicitudes</span>
-      <span class="badge folio">{{ folioCount }} folios</span>
+    <div class="si-badges">
+      <span class="si-badge si-badge-message">{{ getUnreadCount() }} mensajes</span>
+      <span class="si-badge si-badge-request">{{ pendingCount }} solicitudes</span>
+      <span class="si-badge si-badge-folio">{{ folioCount }} folios</span>
     </div>
-  </div>
+    <app-property-selector
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </header>
 
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
-
-  <nav class="inbox-tabs">
-    <button class="tab" [class.active]="activeTab() === 'chat'" (click)="setTab('chat')">
-      <span class="material-symbols-outlined">chat</span>
-      Chat en vivo
-      @if (getUnreadCount() > 0) {
-        <span class="tab-count">{{ getUnreadCount() }}</span>
+  <!-- ═══ TAB NAV ═══ -->
+  <nav class="si-tabs">
+    <button class="si-tab" [class.active]="activeTab() === 'unified'" (click)="setTab('unified')">
+      <span class="material-symbols-outlined">forum</span>
+      Mensajes y Solicitudes
+      @if (getUnreadCount() + pendingCount > 0) {
+        <span class="si-tab-count">{{ getUnreadCount() + pendingCount }}</span>
       }
     </button>
-    <button class="tab" [class.active]="activeTab() === 'requests'" (click)="setTab('requests')">
-      <span class="material-symbols-outlined">concierge</span>
-      Solicitudes
-      @if (pendingCount > 0) {
-        <span class="tab-count">{{ pendingCount }}</span>
-      }
-    </button>
-    <button class="tab" [class.active]="activeTab() === 'folios'" (click)="setTab('folios')">
+    <button class="si-tab" [class.active]="activeTab() === 'folios'" (click)="setTab('folios')">
       <span class="material-symbols-outlined">receipt_long</span>
       Folios
       @if (folioCount > 0) {
-        <span class="tab-count">{{ folioCount }}</span>
+        <span class="si-tab-count">{{ folioCount }}</span>
       }
     </button>
   </nav>
 
-  @if (activeTab() === 'chat') {
-    <div class="chat-inbox">
-      @if (!selectedRoom()) {
-        <!-- Conversation List -->
-        @if (loading()) {
-          <div class="inbox-loading">Cargando conversaciones...</div>
-        } @else if (conversations().length === 0) {
-          <div class="inbox-empty">
-            <span class="material-symbols-outlined">chat</span>
-            <p>No hay conversaciones activas</p>
-          </div>
-        } @else {
-          <div class="conversation-list">
-            @for (conv of conversations(); track conv._id) {
-              <button class="conv-item" (click)="selectConversation(conv._id)">
-                <div class="conv-room">
-                  <span class="material-symbols-outlined">meeting_room</span>
-                  Hab. {{ conv._id }}
-                </div>
-                <div class="conv-info">
-                  <span class="conv-guest">{{ conv.guest_name || 'Huésped' }}</span>
-                  <span class="conv-preview">{{ conv.last_sender === 'staff' ? 'Tú: ' : '' }}{{ conv.last_message }}</span>
-                </div>
-                <div class="conv-meta">
-                  @if (conv.unread > 0) {
-                    <span class="unread-badge">{{ conv.unread }}</span>
-                  }
-                  <span class="conv-time">{{ conv.last_time | date:'HH:mm' }}</span>
-                </div>
-              </button>
-            }
-          </div>
-        }
-      } @else {
-        <!-- Chat Detail View -->
-        <div class="chat-detail">
-          <div class="chat-detail-header">
-            <button class="back-btn" (click)="backToConversations()">
+  <!-- ══════════════════════════════════════════════
+       UNIFIED TAB — Split Layout
+       ══════════════════════════════════════════════ -->
+  @if (activeTab() === 'unified') {
+    <div class="si-split">
+      <!-- ── LEFT SIDEBAR: Timeline ── -->
+      <aside class="si-sidebar">
+        <div class="si-sidebar-header">
+          <h2>Historial</h2>
+          @if (selectedRoom() || selectedRequest()) {
+            <button class="si-back-btn" (click)="clearSelection()">
               <span class="material-symbols-outlined">arrow_back</span>
             </button>
-            <span class="detail-room">Hab. {{ selectedRoom() }}</span>
-          </div>
+          }
+        </div>
 
-          <div class="chat-detail-messages">
-            @for (msg of messages(); track msg._id) {
-              <div class="msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
-                <div class="msg-bubble">
-                  @if (msg.sender === 'staff' && msg.staff_name) {
-                    <div class="msg-author">{{ msg.staff_name }}</div>
-                  }
-                  <div class="msg-text">{{ msg.message }}</div>
-                  <div class="msg-time">{{ msg.created_at | date:'dd/MM HH:mm' }}</div>
+        <!-- Category Chips -->
+        <div class="si-chips">
+          <button
+            class="si-chip"
+            [class.active]="requestCategoryFilter() === null"
+            (click)="setCategoryFilter(null)"
+          >
+            Todas
+          </button>
+          @for (cat of categories; track cat.id) {
+            <button
+              class="si-chip"
+              [class.active]="requestCategoryFilter() === cat.id"
+              (click)="setCategoryFilter(cat.id)"
+            >
+              <span class="material-symbols-outlined si-chip-icon">{{ cat.icon }}</span>
+              {{ cat.label }}
+            </button>
+          }
+        </div>
+
+        <!-- Timeline List -->
+        <div class="si-timeline">
+          @if (loading()) {
+            <div class="si-loading">Cargando...</div>
+          } @else if (timeline().length === 0) {
+            <div class="si-empty">
+              <span class="material-symbols-outlined">inbox</span>
+              <p>No hay actividad reciente</p>
+            </div>
+          } @else {
+            <div class="si-timeline-list">
+              @for (item of timeline(); track item.id) {
+                <button
+                  class="si-tl-item"
+                  [class.active]="(item.type === 'message' && selectedRoom() === item.roomLabel) || (item.type === 'request' && selectedRequest()?._id === item.id)"
+                  [class.unread]="item.type === 'message' && (item.unread ?? 0) > 0"
+                  [class.selected-left]="item.type === 'request' && item.status === 'in_progress'"
+                  (click)="item.type === 'message' ? selectConversation(item.roomLabel) : (item.request ? selectRequest(item.request) : undefined)"
+                >
+                  <div class="si-tl-left">
+                    @if (item.type === 'message') {
+                      <span class="si-tl-icon si-tl-msg-icon material-symbols-outlined">chat</span>
+                    } @else {
+                      <span class="si-tl-icon si-tl-req-icon material-symbols-outlined">
+                        {{ item.requestType === 'housekeeping' ? 'cleaning_services' : item.requestType === 'room_service' ? 'room_service' : item.requestType === 'maintenance' ? 'handyman' : 'concierge' }}
+                      </span>
+                    }
+                  </div>
+                  <div class="si-tl-body">
+                    <div class="si-tl-head">
+                      <span class="si-tl-room">Hab. {{ item.roomLabel }}</span>
+                      <span class="si-tl-time">{{ item.time | date:'HH:mm' }}</span>
+                    </div>
+                    <div class="si-tl-head-sub">
+                      @if (item.type === 'message') {
+                        <span class="si-tl-guest">{{ item.guestName || 'Huésped' }}</span>
+                      } @else {
+                        <span class="si-tl-req-type">{{ item.requestType || item.request?.request_type_label }}</span>
+                      }
+                    </div>
+                    <p class="si-tl-preview">{{ item.preview }}</p>
+                  </div>
+                  <div class="si-tl-right">
+                    @if (item.type === 'message' && (item.unread ?? 0) > 0) {
+                      <span class="si-tl-unread">{{ item.unread }}</span>
+                    }
+                    @if (item.type === 'request' && item.status) {
+                      <span class="si-tl-status si-{{ item.status }}">{{ item.statusLabel }}</span>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </aside>
+
+      <!-- ── RIGHT PANEL: Chat / Request Detail ── -->
+      <main class="si-main">
+        @if (selectedRoom()) {
+          <!-- ═══ CHAT VIEW ═══ -->
+          <div class="si-chat">
+            <div class="si-chat-header">
+              <div class="si-chat-header-info">
+                <div class="si-chat-avatar">
+                  <span class="material-symbols-outlined">meeting_room</span>
+                </div>
+                <div>
+                  <div class="si-chat-room">Hab. {{ selectedRoom() }}</div>
+                  <div class="si-chat-status">
+                    <span class="si-chat-dot"></span>
+                    Huésped Conectado
+                  </div>
                 </div>
               </div>
-            }
-          </div>
+              <button class="si-chat-more">
+                <span class="material-symbols-outlined">more_vert</span>
+              </button>
+            </div>
 
-          <div class="chat-detail-input">
-            <input
-              type="text"
-              placeholder="Responder..."
-              [ngModel]="replyInput()"
-              (ngModelChange)="replyInput.set($event)"
-              (keydown.enter)="sendReply()"
-            />
-            <button class="btn-reply" (click)="sendReply()" [disabled]="sendingReply() || !replyInput().trim()">
-              <span class="material-symbols-outlined">send</span>
-            </button>
-      </div>
+            <div class="si-chat-messages">
+              @if (messages().length === 0) {
+                <div class="si-chat-empty">
+                  <span class="material-symbols-outlined">chat</span>
+                  <p>No hay mensajes aún. Envía un saludo al huésped.</p>
+                </div>
+              }
+              @for (msg of messages(); track msg._id) {
+                <div class="si-msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
+                  <div class="si-msg-bubble">
+                    @if (msg.sender === 'staff' && msg.staff_name) {
+                      <div class="si-msg-author">{{ msg.staff_name }}</div>
+                    }
+                    <div class="si-msg-text">{{ msg.message }}</div>
+                    <div class="si-msg-time">{{ msg.created_at | date:'HH:mm' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Unified Input Bar -->
+            <div class="si-input-area">
+              <div class="si-input-chips">
+                @for (cat of categories; track cat.id) {
+                  <button
+                    class="si-input-chip"
+                    [class.active]="requestCategoryFilter() === cat.id"
+                    (click)="quickCreateRequest(cat.id)"
+                  >
+                    <span class="material-symbols-outlined">{{ cat.icon }}</span>
+                    {{ cat.label }}
+                  </button>
+                }
+              </div>
+              <div class="si-input-row">
+                <button class="si-btn-attach" title="Adjuntar archivo">
+                  <span class="material-symbols-outlined">attach_file</span>
+                </button>
+                <textarea
+                  class="si-input-text"
+                  placeholder="Escribe un mensaje o solicitud..."
+                  rows="2"
+                  [ngModel]="replyInput()"
+                  (ngModelChange)="replyInput.set($event)"
+                  (keydown)="handleReplyKeydown($event)"
+                ></textarea>
+                <button class="si-btn-send" (click)="sendReply()" [disabled]="sendingReply() || !replyInput().trim()">
+                  <span class="material-symbols-outlined">send</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else if (selectedRequest(); as req) {
+          <!-- ═══ REQUEST DETAIL VIEW ═══ -->
+          <div class="si-req-detail">
+            <div class="si-req-detail-header">
+              <div class="si-req-detail-info">
+                <span class="si-req-detail-icon material-symbols-outlined">
+                  {{ req.request_type === 'housekeeping' ? 'cleaning_services' : req.request_type === 'room_service' ? 'room_service' : req.request_type === 'maintenance' ? 'handyman' : 'concierge' }}
+                </span>
+                <div>
+                  <div class="si-req-detail-title">{{ req.request_type_label }}</div>
+                  <div class="si-req-detail-meta">Hab. {{ req.room_label }} — {{ req.booking_id }}</div>
+                </div>
+              </div>
+              <span class="si-tl-status si-{{ req.status }}">{{ req.status_label }}</span>
+            </div>
+
+            <div class="si-req-detail-body">
+              @if (req.description) {
+                <p class="si-req-detail-desc">{{ req.description }}</p>
+              }
+              @if (req.staff_response) {
+                <div class="si-req-detail-response">
+                  <span class="material-symbols-outlined">reply</span>
+                  {{ req.staff_response }}
+                </div>
+              }
+              <span class="si-req-detail-time">Creado: {{ req.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+
+            <div class="si-req-detail-actions">
+              @if (req.status === 'pending') {
+                <button class="si-action-btn si-action-primary" (click)="updateRequest(req, 'in_progress')">
+                  <span class="material-symbols-outlined">handyman</span>
+                  Tomar Solicitud
+                </button>
+                <button class="si-action-btn si-action-cancel" (click)="updateRequest(req, 'cancelled')">
+                  <span class="material-symbols-outlined">close</span>
+                  Cancelar
+                </button>
+              }
+              @if (req.status === 'in_progress') {
+                <button class="si-action-btn si-action-success" (click)="updateRequest(req, 'completed')">
+                  <span class="material-symbols-outlined">check</span>
+                  Completar
+                </button>
+                <button class="si-action-btn si-action-cancel" (click)="updateRequest(req, 'cancelled')">
+                  <span class="material-symbols-outlined">close</span>
+                  Cancelar
+                </button>
+              }
+              @if (req.status === 'completed' || req.status === 'cancelled') {
+                <div class="si-req-closed-note">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  Solicitud {{ req.status_label.toLowerCase() }}
+                  @if (req.resolved_at) {
+                    — {{ req.resolved_at | date:'dd/MM HH:mm' }}
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <!-- ═══ EMPTY STATE ═══ -->
+          <div class="si-main-empty">
+            <span class="material-symbols-outlined si-main-empty-icon">forum</span>
+            <h2>Centro de Mensajería y Solicitudes</h2>
+            <p>Selecciona una conversación o solicitud del panel izquierdo para ver los detalles.</p>
+            <div class="si-main-empty-hint">
+              Usa los chips de categoría para filtrar solicitudes por tipo.
+            </div>
+          </div>
+        }
+      </main>
     </div>
   }
 
+  <!-- ══════════════════════════════════════════════
+       FOLIOS TAB
+       ══════════════════════════════════════════════ -->
   @if (activeTab() === 'folios') {
-    <div class="folios-inbox">
+    <div class="si-folios">
       @if (foliosLoading()) {
-        <div class="inbox-loading">Cargando folios...</div>
+        <div class="si-loading">Cargando folios...</div>
       } @else if (folios().length === 0) {
-        <div class="inbox-empty">
+        <div class="si-empty">
           <span class="material-symbols-outlined">receipt_long</span>
           <p>No hay folios activos para esta propiedad</p>
         </div>
       } @else {
-        <div class="folios-list">
+        <div class="si-folios-grid">
           @for (folio of folios(); track folio.folioRef) {
-            <div class="folio-card">
-              <div class="folio-card-header">
-                <div class="folio-guest-info">
-                  <span class="folio-guest-name">{{ folio.guestName }}</span>
-                  <span class="folio-room">
+            <div class="si-folio-card">
+              <div class="si-folio-top">
+                <div>
+                  <div class="si-folio-guest">{{ folio.guestName }}</div>
+                  <div class="si-folio-room">
                     <span class="material-symbols-outlined">meeting_room</span>
-                    Hab. {{ folio.room || '—' }}
-                  </span>
-                </div>
-                <span class="folio-ref mono">{{ folio.folioRef }}</span>
-              </div>
-
-              <div class="folio-card-body">
-                <div class="folio-dates">
-                  <div class="folio-date-row">
-                    <span class="folio-date-label">Check-in</span>
-                    <span class="folio-date-value">{{ folio.checkIn || '—' }}</span>
-                  </div>
-                  <div class="folio-date-row">
-                    <span class="folio-date-label">Check-out</span>
-                    <span class="folio-date-value">{{ folio.checkOut || '—' }}</span>
-                  </div>
-                  <div class="folio-date-row">
-                    <span class="folio-date-label">Transacciones</span>
-                    <span class="folio-date-value">{{ folio.transactionCount }}</span>
+                    Hab. {{ folio.room || '—' }} · {{ folio.folioRef }}
                   </div>
                 </div>
-
-                <div class="folio-balance-section">
-                  <span class="folio-balance-label">Saldo Pendiente</span>
-                  <span class="folio-balance-value mono" [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
-                    {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
-                  </span>
+                <div class="si-folio-balance" [class.positive]="folio.balance > 0" [class.zero]="folio.balance <= 0">
+                  {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
                 </div>
               </div>
-
-              <div class="folio-card-actions">
-                <button class="folio-btn folio-btn-primary" (click)="openPaymentModal(folio)">
+              <div class="si-folio-meta">
+                <span>Check-in: {{ folio.checkIn || '—' }}</span>
+                <span>Check-out: {{ folio.checkOut || '—' }}</span>
+                <span>{{ folio.transactionCount }} transacciones</span>
+              </div>
+              <div class="si-folio-actions">
+                <button class="si-folio-btn si-folio-pay" (click)="openPaymentModal(folio)">
                   <span class="material-symbols-outlined">payments</span>
                   Registrar Pago
                 </button>
-                <button class="folio-btn folio-btn-outline" (click)="openTransferModal(folio)">
+                <button class="si-folio-btn si-folio-xfer" (click)="openTransferModal(folio)">
                   <span class="material-symbols-outlined">swap_horiz</span>
                   Transferir
                 </button>
-                <button class="folio-btn folio-btn-ghost" (click)="openTransactionsModal(folio)">
+                <button class="si-folio-btn si-folio-ghost" (click)="openTransactionsModal(folio)">
                   <span class="material-symbols-outlined">receipt_long</span>
-                  Ver Transacciones
+                  Ver
                 </button>
               </div>
             </div>
@@ -182,67 +334,9 @@
     </div>
   }
 </div>
-  }
 
-  @if (activeTab() === 'requests') {
-    <div class="requests-inbox">
-      <div class="request-filters">
-        @for (f of ['pending', 'in_progress', 'completed']; track f) {
-          <button class="filter-btn" [class.active]="requestFilter() === f" (click)="filterRequests(f)">
-            {{ f === 'pending' ? 'Pendientes' : f === 'in_progress' ? 'En proceso' : 'Completadas' }}
-          </button>
-        }
-      </div>
+<!-- ═══ MODALS ═══ -->
 
-      @if (requests().length === 0) {
-        <div class="inbox-empty">
-          <span class="material-symbols-outlined">check_circle</span>
-          <p>No hay solicitudes {{ requestFilter() === 'pending' ? 'pendientes' : 'en este estado' }}</p>
-        </div>
-      } @else {
-        <div class="requests-list">
-          @for (req of requests(); track req._id) {
-            <div class="request-card">
-              <div class="req-header">
-                <div class="req-meta">
-                  <span class="req-type">{{ req.request_type_label }}</span>
-                  <span class="req-from">Hab. {{ req.room_label }} — {{ req.booking_id }}</span>
-                </div>
-                <span class="req-status" [class]="'status-' + req.status">{{ req.status_label }}</span>
-              </div>
-              @if (req.description) {
-                <p class="req-desc">{{ req.description }}</p>
-              }
-              <div class="req-actions">
-                @if (req.status === 'pending') {
-                  <button class="action-btn primary" (click)="updateRequest(req, 'in_progress')">
-                    <span class="material-symbols-outlined">handyman</span>
-                    Tomar
-                  </button>
-                }
-                @if (req.status === 'in_progress') {
-                  <button class="action-btn success" (click)="updateRequest(req, 'completed')">
-                    <span class="material-symbols-outlined">check</span>
-                    Completar
-                  </button>
-                }
-                @if (req.status === 'pending' || req.status === 'in_progress') {
-                  <button class="action-btn cancel" (click)="updateRequest(req, 'cancelled')">
-                    <span class="material-symbols-outlined">close</span>
-                    Cancelar
-                  </button>
-                }
-              </div>
-              <span class="req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
-            </div>
-          }
-        </div>
-      }
-    </div>
-  }
-</div>
-
-<!-- Payment Modal -->
 @if (paymentModalFolio(); as folio) {
   <app-folio-payment-modal
     mode="payment"
@@ -253,7 +347,6 @@
   />
 }
 
-<!-- Transfer Modal -->
 @if (transferModalFolio(); as folio) {
   <app-folio-payment-modal
     mode="transfer"
@@ -265,7 +358,6 @@
   />
 }
 
-<!-- Transactions Modal -->
 @if (transactionsModalFolio(); as folio) {
   <app-folio-transactions-modal
     [folio]="folio"

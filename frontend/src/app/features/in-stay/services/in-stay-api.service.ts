@@ -90,6 +90,10 @@ export class InStayApiService {
     return this.http.get<PortalData>('/api/stay/guest/portal', { params: { token } });
   }
 
+  toggleDnd(token: string): Observable<{ ok: boolean; dnd_active: boolean; message: string }> {
+    return this.http.post<{ ok: boolean; dnd_active: boolean; message: string }>('/api/stay/guest/dnd/toggle', { token });
+  }
+
   getChatMessages(token: string): Observable<{ messages: ChatMessage[] }> {
     return this.http.get<{ messages: ChatMessage[] }>('/api/stay/guest/chat', { params: { token } });
   }
