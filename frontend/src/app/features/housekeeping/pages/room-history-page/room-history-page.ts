@@ -30,7 +30,7 @@ const STATUS_META: Record<string, { label: string; icon: string; color: string }
 
 @Component({
   selector: 'app-room-history-page',
-  imports: [DatePipe, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, RouterLink, HousekeepingSubNavComponent],
+  imports: [DatePipe, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, RouterLink, HousekeepingSubNavComponent],
   templateUrl: './room-history-page.html',
   styleUrl: './room-history-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

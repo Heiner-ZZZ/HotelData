@@ -18,7 +18,7 @@ import { ReservationsApiService } from '../../../reservations/services/reservati
 
 @Component({
   selector: 'app-additional-charges-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, ReactiveFormsModule, SlicePipe, HousekeepingSubNavComponent],
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ReactiveFormsModule, SlicePipe, HousekeepingSubNavComponent],
 
   templateUrl: './additional-charges-page.html',
   styleUrl: './additional-charges-page.scss',

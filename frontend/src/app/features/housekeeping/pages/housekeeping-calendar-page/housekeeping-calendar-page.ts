@@ -83,7 +83,7 @@ const COMMON_STAFF = [
 
 @Component({
   selector: 'app-housekeeping-calendar-page',
-  imports: [DatePipe, KeyValuePipe, TitleCasePipe, ReactiveFormsModule, PropertySelectorComponent, HousekeepingSubNavComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
+  imports: [KeyValuePipe, TitleCasePipe, ReactiveFormsModule, PropertySelectorComponent, HousekeepingSubNavComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent],
   templateUrl: './housekeeping-calendar-page.html',
   styleUrl: './housekeeping-calendar-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

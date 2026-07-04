@@ -54,7 +54,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-maintenance-page',
   imports: [
-    DatePipe, KeyValuePipe, ReactiveFormsModule,
+    KeyValuePipe, ReactiveFormsModule,
     PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
     HousekeepingSubNavComponent,
   ],

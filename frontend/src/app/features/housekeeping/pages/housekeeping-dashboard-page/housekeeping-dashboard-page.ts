@@ -52,7 +52,7 @@ const KPI_CARDS = [
 
 @Component({
   selector: 'app-housekeeping-dashboard-page',
-  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
+  imports: [FormsModule, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
   templateUrl: './housekeeping-dashboard-page.html',
   styleUrl: './housekeeping-dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
