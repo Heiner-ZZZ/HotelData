@@ -14,6 +14,7 @@ export interface DateHistoryEntry {
 }
 
 export interface BookingCharge {
+  id?: string;
   concept: string;
   amount: number;
   quantity: number;
@@ -72,6 +73,14 @@ export class CheckOutsApiService {
     );
   }
 
+  /** Delete an additional charge by its ID. */
+  deleteCharge(chargeId: string) {
+    return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(
+      `${this.apiConfig.baseUrl}/housekeeping/charges/${chargeId}`,
+      { withCredentials: true }
+    );
+  }
+
   completeCheckOut(bookingId: string) {
     return this.http.post(`${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/complete`, {}, { withCredentials: true });
   }
@@ -97,6 +106,24 @@ export class CheckOutsApiService {
     return this.http.post<{ booking_id: string; stay_status: string }>(
       `${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/complete`,
       payload,
+      { withCredentials: true }
+    );
+  }
+
+  /** Emit (generate) an invoice for a booking. */
+  emitInvoice(bookingId: string, propId: number, subtotal: number, taxes: number) {
+    return this.http.post<{ id: string; invoice_number: string; status: string; total: number }>(
+      `${this.apiConfig.baseUrl}/billing/invoices`,
+      { booking_id: bookingId, prop_id: propId, subtotal, taxes, notes: '' },
+      { withCredentials: true }
+    );
+  }
+
+  /** Send an existing invoice to the guest by email. */
+  sendInvoiceEmail(invoiceId: string) {
+    return this.http.post<{ ok: boolean; message: string }>(
+      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/email`,
+      {},
       { withCredentials: true }
     );
   }

@@ -1,6 +1,8 @@
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+
+import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-co-step-charges',
@@ -16,25 +18,48 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       <div class="co-quick-charges">
         <span class="co-label">Cargos r&aacute;pidos</span>
         <div class="co-quick-grid">
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'minibar', concept: 'Minibar', amount: 15 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">liquor</span> Minibar \$15
+          <button class="co-quick-btn" (click)="openQuickEditor('minibar', 'Minibar', 15)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">liquor</span> Minibar $15
           </button>
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'spa', concept: 'Spa', amount: 40 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">spa</span> Spa \$40
+          <button class="co-quick-btn" (click)="openQuickEditor('spa', 'Spa', 40)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">spa</span> Spa $40
           </button>
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'parking', concept: 'Parking', amount: 10 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">local_parking</span> Parking \$10
+          <button class="co-quick-btn" (click)="openQuickEditor('parking', 'Parking', 10)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">local_parking</span> Parking $10
           </button>
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'mascotas', concept: 'Mascotas', amount: 25 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">pets</span> Mascotas \$25
+          <button class="co-quick-btn" (click)="openQuickEditor('mascotas', 'Mascotas', 25)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">pets</span> Mascotas $25
           </button>
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'lavanderia', concept: 'Lavander&iacute;a', amount: 20 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">local_laundry_service</span> Lavander&iacute;a \$20
+          <button class="co-quick-btn" (click)="openQuickEditor('lavanderia', 'Lavander&iacute;a', 20)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">local_laundry_service</span> Lavander&iacute;a $20
           </button>
-          <button class="co-quick-btn" (click)="quickCharge.emit({ cat: 'late_checkout', concept: 'Late Checkout', amount: 30 })" [disabled]="chargeSaving()">
-            <span class="material-symbols-outlined">schedule</span> Late Checkout \$30
+          <button class="co-quick-btn" (click)="openQuickEditor('late_checkout', 'Late Checkout', 30)" [disabled]="chargeSaving()">
+            <span class="material-symbols-outlined">schedule</span> Late Checkout $30
           </button>
         </div>
+
+        @if (quickEditor(); as editor) {
+          <div class="co-quick-editor">
+            <span class="co-qe-title">{{ editor.concept }}</span>
+            <div class="co-qe-row">
+              <label class="co-qe-label">
+                Cantidad
+                <input type="number" class="co-qe-input" min="1" max="99"
+                       [ngModel]="editor.quantity"
+                       (ngModelChange)="quickEditor.update(e => e ? {...e, quantity: Math.max(1, Number($event))} : null)" />
+              </label>
+              <span class="co-qe-total">
+                Total: <strong>{{ (editor.amount * editor.quantity) | currency:currency() }}</strong>
+              </span>
+            </div>
+            <div class="co-qe-actions">
+              <button class="co-qe-cancel" (click)="quickEditor.set(null)">Cancelar</button>
+              <button class="co-qe-confirm" (click)="confirmQuickCharge(editor)" [disabled]="chargeSaving()">
+                Agregar
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
       <!-- Custom charge -->
@@ -84,16 +109,22 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         }
       </div>
 
-      <!-- Current charges summary -->
+      <!-- Current charges summary with delete buttons -->
       @if (chargesByCategory().length > 0) {
         <div class="co-current-charges">
           <span class="co-label">Cargos actuales ({{ chargesTotal() | currency:currency() }})</span>
           <div class="co-charge-chips">
             @for (catEntry of chargesByCategory(); track catEntry.key) {
-              @if (catEntry.items.length) {
-                <span class="co-cat-chip">
+              @for (item of catEntry.items; track item.id || item.concept + item.created_at) {
+                <span class="co-cat-chip co-cat-chip-removable">
                   <span class="material-symbols-outlined co-cat-chip-icon">{{ catEntry.icon }}</span>
-                  {{ catEntry.label }}: {{ catEntry.total | currency:currency() }}
+                  {{ item.concept }}: {{ item.total | currency:currency() }}
+                  <button class="co-chip-delete"
+                          [disabled]="chargeSaving()"
+                          (click)="confirmDelete(item.id || '', item.concept)"
+                          title="Eliminar cargo">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
                 </span>
               }
             }
@@ -122,6 +153,8 @@ export class CoStepChargesComponent {
   readonly chargeCategories = input<any[]>([]);
   readonly currency = input('USD');
 
+  readonly confirmDialog = inject(ConfirmDialogService);
+
   readonly Math = Math;
   readonly Number = Number;
 
@@ -133,6 +166,30 @@ export class CoStepChargesComponent {
   readonly chargeNoteChange = output<string>();
   readonly addCharge = output<void>();
   readonly quickCharge = output<{ cat: string; concept: string; amount: number }>();
+  readonly deleteCharge = output<string>();
   readonly prev = output<void>();
   readonly next = output<void>();
+
+  readonly quickEditor = signal<{ cat: string; concept: string; amount: number; quantity: number } | null>(null);
+
+  openQuickEditor(cat: string, concept: string, baseAmount: number): void {
+    this.quickEditor.set({ cat, concept, amount: baseAmount, quantity: 1 });
+  }
+
+  confirmQuickCharge(editor: { cat: string; concept: string; amount: number; quantity: number }): void {
+    const total = editor.amount * editor.quantity;
+    this.quickCharge.emit({ cat: editor.cat, concept: editor.concept, amount: total });
+    this.quickEditor.set(null);
+  }
+
+  async confirmDelete(chargeId: string, concept: string): Promise<void> {
+    if (!chargeId) return;
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar cargo',
+      message: `¿Eliminar el cargo "${concept}"?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (ok) this.deleteCharge.emit(chargeId);
+  }
 }

@@ -1,5 +1,7 @@
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+
+import { CheckOutsApiService } from '../../../services/check-outs-api.service';
 
 @Component({
   selector: 'app-co-step-invoice',
@@ -11,23 +13,59 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       <div class="co-step-badge">Paso 4</div>
       <h2 class="co-step-title">Emitir factura</h2>
 
+      @if (invoiceGenerated()) {
+        <div class="co-invoice-success">
+          <span class="material-symbols-outlined">check_circle</span>
+          Factura {{ invoiceNumber() }} generada
+        </div>
+      }
+
       <div class="co-invoice-actions">
-        <button class="co-inv-btn co-inv-primary">
+        <button class="co-inv-btn co-inv-primary"
+                [disabled]="generating() || invoiceGenerated()"
+                (click)="emitInvoice()">
           <span class="material-symbols-outlined">receipt</span>
-          <span class="co-inv-btn-label">Emitir Factura</span>
+          <span class="co-inv-btn-label">
+            @if (generating()) {
+              <span class="material-symbols-outlined rc-spin" style="font-size:16px;vertical-align:middle">progress_activity</span>
+              Generando...
+            } @else if (invoiceGenerated()) {
+              Factura Emitida
+            } @else {
+              Emitir Factura
+            }
+          </span>
           <span class="co-inv-btn-sub">Generar CFDI / factura fiscal</span>
         </button>
-        <button class="co-inv-btn">
+
+        <button class="co-inv-btn"
+                [disabled]="emailing() || !invoiceGenerated()"
+                (click)="sendByEmail()">
           <span class="material-symbols-outlined">mail</span>
-          <span class="co-inv-btn-label">Enviar por Correo</span>
+          <span class="co-inv-btn-label">
+            @if (emailing()) {
+              Enviando...
+            } @else if (emailSent()) {
+              Enviado ✓
+            } @else {
+              Enviar por Correo
+            }
+          </span>
           <span class="co-inv-btn-sub">Al hu&eacute;sped: {{ guestEmail() }}</span>
         </button>
-        <button class="co-inv-btn">
+
+        <button class="co-inv-btn"
+                [disabled]="!invoiceGenerated()"
+                (click)="printInvoice()">
           <span class="material-symbols-outlined">print</span>
           <span class="co-inv-btn-label">Imprimir</span>
           <span class="co-inv-btn-sub">Recibo / comprobante</span>
         </button>
       </div>
+
+      @if (errorMsg()) {
+        <div class="co-invoice-error">{{ errorMsg() }}</div>
+      }
 
       <label class="co-check co-split-check" [class.co-checked]="splitInvoice()">
         <input type="checkbox" [ngModel]="splitInvoice()" (ngModelChange)="splitInvoiceChange.emit($event)" />
@@ -43,9 +81,73 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   `
 })
 export class CoStepInvoiceComponent {
+  private readonly api = inject(CheckOutsApiService);
+
   readonly guestEmail = input('');
   readonly splitInvoice = input(false);
+  readonly bookingId = input('');
+  readonly propId = input(0);
+  readonly subtotal = input(0);
+  readonly taxes = input(0);
+
   readonly prev = output<void>();
   readonly next = output<void>();
   readonly splitInvoiceChange = output<boolean>();
+  readonly invoiceEmitted = output<string>();
+
+  readonly generating = signal(false);
+  readonly emailing = signal(false);
+  readonly emailSent = signal(false);
+  readonly invoiceGenerated = signal(false);
+  readonly invoiceId = signal('');
+  readonly invoiceNumber = signal('');
+  readonly errorMsg = signal('');
+
+  emitInvoice(): void {
+    const bookingId = this.bookingId();
+    const propId = this.propId();
+    if (!bookingId || !propId) return;
+
+    this.generating.set(true);
+    this.errorMsg.set('');
+
+    this.api.emitInvoice(bookingId, propId, this.subtotal(), this.taxes()).subscribe({
+      next: (result) => {
+        this.generating.set(false);
+        this.invoiceGenerated.set(true);
+        this.invoiceId.set(result.id);
+        this.invoiceNumber.set(result.invoice_number);
+        this.invoiceEmitted.emit(result.id);
+      },
+      error: (err) => {
+        this.generating.set(false);
+        this.errorMsg.set(err?.error?.detail || 'Error al emitir la factura');
+        setTimeout(() => this.errorMsg.set(''), 6000);
+      },
+    });
+  }
+
+  sendByEmail(): void {
+    const invoiceId = this.invoiceId();
+    if (!invoiceId) return;
+
+    this.emailing.set(true);
+    this.errorMsg.set('');
+
+    this.api.sendInvoiceEmail(invoiceId).subscribe({
+      next: () => {
+        this.emailing.set(false);
+        this.emailSent.set(true);
+      },
+      error: (err) => {
+        this.emailing.set(false);
+        this.errorMsg.set(err?.error?.detail || 'Error al enviar el correo');
+        setTimeout(() => this.errorMsg.set(''), 6000);
+      },
+    });
+  }
+
+  printInvoice(): void {
+    window.print();
+  }
 }

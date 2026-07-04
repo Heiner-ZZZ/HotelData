@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -69,6 +70,7 @@ export class HousekeepingTasksPageComponent {
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertyCtx = inject(PropertyContextService);
 
   // ── URL-driven state (toSignal auto-cleans, no DestroyRef) ──
@@ -455,6 +457,16 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set(err.message || 'Error al completar tarea');
       this.message.set('');
     }
+  }
+
+  async deleteTaskWithConfirm(taskId: string, roomLabel: string): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar tarea',
+      message: `¿Eliminar la tarea de "Hab. ${roomLabel}"?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (ok) this.deleteTask(taskId);
   }
 
   async deleteTask(taskId: string): Promise<void> {

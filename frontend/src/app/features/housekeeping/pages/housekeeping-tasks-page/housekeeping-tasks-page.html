@@ -359,7 +359,7 @@
                           <span class="material-symbols-outlined">edit</span>
                         </button>
                         <button type="button" class="btn-action delete"
-                          (click)="deleteTask(item.id)"
+                          (click)="deleteTaskWithConfirm(item.id, item.roomLabel)"
                           title="Eliminar" aria-label="Eliminar tarea">
                           <span class="material-symbols-outlined">delete</span>
                         </button>
