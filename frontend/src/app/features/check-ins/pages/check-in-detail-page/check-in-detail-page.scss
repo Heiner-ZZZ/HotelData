@@ -533,6 +533,16 @@
   }
 }
 
+.ciw-reception-link {
+  color: #006076;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 /* ═══ Textarea ═══ */
 
 .ciw-textarea {

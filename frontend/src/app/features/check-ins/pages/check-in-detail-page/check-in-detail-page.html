@@ -138,7 +138,15 @@
               @if (!allRoomsAvailable()) {
                 <div class="ciw-warning">
                   <span class="material-symbols-outlined">warning</span>
-                  Algunas habitaciones no están disponibles. Asigna otras antes del check-in.
+                  <div>
+                    Algunas habitaciones no están disponibles.
+                    <a [routerLink]="['/management/recepcion', vm.booking_id]"
+                       [queryParams]="{prop_id: vm.prop_id}"
+                       class="ciw-reception-link">
+                      Ir a Recepción
+                    </a>
+                    para reasignar habitaciones antes del check-in.
+                  </div>
                 </div>
               }
             </section>
@@ -355,7 +363,7 @@
                   </div>
                 } @else {
                   <button type="button" class="ciw-btn ciw-btn-success"
-                    (click)="completeCheckIn()" [disabled]="completing()">
+                    (click)="completeCheckIn()" [disabled]="completing() || !allRoomsAvailable()">
                     @if (completing()) {
                       <span class="material-symbols-outlined spinning">sync</span>
                       Procesando...

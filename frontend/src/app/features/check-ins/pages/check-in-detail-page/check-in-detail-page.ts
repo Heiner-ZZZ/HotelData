@@ -233,6 +233,10 @@ export class CheckInDetailPageComponent {
   completeCheckIn(): void {
     const d = this.data();
     if (!d || this.completing() || !this.keysDelivered()) return;
+    if (!this.allRoomsAvailable()) {
+      this.completeError.set('No se puede completar el check-in: hay habitaciones asignadas que no están disponibles (ocupadas, en mantenimiento, etc.). Asigna otras habitaciones antes de continuar.');
+      return;
+    }
     this.completing.set(true);
     this.completeError.set('');
 
@@ -282,8 +286,11 @@ export class CheckInDetailPageComponent {
 
   roomStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      available: 'Disponible', vacant_clean: 'Disponible', occupied: 'Ocupada', cleaning: 'Limpieza',
-      clean: 'Limpia', inspected: 'Inspeccionada', dirty: 'Sucia',
+      available: 'Disponible', vacant_clean: 'Disponible', occupied_clean: 'Ocupada Limpia',
+      occupied: 'Ocupada', cleaning: 'Limpieza', clean: 'Limpia',
+      inspected: 'Inspeccionada', dirty: 'Sucia', occupied_dirty: 'Ocupada Sucia',
+      vacant_dirty: 'Vacante Sucia', cleaning_in_progress: 'Limpieza en Progreso',
+      cleaning_completed: 'Limpieza Completada', maintenance_requested: 'Mantenimiento Solicitado',
       maintenance: 'Mantenimiento', out_of_order: 'Fuera Servicio',
       out_of_service: 'Fuera Servicio',
     };
