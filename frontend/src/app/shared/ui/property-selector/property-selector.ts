@@ -65,9 +65,13 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
   readonly singleHotelLabel = computed(() => {
     if (!this.ctx.ready()) return '';
     if (this.ctx.singleHotelMode()) {
-      // Prefer context label, fallback to Input, never show generic placeholder
-      const label = this.ctx.currentPropLabel() || this.selectedLabel;
-      return label || '';
+      // Use defaultPropLabel via assignedProperties, fallback to Input
+      const defaultId = this.ctx.defaultPropId();
+      if (defaultId) {
+        const assigned = this.ctx.assignedProperties().find(p => p.propId === defaultId);
+        if (assigned?.label) return assigned.label;
+      }
+      return this.ctx.currentPropLabel() || this.selectedLabel || '';
     }
     return '';
   });
@@ -100,14 +104,13 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
 
     // --- Modo single: etiqueta estatica, auto-emitir ---
     if (this.ctx.mode() === 'single') {
-      const label = this.ctx.currentPropLabel();
+      const propId = this.ctx.defaultPropId();
+      const defaultProp = this.ctx.assignedProperties().find(p => p.propId === propId);
+      const label = defaultProp?.label || this.ctx.currentPropLabel();
       if (label) this.filterText.set(label);
-      if (this.selectedPropId !== this.ctx.currentPropId()) {
-        this.propIdChange.emit({
-          propId: this.ctx.currentPropId(),
-          label: this.ctx.currentPropLabel(),
-        });
-      }
+      // Always emit in single mode — selectedPropId may be 0 from a stale clear(),
+      // but defaultPropId is guaranteed correct.
+      this.propIdChange.emit({ propId, label });
       return;
     }
 

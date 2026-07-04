@@ -7,16 +7,7 @@
 }
 <!-- ═══ Single-hotel mode: ready ═══ -->
 @else if (singleMode()) {
-  @if (singleHotelLabel()) {
-    <div class="ps-static">
-      <span class="ps-static-icon material-symbols-outlined">hotel</span>
-      <span class="ps-static-label">{{ singleHotelLabel() }}</span>
-    </div>
-  } @else {
-    <div class="ps-static ps-static-subtle">
-      <span class="ps-static-icon material-symbols-outlined">hotel</span>
-    </div>
-  }
+  <!-- Hotel name hidden — automatically assigned, shown in page content/KPIs -->
 }
 <!-- ═══ No hotels assigned ═══ -->
 @else if (ctx.mode() === 'none') {

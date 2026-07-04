@@ -1,7 +1,9 @@
+import { Location } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, map, of, Subscription } from 'rxjs';
+import { NavigationEnd, Router } from '@angular/router';
+import { catchError, filter, map, of } from 'rxjs';
 
 import { API_CONFIG } from '../../core/api/api.config';
 import { AuthService } from '../../core/auth/auth.service';
@@ -17,11 +19,20 @@ export class PropertyContextService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly currentPropId = signal(0);
   readonly currentPropLabel = signal('');
   readonly currentPropLabelShort = signal('');
+
+  /**
+   * The default property ID assigned to this user (single-hotel mode).
+   * Never cleared by clear() — survives page-level resets so effects
+   * and NavigationEnd listeners can always re-inject the correct prop_id.
+   */
+  readonly defaultPropId = signal(0);
 
   /** The property access mode for the current user. */
   readonly mode = signal<'all' | 'single' | 'multi' | 'none'>('all');
@@ -52,6 +63,27 @@ export class PropertyContextService {
         this.resetState();
       }
     });
+
+    // When context becomes ready in single-hotel mode, inject prop_id into URL.
+    // Uses Location.replaceState (sync) to avoid race conditions from async router.navigate.
+    effect(() => {
+      if (this.ready() && this.singleHotelMode()) {
+        this._ensurePropIdInUrl(this.defaultPropId());
+      }
+    });
+
+    // After EVERY navigation (including sidebar links that strip query params),
+    // re-inject prop_id if missing. Uses defaultPropId which survives clear().
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (this.ready() && this.singleHotelMode()) {
+          this._ensurePropIdInUrl(this.defaultPropId());
+        }
+      });
   }
 
   /**
@@ -127,6 +159,7 @@ export class PropertyContextService {
     this.singleHotelMode.set(ctx.mode === 'single');
 
     if (ctx.mode === 'single' && ctx.defaultPropId) {
+      this.defaultPropId.set(ctx.defaultPropId);
       const prop = ctx.assignedProperties.find((p) => p.propId === ctx.defaultPropId);
       if (prop) {
         this.setProperty(prop.propId, prop.label);
@@ -142,9 +175,28 @@ export class PropertyContextService {
     this.mode.set('all');
     this.assignedProperties.set([]);
     this.singleHotelMode.set(false);
+    this.defaultPropId.set(0);
     this.currentPropId.set(0);
     this.currentPropLabel.set('');
     this.currentPropLabelShort.set('');
+  }
+
+  /**
+   * For single-hotel mode, ensure ?prop_id=X is in the current URL.
+   * Uses Location.replaceState (synchronous) to avoid race conditions
+   * with async router.navigate calls from other components.
+   * Only injects if propId > 0 (skips 0 from clear()).
+   */
+  private _ensurePropIdInUrl(propId: number): void {
+    if (propId <= 0) return;
+    try {
+      const path = this.router.url.split('?')[0];
+      if (path.startsWith('/management') && !this.router.url.includes('prop_id=')) {
+        this.location.replaceState(path, `prop_id=${propId}`);
+      }
+    } catch {
+      // Router may not be ready during initial bootstrap — safe to ignore
+    }
   }
 
   setProperty(propId: number, label: string): void {
@@ -152,6 +204,10 @@ export class PropertyContextService {
     this.currentPropLabel.set(label);
     const short = label.length > 18 ? label.slice(0, 16) + '\u2026' : label;
     this.currentPropLabelShort.set(short);
+    // Also ensure URL has prop_id when set manually (e.g. from property selector)
+    if (this.singleHotelMode()) {
+      this._ensurePropIdInUrl(propId);
+    }
   }
 
   clear(): void {
