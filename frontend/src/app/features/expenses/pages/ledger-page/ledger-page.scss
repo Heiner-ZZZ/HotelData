@@ -98,6 +98,13 @@
   overflow-x: auto;
 }
 
+/* Give AG Grid a minimum height so it doesn't collapse to 0 */
+.ledger-pane ag-grid-angular {
+  flex: 1;
+  min-height: 400px;
+  height: auto;
+}
+
 .ledger-toolbar {
   display: flex;
   justify-content: space-between;

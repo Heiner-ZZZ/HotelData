@@ -1,0 +1,98 @@
+.cd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  animation: cd-fade-in 0.15s ease;
+}
+
+.cd-dialog {
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  padding: 28px 32px 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  animation: cd-slide-up 0.18s ease;
+}
+
+.cd-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cd-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cd-icon-danger { background: #fef2f2; color: #dc2626; }
+.cd-icon-warning { background: #fffbeb; color: #d97706; }
+.cd-icon .material-symbols-outlined { font-size: 22px; }
+
+.cd-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.cd-message {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary, #6b7280);
+}
+
+.cd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cd-btn {
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.cd-btn-cancel {
+  background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-primary, #374151);
+}
+.cd-btn-cancel:hover { background: var(--bg-hover, #e5e7eb); }
+
+.cd-btn-confirm {
+  background: var(--primary, #2563eb);
+  color: #fff;
+}
+.cd-btn-confirm:hover { opacity: 0.9; }
+
+.cd-btn-danger { background: #dc2626; }
+.cd-btn-danger:hover { background: #b91c1c; }
+
+.cd-btn-warning { background: #d97706; }
+.cd-btn-warning:hover { background: #b45309; }
+
+@keyframes cd-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cd-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}

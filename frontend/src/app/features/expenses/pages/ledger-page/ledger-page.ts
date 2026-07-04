@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, ViewEncapsulation } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, GridReadyEvent, GridApi, ColumnHeaderClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
+import { ActivatedRoute } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -42,8 +43,13 @@ type TreeRow = LedgerTransaction | JournalEntryGroupRow;
 export class LedgerPageComponent {
   private readonly api = inject(ExpensesApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
   readonly ctx = inject(PropertyContextService);
   private readonly reports = inject(ReportsExportService);
+
+  /** URL query param snapshot for initial load. */
+  private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+  readonly urlPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
 
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
@@ -106,12 +112,33 @@ export class LedgerPageComponent {
   constructor() {
     this.columnDefs = this.buildColumnDefs();
 
-    const propId = this.ctx.currentPropId();
-    if (propId) {
-      this.selectedPropId.set(propId);
+    // Prefer URL query param ?prop_id= for direct navigation;
+    // fall back to PropertyContextService for cross-page navigation.
+    const urlPropId = this.urlPropId();
+    const ctxPropId = this.ctx.currentPropId();
+    if (urlPropId) {
+      this.selectedPropId.set(urlPropId);
+      this.selectedLabel.set(this.ctx.currentPropLabel() || `Propiedad #${urlPropId}`);
+      this.ctx.setProperty(urlPropId, this.selectedLabel());
+      this.loadAll();
+    } else if (ctxPropId) {
+      this.selectedPropId.set(ctxPropId);
       this.selectedLabel.set(this.ctx.currentPropLabel());
       this.loadAll();
     }
+
+    // Reactively reload when URL prop changes
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const newPropId = Number(params.get('prop_id') ?? '0');
+        if (newPropId && newPropId !== this.selectedPropId()) {
+          this.selectedPropId.set(newPropId);
+          this.selectedLabel.set(this.ctx.currentPropLabel() || `Propiedad #${newPropId}`);
+          this.ctx.setProperty(newPropId, this.selectedLabel());
+          this.loadAll();
+        }
+      });
   }
 
   // ─── Column definitions (constructed so cellRenderer has `this`) ───

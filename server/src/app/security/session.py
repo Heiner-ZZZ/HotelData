@@ -23,6 +23,21 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def ensure_utc(dt: datetime | None) -> datetime | None:
+    """Return ``dt`` with ``timezone.utc`` attached if it is offset-naive.
+
+    MongoDB (PyMongo) returns stored datetimes as offset-naive even
+    when the original value was offset-aware, making them unsafe to
+    compare with ``utc_now()`` or other offset-aware datetimes.
+
+    This helper is meant to be the single shared implementation
+    across all modules so we never duplicate this logic.
+    """
+    if dt is not None and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def hash_session_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -98,9 +113,7 @@ def get_session(db: Database, token: str | None) -> dict[str, Any] | None:
     session = db.user_sessions.find_one({"session_token_hash": hash_session_token(token), "is_active": True})
     if not session:
         return None
-    expires_at = session.get("expires_at")
-    if expires_at and expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    expires_at = ensure_utc(session.get("expires_at"))
     if expires_at and expires_at < utc_now():
         db.user_sessions.update_one(
             {"_id": session["_id"]},
