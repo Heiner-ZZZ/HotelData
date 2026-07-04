@@ -14,7 +14,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-client-invoice-detail-page',
-  imports: [CurrencyPipe, DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
+  imports: [CurrencyPipe, DatePipe, ErrorStateComponent, LoadingStateComponent, StatusBadgeComponent],
   templateUrl: './client-invoice-detail-page.html',
   styleUrl: './client-invoice-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -2,18 +2,18 @@
 // Invoice Detail — Split into partials
 // ═══════════════════════════════════════════════════════════
 
-@import 'partials/inv-layout';
-@import 'partials/inv-buttons';
-@import 'partials/inv-toast';
-@import 'partials/inv-grid';
-@import 'partials/inv-card';
-@import 'partials/inv-definition';
-@import 'partials/inv-table';
-@import 'partials/inv-payments';
-@import 'partials/inv-summary';
-@import 'partials/inv-fiscal';
-@import 'partials/inv-charge-form';
-@import 'partials/inv-status';
-@import 'partials/inv-quick-charge';
-@import 'partials/inv-folio';
-@import 'partials/inv-print';
+@use 'partials/inv-layout';
+@use 'partials/inv-buttons';
+@use 'partials/inv-toast';
+@use 'partials/inv-grid';
+@use 'partials/inv-card';
+@use 'partials/inv-definition';
+@use 'partials/inv-table';
+@use 'partials/inv-payments';
+@use 'partials/inv-summary';
+@use 'partials/inv-fiscal';
+@use 'partials/inv-charge-form';
+@use 'partials/inv-status';
+@use 'partials/inv-quick-charge';
+@use 'partials/inv-folio';
+@use 'partials/inv-print';

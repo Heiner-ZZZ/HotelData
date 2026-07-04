@@ -1,19 +1,18 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { FolioApiService, type FolioCategory, type FolioViewModel, type FolioPosting } from '../../services/folio-api.service';
 
 @Component({
   selector: 'app-folio-detail-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, ErrorStateComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [DatePipe, FormsModule, ErrorStateComponent, LoadingStateComponent],
   templateUrl: './folio-detail-page.html',
   styleUrl: './folio-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

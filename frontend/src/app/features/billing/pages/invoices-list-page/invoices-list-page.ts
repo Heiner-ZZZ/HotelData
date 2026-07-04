@@ -16,7 +16,7 @@ import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
   selector: 'app-invoices-list-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent],
+  imports: [RouterLink, FormsModule, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent],
   templateUrl: './invoices-list-page.html',
   styleUrl: './invoices-list-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -7,7 +7,6 @@ import { forkJoin, switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
@@ -44,7 +43,7 @@ const QUICK_CHARGES = [
 
 @Component({
   selector: 'app-invoice-detail-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, FormsModule, ErrorStateComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [DatePipe, RouterLink, FormsModule, ErrorStateComponent, LoadingStateComponent],
   templateUrl: './invoice-detail-page.html',
   styleUrl: './invoice-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
