@@ -15,7 +15,7 @@ from src.app.modules.expenses.schemas import (
     ModuleStatus,
 )
 from src.app.modules.expenses.service.collections import (
-    BUDGET_COLLECTION, CATEGORIES_COLLECTION, INVOICES_COLLECTION, LEDGER_COLLECTION,
+    BUDGET_COLLECTION, CATEGORIES_COLLECTION, CHART_OF_ACCOUNTS, INVOICES_COLLECTION, LEDGER_COLLECTION,
     ensure_expenses_collections, module_status,
 )
 
@@ -283,9 +283,10 @@ def list_budget(period: str | None = Query(default=None)):
 
 @api_router.get("/ledger")
 def list_ledger(
-    prop_id: int | None = Query(default=None, ge=1),
+    prop_id: int = Query(default=0, ge=0),
     folio_ref: str | None = Query(default=None),
     account_code: str | None = Query(default=None),
+    accounting_period: str | None = Query(default=None, description="YYYY-MM"),
     status_filter: str | None = Query(default=None, alias="status"),
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -299,42 +300,60 @@ def list_ledger(
     if prop_id: query["prop_id"] = prop_id
     if folio_ref: query["folio_ref"] = folio_ref
     if account_code: query["account_code"] = account_code
+    if accounting_period: query["accounting_period"] = accounting_period
     if status_filter: query["status"] = status_filter
     if search:
         query["$or"] = [
             {"description": {"$regex": search, "$options": "i"}},
             {"folio_ref": {"$regex": search, "$options": "i"}},
             {"account_name": {"$regex": search, "$options": "i"}},
-            {"user": {"$regex": search, "$options": "i"}},
+            {"account_code": {"$regex": search, "$options": "i"}},
+            {"guest_name": {"$regex": search, "$options": "i"}},
+            {"cost_center": {"$regex": search, "$options": "i"}},
+            {"journal_entry_id": {"$regex": search, "$options": "i"}},
         ]
 
     sort_dir = -1 if sort_order == "desc" else 1
     total = db[LEDGER_COLLECTION].count_documents(query)
+    skip = (page - 1) * page_size
 
-    # Running balance: sum all debits - credits before current page
-    running_balance_pipeline = [
+    # Compute balance of all rows BEFORE the current page
+    if skip > 0:
+        prior_balance = sum(
+            d.get("debit", 0) - d.get("credit", 0)
+            for d in db[LEDGER_COLLECTION].find(
+                query, {"debit": 1, "credit": 1}
+            ).sort(sort_field, sort_dir).limit(skip)
+        )
+    else:
+        prior_balance = 0
+
+    # Total balance of ALL matching rows
+    total_balance_pipeline = [
         {"$match": query},
         {"$group": {"_id": None, "balance": {"$sum": {"$subtract": ["$debit", "$credit"]}}}},
     ]
-    balance_agg = list(db[LEDGER_COLLECTION].aggregate(running_balance_pipeline))
-    running_balance = balance_agg[0]["balance"] if balance_agg else 0
+    balance_agg = list(db[LEDGER_COLLECTION].aggregate(total_balance_pipeline))
+    total_balance = balance_agg[0]["balance"] if balance_agg else 0
 
     cursor = (
         db[LEDGER_COLLECTION]
         .find(query)
         .sort(sort_field, sort_dir)
-        .skip((page - 1) * page_size)
+        .skip(skip)
         .limit(page_size)
     )
     items = [_enrich_ledger(doc) for doc in cursor]
 
-    # Compute cumulative balance for each row
-    cumulative = running_balance if sort_dir == -1 else 0
-    for item in items:
-        if sort_dir == -1:
+    # Running balance accounting for prior pages
+    if sort_dir == -1:
+        cumulative = total_balance - prior_balance
+        for item in items:
             item["balance"] = round(cumulative, 2)
             cumulative -= item["debit"] - item["credit"]
-        else:
+    else:
+        cumulative = prior_balance
+        for item in items:
             cumulative += item["debit"] - item["credit"]
             item["balance"] = round(cumulative, 2)
 
@@ -351,62 +370,91 @@ def list_ledger(
 
 @api_router.get("/ledger/folios")
 def list_active_folios(
-    prop_id: int | None = Query(default=None, ge=1),
+    prop_id: int = Query(default=0, ge=0),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
 ):
-    """Return active folios with guest info and balances for the right sidebar panel."""
+    """Return real guest folios with balances for the sidebar panel."""
     db = get_database()
-    match: dict = {}
-    if prop_id: match["prop_id"] = prop_id
+    query: dict = {}
+    if prop_id:
+        query["prop_id"] = int(prop_id)
 
-    pipeline = [
-        {"$match": match},
-        {"$group": {
-            "_id": "$folio_ref",
-            "balance": {"$sum": {"$subtract": ["$debit", "$credit"]}},
-            "count": {"$sum": 1},
-            "last_tx": {"$max": "$tx_date"},
-        }},
-        {"$sort": {"last_tx": -1}},
-        {"$skip": (page - 1) * page_size},
-        {"$limit": page_size},
-    ]
-    folios = list(db[LEDGER_COLLECTION].aggregate(pipeline))
+    total = db.guest_folios.count_documents(query)
+    cursor = (
+        db.guest_folios
+        .find(query)
+        .sort("created_at", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
 
     result = []
-    for f in folios:
-        folio_ref = f["_id"]
-        # Get guest info from most recent transaction for this folio
-        last_tx = db[LEDGER_COLLECTION].find_one(
-            {"folio_ref": folio_ref},
-            sort=[("tx_date", -1)],
-            projection={"folio_ref": 1},
-        )
+    for f in cursor:
         result.append({
-            "folio_ref": folio_ref,
-            "guest_name": f"Folio {folio_ref}",
-            "room": "",
-            "check_in": "",
-            "check_out": "",
-            "balance": round(f["balance"], 2),
-            "transaction_count": f["count"],
+            "folio_id": str(f["_id"]),
+            "folio_ref": f.get("folio_number", ""),
+            "guest_name": f.get("guest_name", ""),
+            "room": f.get("room_label", ""),
+            "check_in": f.get("check_in_date", ""),
+            "check_out": f.get("check_out_date", ""),
+            "balance": round(f.get("total_due", 0), 2),
+            "transaction_count": f.get("posting_count", 0),
+            "booking_id": f.get("booking_id", ""),
+            "status": f.get("status", ""),
         })
 
     return {
         "items": result,
         "page": page,
         "page_size": page_size,
-        "total": len(result),
+        "total": total,
+    }
+
+
+@api_router.get("/ledger/folios/{folio_id}/postings")
+def get_folio_postings(folio_id: str = Path(...)):
+    """Return the posting history for a guest folio."""
+    from src.app.modules.billing.service.folio import get_folio_by_id
+
+    folio = get_folio_by_id(folio_id)
+    if not folio:
+        raise HTTPException(status_code=404, detail="Folio no encontrado")
+
+    postings = folio.get("postings", [])
+    result = []
+    for p in postings:
+        posted = p.get("posted_at")
+        if isinstance(posted, datetime):
+            posted = posted.isoformat()
+        result.append({
+            "posting_id": str(p.get("posting_id", "")),
+            "type": p.get("type", ""),
+            "category": p.get("category", ""),
+            "concept": p.get("concept", ""),
+            "amount": round(p.get("amount", 0), 2),
+            "quantity": p.get("quantity", 1),
+            "unit_price": round(p.get("unit_price", 0), 2),
+            "reference_id": p.get("reference_id", ""),
+            "reference_type": p.get("reference_type", ""),
+            "posted_at": posted or "",
+        })
+
+    return {
+        "folio_id": folio_id,
+        "folio_ref": folio.get("folio_number", ""),
+        "guest_name": folio.get("guest_name", ""),
+        "postings": sorted(result, key=lambda x: x.get("posted_at", ""), reverse=True),
     }
 
 
 @api_router.get("/ledger/summary")
 def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
-    """Return KPI summary for the ledger header: totals, budget, pending."""
+    """Return trial balance + KPI summary for the ledger header."""
     db = get_database()
     match: dict = {}
-    if prop_id: match["prop_id"] = prop_id
+    if prop_id:
+        match["prop_id"] = int(prop_id)
 
     pipeline = [
         {"$match": match},
@@ -420,16 +468,577 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
     agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
     data = agg[0] if agg else {"total_debits": 0, "total_credits": 0, "count": 0}
 
-    pending = db[LEDGER_COLLECTION].count_documents({**match, "status": "pending"})
-    audited = db[LEDGER_COLLECTION].count_documents({**match, "status": "audited"})
-    discrepancy = db[LEDGER_COLLECTION].count_documents({**match, "status": "discrepancy"})
+    # Revenue breakdown by account type
+    revenue_pipeline = [
+        {"$match": {**match, "account_code": {"$regex": "^4"}}},
+        {"$group": {"_id": "$account_code", "total": {"$sum": "$credit"}}},
+        {"$sort": {"total": -1}},
+    ]
+    revenue = list(db[LEDGER_COLLECTION].aggregate(revenue_pipeline))
+
+    # Journal entry count
+    journal_pipeline = [
+        {"$match": match},
+        {"$group": {"_id": "$journal_entry_id"}},
+        {"$count": "total"},
+    ]
+    journal_agg = list(db[LEDGER_COLLECTION].aggregate(journal_pipeline))
+    journal_count = journal_agg[0]["total"] if journal_agg else 0
+
+    diff = round(data["total_debits"] - data["total_credits"], 2)
 
     return {
         "total_debits": round(data["total_debits"], 2),
         "total_credits": round(data["total_credits"], 2),
-        "net_balance": round(data["total_debits"] - data["total_credits"], 2),
+        "trial_balance_diff": diff,
+        "is_balanced": abs(diff) < 0.01,
         "transaction_count": data["count"],
-        "pending_count": pending,
-        "audited_count": audited,
-        "discrepancy_count": discrepancy,
+        "journal_entry_count": journal_count,
+        "revenue_breakdown": [
+            {"account_code": r["_id"], "total": round(r["total"], 2)}
+            for r in revenue
+        ],
+    }
+
+
+@api_router.post("/ledger/folios/{folio_id}/payment")
+def register_folio_payment(
+    folio_id: str = Path(...),
+    amount: float = Body(..., gt=0),
+    method: str = Body(default="cash"),
+    notes: str = Body(default=""),
+    paid_by: str = Body(default="staff"),
+):
+    """Register a payment against a guest folio.
+
+    Posts a 'payment' transaction to the folio and creates
+    the corresponding double-entry ledger entries.
+    """
+    from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
+
+    folio = get_folio_by_id(folio_id)
+    if not folio:
+        raise HTTPException(status_code=404, detail="Folio no encontrado")
+    if folio.get("status") != "open":
+        raise HTTPException(status_code=400, detail="Solo se pueden pagar folios abiertos")
+
+    booking_id = folio.get("booking_id", "")
+    if not booking_id:
+        raise HTTPException(status_code=400, detail="Folio sin booking_id")
+
+    concept = f"Pago {method} por {paid_by} — {notes}" if notes else f"Pago {method} por {paid_by}"
+    updated = post_to_folio(
+        booking_id,
+        posting_type="payment",
+        category=method.title(),
+        concept=concept,
+        amount=amount,
+        reference_id=f"PAY-{folio.get('folio_number', '')}",
+        reference_type="folio_payment",
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="Error al registrar el pago")
+
+    # Create ledger entries for the payment (with rollback on failure)
+    _generate_payment_ledger(folio, amount, method, notes)
+
+    return {
+        "folio_id": folio_id,
+        "new_balance": round(updated.get("total_due", 0), 2),
+        "payment_amount": amount,
+        "method": method,
+    }
+
+
+@api_router.post("/ledger/folios/{folio_id}/transfer")
+def transfer_folio_charges(
+    folio_id: str = Path(...),
+    target_folio_id: str = Body(...),
+    amount: float = Body(..., gt=0),
+    notes: str = Body(default=""),
+):
+    """Transfer charges from one folio to another.
+
+    Debits the source folio (reducing its balance) and credits
+    the target folio (increasing its balance).
+    """
+    from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
+
+    source = get_folio_by_id(folio_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Folio origen no encontrado")
+    if source.get("status") != "open":
+        raise HTTPException(status_code=400, detail="Solo se pueden transferir cargos desde folios abiertos")
+
+    target = get_folio_by_id(target_folio_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Folio destino no encontrado")
+    if target.get("status") != "open":
+        raise HTTPException(status_code=400, detail="Solo se pueden transferir cargos a folios abiertos")
+
+    if folio_id == target_folio_id:
+        raise HTTPException(status_code=400, detail="No se puede transferir al mismo folio")
+
+    # Debit source (reduce balance): post a negative adjustment
+    concept = f"Transferencia a {target.get('folio_number', '')}" + (f" — {notes}" if notes else "")
+    src_result = post_to_folio(
+        source.get("booking_id", ""),
+        posting_type="adjustment",
+        category="Transferencia",
+        concept=concept,
+        amount=-amount,  # negative = reduce balance
+        reference_id=f"XFR-OUT-{source.get('folio_number', '')}",
+        reference_type="folio_transfer_out",
+    )
+    if not src_result:
+        raise HTTPException(status_code=500, detail="Error al debitar folio origen")
+
+    # Credit target (increase balance): post a charge
+    concept2 = f"Transferencia de {source.get('folio_number', '')}" + (f" — {notes}" if notes else "")
+    tgt_result = post_to_folio(
+        target.get("booking_id", ""),
+        posting_type="adjustment",
+        category="Transferencia",
+        concept=concept2,
+        amount=amount,  # positive = increase balance
+        reference_id=f"XFR-IN-{source.get('folio_number', '')}",
+        reference_type="folio_transfer_in",
+    )
+    if not tgt_result:
+        # Rollback: undo the source debit by posting a compensating charge
+        post_to_folio(
+            source.get("booking_id", ""),
+            posting_type="adjustment",
+            category="Transferencia",
+            concept=f"REVERSIÓN: {concept}",
+            amount=amount,  # positive to undo the negative
+            reference_id=f"REV-{source.get('folio_number', '')}",
+            reference_type="folio_reversal",
+        )
+        raise HTTPException(status_code=500, detail="Error al acreditar folio destino — operación revertida")
+
+    # Refresh both folios to get updated balances
+    src_updated = get_folio_by_id(folio_id)
+    tgt_updated = get_folio_by_id(target_folio_id)
+
+    return {
+        "source_folio_id": folio_id,
+        "source_new_balance": round(src_updated.get("total_due", 0), 2) if src_updated else 0,
+        "target_folio_id": target_folio_id,
+        "target_new_balance": round(tgt_updated.get("total_due", 0), 2) if tgt_updated else 0,
+        "amount": amount,
+    }
+
+
+def _generate_payment_ledger(folio: dict, amount: float, method: str, notes: str):
+    """Create double-entry ledger entries for a folio payment.
+
+    Debit: Caja General / Bancos  (asset increase)
+    Credit: Cuentas por Cobrar Huéspedes  (asset decrease)
+
+    If the second insert fails, the first entry is rolled back.
+    """
+    from datetime import datetime, timezone
+    from src.app.modules.expenses.service.collections import LEDGER_COLLECTION
+
+    db = get_database()
+    now = datetime.now(timezone.utc)
+    period = now.strftime("%Y-%m")
+    journal_id = f"JE-PAY-{now.strftime('%Y%m%d%H%M%S')}"
+
+    guest_name = folio.get("guest_name", "")
+    folio_number = folio.get("folio_number", "")
+    prop_id = folio.get("prop_id", 0)
+    booking_id = folio.get("booking_id", "")
+
+    account_code = "1020" if method == "transfer" else "1010"
+    account_name = "Bancos" if method == "transfer" else "Caja General"
+    concept = f"Pago {method} — {folio_number} [{guest_name}]" + (f" ({notes})" if notes else "")
+
+    debit_doc = {
+        "journal_entry_id": journal_id,
+        "entry_type": "manual",
+        "tx_date": now,
+        "account_code": account_code,
+        "account_name": account_name,
+        "description": concept,
+        "debit": round(amount, 2),
+        "credit": 0.0,
+        "cost_center": "Recepción",
+        "folio_ref": folio_number,
+        "booking_id": booking_id,
+        "prop_id": int(prop_id) if prop_id else 1,
+        "guest_name": guest_name,
+        "accounting_period": period,
+        "source": "folio_payment",
+        "source_id": folio_number,
+        "status": "audited",
+        "notes": "",
+        "created_at": now,
+    }
+    credit_doc = {
+        "journal_entry_id": journal_id,
+        "entry_type": "manual",
+        "tx_date": now,
+        "account_code": "1030",
+        "account_name": "Cuentas por Cobrar Huéspedes",
+        "description": concept,
+        "debit": 0.0,
+        "credit": round(amount, 2),
+        "cost_center": "Recepción",
+        "folio_ref": folio_number,
+        "booking_id": booking_id,
+        "prop_id": int(prop_id) if prop_id else 1,
+        "guest_name": guest_name,
+        "accounting_period": period,
+        "source": "folio_payment",
+        "source_id": folio_number,
+        "status": "audited",
+        "notes": "",
+        "created_at": now,
+    }
+
+    # Insert debit first, then credit; rollback debit if credit fails
+    debit_id = db[LEDGER_COLLECTION].insert_one(debit_doc).inserted_id
+    try:
+        db[LEDGER_COLLECTION].insert_one(credit_doc)
+    except Exception:
+        db[LEDGER_COLLECTION].delete_one({"_id": debit_id})
+        raise
+
+
+@api_router.get("/ledger/accounts")
+def list_chart_of_accounts():
+    """Return the full chart of accounts for the accounting ledger."""
+    db = get_database()
+    cursor = db[CHART_OF_ACCOUNTS].find().sort("account_code", 1)
+    result = []
+    for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        result.append(doc)
+    return result
+
+
+@api_router.get("/ledger/periods")
+def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
+    """Return distinct accounting periods available in the ledger."""
+    db = get_database()
+    match: dict = {}
+    if prop_id:
+        match["prop_id"] = prop_id
+    periods = db[LEDGER_COLLECTION].distinct("accounting_period", match)
+    return sorted([p for p in periods if p], reverse=True)
+
+
+@api_router.get("/ledger/trial-balance")
+def trial_balance(
+    prop_id: int = Query(default=0, ge=0),
+    accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Balance de Sumas y Saldos: agrupa débitos y créditos por cuenta contable.
+
+    Returns every account with its total debits, total credits, and net balance.
+    Includes a totals row and a flag indicating whether the trial balance is
+    balanced (total debits == total credits).
+    """
+    db = get_database()
+    match: dict = {}
+    if prop_id:
+        match["prop_id"] = int(prop_id)
+    if accounting_period:
+        match["accounting_period"] = accounting_period
+
+    # Aggregate ledger by account_code
+    pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": "$account_code",
+            "total_debits": {"$sum": "$debit"},
+            "total_credits": {"$sum": "$credit"},
+            "tx_count": {"$sum": 1},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    ledger_agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
+
+    # Build lookup from chart_of_accounts
+    chart = {}
+    for doc in db[CHART_OF_ACCOUNTS].find():
+        chart[doc["account_code"]] = doc
+
+    rows = []
+    total_debits = 0.0
+    total_credits = 0.0
+
+    for row in ledger_agg:
+        code = row["_id"]
+        acct = chart.get(code, {})
+        debits = round(row["total_debits"], 2)
+        credits = round(row["total_credits"], 2)
+        balance = round(debits - credits, 2)
+        total_debits += debits
+        total_credits += credits
+
+        rows.append({
+            "account_code": code,
+            "account_name": acct.get("account_name", code),
+            "account_type": acct.get("account_type", ""),
+            "normal_balance": acct.get("normal_balance", ""),
+            "total_debits": debits,
+            "total_credits": credits,
+            "balance": balance,
+            "tx_count": row["tx_count"],
+            "is_zero_balance": abs(balance) < 0.01,
+        })
+
+    total_debits = round(total_debits, 2)
+    total_credits = round(total_credits, 2)
+    diff = round(total_debits - total_credits, 2)
+
+    return {
+        "rows": rows,
+        "totals": {
+            "total_debits": total_debits,
+            "total_credits": total_credits,
+            "difference": diff,
+            "is_balanced": abs(diff) < 0.01,
+        },
+        "filters": {
+            "prop_id": prop_id,
+            "accounting_period": accounting_period,
+        },
+        "account_count": len(rows),
+    }
+
+
+@api_router.get("/ledger/income-statement")
+def income_statement(
+    prop_id: int = Query(default=0, ge=0),
+    accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Estado de Resultados (P&L): Ingresos - Costos - Descuentos = Resultado Neto.
+
+    Groups ledger entries by account class:
+      - 4xxx = Revenue  (net = credits - debits)
+      - 5xxx = Costs    (net = debits - credits)
+      - 6xxx = Discounts (contra-revenue, net = debits)
+
+    Returns each account with its gross and net amounts, plus subtotals
+    per class and a final net income figure.
+    """
+    db = get_database()
+    match: dict = {}
+    if prop_id:
+        match["prop_id"] = int(prop_id)
+    if accounting_period:
+        match["accounting_period"] = accounting_period
+
+    # Aggregate ALL ledger entries by account_code
+    pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": "$account_code",
+            "account_name": {"$first": "$account_name"},
+            "total_debits": {"$sum": "$debit"},
+            "total_credits": {"$sum": "$credit"},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
+
+    # Build lookup from chart_of_accounts for account_type
+    chart = {}
+    for doc in db[CHART_OF_ACCOUNTS].find():
+        chart[doc["account_code"]] = doc
+
+    revenue_lines = []
+    cost_lines = []
+    discount_lines = []
+
+    total_revenue = 0.0
+    total_costs = 0.0
+    total_discounts = 0.0
+
+    for row in agg:
+        code = row["_id"]
+        acct = chart.get(code, {})
+        acct_type = acct.get("account_type", "")
+        debits = round(row["total_debits"], 2)
+        credits = round(row["total_credits"], 2)
+
+        if acct_type == "revenue":
+            net = round(credits - debits, 2)
+            total_revenue += net
+            revenue_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+        elif acct_type == "expense":
+            net = round(debits - credits, 2)
+            total_costs += net
+            cost_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+        elif acct_type == "contra_revenue":
+            net = round(debits - credits, 2)
+            total_discounts += net
+            discount_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+
+    total_revenue = round(total_revenue, 2)
+    total_costs = round(total_costs, 2)
+    total_discounts = round(total_discounts, 2)
+    gross_profit = round(total_revenue - total_discounts, 2)
+    net_income = round(gross_profit - total_costs, 2)
+
+    return {
+        "period": accounting_period,
+        "prop_id": prop_id,
+        "revenue": {
+            "lines": revenue_lines,
+            "total": total_revenue,
+        },
+        "discounts": {
+            "lines": discount_lines,
+            "total": total_discounts,
+        },
+        "net_revenue": gross_profit,
+        "costs": {
+            "lines": cost_lines,
+            "total": total_costs,
+        },
+        "net_income": net_income,
+    }
+
+
+@api_router.get("/ledger/balance-sheet")
+def balance_sheet(
+    prop_id: int = Query(default=0, ge=0),
+    accounting_period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Balance General: Activos = Pasivos + Patrimonio + Resultado del Período.
+
+    Groups ledger entries by account class:
+      - 1xxx = Assets      (net = debits - credits)
+      - 2xxx = Liabilities  (net = credits - debits)
+      - 3xxx = Equity       (net = credits - debits)
+
+    Also computes net income from the same period (via the P&L formula)
+    and verifies the accounting equation:
+      Total Assets == Total Liabilities + Total Equity + Net Income
+    """
+    db = get_database()
+    match: dict = {}
+    if prop_id:
+        match["prop_id"] = int(prop_id)
+    if accounting_period:
+        match["accounting_period"] = accounting_period
+
+    # Aggregate ALL ledger entries by account_code
+    pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": "$account_code",
+            "account_name": {"$first": "$account_name"},
+            "total_debits": {"$sum": "$debit"},
+            "total_credits": {"$sum": "$credit"},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
+
+    # Build lookup from chart_of_accounts
+    chart = {}
+    for doc in db[CHART_OF_ACCOUNTS].find():
+        chart[doc["account_code"]] = doc
+
+    asset_lines = []
+    liability_lines = []
+    equity_lines = []
+
+    total_assets = 0.0
+    total_liabilities = 0.0
+    total_equity = 0.0
+    net_income = 0.0
+
+    for row in agg:
+        code = row["_id"]
+        acct = chart.get(code, {})
+        acct_type = acct.get("account_type", "")
+        debits = round(row["total_debits"], 2)
+        credits = round(row["total_credits"], 2)
+
+        if acct_type == "asset":
+            net = round(debits - credits, 2)
+            total_assets += net
+            asset_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+        elif acct_type == "liability":
+            net = round(credits - debits, 2)
+            total_liabilities += net
+            liability_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+        elif acct_type == "equity":
+            net = round(credits - debits, 2)
+            total_equity += net
+            equity_lines.append({
+                "account_code": code,
+                "account_name": row.get("account_name") or acct.get("account_name", code),
+                "debits": debits,
+                "credits": credits,
+                "net": net,
+            })
+        elif acct_type == "revenue":
+            net_income += round(credits - debits, 2)
+        elif acct_type == "expense":
+            net_income -= round(debits - credits, 2)
+        elif acct_type == "contra_revenue":
+            net_income -= round(debits - credits, 2)
+
+    total_assets = round(total_assets, 2)
+    total_liabilities = round(total_liabilities, 2)
+    total_equity = round(total_equity, 2)
+    net_income = round(net_income, 2)
+    rhs = round(total_liabilities + total_equity + net_income, 2)
+
+    return {
+        "period": accounting_period,
+        "prop_id": prop_id,
+        "assets": {
+            "lines": asset_lines,
+            "total": total_assets,
+        },
+        "liabilities": {
+            "lines": liability_lines,
+            "total": total_liabilities,
+        },
+        "equity": {
+            "lines": equity_lines,
+            "total": total_equity,
+        },
+        "net_income": net_income,
+        "total_liabilities_and_equity": rhs,
+        "is_balanced": abs(total_assets - rhs) < 0.01,
     }

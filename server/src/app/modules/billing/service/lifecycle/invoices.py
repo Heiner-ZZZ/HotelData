@@ -105,6 +105,13 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
     }
     _write_both(INVOICES, FACT_INVOICES, doc)
 
+    # Generate double-entry ledger entries from this invoice
+    try:
+        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
+        generate_ledger_from_invoice(doc)
+    except Exception:
+        pass
+
     try:
         _record_earnings(booking, total)
     except Exception:
@@ -470,6 +477,14 @@ def cancel_invoice(invoice_id: str) -> dict | None:
     )
     if doc:
         _update_both(INVOICES, FACT_INVOICES, doc_id, {"$set": {"status": "cancelled", "updated_at": _now()}})
+
+        # Generate reversal double-entry ledger entries
+        try:
+            from src.app.modules.expenses.service.ledger_hooks import generate_reversal_from_invoice
+            generate_reversal_from_invoice(doc)
+        except Exception:
+            pass
+
     return _enrich_invoice(doc) if doc else None
 
 

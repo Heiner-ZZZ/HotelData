@@ -48,6 +48,13 @@ def create_payment(payload: PaymentCreate) -> dict | None:
     }
     _write_both(PAYMENTS, FACT_PAYMENTS, doc)
 
+    # Generate double-entry ledger entries for this payment
+    try:
+        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_payment
+        generate_ledger_from_payment(doc)
+    except Exception:
+        pass
+
     if invoice_id:
         upd = {"$set": {"status": "paid", "paid_at": _now()}}
         _update_both(INVOICES, FACT_INVOICES, invoice_id, upd)
