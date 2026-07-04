@@ -1,0 +1,406 @@
+<div class="sc-container">
+  <!-- ── Page Header ── -->
+  <header class="sc-header">
+    <div>
+      <h1 class="sc-title">Control de Turnos y Caja</h1>
+      <p class="sc-subtitle">Cierre de jornada operativa y cuadre financiero.</p>
+    </div>
+    <div class="sc-header-actions">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+      @if (shift() && !showCloseModal()) {
+        <button class="sc-btn-outline" (click)="openDepositModal()">
+          <span class="material-symbols-outlined">payments</span>
+          Realizar Depósito
+        </button>
+        <button class="sc-btn-primary" (click)="openCloseModal()">
+          <span class="material-symbols-outlined">receipt_long</span>
+          Cerrar Turno e Imprimir Acta
+        </button>
+      }
+      @if (!shift() && !loading()) {
+        <button class="sc-btn-primary" (click)="openOpenForm()">
+          <span class="material-symbols-outlined">play_arrow</span>
+          Abrir Turno
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="sc-loading">Cargando información del turno...</div>
+  } @else if (!shift()) {
+    <!-- ── No active shift ── -->
+    <div class="sc-empty">
+      <span class="material-symbols-outlined sc-empty-icon">schedule</span>
+      <h2>No hay turno activo</h2>
+      <p>Abre un turno para comenzar a registrar operaciones.</p>
+      @if (showOpenForm()) {
+        <div class="sc-open-form">
+          <div class="sc-form-group">
+            <label>Tipo de Turno</label>
+            <select [ngModel]="openShiftType()" (ngModelChange)="openShiftType.set($event)">
+              <option value="morning">Matutino (08:00-16:00)</option>
+              <option value="afternoon">Vespertino (16:00-00:00)</option>
+              <option value="evening">Nocturno (00:00-08:00)</option>
+            </select>
+          </div>
+          <div class="sc-form-group">
+            <label>Empleado</label>
+            <input type="text" placeholder="Nombre del recepcionista" [ngModel]="openEmployee()" (ngModelChange)="openEmployee.set($event)" />
+          </div>
+          <div class="sc-form-group">
+            <label>Fondo Inicial de Caja ($)</label>
+            <input type="number" step="0.01" placeholder="0.00" [ngModel]="openCashInitial()" (ngModelChange)="openCashInitial.set($event)" />
+          </div>
+          <div class="sc-form-actions">
+            <button class="sc-btn-outline" (click)="cancelOpenForm()">Cancelar</button>
+            <button class="sc-btn-primary" (click)="confirmOpenShift()" [disabled]="!openEmployee().trim()">
+              <span class="material-symbols-outlined">check</span>
+              Iniciar Turno
+            </button>
+          </div>
+        </div>
+      } @else {
+        <button class="sc-btn-primary sc-empty-btn" (click)="openOpenForm()">Abrir Turno</button>
+      }
+    </div>
+  } @else {
+    <!-- ═══ BENTO GRID ═══ -->
+    <div class="sc-bento">
+
+      <!-- ── LEFT COLUMN (4 cols): Shift Info + Arqueo ── -->
+      <div class="sc-left-col">
+
+        <!-- Shift Info Card -->
+        <section class="sc-card sc-shift-info">
+          <h3 class="sc-card-title">
+            <span class="material-symbols-outlined sc-card-icon">badge</span>
+            Información del Turno
+          </h3>
+          <div class="sc-info-rows">
+            <div class="sc-info-row">
+              <span class="sc-info-label">Empleado</span>
+              <span class="sc-info-value">{{ shift()?.employee || '—' }}</span>
+            </div>
+            <div class="sc-info-row">
+              <span class="sc-info-label">Turno</span>
+              <span class="sc-info-value">{{ getShiftTypeLabel(shift()?.shift_type || '') }}</span>
+            </div>
+            <div class="sc-info-row">
+              <span class="sc-info-label">Inicio</span>
+              <span class="sc-info-value mono">{{ shift()?.start_time | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="sc-info-row">
+              <span class="sc-info-label">Duración</span>
+              <span class="sc-info-value mono">{{ duration }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Arqueo de Caja Card -->
+        <section class="sc-card sc-arqueo">
+          <h3 class="sc-card-title">
+            <span class="material-symbols-outlined sc-card-icon">account_balance_wallet</span>
+            Arqueo de Caja
+          </h3>
+
+          <div class="sc-arqueo-system">
+            <div class="sc-arqueo-row">
+              <span class="sc-ar-label">Fondo Inicial</span>
+              <span class="sc-ar-value mono">{{ shift()?.cash_initial | currency:'USD':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="sc-arqueo-row income">
+              <span class="sc-ar-label">Ingresos Efectivo</span>
+              <span class="sc-ar-value mono positive">
+                +{{ paymentBreakdown().cash | currency:'USD':'symbol':'1.2-2' }}
+              </span>
+            </div>
+            <div class="sc-arqueo-row income">
+              <span class="sc-ar-label">Ingresos Tarjeta</span>
+              <span class="sc-ar-value mono positive">
+                +{{ paymentBreakdown().card | currency:'USD':'symbol':'1.2-2' }}
+              </span>
+            </div>
+            <div class="sc-arqueo-row income">
+              <span class="sc-ar-label">Transferencias</span>
+              <span class="sc-ar-value mono positive">
+                +{{ paymentBreakdown().transfer | currency:'USD':'symbol':'1.2-2' }}
+              </span>
+            </div>
+            <div class="sc-arqueo-row total-line">
+              <span class="sc-ar-label-bold">Total Esperado (Caja)</span>
+              <span class="sc-ar-value-bold mono">{{ shift()!.cash_initial + paymentBreakdown().cash | currency:'USD':'symbol':'1.2-2' }}</span>
+            </div>
+          </div>
+
+          <!-- Input: Saldo Real -->
+          <div class="sc-arqueo-manual">
+            <label class="sc-ar-label">Saldo Real en Caja (Efectivo)</label>
+            <div class="sc-ar-input-wrap">
+              <span class="sc-ar-currency">$</span>
+              <input
+                type="number"
+                step="0.01"
+                class="sc-ar-input"
+                placeholder="0.00"
+                [ngModel]="saldoReal()"
+                (ngModelChange)="saldoReal.set($event)"
+              />
+            </div>
+            <div class="sc-ar-diferencia">
+              <span class="sc-ar-label">Diferencia:</span>
+              <span class="sc-ar-diff-badge" [class.negative]="diferencia() < 0" [class.positive]="diferencia() > 0" [class.zero]="diferencia() === 0">
+                {{ diferencia() | currency:'USD':'symbol':'1.2-2' }}
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── RIGHT COLUMN (8 cols): Auditoría de Transacciones ── -->
+      <div class="sc-right-col">
+        <section class="sc-card sc-audit">
+          <div class="sc-audit-header">
+            <h3 class="sc-card-title">
+              <span class="material-symbols-outlined sc-card-icon">list_alt</span>
+              Auditoría de Transacciones
+            </h3>
+            <span class="sc-audit-count">{{ shift()?.transactions?.length || 0 }} transacciones</span>
+          </div>
+
+          <div class="sc-audit-table-wrap">
+            <table class="sc-audit-table">
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Concepto</th>
+                  <th>Método</th>
+                  <th class="text-right">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if ((shift()?.transactions?.length ?? 0) === 0) {
+                  <tr>
+                    <td colspan="4" class="sc-table-empty">
+                      <span class="material-symbols-outlined">receipt_long</span>
+                      No hay transacciones registradas en este turno
+                    </td>
+                  </tr>
+                }
+                @for (txn of shift()?.transactions; track txn.transaction_id) {
+                  <tr class="sc-txn-row">
+                    <td class="mono sc-cell-time">{{ txn.timestamp | date:'HH:mm' }}</td>
+                    <td class="sc-cell-concept">{{ txn.description }}</td>
+                    <td>
+                      @if (txn.payment_method) {
+                        <span class="sc-badge {{ getBadgeClass(txn.payment_method) }}">
+                          {{ getBadgeLabel(txn.payment_method) }}
+                        </span>
+                      } @else {
+                        <span class="sc-badge badge-system">SISTEMA</span>
+                      }
+                    </td>
+                    <td class="mono text-right sc-cell-amount {{ txn.amount > 0 ? 'positive' : '' }}">
+                      {{ txn.amount > 0 ? '+' : '' }}{{ txn.amount | currency:'USD':'symbol':'1.2-2' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="sc-audit-footer">
+            <span>Mostrando {{ shift()?.transactions?.length || 0 }} de {{ shift()?.transactions?.length || 0 }} transacciones</span>
+            <div class="sc-audit-pagination">
+              <button class="sc-page-btn" disabled>
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <button class="sc-page-btn" disabled>
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════
+       CLOSE SHIFT MODAL
+       ══════════════════════════════════════════════ -->
+  @if (showCloseModal()) {
+    <div class="sc-modal-overlay" (click)="cancelClose()">
+      <div class="sc-modal" (click)="$event.stopPropagation()">
+
+        @if (!closeSummary()) {
+          <!-- Close Form -->
+          <div class="sc-modal-header">
+            <span class="material-symbols-outlined sc-modal-icon">receipt_long</span>
+            <h2>Cerrar Turno</h2>
+          </div>
+          <div class="sc-modal-body">
+            <div class="sc-close-summary-preview">
+              <div class="sc-cs-row">
+                <span>Empleado:</span>
+                <strong>{{ shift()?.employee }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Turno:</span>
+                <strong>{{ getShiftTypeLabel(shift()?.shift_type || '') }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Inicio:</span>
+                <strong>{{ shift()?.start_time | date:'dd/MM HH:mm' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Total Cobrado:</span>
+                <strong>{{ paymentBreakdown().total | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+            </div>
+
+            <div class="sc-form-group">
+              <label>Saldo Final en Caja ($)</label>
+              <input type="number" step="0.01" placeholder="0.00" [ngModel]="closeCashFinal()" (ngModelChange)="closeCashFinal.set($event)" />
+            </div>
+
+            <!-- Deposits -->
+            <div class="sc-deposits-section">
+              <div class="sc-deposits-header">
+                <span class="sc-form-label">Depósitos Realizados</span>
+                <button class="sc-btn-sm" (click)="openDepositModal()">
+                  <span class="material-symbols-outlined">add</span>
+                  Agregar Depósito
+                </button>
+              </div>
+              @if (closeDeposits().length === 0) {
+                <p class="sc-deposits-empty">No se registraron depósitos en este turno.</p>
+              }
+              @for (dep of closeDeposits(); track $index) {
+                <div class="sc-deposit-item">
+                  <div class="sc-deposit-info">
+                    <span class="sc-deposit-amount">{{ dep.amount | currency:'USD':'symbol':'1.2-2' }}</span>
+                    <span class="sc-badge {{ getBadgeClass(dep.method) }}">{{ getBadgeLabel(dep.method) }}</span>
+                    @if (dep.notes) {
+                      <span class="sc-deposit-notes">— {{ dep.notes }}</span>
+                    }
+                  </div>
+                  <button class="sc-deposit-remove" (click)="removeDeposit($index)">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="sc-modal-footer">
+            <button class="sc-btn-outline" (click)="cancelClose()">Cancelar</button>
+            <button class="sc-btn-primary" (click)="confirmCloseShift()" [disabled]="closingShift()">
+              @if (closingShift()) {
+                <span class="material-symbols-outlined spin">sync</span>
+                Cerrando...
+              } @else {
+                <span class="material-symbols-outlined">check</span>
+                Confirmar Cierre
+              }
+            </button>
+          </div>
+        } @else {
+          <!-- Close Success Summary -->
+          <div class="sc-modal-header">
+            <span class="material-symbols-outlined sc-modal-icon success">check_circle</span>
+            <h2>Turno Cerrado Exitosamente</h2>
+          </div>
+          <div class="sc-modal-body">              <div class="sc-close-summary">
+                @let cs = closeSummary()!;
+              <div class="sc-cs-row">
+                <span>Fondo Inicial</span>
+                <strong>{{ cs.cash_initial | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Total Cobrado</span>
+                <strong>{{ cs.total_collected | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Efectivo</span>
+                <strong>{{ cs.payment_breakdown.cash | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Tarjeta</span>
+                <strong>{{ cs.payment_breakdown.card | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Transferencias</span>
+                <strong>{{ cs.payment_breakdown.transfer | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              @if (cs.deposit_total > 0) {
+                <div class="sc-cs-row">
+                  <span>Total Depósitos</span>
+                  <strong>{{ cs.deposit_total | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </div>
+              }
+              <div class="sc-cs-row divider">
+                <span>Saldo Final (Caja)</span>
+                <strong>{{ cs.cash_final | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Diferencia</span>
+                <strong [class.negative]="cs.cash_difference < 0" [class.positive]="cs.cash_difference > 0">
+                  {{ cs.cash_difference | currency:'USD':'symbol':'1.2-2' }}
+                </strong>
+              </div>
+              <div class="sc-cs-row sc-cs-count">
+                <span>Transacciones</span>
+                <strong>{{ cs.transaction_count }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="sc-modal-footer">
+            <button class="sc-btn-primary" (click)="cancelClose()">Cerrar</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════
+       DEPOSIT MODAL (inside close flow)
+       ══════════════════════════════════════════════ -->
+  @if (showDepositModal()) {
+    <div class="sc-modal-overlay" (click)="cancelDeposit()">
+      <div class="sc-modal sc-modal-sm" (click)="$event.stopPropagation()">
+        <div class="sc-modal-header">
+          <span class="material-symbols-outlined sc-modal-icon">account_balance</span>
+          <h2>Registrar Depósito</h2>
+        </div>
+        <div class="sc-modal-body">
+          <div class="sc-form-group">
+            <label>Monto ($)</label>
+            <input type="number" step="0.01" placeholder="0.00" [ngModel]="depositAmount()" (ngModelChange)="depositAmount.set($event)" />
+          </div>
+          <div class="sc-form-group">
+            <label>Método de Depósito</label>
+            <select [ngModel]="depositMethod()" (ngModelChange)="depositMethod.set($event)">
+              <option value="bank">Depósito Bancario</option>
+              <option value="cash">Retiro de Efectivo</option>
+              <option value="card">Pago con Tarjeta</option>
+            </select>
+          </div>
+          <div class="sc-form-group">
+            <label>Notas (opcional)</label>
+            <input type="text" placeholder="Ej: Banco BBVA, 14:30 hrs" [ngModel]="depositNotes()" (ngModelChange)="depositNotes.set($event)" />
+          </div>
+        </div>
+        <div class="sc-modal-footer">
+          <button class="sc-btn-outline" (click)="cancelDeposit()">Cancelar</button>
+          <button class="sc-btn-primary" (click)="addDeposit()" [disabled]="depositAmount() <= 0">
+            <span class="material-symbols-outlined">add</span>
+            Agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
