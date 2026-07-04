@@ -2,19 +2,19 @@
 // Hotel Detail Page — Split into partials
 // ═══════════════════════════════════════════════════════════
 
-@import 'partials/hd-layout';
-@import 'partials/hd-bento-gallery';
-@import 'partials/hd-header';
-@import 'partials/hd-actions';
-@import 'partials/hd-detail-grid';
-@import 'partials/hd-kpi';
-@import 'partials/hd-amenities';
-@import 'partials/hd-rooms';
-@import 'partials/hd-map';
-@import 'partials/hd-reviews';
-@import 'partials/hd-policies';
-@import 'partials/hd-similar';
-@import 'partials/hd-sidebar';
-@import 'partials/hd-footer';
-@import 'partials/hd-utilities';
-@import 'partials/hd-responsive';
+@use 'partials/hd-layout';
+@use 'partials/hd-bento-gallery';
+@use 'partials/hd-header';
+@use 'partials/hd-actions';
+@use 'partials/hd-detail-grid';
+@use 'partials/hd-kpi';
+@use 'partials/hd-amenities';
+@use 'partials/hd-rooms';
+@use 'partials/hd-map';
+@use 'partials/hd-reviews';
+@use 'partials/hd-policies';
+@use 'partials/hd-similar';
+@use 'partials/hd-sidebar';
+@use 'partials/hd-footer';
+@use 'partials/hd-utilities';
+@use 'partials/hd-responsive';

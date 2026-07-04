@@ -15,7 +15,7 @@ import { HotelDetailApiService } from '../../services/hotel-detail-api.service';
 
 @Component({
   selector: 'app-hotel-detail-page',
-  imports: [CurrencyPipe, DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink],
   templateUrl: './hotel-detail-page.html',
   styleUrl: './hotel-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
