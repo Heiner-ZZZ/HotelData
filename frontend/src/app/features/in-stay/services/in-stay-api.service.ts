@@ -27,7 +27,7 @@ export class InStayApiService {
   // ── Authenticated guest endpoint (JWT, no token needed) ──
 
   getMyStaySession(bookingId: string): Observable<StaySession> {
-    return this.http.post<StaySession>('/api/stay/my-session', { booking_id: bookingId });
+    return this.http.post<StaySession>('/api/stay/my-session', { booking_id: bookingId }, { withCredentials: true });
   }
 
   // ── Staff endpoints ──

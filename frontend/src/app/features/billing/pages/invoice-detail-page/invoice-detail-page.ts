@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin, switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
@@ -52,6 +53,7 @@ export class InvoiceDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly billingApi = inject(BillingApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
 
@@ -180,11 +182,18 @@ export class InvoiceDetailPageComponent {
   }
 
   /** Remove a line item from the invoice. */
-  removeItem(item: LineItem): void {
+  async removeItem(item: LineItem): Promise<void> {
     if (item.itemId.startsWith('room_')) {
       this.actionError.set('No se puede eliminar el cargo de habitación.');
       return;
     }
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar concepto',
+      message: `¿Eliminar "${item.name}" de la factura?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.removeBusy.set(item.itemId);
     this.actionError.set(null);
     this.actionMessage.set(null);
@@ -254,7 +263,14 @@ export class InvoiceDetailPageComponent {
     });
   }
 
-  cancelInvoice(): void {
+  async cancelInvoice(): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Anular factura',
+      message: '¿Anular esta factura? Esta acción no se puede deshacer.',
+      confirmLabel: 'Anular factura',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.actionError.set(null);
     this.actionMessage.set(null);
     this.billingApi.cancelInvoice(this.invoice()!.id).subscribe({

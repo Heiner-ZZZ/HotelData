@@ -9,6 +9,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { CheckInsApiService, type CheckInDetailDto } from '../../services/check-ins-api.service';
+import { STAY_CHECKED_IN } from '../../../reservations/utils/reservation-status.util';
 
 interface StepConfig {
   num: number;
@@ -71,7 +72,7 @@ export class CheckInDetailPageComponent {
   // ── Completion ──
   readonly completing = signal(false);
   readonly completeError = signal('');
-  readonly checkinDone = computed(() => this.data()?.stay_status === 'checked_in');
+  readonly checkinDone = computed(() => this.data()?.stay_status === STAY_CHECKED_IN);
 
   // ── Completion guard (button disabled while processing) ──
   // `completing()` is used directly in the template
@@ -142,7 +143,7 @@ export class CheckInDetailPageComponent {
           this.observations.set(detail.check_in_observations || '');
           // Then overlay localStorage draft (if newer)
           this._restoreDraft();
-          if (detail.stay_status === 'checked_in') this.currentStep.set(5);
+          if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
           this.viewState.set('success');
         },
         error: (err: ApiError) => {

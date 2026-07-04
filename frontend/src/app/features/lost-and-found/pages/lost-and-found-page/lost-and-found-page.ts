@@ -6,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -26,6 +27,7 @@ import { LostAndFoundApiService } from '../../services/lost-and-found-api.servic
 export class LostAndFoundPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly api = inject(LostAndFoundApiService);
 
   readonly viewState = signal<ViewState>('loading');
@@ -198,8 +200,14 @@ export class LostAndFoundPageComponent {
     });
   }
 
-  disposeItem(item: LostItemResponseDto) {
-    if (!confirm(`¿Estás seguro de marcar "${item.item_name}" como desechado? Esta acción no se puede deshacer.`)) return;
+  async disposeItem(item: LostItemResponseDto) {
+    const ok = await this.confirmDialog.open({
+      title: 'Desechar objeto',
+      message: `¿Estás seguro de marcar "${item.item_name}" como desechado? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Desechar',
+      variant: 'danger',
+    });
+    if (!ok) return;
 
     this.api.disposeItem(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -212,8 +220,14 @@ export class LostAndFoundPageComponent {
     });
   }
 
-  deleteItem(item: LostItemResponseDto) {
-    if (!confirm(`¿Eliminar permanentemente "${item.item_name}"?`)) return;
+  async deleteItem(item: LostItemResponseDto) {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar objeto',
+      message: `¿Eliminar permanentemente "${item.item_name}"?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
 
     this.api.deleteItem(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
