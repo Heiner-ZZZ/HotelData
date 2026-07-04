@@ -2,16 +2,16 @@
 // Reservation New Page — Split into partials
 // ═══════════════════════════════════════════════════════════
 
-@import 'partials/rn-layout';
-@import 'partials/rn-header-stepper';
-@import 'partials/rn-loading';
-@import 'partials/rn-error';
-@import 'partials/rn-planner';
-@import 'partials/rn-time-picker';
-@import 'partials/rn-form-sections';
-@import 'partials/rn-rate-plan';
-@import 'partials/rn-occupancy';
-@import 'partials/rn-form-footer';
-@import 'partials/rn-review';
-@import 'partials/rn-utilities';
-@import 'partials/rn-responsive';
+@use 'partials/rn-layout';
+@use 'partials/rn-header-stepper';
+@use 'partials/rn-loading';
+@use 'partials/rn-error';
+@use 'partials/rn-planner';
+@use 'partials/rn-time-picker';
+@use 'partials/rn-form-sections';
+@use 'partials/rn-rate-plan';
+@use 'partials/rn-occupancy';
+@use 'partials/rn-form-footer';
+@use 'partials/rn-review';
+@use 'partials/rn-utilities';
+@use 'partials/rn-responsive';

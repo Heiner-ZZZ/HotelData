@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-picker/date-range-picker';
@@ -6,7 +6,7 @@ import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-pi
 @Component({
   selector: 'app-rn-planner-section',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, DateRangePickerComponent],
+  imports: [CurrencyPipe, ReactiveFormsModule, DateRangePickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="surface-card planner-section">

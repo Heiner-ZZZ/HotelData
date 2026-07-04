@@ -19,7 +19,7 @@ import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amen
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, DateRangePickerComponent, ReactiveFormsModule, RouterLink,
+  imports: [ReactiveFormsModule, RouterLink,
     RnPlannerSectionComponent, RnGuestSectionComponent, RnReviewSectionComponent],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',

@@ -38,7 +38,7 @@ interface EditForm {
 
 @Component({
   selector: 'app-reservation-detail-page',
-  imports: [CurrencyPipe, DatePipe, PercentPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent, RouterLink, StatusBadgeComponent, FormsModule,
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent, FormsModule,
     RdHeroComponent, RdInfoPanelsComponent, RdFinancialPanelsComponent, RdEditFormComponent,
     RdInvoicePanelComponent, RdProductsSectionComponent, RdAssignedRoomsComponent,
     RdHistoryPanelComponent, RdProductModalComponent, RdRoomModalComponent],
