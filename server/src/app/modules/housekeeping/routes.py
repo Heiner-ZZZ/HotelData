@@ -17,6 +17,7 @@ from src.app.modules.housekeeping.service import (
     create_additional_charge,
     create_housekeeping_task,
     create_maintenance_task,
+    delete_additional_charge,
     delete_housekeeping_task,
     delete_maintenance_task,
     get_housekeeping_dashboard,
@@ -311,6 +312,18 @@ def charge_list_api(
         page=page,
         page_size=page_size,
     )
+
+
+@api_router.delete("/charges/{charge_id}")
+def charge_delete_api(
+    charge_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Delete an additional charge (e.g., added by mistake)."""
+    result = delete_additional_charge(charge_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    return result
 
 
 # ═══════════════════════════════════════════════

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 
 from src.app.modules.instay.schemas import SERVICE_REQUEST_TYPES, SERVICE_REQUEST_STATUSES, utc_now
+from src.app.security.session import ensure_utc
 from src.database.connection import get_database
 
 _TOKEN_BYTES = 32
@@ -45,7 +46,8 @@ def get_session_or_404(token: str) -> dict:
     session = db.stay_sessions.find_one({"token": token, "active": True})
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada o expirada.")
-    if session.get("expires_at") and session["expires_at"] < utc_now():
+    expires_at = ensure_utc(session.get("expires_at"))
+    if expires_at and expires_at < utc_now():
         raise HTTPException(status_code=410, detail="Sesión expirada.")
     return session
 

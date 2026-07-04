@@ -103,6 +103,43 @@ def list_additional_charges(
     }
 
 
+def delete_additional_charge(charge_id: str) -> dict | None:
+    """Delete an additional charge by its ID."""
+    db = get_database()
+    try:
+        from bson import ObjectId
+        obj_id = ObjectId(charge_id)
+    except Exception:
+        return None
+
+    charge = db[CHARGES_COLLECTION].find_one({"_id": obj_id})
+    if not charge:
+        return None
+
+    db[CHARGES_COLLECTION].delete_one({"_id": obj_id})
+
+    # Reverse the folio posting
+    try:
+        from src.app.modules.billing.service.folio import post_to_folio
+        post_to_folio(
+            charge.get("booking_id", ""),
+            posting_type="adjustment",
+            category=charge.get("category", "otros"),
+            concept=f"[ANULADO] {charge.get('concept', '')}",
+            amount=-abs(float(charge.get("total", 0))),
+            quantity=charge.get("quantity", 1),
+            reference_id=charge_id,
+            reference_type="charge_reversal",
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Failed to reverse folio posting for deleted charge %s", charge_id
+        )
+
+    return {"ok": True, "deleted_id": charge_id, "booking_id": charge.get("booking_id", "")}
+
+
 def _enrich_charge(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     if "created_at" in doc:

@@ -31,6 +31,7 @@ from .maintenance import (
 )
 from .charges import (
     create_additional_charge,
+    delete_additional_charge,
     list_additional_charges,
 )
 from .dashboard import get_housekeeping_dashboard, get_weekly_calendar, list_upcoming_events
@@ -59,6 +60,7 @@ __all__ = [
     "update_maintenance_task",
     "delete_maintenance_task",
     "create_additional_charge",
+    "delete_additional_charge",
     "list_additional_charges",
     "get_housekeeping_dashboard",
     "get_weekly_calendar",
