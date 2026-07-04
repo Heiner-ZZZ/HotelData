@@ -78,15 +78,26 @@
                 <p>{{ d.total }} registro(s) &middot; Página {{ d.page }} de {{ d.pages || 1 }}</p>
               </div>
             </div>
-            <button type="button" class="btn-ghost btn-sm" (click)="exportPdf()" [disabled]="exportingPdf()">
-              @if (exportingPdf()) {
-                <span class="material-symbols-outlined spinning">sync</span>
-                Generando...
-              } @else {
-                <span class="material-symbols-outlined">picture_as_pdf</span>
-                Exportar Auditoría
-              }
-            </button>
+            <div class="export-actions">
+              <button type="button" class="btn-ghost btn-sm" (click)="exportPdf()" [disabled]="exportingPdf()">
+                @if (exportingPdf()) {
+                  <span class="material-symbols-outlined spinning">sync</span>
+                  Generando PDF...
+                } @else {
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                  Exportar PDF
+                }
+              </button>
+              <button type="button" class="btn-ghost btn-sm" (click)="exportXlsx()" [disabled]="exportingXlsx()">
+                @if (exportingXlsx()) {
+                  <span class="material-symbols-outlined spinning">sync</span>
+                  Generando Excel...
+                } @else {
+                  <span class="material-symbols-outlined">table_chart</span>
+                  Exportar Excel
+                }
+              </button>
+            </div>
           </div>
 
           @if (d.items.length) {

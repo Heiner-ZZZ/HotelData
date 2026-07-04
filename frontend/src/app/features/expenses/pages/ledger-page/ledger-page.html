@@ -247,9 +247,14 @@
           <span class="st-net-income" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
             {{ inc.netIncome | currency:'USD':'symbol':'1.0-2' }}
           </span>
-          <button class="btn-export-pdf" (click)="exportIncomeStatementPdf(); $event.stopPropagation()" title="Exportar a PDF">
-            <span class="material-symbols-outlined">picture_as_pdf</span>
-          </button>
+          <div class="export-actions">
+            <button class="btn-export-pdf" (click)="exportIncomeStatementPdf(); $event.stopPropagation()" title="Exportar a PDF">
+              <span class="material-symbols-outlined">picture_as_pdf</span>
+            </button>
+            <button class="btn-export-xlsx" (click)="exportIncomeStatementXlsx(); $event.stopPropagation()" title="Exportar a Excel">
+              <span class="material-symbols-outlined">table_chart</span>
+            </button>
+          </div>
         }
       </div>
 
@@ -439,9 +444,14 @@
           <span class="st-net-income" [class.text-success]="bs.isBalanced" [class.text-danger]="!bs.isBalanced">
             {{ bs.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO' }}
           </span>
-          <button class="btn-export-pdf" (click)="exportBalanceSheetPdf(); $event.stopPropagation()" title="Exportar a PDF">
-            <span class="material-symbols-outlined">picture_as_pdf</span>
-          </button>
+          <div class="export-actions">
+            <button class="btn-export-pdf" (click)="exportBalanceSheetPdf(); $event.stopPropagation()" title="Exportar a PDF">
+              <span class="material-symbols-outlined">picture_as_pdf</span>
+            </button>
+            <button class="btn-export-xlsx" (click)="exportBalanceSheetXlsx(); $event.stopPropagation()" title="Exportar a Excel">
+              <span class="material-symbols-outlined">table_chart</span>
+            </button>
+          </div>
         }
       </div>
 

@@ -7,6 +7,13 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
+import { ReportsExportService } from '../../../../shared/services/reports-export.service';
+import {
+  buildReportShell,
+  buildSummaryGrid,
+  buildTable,
+  esc,
+} from '../../../../shared/utils/report-html-templates';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReputationDashboard } from '../../models/reviews.model';
 import { ReviewsApiService } from '../../services/reviews-api.service';
@@ -177,6 +184,7 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
 export class ReputationDashboardPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reviewsApi = inject(ReviewsApiService);
+  private readonly reports = inject(ReportsExportService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<ReputationDashboard | null>(null);
@@ -209,70 +217,159 @@ export class ReputationDashboardPageComponent {
 
   exportPDF() {
     this.exporting.set(true);
-    // Dynamic import of jspdf for cleaner loading
-    import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const d = this.data();
-        if (!d) { this.exporting.set(false); return; }
+    void this.runPdfExport().finally(() => this.exporting.set(false));
+  }
 
-        // System logo placeholder
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('HotelData', 14, 22);
-        doc.setFontSize(8);
-        doc.setTextColor(100);
-        doc.text('Sistema de Gestión Hotelera — Reporte de Reputación', 14, 28);
-        doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 33);
+  exportXlsx() {
+    this.exporting.set(true);
+    void this.runXlsxExport().finally(() => this.exporting.set(false));
+  }
 
-        // GRI Section
-        doc.setTextColor(0);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Global Review Index', 14, 45);
-        doc.setFontSize(22);
-        doc.text(`${d.gri} / 100`, 14, 55);
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Total de reseñas: ${d.totalReviews} | Cambio: ${d.griChange > 0 ? '+' : ''}${d.griChange} pts`, 14, 62);
+  private async runPdfExport(): Promise<void> {
+    const d = this.data();
+    if (!d) return;
 
-        // Departmental section
-        doc.setTextColor(0);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Valoraciones Departamentales', 14, 75);
+    const grid = buildSummaryGrid([
+      {
+        label: 'Global Review Index',
+        value: `${d.gri} / 100`,
+        tone: d.gri >= 80 ? 'positive' : d.gri >= 60 ? 'warning' : 'negative',
+      },
+      { label: 'Cambio vs. período anterior', value: `${d.griChange > 0 ? '+' : ''}${d.griChange} pts`, tone: d.griChange >= 0 ? 'positive' : 'negative' },
+      { label: 'Total de reseñas', value: String(d.totalReviews), tone: 'neutral' },
+      { label: 'Meta GRI', value: String(d.griTarget), tone: 'neutral' },
+    ]);
 
-        let yPos = 83;
-        for (const dept of d.departmental) {
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`${dept.label}: ${dept.score}%`, 14, yPos);
-          doc.setFontSize(9);
-          doc.setTextColor(100);
-          doc.text(`Positivo: ${dept.positivePct}% | Neutral: ${dept.neutralPct}% | Negativo: ${dept.negativePct}%`, 14, yPos + 5);
-          doc.text(`${dept.totalRatings} valoraciones`, 14, yPos + 10);
-          yPos += 18;
-        }
+    const deptTable = d.departmental.length
+      ? buildTable(
+          [
+            { label: 'Departamento' },
+            { label: 'Puntuación', align: 'right' },
+            { label: 'Positivo', align: 'right' },
+            { label: 'Neutral', align: 'right' },
+            { label: 'Negativo', align: 'right' },
+            { label: 'Valoraciones', align: 'right' },
+          ],
+          d.departmental.map((dept) => [
+            dept.label,
+            `${dept.score}%`,
+            `${dept.positivePct}%`,
+            `${dept.neutralPct}%`,
+            `${dept.negativePct}%`,
+            String(dept.totalRatings),
+          ]),
+        )
+      : `<p style="color: var(--c-text-muted); font-style: italic;">Sin valoraciones departamentales en este período.</p>`;
 
-        // Recent feedback table
-        if (d.recentFeedback.length > 0) {
-          yPos = Math.max(yPos + 5, 95);
-          (doc as any).autoTable({
-            startY: yPos,
-            head: [['Huésped', 'Rating', 'Comentario']],
-            body: d.recentFeedback.map(f => [f.userName, `${f.rating}/5`, f.comment || '']),
-            theme: 'plain',
-            styles: { fontSize: 8, cellPadding: 3 },
-            headStyles: { fontStyle: 'bold', fillColor: [240, 240, 240] },
-            alternateRowStyles: { fillColor: [248, 248, 248] },
-          });
-        }
+    const feedbackTable = d.recentFeedback.length
+      ? buildTable(
+          [
+            { label: 'Huésped' },
+            { label: 'Rating', align: 'center' },
+            { label: 'Comentario' },
+            { label: 'Fecha', align: 'right' },
+          ],
+          d.recentFeedback.map((f) => [
+            f.userName,
+            '★'.repeat(f.rating) + '☆'.repeat(5 - f.rating),
+            f.comment || 'Sin comentario',
+            new Date(f.createdAt).toLocaleDateString('es-MX'),
+          ]),
+        )
+      : `<p style="color: var(--c-text-muted); font-style: italic;">No hay reseñas recientes.</p>`;
 
-        doc.save(`HotelData-Reporte-Reputacion-${new Date().toISOString().slice(0, 10)}.pdf`);
-        this.exporting.set(false);
-      });
-    }).catch(() => {
-      this.exporting.set(false);
+    const trendTable = d.dailyCounts.length
+      ? buildTable(
+          [
+            { label: 'Fecha' },
+            { label: 'Reseñas', align: 'right' },
+          ],
+          d.dailyCounts.slice(-30).map((c) => [c.date, String(c.count)]),
+          [`Total últimos ${Math.min(30, d.dailyCounts.length)} días`, String(d.dailyCounts.slice(-30).reduce((s, c) => s + c.count, 0))],
+        )
+      : '';
+
+    const bodyHtml = `
+      ${grid}
+      <h2>Valoraciones departamentales</h2>
+      ${deptTable}
+      <h2 class="page-break">Reseñas recientes</h2>
+      ${feedbackTable}
+      ${trendTable ? `<h2>Tendencia diaria</h2>${trendTable}` : ''}
+    `;
+
+    const html = buildReportShell({
+      title: 'Reporte de Reputación',
+      subtitle: `Últimos ${this.selectedDays()} días`,
+      generatedAt: new Date(),
+      metaRows: [
+        { label: 'Período', value: `Últimos ${this.selectedDays()} días` },
+        { label: 'GRI', value: `${d.gri} / 100` },
+        { label: 'Total reseñas', value: String(d.totalReviews) },
+      ],
+      bodyHtml,
+    });
+
+    await this.reports.exportPdf(html, `HotelData-Reporte-Reputacion-${new Date().toISOString().slice(0, 10)}`, 'Reporte de Reputación');
+  }
+
+  private async runXlsxExport(): Promise<void> {
+    const d = this.data();
+    if (!d) return;
+    await this.reports.exportXlsx({
+      filename: `HotelData-Reporte-Reputacion-${new Date().toISOString().slice(0, 10)}`,
+      sheet_title: `Reputación · Últimos ${this.selectedDays()} días`,
+      sheets: [
+        {
+          name: 'Resumen',
+          headers: [{ label: 'Métrica' }, { label: 'Valor', align: 'right' } as any],
+          rows: [
+            ['GRI', d.gri] as any,
+            ['Cambio vs período anterior', d.griChange] as any,
+            ['Meta GRI', d.griTarget] as any,
+            ['Total reseñas', d.totalReviews] as any,
+            ['Período (días)', this.selectedDays()] as any,
+          ],
+          column_widths: { A: 30, B: 16 },
+        },
+        {
+          name: 'Departamental',
+          headers: [
+            { label: 'Departamento' },
+            { label: 'Puntuación' },
+            { label: 'Positivo %' },
+            { label: 'Neutral %' },
+            { label: 'Negativo %' },
+            { label: 'Valoraciones' },
+          ],
+          rows: d.departmental.map((dept) => [
+            dept.label, dept.score, dept.positivePct, dept.neutralPct, dept.negativePct, dept.totalRatings,
+          ]) as any[],
+          column_widths: { A: 24, B: 14, C: 14, D: 14, E: 14, F: 16 },
+        },
+        {
+          name: 'Reseñas recientes',
+          headers: [
+            { label: 'Fecha' },
+            { label: 'Huésped' },
+            { label: 'Rating' },
+            { label: 'Comentario' },
+          ],
+          rows: d.recentFeedback.map((f) => [
+            new Date(f.createdAt).toLocaleString('es-MX'),
+            f.userName,
+            f.rating,
+            f.comment || 'Sin comentario',
+          ]) as any[],
+          column_widths: { A: 22, B: 24, C: 10, D: 60 },
+        },
+        {
+          name: 'Tendencia',
+          headers: [{ label: 'Fecha' }, { label: 'Reseñas', align: 'right' } as any],
+          rows: d.dailyCounts.map((c) => [c.date, c.count] as any),
+          column_widths: { A: 16, B: 14 },
+        },
+      ],
     });
   }
 }
