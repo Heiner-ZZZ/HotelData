@@ -12,143 +12,293 @@
       <p class="error-hint">Si estás en el hotel, llama a recepción para obtener un nuevo código.</p>
     </div>
   } @else if (portalData(); as data) {
-    <!-- ── Header ── -->
-    <header class="portal-header">
-      <div class="header-top">
-        <div class="hotel-badge">
-          <span class="material-symbols-outlined">hotel</span>
-          <span class="hotel-name">{{ data.compendium.hotel_name || 'Hotel' }}</span>
+    <!-- ═══ HEADER ═══ -->
+    <header class="gp-header">
+      <div class="gp-header-inner">
+        <div class="gp-header-left">
+          <div class="gp-hotel-badge">
+            <span class="material-symbols-outlined">hotel</span>
+            <span>{{ data.compendium.hotel_name || 'Hotel' }}</span>
+          </div>
+          <h1 class="gp-guest-name">
+            Bienvenido{{ data.session.guest_name ? ', ' + data.session.guest_name : '' }}
+          </h1>
+          <div class="gp-stay-dates">
+            <span class="material-symbols-outlined">calendar_today</span>
+            {{ data.session.check_in | date:'dd MMM' }} – {{ data.session.check_out | date:'dd MMM yyyy' }}
+          </div>
         </div>
-        <div class="room-badge">
-          <span class="material-symbols-outlined">meeting_room</span>
-          Hab. {{ data.session.room_label }}
-        </div>
-      </div>
-      <div class="guest-greeting">
-        <h1>Bienvenido{{ data.session.guest_name ? ', ' + data.session.guest_name : '' }}</h1>
-        <div class="stay-dates">
-          <span class="material-symbols-outlined">calendar_today</span>
-          {{ data.session.check_in | date:'dd MMM' }} – {{ data.session.check_out | date:'dd MMM yyyy' }}
+        <div class="gp-header-right">
+          <div class="gp-room-chip">
+            <span class="material-symbols-outlined">meeting_room</span>
+            Hab. {{ data.session.room_label }}
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- ── Tab Navigation ── -->
-    <nav class="tab-nav">
+    <!-- ═══ TAB NAV (mobile only) ═══ -->
+    <nav class="gp-tab-nav">
       @for (tab of tabs(); track tab.id) {
         <button
-          class="tab-btn"
+          class="gp-tab-btn"
           [class.active]="activeTab() === tab.id"
           (click)="setTab(tab.id)"
         >
           <span class="material-symbols-outlined">{{ tab.icon }}</span>
-          <span class="tab-label">{{ tab.label }}</span>
+          <span class="gp-tab-label">{{ tab.label }}</span>
           @if (tab.badge && tab.badge > 0) {
-            <span class="tab-badge">{{ tab.badge }}</span>
+            <span class="gp-tab-badge">{{ tab.badge }}</span>
           }
         </button>
       }
     </nav>
 
-    <!-- ── Tab Content ── -->
-    <main class="tab-content">
+    <!-- ═══ DESKTOP BENTO GRID ═══ -->
+    <div class="gp-bento">
+      <!-- ── Hero Panel ── -->
+      <div class="gp-bento-hero">
+        <div class="gp-hero-bg"></div>
+        <div class="gp-hero-content">
+          <div class="gp-hero-main">
+            <div class="gp-hero-label">Estancia Activa</div>
+            <h2 class="gp-hero-room">Hab. {{ data.session.room_label }}</h2>
+            <p class="gp-hero-guest">{{ data.session.guest_name || 'Huésped' }}</p>
+          </div>
+          <div class="gp-hero-nights">
+            <div class="gp-hero-nights-num">{{ data.nights_remaining }}</div>
+            <div class="gp-hero-nights-label">Noches Restantes</div>
+          </div>
+        </div>
+        <div class="gp-hero-actions">
+          <button class="gp-btn-outline">
+            <span class="material-symbols-outlined">calendar_month</span>
+            Extender Estancia
+          </button>
+          <button class="gp-btn-outline">
+            <span class="material-symbols-outlined">schedule</span>
+            Solicitar Late Checkout
+          </button>
+        </div>
+      </div>
+
+      <!-- ── DND / Status Panel ── -->
+      <div class="gp-bento-dnd">
+        <div class="gp-dnd-icon-wrap">
+          <span class="material-symbols-outlined gp-dnd-icon" [class.dnd-on]="dndActive()">
+            {{ dndActive() ? 'do_not_disturb_on' : 'door_front' }}
+          </span>
+        </div>
+        <h3 class="gp-dnd-title">Privacidad</h3>
+        <p class="gp-dnd-desc">Gestiona el estado de tu habitación.</p>
+        <div class="gp-dnd-toggle-row">
+          <span class="gp-dnd-toggle-label">No Molestar</span>
+          <button
+            class="gp-toggle"
+            [class.active]="dndActive()"
+            [disabled]="dndToggling()"
+            (click)="toggleDnd()"
+            type="button"
+          >
+            <span class="gp-toggle-knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Room Services ── -->
+      <div class="gp-bento-services">
+        <div class="gp-panel-header">
+          <span class="material-symbols-outlined gp-panel-icon">room_service</span>
+          <h3>Servicios a la Habitación</h3>
+        </div>
+        <div class="gp-services-grid">
+          <button class="gp-service-btn" (click)="quickRequest('housekeeping')">
+            <span class="material-symbols-outlined">cleaning_services</span>
+            <span>Solicitar Limpieza</span>
+          </button>
+          <button class="gp-service-btn" (click)="quickRequest('amenities')">
+            <span class="material-symbols-outlined">bed</span>
+            <span>Pedir Almohadas</span>
+          </button>
+          <button class="gp-service-btn gp-service-btn-highlight" (click)="quickRequest('room_service')">
+            <span class="material-symbols-outlined">restaurant_menu</span>
+            <span>Room Service (Menú)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Appointments / Citas ── -->
+      <div class="gp-bento-appointments">
+        <div class="gp-panel-header">
+          <span class="material-symbols-outlined gp-panel-icon">calendar_today</span>
+          <h3>Reservas y Citas</h3>
+        </div>
+        <div class="gp-appointments-list">
+          <button class="gp-appt-btn" (click)="quickRequest('other')">
+            <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
+              <span class="material-symbols-outlined" style="color:#4a626e;">spa</span>
+            </div>
+            <span class="gp-appt-label">Spa &amp; Bienestar</span>
+            <span class="material-symbols-outlined gp-appt-arrow">chevron_right</span>
+          </button>
+          <button class="gp-appt-btn" (click)="quickRequest('other')">
+            <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
+              <span class="material-symbols-outlined" style="color:#4a626e;">restaurant</span>
+            </div>
+            <span class="gp-appt-label">Restaurantes</span>
+            <span class="material-symbols-outlined gp-appt-arrow">chevron_right</span>
+          </button>
+          <div class="gp-appt-quick-row">
+            <button class="gp-appt-quick-btn" (click)="quickRequest('other')">
+              <span class="material-symbols-outlined">local_taxi</span>
+              Taxi
+            </button>
+            <button class="gp-appt-quick-btn" (click)="quickRequest('wake_up_call')">
+              <span class="material-symbols-outlined">alarm</span>
+              Wake-up Call
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Account / Folio ── -->
+      <div class="gp-bento-folio">
+        <div class="gp-folio-header">
+          <div class="gp-panel-header">
+            <span class="material-symbols-outlined gp-panel-icon">account_balance_wallet</span>
+            <h3>Mi Cuenta (Folio)</h3>
+          </div>
+          <div class="gp-folio-balance">
+            <span class="gp-folio-balance-label">Saldo Actual</span>
+            <span class="gp-folio-balance-num">{{ getFolioTotal() | currency }}</span>
+          </div>
+        </div>
+
+        @if (recentPostings().length > 0) {
+          <div class="gp-folio-table-wrap">
+            <table class="gp-folio-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Concepto</th>
+                  <th class="gp-text-right">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of recentPostings(); track $index) {
+                  <tr>
+                    <td class="gp-cell-date">{{ p.posted_at | date:'dd MMM' }}</td>
+                    <td class="gp-cell-concept">{{ p.concept || p.category || '—' }}</td>
+                    <td class="gp-text-right gp-cell-amount" [class.debit]="p.type === 'debit' || p.amount > 0">
+                      {{ p.type === 'debit' || p.amount > 0 ? '+' : '' }}{{ p.amount | currency }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="gp-folio-empty">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <p>No hay movimientos registrados.</p>
+          </div>
+        }
+
+        <div class="gp-folio-actions">
+          <button class="gp-btn-outline" (click)="requestInvoice()">
+            <span class="material-symbols-outlined">receipt</span>
+            Solicitar Factura
+          </button>
+          <button class="gp-btn-primary" (click)="requestPayment()">
+            <span class="material-symbols-outlined">payments</span>
+            Solicitar Pago
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Report Issue ── -->
+      <div class="gp-bento-report">
+        <div class="gp-report-icon-wrap">
+          <span class="material-symbols-outlined gp-report-icon">build</span>
+        </div>
+        <h3 class="gp-report-title">Reportar Incidencia</h3>
+        <p class="gp-report-desc">Solicita mantenimiento o reporta algún daño en la habitación.</p>
+        <button class="gp-btn-report" (click)="quickRequest('maintenance')">
+          Crear Reporte
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ MOBILE TAB CONTENT ═══ -->
+    <main class="gp-tab-content">
 
       <!-- ═══ COMPENDIUM ═══ -->
       @if (activeTab() === 'compendium') {
-        <section class="compendium-section">
+        <section class="gp-compendium">
           @if (data.compendium.wifi_ssid) {
-            <div class="comp-card wifi-card">
-              <div class="comp-card-icon"><span class="material-symbols-outlined">wifi</span></div>
-              <div class="comp-card-body">
+            <div class="gp-comp-card gp-wifi-card">
+              <div class="gp-comp-icon"><span class="material-symbols-outlined">wifi</span></div>
+              <div class="gp-comp-body">
                 <h3>WiFi</h3>
-                <div class="wifi-detail">
-                  <span class="detail-label">Red:</span>
-                  <span class="detail-value">{{ data.compendium.wifi_ssid }}</span>
-                </div>
+                <div class="gp-wifi-row"><span class="gp-label">Red:</span><span>{{ data.compendium.wifi_ssid }}</span></div>
                 @if (data.compendium.wifi_password) {
-                  <div class="wifi-detail">
-                    <span class="detail-label">Contraseña:</span>
-                    <span class="detail-value password-value">{{ data.compendium.wifi_password }}</span>
-                  </div>
+                  <div class="gp-wifi-row"><span class="gp-label">Contraseña:</span><span class="gp-wifi-pwd">{{ data.compendium.wifi_password }}</span></div>
                 }
               </div>
             </div>
           }
-
-          <div class="comp-grid">
+          <div class="gp-comp-grid">
             @if (data.compendium.breakfast_hours) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">restaurant</span></div>
-                <div class="comp-card-body">
-                  <h3>Desayuno</h3>
-                  <p>{{ data.compendium.breakfast_hours }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">restaurant</span></div>
+                <div class="gp-comp-body"><h3>Desayuno</h3><p>{{ data.compendium.breakfast_hours }}</p></div>
               </div>
             }
             @if (data.compendium.restaurant_hours) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">lunch_dining</span></div>
-                <div class="comp-card-body">
-                  <h3>Restaurante</h3>
-                  <p>{{ data.compendium.restaurant_hours }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">lunch_dining</span></div>
+                <div class="gp-comp-body"><h3>Restaurante</h3><p>{{ data.compendium.restaurant_hours }}</p></div>
               </div>
             }
             @if (data.compendium.gym_hours) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">fitness_center</span></div>
-                <div class="comp-card-body">
-                  <h3>Gimnasio</h3>
-                  <p>{{ data.compendium.gym_hours }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">fitness_center</span></div>
+                <div class="gp-comp-body"><h3>Gimnasio</h3><p>{{ data.compendium.gym_hours }}</p></div>
               </div>
             }
             @if (data.compendium.pool_hours) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">pool</span></div>
-                <div class="comp-card-body">
-                  <h3>Alberca</h3>
-                  <p>{{ data.compendium.pool_hours }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">pool</span></div>
+                <div class="gp-comp-body"><h3>Alberca</h3><p>{{ data.compendium.pool_hours }}</p></div>
               </div>
             }
             @if (data.compendium.hotel_phone) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">call</span></div>
-                <div class="comp-card-body">
-                  <h3>Teléfono</h3>
-                  <p>{{ data.compendium.hotel_phone }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">call</span></div>
+                <div class="gp-comp-body"><h3>Teléfono</h3><p>{{ data.compendium.hotel_phone }}</p></div>
               </div>
             }
             @if (data.compendium.parking_info) {
-              <div class="comp-card">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">local_parking</span></div>
-                <div class="comp-card-body">
-                  <h3>Estacionamiento</h3>
-                  <p>{{ data.compendium.parking_info }}</p>
-                </div>
+              <div class="gp-comp-card">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">local_parking</span></div>
+                <div class="gp-comp-body"><h3>Estacionamiento</h3><p>{{ data.compendium.parking_info }}</p></div>
               </div>
             }
             @if (data.compendium.emergency_contact) {
-              <div class="comp-card emergency">
-                <div class="comp-card-icon"><span class="material-symbols-outlined">emergency</span></div>
-                <div class="comp-card-body">
-                  <h3>Emergencias</h3>
-                  <p>{{ data.compendium.emergency_contact }}</p>
-                </div>
+              <div class="gp-comp-card gp-emergency">
+                <div class="gp-comp-icon"><span class="material-symbols-outlined">emergency</span></div>
+                <div class="gp-comp-body"><h3>Emergencias</h3><p>{{ data.compendium.emergency_contact }}</p></div>
               </div>
             }
           </div>
-
           @if (data.compendium.policies.length > 0) {
-            <div class="comp-section-title">
+            <div class="gp-comp-section-label">
               <span class="material-symbols-outlined">description</span>
               Políticas del hotel
             </div>
-            <div class="policies-list">
+            <div class="gp-policies-list">
               @for (policy of data.compendium.policies; track $index) {
-                <div class="policy-item">
+                <div class="gp-policy-item">
                   <strong>{{ policy.title || policy.cancellation_policy || 'Política' }}</strong>
                   <p>{{ policy.description || '' }}</p>
                 </div>
@@ -160,14 +310,38 @@
 
       <!-- ═══ SERVICES ═══ -->
       @if (activeTab() === 'services') {
-        <section class="services-section">
-          <div class="section-header">
-            <h2>Solicitudes de servicio</h2>
+        <section class="gp-services-mobile">
+          <div class="gp-services-mobile-grid">
+            <button class="gp-service-btn" (click)="quickRequest('housekeeping')">
+              <span class="material-symbols-outlined">cleaning_services</span>
+              <span>Limpieza</span>
+            </button>
+            <button class="gp-service-btn" (click)="quickRequest('towels')">
+              <span class="material-symbols-outlined">dry</span>
+              <span>Toallas</span>
+            </button>
+            <button class="gp-service-btn" (click)="quickRequest('amenities')">
+              <span class="material-symbols-outlined">bed</span>
+              <span>Almohadas</span>
+            </button>
+            <button class="gp-service-btn" (click)="quickRequest('room_service')">
+              <span class="material-symbols-outlined">restaurant_menu</span>
+              <span>Room Service</span>
+            </button>
+            <button class="gp-service-btn" (click)="quickRequest('minibar')">
+              <span class="material-symbols-outlined">local_bar</span>
+              <span>Minibar</span>
+            </button>
+            <button class="gp-service-btn" (click)="quickRequest('laundry')">
+              <span class="material-symbols-outlined">local_laundry_service</span>
+              <span>Lavandería</span>
+            </button>
           </div>
 
+          <div class="gp-mobile-section-title">Solicitud personalizada</div>
           @if (!requestDone()) {
-            <div class="request-form">
-              <div class="form-group">
+            <div class="gp-request-form">
+              <div class="gp-form-group">
                 <label for="req-type">¿Qué necesitas?</label>
                 <select id="req-type" [ngModel]="requestType()" (ngModelChange)="requestType.set($event)">
                   @for (rt of requestTypes; track rt.value) {
@@ -175,17 +349,11 @@
                   }
                 </select>
               </div>
-              <div class="form-group">
+              <div class="gp-form-group">
                 <label for="req-desc">Detalle (opcional)</label>
-                <textarea
-                  id="req-desc"
-                  rows="3"
-                  placeholder="Ej: 2 toallas extra, por favor"
-                  [ngModel]="requestDesc()"
-                  (ngModelChange)="requestDesc.set($event)"
-                ></textarea>
+                <textarea id="req-desc" rows="3" placeholder="Ej: 2 toallas extra, por favor" [ngModel]="requestDesc()" (ngModelChange)="requestDesc.set($event)"></textarea>
               </div>
-              <button class="btn-primary" (click)="submitRequest()" [disabled]="sendingRequest() || !requestDesc().trim()">
+              <button class="gp-btn-primary" (click)="submitRequest()" [disabled]="sendingRequest() || !requestDesc().trim()">
                 @if (sendingRequest()) {
                   <span class="material-symbols-outlined spin">sync</span>
                   Enviando...
@@ -196,31 +364,29 @@
               </button>
             </div>
           } @else {
-            <div class="request-success">
+            <div class="gp-request-success">
               <span class="material-symbols-outlined">check_circle</span>
               <p>¡Solicitud enviada! Recepción la recibió y te atenderá pronto.</p>
             </div>
           }
 
           @if (requests().length > 0) {
-            <div class="requests-history">
-              <h3>Mis solicitudes</h3>
+            <div class="gp-mobile-section-title">Mis solicitudes</div>
+            <div class="gp-requests-mobile">
               @for (req of requests(); track req._id) {
-                <div class="request-card" [class.completed]="req.status === 'completed'">
-                  <div class="req-header">
-                    <span class="req-type">{{ req.request_type_label }}</span>
-                    <span class="req-status" [class]="'status-' + req.status">{{ req.status_label }}</span>
+                <div class="gp-req-card" [class.completed]="req.status === 'completed'">
+                  <div class="gp-req-header">
+                    <span class="gp-req-type">{{ req.request_type_label }}</span>
+                    <span class="gp-req-status gp-status-{{ req.status }}">{{ req.status_label }}</span>
                   </div>
-                  @if (req.description) {
-                    <p class="req-desc">{{ req.description }}</p>
-                  }
+                  @if (req.description) { <p class="gp-req-desc">{{ req.description }}</p> }
                   @if (req.staff_response) {
-                    <div class="req-response">
+                    <div class="gp-req-response">
                       <span class="material-symbols-outlined">reply</span>
                       {{ req.staff_response }}
                     </div>
                   }
-                  <span class="req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
+                  <span class="gp-req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
                 </div>
               }
             </div>
@@ -230,41 +396,33 @@
 
       <!-- ═══ CHAT ═══ -->
       @if (activeTab() === 'chat') {
-        <section class="chat-section">
-          <div class="chat-header">
+        <section class="gp-chat-section">
+          <div class="gp-chat-header">
             <span class="material-symbols-outlined">support_agent</span>
             <span>Chat con Recepción</span>
           </div>
-
-          <div class="chat-messages" #chatContainer>
+          <div class="gp-chat-messages">
             @if (messages().length === 0) {
-              <div class="chat-empty">
+              <div class="gp-chat-empty">
                 <span class="material-symbols-outlined">chat</span>
                 <p>No hay mensajes aún. ¡Escríbenos!</p>
               </div>
             }
             @for (msg of messages(); track msg._id) {
-              <div class="chat-msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
-                <div class="msg-bubble">
+              <div class="gp-chat-msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
+                <div class="gp-msg-bubble">
                   @if (msg.sender === 'staff' && msg.staff_name) {
-                    <div class="msg-author">{{ msg.staff_name }}</div>
+                    <div class="gp-msg-author">{{ msg.staff_name }}</div>
                   }
-                  <div class="msg-text">{{ msg.message }}</div>
-                  <div class="msg-time">{{ msg.created_at | date:'HH:mm' }}</div>
+                  <div class="gp-msg-text">{{ msg.message }}</div>
+                  <div class="gp-msg-time">{{ msg.created_at | date:'HH:mm' }}</div>
                 </div>
               </div>
             }
           </div>
-
-          <div class="chat-input-bar">
-            <input
-              type="text"
-              placeholder="Escribe tu mensaje..."
-              [ngModel]="chatInput()"
-              (ngModelChange)="chatInput.set($event)"
-              (keydown.enter)="sendMessage()"
-            />
-            <button class="btn-send" (click)="sendMessage()" [disabled]="sendingChat() || !chatInput().trim()">
+          <div class="gp-chat-input-bar">
+            <input type="text" placeholder="Escribe tu mensaje..." [ngModel]="chatInput()" (ngModelChange)="chatInput.set($event)" (keydown.enter)="sendMessage()" />
+            <button class="gp-btn-send" (click)="sendMessage()" [disabled]="sendingChat() || !chatInput().trim()">
               <span class="material-symbols-outlined">send</span>
             </button>
           </div>
@@ -273,55 +431,111 @@
 
       <!-- ═══ CHARGES ═══ -->
       @if (activeTab() === 'charges') {
-        <section class="charges-section">
-          <div class="section-header">
-            <h2>Cargos a la habitación</h2>
+        <section class="gp-charges-section">
+          <div class="gp-mobile-section-title">Resumen de Cargos</div>
+
+          <div class="gp-charge-summary">
+            <div class="gp-charge-summary-item">
+              <span class="gp-cs-label">Saldo del Folio</span>
+              <span class="gp-cs-value">{{ getFolioTotal() | currency }}</span>
+            </div>
+            <div class="gp-charge-summary-item">
+              <span class="gp-cs-label">Cargos adicionales</span>
+              <span class="gp-cs-value">{{ getChargesTotal() | currency }}</span>
+            </div>
           </div>
 
-          @if (data.charges.length === 0) {
-            <div class="charges-empty">
-              <span class="material-symbols-outlined">receipt_long</span>
-              <p>No tienes cargos adicionales registrados.</p>
-            </div>
-          } @else {
-            <div class="charges-list">
-              @for (charge of data.charges; track $index) {
-                <div class="charge-item">
-                  <div class="charge-info">
-                    <span class="charge-concept">{{ charge.concept }}</span>
-                    <span class="charge-category">{{ charge.category }}</span>
-                    <span class="charge-date">{{ charge.created_at | date:'dd/MM' }}</span>
+          @if (recentPostings().length > 0) {
+            <div class="gp-mobile-section-title">Movimientos del Folio</div>
+            <div class="gp-charges-list">
+              @for (p of recentPostings(); track $index) {
+                <div class="gp-charge-item">
+                  <div class="gp-charge-info">
+                    <span class="gp-charge-concept">{{ p.concept || p.category || '—' }}</span>
+                    <span class="gp-charge-date">{{ p.posted_at | date:'dd/MM' }}</span>
                   </div>
-                  <div class="charge-amount">
-                    @if (charge.quantity > 1) {
-                      <span class="charge-qty">{{ charge.quantity }} × {{ charge.amount | currency }}</span>
-                    }
-                    <strong>{{ charge.total | currency }}</strong>
-                  </div>
+                  <span class="gp-charge-amount" [class.debit]="p.type === 'debit' || p.amount > 0">
+                    {{ p.type === 'debit' || p.amount > 0 ? '+' : '' }}{{ p.amount | currency }}
+                  </span>
                 </div>
               }
             </div>
-            <div class="charges-total">
-              <span>Total cargos</span>
+          }
+
+          @if (data.charges.length > 0) {
+            <div class="gp-mobile-section-title">Cargos Adicionales</div>
+            <div class="gp-charges-list">
+              @for (charge of data.charges; track $index) {
+                <div class="gp-charge-item">
+                  <div class="gp-charge-info">
+                    <span class="gp-charge-concept">{{ charge.concept }}</span>
+                    <span class="gp-charge-date">{{ charge.created_at | date:'dd/MM' }}</span>
+                  </div>
+                  <span class="gp-charge-amount">{{ charge.total | currency }}</span>
+                </div>
+              }
+            </div>
+            <div class="gp-charges-total">
+              <span>Total cargos adicionales</span>
               <strong>{{ getChargesTotal() | currency }}</strong>
             </div>
           }
 
-          <div class="charges-note">
-            <span class="material-symbols-outlined">info</span>
-            Los cargos se liquidarán al momento del check-out.
+          <div class="gp-folio-actions">
+            <button class="gp-btn-outline" (click)="requestInvoice()">
+              <span class="material-symbols-outlined">receipt</span>
+              Solicitar Factura
+            </button>
+            <button class="gp-btn-primary" (click)="requestPayment()">
+              <span class="material-symbols-outlined">payments</span>
+              Solicitar Pago
+            </button>
           </div>
         </section>
       }
 
     </main>
 
-    <!-- ── Footer ── -->
-    <footer class="portal-footer">
+    <footer class="gp-footer">
       <p>HotelData — Mi Estancia</p>
-      <p class="footer-hours">
-        Check-in: {{ data.compendium.check_in_time }} &middot; Check-out: {{ data.compendium.check_out_time }}
-      </p>
+      <p class="gp-footer-hours">Check-in: {{ data.compendium.check_in_time }} &middot; Check-out: {{ data.compendium.check_out_time }}</p>
     </footer>
+
+    <!-- ═══ PAYMENT / INVOICE MODAL ═══ -->
+    @if (showPaymentModal()) {
+      <div class="gp-modal-overlay" (click)="closePaymentModal()">
+        <div class="gp-modal" (click)="$event.stopPropagation()">
+          <div class="gp-modal-header">
+            <span class="material-symbols-outlined gp-modal-icon">
+              {{ paymentModalMode() === 'invoice' ? 'receipt_long' : 'payments' }}
+            </span>
+            <h2>{{ paymentModalMode() === 'invoice' ? 'Solicitar Factura' : 'Solicitar Pago' }}</h2>
+          </div>
+          <div class="gp-modal-body">
+            @if (paymentModalMode() === 'invoice') {
+              <p>Se notificará a recepción que deseas recibir la factura detallada de tu estancia. Un miembro del staff te contactará para entregártela.</p>
+            } @else {
+              <p>Puedes solicitar realizar un pago parcial o total de tu folio. Recepción recibirá tu solicitud y te contactará para procesar el pago.</p>
+            }
+            <div class="gp-modal-info">
+              <span class="material-symbols-outlined">info</span>
+              <span>También puedes acercarte a recepción directamente.</span>
+            </div>
+          </div>
+          <div class="gp-modal-footer">
+            <button class="gp-btn-outline" (click)="closePaymentModal()">Cancelar</button>
+            <button class="gp-btn-primary" (click)="confirmPaymentRequest()" [disabled]="sendingRequest()">
+              @if (sendingRequest()) {
+                <span class="material-symbols-outlined spin">sync</span>
+                Enviando...
+              } @else {
+                <span class="material-symbols-outlined">send</span>
+                {{ paymentModalMode() === 'invoice' ? 'Solicitar Factura' : 'Solicitar Pago' }}
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   }
 </div>

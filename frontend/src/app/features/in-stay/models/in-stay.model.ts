@@ -29,10 +29,22 @@ export interface CompendiumInfo {
   amenities: { name: string; icon?: string }[];
 }
 
+export interface FolioPosting {
+  concept: string;
+  category: string;
+  amount: number;
+  type: string;
+  posted_at: string;
+}
+
 export interface PortalData {
   session: StaySession;
   compendium: CompendiumInfo;
   charges: AdditionalCharge[];
+  folio_balance: number;
+  folio_postings: FolioPosting[];
+  nights_remaining: number;
+  dnd_active: boolean;
   unread_messages: number;
   pending_requests: number;
 }

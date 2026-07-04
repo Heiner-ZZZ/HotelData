@@ -24,6 +24,8 @@ export class GuestPortalPageComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly portalData = signal<PortalData | null>(null);
   readonly activeTab = signal<Tab>('compendium');
+  readonly dndActive = signal(false);
+  readonly dndToggling = signal(false);
 
   // Chat
   readonly messages = signal<ChatMessage[]>([]);
@@ -63,6 +65,13 @@ export class GuestPortalPageComponent implements OnInit {
     ];
   });
 
+  /** Computed: folio postings sorted by date desc */
+  readonly recentPostings = computed(() => {
+    const data = this.portalData();
+    if (!data?.folio_postings) return [];
+    return [...data.folio_postings].sort((a, b) => b.posted_at.localeCompare(a.posted_at));
+  });
+
   private tokenValue = '';
 
   ngOnInit(): void {
@@ -85,9 +94,8 @@ export class GuestPortalPageComponent implements OnInit {
     this.api.getPortalData(token).subscribe({
       next: (data) => {
         this.portalData.set(data);
+        this.dndActive.set(data.dnd_active);
         this.loading.set(false);
-
-        // tabs se actualiza automáticamente via computed()
 
         // Preload chat and requests
         this.loadMessages();
@@ -101,6 +109,20 @@ export class GuestPortalPageComponent implements OnInit {
           this.error.set('Error al cargar el portal. Intenta de nuevo.');
         }
       },
+    });
+  }
+
+  // ── DND Toggle ──
+
+  toggleDnd(): void {
+    if (this.dndToggling() || !this.tokenValue) return;
+    this.dndToggling.set(true);
+    this.api.toggleDnd(this.tokenValue).subscribe({
+      next: (res) => {
+        this.dndActive.set(res.dnd_active);
+        this.dndToggling.set(false);
+      },
+      error: () => this.dndToggling.set(false),
     });
   }
 
@@ -163,6 +185,59 @@ export class GuestPortalPageComponent implements OnInit {
       });
   }
 
+  /** Quick service button: creates request without modal */
+  quickRequest(type: string): void {
+    if (!this.tokenValue) return;
+    this.sendingRequest.set(true);
+    this.api
+      .createRequest(this.tokenValue, type, '')
+      .subscribe({
+        next: () => {
+          this.sendingRequest.set(false);
+          this.loadRequests();
+        },
+        error: () => (this.sendingRequest.set(false)),
+      });
+  }
+
+  // ── Payment Modal ──
+
+  readonly showPaymentModal = signal(false);
+  readonly paymentModalMode = signal<'invoice' | 'payment'>('payment');
+
+  requestInvoice(): void {
+    this.paymentModalMode.set('invoice');
+    this.showPaymentModal.set(true);
+  }
+
+  requestPayment(): void {
+    this.paymentModalMode.set('payment');
+    this.showPaymentModal.set(true);
+  }
+
+  closePaymentModal(): void {
+    this.showPaymentModal.set(false);
+  }
+
+  confirmPaymentRequest(): void {
+    // Notify staff via a service request
+    const mode = this.paymentModalMode();
+    const type = mode === 'invoice' ? 'solicitar_factura' : 'solicitar_pago';
+    const desc = mode === 'invoice'
+      ? 'Solicito la factura de mi estancia para revisión.'
+      : 'Solicito realizar un pago en mi folio. Por favor contactarme.';
+
+    this.sendingRequest.set(true);
+    this.api.createRequest(this.tokenValue, type, desc).subscribe({
+      next: () => {
+        this.sendingRequest.set(false);
+        this.showPaymentModal.set(false);
+        this.loadRequests();
+      },
+      error: () => this.sendingRequest.set(false),
+    });
+  }
+
   // ── Helpers ──
 
   getChargesTotal(): number {
@@ -171,8 +246,13 @@ export class GuestPortalPageComponent implements OnInit {
     return data.charges.reduce((sum, c) => sum + c.total, 0);
   }
 
+  getFolioTotal(): number {
+    return this.portalData()?.folio_balance ?? 0;
+  }
+
   isToday(dateStr: string): boolean {
     const today = new Date().toISOString().slice(0, 10);
     return dateStr.slice(0, 10) === today;
   }
+
 }
