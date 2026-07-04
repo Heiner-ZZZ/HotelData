@@ -5,12 +5,14 @@
     description="Gestión de reservas, check-in y calendario de ocupación por hotel."
   />
 
-  <!-- Hotel selector (siempre visible primero) -->
-  <app-property-selector
-    [selectedPropId]="calendarPropId()"
-    [selectedLabel]="calendarPropLabel()"
-    (propIdChange)="onCalendarPropSelected($event)"
-  />
+  <!-- Hotel selector (solo staff — los clientes ven solo sus reservas) -->
+  @if (!isClient()) {
+    <app-property-selector
+      [selectedPropId]="calendarPropId()"
+      [selectedLabel]="calendarPropLabel()"
+      (propIdChange)="onCalendarPropSelected($event)"
+    />
+  }
 
   <!-- View toggle: solo después de elegir hotel -->
   @if (hotelSelected() && !isClient()) {
@@ -30,8 +32,8 @@
     </div>
   }
 
-  <!-- ═══ Calendar view (default) ═══ -->
-  @if (viewMode() === 'calendar' && hotelSelected()) {
+  <!-- ═══ Calendar view (solo staff) ═══ -->
+  @if (viewMode() === 'calendar' && hotelSelected() && !isClient()) {
     <div class="calendar-section">
       @if (calendarPropId() > 0) {
         <app-reception-calendar

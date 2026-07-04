@@ -60,8 +60,8 @@ export class ReservationsListPageComponent {
     return !role || role === 'cliente';
   });
 
-  /** View toggle: 'calendar' (default) or 'list'. */
-  readonly viewMode = signal<'list' | 'calendar'>('calendar');
+  /** View toggle: 'calendar' (default for staff) or 'list' (default for clients). */
+  readonly viewMode = signal<'list' | 'calendar'>('list');
   /** Property ID for hotel selection (required before showing any view). */
   readonly calendarPropId = signal(0);
   readonly calendarPropLabel = signal('');
@@ -127,8 +127,12 @@ export class ReservationsListPageComponent {
           this.viewState.set('loading');
           this.currentDateFilter.set(createdDate || '');
           this.currentStatusFilter.set(status || '');
-          if (propId) this.calendarPropId.set(propId);
-          return this.reservationsApi.getReservations(page, createdDate || undefined, status || undefined, propId || undefined);
+          // Use prop_id from URL, or fall back to context (single-hotel mode)
+          const effectivePropId = propId || this.propertyCtx.currentPropId();
+          if (effectivePropId) this.calendarPropId.set(effectivePropId);
+          // Clients don't send prop_id — backend filters by user_id automatically
+          const clientPropId = this.isClient() ? undefined : (propId || undefined);
+          return this.reservationsApi.getReservations(page, createdDate || undefined, status || undefined, clientPropId);
         }),
         takeUntilDestroyed(this.destroyRef)
       )

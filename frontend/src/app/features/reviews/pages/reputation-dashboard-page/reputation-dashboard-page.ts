@@ -21,7 +21,7 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
 @Component({
   selector: 'app-reputation-dashboard-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, PageHeaderComponent, LoadingStateComponent, ErrorStateComponent, EmptyStateComponent],
+  imports: [FormsModule, PageHeaderComponent, LoadingStateComponent, ErrorStateComponent, EmptyStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="reputation-page" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
@@ -41,8 +41,13 @@ import { ReviewsApiService } from '../../services/reviews-api.service';
         </select>
         <button (click)="exportPDF()" [disabled]="exporting()"
           style="display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer;">
-          <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
-          {{ exporting() ? 'Exportando...' : 'Exportar Reporte PDF' }}
+          <span class="material-symbols-outlined" style="font-size: 16px;">picture_as_pdf</span>
+          {{ exporting() ? 'Exportando...' : 'Exportar PDF' }}
+        </button>
+        <button (click)="exportXlsx()" [disabled]="exporting()"
+          style="display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">table_chart</span>
+          {{ exporting() ? 'Exportando...' : 'Exportar Excel' }}
         </button>
       </div>
 

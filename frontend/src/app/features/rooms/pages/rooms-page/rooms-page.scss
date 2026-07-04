@@ -1,21 +1,21 @@
+@use './partials/rooms-layout';
+@use './partials/rooms-selector';
+@use './partials/rooms-notifications';
+@use './partials/rooms-kpi';
+@use './partials/rooms-panels';
+@use './partials/rooms-form';
+@use './partials/rooms-tables';
+@use './partials/rooms-badges';
+@use './partials/rooms-modal';
+@use './partials/rooms-features';
+@use './partials/rooms-create-mode';
+
+/* Responsive — must be last to override all other styles */
+@use './partials/rooms-responsive';
+
 .rooms-page {
   display: grid;
   gap: 0.75rem;
   max-width: 100%;
   margin: 0 auto;
 }
-
-@import './partials/rooms-layout';
-@import './partials/rooms-selector';
-@import './partials/rooms-notifications';
-@import './partials/rooms-kpi';
-@import './partials/rooms-panels';
-@import './partials/rooms-form';
-@import './partials/rooms-tables';
-@import './partials/rooms-badges';
-@import './partials/rooms-modal';
-@import './partials/rooms-features';
-@import './partials/rooms-create-mode';
-
-/* Responsive — must be last to override all other styles */
-@import './partials/rooms-responsive';
