@@ -124,8 +124,8 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'auditor_datos']
         },
         {
-          label: 'Libro Mayor',
-          href: '/management/expenses/ledger',
+          label: 'Finanzas',
+          href: '/management/expenses',
           icon: 'account_balance',
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'auditor_datos']
         },

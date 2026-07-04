@@ -7,6 +7,7 @@
     <div class="inbox-badges">
       <span class="badge">{{ getUnreadCount() }} mensajes</span>
       <span class="badge pending">{{ pendingCount }} solicitudes</span>
+      <span class="badge folio">{{ folioCount }} folios</span>
     </div>
   </div>
 
@@ -29,6 +30,13 @@
       Solicitudes
       @if (pendingCount > 0) {
         <span class="tab-count">{{ pendingCount }}</span>
+      }
+    </button>
+    <button class="tab" [class.active]="activeTab() === 'folios'" (click)="setTab('folios')">
+      <span class="material-symbols-outlined">receipt_long</span>
+      Folios
+      @if (folioCount > 0) {
+        <span class="tab-count">{{ folioCount }}</span>
       }
     </button>
   </nav>
@@ -101,10 +109,79 @@
             <button class="btn-reply" (click)="sendReply()" [disabled]="sendingReply() || !replyInput().trim()">
               <span class="material-symbols-outlined">send</span>
             </button>
-          </div>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'folios') {
+    <div class="folios-inbox">
+      @if (foliosLoading()) {
+        <div class="inbox-loading">Cargando folios...</div>
+      } @else if (folios().length === 0) {
+        <div class="inbox-empty">
+          <span class="material-symbols-outlined">receipt_long</span>
+          <p>No hay folios activos para esta propiedad</p>
+        </div>
+      } @else {
+        <div class="folios-list">
+          @for (folio of folios(); track folio.folioRef) {
+            <div class="folio-card">
+              <div class="folio-card-header">
+                <div class="folio-guest-info">
+                  <span class="folio-guest-name">{{ folio.guestName }}</span>
+                  <span class="folio-room">
+                    <span class="material-symbols-outlined">meeting_room</span>
+                    Hab. {{ folio.room || '—' }}
+                  </span>
+                </div>
+                <span class="folio-ref mono">{{ folio.folioRef }}</span>
+              </div>
+
+              <div class="folio-card-body">
+                <div class="folio-dates">
+                  <div class="folio-date-row">
+                    <span class="folio-date-label">Check-in</span>
+                    <span class="folio-date-value">{{ folio.checkIn || '—' }}</span>
+                  </div>
+                  <div class="folio-date-row">
+                    <span class="folio-date-label">Check-out</span>
+                    <span class="folio-date-value">{{ folio.checkOut || '—' }}</span>
+                  </div>
+                  <div class="folio-date-row">
+                    <span class="folio-date-label">Transacciones</span>
+                    <span class="folio-date-value">{{ folio.transactionCount }}</span>
+                  </div>
+                </div>
+
+                <div class="folio-balance-section">
+                  <span class="folio-balance-label">Saldo Pendiente</span>
+                  <span class="folio-balance-value mono" [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
+                    {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="folio-card-actions">
+                <button class="folio-btn folio-btn-primary" (click)="openPaymentModal(folio)">
+                  <span class="material-symbols-outlined">payments</span>
+                  Registrar Pago
+                </button>
+                <button class="folio-btn folio-btn-outline" (click)="openTransferModal(folio)">
+                  <span class="material-symbols-outlined">swap_horiz</span>
+                  Transferir
+                </button>
+                <button class="folio-btn folio-btn-ghost" (click)="openTransactionsModal(folio)">
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  Ver Transacciones
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
+  }
+</div>
   }
 
   @if (activeTab() === 'requests') {
@@ -164,3 +241,34 @@
     </div>
   }
 </div>
+
+<!-- Payment Modal -->
+@if (paymentModalFolio(); as folio) {
+  <app-folio-payment-modal
+    mode="payment"
+    [folio]="folio"
+    [serverError]="paymentModalError() || null"
+    (close)="closePaymentModal()"
+    (confirmed)="onPaymentConfirmed($event)"
+  />
+}
+
+<!-- Transfer Modal -->
+@if (transferModalFolio(); as folio) {
+  <app-folio-payment-modal
+    mode="transfer"
+    [folio]="folio"
+    [availableFolios]="folios()"
+    [serverError]="paymentModalError() || null"
+    (close)="closeTransferModal()"
+    (confirmed)="onTransferConfirmed($event)"
+  />
+}
+
+<!-- Transactions Modal -->
+@if (transactionsModalFolio(); as folio) {
+  <app-folio-transactions-modal
+    [folio]="folio"
+    (close)="closeTransactionsModal()"
+  />
+}

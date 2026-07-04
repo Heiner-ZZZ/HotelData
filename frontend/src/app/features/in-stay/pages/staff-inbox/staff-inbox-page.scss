@@ -462,3 +462,193 @@
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
+
+/* ── Folios ── */
+
+.badge.folio {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.folios-inbox {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.folios-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.folio-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: box-shadow 0.15s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+}
+
+.folio-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.folio-guest-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.folio-guest-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.folio-room {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+  }
+}
+
+.folio-ref {
+  font-size: 0.7rem;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.folio-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.folio-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.folio-date-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.folio-date-label {
+  color: var(--text-secondary);
+  min-width: 95px;
+}
+
+.folio-date-value {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.folio-balance-section {
+  text-align: right;
+}
+
+.folio-balance-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.15rem;
+}
+
+.folio-balance-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+
+  &.text-danger { color: #ba1a1a; }
+  &.text-success { color: #166534; }
+}
+
+.folio-card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.folio-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.15s;
+
+  .material-symbols-outlined { font-size: 1rem; }
+
+  &:hover { opacity: 0.88; transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+.folio-btn-primary {
+  background: var(--accent);
+  color: white;
+  flex: 1;
+  justify-content: center;
+}
+
+.folio-btn-outline {
+  background: var(--card-bg);
+  color: var(--accent);
+  border: 1px solid var(--border);
+
+  &:hover {
+    background: var(--accent-light);
+  }
+}
+
+.folio-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.75rem;
+
+  &:hover {
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .material-symbols-outlined { font-size: 0.85rem; }
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+.text-danger { color: #ba1a1a; }
+.text-success { color: #166534; }
