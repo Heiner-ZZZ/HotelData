@@ -1,4 +1,4 @@
-import { LowerCasePipe, SlicePipe } from '@angular/common';
+import { LowerCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -22,7 +22,7 @@ const ENTRY_TYPES = [
 
 @Component({
   selector: 'app-geo-catalog-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, SlicePipe, LowerCasePipe],
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReactiveFormsModule, LowerCasePipe],
   templateUrl: './geo-catalog-page.html',
   styleUrl: './geo-catalog-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

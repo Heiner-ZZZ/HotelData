@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -40,7 +39,7 @@ import { ProfileApiService } from '../../services/profile-api.service';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ProfileSecurityComponent, ReactiveFormsModule,
+  imports: [ErrorStateComponent, LoadingStateComponent, ProfileSecurityComponent, ReactiveFormsModule,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent,
     PpAvatarSectionComponent, PpTravelSectionComponent],
   templateUrl: './profile-page.html',

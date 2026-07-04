@@ -2,17 +2,17 @@
 // Guest Amenity Catalog — Split into partials
 // ═══════════════════════════════════════════════════════════
 
-@import 'partials/gac-layout';
-@import 'partials/gac-hero';
-@import 'partials/gac-booking-info';
-@import 'partials/gac-toast';
-@import 'partials/gac-search';
-@import 'partials/gac-category-chips';
-@import 'partials/gac-results';
-@import 'partials/gac-catalog';
-@import 'partials/gac-amenity-card';
-@import 'partials/gac-actions';
-@import 'partials/gac-cart-bar';
-@import 'partials/gac-cart-drawer';
-@import 'partials/gac-utilities';
-@import 'partials/gac-responsive';
+@use 'partials/gac-layout';
+@use 'partials/gac-hero';
+@use 'partials/gac-booking-info';
+@use 'partials/gac-toast';
+@use 'partials/gac-search';
+@use 'partials/gac-category-chips';
+@use 'partials/gac-results';
+@use 'partials/gac-catalog';
+@use 'partials/gac-amenity-card';
+@use 'partials/gac-actions';
+@use 'partials/gac-cart-bar';
+@use 'partials/gac-cart-drawer';
+@use 'partials/gac-utilities';
+@use 'partials/gac-responsive';

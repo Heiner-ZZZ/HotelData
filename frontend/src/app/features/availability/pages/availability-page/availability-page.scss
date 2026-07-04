@@ -1,3 +1,19 @@
+@use './availability-toast';
+@use './availability-property-selector';
+@use './availability-info-bar';
+@use './availability-forms';
+@use './availability-buttons';
+@use './availability-calendar-core';
+@use './availability-data-tables';
+@use './availability-cell-editor';
+@use './availability-room-selector';
+@use './availability-modal';
+@use './availability-skeleton';
+@use './availability-wrap-layout';
+
+/* Responsive — must be last to override all other styles */
+@use './availability-responsive';
+
 .availability-page {
   --accent: #0F7892;
 
@@ -6,19 +22,3 @@
   display: grid;
   gap: 1.25rem;
 }
-
-@import './availability-toast';
-@import './availability-property-selector';
-@import './availability-info-bar';
-@import './availability-forms';
-@import './availability-buttons';
-@import './availability-calendar-core';
-@import './availability-data-tables';
-@import './availability-cell-editor';
-@import './availability-room-selector';
-@import './availability-modal';
-@import './availability-skeleton';
-@import './availability-wrap-layout';
-
-/* Responsive — must be last to override all other styles */
-@import './availability-responsive';
