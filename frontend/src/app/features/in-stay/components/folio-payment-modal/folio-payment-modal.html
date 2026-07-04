@@ -1,0 +1,135 @@
+<div class="modal-overlay" (click)="close.emit()">
+  <div class="modal-panel folio-modal" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+        <span class="material-symbols-outlined modal-head-icon">
+          {{ mode === 'payment' ? 'payments' : 'swap_horiz' }}
+        </span>
+        <h2>{{ title }}</h2>
+        <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (folio) {
+          <div class="folio-preview">
+            <div class="folio-preview-guest">{{ folio.guestName }}</div>
+            <div class="folio-preview-meta">
+              <span>Hab. {{ folio.room || '—' }}</span>
+              <span class="mono">{{ folio.folioRef }}</span>
+              <span class="folio-preview-balance" [class.text-danger]="folio.balance > 0">
+                Saldo: {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+              </span>
+            </div>
+          </div>
+        }
+
+        <!-- Amount -->
+        <div class="form-field">
+          <label>Monto</label>
+          <div class="amount-input-wrap">
+            <span class="amount-prefix">$</span>
+            <input
+              type="number"
+              class="amount-input"
+              placeholder="0.00"
+              min="0.01"
+              step="0.01"
+              [ngModel]="amount()"
+              (ngModelChange)="amount.set($event)"
+            />
+          </div>
+        </div>
+
+        @if (mode === 'payment') {
+          <!-- Payment method -->
+          <div class="form-field">
+            <label>Método de pago</label>
+            <div class="method-grid">
+              @for (m of methods; track m.id) {
+                <button
+                  type="button"
+                  class="method-btn"
+                  [class.active]="selectedMethod() === m.id"
+                  (click)="selectMethod(m.id)"
+                >
+                  <span class="material-symbols-outlined">{{ m.icon }}</span>
+                  {{ m.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (mode === 'transfer') {
+          <!-- Target folio selector -->
+          <div class="form-field">
+            <label>Folio destino</label>
+            @if (targetFolios.length === 0) {
+              <div class="no-folios">
+                <span class="material-symbols-outlined">info</span>
+                No hay otros folios activos para transferir
+              </div>
+            } @else {
+              <div class="target-folio-list">
+                @for (f of targetFolios; track f.folioId) {
+                  <button
+                    type="button"
+                    class="target-folio-btn"
+                    [class.active]="targetFolioId() === f.folioId"
+                    (click)="targetFolioId.set(f.folioId)"
+                  >
+                    <div class="target-folio-name">{{ f.guestName }}</div>
+                    <div class="target-folio-meta">
+                      <span>Hab. {{ f.room || '—' }}</span>
+                      <span class="mono">{{ f.folioRef }}</span>
+                      <span class="target-folio-balance">
+                        {{ f.balance | currency:'USD':'symbol':'1.0-2' }}
+                      </span>
+                    </div>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Notes -->
+        <div class="form-field">
+          <label>Notas (opcional)</label>
+          <input
+            type="text"
+            class="notes-input"
+            placeholder="Notas o referencia..."
+            [ngModel]="notes()"
+            (ngModelChange)="notes.set($event)"
+            maxlength="200"
+          />
+        </div>
+
+        @if (serverError) {
+          <div class="form-error">
+            <span class="material-symbols-outlined">error</span>
+            {{ serverError }}
+          </div>
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="close.emit()" [disabled]="submitting()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-confirm"
+          [class.payment]="mode === 'payment'"
+          [class.transfer]="mode === 'transfer'"
+          (click)="confirm()"
+          [disabled]="submitting() || !amount()"
+        >
+          <span class="material-symbols-outlined">{{ mode === 'payment' ? 'check' : 'swap_horiz' }}</span>
+          {{ submitting() ? 'Procesando...' : (mode === 'payment' ? 'Registrar Pago' : 'Transferir') }}
+        </button>
+      </div>
+  </div>
+</div>

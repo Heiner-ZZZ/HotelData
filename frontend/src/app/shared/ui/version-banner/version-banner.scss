@@ -1,0 +1,70 @@
+.version-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #1e3a8a;
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(30, 58, 138, 0.35);
+  font-size: 13px;
+  font-weight: 500;
+  animation: vb-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: calc(100vw - 32px);
+  white-space: nowrap;
+}
+
+@keyframes vb-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.version-banner-icon {
+  font-size: 20px;
+  color: #93c5fd;
+}
+
+.version-banner-text {
+  font-weight: 600;
+}
+
+.version-banner-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+
+  &:hover { background: #e0e7ff; }
+  &:active { transform: scale(0.97); }
+}
+
+.version-banner-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+
+  &:hover { background: rgba(255, 255, 255, 0.25); }
+
+  .material-symbols-outlined { font-size: 16px; }
+}

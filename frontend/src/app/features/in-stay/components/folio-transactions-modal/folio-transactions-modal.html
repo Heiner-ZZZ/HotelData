@@ -1,0 +1,79 @@
+<div class="modal-overlay" (click)="close.emit()">
+  <div class="modal-panel tx-modal" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <span class="material-symbols-outlined modal-head-icon">receipt_long</span>
+      <h2>Historial de Transacciones</h2>
+      <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      @if (folio) {
+        <div class="tx-folio-info">
+          <div class="tx-folio-guest">{{ folio.guestName }}</div>
+          <div class="tx-folio-meta">
+            <span>Hab. {{ folio.room || '—' }}</span>
+            <span class="mono">{{ folio.folioRef }}</span>
+            <span [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
+              Saldo: {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+            </span>
+          </div>
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="tx-loading">Cargando transacciones...</div>
+      } @else if (error()) {
+        <div class="tx-error">{{ error() }}</div>
+      } @else if (data(); as d) {
+        <!-- Summary badges -->
+        <div class="tx-summary">
+          <div class="tx-summary-item tx-summary-charge">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span class="tx-summary-label">Cargos</span>
+            <span class="tx-summary-value mono">{{ totalByType(d.postings, 'room') + totalByType(d.postings, 'charge') | currency:'USD':'symbol':'1.0-2' }}</span>
+          </div>
+          <div class="tx-summary-item tx-summary-payment">
+            <span class="material-symbols-outlined">payments</span>
+            <span class="tx-summary-label">Pagos</span>
+            <span class="tx-summary-value mono">{{ totalByType(d.postings, 'payment') | currency:'USD':'symbol':'1.0-2' }}</span>
+          </div>
+          <div class="tx-summary-item tx-summary-discount">
+            <span class="material-symbols-outlined">sell</span>
+            <span class="tx-summary-label">Descuentos</span>
+            <span class="tx-summary-value mono">{{ totalByType(d.postings, 'discount') + totalByType(d.postings, 'adjustment') | currency:'USD':'symbol':'1.0-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Postings list -->
+        @if (d.postings.length === 0) {
+          <div class="tx-empty">Sin transacciones registradas</div>
+        } @else {
+          <div class="tx-list">
+            @for (p of d.postings; track p.postingId) {
+              <div class="tx-row" [class]="typeClass(p.type)">
+                <div class="tx-row-icon">
+                  <span class="material-symbols-outlined">{{ typeIcon(p.type) }}</span>
+                </div>
+                <div class="tx-row-body">
+                  <div class="tx-row-concept">{{ p.concept }}</div>
+                  <div class="tx-row-meta">
+                    <span class="tx-row-category">{{ p.category }}</span>
+                    @if (p.quantity > 1) {
+                      <span class="tx-row-qty">×{{ p.quantity }}</span>
+                    }
+                    <span class="tx-row-date">{{ p.postedAt | date:'dd/MM/yy HH:mm' }}</span>
+                  </div>
+                </div>
+                <div class="tx-row-amount mono" [class.tx-positive]="p.type === 'payment'" [class.tx-negative]="p.type === 'charge' || p.type === 'room'">
+                  {{ p.type === 'payment' ? '−' : p.type === 'discount' || p.type === 'adjustment' ? '−' : '+' }}{{ p.amount | currency:'USD':'symbol':'1.0-2' }}
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

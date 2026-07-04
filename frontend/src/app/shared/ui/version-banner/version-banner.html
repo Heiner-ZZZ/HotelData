@@ -1,0 +1,10 @@
+@if (versionCheck.updateAvailable()) {
+  <div class="version-banner">
+    <span class="version-banner-icon material-symbols-outlined">system_update_alt</span>
+    <span class="version-banner-text">Nueva versión disponible</span>
+    <button class="version-banner-btn" (click)="reload()">Recargar ahora</button>
+    <button class="version-banner-close" (click)="dismiss()" title="Cerrar">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+}
