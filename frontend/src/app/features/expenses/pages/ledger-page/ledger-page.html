@@ -1,8 +1,8 @@
 <div class="ledger-shell">
   <app-page-header
-    eyebrow="Control Financiero"
-    title="Libro Mayor / Diario"
-    description="Registro contable de todas las transacciones del hotel."
+    eyebrow="Contabilidad"
+    title="Libro Mayor / Diario General"
+    description="Sistema contable de doble partida alimentado por folios de huéspedes reales."
   />
 
   <app-property-selector
@@ -12,51 +12,71 @@
   />
 
   @if (selectedPropId()) {
-    <!-- ═══ KPI Strip ═══ -->
+    <!-- KPI Strip: Trial Balance -->
     @if (summary(); as s) {
       <div class="kpi-strip">
         <div class="kpi-item">
-          <span class="kpi-label">Gastos Totales (Mes)</span>
-          <span class="kpi-value mono">{{ s.totalDebits | currency:'USD':'symbol':'1.0-0' }}</span>
+          <span class="kpi-label">Total Débitos</span>
+          <span class="kpi-value mono">{{ s.totalDebits | currency:'USD':'symbol':'1.0-2' }}</span>
         </div>
         <div class="kpi-divider"></div>
         <div class="kpi-item">
-          <span class="kpi-label">Balance Neto</span>
-          <span class="kpi-value mono" [class.text-danger]="s.netBalance < 0" [class.text-success]="s.netBalance >= 0">
-            {{ s.netBalance | currency:'USD':'symbol':'1.0-2' }}
+          <span class="kpi-label">Total Créditos</span>
+          <span class="kpi-value mono">{{ s.totalCredits | currency:'USD':'symbol':'1.0-2' }}</span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item">
+          <span class="kpi-label">Balance de Comprobación</span>
+          <span class="kpi-value mono" [class.text-success]="s.isBalanced" [class.text-danger]="!s.isBalanced">
+            {{ s.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO $' + (s.trialBalanceDiff | number:'1.0-2') }}
           </span>
         </div>
         <div class="kpi-divider"></div>
         <div class="kpi-item">
-          <span class="kpi-label">Pendientes</span>
-          <span class="kpi-value mono text-warning">{{ s.pendingCount }}</span>
-          <span class="kpi-sub">(Auditados: {{ s.auditedCount }})</span>
+          <span class="kpi-label">Asientos Contables</span>
+          <span class="kpi-value mono">{{ s.journalEntryCount }}</span>
+          <span class="kpi-sub">{{ s.transactionCount }} movimientos</span>
         </div>
-        @if (s.discrepancyCount > 0) {
+        @if (s.revenueBreakdown.length > 0) {
           <div class="kpi-divider"></div>
           <div class="kpi-item">
-            <span class="kpi-label">Discrepancias</span>
-            <span class="kpi-value mono text-danger">{{ s.discrepancyCount }}</span>
+            <span class="kpi-label">Ingresos Totales</span>
+            <span class="kpi-value mono text-success">
+              {{ s.totalCredits | currency:'USD':'symbol':'1.0-2' }}
+            </span>
           </div>
         }
       </div>
     }
 
-    <!-- ═══ Multi-pane: Ledger + Folio Sidebar ═══ -->
+    <!-- Ledger AG Grid -->
     <div class="ledger-layout">
-      <!-- Center: AG Grid Ledger -->
       <div class="ledger-pane">
         <div class="ledger-toolbar">
           <div class="toolbar-left">
-            <span class="toolbar-title">Transacciones</span>
-            <span class="badge badge-balanced" title="Libro balanceado">BALANCED</span>
+            <span class="toolbar-title">Asientos Contables</span>
+            <span class="badge badge-balanced" title="Débitos = Créditos">DOBLE PARTIDA</span>
+          </div>
+          <div class="toolbar-center">
+            <select
+              class="period-select"
+              [value]="selectedPeriod()"
+              (change)="onPeriodChange($event)"
+            >
+              <option value="">Todos los períodos</option>
+              @for (p of availablePeriods(); track p) {
+                <option [value]="p">{{ p }}</option>
+              }
+            </select>
           </div>
           <div class="toolbar-right">
             <div class="search-box">
               <span class="material-symbols-outlined search-icon">search</span>
               <input
                 type="text"
-                placeholder="Buscar transacción, folio, cuenta..."
+                id="ledger-search"
+                name="ledger-search"
+                placeholder="Buscar cuenta, asiento, huésped..."
                 (input)="onFilterChange($event)"
                 class="search-input"
               />
@@ -64,95 +84,392 @@
             <button class="btn-icon" title="Exportar CSV">
               <span class="material-symbols-outlined">download</span>
             </button>
-            <button class="btn-icon" title="Ajuste manual">
-              <span class="material-symbols-outlined">post_add</span>
-            </button>
           </div>
         </div>
 
         <ag-grid-angular
-          class="ledger-grid ag-theme-quartz-dark"
-          [rowData]="[]"
+          class="ledger-grid"
+          [theme]="theme"
+          [rowData]="rowData()"
           [columnDefs]="columnDefs"
           [defaultColDef]="defaultColDef"
           [rowClassRules]="rowClassRules"
           [pagination]="true"
           [paginationPageSize]="50"
-          [paginationPageSizeSelector]="[25, 50, 100]"
-          [rowSelection]="'single'"
+          [rowSelection]="{ mode: 'singleRow' }"
+          [getRowId]="getRowId"
+          [loading]="loading()"
           [enableCellTextSelection]="true"
-          [suppressRowClickSelection]="true"
-          [headerHeight]="36"
-          [rowHeight]="40"
+          [headerHeight]="38"
+          [rowHeight]="44"
           [domLayout]="'normal'"
+          [suppressColumnVirtualisation]="true"
           style="height: 100%; width: 100%;"
           (gridReady)="onGridReady($event)"
-          (rowClicked)="onRowClicked($event)"
         />
       </div>
+    </div>
 
-      <!-- Right: Folio Viewer -->
-      <aside class="folio-pane">
-        <!-- Selected Folio Detail -->
-        @if (selectedFolio(); as folio) {
-          <div class="folio-card">
-            <div class="folio-header">
-              <span class="material-symbols-outlined">receipt_long</span>
-              <span class="folio-title">Folio {{ folio.folioRef }}</span>
-            </div>
-            <div class="folio-balance">
-              <span class="folio-balance-label">Balance Pendiente</span>
-              <span class="folio-balance-value mono" [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
-                {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
-              </span>
-            </div>
-            <div class="folio-info">
-              <div class="folio-info-row">
-                <span class="folio-info-label">Transacciones</span>
-                <span class="folio-info-value">{{ folio.transactionCount }}</span>
-              </div>
-            </div>
-            <div class="folio-actions">
-              <button class="btn btn-outline btn-sm"><span class="material-symbols-outlined">swap_horiz</span> Transferir</button>
-              <button class="btn btn-outline btn-sm"><span class="material-symbols-outlined">call_split</span> Dividir</button>
-              <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">payments</span> Pagar</button>
-            </div>
-          </div>
-        } @else {
-          <div class="folio-card folio-empty">
-            <span class="material-symbols-outlined folio-empty-icon">touch_app</span>
-            <p>Selecciona una transacción para ver su folio</p>
-          </div>
-        }
-
-        <!-- Active Folios List -->
-        <div class="folios-list">
-          <h3 class="folios-list-title">Folios Activos</h3>
-          @for (f of folios(); track f.folioRef) {
-            <div
-              class="folios-list-item"
-              [class.folio-selected]="selectedFolio()?.folioRef === f.folioRef"
-              (click)="selectedFolio.set(f)"
-            >
-              <div class="folio-item-left">
-                <span class="folio-item-ref">{{ f.folioRef }}</span>
-                <span class="folio-item-tx">{{ f.transactionCount }} tx</span>
-              </div>
-              <span class="folio-item-balance mono" [class.text-danger]="f.balance > 0" [class.text-success]="f.balance <= 0">
-                {{ f.balance | currency:'USD':'symbol':'1.0-2' }}
-              </span>
-            </div>
-          } @empty {
-            <p class="folios-empty">Sin folios activos</p>
+    <!-- Trial Balance Panel -->
+    <div class="trial-balance-section">
+      <button class="tb-toggle" (click)="toggleTrialBalance()">
+        <span class="material-symbols-outlined">{{ showTrialBalance() ? 'expand_less' : 'expand_more' }}</span>
+        Balance de Sumas y Saldos
+        @if (trialBalance(); as tb) {
+          <span class="tb-badge" [class.tb-balanced]="tb.totals.isBalanced" [class.tb-unbalanced]="!tb.totals.isBalanced">
+            {{ tb.totals.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO' }}
+          </span>
+          @if (tb.filters.accountingPeriod) {
+            <span class="tb-period-label">{{ tb.filters.accountingPeriod }}</span>
           }
+        }
+      </button>
+
+      @if (showTrialBalance() && trialBalance(); as tb) {
+        <div class="tb-table-wrap">
+          <table class="tb-table">
+            <thead>
+              <tr>
+                <th>Cuenta</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th class="tb-num">Débitos</th>
+                <th class="tb-num">Créditos</th>
+                <th class="tb-num">Saldo</th>
+                <th class="tb-num">Movs.</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of tb.rows; track row.accountCode) {
+                <tr [class.tb-zero]="row.isZeroBalance" [class.tb-subtotal]="row.accountCode.endsWith('000')">
+                  <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
+                  <td class="tb-name">{{ row.accountName }}</td>
+                  <td>
+                    <span class="tb-type" [class]="'tb-type-' + row.accountType">
+                      {{ row.accountType === 'asset' ? 'Activo' : row.accountType === 'liability' ? 'Pasivo' : row.accountType === 'equity' ? 'Patrimonio' : row.accountType === 'revenue' ? 'Ingreso' : row.accountType === 'expense' ? 'Gasto' : row.accountType === 'contra_revenue' ? 'Descuento' : row.accountType }}
+                    </span>
+                  </td>
+                  <td class="tb-num mono">{{ row.totalDebits ? ('$' + row.totalDebits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.totalCredits ? ('$' + row.totalCredits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono" [class.text-danger]="row.balance > 0" [class.text-success]="row.balance < 0">
+                    {{ row.isZeroBalance ? '—' : ('$' + row.balance.toFixed(2)) }}
+                  </td>
+                  <td class="tb-num tb-tx">{{ row.txCount }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="tb-totals">
+                <td colspan="3"><strong>TOTALES</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + tb.totals.totalDebits.toFixed(2) }}</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + tb.totals.totalCredits.toFixed(2) }}</strong></td>
+                <td class="tb-num mono" [class.text-danger]="!tb.totals.isBalanced">
+                  <strong>{{ tb.totals.isBalanced ? '—' : ('$' + tb.totals.difference.toFixed(2)) }}</strong>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-      </aside>
+      }
+    </div>
+
+    <!-- Income Statement Panel -->
+    <div class="statement-section">
+      <div class="st-toggle" role="button" tabindex="0" (click)="toggleIncomeStatement()" (keydown.enter)="toggleIncomeStatement()" (keydown.space)="toggleIncomeStatement(); $event.preventDefault()">
+        <span class="material-symbols-outlined">{{ showIncomeStatement() ? 'expand_less' : 'expand_more' }}</span>
+        Estado de Resultados (P&L)
+        @if (incomeStatement(); as inc) {
+          <span class="st-net-income" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
+            {{ inc.netIncome | currency:'USD':'symbol':'1.0-2' }}
+          </span>
+          <button class="btn-export-pdf" (click)="exportIncomeStatementPdf(); $event.stopPropagation()" title="Exportar a PDF">
+            <span class="material-symbols-outlined">picture_as_pdf</span>
+          </button>
+        }
+      </div>
+
+      @if (showIncomeStatement() && incomeStatement(); as inc) {
+        <div class="st-table-wrap">
+          <!-- P&L Bar Chart -->
+          <div class="pnl-chart">
+            <div class="pnl-bar-row pnl-bar-revenue">
+              <span class="pnl-bar-label">Ingresos</span>
+              <div class="pnl-bar-track">
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.revenue.total)"></div>
+              </div>
+              <span class="pnl-bar-value mono text-success">{{ '$' + inc.revenue.total.toFixed(2) }}</span>
+            </div>
+            <div class="pnl-bar-row pnl-bar-discount">
+              <span class="pnl-bar-label">Descuentos</span>
+              <div class="pnl-bar-track">
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.discounts.total)"></div>
+              </div>
+              <span class="pnl-bar-value mono text-danger">{{ '$' + inc.discounts.total.toFixed(2) }}</span>
+            </div>
+            <div class="pnl-bar-row pnl-bar-cost">
+              <span class="pnl-bar-label">Costos</span>
+              <div class="pnl-bar-track">
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.costs.total)"></div>
+              </div>
+              <span class="pnl-bar-value mono text-danger">{{ '$' + inc.costs.total.toFixed(2) }}</span>
+            </div>
+            <div class="pnl-bar-row pnl-bar-net" [class.pnl-net-profit]="inc.netIncome >= 0" [class.pnl-net-loss]="inc.netIncome < 0">
+              <span class="pnl-bar-label">Resultado</span>
+              <div class="pnl-bar-track">
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netIncome)"></div>
+              </div>
+              <span class="pnl-bar-value mono" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
+                {{ '$' + inc.netIncome.toFixed(2) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Revenue Section -->
+          <table class="st-table">
+            <thead>
+              <tr>
+                <th colspan="3" class="st-section-header st-section-revenue">Ingresos (4xxx)</th>
+                <th class="tb-num">Débitos</th>
+                <th class="tb-num">Créditos</th>
+                <th class="tb-num">Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of inc.revenue.lines; track row.accountCode) {
+                <tr>
+                  <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
+                  <td class="tb-name">{{ row.accountName }}</td>
+                  <td></td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono text-success">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="tb-totals">
+                <td colspan="5"><strong>Total Ingresos</strong></td>
+                <td class="tb-num mono text-success"><strong>{{ '$' + inc.revenue.total.toFixed(2) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Discounts Section -->
+          @if (inc.discounts.lines.length > 0) {
+            <table class="st-table">
+              <thead>
+                <tr>
+                  <th colspan="3" class="st-section-header st-section-discount">Descuentos / Devoluciones (6xxx)</th>
+                  <th class="tb-num">Débitos</th>
+                  <th class="tb-num">Créditos</th>
+                  <th class="tb-num">Neto</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of inc.discounts.lines; track row.accountCode) {
+                  <tr>
+                    <td class="tb-code">{{ row.accountCode }}</td>
+                    <td class="tb-name">{{ row.accountName }}</td>
+                    <td></td>
+                    <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono text-danger">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="tb-totals">
+                  <td colspan="5"><strong>Total Descuentos</strong></td>
+                  <td class="tb-num mono text-danger"><strong>{{ '$' + inc.discounts.total.toFixed(2) }}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          }
+
+          <!-- Net Revenue -->
+          <div class="st-subtotal-bar">
+            <span>Ingresos Netos ({{ '$' + inc.revenue.total.toFixed(2) }} − {{ '$' + inc.discounts.total.toFixed(2) }})</span>
+            <span class="mono text-success"><strong>{{ '$' + inc.netRevenue.toFixed(2) }}</strong></span>
+          </div>
+
+          <!-- Costs Section -->
+          <table class="st-table">
+            <thead>
+              <tr>
+                <th colspan="3" class="st-section-header st-section-cost">Costos y Gastos (5xxx)</th>
+                <th class="tb-num">Débitos</th>
+                <th class="tb-num">Créditos</th>
+                <th class="tb-num">Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of inc.costs.lines; track row.accountCode) {
+                <tr>
+                  <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
+                  <td class="tb-name">{{ row.accountName }}</td>
+                  <td></td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono text-danger">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="tb-totals">
+                <td colspan="5"><strong>Total Costos</strong></td>
+                <td class="tb-num mono text-danger"><strong>{{ '$' + inc.costs.total.toFixed(2) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Final Bottom Line -->
+          <div class="st-bottom-line" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
+            <span>Resultado Neto del Período</span>
+            <span class="mono"><strong>{{ '$' + inc.netIncome.toFixed(2) }}</strong></span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Balance Sheet Panel -->
+    <div class="statement-section">
+      <div class="st-toggle" role="button" tabindex="0" (click)="toggleBalanceSheet()" (keydown.enter)="toggleBalanceSheet()" (keydown.space)="toggleBalanceSheet(); $event.preventDefault()">
+        <span class="material-symbols-outlined">{{ showBalanceSheet() ? 'expand_less' : 'expand_more' }}</span>
+        Balance General
+        @if (balanceSheet(); as bs) {
+          <span class="st-net-income" [class.text-success]="bs.isBalanced" [class.text-danger]="!bs.isBalanced">
+            {{ bs.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO' }}
+          </span>
+          <button class="btn-export-pdf" (click)="exportBalanceSheetPdf(); $event.stopPropagation()" title="Exportar a PDF">
+            <span class="material-symbols-outlined">picture_as_pdf</span>
+          </button>
+        }
+      </div>
+
+      @if (showBalanceSheet() && balanceSheet(); as bs) {
+        <div class="st-table-wrap">
+          <!-- Assets -->
+          <table class="st-table">
+            <thead>
+              <tr>
+                <th colspan="3" class="st-section-header st-section-asset">Activos (1xxx)</th>
+                <th class="tb-num">Débitos</th>
+                <th class="tb-num">Créditos</th>
+                <th class="tb-num">Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of bs.assets.lines; track row.accountCode) {
+                <tr>
+                  <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
+                  <td class="tb-name">{{ row.accountName }}</td>
+                  <td></td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="tb-totals">
+                <td colspan="5"><strong>Total Activos</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + bs.assets.total.toFixed(2) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Liabilities -->
+          <table class="st-table">
+            <thead>
+              <tr>
+                <th colspan="3" class="st-section-header st-section-liability">Pasivos (2xxx)</th>
+                <th class="tb-num">Débitos</th>
+                <th class="tb-num">Créditos</th>
+                <th class="tb-num">Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of bs.liabilities.lines; track row.accountCode) {
+                <tr>
+                  <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
+                  <td class="tb-name">{{ row.accountName }}</td>
+                  <td></td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="tb-totals">
+                <td colspan="5"><strong>Total Pasivos</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + bs.liabilities.total.toFixed(2) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Equity -->
+          @if (bs.equity.lines.length > 0) {
+            <table class="st-table">
+              <thead>
+                <tr>
+                  <th colspan="3" class="st-section-header st-section-equity">Patrimonio (3xxx)</th>
+                  <th class="tb-num">Débitos</th>
+                  <th class="tb-num">Créditos</th>
+                  <th class="tb-num">Neto</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of bs.equity.lines; track row.accountCode) {
+                  <tr>
+                    <td class="tb-code">{{ row.accountCode }}</td>
+                    <td class="tb-name">{{ row.accountName }}</td>
+                    <td></td>
+                    <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="tb-totals">
+                  <td colspan="5"><strong>Total Patrimonio</strong></td>
+                  <td class="tb-num mono"><strong>{{ '$' + bs.equity.total.toFixed(2) }}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          }
+
+          <!-- Net Income -->
+          <div class="st-subtotal-bar">
+            <span>Resultado del Período</span>
+            <span class="mono" [class.text-success]="bs.netIncome >= 0" [class.text-danger]="bs.netIncome < 0">
+              <strong>{{ '$' + bs.netIncome.toFixed(2) }}</strong>
+            </span>
+          </div>
+
+          <!-- Accounting Equation Verification -->
+          <div class="st-bottom-line" [class.text-success]="bs.isBalanced" [class.text-danger]="!bs.isBalanced">
+            <span>Pasivos + Patrimonio + Resultado</span>
+            <span class="mono"><strong>{{ '$' + bs.totalLiabilitiesAndEquity.toFixed(2) }}</strong></span>
+          </div>
+        </div>
+      }
     </div>
   } @else {
     <div class="ledger-empty">
       <span class="material-symbols-outlined">account_balance</span>
       <h2>Selecciona una propiedad</h2>
-      <p>El Libro Mayor requiere un hotel activo para mostrar sus transacciones contables.</p>
+      <p>El Libro Mayor requiere un hotel activo para mostrar sus asientos contables.</p>
     </div>
   }
 </div>
