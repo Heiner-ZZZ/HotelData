@@ -89,6 +89,7 @@ from src.app.modules.hr.routes import router as hr_module_router
 from src.app.modules.expenses.service.collections import ensure_expenses_collections
 from src.app.modules.expenses.routes import api_router as expenses_api_router
 from src.app.modules.expenses.routes import router as expenses_module_router
+from src.app.modules.reports.routes import router as reports_router
 import logging
 
 from config.settings import get_settings
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
     app.include_router(crud_router)
+    app.include_router(reports_router)
     return app
 
 
