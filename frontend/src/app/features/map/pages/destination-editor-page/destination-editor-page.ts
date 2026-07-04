@@ -18,7 +18,7 @@ import { LocationPickerComponent } from '../../components/location-picker/locati
 @Component({
   selector: 'app-destination-editor-page',
   imports: [
-    EmptyStateComponent, ErrorStateComponent, JsonPipe, LoadingStateComponent,
+    ErrorStateComponent, JsonPipe, LoadingStateComponent,
     PageHeaderComponent, ReactiveFormsModule, RouterLink, LocationPickerComponent,
   ],
   templateUrl: './destination-editor-page.html',

@@ -84,8 +84,8 @@
             <h3>Seleccionar ubicación en el mapa</h3>
             <p class="map-hint">Haz clic en el mapa o arrastra el marcador para ajustar las coordenadas.</p>
             <app-location-picker
-              [lat]="editForm.controls.latitude.value ?? null"
-              [lng]="editForm.controls.longitude.value ?? null"
+              [lat]="editForm.controls.latitude.value"
+              [lng]="editForm.controls.longitude.value"
               (locationChange)="onLocationChange($event)"
             />
           </section>

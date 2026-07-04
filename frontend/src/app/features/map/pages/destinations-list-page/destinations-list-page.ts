@@ -17,7 +17,7 @@ import { MapApiService } from '../../services/map-api.service';
   selector: 'app-destinations-list-page',
   imports: [
     EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
-    PageHeaderComponent, RouterLink, ReactiveFormsModule, SlicePipe,
+    PageHeaderComponent, RouterLink, ReactiveFormsModule,
   ],
   templateUrl: './destinations-list-page.html',
   styleUrl: './destinations-list-page.scss',

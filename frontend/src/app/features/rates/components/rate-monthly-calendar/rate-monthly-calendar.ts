@@ -21,7 +21,7 @@ export interface RoomTypeCalendarRow {
 
 @Component({
   selector: 'app-rate-monthly-calendar',
-  imports: [CurrencyPipe, DatePipe],
+  imports: [CurrencyPipe],
   templateUrl: './rate-monthly-calendar.html',
   styleUrl: './rate-monthly-calendar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
