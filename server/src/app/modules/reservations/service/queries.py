@@ -106,38 +106,6 @@ def list_bookings(
         "has_next": total_pages > 0 and page < total_pages,
     }
 
-    db = get_database()
-    page = max(page, 1)
-    page_size = min(max(page_size, 1), 20)
-    filters: dict[str, Any] = {}
-    user_filter = hotel_filter_from_user(user)
-    if user_filter:
-        filters.update(user_filter)
-    if created_date:
-        filters["$expr"] = {"$eq": [{"$substr": ["$created_at", 0, 10]}, created_date]}
-    total = db.booking_orders.count_documents(filters)
-    total_pages = (total + page_size - 1) // page_size if total else 0
-    if total_pages and page > total_pages:
-        page = total_pages
-    items = list(
-        db.booking_orders.find(filters, {"_id": 0})
-        .sort([("created_at", DESCENDING)])
-        .skip((page - 1) * page_size)
-        .limit(page_size)
-    )
-    contexts = {item["booking_id"]: hotel_booking_context(int(item["prop_id"])) for item in items if item.get("prop_id") is not None}
-    for item in items:
-        item["hotel"] = contexts.get(item["booking_id"])
-    return {
-        "items": items,
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": total_pages,
-        "has_prev": page > 1 and total_pages > 0,
-        "has_next": total_pages > 0 and page < total_pages,
-    }
-
 
 def list_reservation_dates(*, prop_id: int | None = None, user: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Return distinct created_at dates with booking count, optionally filtered by property."""

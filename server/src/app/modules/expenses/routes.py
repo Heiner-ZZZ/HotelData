@@ -14,6 +14,7 @@ from src.app.modules.expenses.schemas import (
     LedgerTransactionCreate, LedgerTransactionResponse, LedgerFolioResponse,
     ModuleStatus,
 )
+from src.app.modules.billing.schemas import InvoiceCreate as BillingInvoiceCreate, PaymentCreate
 from src.app.modules.expenses.service.collections import (
     BUDGET_COLLECTION, CATEGORIES_COLLECTION, CHART_OF_ACCOUNTS, INVOICES_COLLECTION, LEDGER_COLLECTION,
     ensure_expenses_collections, module_status,
@@ -511,10 +512,17 @@ def register_folio_payment(
 ):
     """Register a payment against a guest folio.
 
-    Posts a 'payment' transaction to the folio and creates
-    the corresponding double-entry ledger entries.
+    Posts a 'payment' transaction to the folio, creates a reservation_invoice
+    if one doesn't exist for this booking, and records the payment in the
+    billing module — which generates double-entry ledger entries automatically.
+
+    This connects the Folio (PMS operational) ↔ Invoice (billing/fiscal) ↔ Payment
+    lifecycle, ensuring every folio payment has a corresponding invoice + payment
+    record + ledger entries.
     """
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
+    from src.app.modules.billing.service.lifecycle.invoices import create_invoice as create_billing_invoice
+    from src.app.modules.billing.service.lifecycle.payments import create_payment as create_billing_payment
 
     folio = get_folio_by_id(folio_id)
     if not folio:
@@ -526,6 +534,7 @@ def register_folio_payment(
     if not booking_id:
         raise HTTPException(status_code=400, detail="Folio sin booking_id")
 
+    # 1. Post payment transaction to the folio (reduces balance)
     concept = f"Pago {method} por {paid_by} — {notes}" if notes else f"Pago {method} por {paid_by}"
     updated = post_to_folio(
         booking_id,
@@ -539,14 +548,49 @@ def register_folio_payment(
     if not updated:
         raise HTTPException(status_code=500, detail="Error al registrar el pago")
 
-    # Create ledger entries for the payment (with rollback on failure)
-    _generate_payment_ledger(folio, amount, method, notes)
+    # 2. Create or find existing reservation_invoice for this booking
+    db = get_database()
+    invoice = db.reservation_invoices.find_one({"booking_id": booking_id})
+
+    if not invoice:
+        # Calculate invoice from folio totals (room + charges - discounts)
+        invoice_total = round(
+            folio.get("total_room", 0)
+            + folio.get("total_charges", 0)
+            - folio.get("total_discounts", 0),
+            2,
+        )
+        subtotal = round(invoice_total / 1.16, 2) if invoice_total > 0 else round(amount / 1.16, 2)
+        taxes = round(invoice_total - subtotal, 2) if invoice_total > 0 else round(amount - subtotal, 2)
+
+        invoice_result = create_billing_invoice(BillingInvoiceCreate(
+            booking_id=booking_id,
+            subtotal=subtotal,
+            taxes=taxes,
+            notes=f"Factura generada desde folio {folio.get('folio_number', '')} — Pago {method}",
+        ))
+        invoice_id = invoice_result.get("id", "") if invoice_result else ""
+    else:
+        invoice_id = str(invoice["_id"])
+
+    # 3. Record the payment in reservation_payments (generates ledger entries automatically)
+    payment_result = create_billing_payment(PaymentCreate(
+        booking_id=booking_id,
+        invoice_id=invoice_id,
+        amount=amount,
+        method=method,
+    ))
 
     return {
         "folio_id": folio_id,
+        "folio_number": folio.get("folio_number", ""),
         "new_balance": round(updated.get("total_due", 0), 2),
         "payment_amount": amount,
         "method": method,
+        "invoice_id": invoice_id,
+        "invoice_created": invoice is None,
+        "payment_reference": (payment_result or {}).get("reference", ""),
+        "payment_id": (payment_result or {}).get("id", ""),
     }
 
 
@@ -630,81 +674,7 @@ def transfer_folio_charges(
     }
 
 
-def _generate_payment_ledger(folio: dict, amount: float, method: str, notes: str):
-    """Create double-entry ledger entries for a folio payment.
 
-    Debit: Caja General / Bancos  (asset increase)
-    Credit: Cuentas por Cobrar Huéspedes  (asset decrease)
-
-    If the second insert fails, the first entry is rolled back.
-    """
-    from datetime import datetime, timezone
-    from src.app.modules.expenses.service.collections import LEDGER_COLLECTION
-
-    db = get_database()
-    now = datetime.now(timezone.utc)
-    period = now.strftime("%Y-%m")
-    journal_id = f"JE-PAY-{now.strftime('%Y%m%d%H%M%S')}"
-
-    guest_name = folio.get("guest_name", "")
-    folio_number = folio.get("folio_number", "")
-    prop_id = folio.get("prop_id", 0)
-    booking_id = folio.get("booking_id", "")
-
-    account_code = "1020" if method == "transfer" else "1010"
-    account_name = "Bancos" if method == "transfer" else "Caja General"
-    concept = f"Pago {method} — {folio_number} [{guest_name}]" + (f" ({notes})" if notes else "")
-
-    debit_doc = {
-        "journal_entry_id": journal_id,
-        "entry_type": "manual",
-        "tx_date": now,
-        "account_code": account_code,
-        "account_name": account_name,
-        "description": concept,
-        "debit": round(amount, 2),
-        "credit": 0.0,
-        "cost_center": "Recepción",
-        "folio_ref": folio_number,
-        "booking_id": booking_id,
-        "prop_id": int(prop_id) if prop_id else 1,
-        "guest_name": guest_name,
-        "accounting_period": period,
-        "source": "folio_payment",
-        "source_id": folio_number,
-        "status": "audited",
-        "notes": "",
-        "created_at": now,
-    }
-    credit_doc = {
-        "journal_entry_id": journal_id,
-        "entry_type": "manual",
-        "tx_date": now,
-        "account_code": "1030",
-        "account_name": "Cuentas por Cobrar Huéspedes",
-        "description": concept,
-        "debit": 0.0,
-        "credit": round(amount, 2),
-        "cost_center": "Recepción",
-        "folio_ref": folio_number,
-        "booking_id": booking_id,
-        "prop_id": int(prop_id) if prop_id else 1,
-        "guest_name": guest_name,
-        "accounting_period": period,
-        "source": "folio_payment",
-        "source_id": folio_number,
-        "status": "audited",
-        "notes": "",
-        "created_at": now,
-    }
-
-    # Insert debit first, then credit; rollback debit if credit fails
-    debit_id = db[LEDGER_COLLECTION].insert_one(debit_doc).inserted_id
-    try:
-        db[LEDGER_COLLECTION].insert_one(credit_doc)
-    except Exception:
-        db[LEDGER_COLLECTION].delete_one({"_id": debit_id})
-        raise
 
 
 @api_router.get("/ledger/accounts")

@@ -40,6 +40,23 @@ def complete_check_out(
 
     db = get_database()
 
+    # ── Validate folio has invoice if balance is pending ──
+    folio = db.guest_folios.find_one(
+        {"booking_id": booking_id},
+        {"status": 1, "total_due": 1, "folio_number": 1},
+    )
+    if folio:
+        folio_status = folio.get("status", "")
+        total_due = round(float(folio.get("total_due", 0) or 0), 2)
+        if folio_status == "open" and total_due > 0:
+            existing_inv = db.reservation_invoices.find_one({"booking_id": booking_id}, {"_id": 1})
+            if not existing_inv:
+                raise ValueError(
+                    f"No se puede completar el check-out: el folio {folio.get('folio_number', '')} "
+                    f"tiene un saldo pendiente de ${total_due:.2f} sin factura generada. "
+                    "Registra un pago para generar la factura antes de cerrar la estancia."
+                )
+
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id},
         {"_id": 0, "guest_name": 1, "guest_email": 1, "prop_id": 1, "is_test": 1,

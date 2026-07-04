@@ -329,8 +329,66 @@ def get_portal_data(token: str = Query(..., min_length=1)):
     unread = db.stay_messages.count_documents({"booking_id": booking_id, "sender": "staff", "read": False})
     pending = db.stay_service_requests.count_documents({"booking_id": booking_id, "status": {"$in": ["pending", "in_progress"]}})
 
-    return {"session": serialize_session(session), "compendium": compendium.model_dump(),
-            "charges": charges, "unread_messages": unread, "pending_requests": pending}
+    # ── Folio balance from guest_folios ──
+    folio_balance = 0.0
+    folio_postings: list[dict] = []
+    folio = db.guest_folios.find_one({"booking_id": booking_id}, {"total_due": 1, "postings": 1})
+    if folio:
+        folio_balance = round(float(folio.get("total_due", 0)), 2)
+        postings = folio.get("postings", []) or []
+        for p in postings[-10:]:  # last 10 transactions
+            posted = p.get("posted_at")
+            if hasattr(posted, "isoformat"):
+                posted = posted.isoformat()
+            folio_postings.append({
+                "concept": p.get("concept", ""),
+                "category": p.get("category", ""),
+                "amount": round(float(p.get("amount", 0)), 2),
+                "type": p.get("type", ""),
+                "posted_at": str(posted or "")[:10],
+            })
+
+    # ── Nights remaining ──
+    nights_remaining = 0
+    try:
+        ci = session.get("check_in", "")
+        co = session.get("check_out", "")
+        if ci and co:
+            from datetime import date
+            ci_d = date.fromisoformat(ci)
+            co_d = date.fromisoformat(co)
+            today = date.today()
+            if today >= co_d:
+                nights_remaining = 0
+            elif today <= ci_d:
+                nights_remaining = (co_d - ci_d).days
+            else:
+                nights_remaining = (co_d - today).days
+    except Exception:
+        nights_remaining = 0
+
+    # ── DND status ──
+    dnd_active = False
+    room_label = session.get("room_label", "")
+    if room_label:
+        dnd_doc = db.room_status_log.find_one(
+            {"prop_id": prop_id, "room_label": room_label},
+            {"dnd": 1},
+        )
+        if dnd_doc and dnd_doc.get("dnd"):
+            dnd_active = True
+
+    return {
+        "session": serialize_session(session),
+        "compendium": compendium.model_dump(),
+        "charges": charges,
+        "folio_balance": folio_balance,
+        "folio_postings": folio_postings,
+        "nights_remaining": nights_remaining,
+        "dnd_active": dnd_active,
+        "unread_messages": unread,
+        "pending_requests": pending,
+    }
 
 
 @guest_router.post("/chat")
@@ -355,6 +413,31 @@ def guest_send_message(payload: dict = Body(...)):
     except Exception:
         pass
     return {"ok": True, "message": "Mensaje enviado."}
+
+
+@guest_router.post("/dnd/toggle")
+def guest_toggle_dnd(payload: dict = Body(...)):
+    """Toggle Do Not Disturb for the guest's room."""
+    token = (payload.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Token requerido.")
+
+    session = get_session_or_404(token)
+    db = get_database()
+    prop_id = session["prop_id"]
+    room_label = session.get("room_label", "")
+    if not room_label:
+        raise HTTPException(status_code=400, detail="Esta sesión no tiene habitación asignada.")
+
+    current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"dnd": 1})
+    new_dnd = not (current.get("dnd", False) if current else False)
+
+    db.room_status_log.update_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"$set": {"dnd": new_dnd, "dnd_updated_at": utc_now()}},
+        upsert=True,
+    )
+    return {"ok": True, "dnd_active": new_dnd, "message": "DND " + ("activado" if new_dnd else "desactivado")}
 
 
 @guest_router.get("/chat")
