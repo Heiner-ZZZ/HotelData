@@ -54,6 +54,15 @@
       <div class="ledger-pane">
         <div class="ledger-toolbar">
           <div class="toolbar-left">
+            <button
+              class="btn-group-toggle"
+              [class.btn-group-active]="groupedMode()"
+              (click)="toggleRowGrouping()"
+              [title]="groupedMode() ? 'Desagrupar asientos (vista plana)' : 'Agrupar por asiento contable (JE)'"
+            >
+              <span class="material-symbols-outlined">{{ groupedMode() ? 'account_tree' : 'view_list' }}</span>
+              {{ groupedMode() ? 'Agrupado' : 'Plano' }}
+            </button>
             <span class="toolbar-title">Asientos Contables</span>
             <span class="badge badge-balanced" title="Débitos = Créditos">DOBLE PARTIDA</span>
           </div>
@@ -69,7 +78,58 @@
               }
             </select>
           </div>
+          <div class="toolbar-pin-group">
+            <span class="pin-label">Fijar columna:</span>
+            <button
+              class="btn-pin"
+              [class.btn-pin-active]="pinnedColumns().left.includes(selectedColumnId() || '')"
+              [disabled]="!selectedColumnId()"
+              (click)="pinColumnLeft()"
+              title="Fijar columna a la izquierda"
+            >
+              <span class="material-symbols-outlined">dock_to_left</span>
+              Izq
+            </button>
+            <button
+              class="btn-pin"
+              [class.btn-pin-active]="pinnedColumns().right.includes(selectedColumnId() || '')"
+              [disabled]="!selectedColumnId()"
+              (click)="pinColumnRight()"
+              title="Fijar columna a la derecha"
+            >
+              <span class="material-symbols-outlined">dock_to_right</span>
+              Der
+            </button>
+            <button
+              class="btn-pin btn-pin-reset"
+              [disabled]="pinnedColumns().left.length === 0 && pinnedColumns().right.length === 0"
+              (click)="resetColumnPins()"
+              title="Restablecer columnas (desfijar todas)"
+            >
+              <span class="material-symbols-outlined">lock_open</span>
+            </button>
+          </div>
           <div class="toolbar-right">
+            <div class="col-vis-toggle" (click)="toggleColumnsDropdown()">
+              <button class="btn-icon" title="Mostrar / ocultar columnas">
+                <span class="material-symbols-outlined">view_column</span>
+              </button>
+              @if (columnsDropdownOpen()) {
+                <div class="col-vis-dropdown" (click)="$event.stopPropagation()">
+                  <div class="col-vis-header">Columnas visibles</div>
+                  @for (col of columnDefs; track col.field) {
+                    <label class="col-vis-item">
+                      <input
+                        type="checkbox"
+                        [checked]="columnVisibility()[col.field || ''] !== false"
+                        (change)="toggleColumnVisibility(col.field || '')"
+                      />
+                      <span>{{ col.headerName || col.field }}</span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
             <div class="search-box">
               <span class="material-symbols-outlined search-icon">search</span>
               <input
@@ -81,7 +141,7 @@
                 class="search-input"
               />
             </div>
-            <button class="btn-icon" title="Exportar CSV">
+            <button class="btn-icon" title="Exportar CSV" (click)="exportLedgerCsv()">
               <span class="material-symbols-outlined">download</span>
             </button>
           </div>
@@ -90,7 +150,7 @@
         <ag-grid-angular
           class="ledger-grid"
           [theme]="theme"
-          [rowData]="rowData()"
+          [rowData]="groupedMode() ? treeData() : rowData()"
           [columnDefs]="columnDefs"
           [defaultColDef]="defaultColDef"
           [rowClassRules]="rowClassRules"
@@ -103,9 +163,13 @@
           [headerHeight]="38"
           [rowHeight]="44"
           [domLayout]="'normal'"
-          [suppressColumnVirtualisation]="true"
-          style="height: 100%; width: 100%;"
+          [treeData]="groupedMode()"
+          [getDataPath]="groupedMode() ? getDataPath : undefined"
+          [groupDefaultExpanded]="groupedMode() ? -1 : 0"
+          [autoGroupColumnDef]="groupedMode() ? autoGroupColumnDef : undefined"
+          style="width: 100%;"
           (gridReady)="onGridReady($event)"
+          (columnHeaderClicked)="onColumnHeaderClicked($event)"
         />
       </div>
     </div>
@@ -191,36 +255,66 @@
 
       @if (showIncomeStatement() && incomeStatement(); as inc) {
         <div class="st-table-wrap">
-          <!-- P&L Bar Chart -->
+          <!-- P&L Waterfall Chart -->
           <div class="pnl-chart">
+            <div class="pnl-chart-header">
+              <span class="material-symbols-outlined pnl-chart-icon">waterfall_chart</span>
+              <span>Flujo de Resultados</span>
+            </div>
             <div class="pnl-bar-row pnl-bar-revenue">
-              <span class="pnl-bar-label">Ingresos</span>
+              <div class="pnl-bar-icon"><span class="material-symbols-outlined">trending_up</span></div>
+              <span class="pnl-bar-label">Ingresos<small>Revenue</small></span>
               <div class="pnl-bar-track">
-                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.revenue.total)"></div>
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.revenue.total)">
+                  <span class="pnl-bar-fill-inner">{{ '$' + inc.revenue.total.toFixed(2) }}</span>
+                </div>
               </div>
-              <span class="pnl-bar-value mono text-success">{{ '$' + inc.revenue.total.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-success">{{ '$' + inc.revenue.total.toFixed(2) }}<small>100%</small></span>
             </div>
+            @if (inc.discounts.total > 0) {
             <div class="pnl-bar-row pnl-bar-discount">
-              <span class="pnl-bar-label">Descuentos</span>
+              <div class="pnl-bar-icon"><span class="material-symbols-outlined">arrow_downward</span></div>
+              <span class="pnl-bar-label">Descuentos<small>Discounts</small></span>
               <div class="pnl-bar-track">
-                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.discounts.total)"></div>
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.discounts.total)">
+                  <span class="pnl-bar-fill-inner">−{{ '$' + inc.discounts.total.toFixed(2) }}</span>
+                </div>
               </div>
-              <span class="pnl-bar-value mono text-danger">{{ '$' + inc.discounts.total.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-danger">−{{ '$' + inc.discounts.total.toFixed(2) }}</span>
             </div>
-            <div class="pnl-bar-row pnl-bar-cost">
-              <span class="pnl-bar-label">Costos</span>
+            }
+            @if (inc.discounts.total > 0) {
+            <div class="pnl-bar-row" style="opacity:0.7">
+              <div class="pnl-bar-icon" style="background:#e8f5e9;color:#166534;"><span class="material-symbols-outlined">horizontal_rule</span></div>
+              <span class="pnl-bar-label">Neto<small>Net Rev</small></span>
               <div class="pnl-bar-track">
-                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.costs.total)"></div>
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netRevenue)" style="background:linear-gradient(90deg,#4ade80,#22c55e);box-shadow:0 1px 4px rgba(34,197,94,0.25)">
+                  <span class="pnl-bar-fill-inner">{{ '$' + inc.netRevenue.toFixed(2) }}</span>
+                </div>
               </div>
-              <span class="pnl-bar-value mono text-danger">{{ '$' + inc.costs.total.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-success">{{ '$' + inc.netRevenue.toFixed(2) }}</span>
+            </div>
+            }
+            <div class="pnl-bar-row pnl-bar-cost">
+              <div class="pnl-bar-icon"><span class="material-symbols-outlined">payments</span></div>
+              <span class="pnl-bar-label">Costos<small>Expenses</small></span>
+              <div class="pnl-bar-track">
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.costs.total)">
+                  <span class="pnl-bar-fill-inner">−{{ '$' + inc.costs.total.toFixed(2) }}</span>
+                </div>
+              </div>
+              <span class="pnl-bar-value text-danger">−{{ '$' + inc.costs.total.toFixed(2) }}</span>
             </div>
             <div class="pnl-bar-row pnl-bar-net" [class.pnl-net-profit]="inc.netIncome >= 0" [class.pnl-net-loss]="inc.netIncome < 0">
-              <span class="pnl-bar-label">Resultado</span>
+              <div class="pnl-bar-icon"><span class="material-symbols-outlined">{{ inc.netIncome >= 0 ? 'savings' : 'warning' }}</span></div>
+              <span class="pnl-bar-label">Resultado<small>Net Income</small></span>
               <div class="pnl-bar-track">
-                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netIncome)"></div>
+                <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netIncome)">
+                  <span class="pnl-bar-fill-inner">{{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + (inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}</span>
+                </div>
               </div>
-              <span class="pnl-bar-value mono" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
-                {{ '$' + inc.netIncome.toFixed(2) }}
+              <span class="pnl-bar-value" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
+                {{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + (inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}
               </span>
             </div>
           </div>
