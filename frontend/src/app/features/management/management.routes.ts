@@ -106,6 +106,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
   },
   {
+    path: 'shifts',
+    loadChildren: () =>
+      import('../shifts/shifts.routes').then((m) => m.SHIFTS_ROUTES)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)

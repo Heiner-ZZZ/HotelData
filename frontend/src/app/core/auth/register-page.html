@@ -164,7 +164,7 @@
         </div>
 
         <!-- Resto del formulario (usuario, nombre, contraseña) -->
-        <div class="code-form-fields">
+        <form [formGroup]="registerForm" class="code-form-fields">
           <label class="input-field">
             <span class="material-symbols-outlined input-icon">person</span>
             <span class="input-label">Usuario</span>
@@ -211,7 +211,7 @@
               <span class="field-error">Las contraseñas no coinciden</span>
             }
           </label>
-        </div>
+        </form>
 
         <button class="code-submit" (click)="confirmCode()" [disabled]="verifyingCode() || codeDigits().join('').length !== 6 || registerForm.invalid">
           @if (verifyingCode()) {

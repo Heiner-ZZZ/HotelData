@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -34,6 +35,7 @@ type ActiveTab = 'hotels' | 'taxes' | 'commissions' | 'config';
 })
 export class GlobalSettingsPageComponent {
   private readonly api = inject(GlobalSettingsApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<ActiveTab>('hotels');
@@ -278,8 +280,14 @@ export class GlobalSettingsPageComponent {
       });
   }
 
-  deleteTaxRate(countryId: number) {
-    if (!confirm('¿Eliminar esta tasa de IVA?')) return;
+  async deleteTaxRate(countryId: number) {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar tasa de IVA',
+      message: '¿Eliminar esta tasa de IVA?',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.api
       .deleteTaxRate(countryId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -360,8 +368,14 @@ export class GlobalSettingsPageComponent {
       });
   }
 
-  deleteCommissionRate(propId: number) {
-    if (!confirm('¿Eliminar esta comisión?')) return;
+  async deleteCommissionRate(propId: number) {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar comisión',
+      message: '¿Eliminar esta comisión?',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     this.api
       .deleteCommissionRate(propId)
       .pipe(takeUntilDestroyed(this.destroyRef))
