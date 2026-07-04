@@ -1,10 +1,10 @@
-import { DatePipe, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 @Component({
   selector: 'app-rd-info-panels',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe],
+  imports: [CurrencyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="insight-grid">

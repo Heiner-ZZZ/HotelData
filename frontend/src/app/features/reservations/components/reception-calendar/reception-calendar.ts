@@ -186,6 +186,10 @@ export class ReceptionCalendarComponent {
   /**
    * Compute the CSS grid-column style for a reservation bar.
    * Returns `{ gridColumn: 'start / end' }` for use with [ngStyle].
+   *
+   * If check-out falls outside the visible range, the bar extends
+   * to the last visible day so reservations aren't clipped at
+   * the week boundary.
    */
   barGridStyle(reservation: ReceptionCalendarReservation): Record<string, string> {
     const dayMap = this.dayIndexMap();
@@ -198,7 +202,9 @@ export class ReceptionCalendarComponent {
 
     // Grid is 1-based: col 1 = room label, col 2 = first day, etc.
     const startCol = ciIdx + 2;
-    const endCol = (coIdx !== undefined ? coIdx : ciIdx) + 3; // exclusive end
+    // If checkout is outside the visible range, extend to the last day + 1
+    const lastVisibleIdx = total - 1;
+    const endCol = (coIdx !== undefined ? coIdx : lastVisibleIdx) + 3; // exclusive end
 
     // Partial-day visual insets via margin (preserves text readability)
     const ciFrac = reservation.checkInFraction;
