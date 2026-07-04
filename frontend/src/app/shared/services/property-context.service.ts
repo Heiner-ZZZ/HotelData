@@ -1,8 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable, signal } from '@angular/core';
-import { catchError, map, of, shareReplay } from 'rxjs';
+import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, map, of, Subscription } from 'rxjs';
 
 import { API_CONFIG } from '../../core/api/api.config';
+import { AuthService } from '../../core/auth/auth.service';
 
 export interface PropertyContextDto {
   mode: string;
@@ -14,6 +16,8 @@ export interface PropertyContextDto {
 export class PropertyContextService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly currentPropId = signal(0);
   readonly currentPropLabel = signal('');
@@ -29,7 +33,40 @@ export class PropertyContextService {
   /** Whether the current user has a single-hotel restriction (mode=single). */
   readonly singleHotelMode = signal(false);
 
+  /** Guard against multiple concurrent loads. */
+  private loading = false;
+
   constructor() {
+    // Defer context load until auth session is confirmed.
+    // When isAuthenticated() becomes true, load the context.
+    // When isAuthenticated() becomes false (logout), reset and wait for next login.
+    effect(() => {
+      const authenticated = this.auth.isAuthenticated();
+      const sessionLoaded = this.auth.sessionLoaded();
+
+      if (sessionLoaded && authenticated && !this.loading && !this.ready()) {
+        this.loadContext();
+      }
+
+      if (sessionLoaded && !authenticated) {
+        this.resetState();
+      }
+    });
+  }
+
+  /**
+   * Force a reload of the property context.
+   * Useful after login or after hotel assignments change.
+   */
+  reload(): void {
+    this.loading = false;
+    this.loadContext();
+  }
+
+  private loadContext(): void {
+    if (this.loading) return;
+    this.loading = true;
+
     this.http
       .get<PropertyContextDto>(`${this.apiConfig.baseUrl}/management/properties/context`, {
         withCredentials: true,
@@ -44,31 +81,70 @@ export class PropertyContextService {
           defaultPropId: dto.default_prop_id,
         })),
         catchError((err: unknown) => {
-          // Si hay error (red, auth, etc.), mantener modo 'all' como fallback seguro
-          // para que el selector siga funcionando con la experiencia normal.
-          console.warn('[PropertyContext] Error cargando contexto, usando fallback all:', err instanceof HttpErrorResponse ? err.status : err);
+          const status = err instanceof HttpErrorResponse ? err.status : null;
+          // 401/403 means auth token expired or not yet available — don't cache fallback,
+          // let the effect retry when auth state changes.
+          if (status === 401 || status === 403) {
+            console.warn('[PropertyContext] Auth required — waiting for session');
+            this.loading = false;
+            // Throw to skip the subscribe handler — ready stays false, effect will retry
+            throw err;
+          }
+          // For other errors (network, server), use fallback so UI doesn't hang forever
+          console.warn('[PropertyContext] Error cargando contexto, usando fallback all:', status);
           return of({
             mode: 'all' as const,
             assignedProperties: [] as Array<{ propId: number; label: string }>,
             defaultPropId: 0,
           });
         }),
-        shareReplay(1),
+        takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((ctx) => {
-        this.mode.set(ctx.mode);
-        this.assignedProperties.set(ctx.assignedProperties);
-        this.singleHotelMode.set(ctx.mode === 'single');
-
-        if (ctx.mode === 'single' && ctx.defaultPropId) {
-          const prop = ctx.assignedProperties.find((p) => p.propId === ctx.defaultPropId);
-          if (prop) {
-            this.setProperty(prop.propId, prop.label);
+      .subscribe({
+        next: (ctx) => {
+          this.applyContext(ctx);
+          this.loading = false;
+        },
+        error: (err: unknown) => {
+          this.loading = false;
+          // On 401/403, invalidate the session so the auth effect triggers
+          // resetState → re-login → reload. This guarantees recovery even if
+          // the auth HTTP interceptor hasn't fired yet for this call path.
+          if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+            this.auth.invalidateSession();
           }
-        }
-
-        this.ready.set(true);
+        },
       });
+  }
+
+  private applyContext(ctx: {
+    mode: 'all' | 'single' | 'multi' | 'none';
+    assignedProperties: Array<{ propId: number; label: string }>;
+    defaultPropId: number;
+  }): void {
+    this.mode.set(ctx.mode);
+    this.assignedProperties.set(ctx.assignedProperties);
+    this.singleHotelMode.set(ctx.mode === 'single');
+
+    if (ctx.mode === 'single' && ctx.defaultPropId) {
+      const prop = ctx.assignedProperties.find((p) => p.propId === ctx.defaultPropId);
+      if (prop) {
+        this.setProperty(prop.propId, prop.label);
+      }
+    }
+
+    this.ready.set(true);
+  }
+
+  private resetState(): void {
+    this.ready.set(false);
+    this.loading = false;
+    this.mode.set('all');
+    this.assignedProperties.set([]);
+    this.singleHotelMode.set(false);
+    this.currentPropId.set(0);
+    this.currentPropLabel.set('');
+    this.currentPropLabelShort.set('');
   }
 
   setProperty(propId: number, label: string): void {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, NgZone, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, NgZone, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -46,7 +46,8 @@ import { RpEditModalComponent } from './partials/rp-edit-modal';
   ],
   templateUrl: './rooms-page.html',
   styleUrl: './rooms-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
 })
 export class RoomsPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -213,7 +214,7 @@ export class RoomsPageComponent {
     // Load top hotels KPI
     this.kpiApi.getTopHotelsByRooms(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
-      error: () => this.topHotelsState.set('error'),
+      error: (err) => { console.error('[Rooms] Failed to load top hotels KPI', err); this.topHotelsState.set('error'); },
     });
   }
 
@@ -237,7 +238,7 @@ export class RoomsPageComponent {
             this.propertyCtx.clear();
           }
         },
-        error: () => this.viewState.set('error')
+        error: (err) => { console.error('[Rooms] Failed to load rooms', err); this.viewState.set('error'); },
       });
     } else {
       this.viewModel.set(null);
@@ -304,7 +305,7 @@ export class RoomsPageComponent {
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: (catalog) => this.featureCatalog.set(catalog),
-        error: () => { /* silently fail, feature selector will be empty */ },
+        error: (err) => { console.error('[Rooms] Failed to load feature catalog', err); },
       });
     }
   }
