@@ -1,0 +1,34 @@
+/* ── Responsive ──────────────────────────────────────────── */
+
+@use 'tokens' as t;
+
+@media (max-width: 768px) {
+  .si-sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid t.$si-border;
+  }
+
+  .si-split {
+    flex-direction: column;
+  }
+
+  .si-main {
+    flex: 0 1 auto;
+    height: 50vh;
+  }
+
+  .si-header {
+    flex-wrap: wrap;
+
+    app-property-selector {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+
+  .si-folios-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,105 @@
+/* ── Header & Tabs ───────────────────────────────────────── */
+
+@use 'tokens' as t;
+
+// ── Header ──
+.si-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: t.$si-surface;
+  border-bottom: 1px solid t.$si-border;
+  flex-shrink: 0;
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .si-header-icon {
+    color: t.$si-accent;
+    font-size: 1.3rem;
+  }
+
+  .si-badges {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  app-property-selector {
+    margin-left: auto;
+  }
+}
+
+.si-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 99px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  &.si-badge-message {
+    background: t.$si-accent-light;
+    color: t.$si-accent;
+  }
+
+  &.si-badge-request {
+    background: t.$status-pending-bg;
+    color: t.$status-pending-text;
+  }
+
+  &.si-badge-folio {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+}
+
+// ── Tabs ──
+.si-tabs {
+  display: flex;
+  gap: 0;
+  background: t.$si-surface;
+  border-bottom: 1px solid t.$si-border;
+  padding: 0 1.25rem;
+  flex-shrink: 0;
+}
+
+.si-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: t.$si-text-secondary;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-family: inherit;
+
+  &.active {
+    color: t.$si-accent;
+    border-bottom-color: t.$si-accent;
+  }
+
+  &:hover:not(.active) {
+    color: t.$si-text;
+  }
+
+  .si-tab-count {
+    background: t.$si-accent;
+    color: white;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+}

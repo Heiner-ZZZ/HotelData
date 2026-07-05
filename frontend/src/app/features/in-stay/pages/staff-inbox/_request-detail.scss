@@ -1,0 +1,147 @@
+/* ── Request Detail Panel ────────────────────────────────── */
+
+@use 'tokens' as t;
+
+.si-req-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.si-req-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid t.$si-border;
+  flex-shrink: 0;
+}
+
+.si-req-detail-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.si-req-detail-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: t.$status-pending-bg;
+  color: t.$status-pending-text;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem !important;
+}
+
+.si-req-detail-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.si-req-detail-meta {
+  font-size: 0.72rem;
+  color: t.$si-text-secondary;
+  margin-top: 0.1rem;
+}
+
+.si-req-detail-body {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.si-req-detail-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: t.$si-text;
+  padding: 0.75rem;
+  background: t.$si-surface-soft;
+  border-radius: t.$si-radius-sm;
+}
+
+.si-req-detail-response {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: t.$si-accent-light;
+  border-radius: t.$si-radius-sm;
+  font-size: 0.82rem;
+  color: t.$si-accent;
+  line-height: 1.4;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+    margin-top: 2px;
+  }
+}
+
+.si-req-detail-time {
+  font-size: 0.7rem;
+  color: t.$si-text-secondary;
+}
+
+.si-req-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid t.$si-border;
+  background: t.$si-surface-bg;
+  flex-shrink: 0;
+}
+
+.si-req-closed-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: t.$si-text-secondary;
+
+  .material-symbols-outlined {
+    color: t.$online-green;
+    font-size: 1.15rem;
+  }
+}
+
+.si-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: t.$si-radius-sm;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.15s;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+}
+
+.si-action-primary {
+  background: t.$si-accent-light;
+  color: t.$si-accent;
+}
+
+.si-action-success {
+  background: t.$status-completed-bg;
+  color: t.$status-completed-text;
+}
+
+.si-action-cancel {
+  background: t.$status-cancelled-bg;
+  color: t.$status-cancelled-text;
+}

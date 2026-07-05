@@ -1,0 +1,284 @@
+/* ── Sidebar (Timeline) ──────────────────────────────────── */
+
+@use 'tokens' as t;
+
+// ── Sidebar shell ──
+.si-sidebar {
+  width: 360px;
+  min-width: 300px;
+  background: t.$si-surface;
+  border-right: 1px solid t.$si-border;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.si-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid t.$si-border;
+  flex-shrink: 0;
+
+  h2 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: t.$si-text-secondary;
+    margin: 0;
+  }
+}
+
+.si-back-btn {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: t.$si-accent;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: t.$si-accent-light;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+  }
+}
+
+// ── Category Chips ──
+.si-chips {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.65rem 1rem;
+  overflow-x: auto;
+  flex-shrink: 0;
+  border-bottom: 1px solid t.$si-border;
+
+  &::-webkit-scrollbar {
+    height: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: t.$si-border;
+    border-radius: 2px;
+  }
+}
+
+.si-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid t.$si-border;
+  border-radius: 99px;
+  background: t.$si-surface;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: t.$si-text-secondary;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: inherit;
+
+  &:hover {
+    background: t.$si-surface-bg;
+  }
+
+  &.active {
+    background: t.$si-accent-light;
+    color: t.$si-accent;
+    border-color: t.$si-accent;
+  }
+
+  .si-chip-icon {
+    font-size: 0.9rem;
+  }
+}
+
+// ── Timeline list ──
+.si-timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: t.$si-border;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.si-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.si-tl-item {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: t.$si-radius-sm;
+  transition: all 0.15s;
+  font-family: inherit;
+  position: relative;
+
+  &:hover {
+    background: t.$si-surface-bg;
+  }
+
+  &.active {
+    background: t.$si-accent-light;
+    border-left: 3px solid t.$si-accent;
+  }
+
+  &.unread {
+    background: #f8fbff;
+  }
+
+  &.selected-left {
+    border-left: 3px solid t.$si-accent;
+  }
+}
+
+.si-tl-left {
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
+.si-tl-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem !important;
+
+  &.si-tl-msg-icon {
+    background: t.$si-accent-light;
+    color: t.$si-accent;
+  }
+
+  &.si-tl-req-icon {
+    background: t.$status-pending-bg;
+    color: t.$status-pending-text;
+  }
+}
+
+.si-tl-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.si-tl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.1rem;
+}
+
+.si-tl-room {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: t.$si-text;
+}
+
+.si-tl-time {
+  font-size: 0.65rem;
+  color: t.$si-text-secondary;
+  flex-shrink: 0;
+}
+
+.si-tl-head-sub {
+  margin-bottom: 0.15rem;
+}
+
+.si-tl-guest {
+  font-size: 0.7rem;
+  color: t.$si-text-secondary;
+}
+
+.si-tl-req-type {
+  font-size: 0.7rem;
+  color: t.$si-accent;
+  font-weight: 500;
+}
+
+.si-tl-preview {
+  margin: 0;
+  font-size: 0.78rem;
+  color: t.$si-text-secondary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.si-tl-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+.si-tl-unread {
+  background: t.$si-accent;
+  color: white;
+  font-size: 0.6rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.si-tl-status {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.si-pending {
+  background: t.$status-pending-bg;
+  color: t.$status-pending-text;
+}
+
+.si-in_progress {
+  background: t.$status-in-progress-bg;
+  color: t.$status-in-progress-text;
+}
+
+.si-completed {
+  background: t.$status-completed-bg;
+  color: t.$status-completed-text;
+}
+
+.si-cancelled {
+  background: t.$status-cancelled-bg;
+  color: t.$status-cancelled-text;
+}

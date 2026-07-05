@@ -1,0 +1,312 @@
+/* ── Chat Panel ──────────────────────────────────────────── */
+
+@use 'tokens' as t;
+
+.si-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+// ── Chat Header ──
+.si-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid t.$si-border;
+  background: t.$si-surface-bg;
+  flex-shrink: 0;
+}
+
+.si-chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.si-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: t.$si-accent-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .material-symbols-outlined {
+    color: t.$si-accent;
+    font-size: 1.15rem;
+  }
+}
+
+.si-chat-room {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.si-chat-status {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: t.$online-green;
+}
+
+.si-chat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: t.$online-green;
+}
+
+.si-chat-more {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: t.$si-text-secondary;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: t.$si-border;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.2rem;
+  }
+}
+
+// ── Chat Messages ──
+.si-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: t.$si-surface;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: t.$si-border;
+    border-radius: 4px;
+  }
+}
+
+.si-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.5rem;
+  color: t.$si-text-secondary;
+
+  .material-symbols-outlined {
+    font-size: 2.5rem;
+    opacity: 0.3;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+}
+
+.si-msg {
+  display: flex;
+
+  &.guest {
+    justify-content: flex-start;
+  }
+
+  &.staff {
+    justify-content: flex-end;
+  }
+}
+
+.si-msg-bubble {
+  max-width: 75%;
+  padding: 0.55rem 0.8rem;
+  border-radius: t.$si-radius;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  .guest & {
+    background: t.$si-surface-bg;
+    border: 1px solid t.$si-border;
+    border-top-left-radius: 4px;
+  }
+
+  .staff & {
+    background: t.$si-accent;
+    color: white;
+    border-top-right-radius: 4px;
+  }
+}
+
+.si-msg-author {
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  opacity: 0.7;
+}
+
+.si-msg-text {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.si-msg-time {
+  font-size: 0.6rem;
+  margin-top: 0.25rem;
+  opacity: 0.55;
+  text-align: right;
+
+  .staff & {
+    opacity: 0.7;
+  }
+}
+
+// ── Input Area ──
+.si-input-area {
+  border-top: 1px solid t.$si-border;
+  background: t.$si-surface-bg;
+  flex-shrink: 0;
+}
+
+.si-input-chips {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem 0.25rem;
+  overflow-x: auto;
+
+  &::-webkit-scrollbar {
+    height: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: t.$si-border;
+    border-radius: 2px;
+  }
+}
+
+.si-input-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid t.$si-border;
+  border-radius: 99px;
+  background: t.$si-surface;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: t.$si-text-secondary;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: inherit;
+
+  &:hover {
+    background: t.$si-surface-soft;
+  }
+
+  &.active {
+    background: t.$si-accent-light;
+    color: t.$si-accent;
+    border-color: t.$si-accent;
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.8rem;
+  }
+}
+
+.si-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem 0.65rem;
+}
+
+.si-btn-attach {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: t.$si-text-secondary;
+  border-radius: 50%;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: t.$si-border;
+    color: t.$si-accent;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+  }
+}
+
+.si-input-text {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid t.$si-border;
+  border-radius: t.$si-radius-sm;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: none;
+  background: t.$si-surface;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+  min-height: 36px;
+  max-height: 80px;
+
+  &:focus {
+    outline: none;
+    border-color: t.$si-accent;
+  }
+
+  &::placeholder {
+    color: t.$si-text-secondary;
+  }
+}
+
+.si-btn-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: t.$si-radius-sm;
+  background: t.$si-accent;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) {
+    background: #004d5e;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+  }
+}

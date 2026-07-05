@@ -1,0 +1,28 @@
+/* ── Layout ──────────────────────────────────────────────── */
+
+@use 'tokens' as t;
+
+.si-container {
+  @include t.css-vars;
+
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 60px);
+  background: t.$si-surface-bg;
+  font-family: 'Inter', sans-serif;
+  color: t.$si-text;
+}
+
+.si-split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.si-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: t.$si-surface;
+  overflow: hidden;
+}

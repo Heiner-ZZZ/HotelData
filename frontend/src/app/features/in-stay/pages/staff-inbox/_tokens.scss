@@ -1,0 +1,41 @@
+/* ── Staff Inbox Design Tokens ───────────────────────────── */
+
+// Colors
+$si-accent: #006076;
+$si-accent-light: #e0f0f4;
+$si-surface: #ffffff;
+$si-surface-bg: #f5f6f7;
+$si-surface-soft: #f2f4f6;
+$si-text: #191c1e;
+$si-text-secondary: #6f797d;
+$si-border: #e0e3e5;
+
+// Semantic colors
+$status-pending-bg: #fef3c7;
+$status-pending-text: #92400e;
+$status-in-progress-bg: #dbeafe;
+$status-in-progress-text: #1e40af;
+$status-completed-bg: #dcfce7;
+$status-completed-text: #166534;
+$status-cancelled-bg: #fee2e2;
+$status-cancelled-text: #991b1b;
+
+$online-green: #16a34a;
+$balance-positive: #ba1a1a;
+$balance-zero: #16a34a;
+
+// Spacing
+$si-radius: 12px;
+$si-radius-sm: 8px;
+$si-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+// Container CSS variables (injected by the main stylesheet)
+@mixin css-vars {
+  --si-accent: #{$si-accent};
+  --si-accent-light: #{$si-accent-light};
+  --si-surface: #{$si-surface};
+  --si-surface-bg: #{$si-surface-bg};
+  --si-text: #{$si-text};
+  --si-text-secondary: #{$si-text-secondary};
+  --si-border: #{$si-border};
+}
