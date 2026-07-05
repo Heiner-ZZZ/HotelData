@@ -69,6 +69,7 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
       capacityLabel: `${displayValue(item.base_capacity)} base · ${displayValue(item.max_adults)} adultos · ${displayValue(item.max_children)} niños`,
       statusLabel: item.is_active ? 'Activa' : 'Inactiva',
       description: item.description || '',
+      imageUrl: item.image_url || '',
       features: (item.features || []).reduce<string[]>((acc, f) => {
         if (typeof f === 'string') { if (f.trim()) acc.push(f.trim()); return acc; }
         const maybe = f as { label?: unknown } | null;
@@ -90,9 +91,9 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
     galleryImages: (dto.hotel_images || []).length > 0
       ? dto.hotel_images.map((img) => img.image_url)
       : [
-          `https://picsum.photos/seed/${dto.prop_id}1/800/400`,
-          `https://picsum.photos/seed/${dto.prop_id}2/800/400`,
-          `https://picsum.photos/seed/${dto.prop_id}3/800/400`,
+          `https://loremflickr.com/800/400/hotel?lock=${dto.prop_id}1`,
+          `https://loremflickr.com/800/400/hotel,lobby?lock=${dto.prop_id}2`,
+          `https://loremflickr.com/800/400/hotel,pool?lock=${dto.prop_id}3`,
         ],
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',

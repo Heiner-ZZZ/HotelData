@@ -211,10 +211,22 @@
               <section id="rooms" class="detail-section">
                 <h2 class="section-title">Tipos de Habitación</h2>
                 <div class="rooms-stack">
-                  @for (item of vm.roomTypes; track item.id) {
+                  @for (item of vm.roomTypes; track item.id; let roomIdx = $index) {
                     <div class="room-card">
                       <div class="room-img">
-                        <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
+                        @if (item.imageUrl && !imageErrors().has('room-' + item.id)) {
+                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" />
+                        } @else if (!imageErrors().has('room-' + item.id)) {
+                          @switch (roomIdx % 5) {
+                            @case (0) { <img [src]="'https://loremflickr.com/400/250/hotel,room?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (1) { <img [src]="'https://loremflickr.com/400/250/hotel,bedroom?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (2) { <img [src]="'https://loremflickr.com/400/250/hotel,suite?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (3) { <img [src]="'https://loremflickr.com/400/250/hotel,bathroom?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (4) { <img [src]="'https://loremflickr.com/400/250/hotel,exterior?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                          }
+                        } @else {
+                          <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
+                        }
                       </div>
                       <div class="room-body">
                         <div class="room-head">

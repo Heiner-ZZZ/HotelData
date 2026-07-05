@@ -236,14 +236,14 @@ export function minRate(items: HotelCompareItem[]): string {
   return item?.minNightlyRateLabel || '—';
 }
 
-/** Generate carousel image URLs for a hotel using picsum.photos with seed. */
+/** Generate carousel image URLs for a hotel using loremflickr with relevant keywords. */
 export function carouselImages(hotel: HotelCompareItem): string[] {
   const seed = hotel.propId;
   return [
-    hotel.imageUrl || `https://picsum.photos/seed/${seed}1/400/250`,
-    `https://picsum.photos/seed/${seed}2/400/250`,
-    `https://picsum.photos/seed/${seed}3/400/250`,
-    `https://picsum.photos/seed/${seed}4/400/250`,
+    hotel.imageUrl || `https://loremflickr.com/400/250/hotel?lock=${seed}1`,
+    `https://loremflickr.com/400/250/hotel,room?lock=${seed}2`,
+    `https://loremflickr.com/400/250/hotel,lobby?lock=${seed}3`,
+    `https://loremflickr.com/400/250/hotel,pool?lock=${seed}4`,
   ];
 }
 
