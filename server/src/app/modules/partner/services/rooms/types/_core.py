@@ -13,7 +13,7 @@ from src.app.modules.partner.services._common import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
-from src.app.modules.partner.services.rooms.features import _feature_unit_price
+
 from src.database.connection import get_database
 
 
@@ -24,9 +24,9 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for f in raw:
         if isinstance(f, dict):
-            result.append({"label": str(f.get("label", "")), "unit_price": float(f.get("unit_price", 0) or 0)})
+            result.append({"label": str(f.get("label", ""))})
         elif isinstance(f, str):
-            result.append({"label": f, "unit_price": _feature_unit_price(f)})
+            result.append({"label": f})
     return result
 
 
@@ -109,7 +109,7 @@ def create_room_type(
     max_children: Any, base_capacity: Any, base_rate: Any = None,
     is_active: Any = True, room_number: str = "", floor: str = "",
     view: str = "", smoking: Any = False, accessible: Any = False,
-    is_roh: Any = False, changed_by: str = "system",
+    is_roh: Any = False, image_url: str = "", changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -135,7 +135,8 @@ def create_room_type(
         "is_active": safe_bool(is_active), "room_number": clean_room_number,
         "floor": clean_text(floor), "view": clean_text(view),
         "smoking": safe_bool(smoking), "accessible": safe_bool(accessible),
-        "is_roh": safe_bool(is_roh), "updated_at": now_utc(),
+        "is_roh": safe_bool(is_roh), "image_url": clean_text(image_url),
+        "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
         {"room_type_id": room_type_id},
@@ -174,7 +175,7 @@ def update_room_type(
     max_children: Any, base_capacity: Any, base_rate: Any = None,
     is_active: Any = True, room_number: str = "", floor: str = "",
     view: str = "", smoking: Any = False, accessible: Any = False,
-    is_roh: Any = False, changed_by: str = "system",
+    is_roh: Any = False, image_url: str = "", changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
     existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1})
@@ -197,7 +198,8 @@ def update_room_type(
         "is_active": safe_bool(is_active), "room_number": clean_room_number,
         "floor": clean_text(floor), "view": clean_text(view),
         "smoking": safe_bool(smoking), "accessible": safe_bool(accessible),
-        "is_roh": safe_bool(is_roh), "updated_at": now_utc(),
+        "is_roh": safe_bool(is_roh), "image_url": clean_text(image_url),
+        "updated_at": now_utc(),
     }
     document = db.room_types.find_one_and_update(
         {"room_type_id": room_type_id}, {"$set": payload},

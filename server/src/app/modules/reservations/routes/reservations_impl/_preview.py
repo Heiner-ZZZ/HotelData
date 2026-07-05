@@ -14,7 +14,7 @@ def preview_reservation(payload: dict) -> dict:
     Raises HTTPException on validation failure.
     """
     try:
-        reservation_input = build_reservation_input(payload, source="angular_api")
+        reservation_input = build_reservation_input(payload, source="staff")
         errors = validate_reservation_input(reservation_input)
         if errors:
             raise ValueError("; ".join(errors))

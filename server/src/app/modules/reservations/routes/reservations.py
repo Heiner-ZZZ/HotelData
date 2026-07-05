@@ -116,7 +116,7 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
             payload["created_by"] = current_user.get("username", "web")
         if not payload.get("user_id"):
             payload["user_id"] = str(current_user.get("_id", ""))
-        reservation_input = build_reservation_input(payload, source="angular_api")
+        reservation_input = build_reservation_input(payload, source=current_user.get("primary_role", "staff"))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
         return create_booking(reservation_input)
