@@ -345,6 +345,36 @@ CREATE TABLE hotel_content_changes (
     changed_at TIMESTAMP
 );
 
+CREATE TABLE hotel_profile (
+    id VARCHAR(24) PRIMARY KEY,
+    prop_id INTEGER UNIQUE NOT NULL REFERENCES dim_hotels(prop_id),
+    display_name VARCHAR(255),
+    hotel_name VARCHAR(255),
+    address TEXT,
+    phone VARCHAR(50),
+    wifi_ssid VARCHAR(100),
+    wifi_password VARCHAR(100),
+    check_in_time VARCHAR(10),
+    check_out_time VARCHAR(10),
+    breakfast_hours VARCHAR(50),
+    restaurant_hours VARCHAR(50),
+    gym_hours VARCHAR(50),
+    pool_hours VARCHAR(50),
+    parking_info TEXT,
+    emergency_contact VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE hotel_amenities (
+    id VARCHAR(24) PRIMARY KEY,
+    prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
+    name VARCHAR(255) NOT NULL,
+    icon VARCHAR(100),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 CREATE TABLE hotel_profile_changes (
     id VARCHAR(24) PRIMARY KEY,
     prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
@@ -541,6 +571,17 @@ CREATE TABLE manual_reservations (
     created_at TIMESTAMP
 );
 
+CREATE TABLE hotel_booking_context (
+    id VARCHAR(24) PRIMARY KEY,
+    prop_id INTEGER UNIQUE NOT NULL REFERENCES dim_hotels(prop_id),
+    hotel_label VARCHAR(255),
+    country INTEGER,
+    review_label VARCHAR(255),
+    avg_price_label VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 CREATE TABLE notification_log (
     id VARCHAR(24) PRIMARY KEY,
     notification_type VARCHAR(100) NOT NULL,
@@ -675,6 +716,8 @@ CREATE TABLE room_status_log (
     room_label VARCHAR(100),
     room_number VARCHAR(20),
     status VARCHAR(50) NOT NULL,
+    dnd BOOLEAN DEFAULT false,
+    dnd_updated_at TIMESTAMP,
     note TEXT,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
@@ -875,6 +918,24 @@ CREATE TABLE click_events (
 -- 12. ETL / CONTROL / AUDITORIA
 -- ============================================================================
 
+CREATE TABLE search_logs (
+    id VARCHAR(24) PRIMARY KEY,
+    query VARCHAR(255),
+    destination VARCHAR(255),
+    country VARCHAR(255),
+    min_rating DOUBLE PRECISION,
+    page_size INTEGER,
+    searched_at TIMESTAMP
+);
+
+CREATE TABLE rejected_records (
+    id VARCHAR(24) PRIMARY KEY,
+    source VARCHAR(100),
+    reason TEXT,
+    record_data TEXT, -- JSON object
+    created_at TIMESTAMP
+);
+
 CREATE TABLE etl_executions (
     execution_id VARCHAR(100) PRIMARY KEY,
     phase VARCHAR(20),
@@ -965,4 +1026,230 @@ CREATE TABLE tax_rates (
     country_id VARCHAR(10) UNIQUE,
     country_name VARCHAR(100),
     tax_pct DOUBLE PRECISION
+);
+
+-- ============================================================================
+-- 13. EXPENSES Y LIBRO MAYOR
+-- ============================================================================
+
+CREATE TABLE expense_invoices (
+    id VARCHAR(24) PRIMARY KEY,
+    vendor_name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT,
+    amount DOUBLE PRECISION NOT NULL,
+    tax_amount DOUBLE PRECISION DEFAULT 0,
+    total DOUBLE PRECISION,
+    status VARCHAR(50) DEFAULT 'pending',
+    invoice_date DATE,
+    due_date DATE,
+    approved_by VARCHAR(100),
+    approved_at TIMESTAMP,
+    notes TEXT,
+    prop_id INTEGER REFERENCES dim_hotels(prop_id),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE expense_categories (
+    id VARCHAR(24) PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    budget DOUBLE PRECISION DEFAULT 0,
+    spent DOUBLE PRECISION DEFAULT 0,
+    remaining DOUBLE PRECISION DEFAULT 0,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE expense_budget (
+    id VARCHAR(24) PRIMARY KEY,
+    department VARCHAR(100) NOT NULL,
+    period VARCHAR(20) NOT NULL,
+    amount DOUBLE PRECISION NOT NULL,
+    spent DOUBLE PRECISION DEFAULT 0,
+    remaining DOUBLE PRECISION DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE ledger_transactions (
+    id VARCHAR(24) PRIMARY KEY,
+    tx_date DATE NOT NULL,
+    folio_ref VARCHAR(100),
+    description TEXT,
+    account_code VARCHAR(50) NOT NULL,
+    account_name VARCHAR(255),
+    debit DOUBLE PRECISION DEFAULT 0,
+    credit DOUBLE PRECISION DEFAULT 0,
+    balance DOUBLE PRECISION DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'pending',
+    prop_id INTEGER REFERENCES dim_hotels(prop_id),
+    user VARCHAR(100),
+    notes TEXT,
+    journal_entry_id VARCHAR(100),
+    created_at TIMESTAMP
+);
+
+CREATE TABLE chart_of_accounts (
+    id VARCHAR(24) PRIMARY KEY,
+    account_code VARCHAR(50) UNIQUE NOT NULL,
+    account_name VARCHAR(255),
+    account_type VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- ============================================================================
+-- 14. RECURSOS HUMANOS (HR)
+-- ============================================================================
+
+CREATE TABLE employees (
+    id VARCHAR(24) PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    id_document VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    address TEXT,
+    position VARCHAR(100),
+    department VARCHAR(100),
+    hire_date DATE,
+    salary DOUBLE PRECISION,
+    emergency_contact VARCHAR(255),
+    emergency_phone VARCHAR(50),
+    notes TEXT,
+    prop_id INTEGER REFERENCES dim_hotels(prop_id),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE employee_departments (
+    id VARCHAR(24) PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    head_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE employee_documents (
+    id VARCHAR(24) PRIMARY KEY,
+    employee_id VARCHAR(24) NOT NULL REFERENCES employees(id),
+    doc_type VARCHAR(50) NOT NULL,
+    filename VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE employee_shifts (
+    id VARCHAR(24) PRIMARY KEY,
+    employee_id VARCHAR(24) NOT NULL REFERENCES employees(id),
+    date DATE NOT NULL,
+    scheduled_start VARCHAR(10),
+    scheduled_end VARCHAR(10),
+    area VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'pending',
+    actual_check_in TIMESTAMP,
+    actual_check_out TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP
+);
+
+-- ============================================================================
+-- 15. IN-STAY (Mi Estancia)
+-- ============================================================================
+
+CREATE TABLE pending_registrations (
+    id VARCHAR(24) PRIMARY KEY,
+    username VARCHAR(100),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    display_name VARCHAR(255),
+    code_hash VARCHAR(64),
+    attempts INTEGER DEFAULT 0,
+    created_at TIMESTAMP,
+    expires_at TIMESTAMP
+);
+
+CREATE TABLE stay_sessions (
+    id VARCHAR(24) PRIMARY KEY,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    booking_id VARCHAR(100) NOT NULL REFERENCES booking_orders(booking_id),
+    prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
+    room_label VARCHAR(100),
+    guest_name VARCHAR(255),
+    check_in DATE,
+    check_out DATE,
+    created_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    active BOOLEAN DEFAULT true,
+    deactivated_at TIMESTAMP
+);
+
+CREATE TABLE stay_messages (
+    id VARCHAR(24) PRIMARY KEY,
+    booking_id VARCHAR(100) NOT NULL REFERENCES booking_orders(booking_id),
+    prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
+    room_label VARCHAR(100),
+    sender VARCHAR(20) NOT NULL,
+    staff_name VARCHAR(255),
+    message TEXT NOT NULL,
+    created_at TIMESTAMP,
+    read BOOLEAN DEFAULT false
+);
+
+CREATE TABLE stay_service_requests (
+    id VARCHAR(24) PRIMARY KEY,
+    booking_id VARCHAR(100) NOT NULL REFERENCES booking_orders(booking_id),
+    prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
+    room_label VARCHAR(100),
+    request_type VARCHAR(50) NOT NULL,
+    request_type_label VARCHAR(255),
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    status_label VARCHAR(255),
+    staff_response TEXT,
+    staff_responded_at TIMESTAMP,
+    created_at TIMESTAMP,
+    resolved_at TIMESTAMP
+);
+
+-- ============================================================================
+-- 16. ANALITICA ALTERNATIVA
+-- ============================================================================
+
+CREATE TABLE fact_hotel_events (
+    id BIGSERIAL PRIMARY KEY,
+    source_record_id VARCHAR(100),
+    srch_id INTEGER NOT NULL,
+    date_time TIMESTAMP,
+    date_key INTEGER REFERENCES dim_dates(date_key),
+    site_id INTEGER REFERENCES dim_sites(site_id),
+    visitor_location_country_id INTEGER REFERENCES dim_visitor_countries(visitor_location_country_id),
+    visitor_hist_starrating DOUBLE PRECISION,
+    visitor_hist_adr_usd DOUBLE PRECISION,
+    prop_country_id INTEGER,
+    prop_id INTEGER REFERENCES dim_hotels(prop_id),
+    prop_starrating INTEGER,
+    prop_review_score DOUBLE PRECISION,
+    prop_brand_bool BOOLEAN,
+    prop_location_score1 DOUBLE PRECISION,
+    price_usd DOUBLE PRECISION NOT NULL,
+    promotion_flag BOOLEAN REFERENCES dim_promotions(promotion_flag),
+    srch_destination_id INTEGER REFERENCES dim_destinations(srch_destination_id),
+    srch_length_of_stay INTEGER,
+    srch_booking_window INTEGER,
+    srch_adults_count INTEGER,
+    srch_children_count INTEGER,
+    srch_room_count INTEGER,
+    click_bool BOOLEAN REFERENCES dim_click_status(click_bool),
+    reserva_bool BOOLEAN REFERENCES dim_reservation_status(reserva_bool),
+    reservas_brutas_usd DOUBLE PRECISION,
+    occupancy_profile_id VARCHAR(50) REFERENCES dim_occupancy_profile(occupancy_profile_id),
+    stay_length_category_id VARCHAR(50) REFERENCES dim_stay_length_category(stay_length_category_id),
+    booking_window_category_id VARCHAR(50) REFERENCES dim_booking_window_category(booking_window_category_id),
+    price_category_id VARCHAR(50) REFERENCES dim_price_category(price_category_id),
+    loaded_at TIMESTAMP,
+    execution_id VARCHAR(100),
+    phase VARCHAR(20)
 );

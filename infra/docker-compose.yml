@@ -7,15 +7,33 @@ services:
     restart: unless-stopped
     ports:
       - "27018:27018"
-    command: mongod --port 27018
+    command: mongod --port 27018 --replSet rs0 --bind_ip_all
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "mongodb://localhost:27018", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongosh", "--quiet", "mongodb://localhost:27018", "--eval", "try { rs.status().ok } catch(e) { db.adminCommand('ping').ok }"]
       interval: 15s
       timeout: 10s
       retries: 8
       start_period: 20s
+
+  mongo-init-rs:
+    image: mongo:7.0
+    container_name: hoteldata_mongo_init_rs
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: >
+      mongosh --quiet mongodb://mongo:27018 --eval "
+        try {
+          var status = rs.status();
+          print('Replica set already initialized: ' + status.set);
+        } catch(e) {
+          rs.initiate({_id:'rs0', members:[{_id:0, host:'mongo:27018'}]});
+          print('Replica set initialized successfully.');
+        }
+      "
+    restart: "no"
 
   redis:
     image: redis:7.4
@@ -122,6 +140,24 @@ services:
       mongo:
         condition: service_healthy
     command: bash /entrypoint3.sh
+
+  change-stream-watcher:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: hoteldata_change_stream_watcher
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://mongo:27018
+      MONGO_DATABASE: hoteldata_hub
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init-rs:
+        condition: service_completed_successfully
+    volumes:
+      - ../server/scripts:/app/scripts
+    command: python /app/scripts/change_stream_watcher.py
 
   frontend:
     build:
