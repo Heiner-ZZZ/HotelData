@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from pymongo import ASCENDING
 
 from src.app.modules.reservations.service._helpers import utc_now
+from src.app.modules.partner.services.audit import register_action
 
 
 def get_available_rooms(
@@ -116,13 +117,33 @@ def assign_rooms_to_booking(
         {"$set": {"assigned_rooms": room_ids, "updated_at": now}},
     )
 
+    changed_by_username = current_user.get("username", "web")
     db.booking_status_history.insert_one({
         "booking_id": booking_id,
         "status": booking.get("status", "confirmed"),
         "changed_at": now,
         "reason": f"rooms_assigned: {', '.join(room_ids)}",
-        "changed_by": current_user.get("username", "web"),
+        "changed_by": changed_by_username,
         "is_test": bool(booking.get("is_test")),
     })
+
+    # ── Audit log ──
+    try:
+        booking_full = db.booking_orders.find_one(
+            {"booking_id": booking_id},
+            {"_id": 0, "prop_id": 1, "guest_name": 1},
+        )
+        if booking_full:
+            register_action(
+                prop_id=int(booking_full.get("prop_id", 0)),
+                entity_type="reservation",
+                entity_id=booking_id,
+                action="reassign_room",
+                summary=f"Habitaciones reasignadas a {', '.join(room_ids)} — {booking_full.get('guest_name', '')}",
+                changed_by=changed_by_username,
+                metadata={"assigned_rooms": room_ids, "guest_name": booking_full.get("guest_name", "")},
+            )
+    except Exception:
+        pass  # audit failure must never block the operation
 
     return {"booking_id": booking_id, "assigned_rooms": room_ids, "assigned_count": len(room_ids)}

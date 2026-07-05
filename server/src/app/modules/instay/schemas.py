@@ -51,6 +51,9 @@ SERVICE_REQUEST_TYPES = {
     "wake_up_call": "Llamada de despertar",
     "late_checkout": "Late check-out",
     "extra_bed": "Cama adicional",
+    "spa": "Spa & Bienestar",
+    "restaurant": "Reserva en restaurante",
+    "extend_stay": "Extender estancia",
     "other": "Otro",
 }
 

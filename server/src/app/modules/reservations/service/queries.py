@@ -44,6 +44,9 @@ def list_bookings(
     status: str | None = None,
     prop_id: int | None = None,
     guest_name: str | None = None,
+    folio: str | None = None,
+    stay_status: str | None = None,
+    booking_source: str | None = None,
     user: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     db = get_database()
@@ -64,6 +67,15 @@ def list_bookings(
         filters["status"] = status
     if prop_id:
         filters["prop_id"] = prop_id
+    if folio:
+        filters["folio"] = {"$regex": folio, "$options": "i"}
+    if stay_status == "none":
+        # "Sin check-in" → show bookings where stay_status is empty/null
+        filters["$or"] = [{"stay_status": {"$exists": False}}, {"stay_status": ""}, {"stay_status": None}]
+    elif stay_status:
+        filters["stay_status"] = stay_status
+
+
     if guest_name:
         # Find booking IDs matching guest name (case‑insensitive)
         regex = {"$regex": guest_name, "$options": "i"}
@@ -94,8 +106,19 @@ def list_bookings(
         .limit(page_size)
     )
     contexts = {item["booking_id"]: hotel_booking_context(int(item["prop_id"])) for item in items if item.get("prop_id") is not None}
+    # Enrich with cedula from booking_guests
+    booking_ids = [item["booking_id"] for item in items if item.get("booking_id")]
+    cedula_map: dict[str, str] = {}
+    if booking_ids:
+        for g in db.booking_guests.find(
+            {"booking_id": {"$in": booking_ids}, "is_primary": True},
+            {"booking_id": 1, "cedula": 1, "_id": 0},
+        ):
+            if g.get("cedula"):
+                cedula_map[g["booking_id"]] = g["cedula"]
     for item in items:
         item["hotel"] = contexts.get(item["booking_id"])
+        item["cedula"] = cedula_map.get(item.get("booking_id", ""), "")
     return {
         "items": items,
         "page": page,

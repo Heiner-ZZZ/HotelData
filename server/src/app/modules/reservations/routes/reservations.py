@@ -55,10 +55,13 @@ def reservations_list_api(
     status: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     guest_name: str | None = Query(default=None),
+    folio: str | None = Query(default=None),
+    stay_status: str | None = Query(default=None, alias="stay_status"),
+    booking_source: str | None = Query(default=None, alias="booking_source"),
     current_user: dict = Depends(require_login),
 ):
     from src.app.modules.reservations.service.queries import list_bookings as _list
-    return _list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, user=current_user)
+    return _list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, folio=folio, stay_status=stay_status, booking_source=booking_source, user=current_user)
 
 
 @api_router.get("/dates")

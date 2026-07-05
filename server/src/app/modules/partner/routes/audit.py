@@ -14,9 +14,10 @@ from src.app.security.dependencies import require_login
 
 ENTITY_TYPES = [
     "room_type", "inventory_entry", "rate_plan", "rate_calendar",
-    "policy", "amenity", "content",
+    "policy", "amenity", "content", "reservation", "housekeeping_task",
 ]
-ACTIONS = ["create", "update", "delete", "soft_delete", "restore", "batch_update"]
+ACTIONS = ["create", "update", "delete", "soft_delete", "restore", "batch_update",
+           "confirm", "reject", "cancel", "check_in", "check_out", "reassign_room", "document_change"]
 
 
 @api_router.get("/audit-log")
