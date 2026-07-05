@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
 from src.app.modules.housekeeping.schemas import (
     AdditionalChargeCreate,
@@ -46,6 +46,7 @@ from src.app.modules.housekeeping.routes_impl import (
     validate_bulk_update,
     validate_sync_payload,
 )
+from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login
 
 router = APIRouter(prefix="/modules/housekeeping", tags=["modules-housekeeping"])
@@ -68,11 +69,35 @@ def room_status_upsert_api(
     current_user: dict = Depends(require_login),
 ):
     """Create or update a room's status."""
-    return upsert_room_status(payload)
+    from src.database.connection import get_database
+    db = get_database()
+    from .service.collections import ROOM_STATUS_COLLECTION
+    before = db[ROOM_STATUS_COLLECTION].find_one(
+        {"prop_id": payload.prop_id, "room_label": payload.room_label},
+        {"status": 1},
+    )
+    result = upsert_room_status(payload)
+    diff = {
+        "status": {
+            "old": before.get("status") if before else None,
+            "new": payload.status,
+        },
+    }
+    register_action(
+        prop_id=payload.prop_id,
+        entity_type="housekeeping_room_status",
+        entity_id=f"{payload.prop_id}:{payload.room_label}",
+        action="update" if before else "create",
+        summary=f"{'Actualización' if before else 'Creación'} de estado de habitación {payload.room_label} → {payload.status}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return result
 
 
 @api_router.get("/room-status")
 def room_status_list_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
@@ -80,16 +105,27 @@ def room_status_list_api(
     current_user: dict = Depends(require_login),
 ):
     """List room statuses with optional filtering."""
-    return list_room_status(
+    result = list_room_status(
         prop_id=prop_id,
         status_filter=status_filter,
         page=page,
         page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_room_status",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de estados de habitación (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "status": status_filter, "page": page, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/room-status/history")
 def room_status_history_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     room_label: str | None = Query(default=None),
     booking_id: str | None = Query(default=None),
@@ -98,17 +134,28 @@ def room_status_history_api(
     current_user: dict = Depends(require_login),
 ):
     """List room status change history for auditing."""
-    return list_room_status_history(
+    result = list_room_status_history(
         prop_id=prop_id,
         room_label=room_label,
         booking_id=booking_id,
         page=page,
         page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_room_status",
+        entity_id="history",
+        action="read",
+        summary=f"Historial de estados de habitación (page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "room_label": room_label, "booking_id": booking_id, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/room-status/{record_id}")
 def room_status_get_api(
+    request: Request,
     record_id: str,
     current_user: dict = Depends(require_login),
 ):
@@ -116,6 +163,15 @@ def room_status_get_api(
     result = get_room_status(record_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro no encontrado")
+    register_action(
+        prop_id=result.get("propId", 0),
+        entity_type="housekeeping_room_status",
+        entity_id=record_id,
+        action="read",
+        summary=f"Consulta de estado de habitación {result.get('roomLabel', record_id)}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
     return result
 
 
@@ -127,6 +183,18 @@ def room_status_bulk_api(
     """Update status for multiple rooms at once."""
     prop_id, room_labels, new_status, note = validate_bulk_update(payload)
     count = update_room_status_bulk(prop_id, room_labels, new_status, note)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_room_status",
+        entity_id="bulk",
+        action="update",
+        summary=f"Actualización masiva de estados: {count} habitación(es) → {new_status}",
+        changed_by=current_user.get("username", "system"),
+        diff={
+            "rooms": {"old": None, "new": room_labels},
+            "status": {"old": None, "new": new_status},
+        },
+    )
     return {"ok": True, "updated_count": count}
 
 
@@ -137,7 +205,17 @@ def room_status_sync_api(
 ):
     """Auto‑seed room_status_log from hotel_rooms for a property."""
     prop_id = validate_sync_payload(payload)
-    return sync_room_status_from_hotel_rooms(prop_id)
+    result = sync_room_status_from_hotel_rooms(prop_id)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_room_status",
+        entity_id="sync",
+        action="update",
+        summary=f"Sincronización de estados de habitación: {result.get('created', 0)} creadas",
+        changed_by=current_user.get("username", "system"),
+        diff={"created": {"old": None, "new": result.get("created", 0)}},
+    )
+    return result
 
 
 # ═══════════════════════════════════════════════
@@ -151,11 +229,27 @@ def hk_task_create_api(
     current_user: dict = Depends(require_login),
 ):
     """Create a new housekeeping task."""
-    return create_housekeeping_task(payload)
+    result = create_housekeeping_task(payload)
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in result.items()
+        if k not in ("id", "created_at", "completed_at") and v is not None
+    }
+    register_action(
+        prop_id=result.get("propId", payload.prop_id),
+        entity_type="housekeeping_task",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=f"Creación de tarea de limpieza: {payload.task_type} — Hab. {payload.room_label}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return result
 
 
 @api_router.get("/tasks")
 def hk_task_list_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     assigned_to: str | None = Query(default=None),
@@ -164,13 +258,23 @@ def hk_task_list_api(
     current_user: dict = Depends(require_login),
 ):
     """List housekeeping tasks."""
-    return list_housekeeping_tasks(
+    result = list_housekeeping_tasks(
         prop_id=prop_id,
         status_filter=status_filter,
         assigned_to=assigned_to,
         page=page,
         page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_task",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de tareas de limpieza (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "status": status_filter, "assigned_to": assigned_to, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.post("/tasks/{task_id}/complete")
@@ -180,9 +284,28 @@ def hk_task_complete_api(
     current_user: dict = Depends(require_login),
 ):
     """Mark a housekeeping task as completed."""
+    from src.database.connection import get_database
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before = db.housekeeping_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "task_type": 1})
+    except (InvalidId, Exception):
+        before = None
     result = complete_housekeeping_task(task_id, note=str(payload.get("note", "")))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": "completed"},
+    }
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else 0,
+        entity_type="housekeeping_task",
+        entity_id=task_id,
+        action="update",
+        summary=f"Completado de tarea de limpieza {task_id} — Hab. {result.get('roomLabel', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -193,9 +316,34 @@ def hk_task_update_api(
     current_user: dict = Depends(require_login),
 ):
     """Update a housekeeping task."""
+    from src.database.connection import get_database
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before = db.housekeeping_tasks.find_one(
+            {"_id": ObjectId(task_id)},
+            {"prop_id": 1, "room_label": 1, "task_type": 1, "status": 1, "assigned_to": 1, "priority": 1, "note": 1, "scheduled_date": 1},
+        )
+    except (InvalidId, Exception):
+        before = None
     result = update_housekeeping_task(task_id, payload)
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    diff = {}
+    for key in ["room_label", "task_type", "status", "assigned_to", "priority", "note", "scheduled_date"]:
+        old_val = before.get(key) if before else None
+        new_val = getattr(payload, key, None)
+        if old_val != new_val:
+            diff[key] = {"old": old_val, "new": new_val}
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else payload.prop_id,
+        entity_type="housekeeping_task",
+        entity_id=task_id,
+        action="update",
+        summary=f"Actualización de tarea de limpieza {task_id} — Hab. {result.get('roomLabel', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff if diff else None,
+    )
     return result
 
 
@@ -208,6 +356,15 @@ def hk_task_delete_api(
     result = delete_housekeeping_task(task_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_task",
+        entity_id=task_id,
+        action="delete",
+        summary=f"Eliminación lógica de tarea de limpieza {task_id} — Hab. {result.get('roomLabel', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff={"status": {"old": result.get("status") if result else None, "new": "deleted"}},
+    )
     return result
 
 
@@ -222,11 +379,27 @@ def mt_task_create_api(
     current_user: dict = Depends(require_login),
 ):
     """Create a new maintenance task."""
-    return create_maintenance_task(payload)
+    result = create_maintenance_task(payload)
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in result.items()
+        if k not in ("id", "created_at", "completed_at") and v is not None
+    }
+    register_action(
+        prop_id=result.get("prop_id", payload.prop_id),
+        entity_type="housekeeping_maintenance",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=f"Creación de tarea de mantenimiento: {payload.title} — Hab. {payload.room_label}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return result
 
 
 @api_router.get("/maintenance")
 def mt_task_list_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
@@ -234,12 +407,22 @@ def mt_task_list_api(
     current_user: dict = Depends(require_login),
 ):
     """List maintenance tasks."""
-    return list_maintenance_tasks(
+    result = list_maintenance_tasks(
         prop_id=prop_id,
         status_filter=status_filter,
         page=page,
         page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_maintenance",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de tareas de mantenimiento (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "status": status_filter, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.put("/maintenance/{task_id}")
@@ -249,9 +432,34 @@ def mt_task_update_api(
     current_user: dict = Depends(require_login),
 ):
     """Update a maintenance task."""
+    from src.database.connection import get_database
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before = db.maintenance_tasks.find_one(
+            {"_id": ObjectId(task_id)},
+            {"prop_id": 1, "room_label": 1, "title": 1, "status": 1, "priority": 1, "task_type": 1, "scheduled_date": 1},
+        )
+    except (InvalidId, Exception):
+        before = None
     result = update_maintenance_task(task_id, payload)
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    diff = {}
+    for key in ["room_label", "title", "status", "priority", "task_type", "scheduled_date"]:
+        old_val = before.get(key) if before else None
+        new_val = getattr(payload, key, None)
+        if old_val != new_val:
+            diff[key] = {"old": old_val, "new": new_val}
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else payload.prop_id,
+        entity_type="housekeeping_maintenance",
+        entity_id=task_id,
+        action="update",
+        summary=f"Actualización de tarea de mantenimiento {task_id} — {result.get('title', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff if diff else None,
+    )
     return result
 
 
@@ -262,9 +470,28 @@ def mt_task_complete_api(
     current_user: dict = Depends(require_login),
 ):
     """Mark a maintenance task as completed."""
+    from src.database.connection import get_database
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before = db.maintenance_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "title": 1})
+    except (InvalidId, Exception):
+        before = None
     result = complete_maintenance_task(task_id, note=str(payload.get("note", "")))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya completada")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": "completed"},
+    }
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else 0,
+        entity_type="housekeeping_maintenance",
+        entity_id=task_id,
+        action="update",
+        summary=f"Completado de tarea de mantenimiento {task_id} — {result.get('title', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -277,6 +504,15 @@ def mt_task_delete_api(
     result = delete_maintenance_task(task_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada o ya eliminada")
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_maintenance",
+        entity_id=task_id,
+        action="delete",
+        summary=f"Eliminación lógica de tarea de mantenimiento {task_id} — {result.get('title', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff={"status": {"old": result.get("status") if result else None, "new": "deleted"}},
+    )
     return result
 
 
@@ -294,11 +530,26 @@ def charge_create_api(
     result = create_additional_charge(payload)
     if result is None:
         raise HTTPException(status_code=400, detail="No se pudo crear el cargo (booking inválido)")
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in result.items()
+        if k not in ("id", "created_at") and v is not None
+    }
+    register_action(
+        prop_id=result.get("prop_id", payload.prop_id),
+        entity_type="housekeeping_charge",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=f"Cargo adicional: {payload.concept} — ${payload.amount}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
 @api_router.get("/charges")
 def charge_list_api(
+    request: Request,
     booking_id: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
@@ -306,12 +557,22 @@ def charge_list_api(
     current_user: dict = Depends(require_login),
 ):
     """List additional charges."""
-    return list_additional_charges(
+    result = list_additional_charges(
         booking_id=booking_id,
         prop_id=prop_id,
         page=page,
         page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_charge",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de cargos adicionales (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"booking_id": booking_id, "prop_id": prop_id, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.delete("/charges/{charge_id}")
@@ -323,6 +584,15 @@ def charge_delete_api(
     result = delete_additional_charge(charge_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    register_action(
+        prop_id=0,
+        entity_type="housekeeping_charge",
+        entity_id=charge_id,
+        action="delete",
+        summary=f"Eliminación de cargo adicional {charge_id} — booking {result.get('booking_id', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff={"deleted_id": {"old": None, "new": charge_id}},
+    )
     return result
 
 
@@ -333,13 +603,24 @@ def charge_delete_api(
 
 @api_router.get("/room-status/transitions")
 def room_status_transitions_api(
+    request: Request,
     current_status: str | None = Query(default=None),
     current_user: dict = Depends(require_login),
 ):
     """Return valid transitions for the housekeeping cycle.
     If current_status is provided, returns only valid next statuses.
     """
-    return list_valid_transitions(status=current_status)
+    result = list_valid_transitions(status=current_status)
+    register_action(
+        prop_id=0,
+        entity_type="housekeeping_room_status",
+        entity_id="transitions",
+        action="read",
+        summary=f"Consulta de transiciones de estado válidas",
+        changed_by=current_user.get("username", "system"),
+        metadata={"current_status": current_status, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.post("/cleaning/start")
@@ -358,9 +639,28 @@ def cleaning_start_api(
     }
     """
     prop_id, room_label, assigned_to, task_id = extract_cleaning_start_params(payload)
+    from src.database.connection import get_database
+    from .service.collections import ROOM_STATUS_COLLECTION
+    db = get_database()
+    before = db[ROOM_STATUS_COLLECTION].find_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"status": 1},
+    )
     result = start_cleaning(prop_id, room_label, assigned_to=assigned_to, task_id=task_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Habitación no encontrada")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": "cleaning_in_progress"},
+    }
+    register_action(
+        prop_id=prop_id,
+        entity_type="housekeeping_cleaning",
+        entity_id=f"{prop_id}:{room_label}",
+        action="update",
+        summary=f"Inicio de limpieza — Hab. {room_label} (asignado a {assigned_to or 'no asignado'})",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -389,12 +689,32 @@ def cleaning_complete_api(
     and blocks the room. If lost_object_found → auto-creates Lost & Found entry.
     """
     cp = extract_cleaning_complete_params(payload)
+    from src.database.connection import get_database
+    from .service.collections import ROOM_STATUS_COLLECTION
+    db = get_database()
+    before = db[ROOM_STATUS_COLLECTION].find_one(
+        {"prop_id": cp["prop_id"], "room_label": cp["room_label"]},
+        {"status": 1},
+    )
     result = complete_cleaning(
         cp["prop_id"], cp["room_label"],
         assigned_to=cp["assigned_to"], observations=cp["observations"],
         damage_found=cp["damage_found"], damage_description=cp["damage_description"],
         lost_object_found=cp["lost_object_found"], lost_object_description=cp["lost_object_description"],
         needs_maintenance=cp["needs_maintenance"], maintenance_description=cp["maintenance_description"],
+    )
+    new_status = result.get("status", "cleaning_completed") if isinstance(result, dict) else "cleaning_completed"
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": new_status},
+    }
+    register_action(
+        prop_id=cp["prop_id"],
+        entity_type="housekeeping_cleaning",
+        entity_id=f"{cp['prop_id']}:{cp['room_label']}",
+        action="update",
+        summary=f"Completado de limpieza — Hab. {cp['room_label']} → {new_status}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
     )
     return result
 
@@ -416,9 +736,29 @@ def cleaning_approve_api(
     }
     """
     prop_id, room_label, inspected_by, note, set_occupied = extract_cleaning_approve_params(payload)
+    from src.database.connection import get_database
+    from .service.collections import ROOM_STATUS_COLLECTION
+    db = get_database()
+    before = db[ROOM_STATUS_COLLECTION].find_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"status": 1},
+    )
     result = approve_cleaning(prop_id, room_label, inspected_by=inspected_by, note=note, set_occupied=set_occupied)
     if result is None:
         raise HTTPException(status_code=404, detail="Habitación no encontrada")
+    new_status = result.get("status", "vacant_clean")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": new_status},
+    }
+    register_action(
+        prop_id=prop_id,
+        entity_type="housekeeping_cleaning",
+        entity_id=f"{prop_id}:{room_label}",
+        action="update",
+        summary=f"Aprobación de limpieza — Hab. {room_label} → {new_status} (por {inspected_by})",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -429,15 +769,27 @@ def cleaning_approve_api(
 
 @api_router.get("/dashboard")
 def housekeeping_dashboard_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_login),
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
-    return get_housekeeping_dashboard(prop_id=prop_id)
+    result = get_housekeeping_dashboard(prop_id=prop_id)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_dashboard",
+        entity_id="dashboard",
+        action="read",
+        summary="Consulta de dashboard de housekeeping",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/calendar-week")
 def weekly_calendar_api(
+    request: Request,
     prop_id: int = Query(..., ge=1, description="Property ID"),
     week_start: str = Query(..., description="Start date in YYYY-MM-DD format"),
     assigned_to: str | None = Query(default=None, description="Filter by staff name"),
@@ -448,28 +800,59 @@ def weekly_calendar_api(
     Each room shows its current status and scheduled tasks for each day of the week.
     Supports filtering by assigned staff.
     """
-    return get_weekly_calendar(
+    result = get_weekly_calendar(
         prop_id=prop_id,
         week_start=week_start,
         assigned_to=assigned_to,
     )
+    register_action(
+        prop_id=prop_id,
+        entity_type="housekeeping_calendar",
+        entity_id="weekly",
+        action="read",
+        summary=f"Consulta de calendario semanal desde {week_start}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "week_start": week_start, "assigned_to": assigned_to, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/staff")
 def housekeeping_staff_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_login),
 ):
     """Return staff users assigned to a property who have maintenance/housekeeping roles."""
     staff = query_housekeeping_staff(prop_id=prop_id)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_staff",
+        entity_id="staff_list",
+        action="read",
+        summary=f"Consulta de personal de housekeeping (prop_id={prop_id})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "url": str(request.url)},
+    )
     return {"staff": staff}
 
 
 @api_router.get("/upcoming-events")
 def upcoming_events_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     days: int = Query(default=30, ge=1, le=90),
     current_user: dict = Depends(require_login),
 ):
     """Return upcoming tasks and maintenance events for calendar display."""
-    return list_upcoming_events(prop_id=prop_id, days=days)
+    result = list_upcoming_events(prop_id=prop_id, days=days)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_events",
+        entity_id="upcoming",
+        action="read",
+        summary=f"Consulta de eventos próximos ({days} días)",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "days": days, "url": str(request.url)},
+    )
+    return result

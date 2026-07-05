@@ -8,8 +8,22 @@ from typing import Any
 from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, now_utc, safe_positive_int
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
+
+
+def _build_blackout_diff(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any]:
+    """Build a diff dict {field: {old: val, new: val}} for blackout fields."""
+    diff: dict[str, Any] = {}
+    if not old and not new:
+        return diff
+    for field in ("start_date", "end_date", "reason", "blocked_rooms", "room_numbers"):
+        old_val = old.get(field) if old else None
+        new_val = new.get(field) if new else None
+        if old_val != new_val:
+            diff[field] = {"old": old_val, "new": new_val}
+    return diff
 
 
 def _blackout_blocks_for_prop(prop_id: int, limit: int = 20) -> list[dict[str, Any]]:
@@ -137,6 +151,7 @@ def create_blackout_block(
     end_date: str,
     reason: str,
     blocked_rooms: Any,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -159,15 +174,18 @@ def create_blackout_block(
     if overlap_error:
         raise ValueError(overlap_error)
 
+    # Capture BEFORE state for audit diff
+    blackout_filter = {
+        "prop_id": prop_id, "room_type_id": clean_room_type_id,
+        "start_date": clean_start, "end_date": clean_end,
+    }
+    before_doc = db.blackout_dates.find_one(blackout_filter, {"_id": 0, "start_date": 1, "end_date": 1, "reason": 1, "blocked_rooms": 1, "room_numbers": 1})
+
     blackout_payload = {
         "prop_id": prop_id, "room_type_id": clean_room_type_id,
         "start_date": clean_start, "end_date": clean_end,
         "reason": clean_text(reason), "blocked_rooms": blocked_value,
         "updated_at": now_utc(),
-    }
-    blackout_filter = {
-        "prop_id": prop_id, "room_type_id": clean_room_type_id,
-        "start_date": clean_start, "end_date": clean_end,
     }
     blackout_doc = db.blackout_dates.find_one_and_update(
         blackout_filter,
@@ -193,10 +211,22 @@ def create_blackout_block(
         db.blackout_dates.delete_one(blackout_filter)
         raise
 
+    action_type = "create" if not before_doc else "update"
+    diff = _build_blackout_diff(before_doc, blackout_doc)
+    register_action(
+        prop_id=prop_id,
+        entity_type="blackout_block",
+        entity_id=f"{clean_room_type_id}_{clean_start}_{clean_end}",
+        action=action_type,
+        summary=f"Blackout '{clean_text(reason)}' para {clean_room_type_id} ({clean_start} → {clean_end}): {blocked_value} habitaciones",
+        changed_by=changed_by,
+        diff=diff,
+        metadata={"room_type_id": clean_room_type_id, "start_date": clean_start, "end_date": clean_end, "blocked_rooms": blocked_value, "affected_days": affected_days},
+    )
     return blackout_doc
 
 
-def delete_blackout_block(blackout_id: str) -> dict[str, Any] | None:
+def delete_blackout_block(blackout_id: str, *, changed_by: str = "system") -> dict[str, Any] | None:
     from bson.objectid import ObjectId
 
     db = get_database()
@@ -223,6 +253,17 @@ def delete_blackout_block(blackout_id: str) -> dict[str, Any] | None:
         "prop_id": prop_id, "room_type_id": room_type_id,
         "start_date": start_date, "end_date": end_date,
     })
+    diff = _build_blackout_diff(existing, None)
+    register_action(
+        prop_id=prop_id,
+        entity_type="blackout_block",
+        entity_id=blackout_id,
+        action="delete",
+        summary=f"Blackout eliminado: {room_type_id} ({start_date} → {end_date})",
+        changed_by=changed_by,
+        diff=diff,
+        metadata={"room_type_id": room_type_id, "start_date": start_date, "end_date": end_date, "blocked_rooms": blocked_rooms},
+    )
     return {"blackout_id": blackout_id, "deleted": True, "prop_id": prop_id}
 
 
@@ -234,6 +275,7 @@ def update_blackout_block(
     reason: str | None = None,
     blocked_rooms: Any = None,
     room_numbers: list[str] | None = None,
+    changed_by: str = "system",
 ) -> dict[str, Any] | None:
     """Update a blackout block. Only future blocks can be edited.
     Reverses the original block effect, then applies the new one."""
@@ -299,6 +341,17 @@ def update_blackout_block(
     updated = db.blackout_dates.find_one({"_id": obj_id}, {"_id": 0})
     if updated:
         updated["blackout_id"] = blackout_id
+    diff = _build_blackout_diff(existing, updated)
+    register_action(
+        prop_id=prop_id,
+        entity_type="blackout_block",
+        entity_id=blackout_id,
+        action="update",
+        summary=f"Blackout actualizado: {room_type_id} ({orig_start} → {orig_end}) → ({new_start} → {new_end})",
+        changed_by=changed_by,
+        diff=diff,
+        metadata={"room_type_id": room_type_id, "orig_start": orig_start, "orig_end": orig_end, "new_start": new_start, "new_end": new_end, "blocked_rooms": new_blocked},
+    )
     return updated
 
 

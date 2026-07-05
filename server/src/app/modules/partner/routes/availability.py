@@ -19,6 +19,7 @@ from src.app.modules.partner.services import (
 )
 from src.app.modules.partner.services.rooms.queries import hotel_rooms_by_type
 from src.app.modules.partner.services.rooms.availability import update_blackout_block
+from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login
 
 
@@ -33,6 +34,8 @@ def inventory_submit(
     blocked_rooms: int = Form(default=0),
     version: int = Form(default=0),
 ):
+    user = getattr(request.state, "current_user", None) or {}
+    changed_by = user.get("username", "system")
     try:
         saved = save_inventory_entry(
             prop_id,
@@ -42,6 +45,7 @@ def inventory_submit(
             available_rooms=available_rooms,
             blocked_rooms=blocked_rooms,
             expected_version=version or None,
+            changed_by=changed_by,
         )
     except ValueError as exc:
         return RedirectResponse(
@@ -66,6 +70,8 @@ def blackout_dates_submit(
     reason: str = Form(default=""),
     blocked_rooms: int = Form(default=0),
 ):
+    user = getattr(request.state, "current_user", None) or {}
+    changed_by = user.get("username", "system")
     try:
         saved = create_blackout_block(
             prop_id,
@@ -74,6 +80,7 @@ def blackout_dates_submit(
             end_date=end_date,
             reason=reason,
             blocked_rooms=blocked_rooms,
+            changed_by=changed_by,
         )
     except ValueError as exc:
         return RedirectResponse(
@@ -90,6 +97,7 @@ def blackout_dates_submit(
 
 @api_router.get("/availability")
 def availability_api(
+    request: Request,
     prop_id: int = Query(..., ge=1),
     days: int = Query(default=90, ge=1, le=365),
     start_date: str = Query(default=""),
@@ -98,11 +106,22 @@ def availability_api(
     detail = partner_hotel_inventory(require_prop_id(prop_id), days=days, start_date=start_date, end_date=end_date)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id,
+        entity_type="availability",
+        entity_id=f"prop_{prop_id}",
+        action="read",
+        summary=f"Consulta de disponibilidad para prop_id={prop_id} (días={days})",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"days": days, "start_date": start_date, "end_date": end_date, "url": str(request.url)},
+    )
     return detail
 
 
 @api_router.get("/availability/options")
 def availability_options_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
@@ -128,6 +147,16 @@ def availability_options_api(
         if rooms_detail is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
         response["room_types"] = rooms_detail.get("room_types", [])
+    audit_prop_id = prop_id if prop_id else (response["properties"][0]["prop_id"] if response["properties"] else 0)
+    register_action(
+        prop_id=audit_prop_id,
+        entity_type="availability_options",
+        entity_id=f"page_{page}",
+        action="read",
+        summary=f"Consulta de opciones de disponibilidad (q={q}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"q": q, "page": page, "page_size": page_size, "prop_id": prop_id, "url": str(request.url)},
+    )
     return response
 
 
@@ -170,25 +199,50 @@ def availability_patch_api(
 
 @api_router.get("/availability/blackouts")
 def availability_blackouts_list_api(
+    request: Request,
     prop_id: int = Query(..., ge=1),
 ):
     """List all blackout blocks for a property."""
     items = list_property_blackouts(require_prop_id(prop_id))
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id,
+        entity_type="blackout_block",
+        entity_id=f"prop_{prop_id}",
+        action="read",
+        summary=f"Listado de bloqueos para prop_id={prop_id}",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"count": len(items), "url": str(request.url)},
+    )
     return {"items": items, "total": len(items)}
 
 
 @api_router.get("/availability/hotel-rooms")
 def availability_hotel_rooms_api(
+    request: Request,
     prop_id: int = Query(..., ge=1),
     room_type_id: str = Query(...),
 ):
     """Return individual hotel rooms for a given room type (used by multi-select in frontend)."""
     items = hotel_rooms_by_type(require_prop_id(prop_id), room_type_id)
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id,
+        entity_type="hotel_room",
+        entity_id=f"{room_type_id}",
+        action="read",
+        summary=f"Consulta de habitaciones para room_type_id={room_type_id}",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"room_type_id": room_type_id, "count": len(items), "url": str(request.url)},
+    )
     return {"items": items, "total": len(items)}
 
 
 @api_router.post("/availability/blackouts")
-def availability_blackout_api(payload: dict = Body(...)):
+def availability_blackout_api(
+    request: Request,
+    payload: dict = Body(...),
+):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     # Accept room_numbers array or blocked_rooms count
     room_numbers = payload.get("room_numbers")
@@ -196,6 +250,8 @@ def availability_blackout_api(payload: dict = Body(...)):
         blocked_rooms = len(room_numbers)
     else:
         blocked_rooms = payload.get("blocked_rooms")
+    user = getattr(request.state, "current_user", None) or {}
+    changed_by = user.get("username", "system")
     try:
         saved = create_blackout_block(
             prop_id,
@@ -204,6 +260,7 @@ def availability_blackout_api(payload: dict = Body(...)):
             end_date=str(payload.get("end_date") or ""),
             reason=str(payload.get("reason") or ""),
             blocked_rooms=blocked_rooms,
+            changed_by=changed_by,
         )
         # Store room_numbers in the blackout record for future editing
         if saved and room_numbers:
@@ -223,10 +280,13 @@ def availability_blackout_api(payload: dict = Body(...)):
 
 @api_router.put("/availability/blackouts/{blackout_id}")
 def availability_blackout_update_api(
+    request: Request,
     blackout_id: str,
     payload: dict = Body(...),
 ):
     """Update a future blackout block (dates, reason, room numbers)."""
+    user = getattr(request.state, "current_user", None) or {}
+    changed_by = user.get("username", "system")
     try:
         room_numbers = payload.get("room_numbers")
         blocked_rooms = len(room_numbers) if (room_numbers and isinstance(room_numbers, list)) else payload.get("blocked_rooms")
@@ -237,6 +297,7 @@ def availability_blackout_update_api(
             reason=str(payload.get("reason")) if payload.get("reason") else None,
             blocked_rooms=blocked_rooms,
             room_numbers=room_numbers if (room_numbers and isinstance(room_numbers, list)) else None,
+            changed_by=changed_by,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -263,10 +324,15 @@ def availability_inventory_delete_api(
 
 
 @api_router.delete("/availability/blackouts/{blackout_id}")
-def availability_blackout_delete_api(blackout_id: str):
+def availability_blackout_delete_api(
+    request: Request,
+    blackout_id: str,
+):
     """Delete a blackout block and reverse its effect on inventory."""
+    user = getattr(request.state, "current_user", None) or {}
+    changed_by = user.get("username", "system")
     try:
-        result = delete_blackout_block(blackout_id)
+        result = delete_blackout_block(blackout_id, changed_by=changed_by)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:

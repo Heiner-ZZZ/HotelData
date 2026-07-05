@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
@@ -24,6 +24,7 @@ from src.app.modules.billing.service import (
     remove_line_item,
     FOLIO_CATEGORIES,
 )
+from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -46,11 +47,26 @@ def create_invoice_api(
     result = create_invoice(payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la factura (booking inválido)")
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in result.items()
+        if k not in ("id", "created_at", "updated_at", "issued_at", "paid_at") and v is not None
+    }
+    register_action(
+        prop_id=result.get("prop_id") or 0,
+        entity_type="billing_invoice",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=f"Creación de factura {result.get('invoice_number', '')} — {result.get('booking_id', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
 @api_router.get("/invoices")
 def list_invoices_api(
+    request: Request,
     booking_id: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
@@ -61,28 +77,67 @@ def list_invoices_api(
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    return list_invoices(
+    result = list_invoices(
         booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_invoice",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de facturas (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={
+            "booking_id": booking_id,
+            "prop_id": prop_id,
+            "status": status_filter,
+            "q": q,
+            "page": page,
+            "page_size": page_size,
+            "url": str(request.url),
+        },
+    )
+    return result
 
 
 @api_router.get("/invoices/stats")
 def invoice_stats_api(
+    request: Request,
     current_user: dict = Depends(require_login),
 ):
     """Return aggregate counts and totals grouped by invoice status."""
-    return get_invoice_stats()
+    result = get_invoice_stats()
+    register_action(
+        prop_id=0,
+        entity_type="billing_invoice",
+        entity_id="stats",
+        action="read",
+        summary="Consulta de estadísticas de facturación",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/invoices/{invoice_id}")
 def get_invoice_api(
+    request: Request,
     invoice_id: str,
     current_user: dict = Depends(require_login),
 ):
     result = get_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="read",
+        summary=f"Consulta de factura {result.get('invoice_number', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
     return result
 
 
@@ -102,6 +157,12 @@ def add_line_item_api(
       "category": "parking"
     }
     """
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    except (InvalidId, Exception):
+        before_raw = None
     result = add_line_item(
         invoice_id,
         name=payload.get("name", ""),
@@ -114,6 +175,21 @@ def add_line_item_api(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se pudo agregar el concepto. La factura puede no existir o no estar en estado 'issued'.",
         )
+    diff = {
+        "line_items_count": {"old": len(before_raw.get("line_items", [])) if before_raw else 0, "new": len(result.get("line_items", []))},
+        "total": {"old": before_raw.get("total") if before_raw else None, "new": result.get("total")},
+        "subtotal": {"old": before_raw.get("subtotal") if before_raw else None, "new": result.get("subtotal")},
+        "taxes": {"old": before_raw.get("taxes") if before_raw else None, "new": result.get("taxes")},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Agregado de concepto a factura {result.get('invoice_number', invoice_id)}: {payload.get('name', '')}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -127,12 +203,33 @@ def remove_line_item_api(
 
     Cannot remove room charge lines (type='room').
     """
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    except (InvalidId, Exception):
+        before_raw = None
     result = remove_line_item(invoice_id, item_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se pudo eliminar el concepto. Puede ser el cargo de habitación (no removible).",
         )
+    diff = {
+        "line_items_count": {"old": len(before_raw.get("line_items", [])) if before_raw else 0, "new": len(result.get("line_items", []))},
+        "total": {"old": before_raw.get("total") if before_raw else None, "new": result.get("total")},
+        "subtotal": {"old": before_raw.get("subtotal") if before_raw else None, "new": result.get("subtotal")},
+        "taxes": {"old": before_raw.get("taxes") if before_raw else None, "new": result.get("taxes")},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Eliminación de concepto de factura {result.get('invoice_number', invoice_id)}: item {item_id}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -141,9 +238,27 @@ def cancel_invoice_api(
     invoice_id: str,
     current_user: dict = Depends(require_login),
 ):
+    from bson import ObjectId, InvalidId
+    db = get_database()
+    try:
+        before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
+    except (InvalidId, Exception):
+        before_raw = None
     result = cancel_invoice(invoice_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cancelar la factura")
+    diff = {
+        "status": {"old": before_raw.get("status") if before_raw else None, "new": "cancelled"},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Cancelación de factura {result.get('invoice_number', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -165,6 +280,7 @@ def pay_invoice_api(
     if inv.get("status") != "issued":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
 
+    before = get_invoice(invoice_id)
     pay_payload = PaymentCreate(
         booking_id=str(inv.get("booking_id", "")),
         invoice_id=invoice_id,
@@ -174,6 +290,21 @@ def pay_invoice_api(
     result = create_payment(pay_payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+
+    after = get_invoice(invoice_id)
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": after.get("status") if after else "paid"},
+        "total_paid_amount": {"old": before.get("total_paid_amount") if before else 0.0, "new": after.get("total_paid_amount") if after else float(inv.get("total", 0))},
+    }
+    register_action(
+        prop_id=(inv.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Pago de factura {inv.get('invoice_number', invoice_id)} — ${float(inv.get('total', 0)):,.2f}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}
 
 
@@ -221,6 +352,15 @@ def send_invoice_email_api(
         invoice_total=float(inv.get("total", 0)),
         currency=inv.get("currency", "USD"),
     )
+    register_action(
+        prop_id=(inv.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="email",
+        summary=f"Envío de factura por email {inv.get('invoice_number', invoice_id)} a {guest_email}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"guest_email": guest_email},
+    )
     return {"ok": True, "message": f"Factura enviada a {guest_email}"}
 
 
@@ -234,28 +374,63 @@ def create_payment_api(
     result = create_payment(payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el pago (booking inválido)")
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in result.items()
+        if k not in ("id", "created_at", "updated_at", "paid_at") and v is not None
+    }
+    register_action(
+        prop_id=result.get("prop_id") or 0,
+        entity_type="billing_payment",
+        entity_id=result.get("id", ""),
+        action="create",
+        summary=f"Registro de pago {result.get('reference', '')} — ${result.get('amount', 0):,.2f}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
 @api_router.get("/payments")
 def list_payments_api(
+    request: Request,
     booking_id: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    return list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
+    result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_payment",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de pagos (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"booking_id": booking_id, "prop_id": prop_id, "page": page, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.get("/payments/{payment_id}")
 def get_payment_api(
+    request: Request,
     payment_id: str,
     current_user: dict = Depends(require_login),
 ):
     result = get_payment(payment_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado")
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_payment",
+        entity_id=payment_id,
+        action="read",
+        summary=f"Consulta de pago {result.get('reference', payment_id)}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
     return result
 
 
@@ -264,9 +439,22 @@ def refund_payment_api(
     payment_id: str,
     current_user: dict = Depends(require_login),
 ):
+    before = get_payment(payment_id)
     result = refund_payment(payment_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": "refunded"},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_payment",
+        entity_id=payment_id,
+        action="update",
+        summary=f"Reembolso de pago {result.get('reference', payment_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -274,6 +462,7 @@ def refund_payment_api(
 
 @api_router.get("/my-invoices")
 def my_invoices_api(
+    request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
@@ -306,6 +495,15 @@ def my_invoices_api(
     )
     items = [_enrich_invoice(doc) for doc in cursor]
     import math
+    register_action(
+        prop_id=0,
+        entity_type="billing_invoice",
+        entity_id="my_invoices",
+        action="read",
+        summary=f"Mis facturas (total={total}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"user_id": str(user_id), "page": page, "url": str(request.url)},
+    )
     return {
         "items": items,
         "total": total,
@@ -322,14 +520,25 @@ def my_invoices_api(
 
 @api_router.get("/folios/categories")
 def folio_categories_api(
+    request: Request,
     current_user: dict = Depends(require_login),
 ):
     """Return the list of available folio posting categories."""
+    register_action(
+        prop_id=0,
+        entity_type="billing_folio",
+        entity_id="categories",
+        action="read",
+        summary="Listado de categorías de folio",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
     return FOLIO_CATEGORIES
 
 
 @api_router.get("/folios/{booking_id}")
 def get_folio_api(
+    request: Request,
     booking_id: str,
     current_user: dict = Depends(require_login),
 ):
@@ -337,6 +546,15 @@ def get_folio_api(
     result = get_folio(booking_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado para esta reserva")
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_folio",
+        entity_id=booking_id,
+        action="read",
+        summary=f"Consulta de folio para reserva {booking_id}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"url": str(request.url)},
+    )
     return result
 
 
@@ -359,6 +577,7 @@ def post_to_folio_api(
       "reference_type": "additional_charge"
     }
     """
+    before = get_folio(booking_id)
     result = post_to_folio(
         booking_id,
         posting_type=payload.get("posting_type", "charge"),
@@ -371,6 +590,19 @@ def post_to_folio_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
+    diff = {
+        "total_due": {"old": before.get("total_due") if before else None, "new": result.get("total_due")},
+        "posting_count": {"old": before.get("posting_count") if before else None, "new": result.get("posting_count")},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_folio",
+        entity_id=booking_id,
+        action="update",
+        summary=f"Posteo a folio {result.get('folio_number', booking_id)}: {payload.get('concept', '')} — ${float(payload.get('amount', 0)):,.2f}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
@@ -381,6 +613,7 @@ def close_folio_api(
     current_user: dict = Depends(require_login),
 ):
     """Close a folio at check-out."""
+    before = get_folio(booking_id)
     invoice_id = payload.get("invoice_id")
     result = close_folio(
         booking_id,
@@ -389,11 +622,25 @@ def close_folio_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cerrar el folio")
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": "closed"},
+        "total_due": {"old": before.get("total_due") if before else None, "new": result.get("total_due")},
+    }
+    register_action(
+        prop_id=(result.get("prop_id") or 0),
+        entity_type="billing_folio",
+        entity_id=booking_id,
+        action="update",
+        summary=f"Cierre de folio {result.get('folio_number', booking_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return result
 
 
 @api_router.get("/folios")
 def list_folios_api(
+    request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
@@ -401,7 +648,17 @@ def list_folios_api(
     current_user: dict = Depends(require_login),
 ):
     """List folios with optional property and status filters."""
-    return list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
+    result = list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_folio",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de folios (total={result.get('total', 0)}, page={page})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "status": status_filter, "page": page, "url": str(request.url)},
+    )
+    return result
 
 
 @api_router.post("/my-invoices/{invoice_id}/pay")
@@ -427,6 +684,7 @@ def my_invoice_pay_api(
     if inv.get("status") != "issued":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La factura no está pendiente de pago")
 
+    before = get_invoice(invoice_id)
     # Create the payment
     pay_payload = PaymentCreate(
         booking_id=str(inv["booking_id"]),
@@ -437,4 +695,19 @@ def my_invoice_pay_api(
     result = create_payment(pay_payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+
+    after = get_invoice(invoice_id)
+    diff = {
+        "status": {"old": before.get("status") if before else None, "new": after.get("status") if after else "paid"},
+        "total_paid_amount": {"old": before.get("total_paid_amount") if before else 0.0, "new": after.get("total_paid_amount") if after else float(inv.get("total", 0))},
+    }
+    register_action(
+        prop_id=(inv.get("prop_id") or 0),
+        entity_type="billing_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Pago de factura (cliente) {inv.get('invoice_number', invoice_id)} — ${float(inv.get('total', 0)):,.2f}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
     return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}

@@ -13,15 +13,15 @@
 |---|-------------|-----------------|------------------|---------------------|
 | 1 | **Comercial / Experiencia Cliente** | hotels, reservations (guest) | hotel-search, hotel-compare, hotel-detail, reservations | 12 |
 | 2 | **Revenue Management** | revenue, partner/rates | rates, revenue | 8 |
-| 3 | **Marketing Hotelero / Partner** | partner, amenities, reviews (public) | properties, policies, rooms, amenities | 14 |
+| 3 | **Marketing Hotelero / Partner** | partner, amenities, reviews (public), partner/rates | properties, policies, rooms, amenities | 16 |
 | 4 | **Operaciones Hoteleras** | reservations (mgmt), housekeeping, reception, reception-calendar | management, check-ins, check-outs, manual-reservations, housekeeping, reception, shifts, availability | 19 |
 | 5 | **Facturación, Pagos y Gastos** | billing, expenses | billing, expenses | 13 |
-| 6 | **Recursos Humanos** | hr | hr | 4 |
+| 6 | **Recursos Humanos** | hr | hr | 6 |
 | 7 | **Administración del Sistema** | admin, auth, account, users, settings, global_settings, notifications | admin, account, system-admin, ownership, settings, notifications | 16 |
 | 8 | **Datos, Analítica y Geolocalización** | kpi, audit, map, geo_catalog, reports | map, geo-catalog | 14 |
 | 9 | **Servicios al Huésped (In-Stay)** | instay, amenities (guest), lost_and_found | in-stay, lost-and-found | 8 |
 
-**Total: 9 departamentos | 107 colecciones MongoDB**
+**Total: 9 departamentos | 110 colecciones MongoDB**
 
 ---
 
@@ -431,6 +431,8 @@ Marketing / Partner
 | `review_reports` | Escritura | Reportes de reseñas | CU-M06 |
 | `room_features` | Escritura | Features de habitación | CU-M05 |
 | `hotel_amenities` | Escritura | Amenities por propiedad | CU-M05 |
+| `corporate_contracts` | Escritura | Contratos corporativos por hotel | CU-M05 |
+| `hotels` | Lectura | Master hotel legacy | CU-M01 |
 | `user_activity_logs` | Escritura | Auditoría | Todos |
 
 ---
@@ -873,6 +875,7 @@ Gestionar empleados, departamentos, turnos y documentación del personal hoteler
 | `employee_departments` | Escritura | Departamentos | CU-HR02 |
 | `employee_documents` | Escritura | Documentos de empleados | CU-HR01 |
 | `employee_shifts` | Escritura | Turnos programados | CU-HR03, CU-HR04, CU-HR05 |
+| `employee_permissions` | Escritura | Permisos transferidos del empleado | CU-HR01 |
 | `user_activity_logs` | Escritura | Auditoría | Todos |
 
 ---
@@ -1225,10 +1228,10 @@ Staff
 |-------------|-------------|-------|
 | 1. Comercial / Experiencia Cliente | dim_hotels, dim_destinations, dim_visitor_countries, room_types, room_inventory_calendar, hotel_rate_calendar, hotel_images, hotel_content_pages, hotel_policies, hotel_amenities, booking_orders, booking_guests, booking_status_history, reviews, fact_reviews, user_activity_logs, search_logs, click_events | 18 |
 | 2. Revenue Management | rate_plans, rate_rules, hotel_rate_calendar, promotion_campaigns, coupon_codes, fact_hotel_reservations, user_activity_logs | 7 |
-| 3. Marketing / Partner | dim_hotels, hotel_profile, hotel_profile_changes, hotel_content_pages, hotel_images, hotel_content_changes, hotel_policies, system_catalogs, reviews, fact_reviews, review_reports, room_features, hotel_amenities, user_activity_logs | 14 |
+| 3. Marketing / Partner | dim_hotels, hotel_profile, hotel_profile_changes, hotel_content_pages, hotel_images, hotel_content_changes, hotel_policies, system_catalogs, reviews, fact_reviews, review_reports, room_features, hotel_amenities, corporate_contracts, hotels, user_activity_logs | 16 |
 | 4. Operaciones Hoteleras | booking_orders, booking_guests, booking_room_guests, booking_status_history, manual_reservations, room_types, hotel_rooms, room_inventory_calendar, room_availability_blocks, blackout_dates, room_status_log, room_status_history, housekeeping_tasks, maintenance_tasks, reception_shifts, additional_charges, hotel_booking_context, user_activity_logs | 18 |
 | 5. Facturación / Gastos | reservation_invoices, reservation_payments, fact_reservation_invoices, fact_reservation_payments, guest_folios, additional_charges, expense_invoices, expense_categories, expense_budget, ledger_transactions, chart_of_accounts, tax_rates, commission_rates, hotel_booking_context, user_activity_logs | 15 |
-| 6. Recursos Humanos | employees, employee_departments, employee_documents, employee_shifts, user_activity_logs | 5 |
+| 6. Recursos Humanos | employees, employee_departments, employee_documents, employee_shifts, employee_permissions, user_activity_logs | 6 |
 | 7. Administración | users, user_sessions, user_activity_logs, roles, permissions, role_permissions, refresh_tokens, password_recovery_tokens, email_verification_tokens, two_factor_codes, user_2fa, pending_registrations, system_config, commission_rates, tax_rates, notification_log | 16 |
 | 8. Datos / Analítica | fact_hotel_reservations, fact_hotel_events, dim_hotels, dim_destinations, dim_visitor_countries, dim_sites, dim_dates, dim_promotions, dim_click_status, dim_reservation_status, dim_occupancy_profile, dim_stay_length_category, dim_booking_window_category, dim_price_category, etl_executions, data_quality_reports, rejected_records, search_logs, kpi_summary, geo_catalog, click_events, user_activity_logs | 22 |
 | 9. Servicios al Huésped | stay_sessions, stay_messages, stay_service_requests, room_status_log, hotel_profile, hotel_policies, hotel_amenities, additional_charges, guest_folios, lost_and_found, notification_log, booking_orders | 12 |
@@ -1252,4 +1255,4 @@ Staff
 
 ---
 
-*Fin del documento — HotelData Hub: 9 Departamentos, 40+ Casos de Uso, 106 Colecciones MongoDB*
+*Fin del documento — HotelData Hub: 9 Departamentos, 40+ Casos de Uso, 110 Colecciones MongoDB*

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
-from fastapi import APIRouter, Body, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
 from src.database.connection import get_database
 from src.app.modules.hr.schemas import (
@@ -24,6 +24,8 @@ from src.app.modules.hr.service.collections import (
     ensure_hr_collections,
     module_status,
 )
+from src.app.modules.partner.services.audit import register_action
+from src.app.security.dependencies import require_login
 
 router = APIRouter(prefix="/modules/hr", tags=["modules-hr"])
 api_router = APIRouter(prefix="/api/hr", tags=["hr-api"])
@@ -59,7 +61,10 @@ def hr_module_status():
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/dashboard")
-def hr_dashboard():
+def hr_dashboard(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+):
     """Return HR KPIs: total employees, active, by department, recent hires."""
     db = get_database()
     total = db[EMPLOYEES_COLLECTION].count_documents({})
@@ -68,6 +73,16 @@ def hr_dashboard():
     recent = list(
         db[EMPLOYEES_COLLECTION].find({"is_active": True})
         .sort("created_at", -1).limit(5)
+    )
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="hr_dashboard",
+        entity_id="dashboard",
+        action="read",
+        summary="Consulta de dashboard de RRHH",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"prop_id": prop_id, "url": str(request.url)},
     )
     return {
         "total_employees": total,
@@ -83,14 +98,31 @@ def hr_dashboard():
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/departments")
-def list_departments():
+def list_departments(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+):
     db = get_database()
     cursor = db[DEPARTMENTS_COLLECTION].find().sort("name", 1)
-    return [_enrich_department(d) for d in cursor]
+    items = [_enrich_department(d) for d in cursor]
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="department",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de departamentos ({len(items)} items)",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"prop_id": prop_id, "count": len(items), "url": str(request.url)},
+    )
+    return items
 
 
 @api_router.post("/departments", status_code=201)
-def create_department(payload: DepartmentCreate = Body(...)):
+def create_department(
+    payload: DepartmentCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     existing = db[DEPARTMENTS_COLLECTION].find_one({"name": payload.name})
     if existing:
@@ -103,7 +135,21 @@ def create_department(payload: DepartmentCreate = Body(...)):
     }
     result = db[DEPARTMENTS_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _enrich_department(doc)
+    enriched = _enrich_department(doc)
+    diff = {
+        "name": {"old": None, "new": payload.name},
+        "description": {"old": None, "new": payload.description},
+    }
+    register_action(
+        prop_id=0,
+        entity_type="department",
+        entity_id=enriched["id"],
+        action="create",
+        summary=f"Creación de departamento: {payload.name}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return enriched
 
 
 # ═══════════════════════════════════════════════════════════
@@ -111,7 +157,11 @@ def create_department(payload: DepartmentCreate = Body(...)):
 # ═══════════════════════════════════════════════════════════
 
 @api_router.post("/shifts/{shift_id}/check-in")
-def shift_check_in(shift_id: str = Path(...), payload: EmployeeShiftCheckIn = Body(...)):
+def shift_check_in(
+    shift_id: str = Path(...),
+    payload: EmployeeShiftCheckIn = Body(...),
+    current_user: dict = Depends(require_login),
+):
     """Record an employee check-in for a shift."""
     db = get_database()
     try:
@@ -124,7 +174,7 @@ def shift_check_in(shift_id: str = Path(...), payload: EmployeeShiftCheckIn = Bo
     if payload.timestamp:
         timestamp = payload.timestamp
 
-    result = db[SHIFTS_COLLECTION].find_one_and_update(
+    before = db[SHIFTS_COLLECTION].find_one_and_update(
         {"_id": shift_oid, "status": "pending"},
         {"$set": {
             "status": "active",
@@ -133,18 +183,35 @@ def shift_check_in(shift_id: str = Path(...), payload: EmployeeShiftCheckIn = Bo
             "updated_at": now,
         }},
     )
-    if not result:
+    if not before:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El turno no está pendiente o no existe",
         )
 
-    result["id"] = str(result.pop("_id"))
+    diff = {
+        "status": {"old": before.get("status"), "new": "active"},
+        "actual_check_in": {"old": before.get("actual_check_in"), "new": timestamp},
+    }
+    register_action(
+        prop_id=0,
+        entity_type="shift",
+        entity_id=shift_id,
+        action="update",
+        summary=f"Check-in de turno {shift_id}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+        metadata={"employee_id": payload.employee_id, "notes": payload.notes},
+    )
     return {"shift_id": str(shift_id), "status": "active", "check_in": timestamp}
 
 
 @api_router.post("/shifts/{shift_id}/check-out")
-def shift_check_out(shift_id: str = Path(...), payload: EmployeeShiftCheckOut = Body(...)):
+def shift_check_out(
+    shift_id: str = Path(...),
+    payload: EmployeeShiftCheckOut = Body(...),
+    current_user: dict = Depends(require_login),
+):
     """Record an employee check-out for a shift."""
     db = get_database()
     try:
@@ -157,7 +224,7 @@ def shift_check_out(shift_id: str = Path(...), payload: EmployeeShiftCheckOut = 
     if payload.timestamp:
         timestamp = payload.timestamp
 
-    result = db[SHIFTS_COLLECTION].find_one_and_update(
+    before = db[SHIFTS_COLLECTION].find_one_and_update(
         {"_id": shift_oid, "status": "active"},
         {"$set": {
             "status": "completed",
@@ -166,13 +233,26 @@ def shift_check_out(shift_id: str = Path(...), payload: EmployeeShiftCheckOut = 
             "updated_at": now,
         }},
     )
-    if not result:
+    if not before:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El turno no está activo o no existe",
         )
 
-    result["id"] = str(result.pop("_id"))
+    diff = {
+        "status": {"old": before.get("status"), "new": "completed"},
+        "actual_check_out": {"old": before.get("actual_check_out"), "new": timestamp},
+    }
+    register_action(
+        prop_id=0,
+        entity_type="shift",
+        entity_id=shift_id,
+        action="update",
+        summary=f"Check-out de turno {shift_id}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+        metadata={"employee_id": payload.employee_id, "notes": payload.notes},
+    )
     return {"shift_id": str(shift_id), "status": "completed", "check_out": timestamp}
 
 
@@ -181,7 +261,11 @@ def shift_check_out(shift_id: str = Path(...), payload: EmployeeShiftCheckOut = 
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/portal/{employee_id}")
-def employee_portal(employee_id: str = Path(...)):
+def employee_portal(
+    request: Request,
+    employee_id: str = Path(...),
+    prop_id: int | None = Query(default=None, ge=1),
+):
     """Return the full portal payload for an employee dashboard.
 
     Aggregates: employee info, current shift, KPIs from operations,
@@ -225,22 +309,22 @@ def employee_portal(employee_id: str = Path(...)):
         }
 
     # ── KPIs from operations ──
-    prop_id = emp.get("prop_id")
+    emp_prop_id = emp.get("prop_id")
 
     payments_today = 0.0
     payments_count = 0
-    if prop_id is not None:
+    if emp_prop_id is not None:
         payment_docs = list(db["reservation_payments"].find({
-            "prop_id": prop_id,
+            "prop_id": emp_prop_id,
             "paid_at": {"$gte": today_start, "$lte": today_end},
         }, {"amount": 1}))
         payments_today = round(sum(float(p.get("amount", 0)) for p in payment_docs), 2)
         payments_count = len(payment_docs)
 
     upsells_today = 0
-    if prop_id is not None:
+    if emp_prop_id is not None:
         upsells_today = db["additional_charges"].count_documents({
-            "prop_id": prop_id,
+            "prop_id": emp_prop_id,
             "created_at": {"$gte": today_start, "$lte": today_end},
         })
 
@@ -348,6 +432,16 @@ def employee_portal(employee_id: str = Path(...)):
     recent_events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
     recent_events = recent_events[:5]
 
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or emp_prop_id or 0,
+        entity_type="employee_portal",
+        entity_id=employee_id,
+        action="read",
+        summary=f"Consulta de portal de empleado {employee_id}",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"prop_id": prop_id or emp_prop_id, "url": str(request.url)},
+    )
     portal_data = EmployeePortalResponse(
         employee=_enrich_employee(emp),
         current_shift=current_shift,
@@ -364,7 +458,10 @@ def employee_portal(employee_id: str = Path(...)):
 # ═══════════════════════════════════════════════════════════
 
 @api_router.post("", status_code=201)
-def create_employee(payload: EmployeeCreate = Body(...)):
+def create_employee(
+    payload: EmployeeCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     """Create a new employee with optional replacement logic."""
     db = get_database()
     now = datetime.now(timezone.utc)
@@ -398,6 +495,22 @@ def create_employee(payload: EmployeeCreate = Body(...)):
 
     result = db[EMPLOYEES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+    enriched = _enrich_employee(doc)
+
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in doc.items()
+        if k not in ("_id", "created_at", "updated_at") and v is not None
+    }
+    register_action(
+        prop_id=payload.prop_id or 0,
+        entity_type="employee",
+        entity_id=enriched["id"],
+        action="create",
+        summary=f"Creación de empleado: {payload.full_name}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
 
     # ─── Replacement Logic ───
     if payload.replaces_employee_id:
@@ -409,6 +522,18 @@ def create_employee(payload: EmployeeCreate = Body(...)):
                 db[EMPLOYEES_COLLECTION].update_one(
                     {"_id": old_id},
                     {"$set": {"is_active": False, "replaced_by": str(result.inserted_id), "updated_at": now}},
+                )
+                register_action(
+                    prop_id=old.get("prop_id", payload.prop_id or 0),
+                    entity_type="employee",
+                    entity_id=str(old_id),
+                    action="update",
+                    summary=f"Reemplazo de empleado: {old.get('full_name', '')} → {payload.full_name}",
+                    changed_by=current_user.get("username", "system"),
+                    diff={
+                        "is_active": {"old": old.get("is_active"), "new": False},
+                        "replaced_by": {"old": None, "new": enriched["id"]},
+                    },
                 )
                 # Transfer shifts
                 if payload.transfer_shifts:
@@ -425,14 +550,16 @@ def create_employee(payload: EmployeeCreate = Body(...)):
         except Exception:
             pass  # non-critical: old employee may not exist
 
-    return _enrich_employee(doc)
+    return enriched
 
 
 @api_router.get("")
 def list_employees(
+    request: Request,
     search: str | None = Query(default=None),
     department: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
@@ -449,6 +576,8 @@ def list_employees(
         query["department"] = department
     if is_active is not None:
         query["is_active"] = is_active
+    if prop_id is not None:
+        query["prop_id"] = prop_id
 
     total = db[EMPLOYEES_COLLECTION].count_documents(query)
     cursor = (
@@ -459,6 +588,25 @@ def list_employees(
         .limit(page_size)
     )
     items = [_enrich_employee(doc) for doc in cursor]
+
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="employee",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de empleados (total={total}, page={page})",
+        changed_by=user.get("username", "anonymous"),
+        metadata={
+            "search": search,
+            "department": department,
+            "is_active": is_active,
+            "prop_id": prop_id,
+            "page": page,
+            "page_size": page_size,
+            "url": str(request.url),
+        },
+    )
 
     return {
         "items": items,
@@ -472,7 +620,10 @@ def list_employees(
 
 
 @api_router.get("/{employee_id}")
-def get_employee(employee_id: str = Path(...)):
+def get_employee(
+    request: Request,
+    employee_id: str = Path(...),
+):
     db = get_database()
     try:
         doc = db[EMPLOYEES_COLLECTION].find_one({"_id": ObjectId(employee_id)})
@@ -480,15 +631,33 @@ def get_employee(employee_id: str = Path(...)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=doc.get("prop_id", 0),
+        entity_type="employee",
+        entity_id=employee_id,
+        action="read",
+        summary=f"Consulta de empleado {doc.get('full_name', employee_id)}",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"url": str(request.url)},
+    )
     return _enrich_employee(doc)
 
 
 @api_router.put("/{employee_id}")
-def update_employee(employee_id: str = Path(...), payload: EmployeeUpdate = Body(...)):
+def update_employee(
+    employee_id: str = Path(...),
+    payload: EmployeeUpdate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     try:
         oid = ObjectId(employee_id)
     except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    before = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
+    if not before:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
@@ -496,21 +665,52 @@ def update_employee(employee_id: str = Path(...), payload: EmployeeUpdate = Body
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay campos para actualizar")
 
     update["updated_at"] = datetime.now(timezone.utc)
-    result = db[EMPLOYEES_COLLECTION].update_one({"_id": oid}, {"$set": update})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    db[EMPLOYEES_COLLECTION].update_one({"_id": oid}, {"$set": update})
 
     doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
+    diff = {
+        k: {"old": before.get(k), "new": v}
+        for k, v in update.items()
+        if k != "updated_at" and before.get(k) != v
+    }
+    register_action(
+        prop_id=doc.get("prop_id", 0),
+        entity_type="employee",
+        entity_id=employee_id,
+        action="update",
+        summary=f"Actualización de empleado: {doc.get('full_name', employee_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff if diff else None,
+    )
     return _enrich_employee(doc)
 
 
 @api_router.delete("/{employee_id}", status_code=204)
-def delete_employee(employee_id: str = Path(...)):
+def delete_employee(
+    employee_id: str = Path(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     try:
         oid = ObjectId(employee_id)
     except Exception:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    before = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
+    if not before:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
     result = db[EMPLOYEES_COLLECTION].delete_one({"_id": oid})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    diff = {
+        "deleted": {"old": before.get("is_active"), "new": True},
+        "full_name": {"old": before.get("full_name"), "new": None},
+    }
+    register_action(
+        prop_id=before.get("prop_id", 0),
+        entity_type="employee",
+        entity_id=employee_id,
+        action="delete",
+        summary=f"Eliminación de empleado: {before.get('full_name', employee_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )

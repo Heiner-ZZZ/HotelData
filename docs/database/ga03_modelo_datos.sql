@@ -387,6 +387,40 @@ CREATE TABLE hotel_profile_changes (
     source VARCHAR(100)
 );
 
+CREATE TABLE corporate_contracts (
+    id VARCHAR(24) PRIMARY KEY,
+    contract_id VARCHAR(100) UNIQUE NOT NULL,
+    prop_id INTEGER NOT NULL REFERENCES dim_hotels(prop_id),
+    company_name VARCHAR(255) NOT NULL,
+    contract_code VARCHAR(50) NOT NULL,
+    description TEXT,
+    discount_percent INTEGER DEFAULT 0,
+    fixed_rate DOUBLE PRECISION DEFAULT 0,
+    applicable_rate_plan_ids TEXT,
+    applicable_room_type_ids TEXT,
+    start_date VARCHAR(10),
+    end_date VARCHAR(10),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    UNIQUE (prop_id, contract_code)
+);
+
+CREATE TABLE hotels (
+    id VARCHAR(24) PRIMARY KEY,
+    hotel_code VARCHAR(100) UNIQUE,
+    name VARCHAR(255),
+    address TEXT,
+    city VARCHAR(100),
+    country VARCHAR(100),
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    website VARCHAR(255),
+    stars INTEGER,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 -- ============================================================================
 -- 5. INVENTARIO / HABITACIONES
 -- ============================================================================
@@ -1152,6 +1186,14 @@ CREATE TABLE employee_shifts (
     actual_check_in TIMESTAMP,
     actual_check_out TIMESTAMP,
     notes TEXT,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE employee_permissions (
+    id VARCHAR(24) PRIMARY KEY,
+    employee_id VARCHAR(24) NOT NULL REFERENCES employees(id),
+    permission_code VARCHAR(100) NOT NULL,
+    transferred_from VARCHAR(24),
     created_at TIMESTAMP
 );
 

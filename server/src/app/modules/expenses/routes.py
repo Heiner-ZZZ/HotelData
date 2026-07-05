@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from math import ceil
 
 from bson import ObjectId
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
 from src.database.connection import get_database
 from src.app.modules.expenses.schemas import (
@@ -19,6 +19,8 @@ from src.app.modules.expenses.service.collections import (
     BUDGET_COLLECTION, CATEGORIES_COLLECTION, CHART_OF_ACCOUNTS, INVOICES_COLLECTION, LEDGER_COLLECTION,
     ensure_expenses_collections, module_status,
 )
+from src.app.modules.partner.services.audit import register_action
+from src.app.security.dependencies import require_login
 
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
@@ -72,7 +74,10 @@ def expenses_module_status():
 # ─── Dashboard ───
 
 @api_router.get("/dashboard")
-def expenses_dashboard():
+def expenses_dashboard(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+):
     """Return expense KPIs: total, by category, pending approval, budget execution."""
     db = get_database()
     now = datetime.now(timezone.utc)
@@ -124,6 +129,16 @@ def expenses_dashboard():
     monthly_agg = list(db[INVOICES_COLLECTION].aggregate(monthly_pipeline))
     monthly = [{"month": m["_id"], "total": round(m["total"], 2)} for m in monthly_agg]
 
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="expenses_dashboard",
+        entity_id="dashboard",
+        action="read",
+        summary="Consulta de dashboard de gastos",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"prop_id": prop_id, "url": str(request.url)},
+    )
     return {
         "month_total": round(month_total, 2),
         "pending_count": pending,
@@ -143,7 +158,10 @@ def expenses_dashboard():
 # ─── Invoice CRUD ───
 
 @api_router.post("/invoices", status_code=201)
-def create_invoice(payload: InvoiceCreate = Body(...)):
+def create_invoice(
+    payload: InvoiceCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     now_dt = datetime.now(timezone.utc)
     total_amount = payload.amount + payload.tax_amount
@@ -158,14 +176,31 @@ def create_invoice(payload: InvoiceCreate = Body(...)):
     }
     result = db[INVOICES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _enrich_invoice(doc)
+    enriched = _enrich_invoice(doc)
+    diff = {
+        k: {"old": None, "new": v}
+        for k, v in doc.items()
+        if k not in ("_id", "created_at", "updated_at", "approved_by", "approved_at") and v is not None
+    }
+    register_action(
+        prop_id=payload.prop_id or 0,
+        entity_type="expense_invoice",
+        entity_id=enriched["id"],
+        action="create",
+        summary=f"Creación de factura de gasto: {payload.vendor_name} (${total_amount:,.2f})",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return enriched
 
 
 @api_router.get("/invoices")
 def list_invoices(
+    request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
     vendor: str | None = Query(default=None),
+    prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
@@ -174,9 +209,28 @@ def list_invoices(
     if status_filter: query["status"] = status_filter
     if category: query["category"] = category
     if vendor: query["vendor_name"] = {"$regex": vendor, "$options": "i"}
+    if prop_id is not None: query["prop_id"] = prop_id
     total = db[INVOICES_COLLECTION].count_documents(query)
     cursor = db[INVOICES_COLLECTION].find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
     items = [_enrich_invoice(doc) for doc in cursor]
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="expense_invoice",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de facturas de gasto (total={total}, page={page})",
+        changed_by=user.get("username", "anonymous"),
+        metadata={
+            "status_filter": status_filter,
+            "category": category,
+            "vendor": vendor,
+            "prop_id": prop_id,
+            "page": page,
+            "page_size": page_size,
+            "url": str(request.url),
+        },
+    )
     return {
         "items": items, "total": total, "page": page, "page_size": page_size,
         "total_pages": max(1, ceil(total / page_size)) if total else 1,
@@ -185,49 +239,101 @@ def list_invoices(
 
 
 @api_router.get("/invoices/{invoice_id}")
-def get_invoice(invoice_id: str = Path(...)):
+def get_invoice(
+    request: Request,
+    invoice_id: str = Path(...),
+):
     db = get_database()
     try: doc = db[INVOICES_COLLECTION].find_one({"_id": ObjectId(invoice_id)})
     except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
     if not doc: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=(doc.get("prop_id") or 0),
+        entity_type="expense_invoice",
+        entity_id=invoice_id,
+        action="read",
+        summary=f"Consulta de factura {doc.get('vendor_name', invoice_id)}",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"url": str(request.url)},
+    )
     return _enrich_invoice(doc)
 
 
 @api_router.put("/invoices/{invoice_id}")
-def update_invoice(invoice_id: str = Path(...), payload: InvoiceUpdate = Body(...)):
+def update_invoice(
+    invoice_id: str = Path(...),
+    payload: InvoiceUpdate = Body(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     try: oid = ObjectId(invoice_id)
     except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    before = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    if not before: raise HTTPException(status_code=404, detail="Factura no encontrada")
     update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
     if not update: raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     update["updated_at"] = datetime.now(timezone.utc)
     if "amount" in update or "tax_amount" in update:
-        current = db[INVOICES_COLLECTION].find_one({"_id": oid}, {"amount": 1, "tax_amount": 1})
-        amt = update.get("amount", current["amount"] if current else 0)
-        tax = update.get("tax_amount", current["tax_amount"] if current else 0)
+        amt = update.get("amount", before["amount"])
+        tax = update.get("tax_amount", before["tax_amount"])
         update["total"] = amt + tax
     if update.get("status") == "approved" and not update.get("approved_by"):
         update["approved_at"] = datetime.now(timezone.utc)
-        update["approved_by"] = "system"
-    result = db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": update})
-    if result.matched_count == 0: raise HTTPException(status_code=404, detail="Factura no encontrada")
+        update["approved_by"] = current_user.get("username", "system")
+    db[INVOICES_COLLECTION].update_one({"_id": oid}, {"$set": update})
     doc = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    diff = {
+        k: {"old": before.get(k), "new": v}
+        for k, v in update.items()
+        if k != "updated_at" and before.get(k) != v
+    }
+    register_action(
+        prop_id=(doc.get("prop_id") or 0),
+        entity_type="expense_invoice",
+        entity_id=invoice_id,
+        action="update",
+        summary=f"Actualización de factura: {doc.get('vendor_name', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff if diff else None,
+    )
     return _enrich_invoice(doc)
 
 
 @api_router.delete("/invoices/{invoice_id}", status_code=204)
-def delete_invoice(invoice_id: str = Path(...)):
+def delete_invoice(
+    invoice_id: str = Path(...),
+    current_user: dict = Depends(require_login),
+):
     db = get_database()
     try: oid = ObjectId(invoice_id)
     except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    before = db[INVOICES_COLLECTION].find_one({"_id": oid})
+    if not before: raise HTTPException(status_code=404, detail="Factura no encontrada")
     result = db[INVOICES_COLLECTION].delete_one({"_id": oid})
     if result.deleted_count == 0: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    diff = {
+        "deleted": {"old": before.get("status"), "new": "deleted"},
+        "vendor_name": {"old": before.get("vendor_name"), "new": None},
+    }
+    register_action(
+        prop_id=(before.get("prop_id") or 0),
+        entity_type="expense_invoice",
+        entity_id=invoice_id,
+        action="delete",
+        summary=f"Eliminación de factura: {before.get('vendor_name', invoice_id)}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
 
 
 # ─── Categories / Budget ───
 
 @api_router.get("/categories")
-def list_categories():
+def list_categories(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+):
     db = get_database()
     cursor = db[CATEGORIES_COLLECTION].find().sort("name", 1)
     result = []
@@ -241,6 +347,16 @@ def list_categories():
         cat["spent"] = round(spent_list[0]["total"], 2) if spent_list else 0
         cat["remaining"] = round(cat["budget"] - cat["spent"], 2)
         result.append(cat)
+    user = getattr(request.state, "current_user", None) or {}
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="expense_category",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de categorías de gasto ({len(result)} items)",
+        changed_by=user.get("username", "anonymous"),
+        metadata={"prop_id": prop_id, "count": len(result), "url": str(request.url)},
+    )
     return result
 
 
