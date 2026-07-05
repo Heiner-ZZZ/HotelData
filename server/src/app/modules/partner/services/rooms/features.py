@@ -16,7 +16,7 @@ from pymongo import ReturnDocument
 
 from src.app.modules.partner.services._common import clean_text, now_utc
 from src.app.modules.partner.services.audit import register_action
-from src.app.modules.partner.services.content.amenities import DEFAULT_AMENITIES_CATALOG, _amenity_unit_price as _amenity_default_price
+from src.app.modules.partner.services.content.amenities import DEFAULT_AMENITIES_CATALOG
 from src.database.connection import get_database
 
 # Predefined default feature catalog for hotel room types
@@ -105,27 +105,6 @@ def _get_feature_category(label: str) -> str:
     return "Otros"
 
 
-def _feature_unit_price(label: str) -> float:
-    """Return a default unit_price for a feature label.
-    Features with special pricing, others are included in room price."""
-    paid_features = {
-        "cama extra": 25.0,
-        "cuna disponible": 15.0,
-        "trona disponible": 10.0,
-        "desayuno en habitación": 18.0,
-        "servicio a la habitación": 12.0,
-        "caja fuerte": 5.0,
-        "minibar": 15.0,
-        "netflix": 8.0,
-        "altavoz bluetooth": 5.0,
-        "estacionamiento": 20.0,
-        "parking": 20.0,
-        "mascotas": 30.0,
-        "pet fee": 30.0,
-    }
-    return paid_features.get(label.lower(), 0.0)
-
-
 def get_all_features() -> list[dict[str, Any]]:
     """Return the master catalog of available features, grouped by category.
 
@@ -136,7 +115,7 @@ def get_all_features() -> list[dict[str, Any]]:
     """
     db = get_database()
     custom = list(
-        db.room_features.find({}, {"_id": 0, "label": 1, "category": 1, "icon": 1, "unit_price": 1})
+        db.room_features.find({}, {"_id": 0, "label": 1, "category": 1, "icon": 1})
         .sort([("category", 1), ("label", 1)])
     )
     seen_labels: set[str] = set()
@@ -152,7 +131,6 @@ def get_all_features() -> list[dict[str, Any]]:
                 "icon": _feature_icon(label),
                 "custom": False,
                 "source": "feature",
-                "unit_price": _feature_unit_price(label),
             }
             for label in labels
             if label.lower() not in seen_labels
@@ -165,7 +143,6 @@ def get_all_features() -> list[dict[str, Any]]:
             "icon": feat.get("icon", ""),
             "custom": True,
             "source": "custom",
-            "unit_price": float(feat.get("unit_price", 0) or 0),
         })
 
     # Merge amenity catalog items (de-duped against existing labels)
@@ -180,7 +157,6 @@ def get_all_features() -> list[dict[str, Any]]:
                 "icon": _feature_icon(label),
                 "custom": False,
                 "source": "amenity",
-                "unit_price": _amenity_default_price(label),
             })
 
     result = []
@@ -277,15 +253,9 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for f in raw:
         if isinstance(f, dict):
-            result.append({
-                "label": str(f.get("label", "")),
-                "unit_price": float(f.get("unit_price", 0) or 0),
-            })
+            result.append({"label": str(f.get("label", ""))})
         elif isinstance(f, str):
-            result.append({
-                "label": f,
-                "unit_price": _feature_unit_price(f),
-            })
+            result.append({"label": f})
     return result
 
 
@@ -308,14 +278,13 @@ def update_room_type_features(
     features: list[str] | list[dict[str, Any]],
     changed_by: str = "angular_api",
 ) -> dict[str, Any] | None:
-    """Set the feature tags (with optional unit_price) for a room type.
+    """Set the feature tags for a room type.
 
     Accepts either:
-      - list of strings: legacy format, prices from catalog defaults
-      - list of dicts with ``label`` and optional ``unit_price``
+      - list of strings: legacy format
+      - list of dicts with ``label``
     """
     db = get_database()
-    from pydantic import BaseModel, Field
     room = db.room_types.find_one(
         {"prop_id": prop_id, "room_type_id": room_type_id},
         {"_id": 0, "name": 1},
@@ -328,14 +297,12 @@ def update_room_type_features(
     for feat in features:
         if isinstance(feat, dict):
             label = clean_text(str(feat.get("label", "")))
-            unit_price = float(feat.get("unit_price", 0) or 0)
         else:
             label = clean_text(str(feat))
-            unit_price = _feature_unit_price(label)
         key = label.lower()
         if label and key not in seen:
             seen.add(key)
-            clean_objects.append({"label": label, "unit_price": unit_price})
+            clean_objects.append({"label": label})
 
     result = db.room_types.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": room_type_id},

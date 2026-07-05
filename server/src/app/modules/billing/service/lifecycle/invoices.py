@@ -13,6 +13,7 @@ from src.app.core.state_machine import invoice_sm
 from src.app.modules.billing.schemas import InvoiceCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
     _enrich_invoice,
+    _enrich_payment,
     _find_booking,
     _fmt,
     _generate_invoice_number,
@@ -264,7 +265,8 @@ def get_invoice(invoice_id: str) -> dict | None:
         {"booking_id": booking_id},
         {"_id": 0, "guest_name": 1, "guest_email": 1, "cedula": 1,
          "check_in_date": 1, "check_out_date": 1, "total_nights": 1,
-         "rooms": 1, "room_type_id": 1, "assigned_rooms": 1},
+         "rooms": 1, "room_type_id": 1, "assigned_rooms": 1,
+         "check_in_time": 1, "check_out_time": 1},
     )
     if booking:
         enriched["guest_name"] = booking.get("guest_name", "")
@@ -272,6 +274,8 @@ def get_invoice(invoice_id: str) -> dict | None:
         enriched["guest_cedula"] = booking.get("cedula", "")
         enriched["check_in_date"] = booking.get("check_in_date", "")
         enriched["check_out_date"] = booking.get("check_out_date", "")
+        enriched["check_in_time"] = booking.get("check_in_time") or ""
+        enriched["check_out_time"] = booking.get("check_out_time") or ""
         enriched["total_nights"] = booking.get("total_nights", 1)
         enriched["rooms"] = booking.get("rooms", 1)
         room_type_id = booking.get("room_type_id", "")

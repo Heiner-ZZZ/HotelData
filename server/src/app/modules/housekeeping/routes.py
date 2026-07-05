@@ -285,7 +285,8 @@ def hk_task_complete_api(
 ):
     """Mark a housekeeping task as completed."""
     from src.database.connection import get_database
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before = db.housekeeping_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "task_type": 1})
@@ -317,7 +318,8 @@ def hk_task_update_api(
 ):
     """Update a housekeeping task."""
     from src.database.connection import get_database
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before = db.housekeeping_tasks.find_one(
@@ -433,7 +435,8 @@ def mt_task_update_api(
 ):
     """Update a maintenance task."""
     from src.database.connection import get_database
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before = db.maintenance_tasks.find_one(
@@ -471,7 +474,8 @@ def mt_task_complete_api(
 ):
     """Mark a maintenance task as completed."""
     from src.database.connection import get_database
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before = db.maintenance_tasks.find_one({"_id": ObjectId(task_id)}, {"status": 1, "prop_id": 1, "room_label": 1, "title": 1})

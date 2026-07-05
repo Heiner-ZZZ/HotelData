@@ -111,6 +111,7 @@ def rooms_create_api(
             view=str(payload.get("view") or ""),
             smoking=payload.get("smoking", False),
             accessible=payload.get("accessible", False),
+            image_url=str(payload.get("image_url") or ""),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -155,6 +156,7 @@ def rooms_update_api(
             view=str(payload.get("view") or ""),
             smoking=payload.get("smoking", False),
             accessible=payload.get("accessible", False),
+            image_url=str(payload.get("image_url") or ""),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -184,6 +186,43 @@ def rooms_roh_create_api(
 
 
 @api_router.delete("/rooms/{room_type_id}")
+@api_router.post("/rooms/{room_type_id}/image", status_code=200)
+async def rooms_image_upload_api(
+    room_type_id: str,
+    file: UploadFile,
+    current_user: dict = Depends(require_login),
+):
+    """Upload an image for a room type. Saves to disk and updates the room_type's image_url."""
+    from pathlib import Path
+    from src.app.modules.partner.services._common import now_utc
+    from src.database.connection import get_database
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se permiten archivos de imagen.")
+
+    ext = Path(file.filename or "image.jpg").suffix or ".jpg"
+    filename = f"room_{room_type_id}_{uuid.uuid4().hex[:8]}{ext}"
+    upload_dir = Path("/app/data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filepath = upload_dir / filename
+
+    content = await file.read()
+    filepath.write_bytes(content)
+
+    image_url = f"/uploads/{filename}"
+
+    # Update only image_url — direct $set to avoid overwriting other fields
+    db = get_database()
+    result = db.room_types.update_one(
+        {"room_type_id": room_type_id},
+        {"$set": {"image_url": image_url, "updated_at": now_utc()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
+
+    return {"image_url": image_url}
+
+
 def rooms_delete_api(
     room_type_id: str,
     current_user: dict = Depends(require_login),

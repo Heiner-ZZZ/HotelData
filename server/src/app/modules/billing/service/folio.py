@@ -148,6 +148,8 @@ def create_folio(booking_id: str) -> dict | None:
         "hotel_label": hotel_label,
         "check_in_date": booking.get("check_in_date", ""),
         "check_out_date": booking.get("check_out_date", ""),
+        "check_in_time": booking.get("check_in_time", ""),
+        "check_out_time": booking.get("check_out_time", ""),
         "status": "open",
         "total_room": total_price,
         "total_charges": 0.0,
@@ -167,10 +169,43 @@ def create_folio(booking_id: str) -> dict | None:
 
 
 def get_folio(booking_id: str) -> dict | None:
-    """Get the active folio for a booking by booking_id."""
+    """Get the active folio for a booking by booking_id.
+
+    Re-resolves hotel_label and check-in/out times from the booking
+    for backward compatibility with folios created before these fields
+    were stored.
+    """
     db = get_database()
     doc = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
-    return _enrich_folio(doc) if doc else None
+    if not doc:
+        return None
+
+    updates: dict = {}
+
+    # Re-resolve hotel_label if missing
+    if not doc.get("hotel_label"):
+        prop_id = int(doc.get("prop_id", 0))
+        if prop_id:
+            ctx = db.hotel_booking_context.find_one(
+                {"prop_id": prop_id}, {"_id": 0, "hotel_label": 1}
+            )
+            if ctx and ctx.get("hotel_label"):
+                updates["hotel_label"] = ctx["hotel_label"]
+
+    # Fetch booking for times (if any field missing)
+    if not doc.get("check_in_time") or not doc.get("check_out_time") or not doc.get("hotel_label"):
+        booking = _find_booking(booking_id)
+        if booking:
+            if not doc.get("check_in_time") and booking.get("check_in_time"):
+                updates["check_in_time"] = booking["check_in_time"]
+            if not doc.get("check_out_time") and booking.get("check_out_time"):
+                updates["check_out_time"] = booking["check_out_time"]
+
+    if updates:
+        db[FOLIO_COLLECTION].update_one({"booking_id": booking_id}, {"$set": updates})
+        doc.update(updates)
+
+    return _enrich_folio(doc)
 
 
 def get_folio_by_id(folio_id: str) -> dict | None:
