@@ -75,6 +75,8 @@ export interface InvoiceDetailViewModel {
   hotelLabel: string;
   checkInDate: string;
   checkOutDate: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   totalNights: number;
   rooms: number;
   roomTypeName: string;
@@ -103,4 +105,23 @@ export interface PaymentListItem {
   status: string;
   reference: string | null;
   paidAt: string;
+}
+
+/** A single service item from the amenities catalog (billable charges on invoice). */
+export interface BillableServiceItem {
+  label: string;
+  unitPrice: number;
+}
+
+/** A category group of billable services. */
+export interface BillableServiceCategory {
+  category: string;
+  items: BillableServiceItem[];
+}
+
+/** Response from GET /api/billing/services. */
+export interface BillableServices {
+  categories: BillableServiceCategory[];
+  chargeable: BillableServiceItem[];
+  all_items: BillableServiceItem[];
 }

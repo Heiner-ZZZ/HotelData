@@ -1,14 +1,14 @@
-import type { InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
-import type { InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+import type { BillableServicesDto, InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
+import type { BillableServices, InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
 
 function mapLineItem(dto: LineItemDto): LineItem {
   return {
     itemId: dto.item_id,
     productId: dto.product_id,
     name: dto.name,
-    quantity: dto.quantity,
-    unitPrice: dto.unit_price,
-    total: dto.total,
+    quantity: dto.quantity ?? 0,
+    unitPrice: dto.unit_price ?? 0,
+    total: dto.total ?? 0,
   };
 }
 
@@ -66,6 +66,8 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto & { id?: string }): Invoi
     hotelLabel: dto.hotel_label,
     checkInDate: dto.check_in_date,
     checkOutDate: dto.check_out_date,
+    checkInTime: dto.check_in_time || undefined,
+    checkOutTime: dto.check_out_time || undefined,
     totalNights: dto.total_nights,
     rooms: dto.rooms,
     roomTypeName: dto.room_type_name,
@@ -81,7 +83,7 @@ function mapPaymentDto(item: PaymentDto & { id?: string }): PaymentItem {
     id: item.id || (item as any)._id,
     bookingId: item.booking_id,
     invoiceId: item.invoice_id,
-    amount: item.amount,
+    amount: item.amount ?? 0,
     method: item.method,
     status: item.status,
     reference: item.reference,
@@ -94,7 +96,7 @@ function mapPaymentItem(item: PaymentItemDto & { id?: string }): PaymentListItem
     id: item.id || item._id,
     bookingId: item.booking_id,
     invoiceId: item.invoice_id,
-    amount: item.amount,
+    amount: item.amount ?? 0,
     method: item.method,
     status: item.status,
     reference: item.reference,
@@ -111,5 +113,25 @@ export function mapPaymentsList(dto: PaymentsListDto): PaymentsListViewModel {
     totalPages: dto.total_pages,
     hasPrev: dto.has_prev,
     hasNext: dto.has_next,
+  };
+}
+
+export function mapBillableServices(dto: BillableServicesDto): BillableServices {
+  return {
+    categories: (dto.categories || []).map(cat => ({
+      category: cat.category,
+      items: (cat.items || []).map(item => ({
+        label: item.label,
+        unitPrice: item.unit_price ?? 0,
+      })),
+    })),
+    chargeable: (dto.chargeable || []).map(item => ({
+      label: item.label,
+      unitPrice: item.unit_price ?? 0,
+    })),
+    all_items: (dto.all_items || []).map(item => ({
+      label: item.label,
+      unitPrice: item.unit_price ?? 0,
+    })),
   };
 }

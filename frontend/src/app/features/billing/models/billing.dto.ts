@@ -75,6 +75,8 @@ export interface InvoiceDetailDto {
   hotel_label: string;
   check_in_date: string;
   check_out_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
   total_nights: number;
   rooms: number;
   room_type_name: string;
@@ -103,4 +105,23 @@ export interface PaymentItemDto {
   status: string;
   reference: string | null;
   paid_at: string;
+}
+
+/** Response from GET /api/billing/services — billable amenities for the invoice page. */
+export interface BillableServicesDto {
+  categories: Array<{
+    category: string;
+    items: Array<{
+      label: string;
+      unit_price: number;
+    }>;
+  }>;
+  chargeable: Array<{
+    label: string;
+    unit_price: number;
+  }>;
+  all_items: Array<{
+    label: string;
+    unit_price: number;
+  }>;
 }

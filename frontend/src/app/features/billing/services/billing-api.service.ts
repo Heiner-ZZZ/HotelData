@@ -3,9 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapInvoiceDetail, mapInvoicesList, mapPaymentsList } from '../mappers/billing.mapper';
-import type { InvoiceDetailDto, InvoiceStatsDto, InvoicesListDto, PaymentsListDto } from '../models/billing.dto';
-import type { InvoiceStats } from '../models/billing.model';
+import { mapBillableServices, mapInvoiceDetail, mapInvoicesList, mapPaymentsList } from '../mappers/billing.mapper';
+import type { BillableServicesDto, InvoiceDetailDto, InvoiceStatsDto, InvoicesListDto, PaymentsListDto } from '../models/billing.dto';
+import type { BillableServices, InvoiceStats } from '../models/billing.model';
 
 @Injectable({ providedIn: 'root' })
 export class BillingApiService {
@@ -55,6 +55,15 @@ export class BillingApiService {
     return this.http
       .get<InvoicesListDto>(`${this.apiConfig.baseUrl}/billing/my-invoices`, { params, withCredentials: true })
       .pipe(map(dto => mapInvoicesList(dto)));
+  }
+
+  /** Fetch billable services (amenities) for the invoice charge page. */
+  getServices(propId: number, bookingId?: string) {
+    let params = new HttpParams().set('prop_id', String(propId));
+    if (bookingId) params = params.set('booking_id', bookingId);
+    return this.http
+      .get<BillableServicesDto>(`${this.apiConfig.baseUrl}/billing/services`, { params, withCredentials: true })
+      .pipe(map(dto => mapBillableServices(dto)));
   }
 
   /** Add a line item to an invoice (only if status='issued'). */
