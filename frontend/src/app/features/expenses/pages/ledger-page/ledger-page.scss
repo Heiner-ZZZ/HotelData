@@ -39,7 +39,7 @@
   background: var(--card-bg, #fff);
   border: 1px solid var(--card-border, #e2e8f0);
   border-radius: 10px;
-  padding: 10px 16px;
+  padding: 8px 10px;
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -47,8 +47,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 18px;
+  padding: 8px 28px;
   min-width: 130px;
+  flex: 1;
+  min-width: 0;
 }
 .kpi-label {
   font-size: 10px;
@@ -98,11 +100,10 @@
   overflow-x: auto;
 }
 
-/* Give AG Grid a minimum height so it doesn't collapse to 0 */
+/* With domLayout='autoHeight' the grid sizes itself to rows.
+   min-height ensures the pane isn't collapsed when empty. */
 .ledger-pane ag-grid-angular {
-  flex: 1;
   min-height: 400px;
-  height: auto;
 }
 
 .ledger-toolbar {
