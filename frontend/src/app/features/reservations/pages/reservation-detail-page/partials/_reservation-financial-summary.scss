@@ -1,9 +1,14 @@
 /* ═══ Financial Summary ═══ */
 
 .financial-summary {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
   .financial-summary-body {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.3rem;
     padding: 0.75rem 0.25rem;
   }
 
@@ -11,22 +16,22 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.88rem;
-    color: var(--app-text);
+    font-size: 0.85rem;
+    color: #374151;
     padding: 0.3rem 0;
   }
 
   .summary-row-charges {
-    color: var(--muted-text);
+    color: #6b7280;
 
     .summary-amount {
-      color: var(--app-text);
+      color: #374151;
     }
   }
 
   .summary-row-total {
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
     padding: 0.4rem 0;
   }
 
@@ -36,13 +41,13 @@
   }
 
   .summary-amount-grand {
-    color: var(--accent);
-    font-size: 1.1rem;
+    color: #2563eb;
+    font-size: 1.05rem;
   }
 
   .summary-original {
     text-decoration: line-through;
-    opacity: 0.6;
+    opacity: 0.5;
     font-weight: normal;
     font-size: 0.85em;
     margin-right: 6px;
@@ -50,7 +55,7 @@
 
   .summary-divider-row {
     height: 1px;
-    background: var(--app-border);
+    background: #f3f4f6;
     margin: 0.2rem 0;
   }
 }

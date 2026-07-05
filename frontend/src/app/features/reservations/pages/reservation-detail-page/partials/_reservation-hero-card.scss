@@ -1,25 +1,24 @@
 .hero-card {
-  background: var(--surface);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: var(--shadow-sm);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  gap: 0.875rem;
+  transition: box-shadow 0.15s ease;
 
   &:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   }
 
   .hero-card-icon-wrap {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, var(--surface));
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, #ffffff);
     color: var(--card-accent, var(--accent));
     display: flex;
     align-items: center;
@@ -27,7 +26,7 @@
     flex-shrink: 0;
 
     span {
-      font-size: 1.4rem;
+      font-size: 1.25rem;
     }
   }
 
@@ -38,9 +37,9 @@
   }
 
   strong {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--app-text);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
     word-break: break-word;
   }
 }
@@ -72,15 +71,15 @@
 }
 
 .stat-label {
-  color: var(--muted-text);
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.7rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .hero-card-sub {
-  color: var(--muted-text);
+  color: #9ca3af;
   font-size: 0.75rem;
   font-weight: 500;
 }
