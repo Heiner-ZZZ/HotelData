@@ -100,6 +100,8 @@ export class AuditLogPageComponent {
     policy: 'Políticas',
     amenity: 'Amenidades',
     content: 'Contenido',
+    reservation: 'Reservas / Recepción',
+    housekeeping_task: 'Limpieza',
   };
 
   readonly actionLabel: Record<string, string> = {
@@ -109,6 +111,13 @@ export class AuditLogPageComponent {
     soft_delete: 'Borrado lógico',
     restore: 'Restauración',
     batch_update: 'Actualización masiva',
+    confirm: 'Confirmar reserva',
+    reject: 'Rechazar reserva',
+    cancel: 'Cancelar reserva',
+    check_in: 'Check-in',
+    check_out: 'Check-out',
+    reassign_room: 'Reasignar hab.',
+    document_change: 'Cambio auto.',
   };
 
   readonly actionIcon: Record<string, string> = {
@@ -118,6 +127,13 @@ export class AuditLogPageComponent {
     soft_delete: 'inventory_2',
     restore: 'restore',
     batch_update: 'batch_prediction',
+    confirm: 'check_circle',
+    reject: 'cancel',
+    cancel: 'event_busy',
+    check_in: 'login',
+    check_out: 'logout',
+    reassign_room: 'swap_horiz',
+    document_change: 'description',
   };
 
   constructor() {
@@ -246,14 +262,20 @@ export class AuditLogPageComponent {
   getActionColor(action: string): string {
     switch (action) {
       case 'create':
+      case 'confirm':
         return 'var(--success)';
       case 'update':
       case 'batch_update':
+      case 'check_in':
+      case 'check_out':
         return 'var(--accent)';
       case 'delete':
       case 'soft_delete':
+      case 'reject':
+      case 'cancel':
         return 'var(--danger)';
       case 'restore':
+      case 'reassign_room':
         return 'var(--warning)';
       default:
         return 'var(--muted-text)';

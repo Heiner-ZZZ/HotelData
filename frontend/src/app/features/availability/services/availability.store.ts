@@ -262,8 +262,12 @@ export class AvailabilityStore {
 
   // ── Private ──
 
+  private _lastFetchedPropId = 0;
+
   private _fetchHotelRooms(propId: number) {
-    if (!propId) { this.state.allHotelRooms.set([]); return; }
+    if (!propId) { this.state.allHotelRooms.set([]); this._lastFetchedPropId = 0; return; }
+    if (propId === this._lastFetchedPropId) return;
+    this._lastFetchedPropId = propId;
     this.api.getAllHotelRooms(propId).subscribe({
       next: (res) => {
         const rooms = (res.hotel_rooms || []).map((r) => ({
@@ -271,14 +275,9 @@ export class AvailabilityStore {
           roomLabel: r.room_label, roomTypeId: r.room_type_id,
           roomTypeName: r.room_type_name || '', floor: r.floor || '', isActive: r.is_active,
         }));
-        console.log('[AvailabilityStore] getAllHotelRooms response:', rooms.length, 'rooms');
-        if (rooms.length > 0) {
-          console.log('[AvailabilityStore] sample room:', rooms[0]);
-        }
         this.state.allHotelRooms.set(rooms);
       },
-      error: (err) => {
-        console.error('[AvailabilityStore] getAllHotelRooms error:', err);
+      error: () => {
         this.state.allHotelRooms.set([]);
       },
     });

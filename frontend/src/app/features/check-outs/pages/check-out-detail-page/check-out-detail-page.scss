@@ -895,6 +895,37 @@
   font-size: 14px;
 }
 
+.co-chip-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  .material-symbols-outlined {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  &:hover {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+  &:active {
+    transform: scale(0.88);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
 // ─── Liquidation Table (Step 3) ───
 .co-liq-table-wrap {
   overflow-x: auto;

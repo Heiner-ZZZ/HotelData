@@ -183,17 +183,20 @@ export class PropertyContextService {
 
   /**
    * For single-hotel mode, ensure ?prop_id=X is in the current URL.
-   * Uses Location.replaceState (synchronous) to avoid race conditions
-   * with async router.navigate calls from other components.
-   * Only injects if propId > 0 (skips 0 from clear()).
+   * Uses router.navigateByUrl to trigger a proper Angular navigation,
+   * which updates queryParamMap so page components see the prop_id.
+   * Only injects if propId > 0 and prop_id is not already in the URL.
    */
   private _ensurePropIdInUrl(propId: number): void {
     if (propId <= 0) return;
     try {
-      const path = this.router.url.split('?')[0];
-      if (path.startsWith('/management') && !this.router.url.includes('prop_id=')) {
-        this.location.replaceState(path, `prop_id=${propId}`);
-      }
+      const url = this.router.url;
+      const path = url.split('?')[0];
+      if (!path.startsWith('/management') || url.includes('prop_id=')) return;
+
+      const qs = new URLSearchParams(url.split('?')[1] || '');
+      qs.set('prop_id', String(propId));
+      void this.router.navigateByUrl(`${path}?${qs.toString()}`, { replaceUrl: true });
     } catch {
       // Router may not be ready during initial bootstrap — safe to ignore
     }

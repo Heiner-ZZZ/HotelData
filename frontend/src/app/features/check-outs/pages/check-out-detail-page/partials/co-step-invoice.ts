@@ -2,6 +2,7 @@ import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 
 import { CheckOutsApiService } from '../../../services/check-outs-api.service';
+import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-co-step-invoice',
@@ -82,6 +83,7 @@ import { CheckOutsApiService } from '../../../services/check-outs-api.service';
 })
 export class CoStepInvoiceComponent {
   private readonly api = inject(CheckOutsApiService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly guestEmail = input('');
   readonly splitInvoice = input(false);
@@ -127,9 +129,17 @@ export class CoStepInvoiceComponent {
     });
   }
 
-  sendByEmail(): void {
+  async sendByEmail(): Promise<void> {
     const invoiceId = this.invoiceId();
     if (!invoiceId) return;
+
+    const ok = await this.confirmDialog.open({
+      title: 'Enviar factura por correo',
+      message: `¿Deseas enviar la factura ${this.invoiceNumber() || invoiceId} al huésped?`,
+      confirmLabel: 'Enviar',
+      variant: 'default',
+    });
+    if (!ok) return;
 
     this.emailing.set(true);
     this.errorMsg.set('');
@@ -147,7 +157,14 @@ export class CoStepInvoiceComponent {
     });
   }
 
-  printInvoice(): void {
+  async printInvoice(): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Imprimir comprobante',
+      message: '¿Deseas imprimir el recibo / comprobante de esta factura?',
+      confirmLabel: 'Imprimir',
+      variant: 'default',
+    });
+    if (!ok) return;
     window.print();
   }
 }
