@@ -22,7 +22,6 @@ export class HotelCardComponent {
   readonly imageUrl = computed(() => {
     const h = this.hotel();
     if (h.imageUrl && !this.fallbackImg()) return h.imageUrl;
-    // Match the first gallery image lock pattern from hotel detail (prop_id + '1')
     return `https://loremflickr.com/400/250/hotel?lock=${h.id}1`;
   });
 

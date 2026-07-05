@@ -32,9 +32,18 @@ export class HotelDetailPageComponent {
   readonly similarHotels = signal<SimilarHotel[]>([]);
   readonly similarLoading = signal(false);
   readonly imageErrors = signal<Set<string>>(new Set());
+  readonly selectedGalleryImage = signal<string | null>(null);
 
   onImageError(key: string) {
     this.imageErrors.update((s) => new Set(s).add(key));
+  }
+
+  openGalleryModal(url: string) {
+    this.selectedGalleryImage.set(url);
+  }
+
+  closeGalleryModal() {
+    this.selectedGalleryImage.set(null);
   }
 
   readonly stars = computed(() => {

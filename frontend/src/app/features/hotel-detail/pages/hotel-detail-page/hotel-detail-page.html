@@ -30,7 +30,7 @@
         @if (vm.galleryImages.length) {
           <section class="bento-gallery">
             <!-- Main large image -->
-            <div class="bento-main">
+            <div class="bento-main" (click)="openGalleryModal(vm.galleryImages[0])">
               @if (!imageErrors().has('gallery-0')) {
                 <img [src]="vm.galleryImages[0]" [alt]="vm.name" loading="eager" (error)="onImageError('gallery-0')" />
               } @else {
@@ -42,7 +42,7 @@
             <!-- Secondary images (hidden on mobile) -->
             <div class="bento-side">
               @for (url of vm.galleryImages.slice(1, 5); track url; let i = $index) {
-                <div class="bento-thumb">
+                <div class="bento-thumb" (click)="openGalleryModal(url)">
                   @if (!imageErrors().has('gallery-' + (i + 1))) {
                     <img [src]="url" [alt]="vm.name + ' ' + (i + 2)" loading="lazy" (error)="onImageError('gallery-' + (i + 1))" />
                   } @else {
@@ -218,11 +218,11 @@
                           <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" />
                         } @else if (!imageErrors().has('room-' + item.id)) {
                           @switch (roomIdx % 5) {
-                            @case (0) { <img [src]="'https://loremflickr.com/400/250/hotel,room?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (1) { <img [src]="'https://loremflickr.com/400/250/hotel,bedroom?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (2) { <img [src]="'https://loremflickr.com/400/250/hotel,suite?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (3) { <img [src]="'https://loremflickr.com/400/250/hotel,bathroom?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (4) { <img [src]="'https://loremflickr.com/400/250/hotel,exterior?lock=' + vm.id + '_room_' + roomIdx" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id }}_r{{ roomIdx }}x" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
                           }
                         } @else {
                           <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
@@ -436,6 +436,20 @@
         <!-- ═══════════════════════════════════════════════════
              FOOTER — Minimal
              ═══════════════════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════════════════════
+             GALLERY MODAL
+             ═══════════════════════════════════════════════════ -->
+        @if (selectedGalleryImage(); as imgUrl) {
+          <div class="gallery-modal-overlay" (click)="closeGalleryModal()" (window:keydown.escape)="closeGalleryModal()">
+            <div class="gallery-modal-content" (click)="$event.stopPropagation()">
+              <button type="button" class="gallery-modal-close" (click)="closeGalleryModal()" aria-label="Cerrar">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+              <img [src]="imgUrl" [alt]="vm.name" class="gallery-modal-img" />
+            </div>
+          </div>
+        }
+
         <footer class="page-footer page-footer--minimal">
           <div class="footer-bottom">
             <span>© 2026 HotelData Hub International. Todos los derechos reservados.</span>
