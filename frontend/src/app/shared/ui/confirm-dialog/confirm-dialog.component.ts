@@ -24,6 +24,14 @@ import { ConfirmDialogService } from './confirm-dialog.service';
 
           <p class="cd-message">{{ service.config().message }}</p>
 
+          @if (service.config().details && service.config().details!.length > 0) {
+            <ul class="cd-details">
+              @for (line of service.config().details; track line) {
+                <li>{{ line }}</li>
+              }
+            </ul>
+          }
+
           <div class="cd-actions">
             <button class="cd-btn cd-btn-cancel" (click)="service.cancel()">
               {{ service.config().cancelLabel }}

@@ -1,0 +1,57 @@
+<section class="nav-bar">
+  <button type="button" class="nav-arrow" (click)="navigateDate.emit(-1)" aria-label="D&iacute;a anterior">
+    <span class="material-symbols-outlined">chevron_left</span>
+  </button>
+
+  <form [formGroup]="dateForm()" (ngSubmit)="applyFilter.emit()" class="date-field">
+    <span class="material-symbols-outlined date-icon">calendar_today</span>
+    <input type="date" formControlName="createdDate" (change)="applyFilter.emit()" />
+  </form>
+
+  <button type="button" class="nav-arrow" (click)="navigateDate.emit(1)" aria-label="D&iacute;a siguiente">
+    <span class="material-symbols-outlined">chevron_right</span>
+  </button>
+
+  <div class="nav-quick">
+    <button type="button" class="quick-btn" (click)="goToday.emit()">Hoy</button>
+    <button type="button" class="quick-btn" (click)="navigateDate.emit(-7)">-7</button>
+    <button type="button" class="quick-btn" (click)="navigateDate.emit(7)">+7</button>
+  </div>
+
+  <div class="nav-separator"></div>
+
+  <!-- Folio search -->
+  <div class="filter-field">
+    <span class="material-symbols-outlined filter-icon">tag</span>
+    <input type="text" class="filter-input" placeholder="Folio..."
+           [value]="currentFolioFilter()"
+           (input)="onFolioSearch($event)" />
+  </div>
+
+  <!-- Stay status dropdown -->
+  <div class="filter-field">
+    <select class="filter-select" (change)="onStayStatusFilter($event)">
+      <option value="" [selected]="!currentStayStatusFilter()">Estadía</option>
+      <option value="checked_in" [selected]="currentStayStatusFilter() === 'checked_in'">Check-in</option>
+      <option value="checked_out" [selected]="currentStayStatusFilter() === 'checked_out'">Check-out</option>
+      <option value="none" [selected]="currentStayStatusFilter() === 'none'">Sin check-in</option>
+    </select>
+  </div>
+
+  <!-- Source dropdown -->
+  <div class="filter-field">
+    <select class="filter-select" (change)="onSourceFilter($event)">
+      <option value="" [selected]="!currentSourceFilter()">Fuente</option>
+      <option value="angular_api" [selected]="currentSourceFilter() === 'angular_api'">Web</option>
+      <option value="manual_reservation" [selected]="currentSourceFilter() === 'manual_reservation'">Manual</option>
+    </select>
+  </div>
+
+  <!-- Clear all filters -->
+  @if (hasActiveFilters()) {
+    <button type="button" class="quick-btn clear-btn" (click)="clearAllFilters.emit()">
+      <span class="material-symbols-outlined">close</span>
+      Limpiar filtros
+    </button>
+  }
+</section>

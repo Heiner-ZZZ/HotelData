@@ -23,20 +23,22 @@
           <span class="material-symbols-outlined section-chevron">chevron_left</span>
         </button>
 
-        @if (openSection() === section.id) {
+        <div class="section-items-wrapper" [class.is-open]="openSection() === section.id">
           <div class="section-items">
             @for (item of section.items; track item.href) {
               <a
                 class="section-link"
                 routerLinkActive="is-active"
+                [routerLinkActiveOptions]="{ exact: true }"
                 [routerLink]="item.href"
+                [queryParams]="linkParams()"
               >
                 <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
                 <span class="link-label">{{ item.label }}</span>
               </a>
             }
           </div>
-        }
+        </div>
       </div>
     }
   </nav>
@@ -46,7 +48,9 @@
   <a
     class="sidebar-bottom-link"
     routerLinkActive="is-active"
+    [routerLinkActiveOptions]="{ exact: true }"
     routerLink="/management/settings"
+    [queryParams]="linkParams()"
   >
     <span class="material-symbols-outlined link-icon">tune</span>
     <span class="link-label">Configuración</span>

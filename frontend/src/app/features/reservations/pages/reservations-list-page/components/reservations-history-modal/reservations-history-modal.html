@@ -1,0 +1,44 @@
+@if (show()) {
+  <div class="modal-overlay" (click)="close.emit()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <span class="material-symbols-outlined modal-head-icon">history</span>
+        <div>
+          <h2>Historial de reservas</h2>
+          <p>Fechas con creaci&oacute;n de reservas</p>
+        </div>
+        <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        @if (loading()) {
+          <div class="history-loading">
+            <span class="material-symbols-outlined spinning">sync</span>
+            <span>Cargando historial...</span>
+          </div>
+        } @else if (dates().length === 0) {
+          <div class="history-empty">
+            <span class="material-symbols-outlined">info</span>
+            <span>No se encontraron fechas con reservas creadas.</span>
+          </div>
+        } @else {
+          <div class="history-list">
+            @for (entry of dates(); track entry.date) {
+              <button type="button" class="history-item" (click)="selectDate.emit(entry.date)">
+                <span class="history-item-date">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  <span>{{ entry.date | date:'longDate' }}</span>
+                </span>
+                <span class="history-item-count">
+                  <span class="badge badge-info">{{ entry.count }} reserva(s)</span>
+                </span>
+                <span class="material-symbols-outlined history-item-arrow">chevron_right</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

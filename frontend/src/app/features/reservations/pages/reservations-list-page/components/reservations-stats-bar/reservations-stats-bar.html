@@ -1,0 +1,46 @@
+@if (stats(); as s) {
+  <section class="stats-bar">
+    <button type="button" class="stat-item stat-pending stat-clickable" title="Ver solo pendientes" (click)="filterPending.emit()">
+      <span class="stat-value">{{ s.pending }}</span>
+      <span class="stat-label">Pendientes</span>
+      @if (currentStatusFilter() === 'pending') {
+        <span class="stat-active-indicator"></span>
+      }
+    </button>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-confirmed" title="Confirmadas">
+      <span class="stat-value">{{ s.confirmed }}</span>
+      <span class="stat-label">Confirmadas</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-active" title="Activas (pendiente + confirmada)">
+      <span class="stat-value">{{ s.active }}</span>
+      <span class="stat-label">Activas</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-checked-in" title="Check-in realizados">
+      <span class="stat-value">{{ s.checkedIn }}</span>
+      <span class="stat-label">Check-in</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-checked-out" title="Check-out realizados">
+      <span class="stat-value">{{ s.checkedOut }}</span>
+      <span class="stat-label">Check-out</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-lost" title="Perdidas (canceladas + rechazadas)">
+      <span class="stat-value">{{ s.lost }}</span>
+      <span class="stat-label">Perdidas</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item stat-total" title="Total">
+      <span class="stat-value">{{ s.total }}</span>
+      <span class="stat-label">Total</span>
+    </div>
+  </section>
+} @else if (statsLoading()) {
+  <section class="stats-bar stats-bar-loading">
+    <span class="material-symbols-outlined spinning">sync</span>
+    <span>Cargando estad&iacute;sticas...</span>
+  </section>
+}

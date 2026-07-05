@@ -6,6 +6,8 @@ export interface ConfirmDialogConfig {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'default';
+  /** Optional structured details shown below the message (e.g. key-value lines). */
+  details?: string[];
 }
 
 @Injectable({ providedIn: 'root' })

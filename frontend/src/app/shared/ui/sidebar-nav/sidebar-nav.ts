@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
+import type { Params } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { PropertyContextService } from '../../../shared/services/property-context.service';
 
 interface SidebarItem {
   label: string;
@@ -31,11 +34,19 @@ export class SidebarNavComponent {
   private readonly authService = inject(AuthService);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly propCtx = inject(PropertyContextService);
 
   readonly theme = this.themeService;
   readonly currentUser = this.authService.currentUser;
   readonly sidebarCollapsed = signal(false);
   readonly openSection = signal<string | null>(null);
+
+  /** Query params that preserve the current prop_id for management links. */
+  readonly linkParams = computed<Params>(() => {
+    const pid = this.propCtx.currentPropId();
+    return pid ? { prop_id: pid } : {};
+  });
 
   readonly sections: SidebarSection[] = [
     {
@@ -193,6 +204,29 @@ export class SidebarNavComponent {
     this.authService.ensureSessionLoaded()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
+
+    // Auto-expand the section containing the current route on navigation
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this._autoExpandActiveSection());
+
+    // Expand on first load
+    this._autoExpandActiveSection();
+  }
+
+  private _autoExpandActiveSection(): void {
+    const url = this.router.url.split('?')[0];
+    for (const section of this.visibleSections()) {
+      for (const item of section.items) {
+        if (url === item.href || url.startsWith(item.href + '/')) {
+          this.openSection.set(section.id);
+          return;
+        }
+      }
+    }
   }
 
   toggleSection(id: string) {
