@@ -8,6 +8,7 @@ from src.database.connection import get_database
 from src.app.security.session import ensure_utc
 
 from src.app.modules.reservations.notifications import notify_guest_status_change
+from src.app.modules.partner.services.audit import register_action
 from ._helpers import utc_now
 
 
@@ -192,6 +193,24 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
             "cancellation_free": penalty["free_cancellation"],
         }
     )
+
+    # ── Audit log (universal) ──
+    if booking and not booking.get("is_test"):
+        try:
+            register_action(
+                prop_id=int(booking.get("prop_id", 0)),
+                entity_type="reservation",
+                entity_id=booking_id,
+                action="cancel",
+                summary=f"Reserva cancelada — {booking.get('guest_name', '')} — {penalty['penalty_amount']:.2f} USD penalización",
+                changed_by=changed_by,
+                metadata={"guest_name": booking.get("guest_name", ""), "reason": reason,
+                         "free_cancellation": penalty["free_cancellation"],
+                         "penalty_amount": penalty["penalty_amount"],
+                         "penalty_percent": penalty["penalty_percent"]},
+            )
+        except Exception:
+            logger.exception("Failed to register audit action for cancel %s", booking_id)
     if db.manual_reservations.count_documents({"booking_id": booking_id}) > 0:
         db.manual_reservations.update_one(
             {"booking_id": booking_id},

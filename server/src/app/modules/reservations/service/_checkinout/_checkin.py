@@ -16,6 +16,7 @@ from src.app.modules.reservations.service._checkinout._helpers import (
     _notify_staff_check_in,
 )
 from src.app.core.state_machine import CHECKIN_ALLOWED_ROOM_STATUSES, CHECKIN_REJECTED_ROOM_STATUSES
+from src.app.modules.partner.services.audit import register_action
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,23 @@ def complete_check_in(
     if observations:
         audit_entry["observations"] = observations
     db.booking_status_history.insert_one(audit_entry)
+
+    # ── Audit log (universal) ──
+    if booking and not booking.get("is_test"):
+        try:
+            register_action(
+                prop_id=int(booking.get("prop_id", 0)),
+                entity_type="reservation",
+                entity_id=booking_id,
+                action="check_in",
+                summary=f"Check-in completado — {booking.get('guest_name', '')} — Folio {folio}",
+                changed_by=changed_by,
+                metadata={"folio": folio, "guest_name": booking.get("guest_name", ""),
+                         "payment_method": payment_method or booking.get("payment_method", ""),
+                         "observations": observations},
+            )
+        except Exception:
+            logger.exception("Failed to register audit action for check-in %s", booking_id)
 
     # ── Notifications ──
     if booking:

@@ -11,6 +11,7 @@ from src.app.core.state_machine import booking_sm
 from .._helpers import utc_now
 from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.billing.service import generate_invoice_for_booking
+from src.app.modules.partner.services.audit import register_action
 from src.app.modules.reservations.service._transitions._inventory import (
     _auto_assign_rooms,
     _deduct_inventory,
@@ -54,6 +55,23 @@ def _transition_status(
         "changed_at": changed_at, "reason": reason,
         "changed_by": changed_by, "is_test": bool(booking.get("is_test")),
     })
+
+    # ── Audit log (universal) ──
+    if booking and not booking.get("is_test") and target_status in ("confirmed", "rejected"):
+        try:
+            action_verb = "confirm" if target_status == "confirmed" else "reject"
+            summary_label = "confirmada" if target_status == "confirmed" else "rechazada"
+            register_action(
+                prop_id=int(booking.get("prop_id", 0)),
+                entity_type="reservation",
+                entity_id=booking_id,
+                action=action_verb,
+                summary=f"Reserva {summary_label} — {booking.get('guest_name', '')}",
+                changed_by=changed_by,
+                metadata={"guest_name": booking.get("guest_name", ""), "new_status": target_status, "reason": reason},
+            )
+        except Exception:
+            logger.exception("Failed to register audit action for %s booking %s", target_status, booking_id)
     if db.manual_reservations.count_documents({"booking_id": booking_id}) > 0:
         db.manual_reservations.update_one(
             {"booking_id": booking_id},

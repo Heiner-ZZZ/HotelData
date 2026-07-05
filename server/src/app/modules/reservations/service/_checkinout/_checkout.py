@@ -12,6 +12,7 @@ from src.app.modules.reservations.service._checkinout._helpers import (
     _notify_staff_check_out,
 )
 from .._transitions import _restore_inventory
+from src.app.modules.partner.services.audit import register_action
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,25 @@ def complete_check_out(
     if damages_found:
         audit_entry["damages_found"] = True
     db.booking_status_history.insert_one(audit_entry)
+
+    # ── Audit log (universal) ──
+    if booking and not booking.get("is_test"):
+        try:
+            register_action(
+                prop_id=int(booking.get("prop_id", 0)),
+                entity_type="reservation",
+                entity_id=booking_id,
+                action="check_out",
+                summary=f"Check-out completado — {booking.get('guest_name', '')}",
+                changed_by=changed_by,
+                metadata={"guest_name": booking.get("guest_name", ""),
+                         "payment_method": payment_method,
+                         "observations": observations,
+                         "damages_found": damages_found,
+                         "keys_returned": keys_returned},
+            )
+        except Exception:
+            logger.exception("Failed to register audit action for check-out %s", booking_id)
 
     # ── Notifications ──
     if booking:
