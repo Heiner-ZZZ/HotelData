@@ -2,6 +2,7 @@
   <table class="data-table">
     <thead>
       <tr>
+        <th></th>
         <th>Nombre</th>
         <th>N°</th>
         <th>Piso</th>
@@ -15,6 +16,15 @@
     <tbody>
       @for (room of items(); track room.id) {
         <tr>
+          <td class="cell-img">
+            @if (room.imageUrl) {
+              <img [src]="room.imageUrl" alt="{{ room.name }}" class="room-thumb" loading="lazy" />
+            } @else {
+              <div class="room-thumb-placeholder">
+                <span class="material-symbols-outlined">meeting_room</span>
+              </div>
+            }
+          </td>
           <td>
             <span class="material-symbols-outlined table-icon">meeting_room</span>
             {{ room.name }}

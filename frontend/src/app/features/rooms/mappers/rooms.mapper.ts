@@ -4,8 +4,8 @@ import type { RoomFeatureItem, RoomPropertyOption, RoomsViewModel } from '../mod
 function normalizeFeatures(features: unknown): RoomFeatureItem[] {
   if (!Array.isArray(features)) return [];
   return features.map((f) => {
-    if (typeof f === 'string') return { label: f, unitPrice: 0 };
-    return { label: String(f.label ?? ''), unitPrice: Number(f.unit_price ?? 0) };
+    if (typeof f === 'string') return { label: f };
+    return { label: String(f.label ?? '') };
   });
 }
 
@@ -29,6 +29,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       activeLabel: room.is_active ? 'Sí' : 'No',
       roomNumber: room.room_number || '',
       floor: room.floor || '',
+      imageUrl: room.image_url || '',
       features: normalizeFeatures(room.features),
       baseRate: room.base_rate ?? 0,
       view: room.view || '',
@@ -70,6 +71,7 @@ export function mapRoomCreatePayload(payload: {
   baseCapacity: number;
   baseRate?: number;
   isActive: boolean;
+  imageUrl?: string;
   roomNumber?: string;
   floor?: string;
   view?: string;
@@ -85,6 +87,7 @@ export function mapRoomCreatePayload(payload: {
     max_children: payload.maxChildren,
     base_capacity: payload.baseCapacity,
     base_rate: payload.baseRate,
+    image_url: payload.imageUrl || '',
     is_active: payload.isActive,
     room_number: payload.roomNumber || '',
     floor: payload.floor || '',

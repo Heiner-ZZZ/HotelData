@@ -42,6 +42,7 @@ export class RoomsApiService {
     baseCapacity: number;
     baseRate?: number;
     isActive: boolean;
+    imageUrl?: string;
     roomNumber?: string;
     floor?: string;
     view?: string;
@@ -63,6 +64,7 @@ export class RoomsApiService {
     baseCapacity: number;
     baseRate?: number;
     isActive: boolean;
+    imageUrl?: string;
     roomNumber?: string;
     floor?: string;
     view?: string;
@@ -84,6 +86,7 @@ export class RoomsApiService {
         view: payload.view || '',
         smoking: payload.smoking ?? false,
         accessible: payload.accessible ?? false,
+        image_url: payload.imageUrl || '',
       },
       { withCredentials: true }
     );
@@ -92,6 +95,16 @@ export class RoomsApiService {
   deleteRoomType(roomTypeId: string) {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,
+      { withCredentials: true }
+    );
+  }
+
+  uploadRoomImage(roomTypeId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ image_url: string }>(
+      `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}/image`,
+      formData,
       { withCredentials: true }
     );
   }
@@ -117,29 +130,25 @@ export class RoomsApiService {
         icon: item.icon,
         custom: item.custom,
         source: item.source,
-        unitPrice: typeof item.unit_price === 'number' ? item.unit_price : 0,
       })),
     }));
   }
 
-  /** Get features (with prices) for a specific room type. */
+  /** Get features for a specific room type. */
   getRoomTypeFeatures(propId: number, roomTypeId: string) {
     const params = new HttpParams().set('prop_id', String(propId));
     return this.http
-      .get<{ room_type_id: string; features: Array<{ label: string; unit_price: number }> }>(
+      .get<{ room_type_id: string; features: Array<{ label: string }> }>(
         `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
         { params, withCredentials: true }
       )
       .pipe(map((res) => res.features));
   }
 
-  /** Update features (with optional unit_price) for a room type. */
-  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: Array<{ label: string; unitPrice?: number }>) {
+  /** Update features for a room type. */
+  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: Array<{ label: string }>) {
     const params = new HttpParams().set('prop_id', String(propId));
-    const payload = features.map((f) => ({
-      label: f.label,
-      unit_price: f.unitPrice ?? 0,
-    }));
+    const payload = features.map((f) => ({ label: f.label }));
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
       { features: payload },

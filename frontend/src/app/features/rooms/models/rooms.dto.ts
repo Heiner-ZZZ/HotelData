@@ -20,6 +20,7 @@ export interface RoomsDto {
     is_active: boolean;
     room_number?: string;
     floor?: string;
+    image_url?: string;
     features?: string[] | Array<{ label: string; unit_price: number }>;
     base_rate?: number;
     view?: string;
@@ -61,6 +62,7 @@ export interface RoomCreateDto {
   base_capacity: number;
   base_rate?: number;
   is_active: boolean;
+  image_url?: string;
   room_number?: string;
   floor?: string;
   view?: string;

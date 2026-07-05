@@ -15,7 +15,6 @@ export interface RoomsViewModel {
 
 export interface RoomFeatureItem {
   label: string;
-  unitPrice: number;
 }
 
 export interface RoomTypeItem {
@@ -30,6 +29,7 @@ export interface RoomTypeItem {
   smoking: boolean;
   accessible: boolean;
   isRoh: boolean;
+  imageUrl?: string;
   features: RoomFeatureItem[];
   baseRate?: number;
 }
@@ -40,7 +40,6 @@ export interface RoomFeature {
   icon: string;
   custom: boolean;
   source?: string;
-  unitPrice?: number;
 }
 
 export interface FeatureCategory {
