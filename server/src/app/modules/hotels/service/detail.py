@@ -110,7 +110,7 @@ def _room_types_for_detail(prop_id: int, limit: int = 12) -> list[dict[str, Any]
     return list(
         db.room_types.find(
             {"prop_id": prop_id},
-            {"_id": 0, "room_type_id": 1, "name": 1, "base_capacity": 1, "max_adults": 1, "max_children": 1, "is_active": 1, "description": 1, "features": 1},
+            {"_id": 0, "room_type_id": 1, "name": 1, "base_capacity": 1, "max_adults": 1, "max_children": 1, "is_active": 1, "description": 1, "features": 1, "image_url": 1},
         )
         .sort([("is_active", -1), ("name", 1)])
         .limit(limit)

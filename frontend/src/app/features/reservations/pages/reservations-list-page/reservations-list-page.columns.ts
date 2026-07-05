@@ -67,7 +67,7 @@ export function buildColumnDefs(
     {
       field: 'checkInDate',
       headerName: 'Check-in \u2192 Check-out',
-      minWidth: 240,
+      minWidth: 300,
       cellRenderer: (p: any) => {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'display:flex;align-items:center;gap:0.3rem;font-size:0.78rem;white-space:nowrap';
