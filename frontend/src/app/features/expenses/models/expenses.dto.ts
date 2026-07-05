@@ -9,7 +9,7 @@ export interface InvoiceListDto {
 }
 
 export interface InvoiceItemDto {
-  _id: string;
+  id: string;
   vendor_name: string;
   category: string;
   description: string;
@@ -23,7 +23,7 @@ export interface InvoiceItemDto {
 }
 
 export interface InvoiceDetailDto {
-  _id: string;
+  id: string;
   vendor_name: string;
   category: string;
   description: string;

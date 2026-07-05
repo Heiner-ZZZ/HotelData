@@ -55,7 +55,7 @@
           </div>
           <div class="inv-guest-item">
             <span class="inv-guest-label">Estancia</span>
-            <span class="inv-guest-value">{{ inv.checkInDate }} → {{ inv.checkOutDate }}</span>
+            <span class="inv-guest-value">{{ inv.checkInDate }}{{ inv.checkInTime ? ' ' + inv.checkInTime : '' }} → {{ inv.checkOutDate }}{{ inv.checkOutTime ? ' ' + inv.checkOutTime : '' }}</span>
           </div>
           <div class="inv-guest-item">
             <span class="inv-guest-label">Habitación</span>
@@ -104,7 +104,7 @@
                     <select class="inv-input"
                       [ngModel]="addForm().category"
                       (ngModelChange)="addForm.update(f => ({...f, category: $event}))">
-                      @for (cat of categories; track cat.id) {
+                      @for (cat of categories(); track cat.id) {
                         <option [value]="cat.id">{{ cat.label }}</option>
                       }
                     </select>
@@ -154,7 +154,7 @@
                 </div>
                 <p class="inv-quick-desc">Se agrega automáticamente al folio y a la factura.</p>
                 <div class="inv-quick-grid">
-                  @for (qc of quickCharges; track qc.name) {
+                  @for (qc of quickCharges(); track qc.name) {
                     <button type="button" class="inv-quick-chip"
                       (click)="quickAddCharge(qc)"
                       [disabled]="quickAddBusy() !== null"
@@ -263,10 +263,7 @@
                     <dt>Razón Social</dt>
                     <dd class="dd-bold">{{ inv.hotelLabel || 'HotelData PMS' }}</dd>
                   </div>
-                  <div>
-                    <dt>Propiedad</dt>
-                    <dd class="dd-mono">#{{ inv.propId }}</dd>
-                  </div>
+
                 </dl>
               </section>
               <section class="inv-card">
@@ -381,10 +378,6 @@
                   <span>Pendiente</span>
                   <span class="mono pending-amount">${{ totalPendingAmount().toFixed(2) }}</span>
                 </div>
-              </div>
-
-              <div class="inv-summary-literal">
-                ({{ totalLiteral() }})
               </div>
 
               <div class="inv-summary-meta">

@@ -5,7 +5,7 @@ import type { LedgerTransaction, LedgerFolio, LedgerListResponse, LedgerSummary,
 
 function mapInvoiceItem(dto: InvoiceItemDto): InvoiceListItem {
   return {
-    id: dto._id,
+    id: dto.id,
     vendorName: dto.vendor_name,
     category: dto.category,
     description: dto.description,
@@ -33,7 +33,7 @@ export function mapInvoiceList(dto: InvoiceListDto) {
 
 export function mapInvoiceDetail(dto: InvoiceDetailDto): InvoiceDetail {
   return {
-    id: dto._id,
+    id: dto.id,
     vendorName: dto.vendor_name,
     category: dto.category,
     description: dto.description,

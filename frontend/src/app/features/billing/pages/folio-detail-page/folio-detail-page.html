@@ -48,14 +48,14 @@
           </div>
           <div class="fl-guest-item">
             <span class="fl-guest-label">Check-in</span>
-            <span class="fl-guest-value">{{ f.checkInDate }}</span>
+            <span class="fl-guest-value">{{ f.checkInDate }}{{ f.checkInTime ? ' ' + f.checkInTime : '' }}</span>
           </div>
           <div class="fl-guest-item">
             <span class="fl-guest-label">Check-out</span>
-            <span class="fl-guest-value">{{ f.checkOutDate }}</span>
+            <span class="fl-guest-value">{{ f.checkOutDate }}{{ f.checkOutTime ? ' ' + f.checkOutTime : '' }}</span>
           </div>
           <div class="fl-guest-item">
-            <span class="fl-guest-label">Propiedad</span>
+            <span class="fl-guest-label">Hotel</span>
             <span class="fl-guest-value">{{ f.hotelLabel || '#' + f.propId }}</span>
           </div>
         </div>
@@ -310,6 +310,11 @@
                   <div>
                     <dt>Hotel</dt>
                     <dd>{{ f.hotelLabel }}</dd>
+                  </div>
+                } @else {
+                  <div>
+                    <dt>Hotel</dt>
+                    <dd>#{{ f.propId }}</dd>
                   </div>
                 }
               </dl>

@@ -3,44 +3,18 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, switchMap } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
+import type { BillableServiceItem, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
 import { FolioApiService } from '../../services/folio-api.service';
-
-/** Categories for manual line items on the invoice. */
-const CHARGE_CATEGORIES = [
-  { id: 'restaurante', label: 'Restaurante', icon: 'restaurant' },
-  { id: 'bar', label: 'Bar', icon: 'local_bar' },
-  { id: 'room_service', label: 'Room Service', icon: 'room_service' },
-  { id: 'minibar', label: 'Minibar', icon: 'kitchen' },
-  { id: 'spa', label: 'Spa', icon: 'spa' },
-  { id: 'lavanderia', label: 'Lavandería', icon: 'local_laundry_service' },
-  { id: 'parking', label: 'Parking', icon: 'local_parking' },
-  { id: 'mascotas', label: 'Mascotas', icon: 'pets' },
-  { id: 'late_checkout', label: 'Late Check-Out', icon: 'schedule' },
-  { id: 'danos', label: 'Daños', icon: 'warning' },
-  { id: 'otros', label: 'Otros', icon: 'more_horiz' },
-];
-
-/** Predefined quick charges with preset amounts for one-click posting. */
-const QUICK_CHARGES = [
-  { name: 'Parking', category: 'parking', icon: 'local_parking', amount: 20, quantity: 1 },
-  { name: 'Minibar', category: 'minibar', icon: 'kitchen', amount: 15, quantity: 1 },
-  { name: 'Desayuno', category: 'restaurante', icon: 'restaurant', amount: 25, quantity: 1 },
-  { name: 'Cena', category: 'restaurante', icon: 'restaurant', amount: 40, quantity: 1 },
-  { name: 'Spa', category: 'spa', icon: 'spa', amount: 50, quantity: 1 },
-  { name: 'Lavandería', category: 'lavanderia', icon: 'local_laundry_service', amount: 18, quantity: 1 },
-  { name: 'Room Service', category: 'room_service', icon: 'room_service', amount: 30, quantity: 1 },
-  { name: 'Late Check-Out', category: 'late_checkout', icon: 'schedule', amount: 35, quantity: 1 },
-  { name: 'Bar', category: 'bar', icon: 'local_bar', amount: 22, quantity: 1 },
-  { name: 'Mascotas', category: 'mascotas', icon: 'pets', amount: 25, quantity: 1 },
-];
+// Import amenityIcon from the amenities feature — resolves Material Symbols icons from amenity labels
+import { amenityIcon } from '../../../amenities/utils/amenity-icons';
 
 @Component({
   selector: 'app-invoice-detail-page',
@@ -57,11 +31,9 @@ export class InvoiceDetailPageComponent {
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
 
-  readonly categories = CHARGE_CATEGORIES;
-  readonly quickCharges = QUICK_CHARGES;
-
   readonly viewState = signal<ViewState>('loading');
   readonly invoice = signal<InvoiceDetailViewModel | null>(null);
+  readonly servicesLoading = signal(false);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly addMode = signal(false);
@@ -69,6 +41,37 @@ export class InvoiceDetailPageComponent {
   readonly addBusy = signal(false);
   readonly quickAddBusy = signal<string | null>(null);
   readonly removeBusy = signal<string | null>(null);
+
+  // Services (amenities) fetched from the API — replaces hardcoded CHARGE_CATEGORIES / QUICK_CHARGES
+  readonly services = signal<BillableServiceItem[]>([]);
+
+  /** Flat list of all available service categories for the add-charge dropdown. */
+  readonly categories = computed(() => {
+    const items = this.services();
+    // Build from API data: group name taken from parent category, label as display
+    return [
+      ...items.map(item => ({
+        id: item.label.toLowerCase().replace(/\s+/g, '_'),
+        label: item.label,
+        icon: amenityIcon(item.label),
+      })),
+      // Always include a generic "Otros" fallback
+      { id: 'otros', label: 'Otros', icon: 'more_horiz' },
+    ];
+  });
+
+  /** Quick-charge buttons: chargeable services (unit_price > 0) with a default quantity of 1. */
+  readonly quickCharges = computed(() => {
+    return this.services()
+      .filter(item => item.unitPrice > 0)
+      .map(item => ({
+        name: item.label,
+        category: item.label.toLowerCase().replace(/\s+/g, '_'),
+        icon: amenityIcon(item.label),
+        amount: item.unitPrice,
+        quantity: 1,
+      }));
+  });
 
   // Add charge form
   readonly addForm = signal({
@@ -134,8 +137,31 @@ export class InvoiceDetailPageComponent {
         next: (data) => {
           this.invoice.set(data);
           this.viewState.set('success');
+          // Once the invoice is loaded, fetch billable services (amenities)
+          this.loadServices(data);
         },
         error: () => this.viewState.set('error'),
+      });
+  }
+
+  /** Fetch billable services from the amenities catalog (hotel + room, deduplicated). */
+  private loadServices(inv: InvoiceDetailViewModel): void {
+    if (!inv.propId) return;
+    this.servicesLoading.set(true);
+    this.billingApi.getServices(inv.propId, inv.bookingId)
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (result) => {
+          if (result) {
+            // Use all_items from the API (both free & paid, hotel + room deduplicated)
+            this.services.set(result.all_items);
+          }
+          this.servicesLoading.set(false);
+        },
+        error: () => this.servicesLoading.set(false),
       });
   }
 
@@ -291,13 +317,14 @@ export class InvoiceDetailPageComponent {
   }
 
   categoryIcon(cat: string): string {
-    const found = CHARGE_CATEGORIES.find((c) => c.id === cat);
-    return found?.icon ?? 'receipt_long';
+    // Resolve icon from amenity label using the central amenityIcon() function
+    const label = cat.replace(/_/g, ' ');
+    return amenityIcon(label) || 'receipt_long';
   }
 
   /** Whether a line item can be removed (not a room charge). */
   canRemove(item: LineItem): boolean {
-    return !item.itemId.startsWith('room_') && this.canModify();
+    return !!item?.itemId && !item.itemId.startsWith('room_') && this.canModify();
   }
 
   paymentMethodLabel(method: string): string {

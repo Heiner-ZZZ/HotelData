@@ -26,6 +26,8 @@ export interface FolioDto {
   hotel_label: string;
   check_in_date: string;
   check_out_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
   status: 'open' | 'closed';
   total_room: number;
   total_charges: number;
@@ -64,6 +66,8 @@ export interface FolioViewModel {
   hotelLabel: string;
   checkInDate: string;
   checkOutDate: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   status: 'open' | 'closed';
   totalRoom: number;
   totalCharges: number;
@@ -110,6 +114,8 @@ function mapFolio(dto: FolioDto): FolioViewModel {
     hotelLabel: dto.hotel_label,
     checkInDate: dto.check_in_date,
     checkOutDate: dto.check_out_date,
+    checkInTime: dto.check_in_time || undefined,
+    checkOutTime: dto.check_out_time || undefined,
     status: dto.status,
     totalRoom: dto.total_room,
     totalCharges: dto.total_charges,
