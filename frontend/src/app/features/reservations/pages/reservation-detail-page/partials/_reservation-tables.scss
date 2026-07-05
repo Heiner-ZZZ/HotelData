@@ -5,32 +5,52 @@ table {
 
 th,
 td {
-  padding: 0.75rem 0.5rem;
+  padding: 0.65rem 0.5rem;
   text-align: left;
-  border-bottom: 1px solid var(--app-border);
+  border-bottom: 1px solid #f3f4f6;
   vertical-align: middle;
 }
 
 th {
   font-weight: 500;
-  color: var(--muted-text);
-  font-size: 0.85rem;
+  color: #6b7280;
+  font-size: 0.82rem;
   width: 35%;
 }
 
 td {
-  color: var(--app-text);
-  font-size: 0.9rem;
+  color: #374151;
+  font-size: 0.88rem;
+}
+
+tr.date-row {
+  th, td {
+    padding: 1rem 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  td {
+    font-weight: 500;
+  }
+
+  .date-range {
+    color: #111827;
+  }
+
+  .date-arrow {
+    color: #9ca3af;
+    margin: 0 0.5rem;
+  }
 }
 
 table thead th {
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted-text);
-  border-bottom: 2px solid var(--app-border);
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
   width: auto;
-  padding: 0.75rem 0.5rem;
-  background: var(--surface-soft);
+  padding: 0.6rem 0.5rem;
+  background: #f9fafb;
 }
