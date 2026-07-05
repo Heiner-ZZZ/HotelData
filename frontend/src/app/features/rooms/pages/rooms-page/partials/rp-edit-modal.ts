@@ -1,5 +1,5 @@
 import { ReactiveFormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
 
 @Component({
   selector: 'app-rp-edit-modal',
@@ -64,6 +64,43 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
               <option value="Patio interior">Patio interior</option>
             </select>
           </label>
+          <label class="field" style="grid-column: 1 / -1">
+            <span class="field-label">Imagen</span>
+            <div class="room-image-input-group">
+              <div class="image-url-input-wrap">
+                <span class="material-symbols-outlined input-icon">image</span>
+                <input formControlName="imageUrl" type="url" placeholder="https://ejemplo.com/habitacion.jpg" (input)="onImageUrlChange($any($event.target).value)" />
+              </div>
+              <div class="image-upload-divider">
+                <span>o</span>
+              </div>
+              <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display: none" />
+              <button type="button" class="btn-outline" (click)="triggerFileInput()">
+                <span class="material-symbols-outlined">folder_open</span>
+                Subir archivo
+              </button>
+            </div>
+            @if (imagePreviewUrl()) {
+              <div class="image-preview-thumb" [class.uploading]="uploading()">
+                <img [src]="imagePreviewUrl()" alt="Preview" />
+                <div class="image-preview-actions">
+                  <button type="button" class="image-preview-clear" (click)="clearImageUrl()" aria-label="Quitar imagen">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                  @if (selectedFile()) {
+                    <button type="button" class="image-preview-upload-btn" (click)="uploadSelectedFile()" [disabled]="uploading()">
+                      @if (uploading()) {
+                        <span class="material-symbols-outlined spin">progress_activity</span>
+                      } @else {
+                        <span class="material-symbols-outlined">cloud_upload</span>
+                      }
+                      {{ uploading() ? 'Subiendo...' : 'Subir' }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </label>
           <label class="field checkbox-field">
             <span class="field-label"><span class="material-symbols-outlined">smoking_rooms</span> Fumador</span>
             <input type="checkbox" formControlName="smoking">
@@ -82,9 +119,6 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
             <div class="features-section-head" (click)="togglePanel.emit()">
               <span class="material-symbols-outlined features-head-icon">stars</span>
               <span class="features-head-title">Características</span>
-              @if (selectedCount() > 0) {
-                <span class="features-total">Extras: <strong>\${{ featuresTotal() }}</strong> total</span>
-              }
               <span class="features-count-badge" [class.has-selection]="selectedCount() > 0">
                 {{ selectedCount() }} seleccionadas
               </span>
@@ -111,22 +145,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
                       <span class="feature-category-label">{{ cat.category }}</span>
                       <div class="feature-items">
                         @for (feat of cat.items; track feat.label) {
-                          <div class="feature-chip-wrap" [class.is-selected]="isFeatureSelected(feat.label)">
-                            <button type="button" class="feature-chip" [class.is-selected]="isFeatureSelected(feat.label)"
-                              (click)="toggleFeature.emit(feat.label)" title="{{ feat.label }}">
-                              @if (feat.icon) { <span class="material-symbols-outlined feature-chip-icon">{{ feat.icon }}</span> }
-                              <span class="feature-chip-label">{{ feat.label }}</span>
-                              @if (feat.source === 'amenity') { <span class="feature-source-badge" title="Del catálogo de amenidades">A</span> }
-                              @else if (feat.custom) { <span class="feature-source-badge feature-source-badge--custom" title="Personalizada">+</span> }
-                            </button>
-                            <div class="feature-price-input-wrap" [class.disabled]="!isFeatureSelected(feat.label)">
-                              <span class="feature-price-symbol">\$</span>
-                              <input class="feature-price-input" type="number" min="0" step="0.5"
-                                [value]="getFeaturePrice(feat.label)"
-                                (input)="updatePrice.emit({ label: feat.label, value: $any($event.target).value })"
-                                (click)="$event.stopPropagation()" [disabled]="!isFeatureSelected(feat.label)" placeholder="0" />
-                            </div>
-                          </div>
+                          <button type="button" class="feature-chip" [class.is-selected]="isFeatureSelected(feat.label)"
+                            (click)="toggleFeature.emit(feat.label)" title="{{ feat.label }}">
+                            @if (feat.icon) { <span class="material-symbols-outlined feature-chip-icon">{{ feat.icon }}</span> }
+                            <span class="feature-chip-label">{{ feat.label }}</span>
+                            @if (feat.source === 'amenity') { <span class="feature-source-badge" title="Del catálogo de amenidades">A</span> }
+                            @else if (feat.custom) { <span class="feature-source-badge feature-source-badge--custom" title="Personalizada">+</span> }
+                          </button>
                         }
                       </div>
                     </div>
@@ -164,14 +189,44 @@ export class RpEditModalComponent {
   readonly filteredCatalog = input<any[]>([]);
   readonly searchQuery = input('');
   readonly selectedCount = input(0);
-  readonly featuresTotal = input(0);
   readonly isSelected = input<(label: string) => boolean>(() => false);
-  readonly getPrice = input<(label: string) => number>(() => 0);
+  readonly imagePreviewUrl = input('');
+  readonly uploading = input(false);
+  readonly selectedFile = input<File | null>(null);
 
-  /** Wrapper methods — InputSignal cannot be called with args in templates */
-  getFeaturePrice(label: string): number {
-    return this.getPrice()(label);
+  readonly imageUrlChange = output<string>();
+  readonly fileSelected = output<File>();
+
+  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  onImageUrlChange(value: string) {
+    this.imageUrlChange.emit(value);
   }
+
+  clearImageUrl() {
+    this.imageUrlChange.emit('');
+  }
+
+  triggerFileInput() {
+    this.fileInput()?.nativeElement.click();
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    this.fileSelected.emit(file);
+  }
+
+  uploadSelectedFile() {
+    // Parent handles the actual upload
+    this.uploadFile.emit();
+  }
+
+  readonly uploadFile = output<void>();
+
+  /** Wrapper method — InputSignal cannot be called with args in templates */
   isFeatureSelected(label: string): boolean {
     return this.isSelected()(label);
   }
@@ -181,5 +236,4 @@ export class RpEditModalComponent {
   readonly togglePanel = output<void>();
   readonly searchChange = output<string>();
   readonly toggleFeature = output<string>();
-  readonly updatePrice = output<{ label: string; value: string }>();
 }

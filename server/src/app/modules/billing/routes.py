@@ -24,6 +24,7 @@ from src.app.modules.billing.service import (
     remove_line_item,
     FOLIO_CATEGORIES,
 )
+from src.app.modules.billing.service.services import get_billable_services
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
@@ -157,7 +158,8 @@ def add_line_item_api(
       "category": "parking"
     }
     """
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
@@ -203,7 +205,8 @@ def remove_line_item_api(
 
     Cannot remove room charge lines (type='room').
     """
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
@@ -238,7 +241,8 @@ def cancel_invoice_api(
     invoice_id: str,
     current_user: dict = Depends(require_login),
 ):
-    from bson import ObjectId, InvalidId
+    from bson import ObjectId
+    from bson.errors import InvalidId
     db = get_database()
     try:
         before_raw = db.reservation_invoices.find_one({"_id": ObjectId(invoice_id)})
@@ -513,6 +517,49 @@ def my_invoices_api(
         "has_next": page * page_size < total,
         "has_prev": page > 1,
     }
+
+
+# ── Billable Services (from amenities catalog) ──
+
+
+@api_router.get("/services")
+def billing_services_api(
+    request: Request,
+    prop_id: int = Query(default=0, ge=0),
+    booking_id: str | None = Query(default=None),
+    current_user: dict = Depends(require_login),
+):
+    """Return billable services for the invoice page.
+
+    Combines hotel-wide amenities with room-type-specific amenities
+    (if booking_id is provided), deduplicated by label, grouped by
+    category. The frontend uses this to populate the charge categories
+    dropdown and quick-charge buttons.
+    """
+    if not prop_id:
+        # Try to derive from booking
+        if booking_id:
+            db = get_database()
+            booking = db.booking_orders.find_one(
+                {"booking_id": booking_id},
+                {"prop_id": 1, "_id": 0},
+            )
+            if booking:
+                prop_id = int(booking.get("prop_id", 0))
+    if not prop_id:
+        return {"categories": [], "chargeable": [], "all_items": []}
+
+    result = get_billable_services(prop_id, booking_id)
+    register_action(
+        prop_id=prop_id,
+        entity_type="billing_invoice",
+        entity_id="services",
+        action="read",
+        summary=f"Consulta de servicios facturables para propiedad {prop_id}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "booking_id": booking_id, "url": str(request.url)},
+    )
+    return result
 
 
 # ── Fólios (Guest Folio / Cuenta de Huésped) ──

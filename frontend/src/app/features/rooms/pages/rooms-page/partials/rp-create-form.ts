@@ -1,5 +1,5 @@
 import { ReactiveFormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
 import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.directive';
 
 @Component({
@@ -121,6 +121,36 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
             <option value="Patio interior">Patio interior</option>
           </select>
         </label>
+        <label class="field" style="grid-column: 1 / -1">
+          <span class="field-label">
+            <span class="material-symbols-outlined field-icon">image</span>
+            Imagen
+          </span>
+          <div class="room-image-input-group">
+            <div class="image-url-input-wrap">
+              <span class="material-symbols-outlined input-icon">image</span>
+              <input formControlName="imageUrl" type="url" placeholder="https://ejemplo.com/habitacion.jpg" (input)="onImageUrlChange($any($event.target).value)" />
+            </div>
+            <div class="image-upload-divider">
+              <span>o</span>
+            </div>
+            <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display: none" />
+            <button type="button" class="btn-outline" (click)="triggerFileInput()">
+              <span class="material-symbols-outlined">folder_open</span>
+              Subir archivo
+            </button>
+          </div>
+          @if (imagePreviewUrl()) {
+            <div class="image-preview-thumb" [class.uploading]="uploading()">
+              <img [src]="imagePreviewUrl()" alt="Preview" />
+              <div class="image-preview-actions">
+                <button type="button" class="image-preview-clear" (click)="clearImageUrl()" aria-label="Quitar imagen">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+          }
+        </label>
         <label class="field checkbox-field">
           <span class="field-label">
             <span class="material-symbols-outlined field-icon">smoking_rooms</span>
@@ -157,7 +187,35 @@ export class RpCreateFormComponent {
   readonly createMode = input<string>('new');
   readonly existingRoomTypes = input<any[]>([]);
   readonly selectedExistingId = input<string>('');
+  readonly imagePreviewUrl = input('');
+  readonly uploading = input(false);
+  readonly selectedFile = input<File | null>(null);
+
   readonly setMode = output<'existing' | 'new'>();
   readonly selectExisting = output<string>();
   readonly createRoomType = output<void>();
+  readonly imageUrlChange = output<string>();
+  readonly fileSelected = output<File>();
+
+  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  onImageUrlChange(value: string) {
+    this.imageUrlChange.emit(value);
+  }
+
+  clearImageUrl() {
+    this.imageUrlChange.emit('');
+  }
+
+  triggerFileInput() {
+    this.fileInput()?.nativeElement.click();
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    this.fileSelected.emit(file);
+  }
 }

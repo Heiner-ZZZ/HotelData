@@ -92,6 +92,7 @@ export class RoomsPageComponent {
     view: [''],
     smoking: [false],
     accessible: [false],
+    imageUrl: [''],
   });
 
   onExistingTypeSelected(roomTypeId: string) {
@@ -149,6 +150,7 @@ export class RoomsPageComponent {
     view: [''],
     smoking: [false],
     accessible: [false],
+    imageUrl: [''],
   });
 
   readonly showEditModal = signal(false);
@@ -161,15 +163,18 @@ export class RoomsPageComponent {
   /* ── Room Features ── */
   readonly featureCatalog = signal<FeatureCategory[]>([]);
   readonly selectedFeatures = signal<Set<string>>(new Set());
-  readonly featurePrices = signal<Map<string, number>>(new Map());
   readonly editingRoomTypeName = signal('');
   readonly editingRoomTypeId = signal('');
   readonly featurePanelOpen = signal(true);
   readonly featureSearchQuery = signal('');
+  readonly editImagePreviewUrl = signal('');
+  readonly editUploading = signal(false);
+  readonly editSelectedFile = signal<File | null>(null);
+  readonly createImagePreviewUrl = signal('');
+  readonly createSelectedFile = signal<File | null>(null);
 
-  /** Bound function references for passing to partial components */
+  /** Bound function reference for passing to partial components */
   readonly isFeatureSelectedFn = (label: string) => this.isFeatureSelected(label);
-  readonly getFeaturePriceFn = (label: string) => this.getFeaturePrice(label);
 
   /** Filtered feature catalog based on search query (matches by label or category). */
   readonly filteredFeatureCatalog = computed(() => {
@@ -244,6 +249,21 @@ export class RoomsPageComponent {
     }
   }
 
+  onCreateImageUrlChange(url: string) {
+    this.createImagePreviewUrl.set(url);
+    this.createForm.patchValue({ imageUrl: url });
+    if (!url) this.createSelectedFile.set(null);
+  }
+
+  onCreateFileSelected(file: File) {
+    this.createSelectedFile.set(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.createImagePreviewUrl.set(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
   onPropSelected(event: { propId: number; label: string }) {
     if (!event.propId) this.propertyCtx.clear();
     else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
@@ -272,24 +292,16 @@ export class RoomsPageComponent {
           view: roomType.view,
           smoking: roomType.smoking,
           accessible: roomType.accessible,
+          imageUrl: roomType.imageUrl || '',
         });
         this.ngZone.run(() => {
           this.editingRoomTypeName.set(roomType.name);
           this.editingRoomTypeId.set(roomType.id);
           this.selectedFeatures.set(new Set(roomType.features.map(f => f.label)));
-          const prices = new Map<string, number>();
-          for (const f of roomType.features) {
-            prices.set(f.label, f.unitPrice);
-          }
-          for (const cat of this.featureCatalog()) {
-            for (const feat of cat.items) {
-              if (!prices.has(feat.label) && feat.unitPrice) {
-                prices.set(feat.label, feat.unitPrice);
-              }
-            }
-          }
-          this.featurePrices.set(prices);
           this.featurePanelOpen.set(true);
+          this.editImagePreviewUrl.set(roomType.imageUrl || '');
+          this.editSelectedFile.set(null);
+          this.editUploading.set(false);
           this.showEditModal.set(true);
           this.cdr.markForCheck();
         });
@@ -306,17 +318,6 @@ export class RoomsPageComponent {
       });
     }
   }
-
-  /** Sum of unit prices for all selected features (uses editable prices). */
-  readonly selectedFeaturesTotal = computed(() => {
-    const prices = this.featurePrices();
-    const selected = this.selectedFeatures();
-    let total = 0;
-    for (const label of selected) {
-      total += prices.get(label) ?? 0;
-    }
-    return total;
-  });
 
   /** Toggle a feature on/off in the selected set. */
   toggleFeature(feature: string) {
@@ -337,30 +338,52 @@ export class RoomsPageComponent {
   /** Count selected features. */
   readonly selectedFeatureCount = computed(() => this.selectedFeatures().size);
 
-  updateFeaturePrice(label: string, value: string) {
-    const num = parseFloat(value);
-    const prices = new Map(this.featurePrices());
-    prices.set(label, isNaN(num) ? 0 : num);
-    this.featurePrices.set(prices);
+  onEditImageUrlChange(url: string) {
+    this.editImagePreviewUrl.set(url);
+    this.editForm.patchValue({ imageUrl: url });
   }
 
-  /** Get current price for a feature label, falling back to catalog default. */
-  getFeaturePrice(label: string): number {
-    const prices = this.featurePrices();
-    if (prices.has(label)) return prices.get(label)!;
-    // Fall back to catalog default
-    for (const cat of this.featureCatalog()) {
-      const found = cat.items.find((f) => f.label === label);
-      if (found?.unitPrice) return found.unitPrice;
-    }
-    return 0;
+  onEditFileSelected(file: File) {
+    this.editSelectedFile.set(file);
+    // Show local preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.editImagePreviewUrl.set(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  uploadEditFile() {
+    const file = this.editSelectedFile();
+    const roomTypeId = this.editingRoomTypeId();
+    if (!file || !roomTypeId) return;
+
+    this.editUploading.set(true);
+    this.api.uploadRoomImage(roomTypeId, file).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (result) => {
+        this.editForm.patchValue({ imageUrl: result.image_url });
+        this.editImagePreviewUrl.set(result.image_url);
+        this.editSelectedFile.set(null);
+        this.editUploading.set(false);
+        this.toast.success('Imagen subida correctamente');
+      },
+      error: (err) => {
+        console.error('[Rooms] Failed to upload image', err);
+        this.toast.error('Error al subir la imagen');
+        this.editUploading.set(false);
+      }
+    });
   }
 
   cancelEdit() {
     this.showEditModal.set(false);
     this.editForm.reset();
     this.selectedFeatures.set(new Set());
-    this.featurePrices.set(new Map());
+    this.editImagePreviewUrl.set('');
+    this.editSelectedFile.set(null);
+    this.editUploading.set(false);
   }
 
   requestDelete(roomTypeId: string, name: string) {
@@ -408,11 +431,7 @@ export class RoomsPageComponent {
     this.savingEdit.set(true);
 
     // Update room type basic fields + features in parallel
-    const prices = this.featurePrices();
-    const featuresArr = [...this.selectedFeatures()].map((label) => ({
-      label,
-      unitPrice: prices.get(label) ?? 0,
-    }));
+    const featuresArr = [...this.selectedFeatures()].map((label) => ({ label }));
     const roomTypeId = value.roomTypeId;
 
     this.api.updateRoomType(roomTypeId, {
@@ -428,6 +447,7 @@ export class RoomsPageComponent {
       view: value.view,
       smoking: value.smoking,
       accessible: value.accessible,
+      imageUrl: value.imageUrl,
     }).pipe(
       switchMap(() => {
         // Always update features (even empty array = clear all)
@@ -461,6 +481,7 @@ export class RoomsPageComponent {
     }
 
     const value = this.createForm.getRawValue();
+    const pendingFile = this.createSelectedFile();
     this.api
       .createRoomType({
         propId: current.propId,
@@ -476,8 +497,19 @@ export class RoomsPageComponent {
         view: value.view,
         smoking: value.smoking,
         accessible: value.accessible,
+        imageUrl: value.imageUrl,
       })
       .pipe(
+        switchMap((created: any) => {
+          const roomTypeId = created?.room_type_id;
+          // If there's a pending file, upload it after creation
+          if (pendingFile && roomTypeId) {
+            return this.api.uploadRoomImage(roomTypeId, pendingFile).pipe(
+              map(() => roomTypeId)
+            );
+          }
+          return of(roomTypeId);
+        }),
         switchMap(() => this.api.getRooms(current.propId)),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -498,7 +530,10 @@ export class RoomsPageComponent {
             view: '',
             smoking: false,
             accessible: false,
+            imageUrl: '',
           });
+          this.createImagePreviewUrl.set('');
+          this.createSelectedFile.set(null);
         },
         error: (error: ApiError) => {
           this.toast.error(error.message || 'No fue posible registrar el tipo de habitación.');

@@ -56,9 +56,12 @@
           [createMode]="createMode()"
           [existingRoomTypes]="existingRoomTypes()"
           [selectedExistingId]="selectedExistingRoomTypeId()"
+          [imagePreviewUrl]="createImagePreviewUrl()"
           (setMode)="setCreateMode($event)"
           (selectExisting)="onExistingTypeSelected($event)"
           (createRoomType)="createRoomType()"
+          (imageUrlChange)="onCreateImageUrlChange($event)"
+          (fileSelected)="onCreateFileSelected($event)"
         />
 
         <app-rp-tables
@@ -92,15 +95,18 @@
       [filteredCatalog]="filteredFeatureCatalog()"
       [searchQuery]="featureSearchQuery()"
       [selectedCount]="selectedFeatureCount()"
-      [featuresTotal]="selectedFeaturesTotal()"
       [isSelected]="isFeatureSelectedFn"
-      [getPrice]="getFeaturePriceFn"
+      [imagePreviewUrl]="editImagePreviewUrl()"
+      [uploading]="editUploading()"
+      [selectedFile]="editSelectedFile()"
       (cancel)="cancelEdit()"
       (save)="saveEdit()"
       (togglePanel)="featurePanelOpen.set(!featurePanelOpen())"
       (searchChange)="featureSearchQuery.set($event)"
       (toggleFeature)="toggleFeature($event)"
-      (updatePrice)="updateFeaturePrice($event.label, $event.value)"
+      (imageUrlChange)="onEditImageUrlChange($event)"
+      (fileSelected)="onEditFileSelected($event)"
+      (uploadFile)="uploadEditFile()"
     />
   }
 </div>
