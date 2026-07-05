@@ -1,12 +1,15 @@
 .invoice-panel {
-  border: 1px solid var(--app-border);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .invoice-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.875rem;
 }
 
 .invoice-panel-title {
@@ -16,7 +19,8 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
   }
 
   .material-symbols-outlined {
@@ -116,7 +120,8 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
   }
 }
 
@@ -126,19 +131,22 @@
 }
 
 .panel-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--primary, #2563eb);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.06);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.12);
 }
 
 .price-panel {
-  border: 1px solid var(--app-border);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .breakdown-table {
@@ -181,7 +189,10 @@
 }
 
 .policy-panel {
-  border: 1px solid var(--app-border);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .policy-text {
@@ -194,7 +205,10 @@
 
 /* ── Charges section ── */
 .charges-panel {
-  border: 1px solid var(--app-border);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .charges-table {

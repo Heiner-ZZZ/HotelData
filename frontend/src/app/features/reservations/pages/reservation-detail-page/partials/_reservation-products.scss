@@ -1,5 +1,8 @@
 .products-panel {
-  border: 1px solid var(--app-border);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .btn-add-product {
@@ -7,14 +10,14 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.4rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  background: var(--primary, #2563eb);
+  background: #2563eb;
   color: #fff;
-  border: 1px solid var(--primary, #2563eb);
+  border: 1px solid #2563eb;
   min-height: auto;
 
   .material-symbols-outlined {
@@ -23,7 +26,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--primary, #2563eb) 85%, black);
+    background: #1d4ed8;
   }
 }
 
@@ -64,14 +67,14 @@
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--surface-soft);
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 6px;
     transition: all 0.15s;
 
     &:hover {
-      border-color: var(--accent);
-      background: var(--surface);
+      border-color: #e5e7eb;
+      background: #ffffff;
     }
   }
 
@@ -91,9 +94,9 @@
       }
 
       .line-item-qty {
-        font-size: 0.78rem;
-        color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        font-size: 0.75rem;
+        color: #2563eb;
+        background: rgba(37, 99, 235, 0.08);
         padding: 1px 6px;
         border-radius: 4px;
       }
@@ -119,9 +122,9 @@
     gap: 8px;
 
     .line-item-total {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      color: var(--success);
+      color: #16a34a;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
@@ -168,13 +171,13 @@
   justify-content: space-between;
   padding: 12px 12px 0;
   margin-top: 8px;
-  border-top: 1px solid var(--app-border);
-  font-size: 0.9rem;
-  color: var(--app-text);
+  border-top: 1px solid #f3f4f6;
+  font-size: 0.88rem;
+  color: #111827;
 
   strong {
-    font-size: 1.05rem;
-    color: var(--success);
+    font-size: 1rem;
+    color: #16a34a;
   }
 }
 
@@ -206,15 +209,15 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-    border-radius: 8px;
+    background: rgba(37, 99, 235, 0.06);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    border-radius: 6px;
     font-size: 0.85rem;
 
-    strong { color: var(--accent); }
+    strong { color: #2563eb; }
     .ps-selected-price {
       font-weight: 700;
-      color: var(--success);
+      color: #16a34a;
     }
   }
 
@@ -240,25 +243,25 @@
     justify-content: space-between;
     width: 100%;
     padding: 8px 10px;
-    background: var(--surface-soft);
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 6px;
     cursor: pointer;
     text-align: left;
-    color: var(--app-text);
+    color: #374151;
     font-size: 0.82rem;
     font-family: inherit;
     min-height: auto;
     transition: all 0.12s;
 
     &:hover {
-      border-color: var(--accent);
-      background: var(--surface);
+      border-color: #e5e7eb;
+      background: #ffffff;
     }
 
     &.is-selected {
-      border-color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 6%, transparent);
+      border-color: #2563eb;
+      background: rgba(37, 99, 235, 0.04);
     }
 
     .ps-item-info {
@@ -300,9 +303,9 @@
     flex-direction: column;
     gap: 2px;
     padding: 4px;
-    background: var(--surface-soft);
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 6px;
     overflow-y: auto;
     max-height: 320px;
   }
@@ -334,12 +337,12 @@
     transition: all 0.1s;
 
     &:hover {
-      background: color-mix(in srgb, var(--accent) 6%, transparent);
-      color: var(--accent);
+      background: rgba(37, 99, 235, 0.06);
+      color: #2563eb;
     }
 
     &.is-active {
-      background: var(--accent);
+      background: #2563eb;
       color: #fff;
       font-weight: 600;
 
@@ -379,10 +382,10 @@
       justify-content: space-between;
       width: 100%;
       padding: 10px 12px;
-      background: var(--surface-soft);
-      border: 1px solid var(--app-border);
-      border-radius: 8px;
-      color: var(--app-text);
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      color: #374151;
       font-size: 0.9rem;
       font-family: inherit;
       cursor: pointer;
@@ -390,7 +393,7 @@
       min-height: auto;
 
       &:hover {
-        border-color: var(--accent);
+        border-color: #2563eb;
       }
 
       .product-dropdown-selected {
@@ -423,11 +426,11 @@
       right: 0;
       max-height: 300px;
       overflow-y: auto;
-      background: var(--surface);
-      border: 1px solid var(--app-border);
-      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
       z-index: 10;
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 
       .product-group {
         padding: 4px 0;
@@ -445,30 +448,30 @@
           color: var(--muted-text);
         }
 
-        .product-option {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          padding: 8px 12px;
-          background: none;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          color: var(--app-text);
-          font-size: 0.85rem;
-          font-family: inherit;
-          min-height: auto;
-          transition: all 0.1s;
+      .product-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 8px 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        color: #374151;
+        font-size: 0.85rem;
+        font-family: inherit;
+        min-height: auto;
+        transition: all 0.1s;
 
-          &:hover {
-            background: var(--surface-soft);
-          }
+        &:hover {
+          background: #f9fafb;
+        }
 
-          &.is-selected {
-            background: color-mix(in srgb, var(--accent) 8%, transparent);
-            color: var(--accent);
-          }
+        &.is-selected {
+          background: rgba(37, 99, 235, 0.06);
+          color: #2563eb;
+        }
 
           .product-option-info {
             display: grid;
