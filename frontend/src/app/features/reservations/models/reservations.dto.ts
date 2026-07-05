@@ -16,13 +16,26 @@ export interface ReservationListItemDto {
   assigned_rooms?: string[];
   guest_name: string;
   guest_email: string;
+  guest_phone?: string;
+  cedula?: string;
   check_in_date: string;
   check_out_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
   adults: number;
   children: number;
   rooms: number;
   created_at: string;
+  total_price?: number | null;
+  currency?: string;
+  total_nights?: number;
+  stay_status?: string;
+  folio?: string;
   hotel?: ReservationHotelContextDto | null;
+  check_in_time_actual?: string;
+  check_out_time_actual?: string;
+  check_in_by?: string;
+  check_out_by?: string;
 }
 
 export interface ReservationHotelContextDto {

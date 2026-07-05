@@ -14,12 +14,25 @@ export interface ReservationListItem {
   hotelLabel: string;
   guestName: string;
   guestEmail: string;
+  guestPhone: string;
+  cedula: string;
   checkInDate: string;
   checkOutDate: string;
   status: string;
   bookingSource: string;
   assignedRooms: string[];
   roomsAssignedCount: number;
+  totalPrice: number | null;
+  currency: string;
+  totalNights: number;
+  stayStatus: string;
+  folio: string;
+  checkInTime: string;
+  checkOutTime: string;
+  checkInTimeActual: string;
+  checkOutTimeActual: string;
+  checkInBy: string;
+  checkOutBy: string;
 }
 
 export interface ReservationHotelOption {

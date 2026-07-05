@@ -108,7 +108,7 @@ export class ReservationsApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getReservations(page: number, createdDate?: string, status?: string, propId?: number) {
+  getReservations(page: number, createdDate?: string, status?: string, propId?: number, folio?: string, stayStatus?: string, bookingSource?: string) {
     let params = new HttpParams().set('page', String(page));
     if (createdDate) {
       params = params.set('date', createdDate);
@@ -118,6 +118,15 @@ export class ReservationsApiService {
     }
     if (propId) {
       params = params.set('prop_id', String(propId));
+    }
+    if (folio) {
+      params = params.set('folio', folio);
+    }
+    if (stayStatus) {
+      params = params.set('stay_status', stayStatus);
+    }
+    if (bookingSource) {
+      params = params.set('booking_source', bookingSource);
     }
     return this.http
       .get<ReservationsListDto>(`${this.apiConfig.baseUrl}/reservations`, {
