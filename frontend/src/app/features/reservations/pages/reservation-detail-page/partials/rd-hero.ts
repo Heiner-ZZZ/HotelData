@@ -14,7 +14,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="action-row">
-      <a routerLink="/reservations" class="secondary-link">Volver</a>
+      <a routerLink=".." [queryParamsHandling]="'preserve'" class="secondary-link">Volver</a>
       @if (canConfirm()) {
         <button type="button" class="btn-action btn-confirm" (click)="confirm.emit()" [disabled]="confirmPending()">
           <span class="material-symbols-outlined btn-icon">check_circle</span>

@@ -26,6 +26,7 @@ import { RdRoomModalComponent } from './partials/rd-room-modal';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationDetailViewModel } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
+import { ReservationActionService } from '../../services/reservation-action.service';
 import { ProductsApiService } from '../../../admin/services/products-api.service';
 import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
@@ -57,6 +58,7 @@ export class ReservationDetailPageComponent {
   private readonly productsApi = inject(ProductsApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly instayApi = inject(InStayApiService);
+  private readonly actionService = inject(ReservationActionService);
   private readonly router = inject(Router);
 
   readonly viewState = signal<ViewState>('loading');
@@ -341,18 +343,19 @@ export class ReservationDetailPageComponent {
     if (!current || !this.canConfirm() || this.confirmPending()) return;
     this.confirmPending.set(true);
     this.successMessage.set('');
-    this.reservationsApi
-      .confirmReservation(current.bookingId)
-      .pipe(switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)), takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
-          this.confirmPending.set(false);
-          this.successMessage.set('Reserva confirmada exitosamente.');
-          setTimeout(() => this.successMessage.set(''), 4000);
-        },
-        error: () => { this.confirmPending.set(false); }
-      });
+
+    this.actionService.confirm({ bookingId: current.bookingId }).pipe(
+      switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (detail) => {
+        this.data.set(detail);
+        this.confirmPending.set(false);
+        this.successMessage.set('Reserva confirmada exitosamente.');
+        setTimeout(() => this.successMessage.set(''), 4000);
+      },
+      error: () => { this.confirmPending.set(false); }
+    });
   }
 
   rejectReservation() {
@@ -360,18 +363,19 @@ export class ReservationDetailPageComponent {
     if (!current || !this.canReject() || this.rejectPending()) return;
     this.rejectPending.set(true);
     this.successMessage.set('');
-    this.reservationsApi
-      .rejectReservation(current.bookingId)
-      .pipe(switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)), takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
-          this.rejectPending.set(false);
-          this.successMessage.set('Reserva rechazada.');
-          setTimeout(() => this.successMessage.set(''), 4000);
-        },
-        error: () => { this.rejectPending.set(false); }
-      });
+
+    this.actionService.reject({ bookingId: current.bookingId }).pipe(
+      switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (detail) => {
+        this.data.set(detail);
+        this.rejectPending.set(false);
+        this.successMessage.set('Reserva rechazada.');
+        setTimeout(() => this.successMessage.set(''), 4000);
+      },
+      error: () => { this.rejectPending.set(false); }
+    });
   }
 
   // ── Room Assignment ──

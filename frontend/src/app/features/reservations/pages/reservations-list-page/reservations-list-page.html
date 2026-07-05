@@ -86,127 +86,37 @@
     }
 
     <!-- Stats bar -->
-    @if (stats(); as s) {
-      <section class="stats-bar">
-        <button type="button" class="stat-item stat-pending stat-clickable" title="Ver solo pendientes" (click)="filterPending()">
-          <span class="stat-value">{{ s.pending }}</span>
-          <span class="stat-label">Pendientes</span>
-          @if (currentStatusFilter() === 'pending') {
-            <span class="stat-active-indicator"></span>
-          }
-        </button>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-confirmed" title="Confirmadas">
-          <span class="stat-value">{{ s.confirmed }}</span>
-          <span class="stat-label">Confirmadas</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-active" title="Activas (pendiente + confirmada)">
-          <span class="stat-value">{{ s.active }}</span>
-          <span class="stat-label">Activas</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-checked-in" title="Check-in realizados">
-          <span class="stat-value">{{ s.checkedIn }}</span>
-          <span class="stat-label">Check-in</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-checked-out" title="Check-out realizados">
-          <span class="stat-value">{{ s.checkedOut }}</span>
-          <span class="stat-label">Check-out</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-lost" title="Perdidas (canceladas + rechazadas)">
-          <span class="stat-value">{{ s.lost }}</span>
-          <span class="stat-label">Perdidas</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item stat-total" title="Total">
-          <span class="stat-value">{{ s.total }}</span>
-          <span class="stat-label">Total</span>
-        </div>
-      </section>
-    } @else if (statsLoading()) {
-      <section class="stats-bar stats-bar-loading">
-        <span class="material-symbols-outlined spinning">sync</span>
-        <span>Cargando estad&iacute;sticas...</span>
-      </section>
-    }
+    <app-reservations-stats-bar
+      [stats]="stats()"
+      [statsLoading]="statsLoading()"
+      [currentStatusFilter]="currentStatusFilter()"
+      (filterPending)="filterPending()"
+    />
 
-    <!-- Date navigator -->
-    <section class="nav-bar">
-      <button type="button" class="nav-arrow" (click)="navigateDate(-1)" aria-label="D&iacute;a anterior">
-        <span class="material-symbols-outlined">chevron_left</span>
-      </button>
-
-      <form [formGroup]="dateForm" (ngSubmit)="applyFilter()" class="date-field">
-        <span class="material-symbols-outlined date-icon">calendar_today</span>
-        <input type="date" formControlName="createdDate" (change)="applyFilter()" />
-      </form>
-
-      <button type="button" class="nav-arrow" (click)="navigateDate(1)" aria-label="D&iacute;a siguiente">
-        <span class="material-symbols-outlined">chevron_right</span>
-      </button>
-
-      <div class="nav-quick">
-        <button type="button" class="quick-btn" (click)="goToday()">Hoy</button>
-        <button type="button" class="quick-btn" (click)="navigateDate(-7)">-7</button>
-        <button type="button" class="quick-btn" (click)="navigateDate(7)">+7</button>
-      </div>
-
-      @if (dateForm.controls.createdDate.value) {
-        <button type="button" class="quick-btn clear-btn" (click)="clearDateFilter()">
-          <span class="material-symbols-outlined">close</span>
-          Limpiar filtro
-        </button>
-      }
-    </section>
+    <!-- Filters -->
+    <app-reservations-filters-bar
+      [dateForm]="dateForm"
+      [currentFolioFilter]="currentFolioFilter()"
+      [currentStayStatusFilter]="currentStayStatusFilter()"
+      [currentSourceFilter]="currentSourceFilter()"
+      [hasActiveFilters]="hasActiveFilters()"
+      (navigateDate)="navigateDate($event)"
+      (goToday)="goToday()"
+      (applyFilter)="applyFilter()"
+      (folioSearch)="onFolioSearch($event)"
+      (stayStatusFilter)="onStayStatusFilter($event)"
+      (sourceFilter)="onSourceFilter($event)"
+      (clearAllFilters)="clearAllFilters()"
+    />
 
     <!-- Date history modal -->
-    @if (showHistory()) {
-      <div class="modal-overlay" (click)="closeHistory()">
-        <div class="modal-panel" (click)="$event.stopPropagation()">
-          <div class="modal-head">
-            <span class="material-symbols-outlined modal-head-icon">history</span>
-            <div>
-              <h2>Historial de reservas</h2>
-              <p>Fechas con creaci&oacute;n de reservas</p>
-            </div>
-            <button type="button" class="modal-close" (click)="closeHistory()" aria-label="Cerrar">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            @if (historyLoading()) {
-              <div class="history-loading">
-                <span class="material-symbols-outlined spinning">sync</span>
-                <span>Cargando historial...</span>
-              </div>
-            } @else if (historyDates().length === 0) {
-              <div class="history-empty">
-                <span class="material-symbols-outlined">info</span>
-                <span>No se encontraron fechas con reservas creadas.</span>
-              </div>
-            } @else {
-              <div class="history-list">
-                @for (entry of historyDates(); track entry.date) {
-                  <button type="button" class="history-item" (click)="goToDate(entry.date)">
-                    <span class="history-item-date">
-                      <span class="material-symbols-outlined">calendar_today</span>
-                      <span>{{ entry.date | date:'longDate' }}</span>
-                    </span>
-                    <span class="history-item-count">
-                      <span class="badge badge-info">{{ entry.count }} reserva(s)</span>
-                    </span>
-                    <span class="material-symbols-outlined history-item-arrow">chevron_right</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
+    <app-reservations-history-modal
+      [show]="showHistory()"
+      [dates]="historyDates()"
+      [loading]="historyLoading()"
+      (close)="closeHistory()"
+      (selectDate)="goToDate($event)"
+    />
 
     @switch (viewState()) {
       @case ('loading') {
@@ -240,47 +150,25 @@
             </div>
           </div>
 
-          <div class="reservation-list">
-            @for (item of vm.items; track item.bookingId) {
-              <a [routerLink]="[item.bookingId]" class="reservation-row" [class.is-pending]="getListRowCss(item.status)">
-                <div class="row-primary">
-                  <div class="row-booking">
-                    <code>{{ item.bookingId }}</code>
-                    <span class="row-hotel">{{ item.hotelLabel }}</span>
-                  </div>
-                  <div class="row-guest">
-                    <span>{{ item.guestName }}</span>
-                    <span class="row-email">{{ item.guestEmail }}</span>
-                  </div>
-                  <div class="row-dates">
-                    <span>{{ item.checkInDate }}</span>
-                    <span class="row-arrow">→</span>
-                    <span>{{ item.checkOutDate }}</span>
-                  </div>
-                  <div class="row-status">
-                    <span class="status-badge" [class.status-pending]="isBookingPending(item.status)" [class.status-confirmed]="isBookingConfirmed(item.status)" [class.status-checkedin]="isCheckedIn(item.status)" [class.status-checkedout]="isCheckedOut(item.status)" [class.status-muted]="isBookingCancelled(item.status)">
-                      {{ getStatusLabel(item.status) }}
-                    </span>
-                  </div>
-                </div>
-                <div class="row-actions">
-                  @if (isBookingPending(item.status) && isStaff()) {
-                    <button type="button" class="row-action-btn confirm"
-                      (click)="$event.preventDefault(); confirmWithDialog(item.bookingId, item.guestName)"
-                      [disabled]="confirmingId() === item.bookingId" title="Confirmar">
-                      <span class="material-symbols-outlined">check_circle</span>
-                    </button>
-                    <button type="button" class="row-action-btn reject"
-                      (click)="$event.preventDefault(); rejectWithDialog(item.bookingId, item.guestName)"
-                      [disabled]="rejectingId() === item.bookingId" title="Rechazar">
-                      <span class="material-symbols-outlined">cancel</span>
-                    </button>
-                  }
-                  <span class="row-chevron material-symbols-outlined">chevron_right</span>
-                </div>
-              </a>
-            }
-          </div>
+          <ag-grid-angular
+            class="reservations-grid"
+            [theme]="theme"
+            [rowData]="vm.items"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [getRowId]="getRowId"
+            [loading]="viewState() === 'loading'"
+            [enableCellTextSelection]="true"
+            [headerHeight]="40"
+            [rowHeight]="56"
+            [domLayout]="'autoHeight'"
+            [rowSelection]="{ mode: 'singleRow' }"
+            [rowClassRules]="rowClassRules"
+            style="width: 100%;"
+            (gridReady)="onGridReady($event)"
+            (rowClicked)="onRowClicked($event)"
+            (cellKeyDown)="onCellKeyDown($event)"
+          />
         }
       }
     }

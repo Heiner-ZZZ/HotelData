@@ -17,7 +17,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
               @if (vm()?.roomType; as rt) {
                 <tr><th>Tipo de habitación</th><td>{{ rt.name }}</td></tr>
               }
-              <tr><th>Fechas</th><td>{{ vm()?.checkInDate }} a {{ vm()?.checkOutDate }}</td></tr>
+              <tr class="date-row"><th>Fechas</th><td><span class="date-range">{{ vm()?.checkInDate }}</span> <span class="date-arrow">→</span> <span class="date-range">{{ vm()?.checkOutDate }}</span></td></tr>
               <tr><th>Ocupación</th><td>{{ vm()?.occupancyLabel }}</td></tr>
               <tr><th>Comentario</th><td>{{ vm()?.comment }}</td></tr>
               @if (vm()?.specialRequests?.length > 0) {
