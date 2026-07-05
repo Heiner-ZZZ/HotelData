@@ -37,6 +37,14 @@
       </div>
     </header>
 
+    <!-- ═══ QUICK REQUEST TOAST ═══ -->
+    @if (quickRequestSuccess()) {
+      <div class="gp-toast" [class.gp-toast-error]="quickRequestSuccess().startsWith('Error')">
+        <span class="material-symbols-outlined">{{ quickRequestSuccess().startsWith('Error') ? 'error' : 'check_circle' }}</span>
+        <span>{{ quickRequestSuccess() }}</span>
+      </div>
+    }
+
     <!-- ═══ TAB NAV (mobile only) ═══ -->
     <nav class="gp-tab-nav">
       @for (tab of tabs(); track tab.id) {
@@ -71,11 +79,11 @@
           </div>
         </div>
         <div class="gp-hero-actions">
-          <button class="gp-btn-outline">
+          <button class="gp-btn-outline" (click)="quickRequest('extend_stay')">
             <span class="material-symbols-outlined">calendar_month</span>
             Extender Estancia
           </button>
-          <button class="gp-btn-outline">
+          <button class="gp-btn-outline" (click)="quickRequest('late_checkout')">
             <span class="material-symbols-outlined">schedule</span>
             Solicitar Late Checkout
           </button>
@@ -134,14 +142,14 @@
           <h3>Reservas y Citas</h3>
         </div>
         <div class="gp-appointments-list">
-          <button class="gp-appt-btn" (click)="quickRequest('other')">
+          <button class="gp-appt-btn" (click)="quickRequest('spa')">
             <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
               <span class="material-symbols-outlined" style="color:#4a626e;">spa</span>
             </div>
             <span class="gp-appt-label">Spa &amp; Bienestar</span>
             <span class="material-symbols-outlined gp-appt-arrow">chevron_right</span>
           </button>
-          <button class="gp-appt-btn" (click)="quickRequest('other')">
+          <button class="gp-appt-btn" (click)="quickRequest('restaurant')">
             <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
               <span class="material-symbols-outlined" style="color:#4a626e;">restaurant</span>
             </div>

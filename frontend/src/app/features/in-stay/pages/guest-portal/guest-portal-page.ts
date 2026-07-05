@@ -38,6 +38,7 @@ export class GuestPortalPageComponent implements OnInit {
   readonly requestDesc = signal('');
   readonly sendingRequest = signal(false);
   readonly requestDone = signal(false);
+  readonly quickRequestSuccess = signal('');
 
   readonly requestTypes: { value: string; label: string }[] = [
     { value: 'housekeeping', label: 'Limpieza' },
@@ -50,6 +51,9 @@ export class GuestPortalPageComponent implements OnInit {
     { value: 'wake_up_call', label: 'Llamada de despertar' },
     { value: 'late_checkout', label: 'Late check-out' },
     { value: 'extra_bed', label: 'Cama adicional' },
+    { value: 'spa', label: 'Spa & Bienestar' },
+    { value: 'restaurant', label: 'Reserva en restaurante' },
+    { value: 'extend_stay', label: 'Extender estancia' },
     { value: 'other', label: 'Otro' },
   ];
 
@@ -189,14 +193,22 @@ export class GuestPortalPageComponent implements OnInit {
   quickRequest(type: string): void {
     if (!this.tokenValue) return;
     this.sendingRequest.set(true);
+    this.quickRequestSuccess.set('');
     this.api
       .createRequest(this.tokenValue, type, '')
       .subscribe({
         next: () => {
           this.sendingRequest.set(false);
+          const label = this.requestTypes.find((r) => r.value === type)?.label || 'Solicitud';
+          this.quickRequestSuccess.set(`${label} enviada. Recepción te atenderá pronto.`);
+          setTimeout(() => this.quickRequestSuccess.set(''), 4000);
           this.loadRequests();
         },
-        error: () => (this.sendingRequest.set(false)),
+        error: () => {
+          this.sendingRequest.set(false);
+          this.quickRequestSuccess.set('Error al enviar la solicitud. Intenta de nuevo.');
+          setTimeout(() => this.quickRequestSuccess.set(''), 4000);
+        },
       });
   }
 

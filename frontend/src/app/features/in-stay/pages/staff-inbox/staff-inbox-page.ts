@@ -13,30 +13,79 @@ import { FolioTransactionsModalComponent } from '../../components/folio-transact
 import { Conversation, ChatMessage, ServiceRequest } from '../../models/in-stay.model';
 import type { LedgerFolio } from '../../../expenses/models/ledger.model';
 
-type MainTab = 'unified' | 'folios';
+import type { MainTab, TimelineItem } from './staff-inbox-page.types';
+import { REQUEST_CATEGORIES } from './staff-inbox-page.constants';
 
-/** Category chip definition for quick request creation + filtering. */
-interface CategoryChip {
-  id: string;
-  icon: string;
-  label: string;
+/** Build the unified timeline from conversations + requests. */
+function buildTimeline(
+  conversations: Conversation[],
+  requests: ServiceRequest[],
+  categoryFilter: string | null,
+): TimelineItem[] {
+  const items: TimelineItem[] = [];
+
+  for (const c of conversations) {
+    items.push({
+      type: 'message',
+      id: c._id,
+      roomLabel: c._id,
+      guestName: c.guest_name,
+      preview: c.last_message,
+      time: c.last_time,
+      unread: c.unread,
+    });
+  }
+
+  const filteredRequests = categoryFilter
+    ? requests.filter((r) => r.request_type === categoryFilter)
+    : requests;
+
+  for (const r of filteredRequests) {
+    items.push({
+      type: 'request',
+      id: r._id,
+      roomLabel: r.room_label,
+      guestName: '',
+      preview: r.description || r.request_type_label,
+      time: r.created_at,
+      status: r.status,
+      statusLabel: r.status_label,
+      requestType: r.request_type,
+      request: r,
+    });
+  }
+
+  // Sort by time desc
+  items.sort((a, b) => b.time.localeCompare(a.time));
+  return items;
 }
 
-const REQUEST_CATEGORIES: CategoryChip[] = [
-  { id: 'concierge', icon: 'local_activity', label: 'Concierge' },
-  { id: 'housekeeping', icon: 'cleaning_services', label: 'Housekeeping' },
-  { id: 'room_service', icon: 'room_service', label: 'Room Service' },
-  { id: 'maintenance', icon: 'handyman', label: 'Technical' },
-];
+/** Return the Material Symbols icon name for a request type. */
+function getRequestIcon(type?: string): string {
+  switch (type) {
+    case 'housekeeping': return 'cleaning_services';
+    case 'room_service': return 'room_service';
+    case 'maintenance': return 'handyman';
+    default: return 'concierge';
+  }
+}
 
 @Component({
   selector: 'app-staff-inbox',
-  imports: [DatePipe, CurrencyPipe, FormsModule, PropertySelectorComponent, FolioPaymentModalComponent, FolioTransactionsModalComponent],
+  imports: [
+    DatePipe,
+    CurrencyPipe,
+    FormsModule,
+    PropertySelectorComponent,
+    FolioPaymentModalComponent,
+    FolioTransactionsModalComponent,
+  ],
   templateUrl: './staff-inbox-page.html',
   styleUrl: './staff-inbox-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StaffInboxPageComponent {
+  // ── Dependencies ──
   private readonly api = inject(InStayApiService);
   private readonly ledgerApi = inject(ExpensesApiService);
   private readonly propCtx = inject(PropertyContextService);
@@ -44,10 +93,9 @@ export class StaffInboxPageComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  // ── State ──
   readonly selectedPropId = this.propCtx.currentPropId;
   readonly selectedLabel = signal('');
-
-  // ── Unified tab state ──
   readonly activeTab = signal<MainTab>('unified');
   readonly loading = signal(true);
 
@@ -61,77 +109,46 @@ export class StaffInboxPageComponent {
   // Service requests (left sidebar)
   readonly requests = signal<ServiceRequest[]>([]);
   readonly selectedRequest = signal<ServiceRequest | null>(null);
-  readonly requestCategoryFilter = signal<string | null>(null); // null = all
+  readonly requestCategoryFilter = signal<string | null>(null);
   readonly categories = REQUEST_CATEGORIES;
 
   // Folios (separate tab)
   readonly folios = signal<LedgerFolio[]>([]);
   readonly foliosLoading = signal(false);
 
-  // Payment modal state
+  // Payment / transfer modal state
   readonly paymentModalFolio = signal<LedgerFolio | null>(null);
   readonly transferModalFolio = signal<LedgerFolio | null>(null);
   readonly paymentModalError = signal('');
   readonly transactionsModalFolio = signal<LedgerFolio | null>(null);
 
+  // ── Computed ──
+
+  /** Combined timeline sorted by last activity. */
+  readonly timeline = computed(() =>
+    buildTimeline(
+      this.conversations(),
+      this.requests(),
+      this.requestCategoryFilter(),
+    ),
+  );
+
+  /** Total unread messages across all conversations. */
+  readonly unreadCount = computed(() =>
+    this.conversations().reduce((sum, c) => sum + c.unread, 0),
+  );
+
+  /** Pending + in-progress requests count. */
+  readonly pendingCount = computed(() =>
+    this.requests().filter((r) => r.status === 'pending' || r.status === 'in_progress').length,
+  );
+
+  /** Active folios count. */
+  readonly folioCount = computed(() => this.folios().length);
+
   constructor() {
     this.loadData();
   }
-
-  // ── Computed ──
-
-  /** Combined timeline: conversations + requests, sorted by last activity, filtered by category. */
-  readonly timeline = computed(() => {
-    const convs = this.conversations();
-    const catFilter = this.requestCategoryFilter();
-    const reqs = catFilter
-      ? this.requests().filter((r) => r.request_type === catFilter)
-      : this.requests();
-    // Merge into timeline items
-    const items: {
-      type: 'message' | 'request';
-      id: string;
-      roomLabel: string;
-      guestName: string;
-      preview: string;
-      time: string;
-      unread?: number;
-      status?: string;
-      statusLabel?: string;
-      requestType?: string;
-      request?: ServiceRequest;
-    }[] = [];
-
-    for (const c of convs) {
-      items.push({
-        type: 'message',
-        id: c._id,
-        roomLabel: c._id,
-        guestName: c.guest_name,
-        preview: c.last_message,
-        time: c.last_time,
-        unread: c.unread,
-      });
-    }
-    for (const r of reqs) {
-      items.push({
-        type: 'request',
-        id: r._id,
-        roomLabel: r.room_label,
-        guestName: '',
-        preview: r.description || r.request_type_label,
-        time: r.created_at,
-        status: r.status,
-        statusLabel: r.status_label,
-        requestType: r.request_type,
-        request: r,
-      });
-    }
-
-    // Sort by time desc
-    items.sort((a, b) => b.time.localeCompare(a.time));
-    return items;
-  });
 
   // ── Data loading ──
 
@@ -139,16 +156,14 @@ export class StaffInboxPageComponent {
     this.loading.set(true);
     const propId = this.selectedPropId() ?? undefined;
 
-    // Load conversations
     this.api.listConversations(propId).subscribe({
       next: (res) => {
         this.conversations.set(res.conversations);
         this.loading.set(false);
       },
-      error: () => (this.loading.set(false)),
+      error: () => this.loading.set(false),
     });
 
-    // Load requests (all statuses)
     this.api.listRequests(propId, undefined).subscribe({
       next: (res) => this.requests.set(res.items),
     });
@@ -159,6 +174,7 @@ export class StaffInboxPageComponent {
   private loadFolios(): void {
     const propId = this.selectedPropId();
     if (!propId) return;
+
     this.foliosLoading.set(true);
     this.ledgerApi.getLedgerFolios(propId).subscribe({
       next: (res) => {
@@ -176,32 +192,29 @@ export class StaffInboxPageComponent {
     if (tab === 'folios') this.loadFolios();
   }
 
-  // ── Unified sidebar interactions ──
+  // ── Sidebar interactions ──
 
-  /** Select a conversation by room label — opens chat in the right panel. */
   selectConversation(roomLabel: string): void {
     this.selectedRoom.set(roomLabel);
     this.selectedRequest.set(null);
     this.messages.set([]);
+
     this.api.getConversationMessages(roomLabel, this.selectedPropId() ?? undefined).subscribe({
       next: (res) => this.messages.set(res.messages),
     });
   }
 
-  /** Select a service request — shows its detail in the right panel. */
   selectRequest(req: ServiceRequest): void {
     this.selectedRequest.set(req);
     this.selectedRoom.set(null);
   }
 
-  /** Navigate from a selected item back to the list. */
   clearSelection(): void {
     this.selectedRoom.set(null);
     this.selectedRequest.set(null);
     this.messages.set([]);
   }
 
-  /** Filter timeline by request category chip. */
   setCategoryFilter(categoryId: string | null): void {
     this.requestCategoryFilter.set(categoryId);
   }
@@ -219,13 +232,12 @@ export class StaffInboxPageComponent {
         this.replyInput.set('');
         this.sendingReply.set(false);
         this.selectConversation(room);
-        this.loadData(); // refresh conversations
+        this.loadData();
       },
-      error: () => (this.sendingReply.set(false)),
+      error: () => this.sendingReply.set(false),
     });
   }
 
-  /** Handle Enter key in chat textarea: send on Enter, newline on Shift+Enter */
   handleReplyKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -235,7 +247,6 @@ export class StaffInboxPageComponent {
 
   // ── Request actions ──
 
-  /** Update a request status (Tomar, Completar, Cancelar). */
   updateRequest(req: ServiceRequest, status: string): void {
     this.api.updateRequest(req._id, status, '').subscribe({
       next: () => {
@@ -243,7 +254,7 @@ export class StaffInboxPageComponent {
         this.api.listRequests(propId, undefined).subscribe({
           next: (res) => this.requests.set(res.items),
         });
-        // Update the selected request if it's the one being modified
+
         if (this.selectedRequest()?._id === req._id) {
           this.selectedRequest.set({ ...req, status: status as ServiceRequest['status'] });
         }
@@ -251,17 +262,13 @@ export class StaffInboxPageComponent {
     });
   }
 
-  /** Quick-create a request from a category chip click. */
   quickCreateRequest(categoryId: string): void {
     const propId = this.selectedPropId();
     if (!propId) {
       this.toast.warning('Selecciona una propiedad primero.');
       return;
     }
-    // Create a lightweight request by posting to the guest endpoint
-    // We need a token — find one from active conversations
     this.toast.info(`Creando solicitud de ${categoryId}...`);
-    // For now, we'll just set the filter to this category
     this.setCategoryFilter(categoryId);
   }
 
@@ -270,32 +277,23 @@ export class StaffInboxPageComponent {
   onPropSelected(event: { propId: number; label: string }): void {
     const label = event.label || `Propiedad #${event.propId}`;
     this.selectedLabel.set(label);
+
     if (event.propId) {
       this.propCtx.setProperty(event.propId, label);
     } else {
       this.propCtx.clear();
     }
+
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { prop_id: event.propId || null },
       queryParamsHandling: 'merge',
     });
+
     this.loadData();
   }
 
-  // ── Badge helpers ──
 
-  getUnreadCount(): number {
-    return this.conversations().reduce((sum, c) => sum + c.unread, 0);
-  }
-
-  get pendingCount(): number {
-    return this.requests().filter((r) => r.status === 'pending' || r.status === 'in_progress').length;
-  }
-
-  get folioCount(): number {
-    return this.folios().length;
-  }
 
   // ── Folio modals ──
 
@@ -368,4 +366,7 @@ export class StaffInboxPageComponent {
       },
     });
   }
+
+  // ── Icon helper exposed to template ──
+  protected readonly getRequestIcon = getRequestIcon;
 }
