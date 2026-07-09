@@ -612,6 +612,20 @@ export class StaffInboxPageComponent implements OnDestroy {
               status_label: notification.data.status_label || selected.status_label,
             });
           }
+        } else if (notification.type === 'dnd_toggled') {
+          const dndOn = notification.data.dnd_active;
+          const room = notification.data.room_label || '';
+          const guest = notification.data.guest_name || 'Huésped';
+          const action = dndOn ? 'activó' : 'desactivó';
+          this.toast.info(`${guest} (Hab. ${room}) ${action} No Molestar`);
+          // Update conversation locally so DND badge reflects immediately
+          const convs = this.conversations();
+          const idx = convs.findIndex((c) => c._id === room);
+          if (idx >= 0) {
+            const updated = [...convs];
+            updated[idx] = { ...updated[idx], dnd: !!dndOn };
+            this.conversations.set(updated);
+          }
         }
         // Auto-refresh data (lightweight — no loading flag)
         this.refreshData();

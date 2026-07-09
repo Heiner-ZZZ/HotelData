@@ -26,6 +26,7 @@ from src.app.modules.instay.routes_impl._helpers import (
     get_session_or_404,
     notify_guest_new_message,
     notify_guest_request_completed,
+    notify_staff_dnd_toggled,
     notify_staff_new_message,
     notify_staff_new_request,
     notify_staff_request_updated,
@@ -236,6 +237,11 @@ def staff_create_request(
                 {"prop_id": prop_id, "room_label": room_label},
                 {"$set": {"dnd": False, "dnd_updated_at": utc_now()}},
             )
+            # Push SSE notification about the auto-deactivation
+            try:
+                notify_staff_dnd_toggled(db, session, False)
+            except Exception:
+                pass
             # Log the auto-deactivation
             try:
                 db.stay_messages.insert_one({
@@ -605,6 +611,13 @@ def guest_toggle_dnd(payload: dict = Body(...)):
         {"$set": {"dnd": new_dnd, "dnd_updated_at": utc_now()}},
         upsert=True,
     )
+
+    # Push SSE notification to staff
+    try:
+        notify_staff_dnd_toggled(db, session, new_dnd)
+    except Exception:
+        pass
+
     return {"ok": True, "dnd_active": new_dnd, "message": "DND " + ("activado" if new_dnd else "desactivado")}
 
 
