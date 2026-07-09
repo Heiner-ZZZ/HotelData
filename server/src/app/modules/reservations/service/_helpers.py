@@ -52,6 +52,11 @@ class ReservationInput:
     user_id: str | None = None
     created_by: str | None = None
     is_test: bool = False
+    # Payment / transaction fields (Phase 1)
+    transaction_id: str = ""
+    payment_method: str = ""
+    card_last4: str = ""
+    payment_status: str = "pending"
 
     def __post_init__(self):
         if self.selected_amenities is None:

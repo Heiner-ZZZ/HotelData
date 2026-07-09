@@ -120,7 +120,7 @@ def _transition_status(
                 except Exception:
                     logger.exception("Failed to deduct inventory for booking %s", booking_id)
 
-        # ── Auto-generate invoice ──
+        # Auto-generate invoice
         try:
             booking_id_for_inv = booking.get("_id", booking.get("booking_id"))
             if booking_id_for_inv:
@@ -137,6 +137,32 @@ def _transition_status(
                         "status": inv_result.get("status", "issued"),
                     }
                     logger.info("Invoice %s auto-generated for booking %s", inv_result.get("invoice_number"), booking_id)
+
+                    # Auto-create payment record if booking has card payment info
+                    card_last4 = booking.get("card_last4", "") or ""
+                    payment_method = booking.get("payment_method", "") or ""
+                    if card_last4 or payment_method:
+                        try:
+                            from src.app.modules.billing.schemas import PaymentCreate
+                            from src.app.modules.billing.service.lifecycle.payments import create_payment as create_billing_payment
+                            pay_result = create_billing_payment(PaymentCreate(
+                                booking_id=str(booking.get("booking_id") or booking_id),
+                                invoice_id=inv_result.get("id", inv_result.get("_id", "")),
+                                amount=inv_result.get("total", booking.get("total_price", 0)),
+                                method=payment_method or "simulated",
+                            ))
+                            if pay_result:
+                                result["payment"] = {
+                                    "id": pay_result.get("id", ""),
+                                    "reference": pay_result.get("reference", ""),
+                                    "amount": pay_result.get("amount", 0),
+                                    "status": pay_result.get("status", "confirmed"),
+                                }
+                                result["invoice"]["status"] = "paid"
+                                logger.info("Payment %s auto-created for booking %s (card ending %s)",
+                                           pay_result.get("reference"), booking_id, card_last4)
+                        except Exception:
+                            logger.exception("Failed to auto-create payment for booking %s", booking_id)
                 else:
                     logger.warning("Could not generate invoice for booking %s", booking_id)
         except Exception:

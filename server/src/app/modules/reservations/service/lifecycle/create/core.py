@@ -20,6 +20,21 @@ from src.app.modules.reservations.service.lifecycle.create._amenities import _ge
 logger = logging.getLogger(__name__)
 
 
+def _get_cancellation_policy_text(prop_id: int) -> str | None:
+    """Retrieve cancellation policy text from hotel_policies."""
+    try:
+        db = get_database()
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
+            {"_id": 0, "cancellation_policy": 1},
+        )
+        if policy and policy.get("cancellation_policy"):
+            return policy["cancellation_policy"]
+    except Exception:
+        pass
+    return None
+
+
 def create_booking(payload: ReservationInput, *, manual_reservation: bool = False) -> dict[str, Any]:
     ensure_reservation_collections()
     errors = validate_reservation_input(payload)
@@ -82,8 +97,14 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
 
     db = get_database()
     booking_id = generate_prefixed_id("BK")
+    transaction_id = generate_prefixed_id("TXN")
     created_at = utc_now()
     booking_status = "confirmed" if manual_reservation else "pending"
+    payment_status = "pending"
+    payment_method = payload.payment_method
+    card_last4 = payload.card_last4
+    if payment_method or card_last4:
+        payment_status = "paid"
     booking_document = {
         "booking_id": booking_id, "user_id": payload.user_id,
         "prop_id": payload.prop_id, "status": booking_status,
@@ -108,6 +129,11 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         "created_by": payload.created_by, "created_at": created_at, "updated_at": created_at,
         "is_test": payload.is_test,
         "selected_amenities": payload.selected_amenities,
+        # Payment / transaction fields (Phase 1)
+        "transaction_id": transaction_id,
+        "payment_method": payment_method,
+        "card_last4": card_last4,
+        "payment_status": payment_status,
     }
     try:
         db.booking_orders.insert_one(booking_document)
@@ -172,6 +198,9 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     except Exception:
         pass
 
+    # ── Cancellation policy ──
+    cancellation_policy = _get_cancellation_policy_text(payload.prop_id)
+
     return {
         "booking_id": booking_id, "status": booking_status,
         "season_id": season_id,
@@ -183,6 +212,13 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         "rooms": payload.rooms, "adults": payload.adults, "children": payload.children,
         "guest_name": payload.guest_name, "guest_email": payload.guest_email,
         "amenity_charges": amenity_charges_summary,
+        # Payment / transaction (Phase 1)
+        "transaction_id": transaction_id,
+        "payment_method": payment_method,
+        "card_last4": card_last4,
+        "payment_status": payment_status,
+        # Policies (Phase 4)
+        "cancellation_policy": cancellation_policy,
     }
 
 

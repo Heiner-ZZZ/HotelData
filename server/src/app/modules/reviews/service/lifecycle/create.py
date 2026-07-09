@@ -19,7 +19,8 @@ FACT_COLLECTION = "fact_reviews"
 
 def _validate_booking(payload: ReviewCreate) -> tuple[dict, ObjectId, str] | None:
     db = get_database()
-    booking = db.booking_orders.find_one({"_id": ObjectId(payload.booking_id)})
+    # Search by business booking_id string, not by MongoDB _id
+    booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
     if not booking:
         return None
     if booking.get("status") != "checked_out":
@@ -35,7 +36,7 @@ def _validate_booking(payload: ReviewCreate) -> tuple[dict, ObjectId, str] | Non
 
 def _build_review_doc(payload, user_id_obj, sentiment):
     doc = {
-        "booking_id": ObjectId(payload.booking_id),
+        "booking_id": payload.booking_id,
         "prop_id": payload.prop_id,
         "user_id": user_id_obj,
         "rating": payload.rating,

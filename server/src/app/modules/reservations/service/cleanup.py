@@ -82,8 +82,11 @@ def _calculate_cancellation_penalty(
     check_in_date: str,
     total_price: float | None,
     total_nights: int,
+    room_type_id: str = "",
 ) -> dict[str, Any]:
     """Determine if a cancellation penalty applies based on hotel policy.
+
+    Checks per-room-type policies first, then falls back to hotel-wide.
 
     Returns a dict with:
       - free_cancellation: bool
@@ -97,10 +100,18 @@ def _calculate_cancellation_penalty(
                 "hours_until_checkin": None, "cancellation_hours": 0}
 
     db = get_database()
-    policy = db.hotel_policies.find_one(
-        {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
-        {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
-    )
+    # Prefer room-type-specific policy, fall back to hotel-wide
+    policy = None
+    if room_type_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id},
+            {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
+        )
+    if not policy:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
+            {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
+        )
     if not policy:
         return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
                 "hours_until_checkin": None, "cancellation_hours": 0}
@@ -135,6 +146,16 @@ def _calculate_cancellation_penalty(
         one_night = total_price / total_nights
         penalty_amount = round(one_night * penalty_percent / 100, 2)
 
+    # If penalty rounds to zero (or there's nothing to charge), treat as free cancellation
+    if penalty_amount <= 0:
+        return {
+            "free_cancellation": True,
+            "penalty_percent": 0,
+            "penalty_amount": 0.0,
+            "hours_until_checkin": hours_until_checkin,
+            "cancellation_hours": cancellation_hours,
+        }
+
     return {
         "free_cancellation": False,
         "penalty_percent": penalty_percent,
@@ -161,6 +182,7 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
         check_in_date=booking.get("check_in_date", ""),
         total_price=booking.get("total_price"),
         total_nights=int(booking.get("total_nights", 0)),
+        room_type_id=booking.get("room_type_id", ""),
     )
 
     changed_at = utc_now()
