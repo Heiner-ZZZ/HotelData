@@ -43,6 +43,28 @@ export class FolioDetailPageComponent {
   readonly isClosed = computed(() => this.folio()?.status === 'closed');
   readonly postingCount = computed(() => this.folio()?.postingCount ?? 0);
 
+  /** Status label: Activo / Vencido / Cerrado s/factura / Facturado */
+  readonly statusLabel = computed(() => {
+    const f = this.folio();
+    if (!f) return '';
+    if (f.status === 'open' && f.isExpired) return 'Vencido';
+    if (f.status === 'open') return 'Activo';
+    if (f.status === 'closed' && !f.hasInvoice) return 'Cerrado s/factura';
+    if (f.status === 'closed' && f.hasInvoice) return 'Facturado';
+    return 'Cerrado';
+  });
+
+  /** Status CSS class */
+  readonly statusClass = computed(() => {
+    const f = this.folio();
+    if (!f) return '';
+    if (f.status === 'open' && f.isExpired) return 'expired';
+    if (f.status === 'open') return 'open';
+    if (f.status === 'closed' && !f.hasInvoice) return 'closed-no-invoice';
+    if (f.status === 'closed' && f.hasInvoice) return 'invoiced';
+    return 'closed';
+  });
+
   // Group postings by category for display
   readonly postingsByCategory = computed(() => {
     const p = this.folio()?.postings ?? [];

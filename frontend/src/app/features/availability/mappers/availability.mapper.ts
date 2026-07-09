@@ -15,6 +15,7 @@ export function mapAvailability(dto: AvailabilityDto): AvailabilityViewModel {
     countryLabel: dto.hotel.country_display_name,
     reviewLabel: dto.hotel.review_score_label,
     avgPriceLabel: dto.performance.avg_price_label,
+    minRateLabel: dto.performance.min_rate_label || dto.performance.avg_price_label,
     sourceCollection: dto.performance.source_collection,
     roomTypes: dto.room_types.map(mapRoomType),
     inventoryItems: dto.inventory_items.map(mapInventoryItem),

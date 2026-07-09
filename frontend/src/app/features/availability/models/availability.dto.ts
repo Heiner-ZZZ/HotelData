@@ -7,6 +7,7 @@ export interface AvailabilityDto {
   };
   performance: {
     avg_price_label: string;
+    min_rate_label?: string;
     source_collection: string;
   };
   room_types: Array<{

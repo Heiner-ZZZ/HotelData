@@ -4,6 +4,7 @@ export interface AvailabilityViewModel {
   countryLabel: string;
   reviewLabel: string;
   avgPriceLabel: string;
+  minRateLabel: string;
   sourceCollection: string;
   roomTypes: AvailabilityRoomType[];
   inventoryItems: AvailabilityInventoryItem[];

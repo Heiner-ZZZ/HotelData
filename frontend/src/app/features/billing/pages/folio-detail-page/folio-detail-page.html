@@ -15,10 +15,8 @@
             <h1 class="fl-title">
               Folio
               <span class="fl-number">{{ f.folioNumber }}</span>
-              <span class="fl-status-badge"
-                [class.open]="isOpen()"
-                [class.closed]="isClosed()">
-                {{ isOpen() ? 'Abierto' : 'Cerrado' }}
+              <span class="fl-status-badge" [class.open]="statusClass() === 'open'" [class.expired]="statusClass() === 'expired'" [class.closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.invoiced]="statusClass() === 'invoiced'" [class.closed]="statusClass() === 'closed'">
+                {{ statusLabel() }}
               </span>
             </h1>
           </div>
@@ -292,10 +290,21 @@
                 <div>
                   <dt>Estado</dt>
                   <dd>
-                    <span class="fl-status-dot" [class.dot-open]="isOpen()" [class.dot-closed]="isClosed()"></span>
-                    {{ isOpen() ? 'Abierto' : 'Cerrado' }}
+                    <span class="fl-status-dot" [class.dot-active]="statusClass() === 'open'" [class.dot-expired]="statusClass() === 'expired'" [class.dot-closed-no-invoice]="statusClass() === 'closed-no-invoice'" [class.dot-invoiced]="statusClass() === 'invoiced'"></span>
+                    {{ statusLabel() }}
                   </dd>
                 </div>
+                @if (f.hasInvoice) {
+                  <div>
+                    <dt>Factura</dt>
+                    <dd><code>{{ f.invoiceId }}</code></dd>
+                  </div>
+                } @else if (isClosed()) {
+                  <div>
+                    <dt>Factura</dt>
+                    <dd style="color: var(--warning)">Sin factura</dd>
+                  </div>
+                }
                 <div>
                   <dt>Creado</dt>
                   <dd>{{ f.createdAt | date:'dd/MM/yyyy HH:mm' }}</dd>
