@@ -85,7 +85,10 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     special_requests: input.specialRequests || [],
     selected_amenities: input.selectedAmenities || [],
     room_type_id: input.roomTypeId || '',
-    rate_plan_id: input.ratePlanId || ''
+    rate_plan_id: input.ratePlanId || '',
+    transaction_id: input.transactionId || '',
+    payment_method: input.paymentMethod || '',
+    card_last4: input.cardLast4 || '',
   };
 }
 
@@ -109,6 +112,11 @@ export function mapReservationCreateResult(dto: ReservationCreateDto) {
     guestEmail: dto.guest_email,
     discountPercent: dto.discount_percent,
     originalTotalPrice: dto.original_total_price,
+    transactionId: dto.transaction_id,
+    paymentMethod: dto.payment_method,
+    cardLast4: dto.card_last4,
+    paymentStatus: dto.payment_status,
+    cancellationPolicy: dto.cancellation_policy,
   };
 }
 
@@ -118,7 +126,8 @@ export function mapReservationPreview(dto: ReservationPreviewDto) {
     availabilityMessage: dto.availability_message,
     totalPrice: dto.total_price,
     currency: dto.currency,
-    totalNights: dto.total_nights
+    totalNights: dto.total_nights,
+    cancellationPolicy: dto.cancellation_policy,
   };
 }
 
@@ -194,6 +203,12 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       source: dto.price_breakdown.source,
     } : null,
     cancellationPolicy: dto.cancellation_policy || null,
+    transactionId: dto.booking.transaction_id,
+    cardLast4: dto.booking.card_last4,
+    paymentStatus: dto.booking.payment_status,
+    cancellationFree: dto.booking.cancellation_free,
+    cancellationPenaltyPercent: dto.booking.cancellation_penalty_percent,
+    cancellationPenaltyAmount: dto.booking.cancellation_penalty_amount,
     additionalCharges: (dto.additional_charges || []).map(c => ({
       concept: c.concept,
       amount: c.amount,

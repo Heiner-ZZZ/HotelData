@@ -72,6 +72,11 @@ export interface ReservationCreateDto {
   guest_email: string;
   discount_percent?: number | null;
   original_total_price?: number | null;
+  transaction_id?: string;
+  payment_method?: string;
+  card_last4?: string;
+  payment_status?: string;
+  cancellation_policy?: string | null;
 }
 
 export interface ReservationPreviewDto {
@@ -80,6 +85,7 @@ export interface ReservationPreviewDto {
   total_price: number | null;
   currency: string;
   total_nights: number;
+  cancellation_policy?: string | null;
 }
 
 export interface NightBreakdownDto {
@@ -128,6 +134,13 @@ export interface ReservationDetailDto {
     original_total_price?: number | null;
     special_requests?: string[];
     stay_status?: string;
+    transaction_id?: string;
+    payment_method?: string;
+    card_last4?: string;
+    payment_status?: string;
+    cancellation_free?: boolean;
+    cancellation_penalty_percent?: number;
+    cancellation_penalty_amount?: number;
   };
   guest: {
     guest_name: string;

@@ -183,6 +183,24 @@ export class ReservationsApiService {
       .pipe(map((dto) => mapReservationDetail(dto)));
   }
 
+  getCancelPreview(bookingId: string) {
+    return this.http.get<{
+      booking_id: string;
+      guest_name: string;
+      check_in_date: string;
+      total_price: number | null;
+      currency: string;
+      total_nights: number;
+      free_cancellation: boolean;
+      penalty_percent: number;
+      penalty_amount: number;
+      hours_until_checkin: number | null;
+      cancellation_hours: number;
+    }>(`${this.apiConfig.baseUrl}/reservations/${bookingId}/cancel-preview`, {
+      withCredentials: true,
+    });
+  }
+
   cancelReservation(bookingId: string) {
     return this.http.post<ReservationCancelDto>(
       `${this.apiConfig.baseUrl}/reservations/${bookingId}/cancel`,
@@ -360,5 +378,20 @@ export class ReservationsApiService {
       params,
       withCredentials: true,
     });
+  }
+
+  /** Process a card payment */
+  processPayment(data: { card_number: string; card_holder: string; expiry: string; cvv: string; amount: number }) {
+    return this.http.post<{
+      ok: boolean;
+      transaction_id: string;
+      status: string;
+      card_last4: string;
+      card_brand: string;
+      card_holder: string;
+      amount: number;
+      auth_code: string;
+      message: string;
+    }>(`${this.apiConfig.baseUrl}/payments/process`, data, { withCredentials: true });
   }
 }

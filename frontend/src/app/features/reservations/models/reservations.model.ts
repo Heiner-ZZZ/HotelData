@@ -48,9 +48,7 @@ export interface ReservationCreateInput {
   cedula?: string;
   checkInDate: string;
   checkOutDate: string;
-  /** Optional check-in time (HH:MM format). Validated against hotel policies. */
   checkInTime?: string;
-  /** Optional check-out time (HH:MM format). Validated against hotel policies. */
   checkOutTime?: string;
   adults: number;
   children: number;
@@ -59,10 +57,12 @@ export interface ReservationCreateInput {
   couponCode?: string;
   specialRequests?: string[];
   selectedAmenities?: string[];
-  /** Room type ID to pre-select a specific room type */
   roomTypeId?: string;
-  /** Rate plan ID to select a specific pricing plan */
   ratePlanId?: string;
+  /** Payment fields (Phase 1) */
+  transactionId?: string;
+  paymentMethod?: string;
+  cardLast4?: string;
 }
 
 /** A rate plan option with pricing for a specific date range */
@@ -97,6 +97,11 @@ export interface ReservationCreateResult {
   guestEmail: string;
   discountPercent?: number | null;
   originalTotalPrice?: number | null;
+  transactionId?: string;
+  paymentMethod?: string;
+  cardLast4?: string;
+  paymentStatus?: string;
+  cancellationPolicy?: string | null;
 }
 
 export interface ReservationPreview {
@@ -105,6 +110,7 @@ export interface ReservationPreview {
   totalPrice: number | null;
   currency: string;
   totalNights: number;
+  cancellationPolicy?: string | null;
 }
 
 export interface ReservationStats {
@@ -184,6 +190,12 @@ export interface ReservationDetailViewModel {
   roomType: RoomTypeInfo | null;
   priceBreakdown: PriceBreakdown | null;
   cancellationPolicy: string | null;
+  transactionId?: string;
+  cardLast4?: string;
+  paymentStatus?: string;
+  cancellationFree?: boolean;
+  cancellationPenaltyPercent?: number;
+  cancellationPenaltyAmount?: number;
   additionalCharges: Array<{
     concept: string;
     amount: number;
