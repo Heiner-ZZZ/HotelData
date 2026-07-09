@@ -1255,4 +1255,153 @@ Staff
 
 ---
 
-*Fin del documento — HotelData Hub: 9 Departamentos, 40+ Casos de Uso, 110 Colecciones MongoDB*
+---
+
+# APÉNDICE D: Sub-paquetes por Departamento
+
+Basado en el análisis de la estructura real del proyecto (backend FastAPI + frontend Angular),
+se proponen los siguientes sub-paquetes para departamentos con alta granularidad de casos de uso.
+
+---
+
+## D.1 Departamento 1: Comercial / Experiencia Cliente
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **busqueda** | CU-C01, CU-C02, CU-C03, CU-C04 | `hotels/service` | `hotel-search`, `hotel-compare` | `dim_hotels`, `dim_destinations`, `dim_visitor_countries`, `room_inventory_calendar`, `hotel_rate_calendar`, `click_events`, `search_logs` |
+| **detalle** | CU-C05, CU-C06 | `hotels/service/detail` | `hotel-detail` | `hotel_images`, `hotel_content_pages`, `hotel_policies`, `hotel_amenities`, `room_types` |
+| **reservas-cliente** | CU-C07, CU-C08, CU-C09, CU-C10 | `reservations/routes/reservations` | `reservations` | `booking_orders`, `booking_guests`, `booking_status_history` |
+| **resenias-cliente** | CU-C11 | `reviews/service` | `reviews` | `reviews`, `fact_reviews` |
+
+---
+
+## D.2 Departamento 3: Marketing Hotelero / Partner
+
+> ⚠️ El backend ya implementa esta estructura. Solo se documenta.
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **propiedades** | CU-M01 | `partner/services/properties` | `properties` | `dim_hotels`, `hotel_profile`, `hotel_profile_changes`, `hotels` |
+| **contenido** | CU-M02, CU-M03 | `partner/services/content` | `properties` | `hotel_content_pages`, `hotel_images`, `hotel_content_changes`, `system_catalogs` |
+| **politicas** | CU-M04 | `partner/routes` | `policies` | `hotel_policies` |
+| **amenities** | CU-M05 | `partner/services` | `amenities` | `hotel_amenities`, `room_features`, `system_catalogs`, `corporate_contracts` |
+| **resenias-mod** | CU-M06 | `reviews/service` | `reviews` | `reviews`, `fact_reviews`, `review_reports` |
+
+---
+
+## D.3 Departamento 4: Operaciones Hoteleras
+
+> 🔴 **El más crítico**: 16 CUs, 18 colecciones, 3 módulos backend, 9 features frontend.
+> El backend ya tiene sub-estructura (`_checkinout/`, `lifecycle/create/`, `management_impl/`) que el documento debe reflejar.
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **reservas-mgmt** | CU-O01, CU-O02, CU-O03, CU-O08 | `reservations/routes/management` | `management`, `manual-reservations` | `booking_orders`, `booking_guests`, `booking_status_history`, `manual_reservations` |
+| **checkin-checkout** | CU-O04, CU-O05 | `reservations/service/_checkinout` | `check-ins`, `check-outs` | `booking_orders`, `booking_room_guests`, `room_status_log`, `additional_charges` |
+| **habitaciones** | CU-O06, CU-O07, CU-O09, CU-O10, CU-O16 | `reservations/service/lifecycle`, `partner/services/rooms` | `availability`, `rooms` | `room_types`, `hotel_rooms`, `room_inventory_calendar`, `room_availability_blocks`, `blackout_dates`, `room_status_log`, `hotel_booking_context` |
+| **housekeeping** | CU-O11, CU-O12 | `housekeeping/service/lifecycle` (cleaning) | `housekeeping` | `room_status_log`, `room_status_history`, `housekeeping_tasks` |
+| **mantenimiento** | CU-O13, CU-O14 | `housekeeping/service/lifecycle` (maintenance) | `housekeeping` | `room_status_log`, `maintenance_tasks` |
+| **recepcion** | CU-O15 | `reception` | `reception`, `shifts` | `reception_shifts` |
+
+---
+
+## D.4 Departamento 5: Facturación, Pagos y Gastos
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **facturas-pagos** | CU-B01, CU-B02, CU-B03, CU-B04 | `billing/service/lifecycle` | `billing` | `reservation_invoices`, `reservation_payments`, `fact_reservation_invoices`, `fact_reservation_payments`, `guest_folios`, `tax_rates`, `commission_rates`, `hotel_booking_context` |
+| **cargos** | CU-B05 | `housekeeping/service/lifecycle/charges` | — | `additional_charges`, `guest_folios` |
+| **gastos** | CU-B06, CU-B07, CU-B08 | `expenses` | `expenses` | `expense_invoices`, `expense_categories`, `expense_budget`, `ledger_transactions`, `chart_of_accounts` |
+
+---
+
+## D.5 Departamento 7: Administración del Sistema
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **auth** | CU-A01, CU-A02, CU-A03 | `auth`, `account` | `account` | `users`, `user_sessions`, `refresh_tokens`, `password_recovery_tokens`, `email_verification_tokens`, `two_factor_codes`, `user_2fa`, `pending_registrations` |
+| **usuarios-roles** | CU-A04, CU-A05, CU-A06 | `users`, `admin` | `admin`, `system-admin`, `ownership` | `users`, `roles`, `permissions`, `role_permissions`, `user_activity_logs` |
+| **configuracion** | CU-A07 | `settings`, `global_settings` | `settings` | `system_config`, `commission_rates`, `tax_rates`, `notification_log` |
+
+---
+
+## D.6 Departamento 8: Datos, Analítica y Geolocalización
+
+| Sub-paquete | Casos de Uso | Backend | Frontend | Colecciones |
+|-------------|-------------|---------|----------|-------------|
+| **etl-calidad** | CU-D02, CU-D03 | `audit` | — | `etl_executions`, `data_quality_reports`, `rejected_records`, `search_logs` |
+| **dashboard** | CU-D01 | `kpi` | — | `fact_hotel_reservations`, `fact_hotel_events`, `kpi_summary`, `dim_hotels` (+ 12 dimensiones), `click_events` |
+| **geo** | CU-D04, CU-D05 | `geo_catalog`, `map` | `geo-catalog`, `map` | `dim_destinations`, `dim_hotels`, `geo_catalog` |
+| **reportes** | CU-D06 | `reports` | — | `fact_hotel_reservations`, `kpi_summary` |
+
+---
+
+## D.7 Departamentos sin sub-paquetes
+
+Estos departamentos son lo suficientemente pequeños y cohesivos como para no requerir sub-paquetes:
+
+| # | Departamento | CUs | Justificación |
+|---|-------------|-----|---------------|
+| 2 | Revenue Management | 5 | Dominio único: tarifas + promociones + reportes revenue |
+| 6 | Recursos Humanos | 5 | 6 colecciones, todas giran en torno a `employees` |
+| 9 | Servicios al Huésped (In-Stay) | 6 | Ya dividido implícitamente: guest portal (`instay`) + staff inbox + `lost_and_found` |
+
+---
+
+## D.8 Resumen Visual de Sub-paquetes
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 HOTELDATA HUB                        │
+│              9 Departamentos → 25 Sub-paquetes        │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  1. COMERCIAL                                        │
+│     ├── busqueda (C01-C04)                           │
+│     ├── detalle (C05-C06)                            │
+│     ├── reservas-cliente (C07-C10)                   │
+│     └── resenias-cliente (C11)                       │
+│                                                      │
+│  2. REVENUE (sin sub-paquetes)                       │
+│                                                      │
+│  3. MARKETING / PARTNER                              │
+│     ├── propiedades (M01)                            │
+│     ├── contenido (M02-M03)                          │
+│     ├── politicas (M04)                              │
+│     ├── amenities (M05)                              │
+│     └── resenias-mod (M06)                           │
+│                                                      │
+│  4. OPERACIONES HOTELERAS                            │
+│     ├── reservas-mgmt (O01-O03, O08)                 │
+│     ├── checkin-checkout (O04-O05)                   │
+│     ├── habitaciones (O06-O07, O09-O10, O16)         │
+│     ├── housekeeping (O11-O12)                       │
+│     ├── mantenimiento (O13-O14)                      │
+│     └── recepcion (O15)                              │
+│                                                      │
+│  5. FACTURACIÓN                                      │
+│     ├── facturas-pagos (B01-B04)                     │
+│     ├── cargos (B05)                                 │
+│     └── gastos (B06-B08)                             │
+│                                                      │
+│  6. RRHH (sin sub-paquetes)                          │
+│                                                      │
+│  7. ADMINISTRACIÓN                                   │
+│     ├── auth (A01-A03)                               │
+│     ├── usuarios-roles (A04-A06)                     │
+│     └── configuracion (A07)                          │
+│                                                      │
+│  8. ANALÍTICA                                        │
+│     ├── etl-calidad (D02-D03)                        │
+│     ├── dashboard (D01)                              │
+│     ├── geo (D04-D05)                                │
+│     └── reportes (D06)                               │
+│                                                      │
+│  9. IN-STAY (sin sub-paquetes)                       │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+*Fin del documento — HotelData Hub: 9 Departamentos, 40+ Casos de Uso, 110 Colecciones MongoDB, 25 Sub-paquetes*

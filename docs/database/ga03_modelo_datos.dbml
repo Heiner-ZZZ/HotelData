@@ -225,7 +225,7 @@ Table user_sessions {
 Table user_activity_logs {
   id varchar(24) [pk]
   event_key varchar(100) [unique]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   username varchar(100)
   email varchar(255)
   action varchar(100) [not null]
@@ -248,7 +248,7 @@ Table refresh_tokens {
 Table password_recovery_tokens {
   id varchar(24) [pk]
   token_hash varchar(64) [unique]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   created_at timestamp
   expires_at timestamp
 }
@@ -256,13 +256,14 @@ Table password_recovery_tokens {
 Table email_verification_tokens {
   id varchar(24) [pk]
   token_hash varchar(64) [unique]
+  user_id varchar(24) [ref: > users.id]
   created_at timestamp
   expires_at timestamp
 }
 
 Table two_factor_codes {
   id varchar(24) [pk]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   code varchar(10)
   created_at timestamp
   expires_at timestamp
@@ -270,7 +271,7 @@ Table two_factor_codes {
 
 Table user_2fa {
   id varchar(24) [pk]
-  user_id varchar(24) [unique]
+  user_id varchar(24) [unique, ref: > users.id]
   secret varchar(255)
   enabled bool [default: false]
   created_at timestamp
@@ -299,7 +300,7 @@ Table hotel_images {
 Table hotel_policies {
   id varchar(24) [pk]
   prop_id int [unique, not null, ref: > dim_hotels.prop_id]
-  room_type_id varchar(100)
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
   check_in_time varchar(10)
   check_out_time varchar(10)
   cancellation_policy text
@@ -376,6 +377,8 @@ Table hotel_amenities {
   icon varchar(100)
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Labels validated against system_catalogs (catalog_type = amenity)'
 }
 
 Table hotel_profile_changes {
@@ -451,6 +454,8 @@ Table room_types {
   features text
   created_at timestamp
   updated_at timestamp
+
+  Note: 'features almacena array de labels; catálogo en room_features'
 }
 
 Table hotel_rooms {
@@ -505,7 +510,7 @@ Table room_availability_blocks {
 Table blackout_dates {
   id varchar(24) [pk]
   prop_id int [not null, ref: > dim_hotels.prop_id]
-  room_type_id varchar(100)
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
   room_label varchar(100)
   start_date timestamp [not null]
   end_date timestamp
@@ -518,6 +523,11 @@ Table room_features {
   id varchar(24) [pk]
   label varchar(100) [unique, not null]
   category varchar(50)
+  icon varchar(100)
+  created_by varchar(100)
+  created_at timestamp
+
+  Note: 'Catálogo maestro de atributos de habitación. Referenciado como texto en room_types.features (soft-link, no FK).'
 }
 
 Table hotel_products {
@@ -533,7 +543,7 @@ Table hotel_products {
 
 Table platform_earnings {
   id varchar(24) [pk]
-  booking_id varchar(100) [unique, not null]
+  booking_id varchar(100) [unique, not null, ref: > booking_orders.booking_id]
   prop_id int [not null, ref: > dim_hotels.prop_id]
   commission_pct decimal
   booking_total decimal
@@ -549,14 +559,14 @@ Table platform_earnings {
 Table booking_orders {
   id varchar(24) [pk]
   booking_id varchar(100) [unique, not null]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   prop_id int [not null, ref: > dim_hotels.prop_id]
   status varchar(50) [not null]
   booking_source varchar(50)
   guest_name varchar(255)
   guest_email varchar(255)
   guest_phone varchar(50)
-  room_type_id varchar(100)
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
   check_in_date date
   check_out_date date
   adults int
@@ -636,8 +646,8 @@ Table notification_log {
   notification_type varchar(100) [not null]
   recipient_email varchar(255)
   recipient_name varchar(255)
-  booking_id varchar(100)
-  prop_id int
+  booking_id varchar(100) [ref: > booking_orders.booking_id]
+  prop_id int [ref: > dim_hotels.prop_id]
   status varchar(50)
   error_message text
   created_at timestamp
@@ -713,47 +723,67 @@ Table coupon_codes {
 }
 
 // ============================================================================
-// 8. REVIEWS
+// 8. REVIEWS — Dual-write: reviews (operacional) + fact_reviews (analítica)
 // ============================================================================
 
 Table reviews {
   id varchar(24) [pk]
   booking_id varchar(100) [ref: > booking_orders.booking_id]
   prop_id int [ref: > dim_hotels.prop_id]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   rating int
   title varchar(255)
   comment text
   moderation_status varchar(50)
   staff_response text
   staff_response_at timestamp
+  sentiment_label varchar(50)
+  sentiment_score decimal
+  sentiment_confidence decimal
+  sentiment_analyzed_at timestamp
+  service_ratings text
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Tabla operacional para la app. Dual-write sincrónico con fact_reviews vía _write_both().'
 }
 
 Table fact_reviews {
   id varchar(24) [pk]
+  operational_review_id varchar(24) [ref: > reviews.id]
   booking_id varchar(100) [ref: > booking_orders.booking_id]
   prop_id int [ref: > dim_hotels.prop_id]
-  user_id varchar(24)
+  user_id varchar(24) [ref: > users.id]
   rating int
   title varchar(255)
   comment text
   moderation_status varchar(50)
   staff_response text
   staff_response_at timestamp
+  sentiment_label varchar(50)
+  sentiment_score decimal
+  sentiment_confidence decimal
+  sentiment_analyzed_at timestamp
+  service_ratings text
+  date_key int [ref: > dim_dates.date_key]
+  loaded_at timestamp
+  execution_id varchar(100)
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Copia analítica (dual-write). Aislada para queries de dashboard sin impactar operación. Agrega dimensiones date_key y execution_id para pipelines ETL.'
 }
 
 Table review_reports {
   id varchar(24) [pk]
-  review_id varchar(24)
-  reported_by varchar(100)
+  review_id varchar(24) [ref: > reviews.id]
+  reported_by varchar(24) [ref: > users.id]
   reason text
   description text
   status varchar(50)
   created_at timestamp
+
+  Note: 'Reportes de reseñas inapropiadas. Creado desde review_reports.py; verifica existencia en reviews antes de insertar.'
 }
 
 // ============================================================================
@@ -763,8 +793,8 @@ Table review_reports {
 Table room_status_log {
   id varchar(24) [pk]
   prop_id int [not null, ref: > dim_hotels.prop_id]
-  hotel_room_id varchar(100)
-  room_type_id varchar(100)
+  hotel_room_id varchar(100) [ref: > hotel_rooms.hotel_room_id]
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
   room_label varchar(100)
   room_number varchar(20)
   status varchar(50) [not null]
@@ -866,8 +896,9 @@ Table reservation_payments {
 
 Table fact_reservation_invoices {
   id varchar(24) [pk]
-  booking_id varchar(100) [not null]
-  prop_id int [not null]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  operational_invoice_id varchar(24) [ref: > reservation_invoices.id]
   invoice_number varchar(100) [unique, not null]
   subtotal decimal
   taxes decimal
@@ -877,12 +908,15 @@ Table fact_reservation_invoices {
   issued_at timestamp
   paid_at timestamp
   updated_at timestamp
+
+  Note: 'Copia analítica (dual-write) de reservation_invoices.'
 }
 
 Table fact_reservation_payments {
   id varchar(24) [pk]
-  booking_id varchar(100) [not null]
-  prop_id int [not null]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  operational_payment_id varchar(24) [ref: > reservation_payments.id]
   invoice_id varchar(24)
   amount decimal
   method varchar(50)
@@ -890,6 +924,8 @@ Table fact_reservation_payments {
   reference varchar(100)
   paid_at timestamp
   updated_at timestamp
+
+  Note: 'Copia analítica (dual-write) de reservation_payments.'
 }
 
 Table guest_folios {
@@ -911,7 +947,7 @@ Table guest_folios {
   total_due decimal [default: 0]
   postings text
   posting_count int [default: 0]
-  invoice_id varchar(24)
+  invoice_id varchar(24) [ref: > reservation_invoices.id]
   created_at timestamp
   closed_at timestamp
   closed_by varchar(100)
@@ -1012,7 +1048,7 @@ Table etl_executions {
 
 Table data_quality_reports {
   id varchar(24) [pk]
-  execution_id varchar(100)
+  execution_id varchar(100) [ref: > etl_executions.execution_id]
   phase varchar(20)
   generated_at timestamp
   source text
@@ -1054,6 +1090,8 @@ Table system_catalogs {
   label varchar(255)
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Catálogo global key-value. Soft-linkeado por código desde hotel_amenities, hotel_content_pages.amenities_catalog, y otros módulos. Sin FK directa.'
 }
 
 Table system_config {
@@ -1066,9 +1104,9 @@ Table system_config {
 
 Table amenity_stock {
   id varchar(24) [pk]
-  prop_id int
+  prop_id int [ref: > dim_hotels.prop_id]
   amenity_label varchar(100)
-  room_type_id varchar(100)
+  room_type_id varchar(100) [ref: > room_types.room_type_id]
   quantity int
 
   Indexes {
@@ -1078,7 +1116,7 @@ Table amenity_stock {
 
 Table commission_rates {
   id varchar(24) [pk]
-  prop_id int [unique]
+  prop_id int [unique, ref: > dim_hotels.prop_id]
   commission_pct decimal
 }
 
@@ -1138,7 +1176,7 @@ Table ledger_transactions {
   tx_date date [not null]
   folio_ref varchar(100)
   description text
-  account_code varchar(50) [not null]
+  account_code varchar(50) [not null, ref: > chart_of_accounts.account_code]
   account_name varchar(255)
   debit decimal [default: 0]
   credit decimal [default: 0]
@@ -1284,7 +1322,7 @@ Table stay_service_requests {
 }
 
 // ============================================================================
-// 16. ANALYTICA ALTERNATIVA
+// 16. ANALYTICA ALTERNATIVA (fact_hotel_events)
 // ============================================================================
 
 Table fact_hotel_events {

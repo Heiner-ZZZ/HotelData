@@ -90,6 +90,7 @@ from src.app.modules.expenses.service.collections import ensure_expenses_collect
 from src.app.modules.expenses.routes import api_router as expenses_api_router
 from src.app.modules.expenses.routes import router as expenses_module_router
 from src.app.modules.reports.routes import router as reports_router
+from src.app.core.outbox import ensure_outbox_collection, process_pending_outbox
 import logging
 
 from config.settings import get_settings
@@ -197,6 +198,8 @@ async def lifespan(app: FastAPI):
     from src.app.modules.instay.routes import ensure_stay_collections
     ensure_stay_collections()
     ensure_audit_indexes()
+    ensure_outbox_collection()
+    process_pending_outbox(get_database())
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield
 
