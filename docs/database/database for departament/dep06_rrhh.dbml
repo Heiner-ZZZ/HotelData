@@ -1,0 +1,106 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 6: Recursos Humanos
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (6 colecciones)
+// ============================================================================
+
+Table empleados {
+  id varchar(24) [pk]
+  nombre_completo varchar(255) [not null]
+  documento_id varchar(100) [unique, not null]
+  telefono varchar(50)
+  email varchar(255)
+  direccion text
+  cargo varchar(100)
+  departamento varchar(100)
+  fecha_contratacion date
+  salario decimal
+  contacto_emergencia varchar(255)
+  telefono_emergencia varchar(50)
+  notas text
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  esta_activo bool [default: true]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table departamentos_empleados {
+  id varchar(24) [pk]
+  nombre varchar(255) [unique, not null]
+  descripcion text
+  total_empleados int [default: 0]
+  creado_en timestamp
+}
+
+Table documentos_empleado {
+  id varchar(24) [pk]
+  id_empleado varchar(24) [not null, ref: > empleados.id]
+  tipo_documento varchar(50) [not null]
+  nombre_archivo varchar(255)
+  notas text
+  creado_en timestamp
+}
+
+Table turnos_empleado {
+  id varchar(24) [pk]
+  id_empleado varchar(24) [not null, ref: > empleados.id]
+  fecha date [not null]
+  hora_inicio_programada varchar(10)
+  hora_fin_programada varchar(10)
+  area varchar(100)
+  estado varchar(50) [default: 'pendiente']
+  check_in_real timestamp
+  check_out_real timestamp
+  notas text
+  creado_en timestamp
+}
+
+Table permisos_empleado {
+  id varchar(24) [pk]
+  id_empleado varchar(24) [not null, ref: > empleados.id]
+  codigo_permiso varchar(100) [not null]
+  transferido_de varchar(24)
+  creado_en timestamp
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  etiqueta_hotel varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table usuarios {
+  id varchar(24) [pk]
+  email varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// empleados.id                ← documentos_empleado, turnos_empleado, permisos_empleado
+// dim_hoteles.id_propiedad    ← empleados
+// usuarios.id                 ← registros_actividad_usuario

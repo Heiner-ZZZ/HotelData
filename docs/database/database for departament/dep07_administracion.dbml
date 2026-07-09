@@ -1,0 +1,209 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 7: Administración del Sistema
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (16 colecciones)
+// ============================================================================
+
+Table usuarios {
+  id varchar(24) [pk]
+  nombre_usuario varchar(100) [unique, not null]
+  email varchar(255) [unique, not null]
+  hash_contrasena varchar(255) [not null]
+  nombre_visible varchar(255)
+  rol_principal varchar(50)
+  esta_activo bool [default: true]
+  email_verificado bool [default: false]
+  intentos_fallidos int [default: 0]
+  bloqueado_hasta timestamp
+  debe_cambiar_contrasena bool [default: false]
+  contrasena_temporal bool [default: false]
+  ids_roles text
+  configuracion text
+  creado_en timestamp
+  actualizado_en timestamp
+  actualizado_por varchar(100)
+  creado_por varchar(255)
+}
+
+Table sesiones_usuario {
+  id varchar(24) [pk]
+  hash_token_sesion varchar(64) [unique]
+  token_sesion varchar(255) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  esta_activo bool [default: true]
+  direccion_ip varchar(45)
+  agente_usuario text
+  recordarme bool [default: false]
+  motivo_fin varchar(50)
+  creado_en timestamp
+  expira_en timestamp
+  finalizado_en timestamp
+  ultima_actividad_en timestamp
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+Table roles {
+  id varchar(24) [pk]
+  nombre_rol varchar(50) [unique, not null]
+  nombre_visible varchar(100)
+  descripcion text
+  es_sistema bool [default: false]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table permisos {
+  id varchar(24) [pk]
+  codigo_permiso varchar(100) [unique, not null]
+  descripcion text
+  es_sistema bool [default: false]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table rol_permisos {
+  id_rol varchar(24) [ref: > roles.id]
+  id_permiso varchar(24) [ref: > permisos.id]
+  nombre_rol varchar(50)
+  codigo_permiso varchar(100)
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (id_rol, id_permiso) [pk]
+  }
+}
+
+Table tokens_refresco {
+  id varchar(24) [pk]
+  hash_token varchar(64) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  creado_en timestamp
+  expira_en timestamp
+  usado bool [default: false]
+}
+
+Table tokens_recuperacion {
+  id varchar(24) [pk]
+  hash_token varchar(64) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  creado_en timestamp
+  expira_en timestamp
+}
+
+Table tokens_verificacion_email {
+  id varchar(24) [pk]
+  hash_token varchar(64) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  creado_en timestamp
+  expira_en timestamp
+}
+
+Table codigos_2fa {
+  id varchar(24) [pk]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  codigo varchar(10)
+  creado_en timestamp
+  expira_en timestamp
+}
+
+Table usuario_2fa {
+  id varchar(24) [pk]
+  id_usuario varchar(24) [unique, ref: > usuarios.id]
+  secreto varchar(255)
+  habilitado bool [default: false]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table registros_pendientes {
+  id varchar(24) [pk]
+  nombre_usuario varchar(100)
+  email varchar(255) [unique, not null]
+  hash_contrasena varchar(255)
+  nombre_visible varchar(255)
+  hash_codigo varchar(64)
+  intentos int [default: 0]
+  creado_en timestamp
+  expira_en timestamp
+}
+
+Table configuracion_sistema {
+  id varchar(24) [pk]
+  pct_comision_defecto decimal
+  pct_iva_defecto decimal
+  actualizado_en timestamp
+  actualizado_por varchar(100)
+}
+
+Table tasas_comision {
+  id varchar(24) [pk]
+  id_propiedad int [unique, ref: > dim_hoteles.id_propiedad]
+  porcentaje_comision decimal
+}
+
+Table tasas_impuesto {
+  id varchar(24) [pk]
+  id_pais varchar(10) [unique]
+  nombre_pais varchar(100)
+  porcentaje_impuesto decimal
+}
+
+Table registro_notificaciones {
+  id varchar(24) [pk]
+  tipo_notificacion varchar(100) [not null]
+  email_destinatario varchar(255)
+  nombre_destinatario varchar(255)
+  id_reserva varchar(100) [ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  estado varchar(50)
+  mensaje_error text
+  creado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  etiqueta_hotel varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table ordenes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [unique, not null]
+
+  Note: 'Departamento 1: Comercial'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// usuarios.id                    ← sesiones_usuario, registros_actividad_usuario,
+//                                   tokens_refresco, tokens_recuperacion,
+//                                   tokens_verificacion_email, codigos_2fa, usuario_2fa
+// roles.id                       ← rol_permisos
+// permisos.id                    ← rol_permisos
+// dim_hoteles.id_propiedad       ← tasas_comision, registro_notificaciones
+// ordenes_reserva.id_reserva     ← registro_notificaciones

@@ -1,0 +1,239 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 2: Revenue Management
+// Modelo de Datos (dbdiagram.io DSL)
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (7 colecciones)
+// ============================================================================
+
+Table rate_plans {
+  id varchar(24) [pk]
+  rate_plan_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  name varchar(255)
+  base_rate decimal
+  is_active bool [default: true]
+  eligible_roles text
+}
+
+Table rate_rules {
+  id varchar(24) [pk]
+  rule_id varchar(100) [unique, not null]
+  rate_plan_id varchar(100) [ref: > rate_plans.rate_plan_id]
+  prop_id int [ref: > dim_hotels.prop_id]
+  name varchar(255)
+  price_override decimal
+  start_date date
+  end_date date
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table hotel_rate_calendar {
+  id varchar(24) [pk]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  rate_plan_id varchar(100) [not null, ref: > rate_plans.rate_plan_id]
+  date date [not null]
+  rate_amount decimal
+  is_closed bool [default: false]
+
+  Indexes {
+    (prop_id, rate_plan_id, date) [unique]
+  }
+}
+
+Table promotion_campaigns {
+  id varchar(24) [pk]
+  campaign_id varchar(100) [unique, not null]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  name varchar(255)
+  description text
+  discount_percent int
+  start_date date
+  end_date date
+  is_active bool [default: true]
+  coupon_count int [default: 0]
+  coupons_used int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table coupon_codes {
+  id varchar(24) [pk]
+  coupon_code varchar(50) [unique, not null]
+  campaign_id varchar(100) [not null, ref: > promotion_campaigns.campaign_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  discount_percent int
+  is_active bool [default: true]
+  used bool [default: false]
+  used_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table fact_hotel_reservations {
+  id bigserial [pk]
+  source_record_id varchar(100)
+  srch_id int [not null]
+  date_time timestamp
+  date_key int [ref: > dim_dates.date_key]
+  site_id int [ref: > dim_sites.site_id]
+  visitor_location_country_id int [ref: > dim_visitor_countries.visitor_location_country_id]
+  visitor_hist_starrating decimal
+  visitor_hist_adr_usd decimal
+  prop_country_id int
+  prop_id int [ref: > dim_hotels.prop_id]
+  prop_starrating int
+  prop_review_score decimal
+  prop_brand_bool bool
+  prop_location_score1 decimal
+  price_usd decimal [not null]
+  promotion_flag bool [ref: > dim_promotions.promotion_flag]
+  srch_destination_id int [ref: > dim_destinations.srch_destination_id]
+  srch_length_of_stay int
+  srch_booking_window int
+  srch_adults_count int
+  srch_children_count int
+  srch_room_count int
+  click_bool bool [ref: > dim_click_status.click_bool]
+  reserva_bool bool [ref: > dim_reservation_status.reserva_bool]
+  reservas_brutas_usd decimal
+  occupancy_profile_id varchar(50) [ref: > dim_occupancy_profile.occupancy_profile_id]
+  stay_length_category_id varchar(50) [ref: > dim_stay_length_category.stay_length_category_id]
+  booking_window_category_id varchar(50) [ref: > dim_booking_window_category.booking_window_category_id]
+  price_category_id varchar(50) [ref: > dim_price_category.price_category_id]
+  loaded_at timestamp
+  execution_id varchar(100)
+  phase varchar(20)
+}
+
+Table user_activity_logs {
+  id varchar(24) [pk]
+  event_key varchar(100) [unique]
+  user_id varchar(24) [ref: > users.id]
+  username varchar(100)
+  email varchar(255)
+  action varchar(100) [not null]
+  module varchar(50)
+  details text
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table dim_hotels {
+  prop_id int [pk]
+  hotel_label varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table dim_dates {
+  date_key int [pk]
+  date date
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_sites {
+  site_id int [pk]
+  site_label varchar(255)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_visitor_countries {
+  visitor_location_country_id int [pk]
+  visitor_country_label varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table dim_promotions {
+  promotion_flag bool [pk]
+  promotion_label varchar(50)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_destinations {
+  srch_destination_id int [pk]
+  destination_label varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table dim_click_status {
+  click_bool bool [pk]
+  click_status varchar(50)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_reservation_status {
+  reserva_bool bool [pk]
+  reservation_status varchar(50)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_occupancy_profile {
+  occupancy_profile_id varchar(50) [pk]
+  occupancy_label varchar(255)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_stay_length_category {
+  stay_length_category_id varchar(50) [pk]
+  stay_length_category varchar(100)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_booking_window_category {
+  booking_window_category_id varchar(50) [pk]
+  booking_window_category varchar(100)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table dim_price_category {
+  price_category_id varchar(50) [pk]
+  price_category varchar(100)
+
+  Note: 'Departamento 8: Analítica'
+}
+
+Table users {
+  id varchar(24) [pk]
+  email varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+Table booking_orders {
+  id varchar(24) [pk]
+  booking_id varchar(100) [unique, not null]
+
+  Note: 'Departamento 1: Comercial'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// dim_hotels.prop_id            ← rate_plans, rate_rules, hotel_rate_calendar,
+//                                  promotion_campaigns, coupon_codes, fact_hotel_reservations
+// rate_plans.rate_plan_id       ← rate_rules, hotel_rate_calendar
+// promotion_campaigns.campaign_id ← coupon_codes
+// fact_hotel_reservations  →   12 dimensiones (dim_dates, dim_sites, dim_visitor_countries,
+//                                dim_hotels, dim_promotions, dim_destinations, dim_click_status,
+//                                dim_reservation_status, dim_occupancy_profile,
+//                                dim_stay_length_category, dim_booking_window_category,
+//                                dim_price_category)
+// users.id                      ← user_activity_logs.user_id

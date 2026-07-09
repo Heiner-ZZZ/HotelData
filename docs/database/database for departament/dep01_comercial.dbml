@@ -1,0 +1,351 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 1: Comercial / Experiencia Cliente
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+// Pegar en https://dbdiagram.io para generar el diagrama ER
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (18 colecciones)
+// ============================================================================
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  id_pais_propiedad int
+  estrellas_propiedad int
+  puntuacion_resenas decimal
+  es_marca bool
+  puntuacion_ubicacion decimal
+  etiqueta_hotel varchar(255)
+  cargado_en timestamp
+  anulacion_manual bool
+  fuente_nombre varchar(50)
+  nombre_generado_original varchar(255)
+  descripcion text
+  etiqueta_pais_visible varchar(255)
+  nombre_visible varchar(255)
+  nombre_hotel varchar(255)
+  actualizado_en timestamp
+  actualizado_por varchar(100)
+  verificado_en timestamp
+}
+
+Table dim_destinos {
+  id_destino_busqueda int [pk]
+  etiqueta_destino varchar(255)
+  cargado_en timestamp
+  nombre_visible_destino varchar(255)
+  nombre_destino varchar(255)
+}
+
+Table dim_paises_visitantes {
+  id_pais_visitante int [pk]
+  etiqueta_pais_visitante varchar(255)
+  cargado_en timestamp
+  nombre_visible_pais varchar(255)
+  nombre_pais varchar(255)
+}
+
+Table tipos_habitacion {
+  id varchar(24) [pk]
+  id_tipo_habitacion varchar(100) [unique, not null]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  nombre varchar(255)
+  descripcion text
+  max_adultos int
+  max_ninos int
+  capacidad_base int
+  tarifa_base decimal
+  esta_activo bool [default: true]
+  numero_habitacion varchar(20)
+  piso varchar(10)
+  vista varchar(100)
+  fumador bool
+  accessible bool
+  es_roh bool [default: false]
+  caracteristicas text
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'caracteristicas almacena array de labels; catálogo en caract_habitacion (Dep 3)'
+}
+
+Table calendario_inventario {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [not null, ref: > tipos_habitacion.id_tipo_habitacion]
+  fecha date [not null]
+  total_habitaciones int
+  habitaciones_disponibles int
+  habitaciones_bloqueadas int [default: 0]
+  version int [default: 1]
+  esta_eliminado bool [default: false]
+  eliminado_en timestamp
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (id_propiedad, id_tipo_habitacion, fecha) [unique]
+  }
+}
+
+Table calendario_tarifas {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_plan_tarifario varchar(100) [not null, ref: > planes_tarifarios.id_plan_tarifario]
+  fecha date [not null]
+  monto_tarifa decimal
+  esta_cerrado bool [default: false]
+
+  Indexes {
+    (id_propiedad, id_plan_tarifario, fecha) [unique]
+  }
+}
+
+Table planes_tarifarios {
+  id varchar(24) [pk]
+  id_plan_tarifario varchar(100) [unique, not null]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  nombre varchar(255)
+  tarifa_base decimal
+  esta_activo bool [default: true]
+  roles_elegibles text
+
+  Note: 'Referenciado por calendario_tarifas.id_plan_tarifario'
+}
+
+Table imagenes_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  url_imagen varchar(500) [not null]
+  titulo varchar(255)
+  fuente varchar(50)
+  semilla_demo bool [default: false]
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (id_propiedad, url_imagen) [unique]
+  }
+}
+
+Table paginas_contenido_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [unique, not null, ref: > dim_hoteles.id_propiedad]
+  descripcion text
+  destacados text
+  texto_amenities text
+  amenities_activos text
+  catalogo_amenities text
+  amenities_habitacion text
+  precios_amenities text
+  fuente varchar(50)
+  semilla_demo bool
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table politicas_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [unique, not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  hora_check_in varchar(10)
+  hora_check_out varchar(10)
+  politica_cancelacion text
+  politica_mascotas text
+  politica_ninos text
+  politica_cama_extra text
+  politica_pago text
+  reglas_casa text
+  fuente varchar(50)
+  semilla_demo bool
+  estancia_minima int
+  estancia_maxima int
+  horas_cancelacion int
+  ninos_permitidos bool
+  mascotas_permitidas bool
+  tarifa_mascota decimal
+  tarifa_cama_extra decimal
+  id_temporada varchar(50)
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table amenities_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  nombre varchar(255) [not null]
+  icono varchar(100)
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'Labels validados contra catalogos_sistema (catalog_type = amenity)'
+}
+
+Table ordenes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [unique, not null]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  estado varchar(50) [not null]
+  fuente_reserva varchar(50)
+  nombre_huesped varchar(255)
+  email_huesped varchar(255)
+  telefono_huesped varchar(50)
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  fecha_check_in date
+  fecha_check_out date
+  adultos int
+  ninos int [default: 0]
+  habitaciones int [default: 1]
+  comentario text
+  peticiones_especiales text
+  precio_total decimal
+  moneda varchar(10) [default: 'USD']
+  total_noches int
+  codigo_cupon varchar(50)
+  porcentaje_descuento decimal
+  precio_original_total decimal
+  estado_estancia varchar(50)
+  es_prueba bool [default: false]
+  creado_por varchar(100)
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table huespedes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  nombre_huesped varchar(255)
+  email_huesped varchar(255)
+  telefono_huesped varchar(50)
+  es_principal bool [default: false]
+  es_prueba bool [default: false]
+  creado_en timestamp
+}
+
+Table historial_estados_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  estado varchar(50) [not null]
+  cambiado_en timestamp
+  motivo varchar(100)
+  cambiado_por varchar(100)
+  es_prueba bool [default: false]
+}
+
+Table resenas {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  calificacion int
+  titulo varchar(255)
+  comentario text
+  estado_moderacion varchar(50)
+  respuesta_staff text
+  respuesta_staff_en timestamp
+  etiqueta_sentimiento varchar(50)
+  puntuacion_sentimiento decimal
+  confianza_sentimiento decimal
+  sentimiento_analizado_en timestamp
+  calificaciones_servicio text
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'Tabla operacional. Dual-write a hechos_resenas vía _write_both().'
+}
+
+Table hechos_resenas {
+  id varchar(24) [pk]
+  id_resena_operacional varchar(24) [ref: > resenas.id]
+  id_reserva varchar(100) [ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  calificacion int
+  titulo varchar(255)
+  comentario text
+  estado_moderacion varchar(50)
+  respuesta_staff text
+  respuesta_staff_en timestamp
+  etiqueta_sentimiento varchar(50)
+  puntuacion_sentimiento decimal
+  confianza_sentimiento decimal
+  sentimiento_analizado_en timestamp
+  calificaciones_servicio text
+  clave_fecha int [ref: > dim_fechas.clave_fecha]
+  cargado_en timestamp
+  id_ejecucion varchar(100)
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'Copia analítica (dual-write desde resenas). Agrega dimensiones para queries de dashboard.'
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+Table registros_busqueda {
+  id varchar(24) [pk]
+  consulta varchar(255)
+  destino varchar(255)
+  pais varchar(255)
+  calificacion_minima decimal
+  tamano_pagina int
+  buscado_en timestamp
+}
+
+Table eventos_click {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  fuente varchar(50)
+  id_usuario varchar(100)
+  clickeado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table usuarios {
+  id varchar(24) [pk]
+  email varchar(255) [unique, not null]
+  nombre_visible varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+Table dim_fechas {
+  clave_fecha int [pk]
+  fecha date
+
+  Note: 'Departamento 8: Analítica'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// dim_hoteles.id_propiedad        ← tipos_habitacion, calendario_inventario,
+//                                    calendario_tarifas, imagenes_hotel,
+//                                    paginas_contenido_hotel, politicas_hotel,
+//                                    amenities_hotel, ordenes_reserva, resenas,
+//                                    hechos_resenas, eventos_click
+// tipos_habitacion.id_tipo_habitacion ← calendario_inventario, ordenes_reserva
+// planes_tarifarios.id_plan_tarifario ← calendario_tarifas
+// ordenes_reserva.id_reserva       ← huespedes_reserva, historial_estados_reserva,
+//                                    resenas, hechos_resenas
+// usuarios.id                      ← ordenes_reserva.id_usuario, resenas.id_usuario,
+//                                    hechos_resenas.id_usuario, registros_actividad_usuario
+// resenas.id                       ← hechos_resenas.id_resena_operacional
+// dim_fechas.clave_fecha           ← hechos_resenas.clave_fecha

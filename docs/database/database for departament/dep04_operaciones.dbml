@@ -1,0 +1,313 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 4: Operaciones Hoteleras
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (18 colecciones)
+// ============================================================================
+
+Table ordenes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [unique, not null]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  estado varchar(50) [not null]
+  fuente_reserva varchar(50)
+  nombre_huesped varchar(255)
+  email_huesped varchar(255)
+  telefono_huesped varchar(50)
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  fecha_check_in date
+  fecha_check_out date
+  adultos int
+  ninos int [default: 0]
+  habitaciones int [default: 1]
+  comentario text
+  peticiones_especiales text
+  precio_total decimal
+  moneda varchar(10) [default: 'USD']
+  total_noches int
+  codigo_cupon varchar(50)
+  porcentaje_descuento decimal
+  precio_original_total decimal
+  estado_estancia varchar(50)
+  es_prueba bool [default: false]
+  creado_por varchar(100)
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table huespedes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  nombre_huesped varchar(255)
+  email_huesped varchar(255)
+  telefono_huesped varchar(50)
+  es_principal bool [default: false]
+  es_prueba bool [default: false]
+  creado_en timestamp
+}
+
+Table huespedes_por_habitacion {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  indice_habitacion int [not null]
+  huespedes text
+  creado_en timestamp
+  actualizado_en timestamp
+  es_prueba bool [default: false]
+
+  Indexes {
+    (id_reserva, indice_habitacion) [unique]
+  }
+}
+
+Table historial_estados_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  estado varchar(50) [not null]
+  cambiado_en timestamp
+  motivo varchar(100)
+  cambiado_por varchar(100)
+  es_prueba bool [default: false]
+}
+
+Table reservas_manuales {
+  id varchar(24) [pk]
+  id_reserva_manual varchar(100) [unique, not null]
+  id_reserva varchar(100) [ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  creado_en timestamp
+}
+
+Table tipos_habitacion {
+  id varchar(24) [pk]
+  id_tipo_habitacion varchar(100) [unique, not null]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  nombre varchar(255)
+  descripcion text
+  max_adultos int
+  max_ninos int
+  capacidad_base int
+  tarifa_base decimal
+  esta_activo bool [default: true]
+  numero_habitacion varchar(20)
+  piso varchar(10)
+  vista varchar(100)
+  fumador bool
+  accessible bool
+  es_roh bool [default: false]
+  caracteristicas text
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'caracteristicas almacena array de labels; catálogo en caract_habitacion (Dep 3: Marketing)'
+}
+
+Table habitaciones_fisicas {
+  id varchar(24) [pk]
+  id_habitacion_fisica varchar(100) [unique, not null]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  etiqueta_habitacion varchar(100)
+  numero_habitacion varchar(20)
+  piso varchar(10)
+  vista varchar(100)
+  fumador bool
+  accessible bool
+  esta_activo bool [default: true]
+  es_roh bool [default: false]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table calendario_inventario {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [not null, ref: > tipos_habitacion.id_tipo_habitacion]
+  fecha date [not null]
+  total_habitaciones int
+  habitaciones_disponibles int
+  habitaciones_bloqueadas int [default: 0]
+  version int [default: 1]
+  esta_eliminado bool [default: false]
+  eliminado_en timestamp
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (id_propiedad, id_tipo_habitacion, fecha) [unique]
+  }
+}
+
+Table bloques_disponibilidad {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  fecha_inicio date [not null]
+  fecha_fin date
+  motivo varchar(255)
+  habitaciones_bloqueadas int
+  numeros_habitacion text
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table fechas_bloqueo {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  etiqueta_habitacion varchar(100)
+  fecha_inicio timestamp [not null]
+  fecha_fin timestamp
+  fuente varchar(50)
+  motivo text
+  creado_en timestamp
+}
+
+Table registro_estado_habitacion {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_habitacion_fisica varchar(100) [ref: > habitaciones_fisicas.id_habitacion_fisica]
+  id_tipo_habitacion varchar(100) [ref: > tipos_habitacion.id_tipo_habitacion]
+  etiqueta_habitacion varchar(100)
+  numero_habitacion varchar(20)
+  estado varchar(50) [not null]
+  dnd bool [default: false]
+  dnd_actualizado_en timestamp
+  nota text
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (id_propiedad, id_habitacion_fisica) [unique]
+  }
+}
+
+Table historial_estado_habitacion {
+  id varchar(24) [pk]
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  etiqueta_habitacion varchar(100)
+  estado_anterior varchar(50)
+  estado_nuevo varchar(50)
+  nota text
+  cambiado_por varchar(100)
+  creado_en timestamp
+}
+
+Table tareas_limpieza {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  etiqueta_habitacion varchar(100)
+  tipo_tarea varchar(50)
+  estado varchar(50)
+  asignado_a varchar(100)
+  prioridad varchar(20) [default: 'normal']
+  nota text
+  fecha_programada timestamp
+  creado_en timestamp
+  completado_en timestamp
+  actualizado_en timestamp
+}
+
+Table tareas_mantenimiento {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  etiqueta_habitacion varchar(100)
+  tipo_tarea varchar(50)
+  titulo varchar(255)
+  descripcion text
+  estado varchar(50)
+  prioridad varchar(20) [default: 'normal']
+  fecha_programada date
+  creado_en timestamp
+  completado_en timestamp
+  actualizado_en timestamp
+}
+
+Table turnos_recepcion {
+  id varchar(24) [pk]
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  tipo_turno varchar(50)
+  estado varchar(50)
+  hora_inicio timestamp
+  hora_fin timestamp
+  nombre_empleado varchar(255)
+  notas text
+}
+
+Table cargos_adicionales {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  concepto varchar(255)
+  monto decimal
+  cantidad int [default: 1]
+  total decimal
+  nota text
+  creado_en timestamp
+}
+
+Table contexto_reserva_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [unique, not null, ref: > dim_hoteles.id_propiedad]
+  etiqueta_hotel varchar(255)
+  pais int
+  etiqueta_resena varchar(255)
+  etiqueta_precio_promedio varchar(255)
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  etiqueta_hotel varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table usuarios {
+  id varchar(24) [pk]
+  email varchar(255)
+  nombre_visible varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// dim_hoteles.id_propiedad                   ← ordenes_reserva, reservas_manuales,
+//                                               tipos_habitacion, habitaciones_fisicas,
+//                                               calendario_inventario, bloques_disponibilidad,
+//                                               fechas_bloqueo, registro_estado_habitacion,
+//                                               historial_estado_habitacion, tareas_limpieza,
+//                                               tareas_mantenimiento, turnos_recepcion,
+//                                               cargos_adicionales, contexto_reserva_hotel
+// ordenes_reserva.id_reserva                 ← huespedes_reserva, huespedes_por_habitacion,
+//                                               historial_estados_reserva, reservas_manuales,
+//                                               cargos_adicionales
+// tipos_habitacion.id_tipo_habitacion        ← ordenes_reserva, habitaciones_fisicas,
+//                                               calendario_inventario, bloques_disponibilidad,
+//                                               fechas_bloqueo, registro_estado_habitacion
+// habitaciones_fisicas.id_habitacion_fisica  ← registro_estado_habitacion
+// usuarios.id                                ← ordenes_reserva.id_usuario, registros_actividad_usuario

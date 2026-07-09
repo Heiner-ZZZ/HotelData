@@ -1,0 +1,301 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 8: Datos, Analítica y Geolocalización
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (22 colecciones)
+// ============================================================================
+
+Table hechos_reservas_hotel {
+  id bigserial [pk]
+  id_registro_fuente varchar(100)
+  id_busqueda int [not null]
+  fecha_hora timestamp
+  clave_fecha int [ref: > dim_fechas.clave_fecha]
+  id_sitio int [ref: > dim_sitios.id_sitio]
+  id_pais_visitante int [ref: > dim_paises_visitantes.id_pais_visitante]
+  estrellas_hist_visitante decimal
+  adr_hist_visitante decimal
+  id_pais_propiedad int
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  estrellas_propiedad int
+  puntuacion_resenas decimal
+  es_marca bool
+  puntuacion_ubicacion decimal
+  precio_usd decimal [not null]
+  indicador_promocion bool [ref: > dim_promociones.indicador_promocion]
+  id_destino_busqueda int [ref: > dim_destinos.id_destino_busqueda]
+  duracion_estancia int
+  ventana_reserva int
+  cantidad_adultos int
+  cantidad_ninos int
+  cantidad_habitaciones int
+  indicador_click bool [ref: > dim_estado_click.indicador_click]
+  indicador_reserva bool [ref: > dim_estado_reserva.indicador_reserva]
+  reservas_brutas_usd decimal
+  id_perfil_ocupacion varchar(50) [ref: > dim_perfil_ocupacion.id_perfil_ocupacion]
+  id_categoria_duracion varchar(50) [ref: > dim_categoria_duracion.id_categoria_duracion]
+  id_categoria_ventana varchar(50) [ref: > dim_categoria_ventana.id_categoria_ventana]
+  id_categoria_precio varchar(50) [ref: > dim_categoria_precio.id_categoria_precio]
+  cargado_en timestamp
+  id_ejecucion varchar(100)
+  fase varchar(20)
+}
+
+Table hechos_eventos_hotel {
+  id bigserial [pk]
+  id_registro_fuente varchar(100)
+  id_busqueda int [not null]
+  fecha_hora timestamp
+  clave_fecha int [ref: > dim_fechas.clave_fecha]
+  id_sitio int [ref: > dim_sitios.id_sitio]
+  id_pais_visitante int [ref: > dim_paises_visitantes.id_pais_visitante]
+  estrellas_hist_visitante decimal
+  adr_hist_visitante decimal
+  id_pais_propiedad int
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  estrellas_propiedad int
+  puntuacion_resenas decimal
+  es_marca bool
+  puntuacion_ubicacion decimal
+  precio_usd decimal [not null]
+  indicador_promocion bool [ref: > dim_promociones.indicador_promocion]
+  id_destino_busqueda int [ref: > dim_destinos.id_destino_busqueda]
+  duracion_estancia int
+  ventana_reserva int
+  cantidad_adultos int
+  cantidad_ninos int
+  cantidad_habitaciones int
+  indicador_click bool [ref: > dim_estado_click.indicador_click]
+  indicador_reserva bool [ref: > dim_estado_reserva.indicador_reserva]
+  reservas_brutas_usd decimal
+  id_perfil_ocupacion varchar(50) [ref: > dim_perfil_ocupacion.id_perfil_ocupacion]
+  id_categoria_duracion varchar(50) [ref: > dim_categoria_duracion.id_categoria_duracion]
+  id_categoria_ventana varchar(50) [ref: > dim_categoria_ventana.id_categoria_ventana]
+  id_categoria_precio varchar(50) [ref: > dim_categoria_precio.id_categoria_precio]
+  cargado_en timestamp
+  id_ejecucion varchar(100)
+  fase varchar(20)
+}
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  id_pais_propiedad int
+  estrellas_propiedad int
+  puntuacion_resenas decimal
+  es_marca bool
+  puntuacion_ubicacion decimal
+  etiqueta_hotel varchar(255)
+  cargado_en timestamp
+  anulacion_manual bool
+  fuente_nombre varchar(50)
+  nombre_generado_original varchar(255)
+  descripcion text
+  etiqueta_pais_visible varchar(255)
+  nombre_visible varchar(255)
+  nombre_hotel varchar(255)
+  actualizado_en timestamp
+  actualizado_por varchar(100)
+  verificado_en timestamp
+}
+
+Table dim_destinos {
+  id_destino_busqueda int [pk]
+  etiqueta_destino varchar(255)
+  cargado_en timestamp
+  nombre_visible_destino varchar(255)
+  nombre_destino varchar(255)
+}
+
+Table dim_paises_visitantes {
+  id_pais_visitante int [pk]
+  etiqueta_pais_visitante varchar(255)
+  cargado_en timestamp
+  nombre_visible_pais varchar(255)
+  nombre_pais varchar(255)
+}
+
+Table dim_sitios {
+  id_sitio int [pk]
+  etiqueta_sitio varchar(255)
+  cargado_en timestamp
+}
+
+Table dim_fechas {
+  clave_fecha int [pk]
+  fecha date
+  anio int
+  mes int
+  dia int
+  dia_semana int
+  cargado_en timestamp
+}
+
+Table dim_promociones {
+  indicador_promocion bool [pk]
+  etiqueta_promocion varchar(50)
+}
+
+Table dim_estado_click {
+  indicador_click bool [pk]
+  estado_click varchar(50)
+}
+
+Table dim_estado_reserva {
+  indicador_reserva bool [pk]
+  estado_reserva varchar(50)
+}
+
+Table dim_perfil_ocupacion {
+  id_perfil_ocupacion varchar(50) [pk]
+  cantidad_adultos int
+  cantidad_ninos int
+  cantidad_habitaciones int
+  etiqueta_ocupacion varchar(255)
+  cargado_en timestamp
+}
+
+Table dim_categoria_duracion {
+  id_categoria_duracion varchar(50) [pk]
+  categoria_duracion varchar(100)
+  noches_minimas int
+  noches_maximas int
+}
+
+Table dim_categoria_ventana {
+  id_categoria_ventana varchar(50) [pk]
+  categoria_ventana varchar(100)
+  dias_minimos int
+  dias_maximos int
+}
+
+Table dim_categoria_precio {
+  id_categoria_precio varchar(50) [pk]
+  categoria_precio varchar(100)
+  precio_min_usd decimal
+  precio_max_usd decimal
+}
+
+Table ejecuciones_etl {
+  id_ejecucion varchar(100) [pk]
+  fase varchar(20)
+  ejecutado_en timestamp
+  iniciado_en timestamp
+  completado_en timestamp
+  duracion_segundos decimal
+  estado varchar(20)
+  base_datos varchar(50)
+  fuente text
+  registros_procesados int
+  registros_rechazados int
+  colecciones_cargadas text
+  conteos_finales text
+}
+
+Table reportes_calidad_datos {
+  id varchar(24) [pk]
+  id_ejecucion varchar(100) [ref: > ejecuciones_etl.id_ejecucion]
+  fase varchar(20)
+  generado_en timestamp
+  fuente text
+  filas_fuente int
+  registros_hechos_validos int
+  registros_hechos_invalidos int
+  registros_rechazados int
+  registros_dimension_validos int
+  registros_dimension_invalidos int
+  puntuacion_completitud decimal
+  dimensiones text
+  esquema text
+  extracto text
+  parquet text
+}
+
+Table registros_rechazados {
+  id varchar(24) [pk]
+  fuente varchar(100)
+  motivo text
+  datos_registro text
+  creado_en timestamp
+}
+
+Table registros_busqueda {
+  id varchar(24) [pk]
+  consulta varchar(255)
+  destino varchar(255)
+  pais varchar(255)
+  calificacion_minima decimal
+  tamano_pagina int
+  buscado_en timestamp
+}
+
+Table resumen_kpi {
+  id varchar(24) [pk]
+  actualizado_en timestamp
+  carga_util text
+}
+
+Table catalogo_geo {
+  id varchar(24) [pk]
+  tipo varchar(50) [not null]
+  codigo varchar(50) [not null]
+  nombre varchar(255)
+  codigo_iso varchar(10)
+  codigo_pais varchar(10)
+  codigo_estado varchar(10)
+  latitud decimal
+  longitud decimal
+  esta_activo bool [default: true]
+  creado_en timestamp
+  actualizado_en timestamp
+
+  Indexes {
+    (tipo, codigo) [unique]
+  }
+}
+
+Table eventos_click {
+  id varchar(24) [pk]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  fuente varchar(50)
+  id_usuario varchar(100)
+  clickeado_en timestamp
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table usuarios {
+  id varchar(24) [pk]
+  email varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// hechos_reservas_hotel → 12 dimensiones: dim_fechas, dim_sitios, dim_paises_visitantes,
+//   dim_hoteles, dim_promociones, dim_destinos, dim_estado_click,
+//   dim_estado_reserva, dim_perfil_ocupacion, dim_categoria_duracion,
+//   dim_categoria_ventana, dim_categoria_precio
+// hechos_eventos_hotel    → mismas 12 dimensiones
+// dim_hoteles.id_propiedad ← hechos_reservas_hotel, hechos_eventos_hotel, eventos_click
+// ejecuciones_etl.id_ejecucion ← reportes_calidad_datos
+// usuarios.id                  ← registros_actividad_usuario

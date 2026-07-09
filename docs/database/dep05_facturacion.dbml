@@ -1,0 +1,251 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 5: Facturación, Pagos y Gastos
+// Modelo de Datos (dbdiagram.io DSL)
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (15 colecciones)
+// ============================================================================
+
+Table reservation_invoices {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  invoice_number varchar(100) [unique, not null]
+  subtotal decimal
+  taxes decimal
+  total decimal
+  status varchar(50)
+  notes text
+  issued_at timestamp
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table reservation_payments {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  invoice_id varchar(24) [ref: > reservation_invoices.id]
+  amount decimal
+  method varchar(50)
+  status varchar(50)
+  reference varchar(100)
+  paid_at timestamp
+  updated_at timestamp
+}
+
+Table fact_reservation_invoices {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  operational_invoice_id varchar(24) [ref: > reservation_invoices.id]
+  invoice_number varchar(100) [unique, not null]
+  subtotal decimal
+  taxes decimal
+  total decimal
+  status varchar(50)
+  notes text
+  issued_at timestamp
+  paid_at timestamp
+  updated_at timestamp
+
+  Note: 'Copia analítica (dual-write) de reservation_invoices.'
+}
+
+Table fact_reservation_payments {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  operational_payment_id varchar(24) [ref: > reservation_payments.id]
+  invoice_id varchar(24)
+  amount decimal
+  method varchar(50)
+  status varchar(50)
+  reference varchar(100)
+  paid_at timestamp
+  updated_at timestamp
+
+  Note: 'Copia analítica (dual-write) de reservation_payments.'
+}
+
+Table guest_folios {
+  id varchar(24) [pk]
+  folio_number varchar(100) [unique, not null]
+  booking_id varchar(100) [unique, not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  guest_name varchar(255)
+  guest_email varchar(255)
+  room_label varchar(100)
+  hotel_label varchar(255)
+  check_in_date date
+  check_out_date date
+  status varchar(50)
+  total_room decimal [default: 0]
+  total_charges decimal [default: 0]
+  total_discounts decimal [default: 0]
+  total_payments decimal [default: 0]
+  total_due decimal [default: 0]
+  postings text
+  posting_count int [default: 0]
+  invoice_id varchar(24) [ref: > reservation_invoices.id]
+  created_at timestamp
+  closed_at timestamp
+  closed_by varchar(100)
+  updated_at timestamp
+}
+
+Table additional_charges {
+  id varchar(24) [pk]
+  booking_id varchar(100) [not null, ref: > booking_orders.booking_id]
+  prop_id int [not null, ref: > dim_hotels.prop_id]
+  concept varchar(255)
+  amount decimal
+  quantity int [default: 1]
+  total decimal
+  note text
+  created_at timestamp
+}
+
+Table expense_invoices {
+  id varchar(24) [pk]
+  vendor_name varchar(255) [not null]
+  category varchar(100) [not null]
+  description text
+  amount decimal [not null]
+  tax_amount decimal [default: 0]
+  total decimal
+  status varchar(50) [default: 'pending']
+  invoice_date date
+  due_date date
+  approved_by varchar(100)
+  approved_at timestamp
+  notes text
+  prop_id int [ref: > dim_hotels.prop_id]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table expense_categories {
+  id varchar(24) [pk]
+  name varchar(255) [unique, not null]
+  description text
+  budget decimal [default: 0]
+  spent decimal [default: 0]
+  remaining decimal [default: 0]
+  created_at timestamp
+}
+
+Table expense_budget {
+  id varchar(24) [pk]
+  department varchar(100) [not null]
+  period varchar(20) [not null]
+  amount decimal [not null]
+  spent decimal [default: 0]
+  remaining decimal [default: 0]
+  description text
+  created_at timestamp
+}
+
+Table ledger_transactions {
+  id varchar(24) [pk]
+  tx_date date [not null]
+  folio_ref varchar(100)
+  description text
+  account_code varchar(50) [not null, ref: > chart_of_accounts.account_code]
+  account_name varchar(255)
+  debit decimal [default: 0]
+  credit decimal [default: 0]
+  balance decimal [default: 0]
+  status varchar(50) [default: 'pending']
+  prop_id int [ref: > dim_hotels.prop_id]
+  user varchar(100)
+  notes text
+  journal_entry_id varchar(100)
+  created_at timestamp
+}
+
+Table chart_of_accounts {
+  id varchar(24) [pk]
+  account_code varchar(50) [unique, not null]
+  account_name varchar(255)
+  account_type varchar(50)
+  is_active bool [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table tax_rates {
+  id varchar(24) [pk]
+  country_id varchar(10) [unique]
+  country_name varchar(100)
+  tax_pct decimal
+}
+
+Table commission_rates {
+  id varchar(24) [pk]
+  prop_id int [unique, ref: > dim_hotels.prop_id]
+  commission_pct decimal
+}
+
+Table user_activity_logs {
+  id varchar(24) [pk]
+  event_key varchar(100) [unique]
+  user_id varchar(24) [ref: > users.id]
+  username varchar(100)
+  email varchar(255)
+  action varchar(100) [not null]
+  module varchar(50)
+  details text
+  ip_address varchar(45)
+  user_agent text
+  created_at timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table booking_orders {
+  id varchar(24) [pk]
+  booking_id varchar(100) [unique, not null]
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table dim_hotels {
+  prop_id int [pk]
+  hotel_label varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table users {
+  id varchar(24) [pk]
+  email varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+Table hotel_booking_context {
+  id varchar(24) [pk]
+  prop_id int [unique, not null, ref: > dim_hotels.prop_id]
+
+  Note: 'Departamento 4: Operaciones'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// booking_orders.booking_id    ← reservation_invoices, reservation_payments,
+//                                 fact_reservation_invoices, fact_reservation_payments,
+//                                 guest_folios, additional_charges
+// dim_hotels.prop_id           ← reservation_invoices, reservation_payments,
+//                                 fact_reservation_invoices, fact_reservation_payments,
+//                                 guest_folios, additional_charges, expense_invoices,
+//                                 ledger_transactions, commission_rates
+// reservation_invoices.id      ← reservation_payments, guest_folios,
+//                                 fact_reservation_invoices.operational_invoice_id
+// reservation_payments.id      ← fact_reservation_payments.operational_payment_id
+// chart_of_accounts.account_code ← ledger_transactions
+// users.id                     ← user_activity_logs.user_id

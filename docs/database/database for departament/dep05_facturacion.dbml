@@ -1,0 +1,251 @@
+// ============================================================================
+// HOTELDATA HUB - Departamento 5: Facturación, Pagos y Gastos
+// Modelo de Datos (dbdiagram.io DSL) — Español
+// ============================================================================
+
+// ============================================================================
+// TABLAS PROPIAS (15 colecciones)
+// ============================================================================
+
+Table facturas_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  numero_factura varchar(100) [unique, not null]
+  subtotal decimal
+  impuestos decimal
+  total decimal
+  estado varchar(50)
+  notas text
+  emitido_en timestamp
+  pagado_en timestamp
+  actualizado_en timestamp
+}
+
+Table pagos_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_factura varchar(24) [ref: > facturas_reserva.id]
+  monto decimal
+  metodo varchar(50)
+  estado varchar(50)
+  referencia varchar(100)
+  pagado_en timestamp
+  actualizado_en timestamp
+}
+
+Table hechos_facturas_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_factura_operacional varchar(24) [ref: > facturas_reserva.id]
+  numero_factura varchar(100) [unique, not null]
+  subtotal decimal
+  impuestos decimal
+  total decimal
+  estado varchar(50)
+  notas text
+  emitido_en timestamp
+  pagado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'Copia analítica (dual-write) de facturas_reserva.'
+}
+
+Table hechos_pagos_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  id_pago_operacional varchar(24) [ref: > pagos_reserva.id]
+  id_factura varchar(24)
+  monto decimal
+  metodo varchar(50)
+  estado varchar(50)
+  referencia varchar(100)
+  pagado_en timestamp
+  actualizado_en timestamp
+
+  Note: 'Copia analítica (dual-write) de pagos_reserva.'
+}
+
+Table folios_huesped {
+  id varchar(24) [pk]
+  numero_folio varchar(100) [unique, not null]
+  id_reserva varchar(100) [unique, not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  nombre_huesped varchar(255)
+  email_huesped varchar(255)
+  etiqueta_habitacion varchar(100)
+  etiqueta_hotel varchar(255)
+  fecha_check_in date
+  fecha_check_out date
+  estado varchar(50)
+  total_habitacion decimal [default: 0]
+  total_cargos decimal [default: 0]
+  total_descuentos decimal [default: 0]
+  total_pagos decimal [default: 0]
+  total_debido decimal [default: 0]
+  movimientos text
+  cantidad_movimientos int [default: 0]
+  id_factura varchar(24) [ref: > facturas_reserva.id]
+  creado_en timestamp
+  cerrado_en timestamp
+  cerrado_por varchar(100)
+  actualizado_en timestamp
+}
+
+Table cargos_adicionales {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [not null, ref: > ordenes_reserva.id_reserva]
+  id_propiedad int [not null, ref: > dim_hoteles.id_propiedad]
+  concepto varchar(255)
+  monto decimal
+  cantidad int [default: 1]
+  total decimal
+  nota text
+  creado_en timestamp
+}
+
+Table facturas_gasto {
+  id varchar(24) [pk]
+  nombre_proveedor varchar(255) [not null]
+  categoria varchar(100) [not null]
+  descripcion text
+  monto decimal [not null]
+  monto_impuesto decimal [default: 0]
+  total decimal
+  estado varchar(50) [default: 'pendiente']
+  fecha_factura date
+  fecha_vencimiento date
+  aprobado_por varchar(100)
+  aprobado_en timestamp
+  notas text
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table categorias_gasto {
+  id varchar(24) [pk]
+  nombre varchar(255) [unique, not null]
+  descripcion text
+  presupuesto decimal [default: 0]
+  gastado decimal [default: 0]
+  restante decimal [default: 0]
+  creado_en timestamp
+}
+
+Table presupuesto_gastos {
+  id varchar(24) [pk]
+  departamento varchar(100) [not null]
+  periodo varchar(20) [not null]
+  monto decimal [not null]
+  gastado decimal [default: 0]
+  restante decimal [default: 0]
+  descripcion text
+  creado_en timestamp
+}
+
+Table transacciones_libro_mayor {
+  id varchar(24) [pk]
+  fecha_transaccion date [not null]
+  referencia_folio varchar(100)
+  descripcion text
+  codigo_cuenta varchar(50) [not null, ref: > plan_cuentas.codigo_cuenta]
+  nombre_cuenta varchar(255)
+  debe decimal [default: 0]
+  haber decimal [default: 0]
+  saldo decimal [default: 0]
+  estado varchar(50) [default: 'pendiente']
+  id_propiedad int [ref: > dim_hoteles.id_propiedad]
+  usuario varchar(100)
+  notas text
+  id_asiento_diario varchar(100)
+  creado_en timestamp
+}
+
+Table plan_cuentas {
+  id varchar(24) [pk]
+  codigo_cuenta varchar(50) [unique, not null]
+  nombre_cuenta varchar(255)
+  tipo_cuenta varchar(50)
+  esta_activo bool [default: true]
+  creado_en timestamp
+  actualizado_en timestamp
+}
+
+Table tasas_impuesto {
+  id varchar(24) [pk]
+  id_pais varchar(10) [unique]
+  nombre_pais varchar(100)
+  porcentaje_impuesto decimal
+}
+
+Table tasas_comision {
+  id varchar(24) [pk]
+  id_propiedad int [unique, ref: > dim_hoteles.id_propiedad]
+  porcentaje_comision decimal
+}
+
+Table registros_actividad_usuario {
+  id varchar(24) [pk]
+  clave_evento varchar(100) [unique]
+  id_usuario varchar(24) [ref: > usuarios.id]
+  nombre_usuario varchar(100)
+  email varchar(255)
+  accion varchar(100) [not null]
+  modulo varchar(50)
+  detalles text
+  direccion_ip varchar(45)
+  agente_usuario text
+  creado_en timestamp
+}
+
+// ============================================================================
+// TABLAS EXTERNAS REFERENCIADAS
+// ============================================================================
+
+Table ordenes_reserva {
+  id varchar(24) [pk]
+  id_reserva varchar(100) [unique, not null]
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table dim_hoteles {
+  id_propiedad int [pk]
+  etiqueta_hotel varchar(255)
+
+  Note: 'Departamento 1: Comercial'
+}
+
+Table usuarios {
+  id varchar(24) [pk]
+  email varchar(255)
+
+  Note: 'Departamento 7: Administración'
+}
+
+Table contexto_reserva_hotel {
+  id varchar(24) [pk]
+  id_propiedad int [unique, not null, ref: > dim_hoteles.id_propiedad]
+
+  Note: 'Departamento 4: Operaciones'
+}
+
+// ============================================================================
+// RESUMEN DE RELACIONES
+// ============================================================================
+// ordenes_reserva.id_reserva     ← facturas_reserva, pagos_reserva,
+//                                   hechos_facturas_reserva, hechos_pagos_reserva,
+//                                   folios_huesped, cargos_adicionales
+// dim_hoteles.id_propiedad       ← facturas_reserva, pagos_reserva,
+//                                   hechos_facturas_reserva, hechos_pagos_reserva,
+//                                   folios_huesped, cargos_adicionales, facturas_gasto,
+//                                   transacciones_libro_mayor, tasas_comision
+// facturas_reserva.id            ← pagos_reserva, folios_huesped,
+//                                   hechos_facturas_reserva.id_factura_operacional
+// pagos_reserva.id               ← hechos_pagos_reserva.id_pago_operacional
+// plan_cuentas.codigo_cuenta     ← transacciones_libro_mayor
+// usuarios.id                    ← registros_actividad_usuario
