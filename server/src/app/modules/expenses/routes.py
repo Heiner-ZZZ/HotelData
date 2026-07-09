@@ -490,10 +490,19 @@ def list_active_folios(
     prop_id: int = Query(default=0, ge=0),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
+    status: str | None = Query(default=None),
 ):
-    """Return real guest folios with balances for the sidebar panel."""
+    """Return guest folios with balances for the sidebar panel.
+
+    Defaults to open folios only. Pass status=closed or omit the param
+    (status=null) to see all folios.
+    """
     db = get_database()
     query: dict = {}
+    if status:
+        query["status"] = status
+    else:
+        query["status"] = "open"
     if prop_id:
         query["prop_id"] = int(prop_id)
 

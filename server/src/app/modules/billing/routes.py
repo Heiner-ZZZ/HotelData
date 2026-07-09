@@ -7,6 +7,7 @@ from src.app.modules.billing.service import (
     add_line_item,
     cancel_invoice,
     close_folio,
+    cleanup_expired_folios,
     create_folio,
     create_invoice,
     create_payment,
@@ -681,6 +682,29 @@ def close_folio_api(
         summary=f"Cierre de folio {result.get('folio_number', booking_id)}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
+    )
+    return result
+
+
+@api_router.post("/folios/cleanup-expired")
+def cleanup_expired_folios_api(
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Close open folios whose check-out date has already passed.
+
+    Payload: {"prop_id": 1}  (optional; if omitted, cleans all properties)
+    """
+    prop_id = payload.get("prop_id") if payload.get("prop_id") else None
+    result = cleanup_expired_folios(prop_id=prop_id)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_folio",
+        entity_id="cleanup_expired",
+        action="update",
+        summary=f"Cierre de folios vencidos: {result.get('closed', 0)} cerrados",
+        changed_by=current_user.get("username", "system"),
+        diff={"closed": {"old": None, "new": result.get("closed", 0)}},
     )
     return result
 

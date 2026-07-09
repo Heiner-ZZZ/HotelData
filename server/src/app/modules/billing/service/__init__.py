@@ -16,6 +16,7 @@ from src.app.modules.billing.service.lifecycle import (
     create_split_charges_invoice,
 )
 from src.app.modules.billing.service.folio import (
+    cleanup_expired_folios,
     close_folio,
     create_folio,
     get_folio,
@@ -43,6 +44,7 @@ __all__ = [
     "get_folio",
     "get_folio_by_id",
     "post_to_folio",
+    "cleanup_expired_folios",
     "close_folio",
     "list_folios",
     "FOLIO_CATEGORIES",

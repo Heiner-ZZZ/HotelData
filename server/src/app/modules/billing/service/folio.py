@@ -72,6 +72,9 @@ def _enrich_folio(doc: dict) -> dict:
     for p in doc.get("postings", []):
         if isinstance(p.get("posting_id"), ObjectId):
             p["posting_id"] = str(p["posting_id"])
+    # Add expiry info
+    doc["is_expired"] = _is_folio_expired(doc)
+    doc["has_invoice"] = bool(doc.get("invoice_id"))
     return doc
 
 
@@ -328,6 +331,50 @@ def close_folio(
         return_document=ReturnDocument.AFTER,
     )
     return _enrich_folio(result) if result else None
+
+
+def cleanup_expired_folios(prop_id: int | None = None) -> dict:
+    """Close open folios whose check-out date has already passed.
+
+    Returns count of newly-closed folios.
+    """
+    db = get_database()
+    from src.app.core.timezone import local_today
+    today = local_today()
+
+    match: dict = {"status": "open"}
+    if prop_id:
+        match["prop_id"] = prop_id
+
+    expired_ids: list[str] = []
+    for doc in db[FOLIO_COLLECTION].find(match, {"booking_id": 1, "check_out_date": 1, "folio_number": 1}):
+        co = str(doc.get("check_out_date", ""))[:10]
+        if co and co < today:
+            expired_ids.append(doc["booking_id"])
+
+    closed = 0
+    if expired_ids:
+        result = db[FOLIO_COLLECTION].update_many(
+            {"booking_id": {"$in": expired_ids}, "status": "open"},
+            {"$set": {
+                "status": "closed",
+                "closed_at": _now(),
+                "closed_by": "auto_cleanup_expired",
+                "updated_at": _now(),
+            }},
+        )
+        closed = result.modified_count
+
+    return {"ok": True, "closed": closed, "prop_id": prop_id}
+
+
+def _is_folio_expired(doc: dict) -> bool:
+    """Check if a folio's check-out date has passed."""
+    co = str(doc.get("check_out_date", ""))[:10]
+    if not co:
+        return False
+    from src.app.core.timezone import local_today
+    return co < local_today()
 
 
 def list_folios(
