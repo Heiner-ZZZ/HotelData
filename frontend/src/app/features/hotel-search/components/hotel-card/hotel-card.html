@@ -1,7 +1,23 @@
-<article class="hotel-card surface-card">
+<article class="hotel-card surface-card" (mouseenter)="startRotation()" (mouseleave)="stopRotation()">
   <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!fallbackImg()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
-    @if (!fallbackImg()) {
-      <img class="card-bg-img" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError()" />
+    @if (!fallbackImg() && galleryImages().length) {
+      <div class="card-img-strip" [style.transform]="stripOffset()" [style.transition]="noTransition() ? 'none' : ''">
+        @for (img of galleryImages(); track $index) {
+          <img class="card-bg-img" [src]="img" alt="" loading="lazy" (error)="onImgError()" />
+        }
+      </div>
+      <div class="card-dots">
+        @for (i of [0, 1, 2]; track i) {
+          <button
+            class="card-dot"
+            [class.active]="currentImageIdx() === i"
+            (click)="goToImage(i); $event.preventDefault(); $event.stopPropagation()"
+            [attr.aria-label]="'Imagen ' + (i + 1)"
+          ></button>
+        }
+      </div>
+    } @else {
+      <img class="card-bg-img card-bg-single" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError()" />
     }
     <div class="media-overlay">
       <span class="media-chip">Hotel {{ hotel().id }}</span>

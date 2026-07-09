@@ -218,11 +218,11 @@
                           <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" />
                         } @else if (!imageErrors().has('room-' + item.id)) {
                           @switch (roomIdx % 5) {
-                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id }}_r{{ roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id }}_r{{ roomIdx }}x" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,lobby?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
                           }
                         } @else {
                           <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>

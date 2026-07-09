@@ -18,13 +18,60 @@
     linear-gradient(180deg, rgba(32, 44, 68, 0.06), rgba(32, 44, 68, 0.14));
 }
 
+.card-img-strip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .card-bg-img {
+  min-width: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
+.card-bg-single {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ── Dot indicators ── */
+.card-dots {
+  position: absolute;
+  bottom: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.card-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, border-color 0.2s;
+
+  &.active {
+    background: #fff;
+    border-color: #fff;
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 
 .media-column::before {

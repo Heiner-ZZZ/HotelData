@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TrackingService } from '../../../../core/tracking/tracking.service';
@@ -10,20 +10,75 @@ import type { HotelSearchResult } from '../../models/hotel-search.model';
   templateUrl: './hotel-card.html',
   styleUrl: './hotel-card.scss'
 })
-export class HotelCardComponent {
+export class HotelCardComponent implements OnInit {
   private readonly tracking = inject(TrackingService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly hotel = input.required<HotelSearchResult>();
   readonly compareMode = input(false);
   readonly compareSelected = output<number>();
 
   readonly fallbackImg = signal(false);
+  readonly currentImageIdx = signal(0);
+  readonly noTransition = signal(false);
+  private rotationTimer: ReturnType<typeof setInterval> | null = null;
+  readonly totalImages = 3;
+
+  ngOnInit() {
+    this.destroyRef.onDestroy(() => {
+      if (this.rotationTimer) clearInterval(this.rotationTimer);
+    });
+  }
+
+  readonly galleryImages = computed(() => {
+    const h = this.hotel();
+    if (this.fallbackImg()) return [];
+    return [
+      `https://loremflickr.com/400/250/hotel?lock=${h.id}1`,
+      `https://loremflickr.com/400/250/hotel,lobby?lock=${h.id}2`,
+      `https://loremflickr.com/400/250/hotel,pool?lock=${h.id}3`
+    ];
+  });
 
   readonly imageUrl = computed(() => {
     const h = this.hotel();
     if (h.imageUrl && !this.fallbackImg()) return h.imageUrl;
-    return `https://loremflickr.com/400/250/hotel?lock=${h.id}1`;
+    const gallery = this.galleryImages();
+    return gallery.length ? gallery[0] : `https://loremflickr.com/400/250/hotel?lock=${h.id}1`;
   });
+
+  /** TranslateX offset for the carousel strip — slides to the active image. */
+  readonly stripOffset = computed(() => {
+    if (this.fallbackImg()) return '';
+    return `translateX(-${this.currentImageIdx() * 100}%)`;
+  });
+
+  startRotation() {
+    if (this.fallbackImg() || this.rotationTimer) return;
+    this.rotationTimer = setInterval(() => {
+      const next = (this.currentImageIdx() + 1) % this.totalImages;
+      if (next === 0) {
+        this.noTransition.set(true);
+        this.currentImageIdx.set(0);
+        setTimeout(() => this.noTransition.set(false), 50);
+      } else {
+        this.currentImageIdx.set(next);
+      }
+    }, 3500);
+  }
+
+  stopRotation() {
+    if (this.rotationTimer) {
+      clearInterval(this.rotationTimer);
+      this.rotationTimer = null;
+    }
+    this.currentImageIdx.set(0);
+    this.noTransition.set(false);
+  }
+
+  goToImage(idx: number) {
+    this.currentImageIdx.set(idx);
+  }
 
   onImgError() {
     this.fallbackImg.set(true);
