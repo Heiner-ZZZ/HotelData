@@ -1,0 +1,210 @@
+/* ── Guest Portal Bento Panels (services, appointments, amenities, lost, chat, report) ─ */
+
+@use 'tokens' as t;
+
+.gp-panel-header {
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+  .gp-panel-icon { color: t.$gp-primary-container; font-size: 1.25rem; }
+  h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+}
+
+/* ── Room Services ── */
+
+.gp-bento-services {
+  grid-column: span 6;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1.25rem;
+  box-shadow: t.$gp-shadow;
+}
+
+.gp-dnd-warning {
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;
+  background: t.$gp-error-bg; border: 1px solid rgba(t.$gp-error, 0.25); border-radius: 10px;
+  font-size: 0.82rem; color: t.$gp-error; line-height: 1.4;
+  .material-symbols-outlined { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; font-variation-settings: 'FILL' 1; }
+  strong { font-weight: 600; display: block; }
+  p { margin: 0.15rem 0 0; font-size: 0.78rem; opacity: 0.85; }
+}
+
+.gp-services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+.gp-service-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.5rem; padding: 1rem 0.75rem;
+  border: 1px solid t.$gp-border; border-radius: 10px;
+  background: t.$gp-surface; cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit; color: t.$gp-text; font-size: 0.8rem; font-weight: 500;
+  &:hover { background: t.$gp-surface-bg; border-color: color-mix(in srgb, t.$gp-border, black 10%); }
+  .material-symbols-outlined { font-size: 1.5rem; color: t.$gp-text-secondary; transition: color 0.15s; }
+  &:hover .material-symbols-outlined { color: t.$gp-accent; }
+  &.gp-service-btn-highlight {
+    grid-column: span 2; flex-direction: row; gap: 0.6rem;
+    background: rgba(t.$gp-accent, 0.05); border-color: rgba(t.$gp-accent, 0.2);
+    &:hover { background: rgba(t.$gp-accent, 0.1); }
+    .material-symbols-outlined { color: t.$gp-primary-container; }
+  }
+}
+
+/* ── Appointments ── */
+
+.gp-bento-appointments {
+  grid-column: span 6;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1.25rem;
+  box-shadow: t.$gp-shadow;
+}
+
+.gp-appointments-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.gp-appt-btn {
+  display: flex; align-items: center; gap: 0.75rem;
+  width: 100%; padding: 0.65rem 0.75rem;
+  border: 1px solid t.$gp-border; border-radius: 10px;
+  background: none; cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit; text-align: left;
+  &:hover { background: t.$gp-surface-bg; border-color: rgba(t.$gp-accent, 0.3); }
+}
+
+.gp-appt-icon-wrap {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  .material-symbols-outlined { font-size: 1.15rem; }
+}
+
+.gp-appt-label { flex: 1; font-size: 0.9rem; font-weight: 500; color: t.$gp-text; }
+.gp-appt-arrow { color: t.$gp-text-secondary; font-size: 1.1rem; }
+.gp-appt-quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+.gp-appt-quick-btn {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.4rem; padding: 0.5rem;
+  border: 1px solid t.$gp-border; border-radius: 8px;
+  background: none; cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit; font-size: 0.82rem; color: t.$gp-text;
+  &:hover { background: t.$gp-surface-bg; }
+  .material-symbols-outlined { font-size: 1rem; color: t.$gp-text-secondary; }
+}
+
+/* ── Hotel Amenities ── */
+
+.gp-bento-amenities {
+  grid-column: span 4;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1rem;
+  box-shadow: t.$gp-shadow;
+  display: flex; flex-direction: column;
+  .gp-panel-header { margin-bottom: 0.6rem; }
+}
+
+.gp-amenities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+
+.gp-amenity-card {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.55rem; border-radius: 8px;
+  background: t.$gp-surface-bg;
+  transition: background 0.15s;
+  &:hover { background: color-mix(in srgb, t.$gp-surface-bg, t.$gp-accent 8%); }
+}
+
+.gp-amenity-icon-wrap {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: t.$gp-accent-light;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  .material-symbols-outlined { font-size: 1rem; color: t.$gp-accent; }
+}
+
+.gp-amenity-name { font-size: 0.75rem; font-weight: 500; color: t.$gp-text; line-height: 1.3; }
+
+.gp-amenities-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.35rem; padding: 1.5rem 0.5rem; color: t.$gp-text-secondary;
+  .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.78rem; text-align: center; }
+}
+
+/* ── Lost & Found Desktop ── */
+
+.gp-bento-lost {
+  grid-column: span 4;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1rem;
+  box-shadow: t.$gp-shadow;
+  display: flex; flex-direction: column;
+}
+
+.gp-lost-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.35rem; padding: 1.5rem 0.5rem; color: t.$gp-text-secondary;
+  .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.78rem; }
+}
+
+.gp-lost-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.gp-lost-item { padding: 0.5rem 0.6rem; border: 1px solid t.$gp-border; border-radius: 8px; &.claimed { opacity: 0.6; } &.disposed { opacity: 0.4; } }
+.gp-lost-item-head { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
+.gp-lost-item-desc { font-weight: 600; font-size: 0.82rem; color: t.$gp-text; flex: 1; }
+.gp-lost-item-status { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 99px; font-weight: 500; white-space: nowrap; }
+.gp-lost-status-found { background: #dbeafe; color: #1e40af; }
+.gp-lost-status-claimed { background: #dcfce7; color: #166534; }
+.gp-lost-status-disposed { background: #fee2e2; color: #991b1b; }
+.gp-lost-item-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.68rem; color: t.$gp-text-secondary; span { display: inline-flex; align-items: center; gap: 0.15rem; .material-symbols-outlined { font-size: 0.8rem; } } }
+.gp-lost-item-date { display: block; font-size: 0.65rem; color: t.$gp-text-secondary; margin-top: 0.2rem; }
+
+/* ── Chat Desktop ── */
+
+.gp-bento-chat {
+  grid-column: span 4;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1rem;
+  display: flex; flex-direction: column;
+  box-shadow: t.$gp-shadow;
+  max-height: 420px; overflow: hidden;
+  .gp-panel-header { margin-bottom: 0.5rem; }
+}
+
+.gp-chat-desktop-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem; min-height: 120px; padding: 0.25rem 0; }
+.gp-chat-empty-desk { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 0.35rem; color: t.$gp-text-secondary; .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; } p { margin: 0; font-size: 0.78rem; } }
+
+.gp-chat-desk-msg { display: flex; &.guest { justify-content: flex-end; } &.staff { justify-content: flex-start; } }
+.gp-desk-msg-bubble { max-width: 85%; padding: 0.4rem 0.6rem; border-radius: 8px; font-size: 0.78rem; line-height: 1.35; }
+.gp-chat-desk-msg.guest .gp-desk-msg-bubble { background: t.$gp-accent; color: white; border-radius: 8px 8px 2px 8px; }
+.gp-chat-desk-msg.staff .gp-desk-msg-bubble { background: #f0f0f0; color: t.$gp-text; border-radius: 8px 8px 8px 2px; }
+.gp-desk-msg-author { font-size: 0.63rem; font-weight: 600; margin-bottom: 0.1rem; opacity: 0.7; display: block; }
+.gp-desk-msg-text { display: block; }
+.gp-desk-msg-time { font-size: 0.58rem; opacity: 0.5; margin-top: 0.15rem; display: block; text-align: right; }
+
+.gp-desk-chat-bar {
+  display: flex; gap: 0.35rem; padding-top: 0.5rem; margin-top: 0.5rem; border-top: 1px solid t.$gp-border;
+  input { flex: 1; padding: 0.4rem 0.6rem; border: 1px solid t.$gp-border; border-radius: 16px; font-size: 0.78rem; font-family: inherit; &:focus { outline: none; border-color: t.$gp-accent; } }
+  button { width: 32px; height: 32px; border-radius: 50%; border: none; background: t.$gp-accent; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; &:hover:not(:disabled) { background: #004d5e; } &:disabled { opacity: 0.4; cursor: not-allowed; } .material-symbols-outlined { font-size: 1rem; } }
+}
+
+/* ── Report Issue ── */
+
+.gp-bento-report {
+  grid-column: span 4;
+  background: t.$gp-error-bg;
+  border: 1px solid rgba(t.$gp-error, 0.2);
+  border-radius: t.$gp-radius-lg;
+  padding: 1.5rem;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+
+.gp-report-icon-wrap { width: 48px; height: 48px; border-radius: 50%; background: rgba(t.$gp-error, 0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+.gp-report-icon { font-size: 1.4rem; color: t.$gp-error; }
+.gp-report-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.35rem; color: t.$gp-error; }
+.gp-report-desc { font-size: 0.82rem; color: t.$gp-text-secondary; margin: 0 0 1rem; line-height: 1.4; }

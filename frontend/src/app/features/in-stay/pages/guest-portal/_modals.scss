@@ -1,0 +1,79 @@
+/* ── Guest Portal Modals ─────────────────────────────── */
+
+@use 'tokens' as t;
+
+.gp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.gp-modal {
+  background: t.$gp-surface;
+  border-radius: t.$gp-radius-lg;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.gp-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem 0;
+  h2 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+  .gp-modal-icon { font-size: 1.5rem; color: t.$gp-primary-container; }
+}
+
+.gp-modal-body {
+  padding: 1rem 1.5rem;
+  p { margin: 0; font-size: 0.9rem; color: t.$gp-text; line-height: 1.5; }
+}
+
+.gp-modal-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.65rem 0.85rem;
+  background: t.$gp-accent-light;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: t.$gp-accent;
+  .material-symbols-outlined { font-size: 1.1rem; flex-shrink: 0; }
+}
+
+.gp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 1.5rem 1.25rem;
+}
+
+/* ── Extend form inside modal ── */
+
+.gp-extend-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: t.$gp-surface-bg;
+  border-radius: 8px;
+  label { font-size: 0.8rem; font-weight: 500; color: t.$gp-text-secondary; }
+  input[type="date"], input[type="time"] {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid t.$gp-border;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: white;
+    &:focus { outline: none; border-color: t.$gp-accent; }
+  }
+}

@@ -1,0 +1,97 @@
+/* ── Guest Portal Bento Hero + DND ───────────────────── */
+
+@use 'tokens' as t;
+
+/* ── Bento grid ── */
+
+.gp-bento {
+  display: grid;
+  max-width: 1280px;
+  margin: 1.5rem auto;
+  padding: 0 1.5rem;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+}
+
+/* ── Hero Panel ── */
+
+.gp-bento-hero {
+  grid-column: span 8;
+  background: linear-gradient(135deg, t.$gp-accent 0%, #003d4a 100%);
+  border-radius: t.$gp-radius-lg;
+  padding: 1.5rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+
+  .gp-hero-bg {
+    position: absolute; top: -80px; right: -80px;
+    width: 300px; height: 300px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .gp-hero-content { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+  .gp-hero-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin-bottom: 0.25rem; }
+  .gp-hero-room { font-size: 2.25rem; font-weight: 700; margin: 0 0 0.2rem; letter-spacing: -0.02em; }
+  .gp-hero-guest { font-size: 1rem; opacity: 0.8; margin: 0; }
+  .gp-hero-nights { text-align: right; }
+  .gp-hero-nights-num { font-size: 2.5rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  .gp-hero-nights-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; margin-top: 0.2rem; }
+
+  .gp-hero-actions {
+    display: flex; gap: 0.75rem; margin-top: 1.25rem; position: relative; z-index: 1;
+    .gp-btn-outline {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white; gap: 0.4rem; font-size: 0.8rem;
+      &:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
+      .material-symbols-outlined { font-size: 1rem; }
+    }
+  }
+}
+
+/* ── DND Panel ── */
+
+.gp-bento-dnd {
+  grid-column: span 4;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  padding: 1.5rem;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  box-shadow: t.$gp-shadow;
+
+  .gp-dnd-icon-wrap { width: 60px; height: 60px; border-radius: 50%; background: t.$gp-surface-bg; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+  .gp-dnd-icon { font-size: 1.75rem; color: t.$gp-text-secondary; transition: color 0.3s; &.dnd-on { color: t.$gp-error; } }
+  .gp-dnd-title { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  .gp-dnd-desc { font-size: 0.82rem; color: t.$gp-text-secondary; margin: 0 0 1rem; }
+  .gp-dnd-toggle-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0.65rem 1rem; background: t.$gp-surface-bg; border-radius: 8px; }
+  .gp-dnd-toggle-label { font-size: 0.88rem; font-weight: 500; }
+}
+
+/* ── Toggle Switch ── */
+
+.gp-toggle {
+  position: relative; width: 44px; height: 24px;
+  border-radius: 99px;
+  background: t.$gp-border;
+  border: none; cursor: pointer;
+  transition: background 0.25s; padding: 0;
+  &.active { background: t.$gp-primary-container; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gp-toggle-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.25s;
+  }
+  &.active .gp-toggle-knob { transform: translateX(20px); }
+}

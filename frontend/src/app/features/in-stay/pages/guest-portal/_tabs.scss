@@ -1,0 +1,71 @@
+/* ── Guest Portal Tabs ───────────────────────────────── */
+
+@use 'tokens' as t;
+
+.gp-tab-nav {
+  display: flex;
+  max-width: 1280px;
+  margin: 0 auto;
+  background: t.$gp-surface;
+  border-bottom: 1px solid t.$gp-border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gp-tab-nav-wrapper {
+  background: t.$gp-surface;
+  border-bottom: 1px solid t.$gp-border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gp-tab-content { display: none; }
+
+.gp-tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.4rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: t.$gp-text-secondary;
+  position: relative;
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: color 0.2s;
+
+  .material-symbols-outlined { font-size: 1.35rem; }
+
+  &.active {
+    color: t.$gp-accent;
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 20%; right: 20%;
+      height: 3px;
+      background: t.$gp-accent;
+      border-radius: 3px 3px 0 0;
+    }
+  }
+
+  .gp-tab-badge {
+    position: absolute;
+    top: 4px;
+    right: 50%;
+    transform: translateX(calc(50% + 10px));
+    background: t.$gp-error;
+    color: white;
+    font-size: 0.6rem;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+}

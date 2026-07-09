@@ -1,0 +1,67 @@
+/* ── Guest Portal Base ───────────────────────────────── */
+
+@use 'tokens' as t;
+
+/* ═══════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════ */
+
+.guest-portal {
+  --gp-accent: #{t.$gp-accent};
+  --gp-accent-light: #{t.$gp-accent-light};
+  --gp-primary-container: #{t.$gp-primary-container};
+  --gp-surface: #{t.$gp-surface};
+  --gp-surface-bg: #{t.$gp-surface-bg};
+  --gp-text: #{t.$gp-text};
+  --gp-text-secondary: #{t.$gp-text-secondary};
+  --gp-border: #{t.$gp-border};
+  --gp-error: #{t.$gp-error};
+
+  min-height: 100dvh;
+  background: var(--gp-surface-bg);
+  color: var(--gp-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Loading / Error
+   ═══════════════════════════════════════════════════════════ */
+
+.portal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 1rem;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid t.$gp-border;
+    border-top-color: t.$gp-accent;
+    border-radius: 50%;
+    animation: gp-spin 0.8s linear infinite;
+  }
+  p { color: t.$gp-text-secondary; font-size: 0.9rem; }
+}
+
+.portal-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 2rem;
+  text-align: center;
+  gap: 0.75rem;
+
+  .error-icon { font-size: 3rem; color: t.$gp-error; }
+  h2 { font-size: 1.25rem; font-weight: 600; }
+  p { color: t.$gp-text-secondary; font-size: 0.9rem; max-width: 320px; line-height: 1.5; }
+  .error-hint {
+    margin-top: 1rem; padding: 0.75rem 1rem;
+    background: t.$gp-accent-light; border-radius: 8px;
+    color: t.$gp-accent; font-size: 0.85rem;
+  }
+}

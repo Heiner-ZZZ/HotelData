@@ -1,0 +1,73 @@
+/* ── Guest Portal Forms & Request History ─────────────── */
+
+@use 'tokens' as t;
+
+/* ── Detail form ── */
+
+.gp-detail-form {
+  margin-top: 0.75rem; padding-top: 0.75rem;
+  border-top: 1px solid t.$gp-border;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+
+.gp-detail-select {
+  padding: 0.45rem 0.6rem; border: 1px solid t.$gp-border;
+  border-radius: 6px; font-size: 0.8rem;
+  background: white; font-family: inherit;
+  &:focus { outline: none; border-color: t.$gp-accent; }
+}
+
+.gp-detail-textarea {
+  padding: 0.5rem 0.6rem; border: 1px solid t.$gp-border;
+  border-radius: 6px; font-size: 0.82rem;
+  font-family: inherit; resize: vertical; min-height: 44px;
+  &:focus { outline: none; border-color: t.$gp-accent; }
+}
+
+.gp-btn-sm { padding: 0.45rem 0.85rem; font-size: 0.78rem; }
+
+/* ── Request history ── */
+
+.gp-detail-requests { margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid t.$gp-border; }
+.gp-detail-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: t.$gp-text-secondary; margin-bottom: 0.4rem; }
+
+.gp-detail-req { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; font-size: 0.8rem; &.completed { opacity: 0.6; } }
+.gp-detail-req-type { font-weight: 500; color: t.$gp-text; }
+.gp-detail-req-status { font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 99px; font-weight: 500; }
+.gp-detail-req-desc { font-size: 0.74rem; color: t.$gp-text-secondary; margin: 0.15rem 0; padding-left: 0.25rem; }
+.gp-detail-req-response { display: flex; align-items: start; gap: 0.3rem; padding: 0.3rem 0.5rem; margin: 0.2rem 0; background: t.$gp-accent-light; border-radius: 4px; font-size: 0.72rem; color: t.$gp-accent; .material-symbols-outlined { font-size: 0.8rem; } }
+.gp-detail-req-time { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; font-size: 0.7rem; color: t.$gp-success; .material-symbols-outlined { font-size: 0.85rem; } }
+.gp-req-time-resolved { display: block; margin-top: 0.3rem; font-size: 0.7rem; color: t.$gp-success; font-weight: 500; .material-symbols-outlined { font-size: 0.85rem; } }
+.gp-detail-req-cancel { background: none; border: 1px solid t.$gp-border; border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.7rem; color: t.$gp-text-secondary; cursor: pointer; margin-top: 0.15rem; font-family: inherit; &:hover { border-color: t.$gp-error; color: t.$gp-error; } }
+
+.gp-show-more-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  width: 100%; margin-top: 0.5rem; padding: 0.45rem;
+  background: none; border: 1px dashed t.$gp-border; border-radius: 8px;
+  font-size: 0.72rem; color: t.$gp-text-secondary; cursor: pointer;
+  font-family: inherit; transition: all 0.15s;
+  &:hover { background: t.$gp-surface-bg; border-color: t.$gp-primary-container; color: t.$gp-primary-container; }
+  .material-symbols-outlined { font-size: 0.9rem; }
+}
+
+/* ── Generic form styles ── */
+
+.gp-form-group {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  label { font-size: 0.8rem; font-weight: 500; color: t.$gp-text-secondary; }
+  select, textarea { padding: 0.6rem 0.75rem; border: 1px solid t.$gp-border; border-radius: 8px; font-size: 0.9rem; background: white; font-family: inherit; transition: border-color 0.2s; &:focus { outline: none; border-color: t.$gp-accent; } }
+  textarea { resize: vertical; min-height: 70px; }
+}
+
+.gp-request-form {
+  background: t.$gp-surface; border-radius: t.$gp-radius;
+  padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; box-shadow: t.$gp-shadow;
+}
+
+.gp-request-success {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+  padding: 0.85rem;
+  .material-symbols-outlined { color: t.$gp-success; font-size: 1.5rem; }
+  p { margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.4; }
+}

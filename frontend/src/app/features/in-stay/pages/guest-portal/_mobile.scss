@@ -1,0 +1,184 @@
+/* ── Guest Portal Mobile ───────────────────────────────── */
+
+@use 'tokens' as t;
+
+/* ── Mobile section title ── */
+
+.gp-mobile-section-title {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.85rem; font-weight: 600; color: t.$gp-text-secondary;
+  margin: 1rem 0 0.6rem;
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+/* ── Mobile tab content ── */
+
+@media (max-width: 767px) {
+  .gp-tab-content {
+    display: block;
+    padding: 0.75rem;
+    padding-bottom: 6rem;
+  }
+
+  .gp-bento { display: none; }
+
+  .gp-header .gp-header-inner {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .gp-header-left { flex-direction: row; align-items: flex-start; }
+  .gp-back-btn { margin-top: 2px; }
+  .gp-header-right { align-self: flex-start; }
+
+  .gp-notif-dropdown {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    max-width: 100%; max-height: 100dvh;
+    border-radius: 0; z-index: 1001;
+  }
+
+  .gp-folio-actions {
+    flex-direction: column;
+    .gp-btn-primary, .gp-btn-outline { width: 100%; }
+  }
+
+  .gp-compendium { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .gp-comp-card {
+    background: t.$gp-surface; border-radius: t.$gp-radius;
+    padding: 0.85rem; display: flex; gap: 0.75rem; box-shadow: t.$gp-shadow;
+    &.gp-emergency { border-left: 3px solid t.$gp-error; background: #fff5f5; }
+  }
+
+  .gp-comp-icon {
+    flex-shrink: 0; width: 36px; height: 36px;
+    background: t.$gp-accent-light; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    .material-symbols-outlined { color: t.$gp-accent; font-size: 1.25rem; }
+  }
+
+  .gp-comp-body {
+    flex: 1; min-width: 0;
+    h3 { font-size: 0.8rem; font-weight: 600; margin: 0 0 0.25rem; text-transform: uppercase; letter-spacing: 0.04em; color: t.$gp-text-secondary; }
+    p { margin: 0; font-size: 0.9rem; color: t.$gp-text; line-height: 1.4; }
+  }
+
+  .gp-comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+  .gp-wifi-card .gp-wifi-row { display: flex; gap: 0.4rem; font-size: 0.85rem; margin-top: 0.15rem; .gp-label { color: t.$gp-text-secondary; flex-shrink: 0; } }
+  .gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: #f0f0f0; padding: 0.05rem 0.4rem; border-radius: 4px; }
+
+  .gp-comp-section-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: t.$gp-text-secondary; margin-top: 0.5rem; .material-symbols-outlined { font-size: 1.1rem; } }
+  .gp-policies-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .gp-policy-item {
+    background: t.$gp-surface; border-radius: 10px; padding: 0.75rem;
+    strong { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.2rem; }
+    p { margin: 0; font-size: 0.8rem; color: t.$gp-text-secondary; line-height: 1.4; }
+  }
+
+  .gp-services-mobile { display: flex; flex-direction: column; gap: 0.75rem; }
+  .gp-services-mobile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+  .gp-chat-section { display: flex; flex-direction: column; height: calc(100dvh - 200px); background: t.$gp-surface; border-radius: t.$gp-radius; overflow: hidden; box-shadow: t.$gp-shadow; }
+  .gp-charges-section { display: flex; flex-direction: column; gap: 0.75rem; }
+  .gp-charge-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .gp-charges-list { display: flex; flex-direction: column; gap: 0.4rem; }
+}
+
+/* ── Shared mobile components (outside media query, used on mobile) ── */
+
+.gp-compendium { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.gp-comp-card {
+  background: t.$gp-surface; border-radius: t.$gp-radius;
+  padding: 0.85rem; display: flex; gap: 0.75rem; box-shadow: t.$gp-shadow;
+  &.gp-emergency { border-left: 3px solid t.$gp-error; background: #fff5f5; }
+}
+
+.gp-comp-icon {
+  flex-shrink: 0; width: 36px; height: 36px;
+  background: t.$gp-accent-light; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  .material-symbols-outlined { color: t.$gp-accent; font-size: 1.25rem; }
+}
+
+.gp-comp-body {
+  flex: 1; min-width: 0;
+  h3 { font-size: 0.8rem; font-weight: 600; margin: 0 0 0.25rem; text-transform: uppercase; letter-spacing: 0.04em; color: t.$gp-text-secondary; }
+  p { margin: 0; font-size: 0.9rem; color: t.$gp-text; line-height: 1.4; }
+}
+
+.gp-comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+.gp-wifi-card .gp-wifi-row { display: flex; gap: 0.4rem; font-size: 0.85rem; margin-top: 0.15rem; .gp-label { color: t.$gp-text-secondary; flex-shrink: 0; } }
+.gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: #f0f0f0; padding: 0.05rem 0.4rem; border-radius: 4px; }
+
+.gp-comp-section-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: t.$gp-text-secondary; margin-top: 0.5rem; .material-symbols-outlined { font-size: 1.1rem; } }
+.gp-policies-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.gp-policy-item {
+  background: t.$gp-surface; border-radius: 10px; padding: 0.75rem;
+  strong { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.2rem; }
+  p { margin: 0; font-size: 0.8rem; color: t.$gp-text-secondary; line-height: 1.4; }
+}
+
+.gp-services-mobile { display: flex; flex-direction: column; gap: 0.75rem; }
+.gp-services-mobile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+.gp-requests-mobile { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.gp-req-card { background: t.$gp-surface; border-radius: 10px; padding: 0.75rem; box-shadow: t.$gp-shadow; &.completed { opacity: 0.7; } }
+.gp-req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
+.gp-req-type { font-weight: 600; font-size: 0.85rem; }
+.gp-req-status { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 99px; font-weight: 500; }
+.gp-req-desc { margin: 0.3rem 0; font-size: 0.85rem; color: t.$gp-text-secondary; }
+.gp-req-response { display: flex; align-items: start; gap: 0.35rem; margin-top: 0.4rem; padding: 0.4rem 0.6rem; background: t.$gp-accent-light; border-radius: 6px; font-size: 0.8rem; color: t.$gp-accent; .material-symbols-outlined { font-size: 0.9rem; margin-top: 1px; } }
+.gp-req-time { display: block; margin-top: 0.3rem; font-size: 0.7rem; color: t.$gp-text-secondary; }
+
+.gp-chat-section { display: flex; flex-direction: column; height: calc(100dvh - 200px); background: t.$gp-surface; border-radius: t.$gp-radius; overflow: hidden; box-shadow: t.$gp-shadow; }
+
+.gp-chat-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: t.$gp-accent; color: white; font-weight: 500; font-size: 0.9rem; .material-symbols-outlined { font-size: 1.25rem; } }
+.gp-chat-messages { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.gp-chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 0.5rem; color: t.$gp-text-secondary; .material-symbols-outlined { font-size: 2.5rem; opacity: 0.4; } p { margin: 0; font-size: 0.85rem; } }
+
+.gp-chat-msg { display: flex;
+  &.guest { justify-content: flex-end; .gp-msg-bubble { background: t.$gp-accent; color: white; border-radius: 12px 12px 4px 12px; } }
+  &.staff { justify-content: flex-start; .gp-msg-bubble { background: #f0f0f0; color: t.$gp-text; border-radius: 12px 12px 12px 4px; } }
+}
+
+.gp-msg-bubble { max-width: 80%; padding: 0.6rem 0.8rem; word-wrap: break-word; }
+.gp-msg-author { font-size: 0.7rem; font-weight: 600; margin-bottom: 0.2rem; opacity: 0.7; }
+.gp-msg-text { font-size: 0.9rem; line-height: 1.4; }
+.gp-msg-time { font-size: 0.65rem; margin-top: 0.25rem; opacity: 0.6; text-align: right; }
+
+.gp-chat-input-bar {
+  display: flex; gap: 0.5rem; padding: 0.6rem 0.75rem; border-top: 1px solid t.$gp-border;
+  input { flex: 1; padding: 0.55rem 0.75rem; border: 1px solid t.$gp-border; border-radius: 20px; font-size: 0.9rem; font-family: inherit; &:focus { outline: none; border-color: t.$gp-accent; } }
+}
+
+.gp-btn-send {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: t.$gp-accent; color: white;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.2s;
+  &:hover:not(:disabled) { background: #004d5e; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  .material-symbols-outlined { font-size: 1.15rem; }
+}
+
+.gp-charges-section { display: flex; flex-direction: column; gap: 0.75rem; }
+.gp-charge-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.gp-charge-summary-item { background: t.$gp-surface; border-radius: t.$gp-radius; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.25rem; box-shadow: t.$gp-shadow; }
+.gp-cs-label { font-size: 0.75rem; color: t.$gp-text-secondary; text-transform: uppercase; letter-spacing: 0.04em; }
+.gp-cs-value { font-size: 1.15rem; font-weight: 700; color: t.$gp-accent; }
+.gp-charges-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.gp-charge-item { background: t.$gp-surface; border-radius: 10px; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center; box-shadow: t.$gp-shadow; }
+.gp-charge-info { display: flex; flex-direction: column; gap: 0.15rem; }
+.gp-charge-concept { font-weight: 500; font-size: 0.9rem; }
+.gp-charge-date { font-size: 0.7rem; color: t.$gp-text-secondary; }
+.gp-charge-amount { font-weight: 600; font-size: 0.95rem; &.debit { color: t.$gp-accent; } }
+.gp-charges-total { display: flex; justify-content: space-between; align-items: center; background: t.$gp-surface; border-radius: 10px; padding: 0.85rem 1rem; font-weight: 600; box-shadow: t.$gp-shadow; strong { font-size: 1.2rem; color: t.$gp-accent; } }

@@ -1,0 +1,222 @@
+/* ── Guest Portal Header ──────────────────────────────── */
+
+@use 'tokens' as t;
+
+.gp-header {
+  position: relative;
+  background: linear-gradient(135deg, t.$gp-accent 0%, #003d4a 100%);
+  color: white;
+
+  .gp-header-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .gp-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gp-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px; min-width: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 4px;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s;
+    padding: 0;
+    &:hover { background: rgba(255, 255, 255, 0.22); }
+    .material-symbols-outlined { font-size: 1.2rem; }
+  }
+
+  .gp-hotel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-bottom: 0.35rem;
+    .material-symbols-outlined { font-size: 1rem; }
+  }
+
+  .gp-guest-name { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.25rem; }
+
+  .gp-stay-dates {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    opacity: 0.8;
+    .material-symbols-outlined { font-size: 1rem; }
+  }
+}
+
+/* ── Header Right ── */
+
+.gp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gp-room-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
+  padding: 0.4rem 0.8rem;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  .material-symbols-outlined { font-size: 1rem; }
+}
+
+/* ── Notification Bell ── */
+
+.gp-notif-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+  backdrop-filter: blur(4px);
+  &:hover { background: rgba(255, 255, 255, 0.22); }
+  .material-symbols-outlined { font-size: 1.3rem; }
+}
+
+.gp-notif-badge {
+  position: absolute;
+  top: -2px; right: -2px;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  background: t.$gp-error;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  animation: gp-badge-pop 0.3s ease-out;
+}
+
+/* ── Notifications Dropdown ── */
+
+.gp-notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 999;
+}
+
+.gp-notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 400px;
+  max-width: calc(100vw - 2rem);
+  max-height: 520px;
+  background: t.$gp-surface;
+  border-radius: t.$gp-radius-lg;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  animation: gp-notif-slide 0.2s ease-out;
+}
+
+.gp-notif-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.15rem 0.75rem;
+  border-bottom: 1px solid t.$gp-border;
+  flex-shrink: 0;
+  h3 { margin: 0; font-size: 1rem; font-weight: 600; color: t.$gp-text; }
+}
+
+.gp-notif-mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: 1px solid t.$gp-border;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-family: inherit;
+  color: t.$gp-primary-container;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover { background: t.$gp-surface-bg; }
+  .material-symbols-outlined { font-size: 0.9rem; }
+}
+
+.gp-notif-list { flex: 1; overflow-y: auto; padding: 0.4rem 0; }
+
+.gp-notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  .material-symbols-outlined { font-size: 2.5rem; color: t.$gp-text-secondary; opacity: 0.4; }
+  p { margin: 0; font-size: 0.9rem; color: t.$gp-text-secondary; font-weight: 500; }
+  .gp-notif-empty-hint { font-size: 0.78rem; color: t.$gp-text-secondary; opacity: 0.7; max-width: 260px; line-height: 1.4; }
+}
+
+.gp-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.7rem 1.15rem;
+  transition: background 0.12s;
+  position: relative;
+  &:hover { background: t.$gp-surface-bg; }
+  &.unread { background: color-mix(in srgb, t.$gp-accent-light, white 40%); &:hover { background: t.$gp-accent-light; } }
+  + .gp-notif-item { border-top: 1px solid t.$gp-border; }
+}
+
+.gp-notif-icon-wrap {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+  &.msg { background: #dbeafe; .material-symbols-outlined { color: #1e40af; } }
+  &.req { background: #dcfce7; .material-symbols-outlined { color: #166534; } }
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+.gp-notif-body { flex: 1; min-width: 0; }
+.gp-notif-title { font-size: 0.82rem; font-weight: 600; color: t.$gp-text; margin-bottom: 0.15rem; line-height: 1.3; }
+.gp-notif-text { font-size: 0.78rem; color: t.$gp-text-secondary; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gp-notif-time { font-size: 0.68rem; color: t.$gp-text-secondary; opacity: 0.7; margin-top: 0.25rem; }
+.gp-notif-dot {
+  position: absolute; top: 0.85rem; right: 0.85rem;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: t.$gp-primary-container; flex-shrink: 0;
+}

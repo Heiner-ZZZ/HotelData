@@ -1,0 +1,48 @@
+/* ── Guest Portal Bento Folio ─────────────────────────── */
+
+@use 'tokens' as t;
+
+.gp-bento-folio {
+  grid-column: span 8;
+  background: t.$gp-surface;
+  border: 1px solid t.$gp-border;
+  border-radius: t.$gp-radius-lg;
+  overflow: hidden;
+  box-shadow: t.$gp-shadow;
+}
+
+.gp-folio-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.25rem 1.25rem 0.75rem; border-bottom: 1px solid t.$gp-border;
+  .gp-panel-header { margin-bottom: 0; }
+}
+
+.gp-folio-balance { text-align: right; }
+.gp-folio-balance-label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: t.$gp-text-secondary; }
+.gp-folio-balance-num { font-size: 1.75rem; font-weight: 700; color: t.$gp-primary-container; }
+.gp-folio-table-wrap { overflow-x: auto; }
+
+.gp-folio-table {
+  width: 100%; border-collapse: collapse;
+  th { text-align: left; padding: 0.5rem 1.25rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: t.$gp-text-secondary; background: t.$gp-surface-bg; }
+  td { padding: 0.65rem 1.25rem; font-size: 0.88rem; border-bottom: 1px solid t.$gp-border; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(t.$gp-accent, 0.02); }
+}
+
+.gp-cell-date { color: t.$gp-text-secondary; font-size: 0.82rem; white-space: nowrap; }
+.gp-cell-concept { color: t.$gp-text; }
+.gp-text-right { text-align: right; }
+.gp-cell-amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; &.debit { color: t.$gp-accent; } }
+
+.gp-folio-empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.5rem; padding: 2rem; color: t.$gp-text-secondary;
+  .material-symbols-outlined { font-size: 2.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.9rem; }
+}
+
+.gp-folio-actions {
+  display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 0.75rem;
+  padding: 0.75rem 1.25rem; background: t.$gp-surface-bg; border-top: 1px solid t.$gp-border;
+}
