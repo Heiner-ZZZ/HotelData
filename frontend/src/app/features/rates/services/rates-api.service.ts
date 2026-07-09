@@ -24,6 +24,30 @@ export class RatesApiService {
       .pipe(map((dto) => mapRatesResponse(dto)));
   }
 
+  /** Fetch amenity catalog labels for the given property (flatten grouped response).
+   *
+   * The API returns catalog as Array<{category, items: [{label, active, unit_price}]}> (grouped),
+   * so we flatten it to Array<{category, label, unit_price, active}> for the UI checkbox grid.
+   */
+  getAmenityCatalog(propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http
+      .get<{ catalog: Array<{ category: string; items: Array<{ label: string; unit_price: number; active: boolean }> }> }>(
+        `${this.apiConfig.baseUrl}/management/amenities/options`,
+        { params, withCredentials: true }
+      )
+      .pipe(map((res) => {
+        const groups = res.catalog || [];
+        const flat: Array<{ category: string; label: string; unit_price: number; active: boolean }> = [];
+        for (const group of groups) {
+          for (const item of group.items || []) {
+            flat.push({ category: group.category, label: item.label, unit_price: item.unit_price, active: item.active });
+          }
+        }
+        return flat;
+      }));
+  }
+
   getPropertyOptions(q = '', page = 1, pageSize = 10) {
     const params = new HttpParams()
       .set('q', q)
@@ -56,6 +80,7 @@ export class RatesApiService {
     roomTypeId?: string;
     isActive: boolean;
     eligibleRoles?: string[];
+    includedAmenities?: string[];
   }) {
     return this.http.post(
       `${this.apiConfig.baseUrl}/management/rates/plans`,
@@ -67,7 +92,8 @@ export class RatesApiService {
         currency: payload.currency,
         room_type_id: payload.roomTypeId || '',
         is_active: payload.isActive,
-        eligible_roles: payload.eligibleRoles ?? []
+        eligible_roles: payload.eligibleRoles ?? [],
+        included_amenities: payload.includedAmenities ?? []
       },
       { withCredentials: true }
     );
@@ -81,6 +107,7 @@ export class RatesApiService {
     roomTypeId?: string;
     isActive: boolean;
     eligibleRoles?: string[];
+    includedAmenities?: string[];
   }) {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/rates/plans/${planId}`,
@@ -91,7 +118,8 @@ export class RatesApiService {
         currency: payload.currency,
         room_type_id: payload.roomTypeId || '',
         is_active: payload.isActive,
-        eligible_roles: payload.eligibleRoles ?? []
+        eligible_roles: payload.eligibleRoles ?? [],
+        included_amenities: payload.includedAmenities ?? []
       },
       { withCredentials: true }
     );

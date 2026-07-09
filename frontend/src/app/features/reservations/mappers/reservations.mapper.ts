@@ -127,7 +127,32 @@ export function mapReservationPreview(dto: ReservationPreviewDto) {
     totalPrice: dto.total_price,
     currency: dto.currency,
     totalNights: dto.total_nights,
+    taxRate: dto.tax_rate,
+    taxAmount: dto.tax_amount,
+    taxIncluded: dto.tax_included,
     cancellationPolicy: dto.cancellation_policy,
+    priceBreakdown: dto.price_breakdown
+      ? {
+          baseNightlyRate: dto.price_breakdown.base_nightly_rate,
+          nights: dto.price_breakdown.nights,
+          baseTotal: dto.price_breakdown.base_total,
+          includedAmenities: (dto.price_breakdown.included_amenities || []).map(a => ({
+            label: a.label,
+            unitPrice: a.unit_price,
+          })),
+          selectedExtras: (dto.price_breakdown.selected_extras || []).map(a => ({
+            label: a.label,
+            unitPrice: a.unit_price,
+          })),
+          amenityTotal: dto.price_breakdown.amenity_total,
+          ratePlanName: dto.price_breakdown.rate_plan_name,
+          subtotal: dto.price_breakdown.subtotal,
+          taxAmount: dto.price_breakdown.tax_amount,
+          taxRate: dto.price_breakdown.tax_rate,
+          taxIncluded: dto.price_breakdown.tax_included,
+          total: dto.price_breakdown.total,
+        }
+      : null,
   };
 }
 

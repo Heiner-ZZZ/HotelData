@@ -85,7 +85,24 @@ export interface ReservationPreviewDto {
   total_price: number | null;
   currency: string;
   total_nights: number;
+  tax_rate?: number;
+  tax_amount?: number;
+  tax_included?: boolean;
   cancellation_policy?: string | null;
+  price_breakdown?: {
+    base_nightly_rate: number | null;
+    nights: number;
+    base_total: number | null;
+    included_amenities: Array<{ label: string; unit_price: number }>;
+    selected_extras: Array<{ label: string; unit_price: number }>;
+    amenity_total: number;
+    rate_plan_name: string | null;
+    subtotal: number | null;
+    tax_amount: number;
+    tax_rate: number;
+    tax_included: boolean;
+    total: number | null;
+  };
 }
 
 export interface NightBreakdownDto {

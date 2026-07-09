@@ -73,16 +73,100 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
       @if (preview(); as p) {
         @if (p.available && p.totalPrice !== null) {
-          <div class="review-total">
-            <span>Total estimado</span>
-            <strong>
-              @if (couponStatus()?.valid) {
-                <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
-                <span>{{ p.totalPrice * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
-              } @else { {{ p.totalPrice | currency:p.currency }} }
-              <span style="font-size: 0.8em; font-weight: normal; margin-left: 4px;">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
-            </strong>
-          </div>
+          @if (p.priceBreakdown; as bd) {
+            <!-- Price Breakdown with Amenities -->
+            <div class="price-breakdown">
+              <div class="pb-section">
+                <div class="pb-head">
+                  <span class="material-symbols-outlined pb-head-icon">bed</span>
+                  <span>Tarifa base</span>
+                </div>
+                @if (bd.ratePlanName) {
+                  <div class="pb-plan-name">{{ bd.ratePlanName }}</div>
+                }
+                <div class="pb-row">
+                  <span>{{ bd.baseNightlyRate | currency:p.currency }} × {{ bd.nights }} {{ bd.nights === 1 ? 'noche' : 'noches' }}</span>
+                  <span>{{ bd.baseTotal | currency:p.currency }}</span>
+                </div>
+              </div>
+
+              @if (bd.includedAmenities.length > 0) {
+                <div class="pb-section">
+                  <div class="pb-head">
+                    <span class="material-symbols-outlined pb-head-icon">check_circle</span>
+                    <span>Incluidos en el plan</span>
+                  </div>
+                  @for (item of bd.includedAmenities; track item.label) {
+                    <div class="pb-row pb-row-amenity pb-row-included">
+                      <span>
+                        <span class="material-symbols-outlined pb-amenity-icon">spa</span>
+                        {{ item.label }}
+                      </span>
+                      <span>{{ item.unitPrice | currency:p.currency }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (bd.selectedExtras.length > 0) {
+                <div class="pb-section">
+                  <div class="pb-head">
+                    <span class="material-symbols-outlined pb-head-icon">add_circle</span>
+                    <span>Extras seleccionados</span>
+                  </div>
+                  @for (item of bd.selectedExtras; track item.label) {
+                    <div class="pb-row pb-row-amenity pb-row-extra">
+                      <span>
+                        <span class="material-symbols-outlined pb-amenity-icon">add</span>
+                        {{ item.label }}
+                      </span>
+                      <span>{{ item.unitPrice | currency:p.currency }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              <div class="pb-divider"></div>
+
+              <div class="pb-section pb-section-total">
+                <div class="pb-row">
+                  <span>Subtotal</span>
+                  <span>{{ (bd.baseTotal || 0) + bd.amenityTotal | currency:p.currency }}</span>
+                </div>
+                @if (bd.taxAmount > 0) {
+                  <div class="pb-row pb-row-tax">
+                    <span>Impuestos ({{ bd.taxRate }}%)</span>
+                    <span>{{ bd.taxAmount | currency:p.currency }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="pb-total">
+                <span>Total</span>
+                <strong>
+                  @if (couponStatus()?.valid) {
+                    <span class="pb-original">{{ p.totalPrice | currency:p.currency }}</span>
+                    <span>{{ p.totalPrice! * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                  } @else {
+                    {{ p.totalPrice | currency:p.currency }}
+                  }
+                  <span class="pb-night-suffix">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
+                </strong>
+              </div>
+            </div>
+          } @else {
+            <!-- Fallback: simple total without breakdown -->
+            <div class="review-total">
+              <span>Total estimado</span>
+              <strong>
+                @if (couponStatus()?.valid) {
+                  <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
+                  <span>{{ p.totalPrice * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                } @else { {{ p.totalPrice | currency:p.currency }} }
+                <span style="font-size: 0.8em; font-weight: normal; margin-left: 4px;">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
+              </strong>
+            </div>
+          }
         } @else if (!p.available) {
           <div class="review-total review-total-error">
             <span class="material-symbols-outlined">error</span>

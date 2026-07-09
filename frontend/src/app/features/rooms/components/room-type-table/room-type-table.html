@@ -6,9 +6,10 @@
         <th>Nombre</th>
         <th>N°</th>
         <th>Piso</th>
-        <th>Descripción</th>
+        <th>Descripcion</th>
         <th>Capacidad</th>
-        <th>Características</th>
+        <th>Caracteristicas</th>
+        <th>Físicas</th>
         <th>Estado</th>
         <th></th>
       </tr>
@@ -64,6 +65,19 @@
               </div>
             } @else {
               <span class="no-features">—</span>
+            }
+          </td>
+          <td class="cell-physical-count">
+            @if (room.physicalRoomCount > 0) {
+              <span class="physical-count-badge has-rooms" [title]="room.physicalRoomCount + ' habitacion(es) fisica(s)'">
+                <span class="material-symbols-outlined">door_sliding</span>
+                {{ room.physicalRoomCount }}
+              </span>
+            } @else {
+              <span class="physical-count-badge no-rooms" title="Sin habitaciones fisicas asignadas">
+                <span class="material-symbols-outlined">door_sliding</span>
+                —
+              </span>
             }
           </td>
           <td>

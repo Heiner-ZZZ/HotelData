@@ -104,13 +104,37 @@ export interface ReservationCreateResult {
   cancellationPolicy?: string | null;
 }
 
+export interface AmenityBreakdownItem {
+  label: string;
+  unitPrice: number;
+}
+
+export interface ReservationPreviewPriceBreakdown {
+  baseNightlyRate: number | null;
+  nights: number;
+  baseTotal: number | null;
+  includedAmenities: AmenityBreakdownItem[];
+  selectedExtras: AmenityBreakdownItem[];
+  amenityTotal: number;
+  ratePlanName: string | null;
+  subtotal: number | null;
+  taxAmount: number;
+  taxRate: number;
+  taxIncluded: boolean;
+  total: number | null;
+}
+
 export interface ReservationPreview {
   available: boolean;
   availabilityMessage: string | null;
   totalPrice: number | null;
   currency: string;
   totalNights: number;
+  taxRate?: number;
+  taxAmount?: number;
+  taxIncluded?: boolean;
   cancellationPolicy?: string | null;
+  priceBreakdown?: ReservationPreviewPriceBreakdown | null;
 }
 
 export interface ReservationStats {
