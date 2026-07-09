@@ -12,6 +12,12 @@ import { FormsModule } from '@angular/forms';
           <h2>{{ title() }}</h2>
         </div>
         <div class="gp-modal-body">
+          @if (dndWarning()) {
+            <div class="gp-modal-dnd-warning">
+              <span class="material-symbols-outlined">do_not_disturb</span>
+              <p>Tienes el modo <strong>No Molestar</strong> activado. Se desactivará automáticamente al enviar esta solicitud.</p>
+            </div>
+          }
           <p>{{ message() }}</p>
           @if (showExtendFields()) {
             <div class="gp-extend-form">
@@ -44,6 +50,7 @@ import { FormsModule } from '@angular/forms';
 export class GpConfirmModalComponent {
   readonly title = signal('');
   readonly message = signal('');
+  readonly dndWarning = signal(false);
   readonly showExtendFields = signal(false);
   readonly confirmActionType = signal('');
   readonly extendDate = signal('');
@@ -52,6 +59,7 @@ export class GpConfirmModalComponent {
 
   @Input() set inputTitle(value: string) { this.title.set(value); }
   @Input() set inputMessage(value: string) { this.message.set(value); }
+  @Input() set inputDndWarning(value: boolean) { this.dndWarning.set(value); }
   @Input() set inputShowExtend(value: boolean) { this.showExtendFields.set(value); }
   @Input() set inputActionType(value: string) { this.confirmActionType.set(value); }
   @Input() set inputExtendDate(value: string) { this.extendDate.set(value); }

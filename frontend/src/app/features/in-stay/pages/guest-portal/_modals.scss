@@ -56,6 +56,35 @@
   padding: 0.75rem 1.5rem 1.25rem;
 }
 
+/* ── DND warning inside modal ── */
+
+.gp-modal-dnd-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.85rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 3px solid #f97316;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #9a3412;
+  line-height: 1.45;
+
+  .material-symbols-outlined {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-variation-settings: 'FILL' 1;
+  }
+
+  p {
+    margin: 0;
+    strong { font-weight: 600; }
+  }
+}
+
 /* ── Extend form inside modal ── */
 
 .gp-extend-form {
