@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from src.database.connection import get_database
 from src.app.security.session import ensure_utc
+from src.app.core.timezone import local_now, local_today
 
 from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.partner.services.audit import register_action
@@ -21,7 +22,7 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
     Returns a summary dict with counts of cancelled bookings and any errors.
     """
     db = get_database()
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = utc_now() - timedelta(hours=24)
     cutoff_str = cutoff.isoformat()
 
     expired = list(
@@ -129,7 +130,7 @@ def _calculate_cancellation_penalty(
         return {"free_cancellation": True, "penalty_percent": 0, "penalty_amount": 0.0,
                 "hours_until_checkin": None, "cancellation_hours": cancellation_hours}
 
-    now = datetime.now(timezone.utc)
+    now = local_now()
     # check_in_date is at midnight, so hours_until = (checkin - now) total hours
     delta = checkin_dt - now
     hours_until_checkin = max(0, int(delta.total_seconds() / 3600))
@@ -172,7 +173,7 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
         raise ValueError("booking not found")
     if booking.get("status") != "pending":
         raise ValueError("only pending bookings can be cancelled")
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = local_today()
     if today_str >= booking.get("check_in_date", ""):
         raise ValueError("No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
 

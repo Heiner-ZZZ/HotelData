@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 from typing import Any
 
 from pymongo import ASCENDING
@@ -8,6 +7,7 @@ from pymongo import ASCENDING
 from src.database.connection import get_database
 from src.app.modules.partner.services import partner_hotel_policies
 
+from src.app.core.timezone import local_today
 from ._helpers import _safe_int, _clean_text, CHECKIN_COMPLETED_STAY_STATUSES, CHECKOUT_COMPLETED_STAY_STATUSES
 from .queries import hotel_booking_context
 from ._hotel_options import reservation_hotel_options
@@ -81,7 +81,7 @@ def _list_operational_dates(*, flow: str, prop_id: int | None = None) -> list[di
     """Return distinct past/current dates with booking count for the given flow and property."""
     db = get_database()
     field = "check_in_date" if flow == "check_in" else "check_out_date"
-    today = datetime.date.today().isoformat()
+    today = local_today()
     filters: dict[str, Any] = {
         field: {"$lte": today},
     }

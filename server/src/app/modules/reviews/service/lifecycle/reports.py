@@ -95,11 +95,13 @@ def get_reputation_dashboard(
     days: int = 30,
 ) -> dict:
     """Return reputation dashboard data: GRI, departmental sentiment, recent feedback, and trends."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
     from math import ceil
 
+    from src.app.core.timezone import local_now
+
     db = get_database()
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = local_now() - timedelta(days=days)
 
     query: dict = {"created_at": {"$gte": since}, "moderation_status": "approved"}
     if prop_id:

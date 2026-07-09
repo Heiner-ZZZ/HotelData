@@ -266,4 +266,16 @@ def complete_check_out(
         except Exception:
             logger.exception("Failed to notify guest about invoice on check-out for booking %s", booking_id)
 
+    # ── Deactivate stay session ──
+    if booking and not booking.get("is_test"):
+        try:
+            result_sess = db.stay_sessions.update_many(
+                {"booking_id": booking_id, "active": True},
+                {"$set": {"active": False, "deactivated_at": changed_at}},
+            )
+            if result_sess.modified_count > 0:
+                logger.info("Stay session deactivated for booking %s on check-out", booking_id)
+        except Exception:
+            logger.exception("Failed to deactivate stay session for booking %s", booking_id)
+
     return {"booking_id": booking_id, "stay_status": "checked_out"}

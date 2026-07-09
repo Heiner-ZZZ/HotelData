@@ -10,14 +10,64 @@ from src.database.connection import get_database
 logger = logging.getLogger(__name__)
 
 
+def _resolve_amenities(
+    *,
+    prop_id: int,
+    rate_plan_id: str | None = None,
+    selected_amenities: list[str] | None = None,
+) -> list[str]:
+    """Resolve the final set of amenities to charge:
+
+    1. Start with rate plan's included_amenities (always charged).
+    2. Add any user-selected amenities (extras not in the plan).
+       Deduplicate so no amenity is charged twice.
+    """
+    final: list[str] = []
+    seen: set[str] = set()
+
+    # 1. Included from rate plan
+    if rate_plan_id:
+        db = get_database()
+        plan = db.rate_plans.find_one(
+            {"rate_plan_id": rate_plan_id},
+            {"_id": 0, "included_amenities": 1},
+        )
+        if plan:
+            for a in plan.get("included_amenities", []):
+                label = a.strip()
+                if label and label.lower() not in seen:
+                    final.append(label)
+                    seen.add(label.lower())
+
+    # 2. User-selected extras (deduplicated)
+    if selected_amenities:
+        for a in selected_amenities:
+            label = a.strip()
+            if label and label.lower() not in seen:
+                final.append(label)
+                seen.add(label.lower())
+
+    return final
+
+
 def _generate_amenity_charges(
     *,
     booking_id: str,
     prop_id: int,
     selected_amenities: list[str],
+    rate_plan_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Automatically generate additional charges for paid amenities."""
-    if not selected_amenities:
+    """Automatically generate additional charges for paid amenities.
+
+    Combines the rate plan's included_amenities (auto-charged) with
+    the user's selected_amenities (extra services), deduplicated.
+    """
+    amenities = _resolve_amenities(
+        prop_id=prop_id,
+        rate_plan_id=rate_plan_id,
+        selected_amenities=selected_amenities,
+    )
+    if not amenities:
         return []
 
     db = get_database()
@@ -34,7 +84,7 @@ def _generate_amenity_charges(
     from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge
 
     created: list[dict[str, Any]] = []
-    for amenity_label in selected_amenities:
+    for amenity_label in amenities:
         label_clean = amenity_label.strip()
         if not label_clean:
             continue

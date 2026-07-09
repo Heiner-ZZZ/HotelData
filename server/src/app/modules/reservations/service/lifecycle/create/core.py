@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from pymongo.errors import DuplicateKeyError
@@ -15,6 +14,7 @@ from ...validation import validate_reservation_input
 from src.app.modules.reservations.service.lifecycle.create._availability import _check_availability
 from src.app.modules.reservations.service.lifecycle.create._pricing import _calculate_total_price, _resolve_season_id
 from src.app.modules.reservations.service.lifecycle.create._validation import _validate_deposit, validate_coupon_code
+from src.app.core.timezone import local_today
 from src.app.modules.reservations.service.lifecycle.create._amenities import _generate_amenity_charges
 
 logger = logging.getLogger(__name__)
@@ -128,6 +128,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         "original_total_price": (total_price / (1 - discount_percent / 100)) if discount_percent and total_price else None,
         "created_by": payload.created_by, "created_at": created_at, "updated_at": created_at,
         "is_test": payload.is_test,
+        "rate_plan_id": payload.rate_plan_id,
         "selected_amenities": payload.selected_amenities,
         # Payment / transaction fields (Phase 1)
         "transaction_id": transaction_id,
@@ -156,6 +157,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     amenity_charges = _generate_amenity_charges(
         booking_id=booking_id, prop_id=payload.prop_id,
         selected_amenities=payload.selected_amenities,
+        rate_plan_id=payload.rate_plan_id,
     )
     amenity_charges_summary = [
         {"concept": c.get("concept", ""), "amount": c.get("amount", 0), "total": c.get("total", c.get("amount", 0))}
@@ -253,7 +255,7 @@ def modify_booking(
     if current_stay_status == "checked_out":
         raise ValueError("No se puede modificar una reserva que ya ha finalizado (Check-out completado).")
 
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = local_today()
     if today_str >= booking.get("check_out_date", ""):
         raise ValueError("No se puede modificar una reserva cuyas fechas de estancia ya han pasado o finalizado.")
 
@@ -329,6 +331,7 @@ def modify_booking(
         _generate_amenity_charges(
             booking_id=booking_id, prop_id=prop_id,
             selected_amenities=selected_amenities,
+            rate_plan_id=booking.get("rate_plan_id"),
         )
 
     changed_fields = []
