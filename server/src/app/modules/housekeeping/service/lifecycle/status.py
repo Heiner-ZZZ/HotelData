@@ -229,6 +229,111 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
     return {"synced": True, "prop_id": prop_id, "created": created, "total_rooms": len(rooms)}
 
 
+def cleanup_orphan_room_status(prop_id: int | None = None) -> dict[str, Any]:
+    """Remove room_status_log entries whose hotel_room_id no longer exists
+    in hotel_rooms, or whose room_type_id no longer exists in room_types.
+
+    This fixes the discrepancy where the housekeeping dashboard shows more
+    rooms than the rooms management page due to orphaned status records
+    left behind after room type / hotel room deletion.
+    """
+    db = get_database()
+
+    match: dict[str, Any] = {}
+    if prop_id:
+        match["prop_id"] = prop_id
+
+    # Build sets of valid IDs
+    valid_hotel_room_ids: set[str] = set()
+    for doc in db[HOTEL_ROOMS_COLLECTION].find(
+        {"prop_id": prop_id} if prop_id else {},
+        {"hotel_room_id": 1},
+    ):
+        if doc.get("hotel_room_id"):
+            valid_hotel_room_ids.add(doc["hotel_room_id"])
+
+    valid_room_type_ids: set[str] = set()
+    for doc in db.room_types.find(
+        {"prop_id": prop_id} if prop_id else {},
+        {"room_type_id": 1},
+    ):
+        if doc.get("room_type_id"):
+            valid_room_type_ids.add(doc["room_type_id"])
+
+    # Find orphaned records: hotel_room_id exists but not in hotel_rooms
+    orphaned_by_hrid: list[str] = []
+    for doc in db[ROOM_STATUS_COLLECTION].find(
+        {**match, "hotel_room_id": {"$exists": True, "$ne": ""}},
+        {"room_label": 1, "hotel_room_id": 1},
+    ):
+        hrid = doc.get("hotel_room_id", "")
+        if hrid and hrid not in valid_hotel_room_ids:
+            orphaned_by_hrid.append(hrid)
+
+    # Find orphaned records: room_type_id exists but not in room_types
+    orphaned_by_rtid: list[str] = []
+    for doc in db[ROOM_STATUS_COLLECTION].find(
+        {**match, "room_type_id": {"$exists": True, "$ne": ""}},
+        {"room_label": 1, "room_type_id": 1},
+    ):
+        rtid = doc.get("room_type_id", "")
+        if rtid and rtid not in valid_room_type_ids:
+            orphaned_by_rtid.append(rtid)
+
+    # Also find records with no hotel_room_id at all (purely manual creates)
+    # that don't match any hotel_rooms room_label
+    valid_labels: set[str] = set()
+    for doc in db[HOTEL_ROOMS_COLLECTION].find(
+        {"prop_id": prop_id} if prop_id else {},
+        {"room_label": 1},
+    ):
+        if doc.get("room_label"):
+            valid_labels.add(doc["room_label"])
+
+    orphaned_by_label: list[str] = []
+    for doc in db[ROOM_STATUS_COLLECTION].find(
+        {**match, "hotel_room_id": {"$in": ["", None]}},
+        {"room_label": 1},
+    ):
+        label = doc.get("room_label", "")
+        if label and label not in valid_labels:
+            orphaned_by_label.append(label)
+
+    # Build combined deletion query
+    delete_query: dict[str, Any] = {**match}
+    or_conditions: list[dict[str, Any]] = []
+    if orphaned_by_hrid:
+        or_conditions.append({"hotel_room_id": {"$in": orphaned_by_hrid}})
+    if orphaned_by_rtid:
+        or_conditions.append({"room_type_id": {"$in": orphaned_by_rtid}})
+    if orphaned_by_label:
+        or_conditions.append({
+            "hotel_room_id": {"$in": ["", None]},
+            "room_label": {"$in": orphaned_by_label},
+        })
+
+    deleted = 0
+    if or_conditions:
+        delete_query["$or"] = or_conditions
+        result = db[ROOM_STATUS_COLLECTION].delete_many(delete_query)
+        deleted = result.deleted_count
+
+    return {
+        "prop_id": prop_id,
+        "deleted": deleted,
+        "orphaned_summary": {
+            "by_hotel_room_id": len(orphaned_by_hrid),
+            "by_room_type_id": len(orphaned_by_rtid),
+            "by_label_no_hrid": len(orphaned_by_label),
+        },
+        "valid_counts": {
+            "hotel_rooms": len(valid_hotel_room_ids),
+            "room_types": len(valid_room_type_ids),
+            "valid_labels": len(valid_labels),
+        },
+    }
+
+
 def _fmt(val):
     if hasattr(val, "isoformat"):
         return val.isoformat()

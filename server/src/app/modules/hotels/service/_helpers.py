@@ -65,6 +65,24 @@ def _format_money(value: Any) -> str:
         return "N/D"
     return f"{float(value):,.2f}"
 
+
+def _min_real_rate_for_prop(prop_id: int) -> str:
+    """Return the minimum real rate from hotel_rate_calendar for today+.
+
+    Falls back to 'Consultar' if no calendar entries exist.
+    """
+    from src.app.core.timezone import local_today
+    from src.database.connection import get_database
+    db = get_database()
+    today = local_today()
+    result = list(db.hotel_rate_calendar.aggregate([
+        {"$match": {"prop_id": prop_id, "date": {"$gte": today}}},
+        {"$group": {"_id": None, "min_rate": {"$min": "$rate_amount"}}},
+    ]))
+    if result and result[0].get("min_rate") is not None:
+        return _format_money(result[0]["min_rate"])
+    return "Consultar"
+
 def _format_number(value: Any, decimals: int = 1) -> str:
     if value is None:
         return "N/D"

@@ -8,6 +8,7 @@ from ._helpers import (
     _destination_display_name,
     _format_money,
     _metric_projection,
+    _min_real_rate_for_prop,
     _site_display_name,
 )
 from .lookups import _country_lookup, _destination_lookup, _site_lookup
@@ -170,6 +171,7 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     item = _enrich_hotel_metrics([metrics or {"prop_id": prop_id, "events": 0, "reservations": 0, "clicks": 0, "destinations": []}])[0]
     item["source_collection"] = source_collection
     item["hotel"] = hotel
+    item["min_rate_label"] = _min_real_rate_for_prop(prop_id)
     item["top_destinations"] = top_destinations_for_hotel(prop_id)
     item["top_visitor_countries"] = _top_visitor_countries_for_hotel(prop_id)
     item["top_sites"] = _top_sites_for_hotel(prop_id)

@@ -8,6 +8,7 @@ from .status import (
     get_room_status,
     update_room_status_bulk,
     sync_room_status_from_hotel_rooms,
+    cleanup_orphan_room_status,
     list_valid_transitions,
 )
 from .cleaning_actions import (
@@ -43,6 +44,7 @@ __all__ = [
     "get_room_status",
     "update_room_status_bulk",
     "sync_room_status_from_hotel_rooms",
+    "cleanup_orphan_room_status",
     "list_valid_transitions",
     "start_cleaning",
     "complete_cleaning",

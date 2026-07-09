@@ -11,6 +11,7 @@ from src.app.modules.housekeeping.schemas import (
 )
 from src.app.modules.housekeeping.service import (
     approve_cleaning,
+    cleanup_orphan_room_status,
     complete_cleaning,
     complete_housekeeping_task,
     complete_maintenance_task,
@@ -214,6 +215,33 @@ def room_status_sync_api(
         summary=f"Sincronización de estados de habitación: {result.get('created', 0)} creadas",
         changed_by=current_user.get("username", "system"),
         diff={"created": {"old": None, "new": result.get("created", 0)}},
+    )
+    return result
+
+
+@api_router.post("/room-status/cleanup-orphans")
+def room_status_cleanup_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Remove orphaned room_status_log entries whose hotel_room_id or
+    room_type_id no longer exist in hotel_rooms or room_types.
+
+    Payload: {"prop_id": 1}  (optional; if omitted, cleans all properties)
+    """
+    prop_id = payload.get("prop_id") if payload.get("prop_id") else None
+    result = cleanup_orphan_room_status(prop_id=prop_id)
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_room_status",
+        entity_id="cleanup_orphans",
+        action="delete",
+        summary=f"Limpieza de registros huérfanos: {result.get('deleted', 0)} eliminados",
+        changed_by=current_user.get("username", "system"),
+        diff={
+            "deleted": {"old": None, "new": result.get("deleted", 0)},
+            "orphaned_summary": {"old": None, "new": result.get("orphaned_summary", {})},
+        },
     )
     return result
 
