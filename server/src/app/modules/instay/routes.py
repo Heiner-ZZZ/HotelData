@@ -222,6 +222,35 @@ def staff_create_request(
     if not session:
         raise HTTPException(status_code=400, detail="No hay sesión activa para esta reserva.")
 
+    # ── DND enforcement: auto-deactivate when staff creates a request ──
+    # Staff is responding to a direct guest request, so DND is no longer applicable.
+    prop_id = int(session.get("prop_id") or 0)
+    room_label = str(session.get("room_label") or "").strip()
+    if prop_id and room_label:
+        dnd_state = db.room_status_log.find_one(
+            {"prop_id": prop_id, "room_label": room_label},
+            {"dnd": 1},
+        )
+        if dnd_state and dnd_state.get("dnd"):
+            db.room_status_log.update_one(
+                {"prop_id": prop_id, "room_label": room_label},
+                {"$set": {"dnd": False, "dnd_updated_at": utc_now()}},
+            )
+            # Log the auto-deactivation
+            try:
+                db.stay_messages.insert_one({
+                    "booking_id": booking_id,
+                    "prop_id": prop_id,
+                    "room_label": room_label,
+                    "sender": "system",
+                    "staff_name": "Sistema",
+                    "message": f"Modo No Molestar desactivado automáticamente — {current_user.get('display_name', current_user.get('username', 'Staff'))} creó una solicitud de servicio.",
+                    "created_at": utc_now(),
+                    "read": True,
+                })
+            except Exception:
+                pass
+
     doc = {
         "booking_id": booking_id,
         "prop_id": session.get("prop_id", 0),
@@ -605,6 +634,21 @@ def guest_create_request(payload: dict = Body(...)):
 
     session = get_session_or_404(token)
     db = get_database()
+
+    # ── DND enforcement: block request creation if Do Not Disturb is active ──
+    prop_id = int(session.get("prop_id") or 0)
+    room_label = str(session.get("room_label") or "").strip()
+    if prop_id and room_label:
+        dnd_state = db.room_status_log.find_one(
+            {"prop_id": prop_id, "room_label": room_label},
+            {"dnd": 1},
+        )
+        if dnd_state and dnd_state.get("dnd"):
+            raise HTTPException(
+                status_code=409,
+                detail="DND activo — desactiva el modo No Molestar para solicitar servicios.",
+            )
+
     doc = {
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
         "room_label": session["room_label"], "request_type": request_type,

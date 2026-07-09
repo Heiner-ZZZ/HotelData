@@ -188,13 +188,19 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
         total_nights=int(booking.get("total_nights", 0)),
         room_type_id=booking.get("room_type_id", ""),
     )
+
+    total_price = booking.get("total_price") or 0
+    total_nights = int(booking.get("total_nights") or 0)
+    one_night_price = round(float(total_price) / max(total_nights, 1), 2)
+
     return {
         "booking_id": booking_id,
         "guest_name": booking.get("guest_name", ""),
         "check_in_date": booking.get("check_in_date", ""),
         "total_price": booking.get("total_price"),
         "currency": booking.get("currency", "USD"),
-        "total_nights": int(booking.get("total_nights", 0)),
+        "total_nights": total_nights,
+        "one_night_price": one_night_price,
         "free_cancellation": penalty["free_cancellation"],
         "penalty_percent": penalty["penalty_percent"],
         "penalty_amount": penalty["penalty_amount"],

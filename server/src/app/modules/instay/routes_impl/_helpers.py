@@ -128,6 +128,43 @@ def notify_staff_new_request(db, session: dict, request_type: str):
         pass
 
 
+def notify_staff_dnd_toggled(db, session: dict, dnd_active: bool):
+    """Push SSE event when a guest toggles Do Not Disturb."""
+    prop_id = session.get("prop_id", 0)
+    room_label = session.get("room_label", "")
+    guest_name = session.get("guest_name", "huésped")
+
+    action = "activó" if dnd_active else "desactivó"
+    try:
+        db.notification_log.insert_one({
+            "recipient_email": "staff",
+            "notification_type": "dnd_toggled",
+            "subject": f"{guest_name} (Hab. {room_label}) {action} No Molestar",
+            "body": f"La habitación {room_label} {action} el modo No Molestar.",
+            "status": "sent",
+            "created_at": utc_now(),
+            "metadata": {
+                "prop_id": prop_id,
+                "room_label": room_label,
+                "booking_id": session.get("booking_id"),
+                "dnd_active": dnd_active,
+            },
+        })
+    except Exception:
+        pass
+
+    # Push SSE event
+    try:
+        from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+        StayEventManager.instance_sync().publish_threadsafe(prop_id, "dnd_toggled", {
+            "room_label": room_label,
+            "guest_name": guest_name,
+            "dnd_active": dnd_active,
+        })
+    except Exception:
+        pass
+
+
 def notify_staff_request_updated(db, request_doc: dict, new_status: str):
     """Log a notification for staff when a service request status changes + push SSE event."""
     prop_id = request_doc.get("prop_id", 0)

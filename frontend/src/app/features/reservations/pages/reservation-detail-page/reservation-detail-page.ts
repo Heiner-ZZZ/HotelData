@@ -318,7 +318,7 @@ export class ReservationDetailPageComponent {
       });
   }
 
-  readonly cancelPenalty = signal<{free: boolean; amount: number; percent: number; hours: number | null; policyHours: number} | null>(null);
+  readonly cancelPenalty = signal<{free: boolean; amount: number; percent: number; hours: number | null; policyHours: number; oneNightPrice: number; totalNights: number} | null>(null);
 
   async cancelReservation() {
     const current = this.data();
@@ -335,6 +335,8 @@ export class ReservationDetailPageComponent {
           percent: preview.penalty_percent,
           hours: preview.hours_until_checkin,
           policyHours: preview.cancellation_hours,
+          oneNightPrice: (preview as any).one_night_price ?? 0,
+          totalNights: (preview as any).total_nights ?? 1,
         });
         this.confirmCancellation(current.bookingId, current.guestName);
       },
@@ -359,15 +361,23 @@ export class ReservationDetailPageComponent {
     const isEffectivelyFree = p.free || p.amount <= 0;
 
     let message = '';
+    let details: string[] | undefined;
     if (isEffectivelyFree) {
       message = `Cancelación gratuita. Quedan ${p.hours}h antes del check-in (límite: ${p.policyHours}h). ¿Confirmar cancelación de ${guestName}?`;
     } else {
-      message = `⚠️ Cancelación tardía. Penalización: $${p.amount.toFixed(2)} (${p.percent}% de 1 noche). Solo quedan ${p.hours}h para el check-in (límite gratuito: ${p.policyHours}h). ¿Cancelar la reserva de ${guestName}?`;
+      const oneNight = p.oneNightPrice > 0 ? `$${p.oneNightPrice.toFixed(2)}` : 'N/D';
+      message = `⚠️ Cancelación tardía — solo quedan ${p.hours}h para el check-in (límite gratuito: ${p.policyHours}h). ¿Cancelar la reserva de ${guestName}?`;
+      details = [
+        `1 noche = ${oneNight} (${p.totalNights} noche(s) en total)`,
+        `Penalización = ${p.percent}% de 1 noche`,
+        `Total a pagar = $${p.amount.toFixed(2)}`,
+      ];
     }
 
     const ok = await this.confirmDialog.open({
       title: 'Cancelar reserva',
       message,
+      details,
       confirmLabel: isEffectivelyFree ? 'Cancelar sin costo' : `Pagar $${p.amount.toFixed(2)} y cancelar`,
       variant: isEffectivelyFree ? 'warning' : 'danger',
     });

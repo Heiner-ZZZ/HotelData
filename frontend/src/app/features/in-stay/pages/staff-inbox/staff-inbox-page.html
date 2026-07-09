@@ -114,7 +114,10 @@
                   <span class="si-tl-room">
                     Hab. {{ item.roomLabel }}
                     @if (item.type === 'message' && dndFor(item.roomLabel)) {
-                      <span class="si-dnd-badge" title="No Molestar">DND</span>
+                      <span class="si-dnd-badge" title="No Molestar — esta habitación tiene el modo No Molestar activado">
+                        <span class="material-symbols-outlined">do_not_disturb</span>
+                        No Molestar
+                      </span>
                     }
                   </span>
                       <span class="si-tl-time">{{ item.time | date:'HH:mm' }}</span>
@@ -161,10 +164,23 @@
                   </div>
                 </div>
               </div>
+              @if (dndFor(selectedRoom()!)) {
+                <div class="si-chat-dnd-header-badge">
+                  <span class="material-symbols-outlined">do_not_disturb</span>
+                  No Molestar
+                </div>
+              }
               <button class="si-chat-more">
                 <span class="material-symbols-outlined">more_vert</span>
               </button>
             </div>
+
+            @if (dndFor(selectedRoom()!)) {
+              <div class="si-chat-dnd-banner">
+                <span class="material-symbols-outlined">do_not_disturb</span>
+                Modo No Molestar activado — el huésped no desea ser molestado
+              </div>
+            }
 
             <div class="si-chat-messages">
               @if (messages().length === 0) {

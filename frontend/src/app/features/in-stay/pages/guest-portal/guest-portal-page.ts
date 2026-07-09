@@ -333,11 +333,23 @@ export class GuestPortalPageComponent implements OnInit {
 
   submitRequest(): void {
     if (!this.requestDesc().trim() || !this.tokenValue) return;
+    // DND enforcement: block request if DND is active
+    if (this.dndActive()) {
+      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
+      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
+      return;
+    }
     this.sendServiceRequest(this.requestType(), this.requestDesc().trim());
   }
 
   private sendServiceRequest(type: string, desc: string): void {
     if (!this.tokenValue) return;
+    // DND enforcement: block request if DND is active
+    if (this.dndActive()) {
+      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
+      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
+      return;
+    }
     this.sendingRequest.set(true);
     this.showConfirmModal.set(false);
     this.quickRequestSuccess.set('');
@@ -353,10 +365,14 @@ export class GuestPortalPageComponent implements OnInit {
           setTimeout(() => { this.quickRequestSuccess.set(''); this.requestDone.set(false); }, 4000);
           this.loadRequests();
         },
-        error: () => {
+        error: (err) => {
           this.sendingRequest.set(false);
-          this.quickRequestSuccess.set('Error al enviar la solicitud. Intenta de nuevo.');
-          setTimeout(() => this.quickRequestSuccess.set(''), 4000);
+          if (err?.status === 409) {
+            this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
+          } else {
+            this.quickRequestSuccess.set('Error al enviar la solicitud. Intenta de nuevo.');
+          }
+          setTimeout(() => this.quickRequestSuccess.set(''), 5000);
         },
       });
   }
@@ -393,6 +409,13 @@ export class GuestPortalPageComponent implements OnInit {
   }
 
   confirmAction(): void {
+    // DND enforcement: block request if DND is active
+    if (this.dndActive()) {
+      this.showConfirmModal.set(false);
+      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
+      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
+      return;
+    }
     let desc = this.confirmActionDesc();
     const type = this.confirmActionType();
     if (this.showExtendFields()) {
@@ -437,6 +460,13 @@ export class GuestPortalPageComponent implements OnInit {
   }
 
   confirmPaymentRequest(): void {
+    // DND enforcement: block if DND is active
+    if (this.dndActive()) {
+      this.showPaymentModal.set(false);
+      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
+      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
+      return;
+    }
     // Notify staff via a service request
     const mode = this.paymentModalMode();
     const type = mode === 'invoice' ? 'solicitar_factura' : 'solicitar_pago';

@@ -171,6 +171,15 @@
           <span class="material-symbols-outlined gp-panel-icon">room_service</span>
           <h3>Servicios a la Habitación</h3>
         </div>
+        @if (dndActive()) {
+          <div class="gp-dnd-warning">
+            <span class="material-symbols-outlined">do_not_disturb</span>
+            <div>
+              <strong>Modo No Molestar activado</strong>
+              <p>Desactiva No Molestar para poder solicitar servicios a la habitación.</p>
+            </div>
+          </div>
+        }
         <div class="gp-services-grid">
           <button class="gp-service-btn" (click)="openConfirmModal('housekeeping', 'Limpieza')">
             <span class="material-symbols-outlined">cleaning_services</span>
@@ -516,6 +525,15 @@
       <!-- ═══ SERVICES ═══ -->
       @if (activeTab() === 'services') {
         <section class="gp-services-mobile">
+          @if (dndActive()) {
+            <div class="gp-dnd-warning">
+              <span class="material-symbols-outlined">do_not_disturb</span>
+              <div>
+                <strong>Modo No Molestar activado</strong>
+                <p>Desactiva No Molestar para poder solicitar servicios a la habitación.</p>
+              </div>
+            </div>
+          }
           <div class="gp-services-mobile-grid">
             <button class="gp-service-btn" (click)="openConfirmModal('housekeeping', 'Limpieza')">
               <span class="material-symbols-outlined">cleaning_services</span>

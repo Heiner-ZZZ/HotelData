@@ -26,14 +26,12 @@
               <code class="txn-id">{{ vm.transactionId }}</code>
             </div>
           </div>
-          @if (vm.cardLast4 || vm.paymentMethod) {
+          @if (vm.cardLast4) {
             <div class="txn-details">
-              @if (vm.cardLast4) {
-                <span class="txn-card">
-                  <span class="material-symbols-outlined">credit_card</span>
-                  {{ vm.cardBrand || 'Tarjeta' }} ···· {{ vm.cardLast4 }}
-                </span>
-              }
+              <span class="txn-card">
+                <span class="material-symbols-outlined">credit_card</span>
+                Tarjeta ···· {{ vm.cardLast4 }}
+              </span>
               <span class="txn-status" [class.paid]="vm.paymentStatus === 'paid'" [class.pending]="vm.paymentStatus !== 'paid'">
                 <span class="material-symbols-outlined">{{ vm.paymentStatus === 'paid' ? 'verified' : 'schedule' }}</span>
                 {{ vm.paymentStatus === 'paid' ? 'Pago procesado' : 'Pago pendiente' }}
@@ -44,6 +42,7 @@
       }
 
       <div class="details-grid">
+        <div class="detail-item">
           <span class="detail-icon material-symbols-outlined">hotel</span>
           <div>
             <span class="detail-label">Hotel</span>

@@ -1272,6 +1272,31 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   h3 { font-size: 1rem; font-weight: 600; margin: 0; }
 }
 
+/* ── DND Warning Banner (in services section) ── */
+.gp-dnd-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.85rem;
+  background: $gp-error-bg;
+  border: 1px solid rgba($gp-error, 0.25);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: $gp-error;
+  line-height: 1.4;
+
+  .material-symbols-outlined {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-variation-settings: 'FILL' 1;
+  }
+
+  strong { font-weight: 600; display: block; }
+  p { margin: 0.15rem 0 0; font-size: 0.78rem; opacity: 0.85; }
+}
+
 .gp-services-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
