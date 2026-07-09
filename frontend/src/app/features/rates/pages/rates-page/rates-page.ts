@@ -143,6 +143,10 @@ export class RatesPageComponent {
   readonly planBaseRate = signal(0);
   readonly planCurrency = signal('USD');
   readonly planIsActive = signal(true);
+  readonly planIncludedAmenities = signal<string[]>([]);
+
+  /** Amenity catalog loaded from API — all available amenity labels for this property. */
+  readonly amenityCatalog = signal<{ category: string; label: string; unit_price: number; active: boolean }[]>([]);
 
   // Calendar form
   readonly calendarRatePlanId = signal('');
@@ -405,6 +409,16 @@ readonly sidebarSections: SidebarSection[] = [
       error: () => this.rateTrendState.set('error'),
     });
 
+    // ── Load amenity catalog when prop changes ──
+    effect(() => {
+      const propId = this.selectedPropId();
+      if (!propId) { return; }
+      this.api.getAmenityCatalog(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (catalog) => this.amenityCatalog.set(catalog),
+        error: () => this.amenityCatalog.set([]),
+      });
+    });
+
     // ── Sync httpResource → viewModel + viewState ──
     effect(() => {
       const propId = this.selectedPropId();
@@ -493,6 +507,26 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   /* ── Rate Plan CRUD ── */
+  /** Toggle an amenity label in the planIncludedAmenities signal. */
+  togglePlanAmenity(label: string): void {
+    this.planIncludedAmenities.update((current) => {
+      const exists = current.includes(label);
+      return exists ? current.filter((a) => a !== label) : [...current, label];
+    });
+  }
+
+  /** Flatten the amenity catalog into unique labels grouped by category for the UI. */
+  readonly amenityGroups = computed(() => {
+    const catalog = this.amenityCatalog();
+    const groups = new Map<string, { label: string; unitPrice: number }[]>();
+    for (const item of catalog) {
+      const cat = item.category || 'General';
+      if (!groups.has(cat)) { groups.set(cat, []); }
+      groups.get(cat)!.push({ label: item.label, unitPrice: item.unit_price });
+    }
+    return Array.from(groups.entries()).map(([category, items]) => ({ category, items }));
+  });
+
   createRatePlan(): void {
     const current = this.viewModel();
     if (!current || !this.planName() || this.planBaseRate() <= 0) { return; }
@@ -500,10 +534,12 @@ readonly sidebarSections: SidebarSection[] = [
       ? this.api.updateRatePlan(this.editingPlan()!.id, {
           name: this.planName(), description: this.planDescription(), baseRate: this.planBaseRate(),
           currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
+          includedAmenities: this.planIncludedAmenities(),
         })
       : this.api.createRatePlan({
           propId: current.propId, name: this.planName(), description: this.planDescription(),
           baseRate: this.planBaseRate(), currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
+          includedAmenities: this.planIncludedAmenities(),
         });
     obs.pipe(
       switchMap(() => this.api.getRates(current.propId)),
@@ -513,7 +549,7 @@ readonly sidebarSections: SidebarSection[] = [
         this.viewModel.set(rates);
         this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
         this.editingPlan.set(null);
-        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true);
+        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
       },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.'); this.message.set(''); },
     });
@@ -526,6 +562,7 @@ readonly sidebarSections: SidebarSection[] = [
     });
     this.planName.set(plan.name); this.planDescription.set(plan.description); this.planBaseRate.set(plan.baseRate);
     this.planCurrency.set(plan.currency); this.planRoomTypeId.set(plan.roomTypeId ?? ''); this.planIsActive.set(plan.activeLabel === 'Sí');
+    this.planIncludedAmenities.set(plan.includedAmenities ?? []);
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParamsHandling: 'merge',
@@ -537,6 +574,7 @@ readonly sidebarSections: SidebarSection[] = [
   cancelEditPlan(): void {
     this.editingPlan.set(null);
     this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true);
+    this.planIncludedAmenities.set([]);
   }
 
   onDeletePlan(planId: string): void { this.deleteConfirm.set(planId); }

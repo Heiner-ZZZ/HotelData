@@ -315,6 +315,38 @@
                       <span class="field-label"><span class="material-symbols-outlined field-icon">toggle_on</span>Activo</span>
                       <input type="checkbox" [checked]="planIsActive()" (change)="planIsActive.set($any($event.target).checked)">
                     </label>
+
+                    <!-- Included Amenities Checkboxes -->
+                    <fieldset class="field amenities-fieldset">
+                      <legend class="field-label">
+                        <span class="material-symbols-outlined field-icon">spa</span>Amenidades incluidas en el plan
+                      </legend>
+                      <p class="field-hint">Se agregarán automáticamente al folio al reservar con este plan.</p>
+                      @if (amenityGroups().length === 0) {
+                        <p class="field-hint">Cargando amenidades disponibles...</p>
+                      }
+                      @for (group of amenityGroups(); track group.category) {
+                        <div class="amenity-group">
+                          <strong class="amenity-group-title">{{ group.category }}</strong>
+                          <div class="amenity-checkbox-grid">
+                            @for (item of group.items; track item.label) {
+                              <label class="amenity-checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  [checked]="planIncludedAmenities().includes(item.label)"
+                                  (change)="togglePlanAmenity(item.label)"
+                                />
+                                <span class="amenity-label">{{ item.label }}</span>
+                                @if (item.unitPrice > 0) {
+                                  <span class="amenity-price">+${{ item.unitPrice.toFixed(2) }}</span>
+                                }
+                              </label>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </fieldset>
+
                     <div class="form-actions">
                       <button type="submit" class="btn-primary">
                         <span class="material-symbols-outlined btn-icon">{{ editingPlan() ? 'save' : 'add' }}</span>
