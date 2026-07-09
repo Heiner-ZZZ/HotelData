@@ -741,77 +741,29 @@
 
     <!-- ═══ CONFIRMATION MODAL ═══ -->
     @if (showConfirmModal()) {
-      <div class="gp-modal-overlay" (click)="showConfirmModal.set(false)">
-        <div class="gp-modal" (click)="$event.stopPropagation()">
-          <div class="gp-modal-header">
-            <span class="material-symbols-outlined gp-modal-icon">help</span>
-            <h2>{{ confirmTitle() }}</h2>
-          </div>
-          <div class="gp-modal-body">
-            <p>{{ confirmMessage() }}</p>
-            @if (showExtendFields()) {
-              <div class="gp-extend-form">
-                @if (confirmActionType() === 'extend_stay') {
-                  <label>Nueva fecha de salida</label>
-                  <input type="date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [min]="portalData()?.session?.check_out?.slice(0, 10)" />
-                }
-                @if (confirmActionType() === 'late_checkout') {
-                  <label>Hora de salida deseada</label>
-                  <input type="time" [ngModel]="extendTime()" (ngModelChange)="extendTime.set($event)" />
-                }
-              </div>
-            }
-          </div>
-          <div class="gp-modal-footer">
-            <button class="gp-btn-outline" (click)="showConfirmModal.set(false)">Cancelar</button>
-            <button class="gp-btn-primary" (click)="confirmAction()" [disabled]="sendingRequest() || (showExtendFields() && confirmActionType() === 'extend_stay' && !extendDate()) || (showExtendFields() && confirmActionType() === 'late_checkout' && !extendTime())">
-              @if (sendingRequest()) {
-                <span class="material-symbols-outlined spin">sync</span>
-                Enviando...
-              } @else {
-                Confirmar
-              }
-            </button>
-          </div>
-        </div>
-      </div>
+      <gp-confirm-modal
+        [inputTitle]="confirmTitle()"
+        [inputMessage]="confirmMessage()"
+        [inputShowExtend]="showExtendFields()"
+        [inputActionType]="confirmActionType()"
+        [inputExtendDate]="extendDate()"
+        [inputExtendTime]="extendTime()"
+        [inputSending]="sendingRequest()"
+        [minCheckOut]="portalData()?.session?.check_out?.slice(0, 10) || ''"
+        [confirmDisabled]="sendingRequest() || (showExtendFields() && confirmActionType() === 'extend_stay' && !extendDate()) || (showExtendFields() && confirmActionType() === 'late_checkout' && !extendTime())"
+        (onConfirm)="confirmAction()"
+        (onCancel)="showConfirmModal.set(false)"
+      />
     }
 
     <!-- ═══ PAYMENT / INVOICE MODAL ═══ -->
     @if (showPaymentModal()) {
-      <div class="gp-modal-overlay" (click)="closePaymentModal()">
-        <div class="gp-modal" (click)="$event.stopPropagation()">
-          <div class="gp-modal-header">
-            <span class="material-symbols-outlined gp-modal-icon">
-              {{ paymentModalMode() === 'invoice' ? 'receipt_long' : 'payments' }}
-            </span>
-            <h2>{{ paymentModalMode() === 'invoice' ? 'Solicitar Factura' : 'Solicitar Pago' }}</h2>
-          </div>
-          <div class="gp-modal-body">
-            @if (paymentModalMode() === 'invoice') {
-              <p>Se notificará a recepción que deseas recibir la factura detallada de tu estancia. Un miembro del staff te contactará para entregártela.</p>
-            } @else {
-              <p>Puedes solicitar realizar un pago parcial o total de tu folio. Recepción recibirá tu solicitud y te contactará para procesar el pago.</p>
-            }
-            <div class="gp-modal-info">
-              <span class="material-symbols-outlined">info</span>
-              <span>También puedes acercarte a recepción directamente.</span>
-            </div>
-          </div>
-          <div class="gp-modal-footer">
-            <button class="gp-btn-outline" (click)="closePaymentModal()">Cancelar</button>
-            <button class="gp-btn-primary" (click)="confirmPaymentRequest()" [disabled]="sendingRequest()">
-              @if (sendingRequest()) {
-                <span class="material-symbols-outlined spin">sync</span>
-                Enviando...
-              } @else {
-                <span class="material-symbols-outlined">send</span>
-                {{ paymentModalMode() === 'invoice' ? 'Solicitar Factura' : 'Solicitar Pago' }}
-              }
-            </button>
-          </div>
-        </div>
-      </div>
+      <gp-payment-modal
+        [mode]="paymentModalMode()"
+        [inputSending]="sendingRequest()"
+        (onConfirm)="confirmPaymentRequest()"
+        (onCancel)="closePaymentModal()"
+      />
     }
   }
 </div>

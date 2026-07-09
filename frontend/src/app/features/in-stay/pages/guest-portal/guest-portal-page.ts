@@ -5,6 +5,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { InStayApiService } from '../../services/in-stay-api.service';
 import { PortalData, ChatMessage, ServiceRequest } from '../../models/in-stay.model';
+import { GpConfirmModalComponent } from './components/gp-confirm-modal.component';
+import { GpPaymentModalComponent } from './components/gp-payment-modal.component';
 
 interface GuestNotification {
   id: string;
@@ -20,7 +22,7 @@ type Tab = 'compendium' | 'services' | 'chat' | 'charges';
 
 @Component({
   selector: 'app-guest-portal',
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe, GpConfirmModalComponent, GpPaymentModalComponent],
   templateUrl: './guest-portal-page.html',
   styleUrl: './guest-portal-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
