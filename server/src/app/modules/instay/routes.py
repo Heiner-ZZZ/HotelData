@@ -648,19 +648,27 @@ def guest_create_request(payload: dict = Body(...)):
     session = get_session_or_404(token)
     db = get_database()
 
-    # ── DND enforcement: block request creation if Do Not Disturb is active ──
+    # ── DND enforcement: auto-deactivate when guest creates a request ──
+    # Guest is actively asking for service, so DND no longer applies.
     prop_id = int(session.get("prop_id") or 0)
     room_label = str(session.get("room_label") or "").strip()
+    dnd_was_active = False
     if prop_id and room_label:
         dnd_state = db.room_status_log.find_one(
             {"prop_id": prop_id, "room_label": room_label},
             {"dnd": 1},
         )
         if dnd_state and dnd_state.get("dnd"):
-            raise HTTPException(
-                status_code=409,
-                detail="DND activo — desactiva el modo No Molestar para solicitar servicios.",
+            dnd_was_active = True
+            db.room_status_log.update_one(
+                {"prop_id": prop_id, "room_label": room_label},
+                {"$set": {"dnd": False, "dnd_updated_at": utc_now()}},
             )
+            # Push SSE notification about the auto-deactivation
+            try:
+                notify_staff_dnd_toggled(db, session, False)
+            except Exception:
+                pass
 
     doc = {
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
@@ -674,7 +682,7 @@ def guest_create_request(payload: dict = Body(...)):
         notify_staff_new_request(db, session, request_type)
     except Exception:
         pass
-    return {"ok": True, "request_id": str(result.inserted_id), "message": "Solicitud enviada."}
+    return {"ok": True, "request_id": str(result.inserted_id), "dnd_was_active": dnd_was_active, "message": "Solicitud enviada."}
 
 
 @guest_router.get("/requests")

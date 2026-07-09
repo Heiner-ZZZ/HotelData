@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -26,6 +26,7 @@ type Tab = 'compendium' | 'services' | 'chat' | 'charges';
   templateUrl: './guest-portal-page.html',
   styleUrl: './guest-portal-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
 })
 export class GuestPortalPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -335,45 +336,33 @@ export class GuestPortalPageComponent implements OnInit {
 
   submitRequest(): void {
     if (!this.requestDesc().trim() || !this.tokenValue) return;
-    // DND enforcement: block request if DND is active
-    if (this.dndActive()) {
-      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
-      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
-      return;
-    }
     this.sendServiceRequest(this.requestType(), this.requestDesc().trim());
   }
 
   private sendServiceRequest(type: string, desc: string): void {
     if (!this.tokenValue) return;
-    // DND enforcement: block request if DND is active
-    if (this.dndActive()) {
-      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
-      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
-      return;
-    }
     this.sendingRequest.set(true);
     this.showConfirmModal.set(false);
     this.quickRequestSuccess.set('');
     this.api
       .createRequest(this.tokenValue, type, desc)
       .subscribe({
-        next: () => {
+        next: (res: any) => {
           this.sendingRequest.set(false);
           this.requestDone.set(true);
           this.requestDesc.set('');
+          // Auto-update DND if it was deactivated by the request
+          if (res?.dnd_was_active) {
+            this.dndActive.set(false);
+          }
           const label = this.requestTypes.find((r) => r.value === type)?.label || 'Solicitud';
           this.quickRequestSuccess.set(`${label} enviada. Recepción te atenderá pronto.`);
           setTimeout(() => { this.quickRequestSuccess.set(''); this.requestDone.set(false); }, 4000);
           this.loadRequests();
         },
-        error: (err) => {
+        error: () => {
           this.sendingRequest.set(false);
-          if (err?.status === 409) {
-            this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
-          } else {
-            this.quickRequestSuccess.set('Error al enviar la solicitud. Intenta de nuevo.');
-          }
+          this.quickRequestSuccess.set('Error al enviar la solicitud. Intenta de nuevo.');
           setTimeout(() => this.quickRequestSuccess.set(''), 5000);
         },
       });
@@ -411,13 +400,6 @@ export class GuestPortalPageComponent implements OnInit {
   }
 
   confirmAction(): void {
-    // DND enforcement: block request if DND is active
-    if (this.dndActive()) {
-      this.showConfirmModal.set(false);
-      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
-      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
-      return;
-    }
     let desc = this.confirmActionDesc();
     const type = this.confirmActionType();
     if (this.showExtendFields()) {
@@ -462,13 +444,6 @@ export class GuestPortalPageComponent implements OnInit {
   }
 
   confirmPaymentRequest(): void {
-    // DND enforcement: block if DND is active
-    if (this.dndActive()) {
-      this.showPaymentModal.set(false);
-      this.quickRequestSuccess.set('DND activo — desactiva el modo No Molestar para solicitar servicios.');
-      setTimeout(() => this.quickRequestSuccess.set(''), 5000);
-      return;
-    }
     // Notify staff via a service request
     const mode = this.paymentModalMode();
     const type = mode === 'invoice' ? 'solicitar_factura' : 'solicitar_pago';
@@ -478,8 +453,11 @@ export class GuestPortalPageComponent implements OnInit {
 
     this.sendingRequest.set(true);
     this.api.createRequest(this.tokenValue, type, desc).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.sendingRequest.set(false);
+        if (res?.dnd_was_active) {
+          this.dndActive.set(false);
+        }
         this.showPaymentModal.set(false);
         this.loadRequests();
       },

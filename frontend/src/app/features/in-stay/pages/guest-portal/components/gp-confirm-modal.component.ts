@@ -1,10 +1,9 @@
 import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'gp-confirm-modal',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule],
   template: `
     <div class="gp-modal-overlay" (click)="onCancel.emit()">
       <div class="gp-modal" (click)="$event.stopPropagation()">
@@ -18,7 +17,7 @@ import { DatePipe } from '@angular/common';
             <div class="gp-extend-form">
               @if (confirmActionType() === 'extend_stay') {
                 <label>Nueva fecha de salida</label>
-                <input type="date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [min]="minCheckOut()" />
+                <input type="date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [min]="minCheckOut" />
               }
               @if (confirmActionType() === 'late_checkout') {
                 <label>Hora de salida deseada</label>
@@ -29,7 +28,7 @@ import { DatePipe } from '@angular/common';
         </div>
         <div class="gp-modal-footer">
           <button class="gp-btn-outline" (click)="onCancel.emit()">Cancelar</button>
-          <button class="gp-btn-primary" (click)="onConfirm.emit()" [disabled]="confirmDisabled()">
+          <button class="gp-btn-primary" (click)="onConfirm.emit()" [disabled]="confirmDisabled">
             @if (sendingRequest()) {
               <span class="material-symbols-outlined spin">sync</span>
               Enviando...
