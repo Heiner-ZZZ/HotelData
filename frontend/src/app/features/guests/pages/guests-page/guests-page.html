@@ -1,0 +1,121 @@
+<div class="guests-page">
+  <app-page-header
+    eyebrow="Gestión hotelera"
+    title="Huéspedes"
+    description="Lista de huéspedes por propiedad, con historial de reservas y gasto acumulado."
+  />
+
+  <app-property-selector
+    [selectedPropId]="selectedPropId()"
+    [selectedLabel]="''"
+    (propIdChange)="onPropSelected($event)"
+  />
+
+  @if (message()) {
+    <section class="notification success">
+      <span class="material-symbols-outlined notif-icon">check_circle</span>
+      <span>{{ message() }}</span>
+    </section>
+  }
+  @if (errorMessage()) {
+    <section class="notification error">
+      <span class="material-symbols-outlined notif-icon">error</span>
+      <span>{{ errorMessage() }}</span>
+    </section>
+  }
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando huéspedes..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar los huéspedes"
+        description="Revisa la conexión o selecciona otra propiedad."
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        icon="search"
+        title="Selecciona una propiedad"
+        description="Selecciona un hotel para ver sus huéspedes."
+      />
+    }
+    @default {
+      <section class="surface-card data-panel">
+        <div class="panel-head">
+          <span class="material-symbols-outlined panel-head-icon">people</span>
+          <div>
+            <h2>Huéspedes</h2>
+            <p>{{ total() }} huésped(es) registrado(s).</p>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input
+            type="text"
+            class="search-input"
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)"
+            (keydown.enter)="onSearch()"
+            placeholder="Buscar por nombre o email..."
+          />
+          <button type="button" class="search-btn" (click)="onSearch()">
+            <span class="material-symbols-outlined">search</span>
+          </button>
+        </div>
+
+        @if (guests().length === 0) {
+          <app-empty-state icon="person_off" title="Sin resultados" description="No se encontraron huéspedes con ese criterio." />
+        } @else {
+          <!-- Table -->
+          <div class="table-wrapper">
+            <table class="guests-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Teléfono</th>
+                  <th>Reservas</th>
+                  <th>Última estadía</th>
+                  <th>Gasto total</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (g of guests(); track g.guest_email) {
+                  <tr>
+                    <td class="cell-name">{{ g.guest_name || '—' }}</td>
+                    <td class="cell-email">{{ g.guest_email }}</td>
+                    <td class="cell-phone">{{ g.guest_phone || '—' }}</td>
+                    <td class="cell-num">{{ g.total_bookings }}</td>
+                    <td class="cell-date">{{ g.last_booking_date || '—' }}</td>
+                    <td class="cell-money">{{ _money(g.total_spent) }}</td>
+                    <td>
+                      <span class="status-badge" [class.active]="g.last_status === 'confirmed' || g.last_status === 'checked_in'">
+                        {{ g.last_status }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <button type="button" class="page-btn" (click)="prevPage()" [disabled]="page() <= 1">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <span class="page-info">Página {{ page() }} de {{ totalPages() }}</span>
+            <button type="button" class="page-btn" (click)="nextPage()" [disabled]="!hasNext()">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        }
+      </section>
+    }
+  }
+</div>

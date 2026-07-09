@@ -32,6 +32,8 @@ export interface RoomTypeItem {
   imageUrl?: string;
   features: RoomFeatureItem[];
   baseRate?: number;
+  /** Cuantas habitaciones fisicas tiene este tipo */
+  physicalRoomCount: number;
 }
 
 export interface RoomFeature {

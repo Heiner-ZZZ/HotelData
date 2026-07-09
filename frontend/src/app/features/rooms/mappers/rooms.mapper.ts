@@ -10,6 +10,13 @@ function normalizeFeatures(features: unknown): RoomFeatureItem[] {
 }
 
 export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
+  // Pre-compute physical room counts per type
+  const roomCountByType: Record<string, number> = {};
+  for (const hr of dto.hotel_rooms ?? []) {
+    const tid = hr.room_type_id;
+    if (tid) roomCountByType[tid] = (roomCountByType[tid] || 0) + 1;
+  }
+
   return {
     propId: dto.hotel.prop_id,
     hotelName: dto.hotel.display_name,
@@ -36,6 +43,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       smoking: room.smoking ?? false,
       accessible: room.accessible ?? false,
       isRoh: room.is_roh ?? false,
+      physicalRoomCount: roomCountByType[room.room_type_id] ?? 0,
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,

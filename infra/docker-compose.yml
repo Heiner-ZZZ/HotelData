@@ -88,6 +88,7 @@ services:
       TASK_NUMBER: "03"
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4200}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      TZ: ${TZ:-America/Mexico_City}
     depends_on:
       mongo:
         condition: service_healthy
