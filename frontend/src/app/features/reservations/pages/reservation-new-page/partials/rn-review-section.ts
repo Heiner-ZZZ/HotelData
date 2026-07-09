@@ -64,6 +64,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         }
       </div>
 
+      @if (cancellationPolicy()) {
+        <div class="review-policy">
+          <span class="material-symbols-outlined">policy</span>
+          <span>{{ cancellationPolicy() }}</span>
+        </div>
+      }
+
       @if (preview(); as p) {
         @if (p.available && p.totalPrice !== null) {
           <div class="review-total">
@@ -110,4 +117,5 @@ export class RnReviewSectionComponent {
   readonly couponStatus = input<any>(null);
   readonly preview = input<any>(null);
   readonly previewing = input(false);
+  readonly cancellationPolicy = input<string | null | undefined>(null);
 }

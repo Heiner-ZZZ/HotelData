@@ -13,10 +13,18 @@
         </span>
         <span class="step-label">Detalles</span>
       </div>
-      <div class="step-line" [class.is-done]="step() === 'review'"></div>
-      <div class="step-dot" [class.is-active]="step() === 'review'">
-        <span class="step-number">2</span>
+      <div class="step-line" [class.is-done]="step() === 'review' || step() === 'payment'"></div>
+      <div class="step-dot" [class.is-active]="step() === 'review'" [class.is-done]="step() === 'payment'">
+        <span class="step-number">
+          @if (step() === 'payment') { <span class="material-symbols-outlined">check</span> }
+          @else { 2 }
+        </span>
         <span class="step-label">Revisar</span>
+      </div>
+      <div class="step-line" [class.is-done]="step() === 'payment'"></div>
+      <div class="step-dot" [class.is-active]="step() === 'payment'">
+        <span class="step-number">3</span>
+        <span class="step-label">Pago</span>
       </div>
     </div>
   </div>
@@ -102,7 +110,42 @@
           [couponStatus]="couponStatus()"
           [preview]="preview()"
           [previewing]="previewing()"
+          [cancellationPolicy]="preview()?.cancellationPolicy"
         />
+
+        @if (preview()?.cancellationPolicy) {
+          <div class="policies-box">
+            <div class="policies-header">
+              <span class="material-symbols-outlined">policy</span>
+              <h4>Políticas de la reserva</h4>
+            </div>
+            <div class="policies-content">
+              <div class="policy-item policy-cancel">
+                <span class="material-symbols-outlined">event_busy</span>
+                <div>
+                  <strong>Cancelación</strong>
+                  <p>{{ preview()?.cancellationPolicy }}</p>
+                </div>
+              </div>
+              @if (selectedHotel()) {
+                <div class="policy-item">
+                  <span class="material-symbols-outlined">schedule</span>
+                  <div>
+                    <strong>Check-in / Check-out</strong>
+                    <p>Check-in desde las {{ form.controls.checkInTime.value || '15:00' }} · Check-out hasta las {{ form.controls.checkOutTime.value || '12:00' }}</p>
+                  </div>
+                </div>
+              }
+              <div class="policy-item">
+                <span class="material-symbols-outlined">credit_card</span>
+                <div>
+                  <strong>Garantía</strong>
+                  <p>Se requiere tarjeta de crédito como garantía. El cargo se realizará según la política del hotel.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
 
         <div class="form-footer">
           <button type="button" class="btn-secondary" (click)="backToDetails()">
@@ -112,7 +155,84 @@
             @if (submitting()) {
               <span class="material-symbols-outlined loading-spin">sync</span> Enviando...
             } @else {
-              <span class="material-symbols-outlined">send</span> Confirmar y enviar
+              <span class="material-symbols-outlined">lock</span> Continuar al pago
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (step() === 'payment') {
+      <div class="payment-container">
+        <div class="payment-header">
+          <span class="material-symbols-outlined">credit_card</span>
+          <h2>Pago de la reserva</h2>
+        </div>
+
+        <div class="payment-summary">
+          <div class="ps-row">
+            <span>{{ selectedHotel()?.label || 'Hotel' }}</span>
+            <span>{{ preview()?.totalPrice | currency:preview()?.currency || 'USD' }}</span>
+          </div>
+        </div>
+
+        <div class="card-form">
+          <div class="card-field card-number-field">
+            <label>Número de tarjeta</label>
+            <div class="card-number-input-wrap">
+              <input type="text" inputmode="numeric" placeholder="0000 0000 0000 0000"
+                [value]="cardNumber()" (input)="formatCardNumber($any($event.target).value)" maxlength="19" />
+              @if (detectedCardBrand()) {
+                <span class="card-brand-badge">{{ detectedCardBrand() }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="card-field">
+            <label>Titular de la tarjeta</label>
+            <input type="text" placeholder="Nombre como aparece en la tarjeta"
+              [value]="cardHolder()" (input)="cardHolder.set($any($event.target).value)" />
+          </div>
+
+          <div class="card-row">
+            <div class="card-field">
+              <label>Expiración</label>
+              <input type="text" inputmode="numeric" placeholder="MM/YY"
+                [value]="cardExpiry()" (input)="formatExpiry($any($event.target).value)" maxlength="5" />
+            </div>
+            <div class="card-field">
+              <label>CVV</label>
+              <input type="text" inputmode="numeric" placeholder="123"
+                [value]="cardCvv()" (input)="cardCvv.set($any($event.target).value.replace(/\D/g,'').slice(0,4))" maxlength="4" />
+            </div>
+          </div>
+
+          @if (paymentError()) {
+            <div class="payment-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ paymentError() }}
+            </div>
+          }
+
+          @if (paymentResult()) {
+            <div class="payment-success">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Pago aprobado — {{ paymentResult()?.cardBrand }} terminada en {{ paymentResult()?.cardLast4 }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="form-footer">
+          <button type="button" class="btn-secondary" (click)="step.set('review')" [disabled]="processingPayment()">
+            <span class="material-symbols-outlined">arrow_back</span> Volver
+          </button>
+          <button type="button" class="btn-primary" (click)="processPayment()" [disabled]="processingPayment() || submitting()">
+            @if (processingPayment()) {
+              <span class="material-symbols-outlined loading-spin">sync</span> Procesando...
+            } @else if (submitting()) {
+              <span class="material-symbols-outlined loading-spin">sync</span> Creando reserva...
+            } @else {
+              <span class="material-symbols-outlined">lock</span> Pagar {{ preview()?.totalPrice | currency:preview()?.currency || 'USD' }}
             }
           </button>
         </div>

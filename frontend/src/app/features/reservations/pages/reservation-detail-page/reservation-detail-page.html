@@ -44,6 +44,26 @@
 
         <app-rd-info-panels [vm]="vm" />
 
+        @if (vm.cancellationPolicy) {
+          <section class="surface-card policy-info-card">
+            <div class="policy-info-header">
+              <span class="material-symbols-outlined">policy</span>
+              <h3>Política de cancelación</h3>
+            </div>
+            <p class="policy-info-text">{{ vm.cancellationPolicy }}</p>
+            @if (vm.cancellationFree !== undefined) {
+              <div class="policy-info-badge" [class.free]="vm.cancellationFree" [class.penalized]="!vm.cancellationFree">
+                <span class="material-symbols-outlined">{{ vm.cancellationFree ? 'check_circle' : 'warning' }}</span>
+                @if (vm.cancellationFree) {
+                  Cancelación gratuita
+                } @else {
+                  Penalización: ${{ vm.cancellationPenaltyAmount?.toFixed(2) || '0.00' }} ({{ vm.cancellationPenaltyPercent || 100 }}% de 1 noche)
+                }
+              </div>
+            }
+          </section>
+        }
+
         <app-rd-financial-panels [vm]="vm" />
 
         @if (editMode()) {

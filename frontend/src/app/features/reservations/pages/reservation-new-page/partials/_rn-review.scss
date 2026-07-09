@@ -22,3 +22,19 @@
 .review-total strong { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
 .review-total-error { color: var(--error, #e53935); gap: 0.5rem; justify-content: center; }
 .review-total-error strong { color: var(--error, #e53935); font-size: 0.85rem; font-weight: 600; }
+
+.review-policy {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  padding: 0.5rem 0.6rem;
+  background: var(--surface-bg);
+  border-radius: 6px;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--warning, #d97706);
+  }
+}

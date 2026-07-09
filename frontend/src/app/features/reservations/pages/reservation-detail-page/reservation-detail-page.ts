@@ -318,20 +318,68 @@ export class ReservationDetailPageComponent {
       });
   }
 
+  readonly cancelPenalty = signal<{free: boolean; amount: number; percent: number; hours: number | null; policyHours: number} | null>(null);
+
   async cancelReservation() {
     const current = this.data();
     if (!current || !current.canCancel || this.cancelPending()) return;
+
+    // Fetch penalty preview first
+    this.cancelPending.set(true);
+    this.reservationsApi.getCancelPreview(current.bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (preview) => {
+        this.cancelPending.set(false);
+        this.cancelPenalty.set({
+          free: preview.free_cancellation,
+          amount: preview.penalty_amount,
+          percent: preview.penalty_percent,
+          hours: preview.hours_until_checkin,
+          policyHours: preview.cancellation_hours,
+        });
+        this.confirmCancellation(current.bookingId, current.guestName);
+      },
+      error: (err) => {
+        this.cancelPending.set(false);
+        // Fallback: show basic confirm
+        this.confirmDialog.open({
+          title: 'Cancelar reserva',
+          message: `¿Cancelar la reserva de ${current.guestName}?`,
+          confirmLabel: 'Cancelar reserva',
+          variant: 'danger',
+        }).then((ok) => { if (ok) this.executeCancel(current.bookingId); });
+      },
+    });
+  }
+
+  private async confirmCancellation(bookingId: string, guestName: string) {
+    const p = this.cancelPenalty();
+    if (!p) return;
+
+    // If penalty amount is zero, always treat as free cancellation (backend safety net)
+    const isEffectivelyFree = p.free || p.amount <= 0;
+
+    let message = '';
+    if (isEffectivelyFree) {
+      message = `Cancelación gratuita. Quedan ${p.hours}h antes del check-in (límite: ${p.policyHours}h). ¿Confirmar cancelación de ${guestName}?`;
+    } else {
+      message = `⚠️ Cancelación tardía. Penalización: $${p.amount.toFixed(2)} (${p.percent}% de 1 noche). Solo quedan ${p.hours}h para el check-in (límite gratuito: ${p.policyHours}h). ¿Cancelar la reserva de ${guestName}?`;
+    }
+
     const ok = await this.confirmDialog.open({
       title: 'Cancelar reserva',
-      message: `¿Cancelar la reserva de ${current.guestName}?`,
-      confirmLabel: 'Cancelar reserva',
-      variant: 'danger',
+      message,
+      confirmLabel: isEffectivelyFree ? 'Cancelar sin costo' : `Pagar $${p.amount.toFixed(2)} y cancelar`,
+      variant: isEffectivelyFree ? 'warning' : 'danger',
     });
     if (!ok) return;
+    this.executeCancel(bookingId);
+  }
+
+  private executeCancel(bookingId: string) {
     this.cancelPending.set(true);
     this.reservationsApi
-      .cancelReservation(current.bookingId)
-      .pipe(switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)), takeUntilDestroyed(this.destroyRef))
+      .cancelReservation(bookingId)
+      .pipe(switchMap(() => this.reservationsApi.getReservationDetail(bookingId)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (detail) => { this.data.set(detail); this.cancelPending.set(false); },
         error: () => { this.viewState.set('error'); this.cancelPending.set(false); }
