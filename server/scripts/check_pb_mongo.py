@@ -1,5 +1,11 @@
+import sys
+from pathlib import Path
+
 import requests, json
-from pymongo import MongoClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
 
 # PB count
 r = requests.post('http://pocketbase:8090/api/collections/_superusers/auth-with-password',
@@ -12,8 +18,7 @@ pb_total = r2.json().get('totalItems', 0)
 print(f'PocketBase hotel_reservation_events_03: {pb_total} records')
 
 # MongoDB counts
-client = MongoClient('mongodb://mongo:27017')
-db = client['hoteldata_hub']
+db = get_database()
 print('\nMongoDB hoteldata_hub actual counts:')
 dims = ['dim_hotels','dim_destinations','dim_visitor_countries','dim_sites','dim_dates',
         'dim_promotions','dim_click_status','dim_reservation_status','dim_occupancy_profile',
@@ -25,7 +30,7 @@ for f in facts:
     print(f'  {f}: {db[f].count_documents({})}')
 
 # Check if there's ANOTHER database
-print(f'\nAll databases: {client.list_database_names()}')
+print(f'\nAll databases: {db.client.list_database_names()}')
 
 # Check a sample dimension doc
 doc = db.dim_hotels.find_one()

@@ -1,13 +1,19 @@
+import sys
+from pathlib import Path
+
 import requests
-from pymongo import MongoClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
+
 
 def main():
     booking_id = "BK-20260624043947-9EAC0274"
     print(f"Searching for {booking_id}...")
-    
+
     # 1. MongoDB hoteldata_hub
-    client = MongoClient("mongodb://localhost:27018")
-    db = client["hoteldata_hub"]
+    db = get_database()
     for coll_name in db.list_collection_names():
         doc = db[coll_name].find_one({"booking_id": booking_id})
         if doc:

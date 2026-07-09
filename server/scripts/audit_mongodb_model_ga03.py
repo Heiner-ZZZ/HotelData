@@ -78,8 +78,10 @@ LEGACY_COMPAT_COLLECTIONS = {
     "dataset_container",
 }
 LEGACY_CANDIDATE_EMPTY_COLLECTIONS = {
-    "dim_date",
-    "dim_countries",
+    "dim_date_legacy",      # nombre objetivo tras renombrar en MongoDB
+    "dim_countries_legacy",  # nombre objetivo tras renombrar en MongoDB
+    "dim_date",              # compat: nombre real actual en MongoDB (hasta renombrar)
+    "dim_countries",         # compat: nombre real actual en MongoDB (hasta renombrar)
 }
 PARTIAL_OPERATIONAL_COLLECTIONS = {
     "hotels",

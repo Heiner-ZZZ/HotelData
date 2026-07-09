@@ -1,8 +1,13 @@
-from pymongo import MongoClient
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
+
 
 def main():
-    client = MongoClient("mongodb://mongo:27018")
-    db = client["hoteldata_hub"]
+    db = get_database()
     demo_prop_ids = [1001, 1002, 1003, 1004, 1005]
     
     r1 = db.dim_hotels.delete_many({"prop_id": {"$in": demo_prop_ids}})

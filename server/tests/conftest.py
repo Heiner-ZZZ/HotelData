@@ -72,9 +72,9 @@ TEST_COLLECTIONS = [
     "dim_stay_length_category",
     "dim_booking_window_category",
     "dim_price_category",
-    # --- Dimensiones legadas ---------------------------------------------
-    "dim_countries",
-    "dim_date",
+    # --- Dimensiones legadas (renombrar en MongoDB: dim_date → dim_date_legacy, dim_countries → dim_countries_legacy)
+    "dim_countries_legacy",
+    "dim_date_legacy",
     # --- Documentales (per diseno_base_datos_ga03.md) --------------------
     "hotels",
     "locations",

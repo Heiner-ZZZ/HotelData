@@ -1,10 +1,15 @@
-from pymongo import MongoClient
-import datetime
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
+
 
 def main():
-    client = MongoClient("mongodb://mongo:27018")
-    db = client["hoteldata_hub"]
-    now = datetime.datetime.now(datetime.timezone.utc)
+    db = get_database()
+    now = datetime.now(timezone.utc)
     for i in range(1, 6):
         prop_id = 1000 + i
         db.dim_hotels.update_one(
@@ -22,7 +27,7 @@ def main():
             }},
             upsert=True
         )
-    print("Seeded dim_hotels successfully on port 27018!")
+    print("Seeded dim_hotels successfully!")
 
 if __name__ == "__main__":
     main()

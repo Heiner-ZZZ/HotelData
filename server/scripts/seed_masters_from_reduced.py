@@ -1,21 +1,17 @@
-from pathlib import Path
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
-from pymongo import MongoClient, UpdateOne
+from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
 
-MONGO_URI = "mongodb://localhost:27018"
-MONGO_DATABASE = "hoteldata_hub"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
 
 INPUT_CSV = Path(r"C:\HotelData\hoteldata_project\data\raw\hotels.csv")
 CHUNK_SIZE = 100_000
-
-
-def get_db():
-    client = MongoClient(MONGO_URI)
-    client.admin.command("ping")
-    return client[MONGO_DATABASE]
 
 
 def create_master_indexes(db):
@@ -355,7 +351,7 @@ def print_summary(db):
 
 def main():
     print("Conectando a MongoDB...")
-    db = get_db()
+    db = get_database()
 
     print("Creando indices...")
     create_master_indexes(db)
