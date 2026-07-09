@@ -151,6 +151,7 @@ export function mapReservationPreview(dto: ReservationPreviewDto) {
           taxRate: dto.price_breakdown.tax_rate,
           taxIncluded: dto.price_breakdown.tax_included,
           total: dto.price_breakdown.total,
+          grandTotal: dto.price_breakdown.grand_total,
         }
       : null,
   };

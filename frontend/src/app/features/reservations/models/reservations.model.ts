@@ -122,6 +122,7 @@ export interface ReservationPreviewPriceBreakdown {
   taxRate: number;
   taxIncluded: boolean;
   total: number | null;
+  grandTotal: number | null;
 }
 
 export interface ReservationPreview {

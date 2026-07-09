@@ -128,10 +128,12 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
               <div class="pb-divider"></div>
 
+              <div class="pb-divider"></div>
+
               <div class="pb-section pb-section-total">
                 <div class="pb-row">
-                  <span>Subtotal</span>
-                  <span>{{ (bd.baseTotal || 0) + bd.amenityTotal | currency:p.currency }}</span>
+                  <span>Subtotal general</span>
+                  <span>{{ (bd.subtotal || 0) + bd.amenityTotal | currency:p.currency }}</span>
                 </div>
                 @if (bd.taxAmount > 0) {
                   <div class="pb-row pb-row-tax">
@@ -144,11 +146,12 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
               <div class="pb-total">
                 <span>Total</span>
                 <strong>
+                  @let grandTotal = bd.grandTotal;
                   @if (couponStatus()?.valid) {
-                    <span class="pb-original">{{ p.totalPrice | currency:p.currency }}</span>
-                    <span>{{ p.totalPrice! * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                    <span class="pb-original">{{ grandTotal | currency:p.currency }}</span>
+                    <span>{{ grandTotal * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
                   } @else {
-                    {{ p.totalPrice | currency:p.currency }}
+                    {{ grandTotal | currency:p.currency }}
                   }
                   <span class="pb-night-suffix">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
                 </strong>

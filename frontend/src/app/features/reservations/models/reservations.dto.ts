@@ -102,6 +102,7 @@ export interface ReservationPreviewDto {
     tax_rate: number;
     tax_included: boolean;
     total: number | null;
+    grand_total: number | null;
   };
 }
 

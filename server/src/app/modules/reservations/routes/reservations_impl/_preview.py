@@ -125,7 +125,7 @@ def preview_reservation(payload: dict) -> dict:
             "price_breakdown": {
                 "base_nightly_rate": round(total_price / total_nights, 2) if total_price and total_nights else None,
                 "nights": total_nights,
-                "base_total": round(total_price - amenity_breakdown["amenity_total"], 2) if total_price else None,
+                "base_total": total_price,
                 "included_amenities": amenity_breakdown["included_amenities"],
                 "selected_extras": amenity_breakdown["selected_extras"],
                 "amenity_total": amenity_breakdown["amenity_total"],
@@ -135,6 +135,7 @@ def preview_reservation(payload: dict) -> dict:
                 "tax_rate": tax_rate,
                 "tax_included": tax_included,
                 "total": total_price,
+                "grand_total": round((total_price or 0) + amenity_breakdown["amenity_total"], 2),
             },
         }
     except ValueError as exc:
