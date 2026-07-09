@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,7 +19,7 @@ import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amen
 
 @Component({
   selector: 'app-reservation-new-page',
-  imports: [ReactiveFormsModule, RouterLink,
+  imports: [ReactiveFormsModule, RouterLink, CurrencyPipe,
     RnPlannerSectionComponent, RnGuestSectionComponent, RnReviewSectionComponent],
   templateUrl: './reservation-new-page.html',
   styleUrl: './reservation-new-page.scss',
@@ -38,10 +38,13 @@ export class ReservationNewPageComponent {
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly previewing = signal(false);
+  readonly processingPayment = signal(false);
+  readonly paymentError = signal('');
+  readonly paymentResult = signal<{transactionId: string; cardLast4: string; cardBrand: string; authCode: string} | null>(null);
   readonly errorMessage = signal('');
   readonly hotelOptions = signal<ReservationHotelOption[]>([]);
   readonly preview = signal<ReservationPreview | null>(null);
-  readonly step = signal<'details' | 'review'>('details');
+  readonly step = signal<'details' | 'review' | 'payment'>('details');
 
   /** Room type ID and name passed from hotel detail page via query params */
   readonly preselectedRoomTypeId = signal('');
@@ -304,6 +307,39 @@ export class ReservationNewPageComponent {
       });
   }
 
+  /** Payment form fields */
+  readonly cardNumber = signal('');
+  readonly cardHolder = signal('');
+  readonly cardExpiry = signal('');
+  readonly cardCvv = signal('');
+  readonly cardBrand = signal('');
+
+  /** Detect card brand from first digits for real-time UI feedback */
+  readonly detectedCardBrand = computed(() => {
+    const n = this.cardNumber().replace(/\s/g, '');
+    if (n.startsWith('4')) return 'Visa';
+    if (/^5[1-5]/.test(n) || (n.length >= 4 && /^2[2-7]/.test(n))) return 'Mastercard';
+    if (/^3[47]/.test(n)) return 'American Express';
+    if (/^6011|^65/.test(n) || (n.length >= 3 && n.startsWith('64') && n[2] >= '4' && n[2] <= '9')) return 'Discover';
+    return '';
+  });
+
+  /** Format card number with spaces every 4 digits */
+  formatCardNumber(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 16);
+    this.cardNumber.set(digits.replace(/(.{4})/g, '$1 ').trim());
+  }
+
+  /** Format expiry as MM/YY */
+  formatExpiry(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 2) {
+      this.cardExpiry.set(digits.slice(0, 2) + '/' + digits.slice(2));
+    } else {
+      this.cardExpiry.set(digits);
+    }
+  }
+
   goToReview() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -311,6 +347,52 @@ export class ReservationNewPageComponent {
     }
     this.step.set('review');
     this.loadPreview();
+  }
+
+  goToPayment() {
+    this.paymentError.set('');
+    this.step.set('payment');
+  }
+
+  processPayment() {
+    const cardNum = this.cardNumber().replace(/\s/g, '');
+    const holder = this.cardHolder().trim();
+    const exp = this.cardExpiry().trim();
+    const cvv = this.cardCvv().trim();
+
+    if (!cardNum || !holder || !exp || !cvv) {
+      this.paymentError.set('Todos los campos de la tarjeta son requeridos.');
+      return;
+    }
+
+    const amount = this.preview()?.totalPrice ?? 0;
+
+    this.processingPayment.set(true);
+    this.paymentError.set('');
+
+    this.reservationsApi.processPayment({
+      card_number: cardNum,
+      card_holder: holder,
+      expiry: exp,
+      cvv: cvv,
+      amount: amount,
+    }).subscribe({
+      next: (result) => {
+        this.paymentResult.set({
+          transactionId: result.transaction_id,
+          cardLast4: result.card_last4,
+          cardBrand: result.card_brand,
+          authCode: result.auth_code,
+        });
+        this.processingPayment.set(false);
+        // Auto-submit after successful payment
+        this.submitWithPayment(result.transaction_id, result.card_last4);
+      },
+      error: (err) => {
+        this.paymentError.set(err?.error?.detail || 'Error al procesar el pago. Verifica los datos.');
+        this.processingPayment.set(false);
+      },
+    });
   }
 
   private loadPreview() {
@@ -433,16 +515,21 @@ export class ReservationNewPageComponent {
       this.form.markAllAsTouched();
       return;
     }
-
-    // ═══ GUARD: Verificar disponibilidad antes de enviar ═══
     const previewData = this.preview();
     if (previewData && !previewData.available) {
-      this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas. Intenta con otras fechas o reduce el número de huéspedes.', 'error', 6000);
+      this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas.', 'error', 6000);
       this.step.set('details');
       return;
     }
+    // If there's a price > 0, go to payment step instead of submitting directly
+    if ((previewData?.totalPrice ?? 0) > 0) {
+      this.goToPayment();
+      return;
+    }
+    this.submitWithPayment('', '');
+  }
 
-    // Save guest data for future autocomplete
+  private submitWithPayment(transactionId: string, cardLast4: string) {
     const v = this.form.getRawValue();
     this._saveGuestSuggestion(v.guestName, v.guestEmail, v.guestPhone);
 
@@ -450,6 +537,9 @@ export class ReservationNewPageComponent {
     this.errorMessage.set('');
 
     const payload = this.buildPayload();
+    payload.transactionId = transactionId;
+    payload.paymentMethod = transactionId ? 'credit_card' : '';
+    payload.cardLast4 = cardLast4;
 
     this.reservationsApi
       .createReservation(payload)
@@ -461,11 +551,11 @@ export class ReservationNewPageComponent {
         error: (error: ApiError) => {
           const msg = error.message || '';
           if (msg.includes('No inventory data') || msg.includes('inventory')) {
-            this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas. Por favor, intenta con otras fechas.', 'error', 6000);
+            this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas.', 'error', 6000);
           } else if (msg.includes('available')) {
-            this.toast.show('No hay suficientes habitaciones disponibles para las fechas seleccionadas. Intenta reducir el número de habitaciones.', 'error', 6000);
+            this.toast.show('No hay suficientes habitaciones disponibles.', 'error', 6000);
           } else {
-            this.toast.show(msg || 'No fue posible crear la reserva. Intenta de nuevo más tarde.', 'error', 6000);
+            this.toast.show(msg || 'No fue posible crear la reserva.', 'error', 6000);
           }
           this.submitting.set(false);
         }

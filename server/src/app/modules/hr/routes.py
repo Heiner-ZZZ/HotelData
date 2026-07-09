@@ -488,6 +488,7 @@ def create_employee(
         "emergency_phone": payload.emergency_phone,
         "notes": payload.notes,
         "prop_id": payload.prop_id,
+        "user_id": payload.user_id,
         "is_active": True,
         "created_at": now,
         "updated_at": now,

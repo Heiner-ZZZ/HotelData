@@ -1,8 +1,32 @@
 /* ── Create Form ── */
-.form-grid {
+.rooms-page .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
+
+  /* Compact numeric inputs (capacity, max adults, max children, base rate) */
+  input[type="number"] {
+    max-width: 120px;
+  }
+
+  /* Compact room number and floor */
+  input[formControlName="roomNumber"],
+  input[formControlName="floor"] {
+    max-width: 160px;
+  }
+
+  /* Full-width name, image URL, and textareas */
+  input[formControlName="name"],
+  input[formControlName="imageUrl"],
+  textarea {
+    max-width: none;
+    width: 100%;
+  }
+
+  /* Compact dropdowns */
+  select {
+    max-width: 180px;
+  }
 }
 
 .checkbox-field {

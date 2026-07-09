@@ -62,6 +62,7 @@ from src.app.modules.notifications.routes import router as notifications_router
 from src.app.modules.reception.routes import api_router as reception_api_router
 from src.app.modules.instay.routes import guest_router as instay_guest_router
 from src.app.modules.instay.routes import staff_router as instay_staff_router
+from src.app.modules.payments.routes import router as payments_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.security.middleware import role_access_middleware
@@ -167,6 +168,7 @@ def create_app() -> FastAPI:
     app.include_router(expenses_module_router)
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
+    app.include_router(payments_api_router)
     app.include_router(crud_router)
     app.include_router(reports_router)
     return app

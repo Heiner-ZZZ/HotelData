@@ -26,6 +26,7 @@ class EmployeeCreate(BaseModel):
     emergency_phone: str = ""
     notes: str = ""
     prop_id: int | None = None  # Hotel/property assignment
+    user_id: str | None = None  # Optional link to users collection for login credentials
 
     # Replacement logic
     replaces_employee_id: str | None = None
@@ -46,6 +47,7 @@ class EmployeeUpdate(BaseModel):
     emergency_phone: str | None = None
     notes: str | None = None
     is_active: bool | None = None
+    user_id: str | None = None  # Link/unlink to a users collection account
 
 
 class EmployeeResponse(BaseModel):
@@ -63,6 +65,7 @@ class EmployeeResponse(BaseModel):
     emergency_phone: str
     notes: str
     prop_id: int | None = None
+    user_id: str | None = None
     is_active: bool
     created_at: str
     updated_at: str
