@@ -22,6 +22,30 @@ export interface GuestsResponse {
   has_next: boolean;
 }
 
+export interface GuestBookingItem {
+  booking_id: string;
+  check_in_date: string;
+  check_out_date: string;
+  total_price: number | null;
+  currency: string;
+  status: string;
+  payment_status: string;
+  guest_name: string;
+  adults: number;
+  children: number;
+  rooms: number;
+  created_at: string;
+  booking_source: string;
+}
+
+export interface GuestBookingsResponse {
+  guest_email: string;
+  guest_name: string;
+  prop_id: number;
+  total_bookings: number;
+  items: GuestBookingItem[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -40,5 +64,13 @@ export class GuestsApiService {
         params,
         withCredentials: true,
       });
+  }
+
+  getGuestBookings(guestEmail: string, propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<GuestBookingsResponse>(
+      `${this.apiConfig.baseUrl}/management/guests/${encodeURIComponent(guestEmail)}/bookings`,
+      { params, withCredentials: true }
+    );
   }
 }

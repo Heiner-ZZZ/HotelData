@@ -34,6 +34,8 @@ export interface RoomTypeItem {
   baseRate?: number;
   /** Cuantas habitaciones fisicas tiene este tipo */
   physicalRoomCount: number;
+  /** Numeros de habitacion de las habitaciones fisicas vinculadas (ej: "110, 111") */
+  linkedRoomNumbers: string;
 }
 
 export interface RoomFeature {

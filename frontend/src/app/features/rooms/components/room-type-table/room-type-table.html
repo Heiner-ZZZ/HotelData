@@ -33,7 +33,18 @@
               <span class="roh-badge">ROH</span>
             }
           </td>
-          <td>{{ room.roomNumber || '--' }}</td>
+          <td>
+            @if (room.linkedRoomNumbers) {
+              <div class="room-nums-cell" title="Habitaciones físicas: {{ room.linkedRoomNumbers }}">
+                <span class="material-symbols-outlined room-nums-icon">door_sliding</span>
+                {{ room.linkedRoomNumbers }}
+              </div>
+            } @else if (room.roomNumber) {
+              {{ room.roomNumber }}
+            } @else {
+              —
+            }
+          </td>
           <td>{{ room.floor || '--' }}</td>
           <td class="desc-cell">{{ room.description }}</td>
           <td>

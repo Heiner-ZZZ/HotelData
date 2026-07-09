@@ -224,6 +224,62 @@ def update_room_type(
     return document
 
 
+def create_hotel_room_for_type(
+    room_type_id: str, *,
+    room_number: str = "", floor: str = "",
+    view: str = "", smoking: Any = False, accessible: Any = False,
+    is_active: Any = True, changed_by: str = "system",
+) -> dict[str, Any] | None:
+    """Create a hotel_room (physical room) linked to an existing room type.
+
+    Returns the created hotel_room document, or None if the room type doesn't exist.
+    """
+    db = get_database()
+    existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1, "name": 1})
+    if existing is None:
+        return None
+    prop_id = existing["prop_id"]
+    room_type_name = existing.get("name", room_type_id)
+
+    clean_room_number = clean_text(room_number)
+    if not clean_room_number:
+        raise ValueError("Debe ingresar el número de habitación.")
+
+    # Check room_number uniqueness across hotel_rooms for this prop
+    dup = db.hotel_rooms.find_one({"prop_id": prop_id, "room_number": clean_room_number})
+    if dup is not None:
+        raise ValueError(f"El número de habitación '{clean_room_number}' ya existe en esta propiedad.")
+
+    hr_id = f"HR-{prop_id}-{clean_room_number}"
+    doc = {
+        "hotel_room_id": hr_id,
+        "prop_id": prop_id,
+        "room_type_id": room_type_id,
+        "room_number": clean_room_number,
+        "floor": clean_text(floor),
+        "room_label": f"{room_type_name} {clean_room_number}",
+        "view": clean_text(view),
+        "smoking": safe_bool(smoking),
+        "accessible": safe_bool(accessible),
+        "is_active": safe_bool(is_active),
+        "is_roh": False,
+        "created_at": now_utc(),
+        "updated_at": now_utc(),
+    }
+    result = db.hotel_rooms.insert_one(doc)
+    if not result.acknowledged:
+        raise RuntimeError("No se pudo crear la habitación física.")
+
+    register_action(
+        prop_id=prop_id, entity_type="hotel_room", entity_id=hr_id,
+        action="create",
+        summary=f"Habitación física '{clean_room_number}' creada para tipo '{room_type_name}'",
+        changed_by=changed_by,
+        metadata={"room_type_id": room_type_id, "room_number": clean_room_number, "floor": clean_text(floor)},
+    )
+    return doc
+
+
 def delete_room_type(room_type_id: str, changed_by: str = "system") -> dict[str, Any] | None:
     db = get_database()
     existing = db.room_types.find_one({"room_type_id": room_type_id}, {"_id": 0, "prop_id": 1, "name": 1})

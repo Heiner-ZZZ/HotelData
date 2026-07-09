@@ -261,6 +261,23 @@
   font-size: 0.82rem;
 }
 
+/* ── Room Numbers Cell ── */
+.room-nums-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--accent);
+  cursor: help;
+}
+
+.room-nums-icon {
+  font-size: 0.95rem;
+  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  color: var(--muted-text);
+}
+
 /* ── Physical Room Count Badge ── */
 .cell-physical-count {
   text-align: center;

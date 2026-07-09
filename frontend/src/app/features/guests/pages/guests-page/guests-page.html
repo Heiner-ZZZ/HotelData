@@ -75,6 +75,7 @@
             <table class="guests-table">
               <thead>
                 <tr>
+                  <th></th>
                   <th>Nombre</th>
                   <th>Email</th>
                   <th>Teléfono</th>
@@ -87,6 +88,11 @@
               <tbody>
                 @for (g of guests(); track g.guest_email) {
                   <tr>
+                    <td class="cell-actions">
+                      <button type="button" class="ghost-btn" (click)="showHistory(g)" title="Ver historial de reservas">
+                        <span class="material-symbols-outlined">visibility</span>
+                      </button>
+                    </td>
                     <td class="cell-name">{{ g.guest_name || '—' }}</td>
                     <td class="cell-email">{{ g.guest_email }}</td>
                     <td class="cell-phone">{{ g.guest_phone || '—' }}</td>
@@ -119,3 +125,13 @@
     }
   }
 </div>
+
+@if (showHistoryModal()) {
+  <app-gp-history-modal
+    [data]="historyData()"
+    [bookings]="historyBookings()"
+    [loading]="historyLoading()"
+    [error]="historyError()"
+    (close)="closeHistory()"
+  />
+}

@@ -7,6 +7,7 @@ from src.app.modules.partner.services.rooms.types._core import (
     _room_type_by_id,
     _room_types_for_prop,
     _validate_room_type,
+    create_hotel_room_for_type,
     create_room_type,
     delete_room_type,
     update_room_type,

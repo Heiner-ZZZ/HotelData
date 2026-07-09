@@ -10,13 +10,15 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { GuestsApiService, type GuestItem, type GuestsResponse } from '../../services/guests-api.service';
+import { GuestsApiService, type GuestBookingItem, type GuestBookingsResponse, type GuestItem, type GuestsResponse } from '../../services/guests-api.service';
+import { GpHistoryModalComponent } from './partials/gp-history-modal';
 
 @Component({
   selector: 'app-guests-page',
   imports: [
     EmptyStateComponent,
     ErrorStateComponent,
+    GpHistoryModalComponent,
     LoadingStateComponent,
     PageHeaderComponent,
     PropertySelectorComponent,
@@ -51,6 +53,13 @@ export class GuestsPageComponent {
   readonly searchQuery = signal('');
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  /** History modal state */
+  readonly showHistoryModal = signal(false);
+  readonly historyLoading = signal(false);
+  readonly historyError = signal('');
+  readonly historyData = signal<GuestBookingsResponse | null>(null);
+  readonly historyBookings = signal<GuestBookingItem[]>([]);
 
   private loadGuests(propId: number, q: string, p: number): void {
     this.viewState.set('loading');
@@ -126,6 +135,39 @@ export class GuestsPageComponent {
   }
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
+
+  /** Show booking history for a guest. */
+  showHistory(guest: GuestItem): void {
+    const propId = this.selectedPropId();
+    if (!propId) return;
+
+    this.historyLoading.set(true);
+    this.historyError.set('');
+    this.historyData.set(null);
+    this.historyBookings.set([]);
+    this.showHistoryModal.set(true);
+
+    this.api.getGuestBookings(guest.guest_email, propId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (res) => {
+        this.historyData.set(res);
+        this.historyBookings.set(res.items);
+        this.historyLoading.set(false);
+      },
+      error: () => {
+        this.historyError.set('No se pudo cargar el historial de reservas.');
+        this.historyLoading.set(false);
+      },
+    });
+  }
+
+  closeHistory(): void {
+    this.showHistoryModal.set(false);
+    this.historyData.set(null);
+    this.historyBookings.set([]);
+    this.historyError.set('');
+  }
 
   /** Format currency helper. */
   _money(value: number): string {

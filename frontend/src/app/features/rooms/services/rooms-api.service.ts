@@ -92,6 +92,28 @@ export class RoomsApiService {
     );
   }
 
+  createHotelRoomForType(roomTypeId: string, payload: {
+    roomNumber: string;
+    floor?: string;
+    view?: string;
+    smoking?: boolean;
+    accessible?: boolean;
+    isActive?: boolean;
+  }) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}/rooms`,
+      {
+        room_number: payload.roomNumber,
+        floor: payload.floor || '',
+        view: payload.view || '',
+        smoking: payload.smoking ?? false,
+        accessible: payload.accessible ?? false,
+        is_active: payload.isActive ?? true,
+      },
+      { withCredentials: true }
+    );
+  }
+
   deleteRoomType(roomTypeId: string) {
     return this.http.delete(
       `${this.apiConfig.baseUrl}/management/rooms/${roomTypeId}`,

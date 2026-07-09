@@ -89,6 +89,7 @@ from src.app.modules.partner.services.rates import (
 )
 from src.app.modules.partner.services.rooms import (
     create_blackout_block,
+    create_hotel_room_for_type,
     create_room_type,
     create_roh_room_type,
     delete_blackout_block,

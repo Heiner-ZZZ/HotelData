@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .types import (
     _room_types_for_prop,
+    create_hotel_room_for_type,
     create_room_type,
     create_roh_room_type,
     delete_room_type,

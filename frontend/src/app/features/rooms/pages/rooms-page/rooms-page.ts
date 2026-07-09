@@ -482,62 +482,85 @@ export class RoomsPageComponent {
 
     const value = this.createForm.getRawValue();
     const pendingFile = this.createSelectedFile();
-    this.api
-      .createRoomType({
-        propId: current.propId,
-        name: value.name,
-        description: value.description,
-        maxAdults: value.maxAdults,
-        maxChildren: value.maxChildren,
-        baseCapacity: value.baseCapacity,
-        baseRate: value.baseRate || undefined,
-        isActive: value.isActive,
+    const mode = this.createMode();
+    const existingTypeId = this.selectedExistingRoomTypeId();
+
+    let request;
+
+    if (mode === 'existing' && existingTypeId) {
+      // En modo 'Usar existente': solo crear hotel_room ligado al tipo seleccionado
+      request = this.api.createHotelRoomForType(existingTypeId, {
         roomNumber: value.roomNumber,
         floor: value.floor,
         view: value.view,
         smoking: value.smoking,
         accessible: value.accessible,
-        imageUrl: value.imageUrl,
-      })
-      .pipe(
-        switchMap((created: any) => {
-          const roomTypeId = created?.room_type_id;
-          // If there's a pending file, upload it after creation
-          if (pendingFile && roomTypeId) {
-            return this.api.uploadRoomImage(roomTypeId, pendingFile).pipe(
-              map(() => roomTypeId)
-            );
-          }
-          return of(roomTypeId);
-        }),
-        switchMap(() => this.api.getRooms(current.propId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (rooms) => {
-          this.viewModel.set(rooms);
-          this.toast.success('Tipo de habitación registrado');
-          this.createForm.reset({
-            name: '',
-            description: '',
-            maxAdults: 2,
-            maxChildren: 0,
-            baseCapacity: 2,
-            baseRate: 0,
-            isActive: true,
-            roomNumber: '',
-            floor: '',
-            view: '',
-            smoking: false,
-            accessible: false,
-            imageUrl: '',
-          });
-          this.createImagePreviewUrl.set('');
-          this.createSelectedFile.set(null);
-        },
-        error: (error: ApiError) => {
-          this.toast.error(error.message || 'No fue posible registrar el tipo de habitación.');
-        }
-      });
+        isActive: value.isActive,
+      }).pipe(
+        switchMap(() => this.api.getRooms(current.propId))
+      );
+    } else {
+      // En modo 'Crear nuevo': crear room_type + hotel_room
+      request = this.api
+        .createRoomType({
+          propId: current.propId,
+          name: value.name,
+          description: value.description,
+          maxAdults: value.maxAdults,
+          maxChildren: value.maxChildren,
+          baseCapacity: value.baseCapacity,
+          baseRate: value.baseRate || undefined,
+          isActive: value.isActive,
+          roomNumber: value.roomNumber,
+          floor: value.floor,
+          view: value.view,
+          smoking: value.smoking,
+          accessible: value.accessible,
+          imageUrl: value.imageUrl,
+        })
+        .pipe(
+          switchMap((created: any) => {
+            const roomTypeId = created?.room_type_id;
+            // If there's a pending file, upload it after creation
+            if (pendingFile && roomTypeId) {
+              return this.api.uploadRoomImage(roomTypeId, pendingFile).pipe(
+                map(() => roomTypeId)
+              );
+            }
+            return of(roomTypeId);
+          }),
+          switchMap(() => this.api.getRooms(current.propId)),
+        );
+    }
+
+    request.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (rooms) => {
+        this.viewModel.set(rooms);
+        const msg = mode === 'existing' ? 'Habitación física registrada' : 'Tipo de habitación registrado';
+        this.toast.success(msg);
+        this.createForm.reset({
+          name: '',
+          description: '',
+          maxAdults: 2,
+          maxChildren: 0,
+          baseCapacity: 2,
+          baseRate: 0,
+          isActive: true,
+          roomNumber: '',
+          floor: '',
+          view: '',
+          smoking: false,
+          accessible: false,
+          imageUrl: '',
+        });
+        this.createImagePreviewUrl.set('');
+        this.createSelectedFile.set(null);
+      },
+      error: (error: ApiError) => {
+        this.toast.error(error.message || 'No fue posible registrar.');
+      }
+    });
   }
 }

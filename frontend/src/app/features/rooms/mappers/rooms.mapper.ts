@@ -10,11 +10,18 @@ function normalizeFeatures(features: unknown): RoomFeatureItem[] {
 }
 
 export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
-  // Pre-compute physical room counts per type
+  // Pre-compute physical room counts and room numbers per type
   const roomCountByType: Record<string, number> = {};
+  const roomNumbersByType: Record<string, string[]> = {};
   for (const hr of dto.hotel_rooms ?? []) {
     const tid = hr.room_type_id;
-    if (tid) roomCountByType[tid] = (roomCountByType[tid] || 0) + 1;
+    if (tid) {
+      roomCountByType[tid] = (roomCountByType[tid] || 0) + 1;
+      if (hr.room_number) {
+        if (!roomNumbersByType[tid]) roomNumbersByType[tid] = [];
+        roomNumbersByType[tid].push(hr.room_number);
+      }
+    }
   }
 
   return {
@@ -44,6 +51,7 @@ export function mapRoomsResponse(dto: RoomsDto): RoomsViewModel {
       accessible: room.accessible ?? false,
       isRoh: room.is_roh ?? false,
       physicalRoomCount: roomCountByType[room.room_type_id] ?? 0,
+      linkedRoomNumbers: (roomNumbersByType[room.room_type_id] ?? []).join(', '),
     })),
     hotelRooms: (dto.hotel_rooms ?? []).map((room) => ({
       id: room.hotel_room_id,

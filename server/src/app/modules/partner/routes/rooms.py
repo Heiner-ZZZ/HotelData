@@ -166,6 +166,32 @@ def rooms_update_api(
     return saved
 
 
+@api_router.post("/rooms/{room_type_id}/rooms", status_code=201)
+def rooms_create_hotel_room_api(
+    room_type_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Create a hotel_room (physical room) linked to an existing room type."""
+    from src.app.modules.partner.services.rooms import create_hotel_room_for_type
+    try:
+        result = create_hotel_room_for_type(
+            room_type_id,
+            room_number=str(payload.get("room_number") or ""),
+            floor=str(payload.get("floor") or ""),
+            view=str(payload.get("view") or ""),
+            smoking=payload.get("smoking", False),
+            accessible=payload.get("accessible", False),
+            is_active=payload.get("is_active", True),
+            changed_by=current_user.get("username", "system"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room type not found")
+    return result
+
+
 @api_router.post("/rooms/roh", status_code=201)
 def rooms_roh_create_api(
     payload: dict = Body(...),
