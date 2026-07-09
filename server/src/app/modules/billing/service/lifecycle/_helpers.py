@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from bson import ObjectId
 
 from src.database.connection import get_database
+from src.app.core.outbox import write_with_outbox, update_with_outbox
 
 INVOICES = "reservation_invoices"
 PAYMENTS = "reservation_payments"
@@ -21,15 +22,12 @@ def _now() -> datetime:
 
 def _write_both(collection: str, fact_collection: str, doc: dict) -> None:
     db = get_database()
-    result = db[collection].insert_one(doc)
-    fact_doc = {**doc, "operational_id": result.inserted_id, "_id": result.inserted_id}
-    db[fact_collection].insert_one(fact_doc)
+    write_with_outbox(db, collection, doc, fact_collection)
 
 
 def _update_both(collection: str, fact_collection: str, doc_id: ObjectId, update: dict) -> None:
     db = get_database()
-    db[collection].update_one({"_id": doc_id}, update)
-    db[fact_collection].update_one({"_id": doc_id}, update)
+    update_with_outbox(db, collection, doc_id, update, fact_collection)
 
 
 def _generate_invoice_number() -> str:

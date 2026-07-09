@@ -61,39 +61,68 @@ def status_label(s: str) -> str:
 
 
 def notify_staff_new_message(db, session: dict):
-    """Log a notification for staff about a new guest message."""
+    """Log a notification for staff about a new guest message + push SSE event."""
+    prop_id = session.get("prop_id", 0)
+    room_label = session.get("room_label", "")
+    guest_name = session.get("guest_name", "huésped")
+
     db.notification_log.insert_one({
         "recipient_email": "staff",
         "notification_type": "guest_chat_message",
-        "subject": f"Nuevo mensaje de {session.get('guest_name', 'huésped')} (Hab. {session.get('room_label', '')})",
-        "body": f"La habitación {session.get('room_label', '')} envió un mensaje.",
+        "subject": f"Nuevo mensaje de {guest_name} (Hab. {room_label})",
+        "body": f"La habitación {room_label} envió un mensaje.",
         "status": "sent",
         "created_at": utc_now(),
         "metadata": {
-            "prop_id": session.get("prop_id"),
-            "room_label": session.get("room_label"),
+            "prop_id": prop_id,
+            "room_label": room_label,
             "booking_id": session.get("booking_id"),
         },
     })
 
+    # Push SSE event
+    try:
+        from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+        StayEventManager.instance_sync().publish_threadsafe(prop_id, "new_message", {
+            "room_label": room_label,
+            "guest_name": guest_name,
+        })
+    except Exception:
+        pass
+
 
 def notify_staff_new_request(db, session: dict, request_type: str):
-    """Log a notification for staff about a new service request."""
+    """Log a notification for staff about a new service request + push SSE event."""
     type_label_str = type_label(request_type)
+    prop_id = session.get("prop_id", 0)
+    room_label = session.get("room_label", "")
+    guest_name = session.get("guest_name", "")
+
     db.notification_log.insert_one({
         "recipient_email": "staff",
         "notification_type": "guest_service_request",
-        "subject": f"Nueva solicitud: {type_label_str} (Hab. {session.get('room_label', '')})",
-        "body": f"El huésped {session.get('guest_name', '')} solicitó: {type_label_str}",
+        "subject": f"Nueva solicitud: {type_label_str} (Hab. {room_label})",
+        "body": f"El huésped {guest_name} solicitó: {type_label_str}",
         "status": "sent",
         "created_at": utc_now(),
         "metadata": {
-            "prop_id": session.get("prop_id"),
-            "room_label": session.get("room_label"),
+            "prop_id": prop_id,
+            "room_label": room_label,
             "booking_id": session.get("booking_id"),
             "request_type": request_type,
         },
     })
+
+    # Push SSE event
+    try:
+        from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+        StayEventManager.instance_sync().publish_threadsafe(prop_id, "new_request", {
+            "room_label": room_label,
+            "guest_name": guest_name,
+            "request_type": type_label_str,
+        })
+    except Exception:
+        pass
 
 
 def notify_guest_new_message(db, session: dict):

@@ -6,10 +6,13 @@ Staff endpoints use standard JWT authentication.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import secrets
 
 from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from src.app.modules.instay.schemas import (
     SERVICE_REQUEST_TYPES,
@@ -29,6 +32,7 @@ from src.app.modules.instay.routes_impl._helpers import (
     type_label,
     _iso,
 )
+from src.app.modules.instay.routes_impl._event_manager import StayEventManager
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -192,6 +196,48 @@ def list_service_requests(
     }
 
 
+@staff_router.post("/requests", status_code=201)
+def staff_create_request(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Create a service request from the staff inbox on behalf of a guest."""
+    booking_id = (payload.get("booking_id") or "").strip()
+    request_type = (payload.get("request_type") or "").strip()
+    description = (payload.get("description") or "").strip()
+
+    if not booking_id:
+        raise HTTPException(status_code=400, detail="booking_id requerido.")
+    if not request_type or request_type not in SERVICE_REQUEST_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo de solicitud inválido. Válidos: {', '.join(SERVICE_REQUEST_TYPES.keys())}",
+        )
+
+    db = get_database()
+    session = db.stay_sessions.find_one({"booking_id": booking_id, "active": True})
+    if not session:
+        raise HTTPException(status_code=400, detail="No hay sesión activa para esta reserva.")
+
+    doc = {
+        "booking_id": booking_id,
+        "prop_id": session.get("prop_id", 0),
+        "room_label": session.get("room_label", ""),
+        "request_type": request_type,
+        "request_type_label": type_label(request_type),
+        "description": description,
+        "status": "pending",
+        "status_label": "Pendiente",
+        "staff_response": "",
+        "created_by": "staff",
+        "staff_name": current_user.get("display_name") or current_user.get("username", "Staff"),
+        "created_at": utc_now(),
+        "resolved_at": None,
+    }
+    result = db.stay_service_requests.insert_one(doc)
+    return {"ok": True, "request_id": str(result.inserted_id), "message": "Solicitud creada."}
+
+
 @staff_router.put("/requests/{request_id}")
 def update_service_request(
     request_id: str,
@@ -240,6 +286,17 @@ def list_conversations(
     session_map = {s["room_label"]: s.get("guest_name", "") for s in sessions}
     for c in conversations:
         c["guest_name"] = session_map.get(c["_id"], "")
+
+    # ── DND status per room ──
+    room_labels = [c["_id"] for c in conversations]
+    dnd_docs = list(db.room_status_log.find(
+        {"room_label": {"$in": room_labels}},
+        {"room_label": 1, "dnd": 1, "_id": 0},
+    )) if room_labels else []
+    dnd_map = {d["room_label"]: bool(d.get("dnd", False)) for d in dnd_docs}
+    for c in conversations:
+        c["dnd"] = dnd_map.get(c["_id"], False)
+
     return {"conversations": conversations}
 
 
@@ -255,6 +312,54 @@ def get_conversation_messages(room_label: str, prop_id: int | None = Query(defau
         m["created_at"] = _iso(m.get("created_at"))
     db.stay_messages.update_many({"room_label": room_label, "sender": "guest", "read": False}, {"$set": {"read": True}})
     return {"messages": messages}
+
+
+# ═══════════════════════════════════════════════════════════
+# STAFF — Real-time Notifications (SSE)
+# ═══════════════════════════════════════════════════════════
+
+
+@staff_router.get("/notifications/stream")
+async def staff_notifications_stream(
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_login),
+):
+    """Server-Sent Events stream for real-time staff notifications.
+
+    The client receives events when a guest sends a message or creates
+    a service request for the specified property.
+
+    Event format:
+      data: {"type":"new_message","data":{...},"timestamp":"..."}
+    """
+    mgr = await StayEventManager.instance()
+    queue = await mgr.subscribe(prop_id)
+
+    async def event_generator():
+        try:
+            # Send initial heartbeat
+            yield f"event: connected\ndata: {{}}\n\n"
+            while True:
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {payload}\n\n"
+                except asyncio.TimeoutError:
+                    # Keep-alive ping
+                    yield ": ping\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await mgr.unsubscribe(prop_id, queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @staff_router.post("/conversations/{room_label}/reply")
@@ -430,7 +535,8 @@ def guest_toggle_dnd(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="Esta sesión no tiene habitación asignada.")
 
     current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"dnd": 1})
-    new_dnd = not (current.get("dnd", False) if current else False)
+    current_dnd = current.get("dnd", False) if current else False
+    new_dnd = not current_dnd
 
     db.room_status_log.update_one(
         {"prop_id": prop_id, "room_label": room_label},
@@ -494,3 +600,56 @@ def guest_list_requests(token: str = Query(..., min_length=1)):
                        "status_label": status_label(r.get("status", "")),
                        "staff_response": r.get("staff_response", ""),
                        "created_at": _iso(r.get("created_at")), "resolved_at": _iso(r.get("resolved_at"))} for r in items]}
+
+
+@guest_router.post("/requests/{request_id}/cancel")
+def guest_cancel_request(request_id: str, payload: dict = Body(...)):
+    """Cancel a pending service request."""
+    token = (payload.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Token requerido.")
+
+    session = get_session_or_404(token)
+    db = get_database()
+    try:
+        oid = ObjectId(request_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de solicitud inválido.")
+
+    req = db.stay_service_requests.find_one({"_id": oid, "booking_id": session["booking_id"]})
+    if not req:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
+    if req.get("status") not in ("pending", "in_progress"):
+        raise HTTPException(status_code=400, detail="Solo se pueden cancelar solicitudes pendientes o en proceso.")
+
+    db.stay_service_requests.update_one(
+        {"_id": oid},
+        {"$set": {"status": "cancelled", "status_label": "Cancelado", "resolved_at": utc_now()}},
+    )
+    return {"ok": True, "message": "Solicitud cancelada."}
+
+
+# ═══════════════════════════════════════════════════════════
+# GUEST — Lost & Found
+# ═══════════════════════════════════════════════════════════
+
+
+@guest_router.get("/lost-items")
+def guest_list_lost_items(token: str = Query(..., min_length=1)):
+    """List lost & found items for the guest's booking."""
+    session = get_session_or_404(token)
+    db = get_database()
+    booking_id = session["booking_id"]
+    items = list(db.lost_and_found.find(
+        {"booking_id": booking_id},
+        {"description": 1, "status": 1, "location_found": 1, "reported_by": 1, "created_at": 1, "returned_to": 1}
+    ).sort("created_at", -1))
+    return {"items": [{
+        "_id": str(item["_id"]),
+        "description": item.get("description", ""),
+        "status": item.get("status", "found"),
+        "location_found": item.get("location_found", ""),
+        "reported_by": item.get("reported_by", ""),
+        "returned_to": item.get("returned_to", ""),
+        "created_at": _iso(item.get("created_at")),
+    } for item in items]}
