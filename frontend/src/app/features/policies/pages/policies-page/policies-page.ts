@@ -73,6 +73,7 @@ export class PoliciesPageComponent {
     checkOutTime: [''],
     cancellationPolicy: [''],
     cancellationHours: [0, [Validators.min(0), Validators.max(720)]],
+    cancellationPenaltyPercent: [100, [Validators.min(0), Validators.max(100)]],
     petsAllowed: [false],
     petFee: [0, [Validators.min(0)]],
     childrenAllowed: [false],
@@ -158,6 +159,7 @@ export class PoliciesPageComponent {
         checkOutTime: this.hotelCheckOutTime || policies.checkOutTime,
         cancellationPolicy: policies.cancellationPolicy,
         cancellationHours: policies.cancellationHours,
+        cancellationPenaltyPercent: policies.cancellationPenaltyPercent,
         petsAllowed: policies.petsAllowed,
         petFee: policies.petFee,
         childrenAllowed: policies.childrenAllowed,
@@ -224,10 +226,13 @@ export class PoliciesPageComponent {
 
     const payload = mapPoliciesPayload({
       ...current,
-      checkInTime: raw.checkInTime,
-      checkOutTime: raw.checkOutTime,
+      // Check-in/check-out: only send if saving hotel-wide (no room type selected),
+      // because these are global hotel settings, not per-room-type
+      checkInTime: rtId ? '' : raw.checkInTime,
+      checkOutTime: rtId ? '' : raw.checkOutTime,
       cancellationPolicy: raw.cancellationPolicy,
       cancellationHours: raw.cancellationHours,
+      cancellationPenaltyPercent: raw.cancellationPenaltyPercent,
       petsAllowed: raw.petsAllowed,
       petFee: raw.petFee,
       childrenAllowed: raw.childrenAllowed,

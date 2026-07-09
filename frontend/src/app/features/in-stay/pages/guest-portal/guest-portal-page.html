@@ -202,10 +202,10 @@
             </button>
           </div>
         }
-        @if (requests().length > 0) {
+        @if (sortedRequests().length > 0) {
           <div class="gp-detail-requests">
-            <div class="gp-detail-label">Mis solicitudes ({{ requests().length }})</div>
-            @for (req of requests(); track req._id) {
+            <div class="gp-detail-label">Mis solicitudes ({{ sortedRequests().length }})</div>
+            @for (req of visibleRequests(); track req._id) {
               <div class="gp-detail-req" [class.completed]="req.status === 'completed' || req.status === 'cancelled'">
                 <span class="gp-detail-req-type">{{ req.request_type_label }}</span>
                 <span class="gp-detail-req-status gp-status-{{ req.status }}">{{ req.status_label }}</span>
@@ -219,9 +219,23 @@
                   {{ req.staff_response }}
                 </div>
               }
+              @if (req.status === 'completed' || req.status === 'cancelled') {
+                @if (req.resolved_at) {
+                  <span class="gp-detail-req-time">
+                    <span class="material-symbols-outlined">{{ req.status === 'completed' ? 'check_circle' : 'cancel' }}</span>
+                    {{ req.status === 'completed' ? 'Resuelto' : 'Cancelado' }} {{ req.resolved_at | date:'dd/MM HH:mm' }}
+                  </span>
+                }
+              }
               @if (req.status === 'pending' || req.status === 'in_progress') {
                 <button class="gp-detail-req-cancel" (click)="cancelRequest(req._id)">Cancelar</button>
               }
+            }
+            @if (hasMoreRequests()) {
+              <button class="gp-show-more-btn" (click)="showMoreRequests()">
+                <span class="material-symbols-outlined">expand_more</span>
+                Mostrar más ({{ sortedRequests().length - visibleRequests().length }} restantes)
+              </button>
             }
           </div>
         }
@@ -561,10 +575,10 @@
             </div>
           }
 
-          @if (requests().length > 0) {
+          @if (sortedRequests().length > 0) {
             <div class="gp-mobile-section-title">Mis solicitudes</div>
             <div class="gp-requests-mobile">
-              @for (req of requests(); track req._id) {
+              @for (req of visibleRequests(); track req._id) {
                 <div class="gp-req-card" [class.completed]="req.status === 'completed'">
                   <div class="gp-req-header">
                     <span class="gp-req-type">{{ req.request_type_label }}</span>
@@ -577,8 +591,23 @@
                       {{ req.staff_response }}
                     </div>
                   }
-                  <span class="gp-req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
+                  @if (req.status === 'completed' || req.status === 'cancelled') {
+                    @if (req.resolved_at) {
+                      <span class="gp-req-time-resolved">
+                        <span class="material-symbols-outlined">{{ req.status === 'completed' ? 'check_circle' : 'cancel' }}</span>
+                        {{ req.status === 'completed' ? 'Resuelto' : 'Cancelado' }} {{ req.resolved_at | date:'dd/MM HH:mm' }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="gp-req-time">{{ req.created_at | date:'dd/MM HH:mm' }}</span>
+                  }
                 </div>
+              }
+              @if (hasMoreRequests()) {
+                <button class="gp-show-more-btn" (click)="showMoreRequests()">
+                  <span class="material-symbols-outlined">expand_more</span>
+                  Mostrar más ({{ sortedRequests().length - visibleRequests().length }} restantes)
+                </button>
               }
             </div>
           }

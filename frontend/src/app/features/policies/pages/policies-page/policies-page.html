@@ -125,31 +125,64 @@
           </div>
 
           <form [formGroup]="policyForm" (ngSubmit)="savePolicies()" class="form-grid">
-            <!-- Time fields -->
-            <div class="field-group field-span">
+            <!-- Row 1: Horarios (half) | Estancia (half) -->
+            <div class="field-group">
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">schedule</span>
                 <span>Horarios</span>
+                @if (selectedRoomTypeId()) {
+                  <span class="tooltip-icon material-symbols-outlined" title="Los horarios de check-in y check-out son globales para todo el hotel. No se pueden modificar por tipo de habitación.">info</span>
+                }
               </div>
               <div class="field-row">
-                <label class="field">
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId()">
                   <span class="field-label">
                     <span class="field-icon material-symbols-outlined">login</span>
                     Check-in
+                    @if (selectedRoomTypeId()) {
+                      <span class="field-hint">global</span>
+                    }
                   </span>
-                  <input type="time" formControlName="checkInTime" />
+                  <input type="time" formControlName="checkInTime" [disabled]="!!selectedRoomTypeId()" />
                 </label>
-                <label class="field">
+                <label class="field" [class.field--disabled]="!!selectedRoomTypeId()">
                   <span class="field-label">
                     <span class="field-icon material-symbols-outlined">logout</span>
                     Check-out
+                    @if (selectedRoomTypeId()) {
+                      <span class="field-hint">global</span>
+                    }
                   </span>
-                  <input type="time" formControlName="checkOutTime" />
+                  <input type="time" formControlName="checkOutTime" [disabled]="!!selectedRoomTypeId()" />
                 </label>
               </div>
             </div>
 
-            <!-- Cancellation -->
+            <div class="field-group">
+              <div class="field-group-header">
+                <span class="material-symbols-outlined field-group-icon">nights_stay</span>
+                <span>Estancia</span>
+                <span class="tooltip-icon material-symbols-outlined" title="Define el rango de noches permitido por reserva. Las reservas que no cumplan este rango serán rechazadas automáticamente.">info</span>
+              </div>
+              <div class="field-row field-row--compact">
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">exposure_neg_1</span>
+                    Mínimo
+                  </span>
+                  <input type="number" min="1" max="365" formControlName="minStay" placeholder="1" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">exposure_plus_1</span>
+                    Máximo
+                  </span>
+                  <input type="number" min="1" max="365" formControlName="maxStay" placeholder="30" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Row 2: Cancelación (full width) -->
             <div class="field-group field-span">
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">cancel</span>
@@ -165,6 +198,13 @@
                 </label>
                 <label class="field">
                   <span class="field-label">
+                    <span class="field-icon material-symbols-outlined">percent</span>
+                    Penalización (% de 1 noche)
+                  </span>
+                  <input type="number" min="0" max="100" formControlName="cancellationPenaltyPercent" placeholder="100" />
+                </label>
+                <label class="field">
+                  <span class="field-label">
                     <span class="field-icon material-symbols-outlined">description</span>
                     Descripción
                   </span>
@@ -173,8 +213,8 @@
               </div>
             </div>
 
-            <!-- Pets -->
-            <div class="field-group field-span">
+            <!-- Row 3: Mascotas (half) | Niños (half) -->
+            <div class="field-group">
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">pets</span>
                 <span>Mascotas</span>
@@ -190,7 +230,7 @@
                 <label class="field">
                   <span class="field-label">
                     <span class="field-icon material-symbols-outlined">payments</span>
-                    Cargo mascota ($)
+                    Cargo extra ($)
                   </span>
                   <input type="number" min="0" step="0.01" formControlName="petFee" placeholder="0.00" />
                 </label>
@@ -204,10 +244,9 @@
               </div>
             </div>
 
-            <!-- Children & Extra beds -->
-            <div class="field-group field-span">
+            <div class="field-group">
               <div class="field-group-header">
-                <span class="material-symbols-outlined field-group-icon">family_history</span>
+                <span class="material-symbols-outlined field-group-icon">child_care</span>
                 <span>Niños y familias</span>
               </div>
               <div class="field-row">
@@ -220,8 +259,8 @@
                 </label>
                 <label class="field">
                   <span class="field-label">
-                    <span class="field-icon material-symbols-outlined">bed</span>
-                    Cargo cama extra ($)
+                    <span class="field-icon material-symbols-outlined">payments</span>
+                    Cama extra ($)
                   </span>
                   <input type="number" min="0" step="0.01" formControlName="extraBedFee" placeholder="0.00" />
                 </label>
@@ -242,31 +281,7 @@
               </div>
             </div>
 
-            <!-- Stay limits -->
-            <div class="field-group field-span">
-              <div class="field-group-header">
-                <span class="material-symbols-outlined field-group-icon">nights_stay</span>
-                <span>Estancia</span>
-              </div>
-              <div class="field-row">
-                <label class="field">
-                  <span class="field-label">
-                    <span class="field-icon material-symbols-outlined">exposure_neg_1</span>
-                    Noches mínimas
-                  </span>
-                  <input type="number" min="1" max="365" formControlName="minStay" placeholder="1" />
-                </label>
-                <label class="field">
-                  <span class="field-label">
-                    <span class="field-icon material-symbols-outlined">exposure_plus_1</span>
-                    Noches máximas
-                  </span>
-                  <input type="number" min="1" max="365" formControlName="maxStay" placeholder="30" />
-                </label>
-              </div>
-            </div>
-
-            <!-- Payment & House rules -->
+            <!-- Row 4: Pagos y reglas (full width) -->
             <div class="field-group field-span">
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">payments</span>
@@ -275,7 +290,7 @@
               <div class="field-row-2col">
                 <label class="field">
                   <span class="field-label">
-                    <span class="field-icon material-symbols-outlined">payments</span>
+                    <span class="field-icon material-symbols-outlined">credit_card</span>
                     Pagos y garantías
                   </span>
                   <textarea rows="4" formControlName="paymentPolicy" placeholder="Política de pagos" appAiSuggest="politica_pagos_y_garantias"></textarea>
@@ -291,7 +306,7 @@
             </div>
 
             <div class="form-actions field-span">
-              <button type="submit" class="btn-primary">
+              <button type="submit" class="btn-primary" [disabled]="policyForm.invalid">
                 <span class="btn-icon material-symbols-outlined">save</span>
                 Guardar cambios
               </button>
