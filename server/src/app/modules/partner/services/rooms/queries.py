@@ -36,14 +36,14 @@ def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]
     # Collect all hotel_room_ids to look up upcoming bookings
     room_ids = [item.get("hotel_room_id") for item in items if item.get("hotel_room_id")]
     # Find future/active bookings that have these rooms assigned
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
+    from src.app.core.timezone import local_today
+    today_str = local_today()
     upcoming_bookings = list(
         db.booking_orders.find(
             {
                 "assigned_rooms": {"$in": room_ids},
                 "status": {"$in": ["confirmed", "checked_in", "pending"]},
-                "check_out_date": {"$gte": now.strftime("%Y-%m-%d")},
+                "check_out_date": {"$gte": today_str},
             },
             {"_id": 0, "assigned_rooms": 1, "check_in_date": 1, "check_out_date": 1, "guest_name": 1, "status": 1},
         )

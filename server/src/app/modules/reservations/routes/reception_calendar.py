@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from src.app.core.timezone import local_today, local_now
 from src.app.security.dependencies import require_login
 from src.database.connection import get_database
 
@@ -93,13 +94,13 @@ def reception_calendar_api(
     """
     db = get_database()
 
-    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    today_str = local_today()
 
     # Default: 30 days before today → 30 days after today
     if not start_date:
-        start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start_date = (local_now() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d")
+        end_date = (local_now() + timedelta(days=30)).strftime("%Y-%m-%d")
 
     # Fetch ALL active physical rooms for this property (one row per door)
     hotel_rooms_docs = list(

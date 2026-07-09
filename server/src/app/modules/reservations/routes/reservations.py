@@ -167,7 +167,7 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 @api_router.get("/{booking_id}/cancel-preview")
 def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_login)):
     """Preview cancellation penalty without actually cancelling."""
-    from datetime import datetime, timezone
+    from src.app.core.timezone import local_today
     from src.app.modules.reservations.service.cleanup import _calculate_cancellation_penalty
     from src.database.connection import get_database
 
@@ -177,7 +177,7 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.get("status") != "pending":
         raise HTTPException(status_code=400, detail="Only pending bookings can be previewed for cancellation")
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = local_today()
     if today_str >= (booking.get("check_in_date") or ""):
         raise HTTPException(status_code=400, detail="No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
 

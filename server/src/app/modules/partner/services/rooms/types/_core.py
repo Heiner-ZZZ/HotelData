@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
 from typing import Any
 
 from pymongo import ReturnDocument
 
+from src.app.core.timezone import local_today
 from src.app.modules.partner.services._common import (
     clean_text, now_utc, safe_bool, safe_positive_int, slugify,
 )
@@ -231,7 +231,7 @@ def delete_room_type(room_type_id: str, changed_by: str = "system") -> dict[str,
         return None
     prop_id = existing["prop_id"]
 
-    today = date.today().isoformat()
+    today = local_today()
     active_bookings = db.booking_orders.count_documents({
         "prop_id": prop_id, "room_type_id": room_type_id,
         "status": {"$nin": ["cancelled", "rejected"]}, "check_out_date": {"$gte": today},
@@ -246,6 +246,7 @@ def delete_room_type(room_type_id: str, changed_by: str = "system") -> dict[str,
     db.room_types.delete_one({"room_type_id": room_type_id})
     db.hotel_rooms.delete_many({"room_type_id": room_type_id})
     db.room_inventory_calendar.delete_many({"room_type_id": room_type_id})
+    db.room_status_log.delete_many({"room_type_id": room_type_id})
     register_action(
         prop_id=prop_id, entity_type="room_type", entity_id=room_type_id,
         action="delete", summary=f"Tipo de habitación '{room_name}' eliminado",
