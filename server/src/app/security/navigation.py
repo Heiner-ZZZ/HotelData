@@ -12,6 +12,7 @@ ROLE_DEFAULT_REDIRECTS = {
     "gerente_hotel": "/management",
     "revenue_manager": "/management/rates",
     "marketing_hotelero": "/management/amenities",
+    "maintenance": "/management/hr/my-portal",
     "cliente": "/search",
 }
 
@@ -63,6 +64,10 @@ NAVIGATION_BY_ROLE = {
         {"label": "Contenido", "href": "/management/properties", "icon": "icon-partner", "roles": ("marketing_hotelero",)},
         {"label": "Amenities", "href": "/management/amenities", "icon": "icon-revenue", "permission": "revenue.read"},
         {"label": "Reportes", "href": "/management/reports", "icon": "icon-analytics", "permission": "revenue.read"},
+    ],
+    "maintenance": [
+        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard"},
+        {"label": "Housekeeping", "href": "/management/housekeeping", "icon": "icon-cleaning"},
     ],
     "cliente": [
         {"label": "Hoteles", "href": "/search", "icon": "icon-hotels"},

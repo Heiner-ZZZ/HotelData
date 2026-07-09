@@ -40,6 +40,8 @@ export interface EmployeeDetailDto {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  username?: string;
+  password?: string | null;
 }
 
 export interface HrDashboardDto {

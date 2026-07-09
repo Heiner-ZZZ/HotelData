@@ -3,6 +3,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -12,7 +14,7 @@ import { HrApiService } from '../../services/hr-api.service';
 @Component({
   selector: 'app-employee-list-page',
   standalone: true,
-  imports: [RouterLink, FormsModule, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [RouterLink, FormsModule, PageHeaderComponent, PropertySelectorComponent, LoadingStateComponent, EmptyStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="employee-page" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
@@ -20,6 +22,12 @@ import { HrApiService } from '../../services/hr-api.service';
         eyebrow="RRHH - Staff Directory"
         title="Directorio de Empleados"
         description="Consulta, busca y gestiona el personal del hotel."
+      />
+
+      <app-property-selector
+        [selectedPropId]="propertyCtx.currentPropId()"
+        [selectedLabel]="propertyCtx.currentPropLabel()"
+        (propIdChange)="onPropSelected($event)"
       />
 
       <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
@@ -118,6 +126,7 @@ export class EmployeeListPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly hrApi = inject(HrApiService);
   private readonly router = inject(Router);
+  readonly propertyCtx = inject(PropertyContextService);
   private searchTimeout: any;
 
   readonly viewState = signal<'loading' | 'success' | 'empty' | 'error'>('loading');
@@ -149,6 +158,13 @@ export class EmployeeListPageComponent implements OnInit {
     return undefined;
   }
 
+  onPropSelected(event: { propId: number; label: string }) {
+    if (!event.propId) this.propertyCtx.clear();
+    else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
+    this.currentPage.set(1);
+    this.loadEmployees();
+  }
+
   loadEmployees() {
     this.viewState.set('loading');
     this.hrApi.getEmployees(
@@ -156,6 +172,7 @@ export class EmployeeListPageComponent implements OnInit {
       this.selectedDepartment() || undefined,
       this.resolveIsActive(),
       this.currentPage(),
+      this.propertyCtx.currentPropId() || undefined,
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

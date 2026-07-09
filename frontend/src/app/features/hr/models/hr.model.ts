@@ -30,6 +30,8 @@ export interface EmployeeDetail {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  username?: string;
+  password?: string | null;
 }
 
 export interface HrDashboard {

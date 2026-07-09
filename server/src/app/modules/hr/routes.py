@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
+from passlib.context import CryptContext
+
 from src.database.connection import get_database
 from src.app.modules.hr.schemas import (
     DepartmentCreate,
@@ -26,6 +28,77 @@ from src.app.modules.hr.service.collections import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login
+
+_password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _ensure_user_account(db, employee_doc: dict) -> dict:
+    """Auto-generate a user account for an employee if none exists.
+
+    Returns dict with username and (first-time only) generated password.
+    """
+    user_id = employee_doc.get("user_id")
+    if user_id:
+        try:
+            user = db.users.find_one({"_id": ObjectId(user_id)})
+            if user:
+                return {"username": user.get("username", ""), "password": None}
+        except Exception:
+            pass
+
+    import secrets
+    email = (employee_doc.get("email") or "").strip().lower()
+    name = (employee_doc.get("full_name") or "").strip().lower()
+    username = email if email else name.replace(" ", ".")
+    if not username:
+        oid = employee_doc.get("_id")
+        username = f"emp_{str(oid)[-8:] if oid else 'unknown'}"
+
+    if db.users.find_one({"username": username}):
+        username = f"{username}_{secrets.token_hex(3)}"
+
+    user_email = email if email else f"{username}@hoteldata.local"
+    if db.users.find_one({"email": user_email}):
+        user_email = f"{username}_{secrets.token_hex(3)}@hoteldata.local"
+
+    role_map = {
+        "recepción": "operador_datos",
+        "reception": "operador_datos",
+        "limpieza": "operador_datos",
+        "housekeeping": "operador_datos",
+        "administración": "gerente_hotel",
+        "administration": "gerente_hotel",
+        "revenue": "revenue_manager",
+        "marketing": "marketing_hotelero",
+    }
+    dept = (employee_doc.get("department") or "").strip().lower()
+    role = role_map.get(dept, "operador_datos")
+
+    password = secrets.token_urlsafe(10)
+    password_hash = _password_ctx.hash(password)
+    now = datetime.now(timezone.utc)
+
+    user_doc = {
+        "username": username,
+        "email": user_email,
+        "password_hash": password_hash,
+        "display_name": employee_doc.get("full_name", username),
+        "primary_role": role,
+        "prop_id": employee_doc.get("prop_id"),
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = db.users.insert_one(user_doc)
+    user_id_str = str(result.inserted_id)
+
+    db[EMPLOYEES_COLLECTION].update_one(
+        {"_id": employee_doc["_id"]},
+        {"$set": {"user_id": user_id_str, "updated_at": now}},
+    )
+
+    return {"username": username, "password": password}
+
 
 router = APIRouter(prefix="/modules/hr", tags=["modules-hr"])
 api_router = APIRouter(prefix="/api/hr", tags=["hr-api"])
@@ -454,6 +527,25 @@ def employee_portal(
 
 
 # ═══════════════════════════════════════════════════════════
+# My Portal (self-service redirect for employees)
+# ═══════════════════════════════════════════════════════════
+
+@api_router.get("/my-portal")
+def my_portal(current_user: dict = Depends(require_login)):
+    """Return the employee portal URL for the currently logged-in user."""
+    db = get_database()
+    user_id = str(current_user.get("_id"))
+    emp = db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1})
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró un perfil de empleado vinculado a este usuario.")
+    return {
+        "employee_id": str(emp["_id"]),
+        "full_name": emp.get("full_name", ""),
+        "portal_url": f"/management/hr/portal/{str(emp['_id'])}",
+    }
+
+
+# ═══════════════════════════════════════════════════════════
 # Employee CRUD  (/{employee_id} MUST be last in its group)
 # ═══════════════════════════════════════════════════════════
 
@@ -624,14 +716,26 @@ def list_employees(
 def get_employee(
     request: Request,
     employee_id: str = Path(...),
+    current_user: dict = Depends(require_login),
 ):
     db = get_database()
     try:
-        doc = db[EMPLOYEES_COLLECTION].find_one({"_id": ObjectId(employee_id)})
+        oid = ObjectId(employee_id)
     except Exception:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    # Auto-generate user account if missing
+    creds = _ensure_user_account(db, doc)
+    # Re-fetch to get updated user_id
+    doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
+
+    enriched = _enrich_employee(doc)
+    enriched["username"] = creds["username"]
+    enriched["password"] = creds["password"]
+
     user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=doc.get("prop_id", 0),
@@ -642,7 +746,7 @@ def get_employee(
         changed_by=user.get("username", "anonymous"),
         metadata={"url": str(request.url)},
     )
-    return _enrich_employee(doc)
+    return enriched
 
 
 @api_router.put("/{employee_id}")

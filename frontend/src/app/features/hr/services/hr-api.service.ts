@@ -16,11 +16,12 @@ export class HrApiService {
       .pipe(map(dto => mapHrDashboard(dto)));
   }
 
-  getEmployees(search?: string, department?: string, isActive?: boolean, page: number = 1) {
+  getEmployees(search?: string, department?: string, isActive?: boolean, page: number = 1, propId?: number) {
     let params = new HttpParams().set('page', String(page));
     if (search) params = params.set('search', search);
     if (department) params = params.set('department', department);
     if (isActive !== undefined) params = params.set('is_active', String(isActive));
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.get<EmployeeListDto>(`${this.apiConfig.baseUrl}/hr`, { params, withCredentials: true })
       .pipe(map(dto => mapEmployeeList(dto)));
   }
@@ -44,6 +45,15 @@ export class HrApiService {
 
   getDepartments() {
     return this.http.get<any[]>(`${this.apiConfig.baseUrl}/hr/departments`, { withCredentials: true });
+  }
+
+  // ─── My Portal (self-service redirect) ───
+
+  getMyPortal() {
+    return this.http.get<{ employee_id: string; full_name: string; portal_url: string }>(
+      `${this.apiConfig.baseUrl}/hr/my-portal`,
+      { withCredentials: true },
+    );
   }
 
   // ─── Portal ───

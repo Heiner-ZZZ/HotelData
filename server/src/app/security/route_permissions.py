@@ -73,7 +73,7 @@ ROUTE_RULES = [
         roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos", "maintenance"),
     ),
     AccessRule("/api/hr",
-        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos"),
+        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos", "maintenance"),
     ),
     AccessRule("/api/expenses",
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "auditor_datos", "operador_datos"),

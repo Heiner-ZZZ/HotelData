@@ -56,6 +56,8 @@ export function mapEmployeeDetail(dto: EmployeeDetailDto): EmployeeDetail {
     isActive: dto.is_active,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+    username: dto.username,
+    password: dto.password,
   };
 }
 

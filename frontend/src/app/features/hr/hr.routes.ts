@@ -17,6 +17,11 @@ export const HR_ROUTES: Routes = [
       import('./pages/employee-onboarding-page/employee-onboarding-page').then(m => m.EmployeeOnboardingPageComponent),
   },
   {
+    path: 'my-portal',
+    loadComponent: () =>
+      import('./pages/my-portal-redirect/my-portal-redirect').then(m => m.MyPortalRedirectComponent),
+  },
+  {
     path: 'portal/:employeeId',
     loadComponent: () =>
       import('./pages/employee-dashboard-page/employee-dashboard-page').then(m => m.EmployeeDashboardPageComponent),

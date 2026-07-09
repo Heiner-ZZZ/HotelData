@@ -53,9 +53,15 @@ export class SidebarNavComponent {
       id: 'gestion',
       label: 'Gestión',
       icon: 'dashboard',
-      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'],
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance'],
       items: [
-        { label: 'Panel hotelero', href: '/management', icon: 'dashboard' },
+        {
+          label: 'Mi Portal',
+          href: '/management/hr/my-portal',
+          icon: 'assignment_ind',
+          allowedRoles: ['maintenance']
+        },
+        { label: 'Panel hotelero', href: '/management', icon: 'dashboard', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'] },
         {
           label: 'Recepción',
           href: '/management/recepcion',
@@ -132,7 +138,7 @@ export class SidebarNavComponent {
           label: 'Housekeeping',
           href: '/management/housekeeping',
           icon: 'cleaning_services',
-          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel']
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'maintenance']
         },
         {
           label: 'Facturación',

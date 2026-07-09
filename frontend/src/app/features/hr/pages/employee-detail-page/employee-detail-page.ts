@@ -74,6 +74,36 @@ import { HrApiService } from '../../services/hr-api.service';
                 </div>
               </div>
 
+              <!-- Credenciales -->
+              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                <h4 style="font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 16px;">
+                  <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">key</span>
+                  Credenciales de Acceso
+                </h4>
+                @if (e.username) {
+                  <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                    <div>
+                      <span style="color: #64748b;">Usuario:</span>
+                      <span style="color: #0f172a; font-weight: 600; font-family: monospace; margin-left: 4px;">{{ e.username }}</span>
+                    </div>
+                    @if (e.password) {
+                      <div>
+                        <span style="color: #64748b;">Contraseña:</span>
+                        <span style="color: #0f172a; font-weight: 600; font-family: monospace; margin-left: 4px; background: #fffbeb; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a;">{{ e.password }}</span>
+                        <span style="color: #dc2626; font-size: 11px; margin-left: 6px;">(copia esta clave, solo se muestra una vez)</span>
+                      </div>
+                    } @else {
+                      <div style="color: #64748b; font-size: 12px;">
+                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span>
+                        Usuario ya vinculado. La contraseña se configuró al crear la cuenta.
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div style="color: #64748b; font-size: 12px;">Generando credenciales...</div>
+                }
+              </div>
+
               <!-- Notes -->
               @if (e.notes) {
                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">

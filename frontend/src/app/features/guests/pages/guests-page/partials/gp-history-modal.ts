@@ -2,6 +2,29 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import type { GuestBookingItem, GuestBookingsResponse } from '../../../services/guests-api.service';
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  confirmed: 'Confirmada',
+  checked_in: 'Check-in',
+  checked_out: 'Check-out',
+  cancelled: 'Cancelada',
+  rejected: 'Rechazada',
+  no_show: 'No show',
+  completed: 'Completada',
+  in_house: 'En casa',
+  active: 'Activa',
+  lost: 'Perdida',
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  paid: 'Pagado',
+  partial: 'Parcial',
+  failed: 'Fallido',
+  refunded: 'Reembolsado',
+  unpaid: 'No pagado',
+};
+
 @Component({
   selector: 'app-gp-history-modal',
   standalone: true,
@@ -64,14 +87,14 @@ import type { GuestBookingItem, GuestBookingsResponse } from '../../../services/
                       <span class="gp-status-badge" [class.active]="b.status === 'confirmed' || b.status === 'checked_in'"
                         [class.warn]="b.status === 'pending'"
                         [class.danger]="b.status === 'cancelled' || b.status === 'rejected'">
-                        {{ b.status }}
+                        {{ STATUS_LABELS[b.status] || b.status }}
                       </span>
                     </td>
                     <td>
                       <span class="gp-status-badge" [class.active]="b.payment_status === 'paid'"
                         [class.warn]="b.payment_status === 'pending' || b.payment_status === 'partial'"
                         [class.danger]="b.payment_status === 'failed' || b.payment_status === 'refunded'">
-                        {{ b.payment_status || '—' }}
+                        {{ PAYMENT_LABELS[b.payment_status || ''] || b.payment_status || '—' }}
                       </span>
                     </td>
                     <td class="gp-cell-source">{{ b.booking_source || '—' }}</td>
@@ -90,6 +113,9 @@ import type { GuestBookingItem, GuestBookingsResponse } from '../../../services/
   `,
 })
 export class GpHistoryModalComponent {
+  readonly STATUS_LABELS = STATUS_LABELS;
+  readonly PAYMENT_LABELS = PAYMENT_LABELS;
+
   readonly data = input<GuestBookingsResponse | null>(null);
   readonly bookings = input<GuestBookingItem[]>([]);
   readonly loading = input(false);
