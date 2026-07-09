@@ -27,67 +27,7 @@
       }
 
       @if (activeTab() === 'contact') {
-        <section class="form-section">
-          <div class="section-header">
-            <span class="material-symbols-outlined section-icon">contact_mail</span>
-            <div>
-              <h2>Información de contacto</h2>
-              <p>Teléfono, correo de notificaciones y dirección.</p>
-            </div>
-          </div>
-          <div class="field-grid">
-            <div class="field">
-              <label for="phone">Teléfono</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">phone</span>
-                <input id="phone" type="tel" formControlName="phone" placeholder="+52 55 1234 5678" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="notificationEmail">Correo de notificaciones</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">mail</span>
-                <input id="notificationEmail" type="email" formControlName="notificationEmail" placeholder="notificaciones@ejemplo.com" />
-              </div>
-              <p class="field-hint">Correo secundario para recibir alertas y confirmaciones.</p>
-            </div>
-            <div class="field field-full">
-              <label for="addressStreet">Dirección</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">home</span>
-                <input id="addressStreet" type="text" formControlName="addressStreet" placeholder="Calle y número" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="addressCity">Ciudad</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">location_city</span>
-                <input id="addressCity" type="text" formControlName="addressCity" placeholder="Ciudad" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="addressState">Estado / Provincia</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">map</span>
-                <input id="addressState" type="text" formControlName="addressState" placeholder="Estado" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="addressCountry">País</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">public</span>
-                <input id="addressCountry" type="text" formControlName="addressCountry" placeholder="País" />
-              </div>
-            </div>
-            <div class="field">
-              <label for="addressPostalCode">Código postal</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">mail</span>
-                <input id="addressPostalCode" type="text" formControlName="addressPostalCode" placeholder="C.P." />
-              </div>
-            </div>
-          </div>
-        </section>
+        <app-pp-contact-form [form]="form" />
       }
 
       @if (activeTab() === 'social') {
@@ -115,67 +55,7 @@
       }
 
       @if (activeTab() === 'preferences') {
-        <section class="form-section">
-          <div class="section-header">
-            <span class="material-symbols-outlined section-icon">settings</span>
-            <div>
-              <h2>Preferencias</h2>
-              <p>Idioma, notificaciones y comunicaciones.</p>
-            </div>
-          </div>
-          <div class="field-grid">
-            <div class="field">
-              <label for="preferredLanguage">Idioma preferido</label>
-              <div class="input-wrap">
-                <span class="material-symbols-outlined input-icon">language</span>
-                <select id="preferredLanguage" formControlName="preferredLanguage">
-                  @for (opt of languageOptions; track opt.value) {
-                    <option [value]="opt.value">{{ opt.label }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="toggle-group">
-            <h3>Notificaciones</h3>
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="material-symbols-outlined toggle-icon">mail</span>
-                <div>
-                  <strong>Notificaciones por correo</strong>
-                  <p>Recibe confirmaciones, alertas de check-in y ofertas.</p>
-                </div>
-              </div>
-              <input type="checkbox" formControlName="notificationEmailEnabled" class="toggle-input" />
-              <span class="toggle-track"></span>
-            </label>
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="material-symbols-outlined toggle-icon">sms</span>
-                <div>
-                  <strong>Notificaciones por SMS</strong>
-                  <p>Alertas importantes en tu teléfono móvil.</p>
-                </div>
-              </div>
-              <input type="checkbox" formControlName="notificationSmsEnabled" class="toggle-input" />
-              <span class="toggle-track"></span>
-            </label>
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="material-symbols-outlined toggle-icon">campaign</span>
-                <div>
-                  <strong>Comunicaciones comerciales</strong>
-                  <p>Ofertas, promociones y novedades de hoteles asociados.</p>
-                </div>
-              </div>
-              <input type="checkbox" formControlName="marketingOptIn" class="toggle-input" />
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-        </section>
-
-        <app-profile-security />
+        <app-pp-preferences-form [form]="form" [languageOptions]="languageOptions" />
       }
 
       <div class="form-footer">

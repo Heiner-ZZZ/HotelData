@@ -21,6 +21,8 @@ import { ProfileSecurityComponent } from './components/profile-security';
 import { PpHeroComponent } from './partials/pp-hero';
 import { PpTabBarComponent } from './partials/pp-tab-bar';
 import { PpPersonalFormComponent } from './partials/pp-personal-form';
+import { PpContactFormComponent } from './partials/pp-contact-form';
+import { PpPreferencesFormComponent } from './partials/pp-preferences-form';
 import { PpAvatarSectionComponent } from './partials/pp-avatar-section';
 import { PpTravelSectionComponent } from './partials/pp-travel-section';
 import type { ProfileViewModel } from '../../models/profile.model';
@@ -40,8 +42,8 @@ import { ProfileApiService } from '../../services/profile-api.service';
 @Component({
   selector: 'app-profile-page',
   imports: [ErrorStateComponent, LoadingStateComponent, ProfileSecurityComponent, ReactiveFormsModule,
-    PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent,
-    PpAvatarSectionComponent, PpTravelSectionComponent],
+    PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
+    PpPreferencesFormComponent, PpAvatarSectionComponent, PpTravelSectionComponent],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

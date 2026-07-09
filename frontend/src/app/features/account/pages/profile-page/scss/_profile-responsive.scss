@@ -1,0 +1,11 @@
+@media (max-width: 600px) {
+  .profile-page { max-width: 100%; }
+  .profile-hero { flex-direction: column; text-align: center; }
+  .hero-badges { justify-content: center; }
+  .field-grid { grid-template-columns: 1fr; }
+  .tab-btn {
+    font-size: 0.73rem;
+    padding: 0.5rem 0.3rem;
+    .tab-label { display: none; }
+  }
+}

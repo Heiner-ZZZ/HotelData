@@ -1,0 +1,114 @@
+@use 'profile-variables' as *;
+
+.avatar-section {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--app-border, $border);
+  display: grid;
+  gap: 1rem;
+}
+
+.avatar-upload-wrapper { display: flex; gap: 1.25rem; align-items: flex-start; }
+
+.avatar-preview {
+  flex-shrink: 0;
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--surface-card, $surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: opacity 200ms ease;
+  &.is-uploading { opacity: 0.7; }
+
+  .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+
+  .avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    .material-symbols-outlined {
+      font-size: 2.4rem;
+      color: #6366f1;
+      font-variation-settings: 'FILL' 1, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+    }
+  }
+}
+
+.upload-progress-ring {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(1px);
+  .progress-svg { width: 100%; height: 100%; }
+  .progress-pct { position: absolute; font-size: 0.7rem; font-weight: 700; color: $accent; }
+}
+
+.upload-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0.9rem 1rem;
+  border: 2px dashed var(--app-border, #d1d5db);
+  border-radius: $radius-lg;
+  background: rgba(20, 99, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+  text-align: center;
+
+  &:hover { border-color: $accent; background: rgba(20, 99, 255, 0.06); }
+  &.is-dragover { border-color: $accent; background: rgba(20, 99, 255, 0.1); box-shadow: 0 0 0 4px rgba(20, 99, 255, 0.12); }
+  &.is-uploading { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+
+  .file-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+  .upload-icon { font-size: 1.6rem; color: $accent; font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  strong { font-size: 0.82rem; color: $accent; }
+  .upload-hint { font-size: 0.72rem; color: var(--muted-text, $muted); line-height: 1.3; }
+  .upload-meta { font-size: 0.65rem; color: #9ca3af; }
+}
+
+.avatar-or-url { display: flex; gap: 0.85rem; align-items: center; }
+
+.avatar-divider {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--app-border, $border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted-text, $muted);
+  text-transform: uppercase;
+}
+
+.avatar-field { flex: 1; display: grid; gap: 4px; }
+
+.social-section {
+  h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.82rem;
+    color: var(--muted-text, $muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
+.social-ig { color: #e1306c !important; }
+.social-fb { color: #1877f2 !important; }
+.social-tw { color: #1da1f2 !important; }
+.social-li { color: #0a66c2 !important; }
