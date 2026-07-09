@@ -33,6 +33,17 @@
         <span class="si-tab-count">{{ folioCount() }}</span>
       }
     </button>
+    <button class="si-tab" [class.active]="activeTab() === 'sessions'" (click)="setTab('sessions')">
+      <span class="material-symbols-outlined">devices</span>
+      Sesiones
+    </button>
+    <button class="si-tab" [class.active]="activeTab() === 'lost-found'" (click)="setTab('lost-found')">
+      <span class="material-symbols-outlined">search_off</span>
+      Lost &amp; Found
+      @if (lostCount() > 0) {
+        <span class="si-tab-count">{{ lostCount() }}</span>
+      }
+    </button>
   </nav>
 
   <!-- ══════════════════════════════════════════════
@@ -99,8 +110,13 @@
                     }
                   </div>
                   <div class="si-tl-body">
-                    <div class="si-tl-head">
-                      <span class="si-tl-room">Hab. {{ item.roomLabel }}</span>
+                <div class="si-tl-head">
+                  <span class="si-tl-room">
+                    Hab. {{ item.roomLabel }}
+                    @if (item.type === 'message' && dndFor(item.roomLabel)) {
+                      <span class="si-dnd-badge" title="No Molestar">DND</span>
+                    }
+                  </span>
                       <span class="si-tl-time">{{ item.time | date:'HH:mm' }}</span>
                     </div>
                     <div class="si-tl-head-sub">
@@ -231,21 +247,21 @@
 
             <div class="si-req-detail-actions">
               @if (req.status === 'pending') {
-                <button class="si-action-btn si-action-primary" (click)="updateRequest(req, 'in_progress')">
+                <button class="si-action-btn si-action-primary" (click)="openConfirmModal('take', req)">
                   <span class="material-symbols-outlined">handyman</span>
                   Tomar Solicitud
                 </button>
-                <button class="si-action-btn si-action-cancel" (click)="updateRequest(req, 'cancelled')">
+                <button class="si-action-btn si-action-cancel" (click)="openConfirmModal('cancel', req)">
                   <span class="material-symbols-outlined">close</span>
                   Cancelar
                 </button>
               }
               @if (req.status === 'in_progress') {
-                <button class="si-action-btn si-action-success" (click)="updateRequest(req, 'completed')">
+                <button class="si-action-btn si-action-success" (click)="openConfirmModal('complete', req)">
                   <span class="material-symbols-outlined">check</span>
                   Completar
                 </button>
-                <button class="si-action-btn si-action-cancel" (click)="updateRequest(req, 'cancelled')">
+                <button class="si-action-btn si-action-cancel" (click)="openConfirmModal('cancel', req)">
                   <span class="material-symbols-outlined">close</span>
                   Cancelar
                 </button>
@@ -329,7 +345,303 @@
       }
     </div>
   }
+
+  <!-- ══════════════════════════════════════════════
+       SESSIONS TAB
+       ══════════════════════════════════════════════ -->
+  @if (activeTab() === 'sessions') {
+    <div class="si-sessions">
+      <div class="si-sessions-header">
+        <h2>Sesiones de Estancia Activas</h2>
+        <button class="si-sessions-add-btn" (click)="showNewSessionForm.set(!showNewSessionForm())">
+          <span class="material-symbols-outlined">{{ showNewSessionForm() ? 'close' : 'add' }}</span>
+          {{ showNewSessionForm() ? 'Cancelar' : 'Nueva Sesión' }}
+        </button>
+      </div>
+
+      @if (showNewSessionForm()) {
+        <div class="si-session-form">
+          <div class="si-form-grid">
+            <div class="si-form-field">
+              <label>Booking ID</label>
+              <input type="text" [ngModel]="newSessionBookingId()" (ngModelChange)="newSessionBookingId.set($event)" placeholder="Ej: BK-001" />
+            </div>
+            <div class="si-form-field">
+              <label>Habitación</label>
+              <input type="text" [ngModel]="newSessionRoomLabel()" (ngModelChange)="newSessionRoomLabel.set($event)" placeholder="Ej: HR-1-101" />
+            </div>
+            <div class="si-form-field">
+              <label>Huésped</label>
+              <input type="text" [ngModel]="newSessionGuestName()" (ngModelChange)="newSessionGuestName.set($event)" placeholder="Nombre del huésped" />
+            </div>
+            <div class="si-form-field">
+              <label>Check-in</label>
+              <input type="date" [ngModel]="newSessionCheckIn()" (ngModelChange)="newSessionCheckIn.set($event)" />
+            </div>
+            <div class="si-form-field">
+              <label>Check-out</label>
+              <input type="date" [ngModel]="newSessionCheckOut()" (ngModelChange)="newSessionCheckOut.set($event)" />
+            </div>
+          </div>
+          <button class="si-session-create-btn" (click)="createSession()" [disabled]="creatingSession()">
+            {{ creatingSession() ? 'Creando...' : 'Crear Sesión' }}
+          </button>
+        </div>
+      }
+
+      @if (sessionsLoading()) {
+        <div class="si-loading">Cargando sesiones...</div>
+      } @else if (sessions().length === 0) {
+        <div class="si-empty">
+          <span class="material-symbols-outlined">devices</span>
+          <p>No hay sesiones activas para esta propiedad</p>
+        </div>
+      } @else {
+        <div class="si-sessions-grid">
+          @for (s of sessions(); track s.token) {
+            <div class="si-session-card">
+              <div class="si-session-top">
+                <div>
+                  <div class="si-session-guest">{{ s.guest_name }}</div>
+                  <div class="si-session-room">
+                    <span class="material-symbols-outlined">meeting_room</span>
+                    Hab. {{ s.room_label }}
+                  </div>
+                </div>
+                <span class="si-session-active">Activa</span>
+              </div>
+              <div class="si-session-meta">
+                <span>Check-in: {{ s.check_in }}</span>
+                <span>Check-out: {{ s.check_out }}</span>
+              </div>
+              <div class="si-session-booking">
+                <span class="material-symbols-outlined">confirmation_number</span>
+                {{ s.booking_id }}
+              </div>
+              <div class="si-session-token">
+                <code>{{ s.token.slice(0, 12) }}...</code>
+              </div>
+              <div class="si-session-actions">
+                <button class="si-session-deactivate" (click)="deactivateSession(s.token)">
+                  <span class="material-symbols-outlined">power_off</span>
+                  Desactivar
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════
+       LOST & FOUND TAB
+       ══════════════════════════════════════════════ -->
+  @if (activeTab() === 'lost-found') {
+    <div class="si-lost">
+      <div class="si-lost-header">
+        <h2>Objetos Perdidos</h2>
+        <button class="si-lost-add-btn" (click)="showLostFoundForm.set(!showLostFoundForm())">
+          <span class="material-symbols-outlined">{{ showLostFoundForm() ? 'close' : 'add_circle' }}</span>
+          {{ showLostFoundForm() ? 'Cancelar' : 'Registrar Objeto' }}
+        </button>
+      </div>
+
+      <!-- Status filter chips -->
+      <div class="si-lost-chips">
+        <button class="si-chip" [class.active]="lostFoundStatusFilter() === null" (click)="setLostStatusFilter(null)">Todos</button>
+        <button class="si-chip" [class.active]="lostFoundStatusFilter() === 'found'" (click)="setLostStatusFilter('found')">Encontrados</button>
+        <button class="si-chip" [class.active]="lostFoundStatusFilter() === 'pending'" (click)="setLostStatusFilter('pending')">Pendientes</button>
+        <button class="si-chip" [class.active]="lostFoundStatusFilter() === 'claimed'" (click)="setLostStatusFilter('claimed')">Reclamados</button>
+        <button class="si-chip" [class.active]="lostFoundStatusFilter() === 'disposed'" (click)="setLostStatusFilter('disposed')">Desechados</button>
+      </div>
+
+      <!-- Create form -->
+      @if (showLostFoundForm()) {
+        <div class="si-lost-form">
+          <div class="si-form-grid">
+            <div class="si-form-field si-form-span-2">
+              <label>Nombre del objeto *</label>
+              <input type="text" [ngModel]="newLostItemName()" (ngModelChange)="newLostItemName.set($event)" placeholder="Ej: iPhone 15 negro" />
+            </div>
+            <div class="si-form-field si-form-span-2">
+              <label>Descripción</label>
+              <textarea rows="2" [ngModel]="newLostDesc()" (ngModelChange)="newLostDesc.set($event)" placeholder="Detalles adicionales..."></textarea>
+            </div>
+            <div class="si-form-field">
+              <label>Ubicación encontrada</label>
+              <input type="text" [ngModel]="newLostLocation()" (ngModelChange)="newLostLocation.set($event)" placeholder="Ej: Hab. 101" />
+            </div>
+            <div class="si-form-field">
+              <label>Encontrado por</label>
+              <input type="text" [ngModel]="newLostFoundBy()" (ngModelChange)="newLostFoundBy.set($event)" placeholder="Ej: Housekeeping" />
+            </div>
+            <div class="si-form-field">
+              <label>Booking ID (opcional)</label>
+              <input type="text" [ngModel]="newLostBookingId()" (ngModelChange)="newLostBookingId.set($event)" placeholder="Ej: BK-001" />
+            </div>
+            <div class="si-form-field">
+              <label>Huésped (opcional)</label>
+              <input type="text" [ngModel]="newLostGuestName()" (ngModelChange)="newLostGuestName.set($event)" placeholder="Nombre del huésped" />
+            </div>
+          </div>
+          <button class="si-lost-create-btn" (click)="createLostItem()" [disabled]="creatingLostItem()">
+            {{ creatingLostItem() ? 'Registrando...' : 'Registrar Objeto' }}
+          </button>
+        </div>
+      }
+
+      <!-- Items list / detail split -->
+      <div class="si-lost-body">
+        <!-- Left: items list -->
+        <div class="si-lost-list-panel" [class.collapsed]="selectedLostItem() !== null">
+          @if (lostFoundLoading()) {
+            <div class="si-loading">Cargando...</div>
+          } @else if (lostFoundItems().length === 0) {
+            <div class="si-empty">
+              <span class="material-symbols-outlined">backpack</span>
+              <p>No hay objetos perdidos registrados</p>
+            </div>
+          } @else {
+            @for (item of lostFoundItems(); track item._id) {
+              <button
+                class="si-lost-list-item"
+                [class.selected]="selectedLostItem()?._id === item._id"
+                (click)="openLostItemDetail(item)"
+              >
+                <div class="si-lost-list-icon">
+                  <span class="material-symbols-outlined">backpack</span>
+                </div>
+                <div class="si-lost-list-body">
+                  <div class="si-lost-list-name">{{ item.item_name }}</div>
+                  <div class="si-lost-list-meta">
+                    @if (item.guest_name) { <span>{{ item.guest_name }}</span> }
+                    @if (item.booking_id) { <span>· {{ item.booking_id }}</span> }
+                  </div>
+                </div>
+                <span class="si-lost-list-status si-lost-{{ item.status }}">{{ lostStatusLabel(item.status) }}</span>
+              </button>
+            }
+          }
+        </div>
+
+        <!-- Right: item detail -->
+        @if (selectedLostItem(); as item) {
+          <div class="si-lost-detail">
+            <div class="si-lost-detail-header">
+              <h3>{{ item.item_name }}</h3>
+              <button class="si-back-btn" (click)="closeLostItemDetail()">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="si-lost-detail-body">
+              @if (item.description) {
+                <p class="si-lost-detail-desc">{{ item.description }}</p>
+              }
+              <div class="si-lost-detail-grid">
+                <div class="si-lost-detail-field">
+                  <label>Estado</label>
+                  <span class="si-lost-list-status si-lost-{{ item.status }}">{{ lostStatusLabel(item.status) }}</span>
+                </div>
+                @if (item.found_location) {
+                  <div class="si-lost-detail-field">
+                    <label>Ubicación</label>
+                    <span>{{ item.found_location }}</span>
+                  </div>
+                }
+                @if (item.found_by) {
+                  <div class="si-lost-detail-field">
+                    <label>Encontrado por</label>
+                    <span>{{ item.found_by }}</span>
+                  </div>
+                }
+                @if (item.guest_name) {
+                  <div class="si-lost-detail-field">
+                    <label>Huésped</label>
+                    <span>{{ item.guest_name }}</span>
+                  </div>
+                }
+                @if (item.booking_id) {
+                  <div class="si-lost-detail-field">
+                    <label>Booking</label>
+                    <span>{{ item.booking_id }}</span>
+                  </div>
+                }
+                @if (item.returned_to) {
+                  <div class="si-lost-detail-field">
+                    <label>Entregado a</label>
+                    <span>{{ item.returned_to }}</span>
+                  </div>
+                }
+                @if (item.returned_at) {
+                  <div class="si-lost-detail-field">
+                    <label>Fecha devolución</label>
+                    <span>{{ item.returned_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                }
+                <div class="si-lost-detail-field">
+                  <label>Registrado</label>
+                  <span>{{ item.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+            </div>
+            @if (item.status === 'found' || item.status === 'pending') {
+              <div class="si-lost-detail-actions">
+                <div class="si-lost-claim-row">
+                  <input
+                    type="text"
+                    class="si-lost-claim-input"
+                    placeholder="¿A quién se entregó?"
+                    [ngModel]="lostReturnedTo()"
+                    (ngModelChange)="lostReturnedTo.set($event)"
+                  />
+                  <button class="si-action-btn si-action-success" (click)="claimLostItem(item._id, lostReturnedTo())" [disabled]="!lostReturnedTo().trim()">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    Reclamar
+                  </button>
+                </div>
+                <button class="si-action-btn si-action-cancel" (click)="disposeLostItem(item._id)">
+                  <span class="material-symbols-outlined">delete</span>
+                  Desechar
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>
+
+<!-- ═══ CONFIRM MODAL ═══ -->
+
+@if (showConfirmModal()) {
+  <div class="si-modal-overlay" (click)="closeConfirmModal()">
+    <div class="si-modal" (click)="$event.stopPropagation()">
+      <div class="si-modal-header">
+        <h3>{{ confirmTitle() }}</h3>
+        <button class="si-modal-close" (click)="closeConfirmModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="si-modal-body">
+        <p class="si-modal-message">{{ confirmMessage() }}</p>
+        <label class="si-modal-label">Respuesta para el huésped (opcional)</label>
+        <textarea
+          class="si-modal-textarea"
+          placeholder="Escribe un mensaje de respuesta..."
+          rows="3"
+          [ngModel]="staffResponseInput()"
+          (ngModelChange)="staffResponseInput.set($event)"
+        ></textarea>
+      </div>
+      <div class="si-modal-actions">
+        <button class="si-modal-btn si-modal-btn-cancel" (click)="closeConfirmModal()">Cancelar</button>
+        <button class="si-modal-btn si-modal-btn-confirm" (click)="confirmAction()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- ═══ MODALS ═══ -->
 

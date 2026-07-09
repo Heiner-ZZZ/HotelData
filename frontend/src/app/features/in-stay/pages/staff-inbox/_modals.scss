@@ -1,0 +1,144 @@
+/* ── Confirm Modal ───────────────────────────────────────── */
+
+@use 'tokens' as t;
+
+.si-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.si-modal {
+  background: t.$si-surface;
+  border-radius: t.$si-radius;
+  width: 440px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.si-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid t.$si-border;
+
+  h3 {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+.si-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: t.$si-text-secondary;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: t.$si-surface-bg;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+  }
+}
+
+.si-modal-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.si-modal-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: t.$si-text;
+  line-height: 1.4;
+}
+
+.si-modal-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: t.$si-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.si-modal-textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid t.$si-border;
+  border-radius: t.$si-radius-sm;
+  font-size: 0.83rem;
+  font-family: inherit;
+  resize: vertical;
+  background: t.$si-surface;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+  min-height: 60px;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: t.$si-accent;
+  }
+
+  &::placeholder {
+    color: t.$si-text-secondary;
+    opacity: 0.6;
+  }
+}
+
+.si-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid t.$si-border;
+  background: t.$si-surface-bg;
+}
+
+.si-modal-btn {
+  padding: 0.45rem 1rem;
+  border-radius: t.$si-radius-sm;
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+
+.si-modal-btn-cancel {
+  background: transparent;
+  color: t.$si-text-secondary;
+  border: 1px solid t.$si-border;
+
+  &:hover {
+    background: t.$si-surface-soft;
+  }
+}
+
+.si-modal-btn-confirm {
+  background: t.$si-accent;
+  color: white;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}

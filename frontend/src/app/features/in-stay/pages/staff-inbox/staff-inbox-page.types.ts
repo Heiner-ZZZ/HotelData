@@ -1,7 +1,7 @@
 import type { ServiceRequest } from '../../models/in-stay.model';
 
 /** Main navigation tabs. */
-export type MainTab = 'unified' | 'folios';
+export type MainTab = 'unified' | 'folios' | 'sessions' | 'lost-found';
 
 /** Category chip definition for quick request creation + filtering. */
 export interface CategoryChip {
