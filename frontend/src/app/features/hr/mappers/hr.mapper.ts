@@ -52,6 +52,7 @@ export function mapEmployeeDetail(dto: EmployeeDetailDto): EmployeeDetail {
     emergencyPhone: dto.emergency_phone,
     notes: dto.notes,
     propId: dto.prop_id,
+    userId: dto.user_id ?? null,
     isActive: dto.is_active,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,

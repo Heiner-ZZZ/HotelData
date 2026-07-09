@@ -40,6 +40,7 @@ export interface PoliciesViewModel {
   roomTypeId: string;
   // SPEC 022 structured fields
   cancellationHours: number;
+  cancellationPenaltyPercent: number;
   petsAllowed: boolean;
   petFee: number;
   childrenAllowed: boolean;

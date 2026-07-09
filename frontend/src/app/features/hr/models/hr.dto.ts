@@ -36,6 +36,7 @@ export interface EmployeeDetailDto {
   emergency_phone: string;
   notes: string;
   prop_id: number | null;
+  user_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

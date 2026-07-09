@@ -26,6 +26,7 @@ export interface PoliciesDto {
     room_type_id?: string;
     // SPEC 022 structured fields
     cancellation_hours?: number;
+    cancellation_penalty_percent?: number;
     pets_allowed?: boolean;
     pet_fee?: number;
     children_allowed?: boolean;
@@ -61,6 +62,7 @@ export interface PoliciesSaveDto {
   room_type_id?: string;
   // SPEC 022 structured fields
   cancellation_hours?: number;
+  cancellation_penalty_percent?: number;
   pets_allowed?: boolean;
   pet_fee?: number;
   children_allowed?: boolean;

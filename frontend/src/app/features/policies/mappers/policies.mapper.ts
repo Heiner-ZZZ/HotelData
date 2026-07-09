@@ -7,6 +7,7 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
   const cancellation = dto.policies.cancellation_policy || 'Sin politica registrada';
   const payments = dto.policies.payment_policy || 'Sin politica de pagos';
   const cancelHours = dto.policies.cancellation_hours ?? 0;
+  const cancelPenaltyPct = dto.policies.cancellation_penalty_percent ?? 100;
   const minStay = dto.policies.min_stay ?? 0;
   const maxStay = dto.policies.max_stay ?? 0;
   return {
@@ -26,6 +27,7 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
     houseRules: dto.policies.house_rules || '',
     roomTypeId: dto.policies.room_type_id || '',
     cancellationHours: cancelHours,
+    cancellationPenaltyPercent: cancelPenaltyPct,
     petsAllowed: dto.policies.pets_allowed ?? false,
     petFee: dto.policies.pet_fee ?? 0,
     childrenAllowed: dto.policies.children_allowed ?? false,
@@ -78,6 +80,7 @@ export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {
     room_type_id: vm.roomTypeId || undefined,
     // Always send numeric/boolean fields; backend handles via default=None
     cancellation_hours: vm.cancellationHours,
+    cancellation_penalty_percent: vm.cancellationPenaltyPercent,
     pets_allowed: vm.petsAllowed,
     pet_fee: vm.petFee,
     children_allowed: vm.childrenAllowed,

@@ -26,6 +26,7 @@ export interface EmployeeDetail {
   emergencyPhone: string;
   notes: string;
   propId: number | null;
+  userId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
