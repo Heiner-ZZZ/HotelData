@@ -92,6 +92,36 @@ export class GuestPortalPageComponent implements OnInit {
     return data?.compendium?.amenities ?? [];
   });
 
+  /** Requests sorted: pending/in-progress first, completed/cancelled last. */
+  readonly sortedRequests = computed(() => {
+    const reqs = this.requests();
+    const active: ServiceRequest[] = [];
+    const resolved: ServiceRequest[] = [];
+    for (const r of reqs) {
+      if (r.status === 'pending' || r.status === 'in_progress') {
+        active.push(r);
+      } else {
+        resolved.push(r);
+      }
+    }
+    // Most recent first within each group
+    active.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    resolved.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return [...active, ...resolved];
+  });
+
+  /** Number of requests to show initially (expandable). */
+  readonly requestDisplayLimit = signal(5);
+
+  /** Requests visible based on current limit. */
+  readonly visibleRequests = computed(() => this.sortedRequests().slice(0, this.requestDisplayLimit()));
+
+  readonly hasMoreRequests = computed(() => this.sortedRequests().length > this.requestDisplayLimit());
+
+  showMoreRequests(): void {
+    this.requestDisplayLimit.update((n) => n + 5);
+  }
+
   // ── Notifications ──
 
   readonly showNotifications = signal(false);
@@ -295,6 +325,7 @@ export class GuestPortalPageComponent implements OnInit {
 
   private loadRequests(): void {
     if (!this.tokenValue) return;
+    this.requestDisplayLimit.set(5);
     this.api.getRequests(this.tokenValue).subscribe({
       next: (res) => this.requests.set(res.items),
     });

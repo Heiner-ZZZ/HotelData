@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
 import { DatePipe, CurrencyPipe, formatCurrency } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -204,6 +204,16 @@ export class StaffInboxPageComponent implements OnDestroy {
   private originalTitle = document.title;
 
   constructor() {
+    // Auto-select property in single-hotel mode
+    effect(() => {
+      if (this.propCtx.ready() && this.propCtx.singleHotelMode()) {
+        const propId = this.propCtx.currentPropId();
+        if (propId && this.selectedPropId() !== propId) {
+          this.onPropSelected({ propId, label: '' });
+        }
+      }
+    });
+
     this.loadData();
     this.connectSse();
   }
@@ -581,6 +591,27 @@ export class StaffInboxPageComponent implements OnDestroy {
           this.toast.info(`Nuevo mensaje de ${notification.data.guest_name} (Hab. ${notification.data.room_label})`);
         } else if (notification.type === 'new_request') {
           this.toast.warning(`Nueva solicitud: ${notification.data.request_type || 'Servicio'} (Hab. ${notification.data.room_label})`);
+        } else if (notification.type === 'lost_found_create') {
+          this.toast.info(`Objeto perdido registrado: ${notification.data.item_name || 'Sin nombre'}`);
+          if (this.activeTab() === 'lost-found') this.loadLostFound();
+        } else if (notification.type === 'lost_found_claim') {
+          this.toast.success(`Objeto reclamado: ${notification.data.item_name || 'Sin nombre'}`);
+          if (this.activeTab() === 'lost-found') this.loadLostFound();
+        } else if (notification.type === 'lost_found_dispose') {
+          this.toast.info(`Objeto desechado: ${notification.data.item_name || 'Sin nombre'}`);
+          if (this.activeTab() === 'lost-found') this.loadLostFound();
+        } else if (notification.type === 'request_updated') {
+          const newStatus = notification.data.status_label || notification.data.new_status || '';
+          this.toast.success(`Solicitud ${notification.data.request_type || ''} → ${newStatus} (Hab. ${notification.data.room_label})`);
+          // If we're viewing this specific request, update it locally
+          const selected = this.selectedRequest();
+          if (selected && selected._id === notification.data.request_id) {
+            this.selectedRequest.set({
+              ...selected,
+              status: (notification.data.new_status || selected.status) as ServiceRequest['status'],
+              status_label: notification.data.status_label || selected.status_label,
+            });
+          }
         }
         // Auto-refresh data (lightweight — no loading flag)
         this.refreshData();

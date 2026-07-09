@@ -2,11 +2,18 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 export interface StayNotification {
-  type: 'new_message' | 'new_request';
+  type: 'new_message' | 'new_request' | 'lost_found_create' | 'lost_found_claim' | 'lost_found_dispose' | 'request_updated';
   data: {
-    room_label: string;
-    guest_name: string;
+    room_label?: string;
+    guest_name?: string;
     request_type?: string;
+    request_id?: string;
+    old_status?: string;
+    new_status?: string;
+    status_label?: string;
+    item_name?: string;
+    status?: string;
+    staff?: string;
   };
   timestamp: string;
 }

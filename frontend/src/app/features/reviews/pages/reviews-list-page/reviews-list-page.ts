@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
@@ -9,6 +9,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReviewsListViewModel } from '../../models/reviews.model';
 import { ReviewsApiService } from '../../services/reviews-api.service';
@@ -26,12 +27,27 @@ export class ReviewsListPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reviewsApi = inject(ReviewsApiService);
   private readonly router = inject(Router);
+  readonly propertyCtx = inject(PropertyContextService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<ReviewsListViewModel | null>(null);
   readonly filterStatus = signal<string>('');
 
   constructor() {
+    // Auto-select property in single-hotel mode
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId) {
+          void this.router.navigate([], {
+            relativeTo: this.activatedRoute,
+            queryParams: { prop_id: propId },
+            queryParamsHandling: 'merge',
+          });
+        }
+      }
+    });
+
     this.activatedRoute.queryParamMap
       .pipe(
         map(params => ({

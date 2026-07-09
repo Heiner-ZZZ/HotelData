@@ -166,9 +166,7 @@
                     </td>
                     <td class="cell-date">{{ user.createdAtLabel }}</td>
                     <td class="cell-actions">
-                      @if (!user.isActive) {
-                        <span class="action-hint">Inactivo</span>
-                      } @else if (confirmDeleteId() === user.userId) {
+                      @if (confirmDeleteId() === user.userId) {
                         <div class="confirm-delete">
                           <span>¿Eliminar?</span>
                           <button
@@ -202,7 +200,11 @@
                           </button>
                         </div>
                       } @else {
-                        <span class="action-hint">{{ user.actionHint }}</span>
+                        @if (user.isActive) {
+                          <span class="action-hint">{{ user.actionHint }}</span>
+                        } @else {
+                          <span class="action-hint">Inactivo</span>
+                        }
                       }
                     </td>
                   </tr>

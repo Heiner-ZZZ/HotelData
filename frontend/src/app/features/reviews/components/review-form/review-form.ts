@@ -48,11 +48,10 @@ export interface ReviewFormResult {
         <div class="star-row big">
           @for (star of [1,2,3,4,5]; track star) {
             <button type="button" class="star-btn" (click)="overallRating.set(star)"
-              [class.active]="star <= overallRating()"
-              [class.hover]="star <= hoverRating()"
               (mouseenter)="hoverRating.set(star)"
               (mouseleave)="hoverRating.set(0)">
-              <span class="material-symbols-outlined star-icon">
+              <span class="material-symbols-outlined star-icon"
+                [style.color]="star <= (hoverRating() || overallRating()) ? '#f59e0b' : '#d1d5db'">
                 {{ star <= (hoverRating() || overallRating()) ? 'star' : 'star_border' }}
               </span>
             </button>
