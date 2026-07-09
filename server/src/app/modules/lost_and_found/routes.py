@@ -30,7 +30,15 @@ def create_lost_item_api(
     current_user: dict = Depends(require_login),
 ):
     """Register a new lost & found item."""
-    return create_lost_item(payload)
+    result = create_lost_item(payload)
+    # Push SSE event for staff in the same property
+    _push_lost_found_event(
+        payload.prop_id, "lost_found_create",
+        item_name=payload.item_name,
+        status="found",
+        staff=current_user.get("display_name") or current_user.get("username", "Staff"),
+    )
+    return result
 
 
 @api_router.get("")
@@ -105,6 +113,13 @@ def claim_lost_item_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    # Push SSE event
+    _push_lost_found_event(
+        result.get("prop_id", 0), "lost_found_claim",
+        item_name=result.get("item_name", ""),
+        status="claimed",
+        staff=current_user.get("display_name") or current_user.get("username", "Staff"),
+    )
     return result
 
 
@@ -121,4 +136,11 @@ def dispose_lost_item_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+    # Push SSE event
+    _push_lost_found_event(
+        result.get("prop_id", 0), "lost_found_dispose",
+        item_name=result.get("item_name", ""),
+        status="disposed",
+        staff=current_user.get("display_name") or current_user.get("username", "Staff"),
+    )
     return result
