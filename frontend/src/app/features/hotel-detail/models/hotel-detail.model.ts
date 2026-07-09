@@ -5,6 +5,7 @@ export interface HotelDetailViewModel {
   starsLabel: string;
   reviewLabel: string;
   averagePrice: string;
+  minRateLabel: string;
   reservations: number;
   clicks: number;
   events: number;

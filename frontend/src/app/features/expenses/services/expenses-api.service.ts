@@ -66,8 +66,9 @@ export class ExpensesApiService {
     return this.http.get<string[]>(`${this.apiConfig.baseUrl}/expenses/ledger/periods`, { params, withCredentials: true });
   }
 
-  getLedgerFolios(propId: number) {
+  getLedgerFolios(propId: number, status?: string) {
     let params = new HttpParams().set('prop_id', String(propId));
+    if (status) params = params.set('status', status);
     return this.http.get<LedgerFoliosDto>(`${this.apiConfig.baseUrl}/expenses/ledger/folios`, { params, withCredentials: true })
       .pipe(map(dto => mapLedgerFolios(dto)));
   }

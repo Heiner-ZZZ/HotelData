@@ -29,6 +29,8 @@ export interface FolioDto {
   check_in_time?: string;
   check_out_time?: string;
   status: 'open' | 'closed';
+  is_expired: boolean;
+  has_invoice: boolean;
   total_room: number;
   total_charges: number;
   total_discounts: number;
@@ -69,6 +71,8 @@ export interface FolioViewModel {
   checkInTime?: string;
   checkOutTime?: string;
   status: 'open' | 'closed';
+  isExpired: boolean;
+  hasInvoice: boolean;
   totalRoom: number;
   totalCharges: number;
   totalDiscounts: number;
@@ -117,6 +121,8 @@ function mapFolio(dto: FolioDto): FolioViewModel {
     checkInTime: dto.check_in_time || undefined,
     checkOutTime: dto.check_out_time || undefined,
     status: dto.status,
+    isExpired: dto.is_expired ?? false,
+    hasInvoice: dto.has_invoice ?? false,
     totalRoom: dto.total_room,
     totalCharges: dto.total_charges,
     totalDiscounts: dto.total_discounts,

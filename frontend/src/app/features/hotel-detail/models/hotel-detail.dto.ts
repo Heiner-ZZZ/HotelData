@@ -5,6 +5,7 @@ export interface HotelDetailDto {
   prop_starrating: number | null;
   review_label: string;
   avg_price_label: string;
+  min_rate_label?: string;
   reservations: number;
   clicks: number;
   events: number;

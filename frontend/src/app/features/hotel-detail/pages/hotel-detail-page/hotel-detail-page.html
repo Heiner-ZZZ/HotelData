@@ -391,7 +391,24 @@
           <!-- ─── RIGHT: Sticky Sidebar ─── -->
           <aside class="detail-sidebar">
             <div class="booking-card">
-              <h3 class="sidebar-title">Resumen de Reserva</h3>
+              @if (!showBooking()) {
+                <h3 class="sidebar-title">¿Listo para reservar?</h3>
+                <p class="sidebar-sub">Cotizaremos el mejor precio según tus fechas</p>
+                <button class="btn-confirm" (click)="showBooking.set(true)">
+                  <span class="material-symbols-outlined">sell</span>
+                  Consultar Precio
+                </button>
+                <div class="secure-badge">
+                  <span class="material-symbols-outlined">security</span>
+                  Pago 100% seguro SSL
+                </div>
+              } @else {
+              <div class="booking-card-head">
+                <h3 class="sidebar-title">Resumen de Reserva</h3>
+                <button class="booking-collapse-btn" (click)="showBooking.set(false)" title="Cerrar cotizador">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
               <p class="sidebar-sub">Configura los parámetros para cotización final</p>
 
               <div class="sidebar-fields">
@@ -414,8 +431,8 @@
               <div class="sidebar-divider"></div>
 
               <div class="sidebar-total">
-                <span class="total-label">Reserva desde</span>
-                <span class="total-val">${{ vm.averagePrice }}</span>
+                <span class="total-label">Desde</span>
+                <span class="total-val">${{ vm.minRateLabel }}</span>
                 <span class="total-unit">/noche</span>
               </div>
 
@@ -426,6 +443,7 @@
                 <span class="material-symbols-outlined">security</span>
                 Pago 100% seguro SSL
               </div>
+              }
             </div>
 
 

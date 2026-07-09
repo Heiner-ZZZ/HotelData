@@ -16,6 +16,7 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
     starsLabel: displayValue(dto.prop_starrating),
     reviewLabel: displayValue(dto.review_label),
     averagePrice: dto.avg_price_label,
+    minRateLabel: dto.min_rate_label || dto.avg_price_label,
     reservations: dto.reservations,
     clicks: dto.clicks,
     events: dto.events,
