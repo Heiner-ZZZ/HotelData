@@ -16,19 +16,30 @@
     <header class="gp-header">
       <div class="gp-header-inner">
         <div class="gp-header-left">
-          <div class="gp-hotel-badge">
-            <span class="material-symbols-outlined">hotel</span>
-            <span>{{ data.compendium.hotel_name || 'Hotel' }}</span>
-          </div>
-          <h1 class="gp-guest-name">
-            Bienvenido{{ data.session.guest_name ? ', ' + data.session.guest_name : '' }}
-          </h1>
-          <div class="gp-stay-dates">
-            <span class="material-symbols-outlined">calendar_today</span>
-            {{ data.session.check_in | date:'dd MMM' }} – {{ data.session.check_out | date:'dd MMM yyyy' }}
+          <button class="gp-back-btn" (click)="goBack()" aria-label="Regresar">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <div class="gp-hotel-badge">
+              <span class="material-symbols-outlined">hotel</span>
+              <span>{{ data.compendium.hotel_name || 'Hotel' }}</span>
+            </div>
+            <h1 class="gp-guest-name">
+              Bienvenido{{ data.session.guest_name ? ', ' + data.session.guest_name : '' }}
+            </h1>
+            <div class="gp-stay-dates">
+              <span class="material-symbols-outlined">calendar_today</span>
+              {{ data.session.check_in | date:'dd MMM' }} – {{ data.session.check_out | date:'dd MMM yyyy' }}
+            </div>
           </div>
         </div>
         <div class="gp-header-right">
+          <button type="button" class="gp-notif-bell" (click)="toggleNotifications()" [attr.aria-label]="'Notificaciones (' + unreadNotificationCount() + ' sin leer)'">
+            <span class="material-symbols-outlined">notifications</span>
+            @if (unreadNotificationCount() > 0) {
+              <span class="gp-notif-badge">{{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}</span>
+            }
+          </button>
           <div class="gp-room-chip">
             <span class="material-symbols-outlined">meeting_room</span>
             Hab. {{ data.session.room_label }}
@@ -45,13 +56,13 @@
       </div>
     }
 
-    <!-- ═══ TAB NAV (mobile only) ═══ -->
+    <!-- ═══ TAB NAV (all screens) ═══ -->
     <nav class="gp-tab-nav">
       @for (tab of tabs(); track tab.id) {
         <button
           class="gp-tab-btn"
           [class.active]="activeTab() === tab.id"
-          (click)="setTab(tab.id)"
+          (click)="navToTab(tab.id)"
         >
           <span class="material-symbols-outlined">{{ tab.icon }}</span>
           <span class="gp-tab-label">{{ tab.label }}</span>
@@ -62,10 +73,51 @@
       }
     </nav>
 
+    <!-- ═══ NOTIFICATIONS DROPDOWN ═══ -->
+    @if (showNotifications()) {
+      <div class="gp-notif-backdrop" (click)="closeNotifications()"></div>
+      <div class="gp-notif-dropdown">
+        <div class="gp-notif-dropdown-header">
+          <h3>Notificaciones</h3>
+          @if (unreadNotificationCount() > 0) {
+            <button class="gp-notif-mark-all" (click)="markAllNotificationsRead()">
+              <span class="material-symbols-outlined">done_all</span>
+              Marcar todo leído
+            </button>
+          }
+        </div>
+        <div class="gp-notif-list">
+          @if (guestNotifications().length === 0) {
+            <div class="gp-notif-empty">
+              <span class="material-symbols-outlined">notifications_off</span>
+              <p>No tienes notificaciones.</p>
+              <span class="gp-notif-empty-hint">Aquí verás mensajes de recepción y actualizaciones de tus solicitudes.</span>
+            </div>
+          } @else {
+            @for (notif of guestNotifications(); track notif.id) {
+              <div class="gp-notif-item" [class.unread]="!notif.read">
+                <div class="gp-notif-icon-wrap" [class.msg]="notif.type === 'staff_message'" [class.req]="notif.type === 'request_update' || notif.type === 'request_response'">
+                  <span class="material-symbols-outlined">{{ notif.icon }}</span>
+                </div>
+                <div class="gp-notif-body">
+                  <div class="gp-notif-title">{{ notif.title }}</div>
+                  <div class="gp-notif-text">{{ notif.body }}</div>
+                  <div class="gp-notif-time">{{ notif.created_at | date:'dd/MM HH:mm' }}</div>
+                </div>
+                @if (!notif.read) {
+                  <span class="gp-notif-dot"></span>
+                }
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
     <!-- ═══ DESKTOP BENTO GRID ═══ -->
     <div class="gp-bento">
       <!-- ── Hero Panel ── -->
-      <div class="gp-bento-hero">
+      <div class="gp-bento-hero" id="gp-section-compendium">
         <div class="gp-hero-bg"></div>
         <div class="gp-hero-content">
           <div class="gp-hero-main">
@@ -79,11 +131,11 @@
           </div>
         </div>
         <div class="gp-hero-actions">
-          <button class="gp-btn-outline" (click)="quickRequest('extend_stay')">
+          <button class="gp-btn-outline" (click)="openConfirmModal('extend_stay', 'Extender Estancia')">
             <span class="material-symbols-outlined">calendar_month</span>
             Extender Estancia
           </button>
-          <button class="gp-btn-outline" (click)="quickRequest('late_checkout')">
+          <button class="gp-btn-outline" (click)="openConfirmModal('late_checkout', 'Late Checkout')">
             <span class="material-symbols-outlined">schedule</span>
             Solicitar Late Checkout
           </button>
@@ -114,25 +166,65 @@
       </div>
 
       <!-- ── Room Services ── -->
-      <div class="gp-bento-services">
+      <div class="gp-bento-services" id="gp-section-services">
         <div class="gp-panel-header">
           <span class="material-symbols-outlined gp-panel-icon">room_service</span>
           <h3>Servicios a la Habitación</h3>
         </div>
         <div class="gp-services-grid">
-          <button class="gp-service-btn" (click)="quickRequest('housekeeping')">
+          <button class="gp-service-btn" (click)="openConfirmModal('housekeeping', 'Limpieza')">
             <span class="material-symbols-outlined">cleaning_services</span>
             <span>Solicitar Limpieza</span>
           </button>
-          <button class="gp-service-btn" (click)="quickRequest('amenities')">
-            <span class="material-symbols-outlined">bed</span>
-            <span>Pedir Almohadas</span>
+          <button class="gp-service-btn" (click)="openConfirmModal('towels', 'Toallas')">
+            <span class="material-symbols-outlined">dry</span>
+            <span>Toallas</span>
           </button>
-          <button class="gp-service-btn gp-service-btn-highlight" (click)="quickRequest('room_service')">
+          <button class="gp-service-btn" (click)="openConfirmModal('amenities', 'Almohadas')">
+            <span class="material-symbols-outlined">bed</span>
+            <span>Almohadas</span>
+          </button>
+          <button class="gp-service-btn gp-service-btn-highlight" (click)="openConfirmModal('room_service', 'Room Service')">
             <span class="material-symbols-outlined">restaurant_menu</span>
-            <span>Room Service (Menú)</span>
+            <span>Room Service</span>
           </button>
         </div>
+        @if (!requestDone()) {
+          <div class="gp-detail-form">
+            <select class="gp-detail-select" [ngModel]="requestType()" (ngModelChange)="requestType.set($event)">
+              @for (rt of requestTypes; track rt.value) {
+                <option [value]="rt.value">{{ rt.label }}</option>
+              }
+            </select>
+            <textarea class="gp-detail-textarea" rows="2" placeholder="Detalle (opcional)..." [ngModel]="requestDesc()" (ngModelChange)="requestDesc.set($event)"></textarea>
+            <button class="gp-btn-primary gp-btn-sm" (click)="submitRequest()" [disabled]="sendingRequest() || !requestDesc().trim()">
+              @if (sendingRequest()) { Enviando... } @else { Enviar Solicitud }
+            </button>
+          </div>
+        }
+        @if (requests().length > 0) {
+          <div class="gp-detail-requests">
+            <div class="gp-detail-label">Mis solicitudes ({{ requests().length }})</div>
+            @for (req of requests(); track req._id) {
+              <div class="gp-detail-req" [class.completed]="req.status === 'completed' || req.status === 'cancelled'">
+                <span class="gp-detail-req-type">{{ req.request_type_label }}</span>
+                <span class="gp-detail-req-status gp-status-{{ req.status }}">{{ req.status_label }}</span>
+              </div>
+              @if (req.description) {
+                <p class="gp-detail-req-desc">{{ req.description }}</p>
+              }
+              @if (req.staff_response) {
+                <div class="gp-detail-req-response">
+                  <span class="material-symbols-outlined">reply</span>
+                  {{ req.staff_response }}
+                </div>
+              }
+              @if (req.status === 'pending' || req.status === 'in_progress') {
+                <button class="gp-detail-req-cancel" (click)="cancelRequest(req._id)">Cancelar</button>
+              }
+            }
+          </div>
+        }
       </div>
 
       <!-- ── Appointments / Citas ── -->
@@ -142,14 +234,14 @@
           <h3>Reservas y Citas</h3>
         </div>
         <div class="gp-appointments-list">
-          <button class="gp-appt-btn" (click)="quickRequest('spa')">
+          <button class="gp-appt-btn" (click)="openConfirmModal('spa', 'Spa & Bienestar')">
             <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
               <span class="material-symbols-outlined" style="color:#4a626e;">spa</span>
             </div>
             <span class="gp-appt-label">Spa &amp; Bienestar</span>
             <span class="material-symbols-outlined gp-appt-arrow">chevron_right</span>
           </button>
-          <button class="gp-appt-btn" (click)="quickRequest('restaurant')">
+          <button class="gp-appt-btn" (click)="openConfirmModal('restaurant', 'Restaurantes')">
             <div class="gp-appt-icon-wrap" style="background:#cae3f3;">
               <span class="material-symbols-outlined" style="color:#4a626e;">restaurant</span>
             </div>
@@ -157,11 +249,11 @@
             <span class="material-symbols-outlined gp-appt-arrow">chevron_right</span>
           </button>
           <div class="gp-appt-quick-row">
-            <button class="gp-appt-quick-btn" (click)="quickRequest('other')">
+            <button class="gp-appt-quick-btn" (click)="openConfirmModal('other', 'Taxi')">
               <span class="material-symbols-outlined">local_taxi</span>
               Taxi
             </button>
-            <button class="gp-appt-quick-btn" (click)="quickRequest('wake_up_call')">
+            <button class="gp-appt-quick-btn" (click)="openConfirmModal('wake_up_call', 'Wake-up Call')">
               <span class="material-symbols-outlined">alarm</span>
               Wake-up Call
             </button>
@@ -169,8 +261,99 @@
         </div>
       </div>
 
+      <!-- ── Hotel Amenities ── -->
+      <div class="gp-bento-amenities">
+        <div class="gp-panel-header">
+          <span class="material-symbols-outlined gp-panel-icon">star</span>
+          <h3>Servicios del Hotel</h3>
+        </div>
+        @if (hotelAmenities().length === 0) {
+          <div class="gp-amenities-empty">
+            <span class="material-symbols-outlined">hotel</span>
+            <p>Consulta en recepción los servicios disponibles.</p>
+          </div>
+        } @else {
+          <div class="gp-amenities-grid">
+            @for (a of hotelAmenities(); track a.name) {
+              <div class="gp-amenity-card">
+                <div class="gp-amenity-icon-wrap">
+                  <span class="material-symbols-outlined">{{ a.icon || 'check' }}</span>
+                </div>
+                <span class="gp-amenity-name">{{ a.name }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- ── Lost & Found ── -->
+      <div class="gp-bento-lost">
+        <div class="gp-panel-header">
+          <span class="material-symbols-outlined gp-panel-icon">search_off</span>
+          <h3>Objetos Perdidos</h3>
+        </div>
+        @if (lostItems().length === 0) {
+          <div class="gp-lost-empty">
+            <span class="material-symbols-outlined">backpack</span>
+            <p>No hay objetos reportados para tu estancia.</p>
+          </div>
+        } @else {
+          <div class="gp-lost-list">
+            @for (item of lostItems(); track item._id) {
+              <div class="gp-lost-item" [class.claimed]="item.status === 'claimed'" [class.disposed]="item.status === 'disposed'">
+                <div class="gp-lost-item-head">
+                  <span class="gp-lost-item-desc">{{ item.description }}</span>
+                  <span class="gp-lost-item-status gp-lost-status-{{ item.status }}">{{ lostStatusLabel(item.status) }}</span>
+                </div>
+                <div class="gp-lost-item-meta">
+                  <span><span class="material-symbols-outlined">location_on</span> {{ item.location_found || '—' }}</span>
+                  <span><span class="material-symbols-outlined">person</span> {{ item.reported_by || 'Staff' }}</span>
+                  @if (item.returned_to) {
+                    <span><span class="material-symbols-outlined">assignment_return</span> {{ item.returned_to }}</span>
+                  }
+                </div>
+                <span class="gp-lost-item-date">{{ item.created_at | date:'dd/MM HH:mm' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- ── Chat ── -->
+      <div class="gp-bento-chat" id="gp-section-chat">
+        <div class="gp-panel-header">
+          <span class="material-symbols-outlined gp-panel-icon">chat</span>
+          <h3>Chat con Recepción</h3>
+        </div>
+        <div class="gp-chat-desktop-msgs">
+          @if (messages().length === 0) {
+            <div class="gp-chat-empty-desk">
+              <span class="material-symbols-outlined">forum</span>
+              <p>Escríbenos si necesitas algo.</p>
+            </div>
+          }
+          @for (msg of messages().slice(-6); track msg._id) {
+            <div class="gp-chat-desk-msg" [class.guest]="msg.sender === 'guest'" [class.staff]="msg.sender === 'staff'">
+              <div class="gp-desk-msg-bubble">
+                @if (msg.sender === 'staff' && msg.staff_name) {
+                  <span class="gp-desk-msg-author">{{ msg.staff_name }}</span>
+                }
+                <span class="gp-desk-msg-text">{{ msg.message }}</span>
+                <span class="gp-desk-msg-time">{{ msg.created_at | date:'HH:mm' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="gp-desk-chat-bar">
+          <input type="text" placeholder="Escribe tu mensaje..." [ngModel]="chatInput()" (ngModelChange)="chatInput.set($event)" (keydown.enter)="sendMessage()" />
+          <button (click)="sendMessage()" [disabled]="sendingChat() || !chatInput().trim()">
+            <span class="material-symbols-outlined">send</span>
+          </button>
+        </div>
+      </div>
+
       <!-- ── Account / Folio ── -->
-      <div class="gp-bento-folio">
+      <div class="gp-bento-folio" id="gp-section-charges">
         <div class="gp-folio-header">
           <div class="gp-panel-header">
             <span class="material-symbols-outlined gp-panel-icon">account_balance_wallet</span>
@@ -231,7 +414,7 @@
         </div>
         <h3 class="gp-report-title">Reportar Incidencia</h3>
         <p class="gp-report-desc">Solicita mantenimiento o reporta algún daño en la habitación.</p>
-        <button class="gp-btn-report" (click)="quickRequest('maintenance')">
+        <button class="gp-btn-report" (click)="openConfirmModal('maintenance', 'Reportar Incidencia')">
           Crear Reporte
         </button>
       </div>
@@ -320,27 +503,27 @@
       @if (activeTab() === 'services') {
         <section class="gp-services-mobile">
           <div class="gp-services-mobile-grid">
-            <button class="gp-service-btn" (click)="quickRequest('housekeeping')">
+            <button class="gp-service-btn" (click)="openConfirmModal('housekeeping', 'Limpieza')">
               <span class="material-symbols-outlined">cleaning_services</span>
               <span>Limpieza</span>
             </button>
-            <button class="gp-service-btn" (click)="quickRequest('towels')">
+            <button class="gp-service-btn" (click)="openConfirmModal('towels', 'Toallas')">
               <span class="material-symbols-outlined">dry</span>
               <span>Toallas</span>
             </button>
-            <button class="gp-service-btn" (click)="quickRequest('amenities')">
+            <button class="gp-service-btn" (click)="openConfirmModal('amenities', 'Almohadas')">
               <span class="material-symbols-outlined">bed</span>
               <span>Almohadas</span>
             </button>
-            <button class="gp-service-btn" (click)="quickRequest('room_service')">
+            <button class="gp-service-btn" (click)="openConfirmModal('room_service', 'Room Service')">
               <span class="material-symbols-outlined">restaurant_menu</span>
               <span>Room Service</span>
             </button>
-            <button class="gp-service-btn" (click)="quickRequest('minibar')">
+            <button class="gp-service-btn" (click)="openConfirmModal('minibar', 'Minibar')">
               <span class="material-symbols-outlined">local_bar</span>
               <span>Minibar</span>
             </button>
-            <button class="gp-service-btn" (click)="quickRequest('laundry')">
+            <button class="gp-service-btn" (click)="openConfirmModal('laundry', 'Lavandería')">
               <span class="material-symbols-outlined">local_laundry_service</span>
               <span>Lavandería</span>
             </button>
@@ -508,6 +691,44 @@
       <p>HotelData — Mi Estancia</p>
       <p class="gp-footer-hours">Check-in: {{ data.compendium.check_in_time }} &middot; Check-out: {{ data.compendium.check_out_time }}</p>
     </footer>
+
+    <!-- ═══ CONFIRMATION MODAL ═══ -->
+    @if (showConfirmModal()) {
+      <div class="gp-modal-overlay" (click)="showConfirmModal.set(false)">
+        <div class="gp-modal" (click)="$event.stopPropagation()">
+          <div class="gp-modal-header">
+            <span class="material-symbols-outlined gp-modal-icon">help</span>
+            <h2>{{ confirmTitle() }}</h2>
+          </div>
+          <div class="gp-modal-body">
+            <p>{{ confirmMessage() }}</p>
+            @if (showExtendFields()) {
+              <div class="gp-extend-form">
+                @if (confirmActionType() === 'extend_stay') {
+                  <label>Nueva fecha de salida</label>
+                  <input type="date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [min]="portalData()?.session?.check_out?.slice(0, 10)" />
+                }
+                @if (confirmActionType() === 'late_checkout') {
+                  <label>Hora de salida deseada</label>
+                  <input type="time" [ngModel]="extendTime()" (ngModelChange)="extendTime.set($event)" />
+                }
+              </div>
+            }
+          </div>
+          <div class="gp-modal-footer">
+            <button class="gp-btn-outline" (click)="showConfirmModal.set(false)">Cancelar</button>
+            <button class="gp-btn-primary" (click)="confirmAction()" [disabled]="sendingRequest() || (showExtendFields() && confirmActionType() === 'extend_stay' && !extendDate()) || (showExtendFields() && confirmActionType() === 'late_checkout' && !extendTime())">
+              @if (sendingRequest()) {
+                <span class="material-symbols-outlined spin">sync</span>
+                Enviando...
+              } @else {
+                Confirmar
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- ═══ PAYMENT / INVOICE MODAL ═══ -->
     @if (showPaymentModal()) {

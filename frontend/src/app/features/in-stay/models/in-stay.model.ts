@@ -86,6 +86,24 @@ export interface ServiceRequest {
   resolved_at: string | null;
 }
 
+export interface LostItem {
+  _id: string;
+  prop_id: number;
+  booking_id: string;
+  guest_name: string;
+  guest_contact: string;
+  item_name: string;
+  description: string;
+  found_location: string;
+  found_by: string;
+  status: string;
+  notes: string;
+  returned_to: string;
+  returned_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Conversation {
   _id: string; // room_label
   booking_id: string;
@@ -96,4 +114,5 @@ export interface Conversation {
   last_time: string;
   message_count: number;
   unread: number;
+  dnd: boolean;
 }

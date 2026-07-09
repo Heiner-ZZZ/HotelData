@@ -66,6 +66,14 @@ export class InStayApiService {
     return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, { status, staff_response: staffResponse });
   }
 
+  staffCreateRequest(bookingId: string, requestType: string, description: string = ''): Observable<{ ok: boolean; request_id: string }> {
+    return this.http.post<{ ok: boolean; request_id: string }>('/api/stay/requests', {
+      booking_id: bookingId,
+      request_type: requestType,
+      description,
+    });
+  }
+
   // ── Staff: Chat ──
 
   listConversations(propId?: number): Observable<{ conversations: Conversation[] }> {
@@ -120,4 +128,48 @@ export class InStayApiService {
       description,
     });
   }
+
+  // ── Lost & Found ──
+
+  getLostItems(token: string): Observable<{ items: LostItem[] }> {
+    return this.http.get<{ items: LostItem[] }>('/api/stay/guest/lost-items', { params: { token } });
+  }
+
+  // ── Staff: Lost & Found ──
+
+  listLostFound(params?: { prop_id?: number; status?: string; search?: string; page?: number; page_size?: number }): Observable<PaginatedResponse<Record<string, unknown>>> {
+    const q: Record<string, string> = {};
+    if (params?.prop_id) q['prop_id'] = String(params.prop_id);
+    if (params?.status) q['status'] = params.status;
+    if (params?.search) q['search'] = params.search;
+    if (params?.page) q['page'] = String(params.page);
+    if (params?.page_size) q['page_size'] = String(params.page_size);
+    return this.http.get<PaginatedResponse<Record<string, unknown>>>('/api/lost-and-found', { params: q });
+  }
+
+  createLostItem(data: { prop_id: number; item_name: string; description?: string; found_location?: string; found_by?: string; booking_id?: string; guest_name?: string }): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>('/api/lost-and-found', data);
+  }
+
+  claimLostItem(itemId: string, returnedTo: string = '', notes: string = ''): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(`/api/lost-and-found/${itemId}/claim`, { returned_to: returnedTo, notes });
+  }
+
+  disposeLostItem(itemId: string, notes: string = ''): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(`/api/lost-and-found/${itemId}/dispose`, { notes });
+  }
+
+  cancelRequest(token: string, requestId: string): Observable<{ ok: boolean; message: string }> {
+    return this.http.post<{ ok: boolean; message: string }>(`/api/stay/guest/requests/${requestId}/cancel`, { token });
+  }
+}
+
+export interface LostItem {
+  _id: string;
+  description: string;
+  status: string;
+  location_found: string;
+  reported_by: string;
+  returned_to: string;
+  created_at: string;
 }

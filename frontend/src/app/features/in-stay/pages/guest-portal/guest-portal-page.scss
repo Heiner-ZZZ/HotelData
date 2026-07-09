@@ -97,6 +97,7 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
    ═══════════════════════════════════════════════════════════ */
 
 .gp-header {
+  position: relative;
   background: linear-gradient(135deg, $gp-accent 0%, #003d4a 100%);
   color: white;
 
@@ -107,6 +108,39 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+  }
+
+  .gp-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gp-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 4px;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s;
+    padding: 0;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .material-symbols-outlined {
+      font-size: 1.2rem;
+    }
   }
 
   .gp-hotel-badge {
@@ -134,7 +168,264 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
     .material-symbols-outlined { font-size: 1rem; }
   }
 
-  .gp-room-chip {
+  /* ── Notification Bell ── */
+
+.gp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gp-notif-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+  backdrop-filter: blur(4px);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.3rem;
+  }
+}
+
+.gp-notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: $gp-error;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  animation: gp-badge-pop 0.3s ease-out;
+}
+
+@keyframes gp-badge-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* ── Notifications Dropdown ── */
+
+.gp-notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 999;
+}
+
+.gp-notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 400px;
+  max-width: calc(100vw - 2rem);
+  max-height: 520px;
+  background: $gp-surface;
+  border-radius: $gp-radius-lg;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  animation: gp-notif-slide 0.2s ease-out;
+}
+
+@keyframes gp-notif-slide {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gp-notif-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.15rem 0.75rem;
+  border-bottom: 1px solid $gp-border;
+  flex-shrink: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $gp-text;
+  }
+}
+
+.gp-notif-mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: 1px solid $gp-border;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-family: inherit;
+  color: $gp-primary-container;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: $gp-surface-bg;
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+  }
+}
+
+.gp-notif-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem 0;
+}
+
+.gp-notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+
+  .material-symbols-outlined {
+    font-size: 2.5rem;
+    color: $gp-text-secondary;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: $gp-text-secondary;
+    font-weight: 500;
+  }
+
+  .gp-notif-empty-hint {
+    font-size: 0.78rem;
+    color: $gp-text-secondary;
+    opacity: 0.7;
+    max-width: 260px;
+    line-height: 1.4;
+  }
+}
+
+.gp-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.7rem 1.15rem;
+  transition: background 0.12s;
+  position: relative;
+
+  &:hover {
+    background: $gp-surface-bg;
+  }
+
+  &.unread {
+    background: color-mix(in srgb, $gp-accent-light, white 40%);
+
+    &:hover {
+      background: $gp-accent-light;
+    }
+  }
+
+  + .gp-notif-item {
+    border-top: 1px solid $gp-border;
+  }
+}
+
+.gp-notif-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+
+  &.msg {
+    background: #dbeafe;
+    .material-symbols-outlined { color: #1e40af; }
+  }
+
+  &.req {
+    background: #dcfce7;
+    .material-symbols-outlined { color: #166534; }
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.gp-notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gp-notif-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: $gp-text;
+  margin-bottom: 0.15rem;
+  line-height: 1.3;
+}
+
+.gp-notif-text {
+  font-size: 0.78rem;
+  color: $gp-text-secondary;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gp-notif-time {
+  font-size: 0.68rem;
+  color: $gp-text-secondary;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.gp-notif-dot {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $gp-primary-container;
+  flex-shrink: 0;
+}
+
+.gp-room-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -149,22 +440,30 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Tab Navigation — hidden on desktop, shown on mobile
+   Tab Navigation — visible on all screens
    ═══════════════════════════════════════════════════════════ */
 
-.gp-tab-nav { display: none; }
+.gp-tab-nav {
+  display: flex;
+  max-width: 1280px;
+  margin: 0 auto;
+  background: $gp-surface;
+  border-bottom: 1px solid $gp-border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gp-tab-nav-wrapper {
+  background: $gp-surface;
+  border-bottom: 1px solid $gp-border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
 .gp-tab-content { display: none; }
 
 @media (max-width: 767px) {
-  .gp-tab-nav {
-    display: flex;
-    background: $gp-surface;
-    border-bottom: 1px solid $gp-border;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
   .gp-tab-content {
     display: block;
     padding: 0.75rem;
@@ -305,7 +604,25 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
     gap: 0.75rem;
   }
 
+  .gp-header-left {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .gp-back-btn {
+    margin-top: 2px;
+  }
+
   .gp-header-right { align-self: flex-start; }
+
+  .gp-notif-dropdown {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    max-width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    z-index: 1001;
+  }
 
   .gp-folio-actions {
     flex-direction: column;
@@ -1131,6 +1448,388 @@ $gp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   border-top: 1px solid $gp-border;
   margin-top: 0;
 }
+
+/* ── Service Detail Form & History (inline in bento-services) ── */
+.gp-detail-form {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid $gp-border;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gp-detail-select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid $gp-border;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background: white;
+  font-family: inherit;
+  &:focus { outline: none; border-color: $gp-accent; }
+}
+
+.gp-detail-textarea {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid $gp-border;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 44px;
+  &:focus { outline: none; border-color: $gp-accent; }
+}
+
+.gp-btn-sm {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+.gp-detail-requests {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid $gp-border;
+}
+
+.gp-detail-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $gp-text-secondary;
+  margin-bottom: 0.4rem;
+}
+
+.gp-detail-req {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  font-size: 0.8rem;
+  &.completed { opacity: 0.6; }
+}
+
+.gp-detail-req-type { font-weight: 500; color: $gp-text; }
+.gp-detail-req-status { font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 99px; font-weight: 500; }
+
+.gp-detail-req-desc { font-size: 0.74rem; color: $gp-text-secondary; margin: 0.15rem 0; padding-left: 0.25rem; }
+
+.gp-detail-req-response {
+  display: flex;
+  align-items: start;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  margin: 0.2rem 0;
+  background: $gp-accent-light;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: $gp-accent;
+  .material-symbols-outlined { font-size: 0.8rem; }
+}
+
+.gp-detail-req-cancel {
+  background: none;
+  border: 1px solid $gp-border;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  color: $gp-text-secondary;
+  cursor: pointer;
+  margin-top: 0.15rem;
+  font-family: inherit;
+  &:hover { border-color: $gp-error; color: $gp-error; }
+}
+
+.gp-extend-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: $gp-surface-bg;
+  border-radius: 8px;
+
+  label { font-size: 0.8rem; font-weight: 500; color: $gp-text-secondary; }
+
+  input[type="date"], input[type="time"] {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid $gp-border;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: white;
+    &:focus { outline: none; border-color: $gp-accent; }
+  }
+}
+
+/* ── Chat Desktop Panel (col 9-12, stacked with report) ── */
+.gp-bento-chat {
+  grid-column: span 4;
+  background: $gp-surface;
+  border: 1px solid $gp-border;
+  border-radius: $gp-radius-lg;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: $gp-shadow;
+  max-height: 420px;
+  overflow: hidden;
+
+  .gp-panel-header { margin-bottom: 0.5rem; }
+}
+
+.gp-chat-desktop-msgs {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 120px;
+  padding: 0.25rem 0;
+}
+
+.gp-chat-empty-desk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.35rem;
+  color: $gp-text-secondary;
+  .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.78rem; }
+}
+
+.gp-chat-desk-msg {
+  display: flex;
+  &.guest { justify-content: flex-end; }
+  &.staff { justify-content: flex-start; }
+}
+
+.gp-desk-msg-bubble {
+  max-width: 85%;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.gp-chat-desk-msg.guest .gp-desk-msg-bubble {
+  background: $gp-accent;
+  color: white;
+  border-radius: 8px 8px 2px 8px;
+}
+
+.gp-chat-desk-msg.staff .gp-desk-msg-bubble {
+  background: #f0f0f0;
+  color: $gp-text;
+  border-radius: 8px 8px 8px 2px;
+}
+
+.gp-desk-msg-author {
+  font-size: 0.63rem;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+  opacity: 0.7;
+  display: block;
+}
+
+.gp-desk-msg-text { display: block; }
+
+.gp-desk-msg-time {
+  font-size: 0.58rem;
+  opacity: 0.5;
+  margin-top: 0.15rem;
+  display: block;
+  text-align: right;
+}
+
+.gp-desk-chat-bar {
+  display: flex;
+  gap: 0.35rem;
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid $gp-border;
+
+  input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid $gp-border;
+    border-radius: 16px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    &:focus { outline: none; border-color: $gp-accent; }
+  }
+
+  button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: $gp-accent;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    &:hover:not(:disabled) { background: #004d5e; }
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+    .material-symbols-outlined { font-size: 1rem; }
+  }
+}
+
+/* ── Hotel Amenities (col 1-4, informational cards only) ── */
+.gp-bento-amenities {
+  grid-column: span 4;
+  background: $gp-surface;
+  border: 1px solid $gp-border;
+  border-radius: $gp-radius-lg;
+  padding: 1rem;
+  box-shadow: $gp-shadow;
+  display: flex;
+  flex-direction: column;
+
+  .gp-panel-header { margin-bottom: 0.6rem; }
+}
+
+.gp-amenities-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.gp-amenity-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: $gp-surface-bg;
+  transition: background 0.15s;
+
+  &:hover {
+    background: color-mix(in srgb, $gp-surface-bg, $gp-accent 8%);
+  }
+}
+
+.gp-amenity-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: $gp-accent-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: $gp-accent;
+  }
+}
+
+.gp-amenity-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: $gp-text;
+  line-height: 1.3;
+}
+
+.gp-amenities-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem 0.5rem;
+  color: $gp-text-secondary;
+  .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.78rem; text-align: center; }
+}
+
+/* ── Lost & Found Desktop Panel ── */
+.gp-bento-lost {
+  grid-column: span 4;
+  background: $gp-surface;
+  border: 1px solid $gp-border;
+  border-radius: $gp-radius-lg;
+  padding: 1rem;
+  box-shadow: $gp-shadow;
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-lost-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem 0.5rem;
+  color: $gp-text-secondary;
+  .material-symbols-outlined { font-size: 1.5rem; opacity: 0.4; }
+  p { margin: 0; font-size: 0.78rem; }
+}
+
+.gp-lost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gp-lost-item {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid $gp-border;
+  border-radius: 8px;
+  &.claimed { opacity: 0.6; }
+  &.disposed { opacity: 0.4; }
+}
+
+.gp-lost-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.gp-lost-item-desc { font-weight: 600; font-size: 0.82rem; color: $gp-text; flex: 1; }
+
+.gp-lost-item-status {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.gp-lost-status-found { background: #dbeafe; color: #1e40af; }
+.gp-lost-status-claimed { background: #dcfce7; color: #166534; }
+.gp-lost-status-disposed { background: #fee2e2; color: #991b1b; }
+
+.gp-lost-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  color: $gp-text-secondary;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    .material-symbols-outlined { font-size: 0.8rem; }
+  }
+}
+
+.gp-lost-item-date {
+  display: block;
+  font-size: 0.65rem;
+  color: $gp-text-secondary;
+  margin-top: 0.2rem;
+}
+
+/* ── Bento grid layout adjustment for new panels ── */
 
 /* ── Report Issue (col 9-12) ── */
 .gp-bento-report {

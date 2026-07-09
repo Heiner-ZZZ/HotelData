@@ -200,6 +200,20 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: t.$si-text;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.si-dnd-badge {
+  font-size: 0.55rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 99px;
+  background: t.$status-pending-bg;
+  color: t.$status-pending-text;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 .si-tl-time {
