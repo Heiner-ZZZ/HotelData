@@ -237,8 +237,6 @@ def save_partner_hotel_policies(
         "prop_id": prop_id,
         "room_type_id": clean_room_type,
         "season_id": clean_season,
-        "check_in_time": ci,
-        "check_out_time": co,
         "cancellation_policy": clean_text(cancellation_policy),
         "pet_policy": clean_text(pet_policy),
         "children_policy": clean_text(children_policy),
@@ -248,6 +246,12 @@ def save_partner_hotel_policies(
         "source": "partner_manual",
         "updated_at": now_utc(),
     }
+
+    # Check-in/check-out: only set for hotel-wide saves (not per-room-type),
+    # because these are global hotel settings
+    if not clean_room_type:
+        payload["check_in_time"] = ci
+        payload["check_out_time"] = co
 
     # Add structured fields only if provided
     if cancellation_hours is not None:

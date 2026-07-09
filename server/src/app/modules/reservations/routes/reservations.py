@@ -164,6 +164,45 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
     return detail
 
 
+@api_router.get("/{booking_id}/cancel-preview")
+def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_login)):
+    """Preview cancellation penalty without actually cancelling."""
+    from datetime import datetime, timezone
+    from src.app.modules.reservations.service.cleanup import _calculate_cancellation_penalty
+    from src.database.connection import get_database
+
+    db = get_database()
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Only pending bookings can be previewed for cancellation")
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if today_str >= (booking.get("check_in_date") or ""):
+        raise HTTPException(status_code=400, detail="No se puede cancelar una reserva cuya fecha de entrada ya ha comenzado o pasado.")
+
+    penalty = _calculate_cancellation_penalty(
+        prop_id=int(booking.get("prop_id", 0)),
+        check_in_date=booking.get("check_in_date", ""),
+        total_price=booking.get("total_price"),
+        total_nights=int(booking.get("total_nights", 0)),
+        room_type_id=booking.get("room_type_id", ""),
+    )
+    return {
+        "booking_id": booking_id,
+        "guest_name": booking.get("guest_name", ""),
+        "check_in_date": booking.get("check_in_date", ""),
+        "total_price": booking.get("total_price"),
+        "currency": booking.get("currency", "USD"),
+        "total_nights": int(booking.get("total_nights", 0)),
+        "free_cancellation": penalty["free_cancellation"],
+        "penalty_percent": penalty["penalty_percent"],
+        "penalty_amount": penalty["penalty_amount"],
+        "hours_until_checkin": penalty["hours_until_checkin"],
+        "cancellation_hours": penalty["cancellation_hours"],
+    }
+
+
 @api_router.post("/{booking_id}/cancel")
 def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
     try:

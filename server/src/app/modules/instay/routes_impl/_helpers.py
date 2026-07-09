@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from src.app.modules.instay.schemas import SERVICE_REQUEST_TYPES, SERVICE_REQUEST_STATUSES, utc_now
 from src.app.security.session import ensure_utc
@@ -125,9 +128,269 @@ def notify_staff_new_request(db, session: dict, request_type: str):
         pass
 
 
+def notify_staff_request_updated(db, request_doc: dict, new_status: str):
+    """Log a notification for staff when a service request status changes + push SSE event."""
+    prop_id = request_doc.get("prop_id", 0)
+    room_label = request_doc.get("room_label", "")
+    request_type = request_doc.get("request_type_label", request_doc.get("request_type", ""))
+    old_status = request_doc.get("status", "")
+    new_status_label_str = status_label(new_status)
+
+    db.notification_log.insert_one({
+        "recipient_email": "staff",
+        "notification_type": "request_status_changed",
+        "subject": f"Solicitud actualizada: {request_type} → {new_status_label_str} (Hab. {room_label})",
+        "body": f"La solicitud de {request_type} (Hab. {room_label}) cambió de '{old_status}' a '{new_status}'.",
+        "status": "sent",
+        "created_at": utc_now(),
+        "metadata": {
+            "prop_id": prop_id,
+            "room_label": room_label,
+            "request_id": str(request_doc.get("_id", "")),
+            "request_type": request_type,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+    })
+
+    # Push SSE event
+    try:
+        from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+        StayEventManager.instance_sync().publish_threadsafe(prop_id, "request_updated", {
+            "request_id": str(request_doc.get("_id", "")),
+            "room_label": room_label,
+            "request_type": request_type,
+            "old_status": old_status,
+            "new_status": new_status,
+            "status_label": new_status_label_str,
+        })
+    except Exception:
+        pass
+
+
 def notify_guest_new_message(db, session: dict):
-    """Currently a no-op."""
-    pass
+    """Send an email to the guest when a staff member replies to their chat message."""
+    booking_id = session.get("booking_id", "")
+    if not booking_id:
+        return
+
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    if not booking:
+        return
+
+    guest_email = booking.get("guest_email", "") or booking.get("email", "")
+    guest_name = booking.get("guest_name", "Huésped")
+    if not guest_email:
+        return
+
+    prop_id = session.get("prop_id", 0)
+    room_label = session.get("room_label", "")
+
+    hotel = db.dim_hotels.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+    )
+    hotel_label = (
+        (hotel or {}).get("display_label")
+        or (hotel or {}).get("display_name")
+        or (hotel or {}).get("hotel_name")
+        or f"Propiedad #{prop_id}"
+    )
+
+    subject = f"Nueva respuesta de recepción — {booking_id}"
+
+    html = f"""\
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f9fafb;padding:30px 0;margin:0">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+    <tr>
+      <td style="background:#1a1a2e;padding:24px 32px;text-align:center">
+        <span style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px">{hotel_label}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px">
+        <span style="display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:#dbeafe;color:#1e40af;margin-bottom:16px">NUEVO MENSAJE</span>
+        <h2 style="margin:0 0 10px;font-size:20px;color:#111827">Tienes una respuesta de recepción</h2>
+        <p style="margin:0 0 8px;font-size:14px;color:#6b7280;line-height:1.6">Habitación: <strong style="color:#374151">{room_label}</strong></p>
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6">El equipo de <strong>{hotel_label}</strong> ha respondido a tu mensaje. Ingresa al <strong>portal del huésped</strong> para ver la respuesta y continuar la conversación.</p>
+        <p style="margin:0;font-size:14px;color:#374151;line-height:1.6">Si necesitas algo más, no dudes en escribirnos por el portal o acercarte a recepción.</p>
+        <hr style="border:0;border-top:1px solid #e5e7eb;margin:20px 0">
+        <p style="margin:0;font-size:12px;color:#9ca3af">Reserva: {booking_id}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#f9fafb;padding:16px 32px;text-align:center">
+        <p style="margin:0;font-size:11px;color:#9ca3af">HotelData &middot; Notificación automática</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+    status_result = "error"
+    error_msg = ""
+    try:
+        from src.app.email.service import send_email
+        ok = send_email(guest_email, subject, html)
+        if ok:
+            status_result = "sent"
+            logger.info("Guest chat reply notification sent to %s for booking %s", guest_email, booking_id)
+        else:
+            status_result = "failed"
+            error_msg = "send_email returned False"
+            logger.warning("Failed to send chat reply notification to %s for booking %s", guest_email, booking_id)
+    except Exception as exc:
+        status_result = "error"
+        error_msg = str(exc)
+        logger.exception("Error sending chat reply notification to %s for booking %s", guest_email, booking_id)
+
+    try:
+        db.notification_log.insert_one({
+            "recipient_email": guest_email,
+            "recipient_name": guest_name,
+            "notification_type": "guest_chat_reply",
+            "subject": subject,
+            "body": f"El huésped {guest_name} (Hab. {room_label}) recibió una respuesta de recepción.",
+            "status": status_result,
+            "error_message": error_msg,
+            "created_at": utc_now(),
+            "metadata": {
+                "booking_id": booking_id,
+                "prop_id": prop_id,
+                "room_label": room_label,
+            },
+        })
+    except Exception:
+        pass
+
+
+def notify_guest_request_completed(db, request_doc: dict, new_status: str) -> None:
+    """Send an email to the guest when their service request is completed or cancelled."""
+    if new_status not in ("completed", "cancelled"):
+        return
+
+    booking_id = request_doc.get("booking_id", "")
+    if not booking_id:
+        return
+
+    # Look up the booking to get guest contact info
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    if not booking:
+        return
+
+    guest_email = booking.get("guest_email", "") or booking.get("email", "")
+    guest_name = booking.get("guest_name", "Huésped")
+    if not guest_email:
+        return
+
+    prop_id = request_doc.get("prop_id", 0)
+    request_type = request_doc.get("request_type_label", request_doc.get("request_type", ""))
+    room_label = request_doc.get("room_label", "")
+    description = request_doc.get("description", "")
+    staff_response = request_doc.get("staff_response", "")
+    new_status_label_str = status_label(new_status)
+
+    # Look up hotel name
+    hotel = db.dim_hotels.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+    )
+    hotel_label = (
+        (hotel or {}).get("display_label")
+        or (hotel or {}).get("display_name")
+        or (hotel or {}).get("hotel_name")
+        or f"Propiedad #{prop_id}"
+    )
+
+    # Compose email
+    if new_status == "completed":
+        subject = f"Tu solicitud ha sido atendida — {booking_id}"
+        status_text = "COMPLETADA"
+        headline = "Tu solicitud ha sido atendida"
+        body_intro = f"Tu solicitud de <strong>{request_type}</strong> ha sido <strong>completada</strong> por nuestro equipo."
+        if staff_response:
+            body_intro += f"<br><br><em>Respuesta del personal:</em> {staff_response}"
+    else:  # cancelled
+        subject = f"Tu solicitud ha sido cancelada — {booking_id}"
+        status_text = "CANCELADA"
+        headline = "Tu solicitud ha sido cancelada"
+        body_intro = f"Tu solicitud de <strong>{request_type}</strong> ha sido <strong>cancelada</strong>."
+        if staff_response:
+            body_intro += f"<br><br><em>Nota:</em> {staff_response}"
+
+    html = f"""\
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f9fafb;padding:30px 0;margin:0">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+    <tr>
+      <td style="background:#1a1a2e;padding:24px 32px;text-align:center">
+        <span style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px">{hotel_label}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px">
+        <span style="display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:#dcfce7;color:#166534;margin-bottom:16px">{status_text}</span>
+        <h2 style="margin:0 0 10px;font-size:20px;color:#111827">{headline}</h2>
+        <p style="margin:0 0 8px;font-size:14px;color:#6b7280;line-height:1.6">Habitación: <strong style="color:#374151">{room_label}</strong></p>
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6">{body_intro}</p>
+        <hr style="border:0;border-top:1px solid #e5e7eb;margin:20px 0">
+        <p style="margin:0;font-size:12px;color:#9ca3af">Reserva: {booking_id} &middot; Tipo: {request_type}</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af">{description}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#f9fafb;padding:16px 32px;text-align:center">
+        <p style="margin:0;font-size:11px;color:#9ca3af">HotelData &middot; Notificación automática</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+    status_result = "error"
+    error_msg = ""
+    try:
+        from src.app.email.service import send_email
+        ok = send_email(guest_email, subject, html)
+        if ok:
+            status_result = "sent"
+            logger.info("Guest request notification sent to %s for booking %s (status=%s)", guest_email, booking_id, new_status)
+        else:
+            status_result = "failed"
+            error_msg = "send_email returned False"
+            logger.warning("Failed to send guest request notification to %s for booking %s", guest_email, booking_id)
+    except Exception as exc:
+        status_result = "error"
+        error_msg = str(exc)
+        logger.exception("Error sending guest request notification to %s for booking %s", guest_email, booking_id)
+
+    # Log to notification_log
+    try:
+        db.notification_log.insert_one({
+            "recipient_email": guest_email,
+            "recipient_name": guest_name,
+            "notification_type": f"guest_request_{new_status}",
+            "subject": subject,
+            "body": f"Solicitud de {request_type} (Hab. {room_label}) → {new_status_label_str}",
+            "status": status_result,
+            "error_message": error_msg,
+            "created_at": utc_now(),
+            "metadata": {
+                "booking_id": booking_id,
+                "prop_id": prop_id,
+                "room_label": room_label,
+                "request_id": str(request_doc.get("_id", "")),
+                "request_type": request_type,
+                "new_status": new_status,
+            },
+        })
+    except Exception:
+        pass
 
 
 def ensure_stay_collections():

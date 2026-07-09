@@ -144,3 +144,16 @@ def dispose_lost_item_api(
         staff=current_user.get("display_name") or current_user.get("username", "Staff"),
     )
     return result
+
+
+# ═══════════════════════════════════════════════════════════
+# SSE helper
+# ═══════════════════════════════════════════════════════════
+
+def _push_lost_found_event(prop_id: int, event_type: str, **kwargs) -> None:
+    """Publish a Lost & Found event to the SSE event manager for staff."""
+    try:
+        from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+        StayEventManager.instance_sync().publish_threadsafe(prop_id, event_type, kwargs)
+    except Exception:
+        pass

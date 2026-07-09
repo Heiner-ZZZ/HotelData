@@ -24,8 +24,11 @@ from src.app.modules.instay.schemas import (
 from src.app.modules.instay.routes_impl._helpers import (
     ensure_stay_collections,
     get_session_or_404,
+    notify_guest_new_message,
+    notify_guest_request_completed,
     notify_staff_new_message,
     notify_staff_new_request,
+    notify_staff_request_updated,
     serialize_session,
     session_expiry,
     status_label,
@@ -245,14 +248,38 @@ def update_service_request(
     current_user: dict = Depends(require_login),
 ):
     db = get_database()
+    # Fetch the request before updating to get its current state
+    try:
+        oid = ObjectId(request_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de solicitud inválido.")
+    existing = db.stay_service_requests.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
+
     update: dict = {"status": payload.status, "staff_responded_at": utc_now()}
     if payload.staff_response:
         update["staff_response"] = payload.staff_response
     if payload.status == "completed":
         update["resolved_at"] = utc_now()
-    result = db.stay_service_requests.update_one({"_id": ObjectId(request_id)}, {"$set": update})
+    result = db.stay_service_requests.update_one({"_id": oid}, {"$set": update})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
+
+    # Push SSE event for real-time notification to all staff
+    try:
+        notify_staff_request_updated(db, existing, payload.status)
+    except Exception:
+        pass
+
+    # Send email to guest when request is completed or cancelled (fire-and-forget in background)
+    import threading
+    threading.Thread(
+        target=notify_guest_request_completed,
+        args=(db, existing, payload.status),
+        daemon=True,
+    ).start()
+
     return {"ok": True, "message": "Solicitud actualizada."}
 
 
@@ -378,10 +405,16 @@ def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict =
         "message": message, "created_at": utc_now(), "read": True,
     }
     db.stay_messages.insert_one(doc)
+    # Notify guest about the reply via email (fire-and-forget in background)
     try:
         session = db.stay_sessions.find_one({"room_label": room_label, "active": True})
         if session:
-            notify_guest_new_message(db, session)
+            import threading
+            threading.Thread(
+                target=notify_guest_new_message,
+                args=(db, session),
+                daemon=True,
+            ).start()
     except Exception:
         pass
     return {"ok": True, "message": "Respuesta enviada."}
@@ -529,10 +562,10 @@ def guest_toggle_dnd(payload: dict = Body(...)):
 
     session = get_session_or_404(token)
     db = get_database()
-    prop_id = session["prop_id"]
-    room_label = session.get("room_label", "")
-    if not room_label:
-        raise HTTPException(status_code=400, detail="Esta sesión no tiene habitación asignada.")
+    prop_id = int(session.get("prop_id") or 0)
+    room_label = str(session.get("room_label") or "").strip()
+    if not room_label or not prop_id:
+        raise HTTPException(status_code=400, detail="Esta sesión no tiene habitación o propiedad asignada.")
 
     current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"dnd": 1})
     current_dnd = current.get("dnd", False) if current else False
