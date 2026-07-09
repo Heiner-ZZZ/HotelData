@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 
 from pymongo import ReturnDocument
 
+from src.app.core.timezone import local_today
 from src.app.modules.partner.services._common import (
     clean_text,
     iso_label,
@@ -33,6 +33,8 @@ def _rate_plans_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
         item["updated_at_label"] = iso_label(item.get("updated_at"))
         if "eligible_roles" not in item:
             item["eligible_roles"] = []
+        if "included_amenities" not in item:
+            item["included_amenities"] = []
     return items
 
 
@@ -80,6 +82,7 @@ def create_rate_plan(
     tax_rate: float = 0.0,
     is_active: Any = True,
     eligible_roles: list[str] | None = None,
+    included_amenities: list[str] | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
@@ -110,6 +113,7 @@ def create_rate_plan(
         "tax_rate": round(max(0.0, min(100.0, float(tax_rate or 0))), 2),
         "is_active": safe_bool(is_active),
         "eligible_roles": eligible_roles or [],
+        "included_amenities": included_amenities or [],
         "updated_at": now_utc(),
     }
     register_action(
@@ -144,6 +148,7 @@ def update_rate_plan(
     tax_rate: float = 0.0,
     is_active: Any = True,
     eligible_roles: list[str] | None = None,
+    included_amenities: list[str] | None = None,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     db = get_database()
@@ -169,6 +174,7 @@ def update_rate_plan(
         "tax_rate": round(max(0.0, min(100.0, float(tax_rate or 0))), 2),
         "is_active": safe_bool(is_active),
         "eligible_roles": eligible_roles if eligible_roles is not None else [],
+        "included_amenities": included_amenities or [],
         "updated_at": now_utc(),
     }
     register_action(
@@ -197,7 +203,7 @@ def delete_rate_plan(rate_plan_id: str, changed_by: str = "system") -> dict[str,
         return None
     prop_id = existing["prop_id"]
 
-    today = date.today().isoformat()
+    today = local_today()
     active_bookings = db.booking_orders.count_documents({
         "prop_id": prop_id,
         "rate_plan_id": rate_plan_id,

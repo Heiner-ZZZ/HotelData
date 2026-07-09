@@ -30,6 +30,7 @@ def create_plan(payload: dict, current_user: dict) -> dict:
             tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
             eligible_roles=payload.get("eligible_roles"),
+            included_amenities=payload.get("included_amenities"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
@@ -56,6 +57,7 @@ def update_plan(plan_id: str, payload: dict, current_user: dict) -> dict:
             tax_rate=float(payload.get("tax_rate") or 0),
             is_active=payload.get("is_active", True),
             eligible_roles=payload.get("eligible_roles"),
+            included_amenities=payload.get("included_amenities"),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:

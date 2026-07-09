@@ -16,7 +16,7 @@ def partner_status() -> ModuleStatus:
     return module_status()
 
 
-from . import audit, hotels, content, rooms, availability, rates, policies, amenities, reports, room_features
+from . import audit, hotels, content, rooms, availability, rates, policies, amenities, reports, room_features, guests
 
 __all__ = [
     "api_router",

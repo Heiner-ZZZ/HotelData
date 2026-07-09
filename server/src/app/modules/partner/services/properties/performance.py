@@ -71,6 +71,10 @@ def performance_for_prop(prop_id: int) -> dict[str, Any]:
     conversion_rate = round((fact_reservations / searches) * 100, 2) if searches else 0.0
     click_rate = round((clicks / searches) * 100, 2) if searches else 0.0
 
+    # Real min rate from hotel_rate_calendar (today+)
+    from src.app.modules.hotels.service._helpers import _min_real_rate_for_prop
+    min_rate_label = _min_real_rate_for_prop(prop_id)
+
     return {
         "source_collection": source_collection,
         "searches": searches,
@@ -84,6 +88,7 @@ def performance_for_prop(prop_id: int) -> dict[str, Any]:
         "click_rate": click_rate,
         "gross_revenue_label": _money(total_revenue),
         "avg_price_label": _money(metrics.get("avg_price")) if metrics.get("avg_price") is not None else "N/D",
+        "min_rate_label": min_rate_label,
         "review_score_label": number(metrics.get("review_score")),
         "includes_operational_bookings": includes_operational,
         "historical_reservations": fact_reservations,

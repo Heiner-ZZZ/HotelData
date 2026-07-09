@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 
+from src.app.core.timezone import local_today
 from src.database.connection import get_database
 
 
@@ -13,7 +13,7 @@ def _collection_count(collection_name: str, filters: dict[str, Any] | None = Non
 
 def _operational_flags(prop_id: int) -> dict[str, Any]:
     db = get_database()
-    today_str = date.today().isoformat()
+    today_str = local_today()
 
     # ── Checks sin dependencia de fecha ──
     policies_count = int(db.hotel_policies.count_documents({"prop_id": prop_id}))

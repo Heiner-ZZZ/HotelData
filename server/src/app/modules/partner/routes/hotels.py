@@ -172,9 +172,10 @@ def property_operational_calendar_api(
     current_user: dict = Depends(require_login),
 ):
     from src.app.modules.partner.services.properties.operational_calendar import operational_calendar as _oc
-    from datetime import date as dt_date
-    y = year or dt_date.today().year
-    m = month or dt_date.today().month
+    from src.app.core.timezone import local_now
+    now_local = local_now()
+    y = year or now_local.year
+    m = month or now_local.month
     return _oc(prop_id, y, m)
 
 
