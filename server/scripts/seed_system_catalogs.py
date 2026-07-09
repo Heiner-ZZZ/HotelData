@@ -1,16 +1,12 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
-from pymongo import MongoClient
+from pathlib import Path
 
-MONGO_URI = "mongodb://localhost:27017"
-MONGO_DATABASE = "hoteldata_hub"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-def get_db():
-    client = MongoClient(MONGO_URI)
-    client.admin.command("ping")
-    return client[MONGO_DATABASE]
+from src.database.connection import get_database
 
 
 DEFAULTS = {
@@ -33,7 +29,7 @@ DEFAULTS = {
 
 
 def main() -> None:
-    db = get_db()
+    db = get_database()
     now = datetime.now(timezone.utc)
     for cat_type, items in DEFAULTS.items():
         for item in items:

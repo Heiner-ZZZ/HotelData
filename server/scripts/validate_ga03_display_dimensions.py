@@ -10,7 +10,10 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from pymongo import MongoClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.database.connection import get_database
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -22,8 +25,7 @@ def utc_now_iso() -> str:
 
 
 def mongo():
-    client = MongoClient("mongodb://localhost:27017", serverSelectionTimeoutMS=3000)
-    return client, client["hoteldata_hub"]
+    return get_database()
 
 
 def find_free_port() -> int:
@@ -93,60 +95,57 @@ def run_validation() -> dict[str, Any]:
     report: dict[str, Any] = {"generated_at": utc_now_iso(), "result": False, "checks": [], "errors": []}
     errors: list[str] = []
 
-    client, db = mongo()
+    db = mongo()
+    sample_hotel = db.dim_hotels.find_one({}, {"_id": 0, "prop_id": 1, "display_name": 1})
+    sample_destination = db.dim_destinations.find_one({}, {"_id": 0, "srch_destination_id": 1, "destination_display_name": 1})
+    sample_country = db.dim_visitor_countries.find_one({}, {"_id": 0, "visitor_location_country_id": 1, "country_display_name": 1})
+    sample_site = db.dim_sites.find_one({}, {"_id": 0, "site_id": 1, "site_display_name": 1})
+    dimension_checks = {
+        "dim_hotels_display": (
+            db.dim_hotels.count_documents({"display_name": {"$exists": True, "$ne": ""}}),
+            sample_hotel or {},
+        ),
+        "dim_destinations_display": (
+            db.dim_destinations.count_documents({"destination_display_name": {"$exists": True, "$ne": ""}}),
+            sample_destination or {},
+        ),
+        "dim_countries_display": (
+            db.dim_visitor_countries.count_documents({"country_display_name": {"$exists": True, "$ne": ""}}),
+            sample_country or {},
+        ),
+        "dim_sites_display": (
+            db.dim_sites.count_documents({"site_display_name": {"$exists": True, "$ne": ""}}),
+            sample_site or {},
+        ),
+    }
+    for name, (count, sample) in dimension_checks.items():
+        ok = count > 0
+        report["checks"].append({"name": name, "ok": ok, "details": {"count": count, "sample": sample}})
+        if not ok:
+            errors.append(f"{name}: missing display field sample")
+
+    port = find_free_port()
+    base_url = f"http://127.0.0.1:{port}"
+    process = start_server(port)
     try:
-        sample_hotel = db.dim_hotels.find_one({}, {"_id": 0, "prop_id": 1, "display_name": 1})
-        sample_destination = db.dim_destinations.find_one({}, {"_id": 0, "srch_destination_id": 1, "destination_display_name": 1})
-        sample_country = db.dim_visitor_countries.find_one({}, {"_id": 0, "visitor_location_country_id": 1, "country_display_name": 1})
-        sample_site = db.dim_sites.find_one({}, {"_id": 0, "site_id": 1, "site_display_name": 1})
-        dimension_checks = {
-            "dim_hotels_display": (
-                db.dim_hotels.count_documents({"display_name": {"$exists": True, "$ne": ""}}),
-                sample_hotel or {},
-            ),
-            "dim_destinations_display": (
-                db.dim_destinations.count_documents({"destination_display_name": {"$exists": True, "$ne": ""}}),
-                sample_destination or {},
-            ),
-            "dim_countries_display": (
-                db.dim_visitor_countries.count_documents({"country_display_name": {"$exists": True, "$ne": ""}}),
-                sample_country or {},
-            ),
-            "dim_sites_display": (
-                db.dim_sites.count_documents({"site_display_name": {"$exists": True, "$ne": ""}}),
-                sample_site or {},
-            ),
-        }
-        for name, (count, sample) in dimension_checks.items():
-            ok = count > 0
-            report["checks"].append({"name": name, "ok": ok, "details": {"count": count, "sample": sample}})
-            if not ok:
-                errors.append(f"{name}: missing display field sample")
+        if not wait_for_server(base_url):
+            errors.append("server did not start")
+            return report
+        session = login_cliente(base_url)
+        search_response = session.get(f"{base_url}/hotels/search", timeout=30)
+        search_ok = search_response.status_code == 200 and "Hotel Partner " in search_response.text and "País " not in search_response.text
+        report["checks"].append({"name": "hotels_search_enriched", "ok": search_ok, "details": {"status_code": search_response.status_code}})
+        if not search_ok:
+            errors.append("hotels_search_enriched: page did not show enriched labels as expected")
 
-        port = find_free_port()
-        base_url = f"http://127.0.0.1:{port}"
-        process = start_server(port)
-        try:
-            if not wait_for_server(base_url):
-                errors.append("server did not start")
-                return report
-            session = login_cliente(base_url)
-            search_response = session.get(f"{base_url}/hotels/search", timeout=30)
-            search_ok = search_response.status_code == 200 and "Hotel Partner " in search_response.text and "País " not in search_response.text
-            report["checks"].append({"name": "hotels_search_enriched", "ok": search_ok, "details": {"status_code": search_response.status_code}})
-            if not search_ok:
-                errors.append("hotels_search_enriched: page did not show enriched labels as expected")
-
-            prop_id = sample_hotel["prop_id"] if sample_hotel else 61529
-            detail_response = session.get(f"{base_url}/hotels/{prop_id}", timeout=30)
-            detail_ok = detail_response.status_code == 200 and f"ID propiedad: {prop_id}" in detail_response.text
-            report["checks"].append({"name": "hotels_detail_enriched", "ok": detail_ok, "details": {"status_code": detail_response.status_code, "prop_id": prop_id}})
-            if not detail_ok:
-                errors.append("hotels_detail_enriched: detail did not show friendly name with technical id")
-        finally:
-            stop_server(process)
+        prop_id = sample_hotel["prop_id"] if sample_hotel else 61529
+        detail_response = session.get(f"{base_url}/hotels/{prop_id}", timeout=30)
+        detail_ok = detail_response.status_code == 200 and f"ID propiedad: {prop_id}" in detail_response.text
+        report["checks"].append({"name": "hotels_detail_enriched", "ok": detail_ok, "details": {"status_code": detail_response.status_code, "prop_id": prop_id}})
+        if not detail_ok:
+            errors.append("hotels_detail_enriched: detail did not show friendly name with technical id")
     finally:
-        client.close()
+        stop_server(process)
 
     report["errors"] = errors
     report["result"] = not errors
