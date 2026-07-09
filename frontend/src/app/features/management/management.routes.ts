@@ -31,6 +31,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../rooms/rooms.routes').then((m) => m.ROOMS_ROUTES)
   },
   {
+    path: 'guests',
+    loadChildren: () =>
+      import('../guests/guests.routes').then((m) => m.GUESTS_ROUTES)
+  },
+  {
     path: 'rates',
     loadChildren: () =>
       import('../rates/rates.routes').then((m) => m.RATES_ROUTES)

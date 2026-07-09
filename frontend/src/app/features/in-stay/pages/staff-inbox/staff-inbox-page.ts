@@ -158,6 +158,7 @@ export class StaffInboxPageComponent implements OnDestroy {
   // Folios (separate tab)
   readonly folios = signal<LedgerFolio[]>([]);
   readonly foliosLoading = signal(false);
+  readonly folioStatusFilter = signal('open');
 
   // Payment / transfer modal state
   readonly paymentModalFolio = signal<LedgerFolio | null>(null);
@@ -255,7 +256,7 @@ export class StaffInboxPageComponent implements OnDestroy {
     if (!propId) return;
 
     this.foliosLoading.set(true);
-    this.ledgerApi.getLedgerFolios(propId).subscribe({
+    this.ledgerApi.getLedgerFolios(propId, this.folioStatusFilter()).subscribe({
       next: (res) => {
         this.folios.set(res.items);
         this.foliosLoading.set(false);
@@ -271,6 +272,11 @@ export class StaffInboxPageComponent implements OnDestroy {
     if (tab === 'folios') this.loadFolios();
     if (tab === 'sessions') this.loadSessions();
     if (tab === 'lost-found') this.loadLostFound();
+  }
+
+  setFolioStatusFilter(status: string): void {
+    this.folioStatusFilter.set(status);
+    this.loadFolios();
   }
 
   // ── Sessions ──

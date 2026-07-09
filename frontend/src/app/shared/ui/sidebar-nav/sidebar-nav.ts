@@ -99,6 +99,12 @@ export class SidebarNavComponent {
           allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel']
         },
         {
+          label: 'Huéspedes',
+          href: '/management/guests',
+          icon: 'people',
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'auditor_datos']
+        },
+        {
           label: 'Tarifas',
           href: '/management/rates',
           icon: 'attach_money',

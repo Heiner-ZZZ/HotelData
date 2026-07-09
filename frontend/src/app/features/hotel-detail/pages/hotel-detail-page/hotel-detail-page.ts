@@ -33,6 +33,7 @@ export class HotelDetailPageComponent {
   readonly similarLoading = signal(false);
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly selectedGalleryImage = signal<string | null>(null);
+  readonly showBooking = signal(false);
 
   onImageError(key: string) {
     this.imageErrors.update((s) => new Set(s).add(key));

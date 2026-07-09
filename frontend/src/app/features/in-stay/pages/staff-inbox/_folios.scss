@@ -34,6 +34,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .si-folio-guest {
@@ -121,4 +123,31 @@
   background: transparent;
   color: t.$si-text-secondary;
   border: 1px solid t.$si-border;
+}
+
+/* ── Folio status badge ── */
+
+.si-folio-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: t.$si-radius-sm;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+  }
+}
+
+.si-folio-paid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.si-folio-open {
+  background: #fef3c7;
+  color: #92400e;
 }

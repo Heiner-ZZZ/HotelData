@@ -313,12 +313,36 @@
        ══════════════════════════════════════════════ -->
   @if (activeTab() === 'folios') {
     <div class="si-folios">
+      <!-- Status filter chips -->
+      <div class="si-chips" style="margin-bottom: 0.75rem;">
+        <button
+          class="si-chip"
+          [class.active]="folioStatusFilter() === 'open'"
+          (click)="setFolioStatusFilter('open')"
+        >
+          <span class="material-symbols-outlined si-chip-icon">receipt_long</span>
+          Abiertos
+        </button>
+        <button
+          class="si-chip"
+          [class.active]="folioStatusFilter() === 'closed'"
+          (click)="setFolioStatusFilter('closed')"
+        >
+          <span class="material-symbols-outlined si-chip-icon">archive</span>
+          Cerrados
+        </button>
+      </div>
+
       @if (foliosLoading()) {
         <div class="si-loading">Cargando folios...</div>
       } @else if (folios().length === 0) {
         <div class="si-empty">
           <span class="material-symbols-outlined">receipt_long</span>
-          <p>No hay folios activos para esta propiedad</p>
+          @if (folioStatusFilter() === 'closed') {
+            <p>No hay folios cerrados para esta propiedad</p>
+          } @else {
+            <p>No hay folios activos para esta propiedad</p>
+          }
         </div>
       } @else {
         <div class="si-folios-grid">
@@ -335,6 +359,17 @@
                 <div class="si-folio-balance" [class.positive]="folio.balance > 0" [class.zero]="folio.balance <= 0">
                   {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
                 </div>
+                @if (folio.balance <= 0) {
+                  <span class="si-folio-status si-folio-paid">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Pagado
+                  </span>
+                } @else {
+                  <span class="si-folio-status si-folio-open">
+                    <span class="material-symbols-outlined">pending</span>
+                    Pendiente
+                  </span>
+                }
               </div>
               <div class="si-folio-meta">
                 <span>Check-in: {{ folio.checkIn || '—' }}</span>
@@ -342,6 +377,7 @@
                 <span>{{ folio.transactionCount }} transacciones</span>
               </div>
               <div class="si-folio-actions">
+                @if (folio.balance > 0) {
                 <button class="si-folio-btn si-folio-pay" (click)="openPaymentModal(folio)">
                   <span class="material-symbols-outlined">payments</span>
                   Registrar Pago
@@ -350,6 +386,7 @@
                   <span class="material-symbols-outlined">swap_horiz</span>
                   Transferir
                 </button>
+                }
                 <button class="si-folio-btn si-folio-ghost" (click)="openTransactionsModal(folio)">
                   <span class="material-symbols-outlined">receipt_long</span>
                   Ver
