@@ -83,7 +83,7 @@ def login_submit(
     response.set_cookie(
         SESSION_COOKIE_NAME, token,
         httponly=True, samesite="lax",
-        max_age=8 * 60 * 60, path="/",
+        max_age=365 * 24 * 60 * 60, path="/",
     )
     return response
 
@@ -120,7 +120,7 @@ def login_api(
     from src.app.security.navigation import get_default_redirect_for_role
     home_href = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(user.get("primary_role"))
 
-    max_age = 30 * 24 * 60 * 60 if remember_me else 8 * 60 * 60
+    max_age = 365 * 24 * 60 * 60  # sessions only expire on explicit logout
     response = JSONResponse(_auth_payload(user, session, home_href))
     response.set_cookie(
         SESSION_COOKIE_NAME, token,
@@ -133,7 +133,7 @@ def login_api(
         response.set_cookie(
             "hoteldata_refresh", refresh_token,
             httponly=True, samesite="lax",
-            max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60, path="/api/auth/refresh",
+        max_age=365 * 24 * 60 * 60, path="/api/auth/refresh",
         )
     return response
 
@@ -228,3 +228,75 @@ def logout(request: Request):
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie("hoteldata_refresh", path="/api/auth/refresh")
     return response
+
+
+# ═══════════════════════════════════════════════
+# ADMIN session management (all users)
+# ═══════════════════════════════════════════════
+
+ADMIN_ROLES = {"super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"}
+
+
+def _require_admin(user: dict | None) -> None:
+    if not user:
+        raise HTTPException(status_code=401, detail="No autenticado.")
+    role = user.get("primary_role", "")
+    if role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Acceso restringido a administradores.")
+
+
+@api_router.get("/admin/sessions")
+def admin_list_sessions(request: Request):
+    """List all active sessions across all users (admin only)."""
+    db = get_database()
+    user, _ = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
+    _require_admin(user)
+
+    sessions = list(
+        db.user_sessions.find({"is_active": True}).sort("created_at", -1)
+    )
+    return {
+        "items": [
+            {
+                "session_id": str(s["_id"]),
+                "username": s.get("username", ""),
+                "email": s.get("email", ""),
+                "created_at": s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at", "")),
+                "expires_at": s.get("expires_at").isoformat() if hasattr(s.get("expires_at"), "isoformat") else str(s.get("expires_at", "")),
+                "ip_address": s.get("ip_address"),
+                "user_agent": s.get("user_agent"),
+            }
+            for s in sessions
+        ],
+        "total": len(sessions),
+    }
+
+
+@api_router.post("/admin/sessions/{session_id}/terminate")
+def admin_terminate_session(request: Request, session_id: str):
+    """Terminate any user's session by session_id (admin only)."""
+    db = get_database()
+    user, _ = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
+    _require_admin(user)
+
+    try:
+        oid = ObjectId(session_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de sesión inválido.")
+
+    target = db.user_sessions.find_one({"_id": oid})
+    if not target:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada.")
+    if not target.get("is_active"):
+        raise HTTPException(status_code=400, detail="La sesión ya está inactiva.")
+
+    db.user_sessions.update_one(
+        {"_id": oid},
+        {"$set": {"is_active": False, "ended_at": _now(), "end_reason": "terminated_by_admin"}},
+    )
+
+    log_user_activity(
+        db, action="auth.admin_session_terminated", request=request, user=user,
+        details={"target_session_id": session_id, "target_user": target.get("username", "")},
+    )
+    return {"ok": True, "message": f"Sesión de {target.get('username', '?')} terminada."}

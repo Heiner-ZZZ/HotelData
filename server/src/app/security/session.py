@@ -14,7 +14,7 @@ from src.database.connection import get_database
 
 
 SESSION_COOKIE_NAME = "hoteldata_session"
-SESSION_TTL_HOURS = 8
+SESSION_TTL_HOURS = 365 * 24  # 1 year — sessions only expire on explicit logout
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -113,13 +113,8 @@ def get_session(db: Database, token: str | None) -> dict[str, Any] | None:
     session = db.user_sessions.find_one({"session_token_hash": hash_session_token(token), "is_active": True})
     if not session:
         return None
-    expires_at = ensure_utc(session.get("expires_at"))
-    if expires_at and expires_at < utc_now():
-        db.user_sessions.update_one(
-            {"_id": session["_id"]},
-            {"$set": {"is_active": False, "ended_at": utc_now(), "end_reason": "expired"}},
-        )
-        return None
+    # Sessions no longer expire by time — they stay active until explicit logout.
+    # The expires_at field is preserved for informational purposes only.
     return session
 
 

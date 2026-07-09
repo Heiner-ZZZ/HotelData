@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Query
 from pymongo import ASCENDING, DESCENDING
 
+from src.app.core.timezone import local_now, local_today
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20)):
     db = get_database()
 
     # Calculate last 7 days
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = local_now().replace(hour=0, minute=0, second=0, microsecond=0)
     seven_days_ago = today - timedelta(days=6)
     date_strs = [(seven_days_ago + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
@@ -118,7 +119,7 @@ def occupancy_trend(days: int = Query(default=14, ge=7, le=90)):
     """Daily check-in / check-out counts for the last N days (line chart data)."""
     db = get_database()
 
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = local_now().replace(hour=0, minute=0, second=0, microsecond=0)
     date_strs = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days - 1, -1, -1)]
 
     check_ins = []
@@ -161,7 +162,7 @@ def operational_stats():
     hotels_with_policies = len(db.hotel_policies.distinct("prop_id"))
 
     # Today's check-ins and check-outs
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = local_today()
     check_ins_today = db.booking_orders.count_documents({"check_in_date": today})
     check_outs_today = db.booking_orders.count_documents({"check_out_date": today})
 

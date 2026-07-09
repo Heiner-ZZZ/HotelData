@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
+from src.app.core.timezone import local_now
 from src.app.features.collections.service import collection_counts
 from src.app.features.dashboard.service import dashboard_overview
 from src.app.features.quality.service import quality_summary
@@ -25,7 +26,7 @@ def _build_kpi_payload() -> dict:
 def refresh_kpis() -> dict:
     db = get_database()
     payload = _build_kpi_payload()
-    now = datetime.now(timezone.utc).isoformat()
+    now = local_now().isoformat()
     doc = {
         "_id": CACHE_ID,
         "updated_at": now,
@@ -59,7 +60,7 @@ def get_kpis() -> dict:
         try:
             updated_at_str = doc.get("updated_at", "")
             updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
-            age = (datetime.now(timezone.utc) - updated_at).total_seconds()
+            age = (local_now() - updated_at).total_seconds()
             if age > 30:
                 should_refresh = True
         except Exception:

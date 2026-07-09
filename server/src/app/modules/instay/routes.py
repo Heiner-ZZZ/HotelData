@@ -152,6 +152,45 @@ def list_stay_sessions(
             "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1}
 
 
+@staff_router.post("/sessions/cleanup-expired")
+def cleanup_expired_stay_sessions(
+    payload: dict = Body(default={}),
+    current_user: dict = Depends(require_login),
+):
+    """Deactivate stay sessions whose check-out date has already passed.
+
+    Payload: {"prop_id": 1}  (optional; if omitted, cleans all properties)
+    """
+    db = get_database()
+    match: dict = {"active": True}
+    prop_id = payload.get("prop_id") if payload.get("prop_id") else None
+    if prop_id:
+        match["prop_id"] = prop_id
+
+    from src.app.core.timezone import local_today
+    today = local_today()
+    sessions = list(db.stay_sessions.find(match, {"token": 1, "booking_id": 1, "check_out": 1, "guest_name": 1, "prop_id": 1}))
+
+    # Collect tokens for sessions whose check-out has passed
+    expired_tokens: list[str] = []
+    for s in sessions:
+        check_out = str(s.get("check_out", ""))[:10]
+        if not check_out:
+            continue  # guard against missing check_out field
+        if check_out < today:
+            expired_tokens.append(s["token"])
+
+    deactivated = 0
+    if expired_tokens:
+        result = db.stay_sessions.update_many(
+            {"token": {"$in": expired_tokens}, "active": True},
+            {"$set": {"active": False, "deactivated_at": utc_now()}},
+        )
+        deactivated = result.modified_count
+
+    return {"ok": True, "deactivated": deactivated, "total": len(sessions), "prop_id": prop_id}
+
+
 @staff_router.get("/sessions/{token}")
 def get_stay_session(token: str, current_user: dict = Depends(require_login)):
     db = get_database()
@@ -530,7 +569,8 @@ def get_portal_data(token: str = Query(..., min_length=1)):
             from datetime import date
             ci_d = date.fromisoformat(ci)
             co_d = date.fromisoformat(co)
-            today = date.today()
+            from src.app.core.timezone import local_today
+            today = date.fromisoformat(local_today())
             if today >= co_d:
                 nights_remaining = 0
             elif today <= ci_d:

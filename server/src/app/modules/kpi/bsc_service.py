@@ -13,9 +13,10 @@ trend direction, and temporal comparison vs previous period.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
+from src.app.core.timezone import local_now
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def _money(val: float) -> str:
 
 def _previous_period_keys() -> tuple[int, int, int, int]:
     """Return (current_start_key, current_end_key, prev_start_key, prev_end_key) as YYYYMMDD integers."""
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = local_now().replace(hour=0, minute=0, second=0, microsecond=0)
     current_end = today - timedelta(days=1)
     current_start = today - timedelta(days=30)
     prev_end = today - timedelta(days=31)
@@ -282,7 +283,7 @@ def _aprendizaje() -> list[dict[str, Any]]:
     current_events = current_agg.get("total_events", 0)
     prev_total_records = max(0, total_records - current_events)
 
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = local_now().replace(hour=0, minute=0, second=0, microsecond=0)
     days_30_ago = today - timedelta(days=30)
 
     # Rejected records
@@ -341,7 +342,7 @@ def _aprendizaje() -> list[dict[str, Any]]:
 
 def build_bsc() -> dict[str, Any]:
     """Build the complete Balanced Scorecard payload."""
-    now = datetime.now(timezone.utc)
+    now = local_now()
     period_label = f"Últimos 30 días (al {now.strftime('%d/%b/%Y')})"
 
     perspectives = [
