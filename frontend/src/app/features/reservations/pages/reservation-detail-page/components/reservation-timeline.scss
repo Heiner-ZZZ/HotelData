@@ -2,9 +2,9 @@
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-head {
@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-soft);
 
   .panel-head-left {
     display: flex;
@@ -22,7 +22,7 @@
 
   .panel-icon {
     font-size: 1.25rem;
-    color: #2563eb;
+    color: var(--accent);
   }
 
   h2 {
@@ -35,7 +35,7 @@
 .muted-text {
   padding: 14px 20px;
   margin: 0;
-  color: #6b7280;
+  color: var(--muted-text);
   font-size: 0.88rem;
 }
 
@@ -44,7 +44,7 @@
   align-items: center;
   gap: 5px;
   padding: 7px 14px;
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -54,14 +54,14 @@
   transition: background 0.15s;
 
   &:hover {
-    background: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
   }
 }
 
 .guests-panel {
   .room-guests-block {
     padding: 14px 20px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--surface-soft);
 
     &:last-of-type {
       border-bottom: none;
@@ -72,7 +72,7 @@
     margin: 0 0 10px;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--muted-text);
   }
 }
 
@@ -85,16 +85,16 @@
 
   input {
     padding: 7px 9px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     font-size: 0.82rem;
-    background: #ffffff;
+    background: var(--surface);
     transition: border-color 0.15s;
 
     &:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
     }
 
     &.gf-name { width: 180px; }
@@ -108,14 +108,14 @@
     align-items: center;
     gap: 4px;
     font-size: 0.82rem;
-    color: #6b7280;
+    color: var(--muted-text);
     white-space: nowrap;
   }
 }
 
 .btn-remove-guest {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--app-border);
   border-radius: 6px;
   width: 30px;
   height: 30px;
@@ -123,12 +123,12 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--muted-text);
 
   &:hover {
-    color: #dc2626;
-    border-color: #dc2626;
-    background: rgba(220, 38, 38, 0.04);
+    color: var(--danger);
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 4%, transparent);
   }
 }
 
@@ -138,8 +138,8 @@
   gap: 5px;
   padding: 5px 12px;
   background: transparent;
-  color: #2563eb;
-  border: 1px dashed #2563eb;
+  color: var(--accent);
+  border: 1px dashed var(--accent);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.82rem;
@@ -147,7 +147,7 @@
   transition: background 0.15s;
 
   &:hover {
-    background: rgba(37, 99, 235, 0.05);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
   }
 }
 
@@ -155,26 +155,26 @@
   display: flex;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--surface-soft);
 }
 
 .btn-cancel-edit {
   padding: 8px 18px;
   background: transparent;
-  color: #374151;
-  border: 1px solid #e5e7eb;
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.88rem;
 
   &:hover {
-    background: #f9fafb;
+    background: var(--surface-soft);
   }
 }
 
 .btn-save-edit {
   padding: 8px 18px;
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -183,7 +183,7 @@
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
   }
 
   &:disabled {
@@ -214,18 +214,18 @@
 
 .form-input {
   padding: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--app-border);
   border-radius: 6px;
   width: 100%;
   box-sizing: border-box;
   font-family: inherit;
   font-size: 0.88rem;
-  background: #ffffff;
+  background: var(--surface);
 
   &:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
@@ -244,7 +244,7 @@ textarea.form-input {
   align-items: center;
   gap: 5px;
   padding: 9px 20px;
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -253,7 +253,7 @@ textarea.form-input {
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
   }
 
   &:disabled {

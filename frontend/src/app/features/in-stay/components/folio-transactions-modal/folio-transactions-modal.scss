@@ -19,7 +19,7 @@
 }
 
 .tx-modal {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   width: 520px;
   max-width: calc(100vw - 32px);
@@ -43,7 +43,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.2rem;
-  border-bottom: 1px solid #e0e3e5;
+  border-bottom: 1px solid var(--app-border);
   flex-shrink: 0;
 
   h2 {
@@ -56,7 +56,7 @@
 
 .modal-head-icon {
   font-size: 1.35rem;
-  color: #006076;
+  color: var(--accent);
 }
 
 .modal-close {
@@ -69,10 +69,10 @@
   border-radius: 8px;
   background: none;
   cursor: pointer;
-  color: #6f797d;
+  color: var(--muted-text);
   transition: background 0.15s;
 
-  &:hover { background: #f0f0f0; }
+  &:hover { background: var(--surface-hover); }
 
   .material-symbols-outlined { font-size: 1.15rem; }
 }
@@ -91,7 +91,7 @@
 /* ── Folio info ── */
 
 .tx-folio-info {
-  background: #f5f6f7;
+  background: var(--surface-soft);
   border-radius: 10px;
   padding: 0.75rem 1rem;
 }
@@ -100,17 +100,17 @@
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: 0.3rem;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .tx-folio-meta {
   display: flex;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: #6f797d;
+  color: var(--muted-text);
 
-  .text-danger { color: #ba1a1a; }
-  .text-success { color: #166534; }
+  .text-danger { color: var(--danger); }
+  .text-success { color: var(--success); }
 }
 
 /* ── Summary badges ── */
@@ -144,18 +144,18 @@
 }
 
 .tx-summary-charge {
-  background: #fef2f2;
-  color: #991b1b;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
 }
 
 .tx-summary-payment {
-  background: #f0fdf4;
-  color: #166534;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  color: var(--success);
 }
 
 .tx-summary-discount {
-  background: #fefce8;
-  color: #854d0e;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--warning);
 }
 
 /* ── Loading / Error / Empty ── */
@@ -166,12 +166,12 @@
   text-align: center;
   padding: 2rem 1rem;
   font-size: 0.85rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .tx-error {
-  color: #ba1a1a;
-  background: #fef2f2;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
   border-radius: 8px;
 }
 
@@ -189,14 +189,14 @@
   gap: 0.65rem;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-soft);
   transition: background 0.12s;
 
-  &:hover { background: #f1f5f9; }
+  &:hover { background: var(--surface-hover); }
 
-  &.tx-charge { border-left: 3px solid #ef4444; }
-  &.tx-payment { border-left: 3px solid #22c55e; }
-  &.tx-discount { border-left: 3px solid #eab308; }
+  &.tx-charge { border-left: 3px solid var(--danger); }
+  &.tx-payment { border-left: 3px solid var(--success); }
+  &.tx-discount { border-left: 3px solid var(--warning); }
 }
 
 .tx-row-icon {
@@ -206,12 +206,12 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   flex-shrink: 0;
 
   .material-symbols-outlined {
     font-size: 1.1rem;
-    color: #6f797d;
+    color: var(--muted-text);
   }
 }
 
@@ -223,7 +223,7 @@
 .tx-row-concept {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #191c1e;
+  color: var(--app-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -233,17 +233,17 @@
   display: flex;
   gap: 0.5rem;
   font-size: 0.7rem;
-  color: #6f797d;
+  color: var(--muted-text);
   margin-top: 0.1rem;
 }
 
 .tx-row-category {
-  color: #006076;
+  color: var(--accent);
   font-weight: 500;
 }
 
 .tx-row-qty {
-  color: #94a3b8;
+  color: var(--muted-text);
 }
 
 .tx-row-date {
@@ -256,10 +256,10 @@
   flex-shrink: 0;
   text-align: right;
 
-  &.tx-positive { color: #166534; }
-  &.tx-negative { color: #991b1b; }
+  &.tx-positive { color: var(--success); }
+  &.tx-negative { color: var(--danger); }
 }
 
 .mono { font-family: 'JetBrains Mono', monospace; }
-.text-danger { color: #ba1a1a; }
-.text-success { color: #166534; }
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }

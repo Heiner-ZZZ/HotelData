@@ -156,9 +156,9 @@
 .gp-lost-item-head { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
 .gp-lost-item-desc { font-weight: 600; font-size: 0.82rem; color: t.$gp-text; flex: 1; }
 .gp-lost-item-status { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 99px; font-weight: 500; white-space: nowrap; }
-.gp-lost-status-found { background: #dbeafe; color: #1e40af; }
-.gp-lost-status-claimed { background: #dcfce7; color: #166534; }
-.gp-lost-status-disposed { background: #fee2e2; color: #991b1b; }
+.gp-lost-status-found { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.gp-lost-status-claimed { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.gp-lost-status-disposed { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .gp-lost-item-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.68rem; color: t.$gp-text-secondary; span { display: inline-flex; align-items: center; gap: 0.15rem; .material-symbols-outlined { font-size: 0.8rem; } } }
 .gp-lost-item-date { display: block; font-size: 0.65rem; color: t.$gp-text-secondary; margin-top: 0.2rem; }
 

@@ -42,23 +42,23 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  color: #dc2626;
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--danger);
   font-size: 0.82rem;
 }
 
 .rc-retry {
   margin-left: auto;
   padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
   background: transparent;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
 
-  &:hover { background: rgba(220, 38, 38, 0.05); }
+  &:hover { background: color-mix(in srgb, var(--danger) 5%, transparent); }
 }
 
 /* ─── Navigation ─── */
@@ -121,13 +121,13 @@
 }
 
 .rc-toast-success {
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  color: var(--success);
 }
 
 .rc-toast-error {
-  background: rgba(220, 38, 38, 0.06);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  color: var(--danger);
 }
 
 .rc-legend {
@@ -150,9 +150,9 @@
   height: 8px;
 }
 
-.rc-dot-active { background: #4caf50; }
-.rc-dot-upcoming { background: #ff7043; }
-.rc-dot-past { background: #9e9e9e; }
+.rc-dot-active { background: var(--success); }
+.rc-dot-upcoming { background: var(--warning); }
+.rc-dot-past { background: var(--muted-text); }
 
 /* ─── Drag hint ─── */
 
@@ -187,7 +187,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  background: var(--surface-soft, #f8fafc);
+  background: var(--surface-soft);
   border-bottom: 2px solid var(--app-border);
 }
 
@@ -232,7 +232,7 @@
 }
 
 .rc-cell-today {
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface-soft, #f8fafc));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-soft));
 
   .rc-day-num {
     background: var(--accent);
@@ -292,7 +292,7 @@
 }
 
 .rc-cell-bg.rc-cell-weekend {
-  background: color-mix(in srgb, var(--surface-soft, #f8fafc) 30%, transparent);
+  background: color-mix(in srgb, var(--surface-soft) 30%, transparent);
 }
 
 .rc-cell-occupied {
@@ -373,31 +373,31 @@
    inconsistently on diagonal edges, while inset shadow follows
    the clip-path boundary correctly on all 4 rhomboid sides. */
 .bar-active {
-  background: #c8e6c9;
-  box-shadow: inset 0 0 0 2px #81c784;
-  color: #1b5e20;
-  &:hover { background: #a5d6a7; box-shadow: inset 0 0 0 2px #66bb6a; }
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 50%, transparent);
+  color: var(--success);
+  &:hover { background: color-mix(in srgb, var(--success) 30%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 70%, transparent); }
 }
 
 .bar-upcoming {
-  background: #ffccbc;
-  box-shadow: inset 0 0 0 2px #ff8a65;
-  color: #bf360c;
-  &:hover { background: #ffab91; box-shadow: inset 0 0 0 2px #ff7043; }
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--warning) 50%, transparent);
+  color: var(--warning);
+  &:hover { background: color-mix(in srgb, var(--warning) 30%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--warning) 70%, transparent); }
 }
 
 .bar-past {
-  background: #e0e0e0;
-  box-shadow: inset 0 0 0 2px #9e9e9e;
-  color: #555555;
+  background: color-mix(in srgb, var(--muted-text) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted-text) 30%, transparent);
+  color: var(--muted-text);
   opacity: 0.7;
-  &:hover { opacity: 1; box-shadow: inset 0 0 0 2px #7a7a7a; }
+  &:hover { opacity: 1; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted-text) 40%, transparent); }
 }
 
 .bar-cancelled {
-  background: #f0f0f0;
-  box-shadow: inset 0 0 0 2px #9e9e9e;
-  color: #7a7a7a;
+  background: color-mix(in srgb, var(--muted-text) 8%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted-text) 30%, transparent);
+  color: var(--muted-text);
   opacity: 0.5;
 }
 
@@ -496,10 +496,10 @@
   letter-spacing: 0.04em;
 }
 
-.rc-badge-active { background: #c8e6c9; color: #1b5e20; }
-.rc-badge-upcoming { background: #ffccbc; color: #bf360c; }
-.rc-badge-past { background: #e0e0e0; color: #555555; }
-.rc-badge-cancelled { background: #e8e8e8; color: #7a7a7a; }
+.rc-badge-active { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.rc-badge-upcoming { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.rc-badge-past { background: color-mix(in srgb, var(--muted-text) 12%, transparent); color: var(--muted-text); }
+.rc-badge-cancelled { background: color-mix(in srgb, var(--muted-text) 8%, transparent); color: var(--muted-text); }
 
 .rc-modal-body {
   padding: 0.85rem 1rem 1rem;
@@ -572,7 +572,7 @@
 .rc-btn-secondary {
   background: transparent;
   color: var(--muted-text);
-  &:hover { background: var(--surface-soft, #f1f5f9); }
+  &:hover { background: var(--surface-soft); }
 }
 
 /* ═══════════════════════════════════════════════════════════════

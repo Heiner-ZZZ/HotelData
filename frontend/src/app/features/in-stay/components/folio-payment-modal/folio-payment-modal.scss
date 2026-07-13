@@ -19,7 +19,7 @@
 }
 
 .folio-modal {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   width: 460px;
   max-width: calc(100vw - 32px);
@@ -41,7 +41,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.2rem;
-  border-bottom: 1px solid #e0e3e5;
+  border-bottom: 1px solid var(--app-border);
 
   h2 {
     margin: 0;
@@ -53,7 +53,7 @@
 
 .modal-head-icon {
   font-size: 1.35rem;
-  color: #006076;
+  color: var(--accent);
 }
 
 .modal-close {
@@ -66,10 +66,10 @@
   border-radius: 8px;
   background: none;
   cursor: pointer;
-  color: #6f797d;
+  color: var(--muted-text);
   transition: background 0.15s;
 
-  &:hover { background: #f0f0f0; }
+  &:hover { background: var(--surface-hover); }
 
   .material-symbols-outlined { font-size: 1.15rem; }
 }
@@ -86,7 +86,7 @@
 /* ── Folio Preview ── */
 
 .folio-preview {
-  background: #f5f6f7;
+  background: var(--surface-soft);
   border-radius: 10px;
   padding: 0.75rem 1rem;
 }
@@ -95,21 +95,21 @@
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: 0.3rem;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .folio-preview-meta {
   display: flex;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .folio-preview-balance {
   font-weight: 600;
   margin-left: auto;
 
-  &.text-danger { color: #ba1a1a; }
+  &.text-danger { color: var(--danger); }
 }
 
 /* ── Form fields ── */
@@ -124,7 +124,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: #6f797d;
+    color: var(--muted-text);
   }
 }
 
@@ -139,13 +139,13 @@
   transform: translateY(-50%);
   font-size: 1rem;
   font-weight: 500;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .amount-input {
   width: 100%;
   padding: 0.6rem 0.75rem 0.6rem 1.75rem;
-  border: 1.5px solid #e0e3e5;
+  border: 1.5px solid var(--app-border);
   border-radius: 10px;
   font-size: 1.05rem;
   font-weight: 600;
@@ -153,19 +153,19 @@
   outline: none;
   transition: border-color 0.15s;
 
-  &:focus { border-color: #006076; }
+  &:focus { border-color: var(--accent); }
 }
 
 .notes-input {
   padding: 0.55rem 0.75rem;
-  border: 1.5px solid #e0e3e5;
+  border: 1.5px solid var(--app-border);
   border-radius: 10px;
   font-size: 0.85rem;
   outline: none;
   font-family: inherit;
   transition: border-color 0.15s;
 
-  &:focus { border-color: #006076; }
+  &:focus { border-color: var(--accent); }
 }
 
 /* ── Payment method grid ── */
@@ -181,24 +181,24 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  border: 1.5px solid #e0e3e5;
+  border: 1.5px solid var(--app-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #6f797d;
+  color: var(--muted-text);
   font-family: inherit;
   transition: all 0.15s;
 
   .material-symbols-outlined { font-size: 1.1rem; }
 
-  &:hover { border-color: #006076; background: #f0f4f6; }
+  &:hover { border-color: var(--accent); background: var(--surface-soft); }
 
   &.active {
-    border-color: #006076;
-    background: #e0f0f4;
-    color: #006076;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
     font-weight: 600;
   }
 }
@@ -217,26 +217,26 @@
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.75rem;
-  border: 1.5px solid #e0e3e5;
+  border: 1.5px solid var(--app-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
   transition: all 0.15s;
 
-  &:hover { border-color: #006076; background: #f0f4f6; }
+  &:hover { border-color: var(--accent); background: var(--surface-soft); }
 
   &.active {
-    border-color: #006076;
-    background: #e0f0f4;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 }
 
 .target-folio-name {
   font-weight: 600;
   font-size: 0.85rem;
-  color: #191c1e;
+  color: var(--app-text);
   margin-bottom: 0.15rem;
 }
 
@@ -244,13 +244,13 @@
   display: flex;
   gap: 0.5rem;
   font-size: 0.7rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .target-folio-balance {
   margin-left: auto;
   font-weight: 600;
-  color: #ba1a1a;
+  color: var(--danger);
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -259,9 +259,9 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #6f797d;
+  color: var(--muted-text);
   padding: 0.6rem 0.75rem;
-  background: #f5f6f7;
+  background: var(--surface-soft);
   border-radius: 10px;
 
   .material-symbols-outlined { font-size: 1.1rem; }
@@ -274,8 +274,8 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.75rem;
-  background: #fef2f2;
-  color: #ba1a1a;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 500;
@@ -290,7 +290,7 @@
   justify-content: flex-end;
   gap: 0.5rem;
   padding: 0.8rem 1.2rem;
-  border-top: 1px solid #e0e3e5;
+  border-top: 1px solid var(--app-border);
 }
 
 .btn-cancel,
@@ -316,27 +316,27 @@
 }
 
 .btn-cancel {
-  background: #f0f0f0;
-  color: #6f797d;
+  background: var(--surface-hover);
+  color: var(--muted-text);
 
-  &:hover:not(:disabled) { background: #e0e0e0; }
+  &:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-hover) 80%, black); }
 }
 
 .btn-confirm {
   padding: 0.6rem 1.25rem;
 
   &.payment {
-    background: #006076;
+    background: var(--accent);
     color: #fff;
 
-    &:hover:not(:disabled) { background: #004d5e; }
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, black); }
   }
 
   &.transfer {
-    background: #6a1b9a;
+    background: var(--accent);
     color: #fff;
 
-    &:hover:not(:disabled) { background: #50147a; }
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, black); }
   }
 }
 
@@ -352,16 +352,16 @@
 
   .material-symbols-outlined {
     font-size: 3rem;
-    color: #166534;
+    color: var(--success);
   }
 
   p {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #166534;
+    color: var(--success);
   }
 }
 
 .mono { font-family: 'JetBrains Mono', monospace; }
-.text-danger { color: #ba1a1a; }
+.text-danger { color: var(--danger); }
