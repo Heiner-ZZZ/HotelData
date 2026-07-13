@@ -57,9 +57,9 @@
   flex-shrink: 0;
 }
 
-.stat-pending .stat-value { color: var(--warning, #f59e0b); }
-.stat-confirmed .stat-value { color: var(--success, #16a34a); }
-.stat-active .stat-value { color: #1463ff; }
+.stat-pending .stat-value { color: var(--warning); }
+.stat-confirmed .stat-value { color: var(--success); }
+.stat-active .stat-value { color: var(--accent); }
 .stat-checked-in .stat-value { color: #6366f1; }
 .stat-checked-out .stat-value { color: #8b5cf6; }
 .stat-lost .stat-value { color: var(--muted-text); }
@@ -75,7 +75,7 @@
   position: relative;
 
   &:hover {
-    background: color-mix(in srgb, var(--warning, #f59e0b) 6%, transparent);
+    background: color-mix(in srgb, var(--warning) 6%, transparent);
     transform: translateY(-1px);
   }
 
@@ -92,7 +92,7 @@
   width: 20px;
   height: 3px;
   border-radius: 2px;
-  background: var(--warning, #f59e0b);
+  background: var(--warning);
 }
 
 .spinning {

@@ -127,7 +127,7 @@
   gap: 3px;
 
   strong {
-    color: #4ade80;
+    color: var(--success);
     font-weight: 700;
     font-size: 0.8rem;
   }
@@ -239,7 +239,7 @@
 .feature-price-symbol {
   font-size: 0.6rem;
   font-weight: 700;
-  color: #4ade80;
+  color: var(--success);
   line-height: 1;
 }
 
@@ -249,7 +249,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #4ade80;
+  color: var(--success);
   font-size: 0.68rem;
   font-weight: 700;
   font-family: inherit;
@@ -263,7 +263,7 @@
   }
 
   &::placeholder {
-    color: #4ade80;
+    color: var(--success);
     opacity: 0.4;
   }
 

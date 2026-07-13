@@ -190,7 +190,7 @@
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--app-border);
-  background: var(--surface-card);
+  background: var(--surface);
 
   img {
     display: block;
@@ -227,7 +227,7 @@
   transition: background 120ms;
 
   &:hover {
-    background: rgba(220, 38, 38, 0.85);
+    background: color-mix(in srgb, var(--danger) 85%, transparent);
   }
 
   span {
