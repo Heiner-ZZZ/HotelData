@@ -1,7 +1,7 @@
 /* ═══ Card ═══ */
 .inv-card {
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 0.75rem;
   padding: 1.15rem;
   display: flex;
@@ -14,24 +14,24 @@
   align-items: center;
   gap: 0.45rem;
   padding-bottom: 0.6rem;
-  border-bottom: 1px solid #eceef0;
+  border-bottom: 1px solid var(--app-border);
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .inv-card-header-bg {
   margin: -1.15rem -1.15rem 0;
   padding: 0.85rem 1.15rem;
-  background: #f7f9fb;
-  border-bottom: 1px solid #e0e3e5;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
   border-radius: 0.75rem 0.75rem 0 0;
 }
 
 .inv-card-icon {
   font-size: 1.15rem;
-  color: #006076;
+  color: var(--accent);
   flex-shrink: 0;
 }
 

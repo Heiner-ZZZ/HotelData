@@ -1,6 +1,6 @@
 /* ═══ Folio Card ═══ */
 .inv-folio-card {
-  border-color: #006076;
+  border-color: var(--accent);
   background: linear-gradient(135deg, #fafcff 0%, #f2f8fc 100%);
 }
 
@@ -8,12 +8,12 @@
 
 .inv-folio-icon {
   font-size: 1.35rem;
-  color: #006076;
+  color: var(--accent);
   background: rgba(0, 96, 118, 0.08);
   padding: 0.35rem;
   border-radius: 0.5rem;
 }
 
-.inv-folio-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: #3f484c; }
-.inv-folio-number { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #006076; }
-.inv-folio-desc { font-size: 0.72rem; color: #6f797d; margin: 0; line-height: 1.4; }
+.inv-folio-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--app-text); }
+.inv-folio-number { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', 'Consolas', monospace; color: var(--accent); }
+.inv-folio-desc { font-size: 0.72rem; color: var(--muted-text); margin: 0; line-height: 1.4; }

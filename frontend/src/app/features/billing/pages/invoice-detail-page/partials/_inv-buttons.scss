@@ -24,20 +24,20 @@
 }
 
 .inv-btn-outline {
-  background: #ffffff;
-  color: #006076;
-  border-color: #bec8cd;
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--app-border);
 
   &:hover:not(:disabled) {
     background: #f2f4f6;
-    border-color: #006076;
+    border-color: var(--accent);
   }
 }
 
 .inv-btn-primary {
-  background: #006076;
-  color: #ffffff;
-  border-color: #006076;
+  background: var(--accent);
+  color: var(--surface);
+  border-color: var(--accent);
 
   &:hover:not(:disabled) {
     background: #004e60;
@@ -45,20 +45,20 @@
 }
 
 .inv-btn-danger {
-  background: #ffffff;
-  color: #ba1a1a;
-  border-color: #bec8cd;
+  background: var(--surface);
+  color: var(--danger);
+  border-color: var(--app-border);
 
   &:hover:not(:disabled) {
     background: rgba(186, 26, 26, 0.04);
-    border-color: #ba1a1a;
+    border-color: var(--danger);
   }
 }
 
 .inv-btn-danger-outline {
-  background: #ffffff;
-  color: #ba1a1a;
-  border-color: #ba1a1a;
+  background: var(--surface);
+  color: var(--danger);
+  border-color: var(--danger);
 
   &:hover:not(:disabled) {
     background: rgba(186, 26, 26, 0.04);

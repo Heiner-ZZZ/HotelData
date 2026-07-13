@@ -16,13 +16,13 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6f797d;
+    color: var(--muted-text);
   }
 
   dd {
     margin: 0;
     font-size: 0.85rem;
-    color: #191c1e;
+    color: var(--app-text);
   }
 }
 
