@@ -97,7 +97,7 @@
   background: var(--surface);
   border: 1px solid var(--app-border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
   animation: menu-drop-in 150ms ease;
 }
 
@@ -148,9 +148,9 @@
 }
 
 .toast-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
 
   .material-symbols-outlined {
     font-size: 1.1rem;
@@ -313,7 +313,7 @@
 
 /* ─── Row highlight for pending ─── */
 .row-pending {
-  background: color-mix(in srgb, var(--warning, #f59e0b) 4%, transparent);
+  background: color-mix(in srgb, var(--warning) 4%, transparent);
 }
 
 /* ─── Inline action buttons ─── */
@@ -352,17 +352,17 @@
 
 .btn-confirm {
   &:hover:not(:disabled) {
-    border-color: var(--success, #16a34a);
-    color: var(--success, #16a34a);
-    background: rgba(22, 163, 74, 0.06);
+    border-color: var(--success);
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 6%, transparent);
   }
 }
 
 .btn-reject {
   &:hover:not(:disabled) {
-    border-color: var(--danger, #dc2626);
-    color: var(--danger, #dc2626);
-    background: rgba(220, 38, 38, 0.06);
+    border-color: var(--danger);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 6%, transparent);
   }
 }
 
@@ -379,23 +379,23 @@
 }
 
 .badge-warning {
-  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
-  color: #d97706;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
 }
 
 .badge-success {
-  background: rgba(5, 150, 105, 0.1);
-  color: #059669;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
 .badge-muted {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  background: color-mix(in srgb, var(--muted-text) 10%, transparent);
+  color: var(--muted-text);
 }
 
 .badge-info {
-  background: rgba(20, 99, 255, 0.1);
-  color: #1463ff;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }
 
 .spin {

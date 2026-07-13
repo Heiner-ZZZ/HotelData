@@ -158,8 +158,8 @@
 }
 
 .badge-info {
-  background: rgba(20, 99, 255, 0.1);
-  color: #1463ff;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }
 
 .spinning {

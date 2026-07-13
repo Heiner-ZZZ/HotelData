@@ -20,8 +20,8 @@
 
 .review-total span { font-size: 0.8rem; color: var(--muted-text); }
 .review-total strong { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
-.review-total-error { color: var(--error, #e53935); gap: 0.5rem; justify-content: center; }
-.review-total-error strong { color: var(--error, #e53935); font-size: 0.85rem; font-weight: 600; }
+.review-total-error { color: var(--danger); gap: 0.5rem; justify-content: center; }
+.review-total-error strong { color: var(--danger); font-size: 0.85rem; font-weight: 600; }
 
 .review-policy {
   display: flex;
@@ -29,13 +29,12 @@
   gap: 0.4rem;
   font-size: 0.78rem;
   color: var(--muted-text);
-  padding: 0.5rem 0.6rem;
-  background: var(--surface-bg);
-  border-radius: 6px;
+  padding: 0.5rem 0.6rem;    background: var(--surface-soft);
+    border-radius: 6px;
 
   .material-symbols-outlined {
     font-size: 1rem;
-    color: var(--warning, #d97706);
+    color: var(--warning);
   }
 }
 
@@ -95,7 +94,7 @@
 }
 
 .pb-row-included {
-  color: var(--success-color, #10b981);
+  color: var(--success);
 }
 
 .pb-row-extra {

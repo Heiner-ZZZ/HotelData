@@ -47,7 +47,7 @@
 
   &:focus-within {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
   .date-icon {
@@ -95,13 +95,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  color: var(--danger, #dc2626);
-  border-color: rgba(220, 38, 38, 0.2);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 20%, transparent);
 
   &:hover {
-    background: rgba(220, 38, 38, 0.08);
-    color: var(--danger, #dc2626);
-    border-color: rgba(220, 38, 38, 0.3);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
   }
 
   .material-symbols-outlined {
@@ -129,7 +129,7 @@
 
   &:focus-within {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
   }
 }
 

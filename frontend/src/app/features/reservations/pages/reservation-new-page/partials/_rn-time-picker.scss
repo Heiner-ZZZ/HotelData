@@ -37,7 +37,7 @@
   cursor: pointer;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 
-  &:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.08); }
+  &:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
   &:hover { border-color: color-mix(in srgb, var(--app-border) 60%, var(--accent) 40%); }
 }
 
