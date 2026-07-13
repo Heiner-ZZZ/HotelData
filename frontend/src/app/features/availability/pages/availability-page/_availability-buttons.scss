@@ -67,7 +67,7 @@
   padding: 0.35rem 0;
   min-height: 30px;
 
-  &::placeholder { color: #9ca3af; }
+  &::placeholder { color: var(--muted-text); }
 }
 
 .inv-filter-select {

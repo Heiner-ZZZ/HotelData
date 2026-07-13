@@ -113,36 +113,36 @@
 
 /* Occupancy color classes — green monochromatic scale (operational calendar style) */
 .occ-0 {
-  background: #f0fdf4;
-  color: #166534;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  color: var(--success);
 }
 
 .occ-low {
-  background: #bbf7d0;
-  color: #14532d;
+  background: color-mix(in srgb, var(--success) 30%, transparent);
+  color: color-mix(in srgb, var(--success) 80%, black);
 }
 
 .occ-mid {
-  background: #86efac;
-  color: #14532d;
+  background: color-mix(in srgb, var(--success) 50%, transparent);
+  color: color-mix(in srgb, var(--success) 80%, black);
 }
 
 .occ-high {
-  background: #4ade80;
-  color: #052e16;
+  background: color-mix(in srgb, var(--success) 70%, transparent);
+  color: color-mix(in srgb, var(--success) 90%, black);
 }
 
 .occ-full {
-  background: #16a34a;
+  background: var(--success);
   color: #fff;
 }
 
 /* Legend swatches — green monochromatic */
-.swatch-occ-0 { background: #f0fdf4; }
-.swatch-occ-low { background: #bbf7d0; }
-.swatch-occ-mid { background: #86efac; }
-.swatch-occ-high { background: #4ade80; }
-.swatch-occ-full { background: #16a34a; }
+.swatch-occ-0 { background: color-mix(in srgb, var(--success) 8%, transparent); }
+.swatch-occ-low { background: color-mix(in srgb, var(--success) 30%, transparent); }
+.swatch-occ-mid { background: color-mix(in srgb, var(--success) 50%, transparent); }
+.swatch-occ-high { background: color-mix(in srgb, var(--success) 70%, transparent); }
+.swatch-occ-full { background: var(--success); }
 
 .inv-cal-legend {
   display: flex;
