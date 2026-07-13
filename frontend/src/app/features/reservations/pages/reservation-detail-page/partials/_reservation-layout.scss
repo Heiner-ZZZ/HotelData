@@ -1,7 +1,7 @@
 .reservation-detail-page {
   display: grid;
   gap: 1.25rem;
-  background: #f9fafb;
+  background: var(--surface-soft);
   padding: 1.5rem;
   border-radius: 8px;
 }
@@ -27,11 +27,11 @@
 }
 
 .panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
@@ -39,7 +39,7 @@
   h2 {
     font-size: 1rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--app-text);
     margin: 0;
     display: flex;
     align-items: center;

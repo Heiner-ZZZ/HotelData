@@ -1,17 +1,17 @@
 .btn-edit {
-  border: 1px solid #2563eb;
-  background: #2563eb;
+  border: 1px solid var(--accent);
+  background: var(--accent);
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: var(--accent);
   }
 }
 
 .edit-panel {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .edit-form-grid {
@@ -33,23 +33,23 @@
   font-size: 0.82rem;
 
   span {
-    color: #6b7280;
+    color: var(--muted-text);
     font-weight: 500;
   }
 
   input {
     padding: 0.45rem 0.6rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     font-size: 0.88rem;
     font-family: inherit;
-    background: #ffffff;
+    background: var(--surface);
     transition: border-color 0.15s;
 
     &:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
     }
   }
 }
@@ -59,13 +59,13 @@
 }
 
 .edit-error {
-  color: #dc2626;
+  color: var(--danger);
   font-size: 0.82rem;
   margin-bottom: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(220, 38, 38, 0.05);
+  background: color-mix(in srgb, var(--danger) 5%, transparent);
   border-radius: 6px;
-  border: 1px solid rgba(220, 38, 38, 0.1);
+  border: 1px solid color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .edit-actions {
@@ -86,19 +86,19 @@
 }
 
 .btn-cancel-edit {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
 
   &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: var(--surface-soft);
+    border-color: var(--app-border);
   }
 }
 
 .btn-save-edit {
-  background: #2563eb;
-  border: 1px solid #2563eb;
+  background: var(--accent);
+  border: 1px solid var(--accent);
   color: #fff;
 
   &:disabled {
@@ -107,7 +107,7 @@
   }
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+    background: var(--accent);
+    border-color: var(--accent);
   }
 }

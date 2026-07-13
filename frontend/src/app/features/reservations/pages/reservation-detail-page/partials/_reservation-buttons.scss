@@ -6,8 +6,8 @@ button,
 }
 
 button {
-  border: 1px solid #2563eb;
-  background: #2563eb;
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: #fff;
   cursor: pointer;
   display: inline-flex;
@@ -19,8 +19,8 @@ button {
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
+    border-color: color-mix(in srgb, var(--accent) 85%, black);
   }
 }
 
@@ -37,35 +37,35 @@ button:disabled {
 }
 
 .btn-confirm {
-  border: 1px solid #16a34a;
-  background: #16a34a;
+  border: 1px solid var(--success);
+  background: var(--success);
   color: #fff;
 
   &:hover:not(:disabled) {
-    background: #15803d;
-    border-color: #15803d;
+    background: color-mix(in srgb, var(--success) 85%, black);
+    border-color: color-mix(in srgb, var(--success) 85%, black);
   }
 }
 
 .btn-reject {
-  border: 1px solid #f59e0b;
-  background: #f59e0b;
+  border: 1px solid var(--warning);
+  background: var(--warning);
   color: #fff;
 
   &:hover:not(:disabled) {
-    background: #d97706;
-    border-color: #d97706;
+    background: color-mix(in srgb, var(--warning) 85%, black);
+    border-color: color-mix(in srgb, var(--warning) 85%, black);
   }
 }
 
 .btn-cancel {
-  border: 1px solid #dc2626;
-  background: #dc2626;
+  border: 1px solid var(--danger);
+  background: var(--danger);
   color: #fff;
 
   &:hover:not(:disabled) {
-    background: #b91c1c;
-    border-color: #b91c1c;
+    background: color-mix(in srgb, var(--danger) 85%, black);
+    border-color: color-mix(in srgb, var(--danger) 85%, black);
   }
 }
 
@@ -84,9 +84,9 @@ button:disabled {
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
-  border: 1px solid #2563eb;
+  border: 1px solid var(--accent);
   min-height: auto;
 
   .material-symbols-outlined {
@@ -95,7 +95,7 @@ button:disabled {
   }
 
   &:hover {
-    background: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
   }
 }
 
@@ -105,10 +105,10 @@ button:disabled {
   justify-content: center;
   gap: 0.4rem;
   padding: 0 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
+  background: var(--surface);
+  color: var(--app-text);
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -116,9 +116,9 @@ button:disabled {
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    color: #2563eb;
+    background: var(--surface-soft);
+    border-color: var(--app-border);
+    color: var(--accent);
   }
 
   &:disabled {
@@ -130,14 +130,14 @@ button:disabled {
 .secondary-link {
   display: inline-flex;
   align-items: center;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #374151;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  color: var(--app-text);
   text-decoration: none;
   font-size: 0.85rem;
 
   &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: var(--surface-soft);
+    border-color: var(--app-border);
   }
 }
