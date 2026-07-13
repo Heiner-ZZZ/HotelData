@@ -105,8 +105,8 @@
   gap: 0.4rem;
   padding: 0.5rem 0.7rem;
   border-radius: 8px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
   font-size: 0.8rem;
   font-weight: 500;
 
@@ -122,7 +122,7 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 2rem;
-  color: #059669;
+  color: var(--success);
   font-size: 1rem;
   font-weight: 600;
 

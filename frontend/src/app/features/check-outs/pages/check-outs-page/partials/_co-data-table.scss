@@ -132,13 +132,13 @@ tbody tr:hover {
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
 .badge-warning {
-  background: rgba(234, 179, 8, 0.1);
-  color: #b8860b;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--warning);
 }
 
 .badge-muted {
@@ -147,8 +147,8 @@ tbody tr:hover {
 }
 
 .badge-info {
-  background: rgba(20, 99, 255, 0.1);
-  color: #1463ff;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }
 
 /* ─── Icon Button ─── */
@@ -182,10 +182,10 @@ tbody tr:hover {
 }
 
 .review-trigger {
-  color: #059669;
+  color: var(--success);
 
   &:hover:not(:disabled) {
-    background: rgba(5, 150, 105, 0.1);
-    border-color: #059669;
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    border-color: var(--success);
   }
 }
