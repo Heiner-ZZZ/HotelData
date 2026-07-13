@@ -19,7 +19,7 @@
 
   .material-symbols-outlined {
     font-size: 1.5rem;
-    color: var(--primary);
+    color: var(--accent);
   }
 
   h2 {
@@ -27,13 +27,11 @@
     font-size: 1.1rem;
     font-weight: 600;
   }
-}
-
-.payment-summary {
-  background: var(--surface-bg);
+}.payment-summary {
+  background: var(--surface-soft);
   border-radius: 8px;
-  padding: 0.85rem 1rem;
-  margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
 }
 
 .ps-row {
@@ -44,7 +42,7 @@
 
   span:last-child {
     font-weight: 700;
-    color: var(--primary);
+    color: var(--accent);
   }
 }
 
@@ -69,7 +67,7 @@
 
   input {
     padding: 0.6rem 0.75rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     font-size: 0.9rem;
     font-family: inherit;
@@ -77,8 +75,8 @@
 
     &:focus {
       outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 0, 96, 118), 0.1);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
     }
 
     &::placeholder {
@@ -108,8 +106,8 @@
   transform: translateY(-50%);
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary), white 85%);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent), white 85%);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   pointer-events: none;
@@ -126,9 +124,9 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  background: var(--danger-bg, #ffdad6);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
   border-radius: 8px;
-  color: var(--danger, #ba1a1a);
+  color: var(--danger);
   font-size: 0.82rem;
   font-weight: 500;
 
@@ -142,9 +140,9 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  background: #dcfce7;
+  background: color-mix(in srgb, var(--success) 15%, transparent);
   border-radius: 8px;
-  color: #166534;
+  color: var(--success);
   font-size: 0.82rem;
   font-weight: 500;
 
@@ -157,7 +155,7 @@
 
 .policies-box {
   margin-top: 1.25rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   overflow: hidden;
   background: var(--surface);
@@ -168,12 +166,12 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 0.85rem;
-  background: var(--surface-bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
 
   .material-symbols-outlined {
     font-size: 1.1rem;
-    color: var(--primary);
+    color: var(--accent);
   }
 
   h4 {
@@ -196,7 +194,7 @@
   padding: 0.55rem 0.85rem;
 
   + .policy-item {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--app-border);
   }
 
   .material-symbols-outlined {
@@ -209,7 +207,7 @@
   strong {
     display: block;
     font-size: 0.82rem;
-    color: var(--text);
+    color: var(--app-text);
     margin-bottom: 0.1rem;
   }
 
@@ -221,7 +219,7 @@
   }
 
   &.policy-cancel .material-symbols-outlined {
-    color: var(--warning, #d97706);
+    color: var(--warning);
   }
 }
 
@@ -229,7 +227,7 @@
 
 .transaction-card {
   margin-top: 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -239,12 +237,12 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem 0.85rem;
-  background: var(--surface-bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
 
   .txn-icon {
     font-size: 1.25rem;
-    color: var(--primary);
+    color: var(--accent);
   }
 
   .txn-label {
@@ -258,7 +256,7 @@
   .txn-id {
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--text);
+    color: var(--app-text);
     background: none;
     padding: 0;
   }
@@ -277,7 +275,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.82rem;
-  color: var(--text);
+  color: var(--app-text);
   font-family: 'Courier New', monospace;
   letter-spacing: 0.03em;
 
@@ -297,13 +295,13 @@
   border-radius: 99px;
 
   &.paid {
-    background: #dcfce7;
-    color: #166534;
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
   }
 
   &.pending {
-    background: #fef3c7;
-    color: #92400e;
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
   }
 
   .material-symbols-outlined {

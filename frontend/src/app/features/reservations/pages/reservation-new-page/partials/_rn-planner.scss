@@ -74,5 +74,5 @@
   transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
-.planner-cta:hover { background: #0d4fcf; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20, 99, 255, 0.22); }
+.planner-cta:hover { background: color-mix(in srgb, var(--accent) 85%, black); transform: translateY(-1px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent); }
 .planner-meta { display: flex; flex-wrap: wrap; gap: 0.65rem; }

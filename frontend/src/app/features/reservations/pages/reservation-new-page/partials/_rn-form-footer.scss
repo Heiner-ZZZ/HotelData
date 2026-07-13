@@ -21,7 +21,7 @@
   color: #fff;
 }
 
-.btn-primary:hover:not(:disabled) { background: #0d4fcf; box-shadow: 0 4px 16px rgba(20, 99, 255, 0.28); transform: translateY(-1px); }
+.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, black); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 28%, transparent); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
@@ -31,7 +31,7 @@
   text-decoration: none;
 }
 
-.btn-secondary:hover { border-color: var(--app-border); background: var(--surface-hover, #f8faff); }
+.btn-secondary:hover { border-color: var(--app-border); background: var(--surface-hover); }
 
 .btn-primary .material-symbols-outlined,
 .btn-secondary .material-symbols-outlined { font-size: 1.05rem; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
