@@ -2,13 +2,13 @@
 .inv-btn-group { display: flex; gap: 0.35rem; }
 
 .inv-quick-card {
-  border-color: #006076;
+  border-color: var(--accent);
   background: linear-gradient(135deg, #fafcff, #f5fafd);
   padding: 0.85rem 1.15rem;
 }
 
 .inv-quick-header { display: flex; align-items: center; gap: 0.45rem; }
-.inv-quick-header-icon { font-size: 1.1rem; color: #d97706; }
+.inv-quick-header-icon { font-size: 1.1rem; color: var(--warning); }
 .inv-quick-title { margin: 0; font-size: 0.9rem; font-weight: 600; flex: 1; }
 
 .inv-quick-close {
@@ -19,7 +19,7 @@
   height: 1.5rem;
   border: none;
   background: transparent;
-  color: #6f797d;
+  color: var(--muted-text);
   cursor: pointer;
   border-radius: 4px;
 
@@ -27,7 +27,7 @@
   .material-symbols-outlined { font-size: 1rem; }
 }
 
-.inv-quick-desc { margin: 0; font-size: 0.7rem; color: #6f797d; }
+.inv-quick-desc { margin: 0; font-size: 0.7rem; color: var(--muted-text); }
 .inv-quick-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .inv-quick-chip {
@@ -35,20 +35,20 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.4rem 0.65rem;
-  border: 1px solid #bec8cd;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
   cursor: pointer;
   transition: all 120ms;
   font-family: inherit;
   min-width: 0;
 
-  &:hover:not(:disabled) { border-color: #006076; background: #f2f8fc; }
+  &:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-soft); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &.busy { border-color: #006076; background: #eaf3f7; }
+  &.busy { border-color: var(--accent); background: #eaf3f7; }
 }
 
-.inv-quick-chip-icon { font-size: 1.05rem; color: #006076; }
+.inv-quick-chip-icon { font-size: 1.05rem; color: var(--accent); }
 
 .inv-quick-chip-body {
   display: flex;
@@ -58,14 +58,14 @@
   line-height: 1.2;
 }
 
-.inv-quick-chip-name { font-size: 0.74rem; font-weight: 600; color: #191c1e; }
-.inv-quick-chip-price { font-size: 0.65rem; font-weight: 600; color: #006076; font-family: 'JetBrains Mono', 'Consolas', monospace; }
+.inv-quick-chip-name { font-size: 0.74rem; font-weight: 600; color: var(--app-text); }
+.inv-quick-chip-price { font-size: 0.65rem; font-weight: 600; color: var(--accent); font-family: 'JetBrains Mono', 'Consolas', monospace; }
 
 .inv-quick-spinner {
   width: 0.85rem;
   height: 0.85rem;
-  border: 2px solid #bec8cd;
-  border-top-color: #006076;
+  border: 2px solid var(--app-border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: inv-spin 500ms linear infinite;
   flex-shrink: 0;

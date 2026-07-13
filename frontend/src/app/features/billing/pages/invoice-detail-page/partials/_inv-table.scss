@@ -15,9 +15,9 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6f797d;
-  background: #fafafa;
-  border-bottom: 1px solid #e0e3e5;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
@@ -25,18 +25,18 @@
 
 .inv-table tbody td {
   padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #eceef0;
+  border-bottom: 1px solid var(--app-border);
   vertical-align: middle;
 }
 
 .inv-table tbody tr:last-child td { border-bottom: none; }
-.inv-table tbody tr:hover { background: #f7f9fb; }
+.inv-table tbody tr:hover { background: var(--surface-hover); }
 
-.td-name { font-weight: 600; color: #191c1e; font-size: 0.82rem; }
-.td-sub { font-size: 0.7rem; color: #6f797d; margin-top: 0.1rem; }
-.td-num { text-align: right; font-size: 0.82rem; color: #191c1e; }
+.td-name { font-weight: 600; color: var(--app-text); font-size: 0.82rem; }
+.td-sub { font-size: 0.7rem; color: var(--muted-text); margin-top: 0.1rem; }
+.td-num { text-align: right; font-size: 0.82rem; color: var(--app-text); }
 .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; font-variant-numeric: tabular-nums; }
-.td-icon { font-size: 0.9rem; color: #006076; vertical-align: middle; margin-right: 0.3rem; }
+.td-icon { font-size: 0.9rem; color: var(--accent); vertical-align: middle; margin-right: 0.3rem; }
 .td-total { font-weight: 600; }
 .th-act { width: 2.5rem; text-align: center !important; }
 
@@ -49,7 +49,7 @@
   border-radius: 0.25rem;
   border: none;
   background: transparent;
-  color: #ba1a1a;
+  color: var(--danger);
   cursor: pointer;
   transition: all 0.1s;
 

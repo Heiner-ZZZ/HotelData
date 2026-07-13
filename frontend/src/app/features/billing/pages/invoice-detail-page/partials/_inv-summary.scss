@@ -1,7 +1,7 @@
 /* ═══ Summary Card ═══ */
 .inv-summary {
-  background: #ffffff;
-  border: 1px solid #006076;
+  background: var(--surface);
+  border: 1px solid var(--accent);
   border-radius: 0.75rem;
   padding: 1.25rem;
   position: relative;
@@ -22,7 +22,7 @@
   pointer-events: none;
 }
 
-.inv-summary-title { font-size: 1rem; font-weight: 600; margin: 0; color: #191c1e; position: relative; z-index: 1; }
+.inv-summary-title { font-size: 1rem; font-weight: 600; margin: 0; color: var(--app-text); position: relative; z-index: 1; }
 
 .inv-summary-rows {
   display: flex;
@@ -36,11 +36,11 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.82rem;
-  color: #3f484c;
+  color: var(--muted-text);
   span:last-child { font-weight: 500; }
 }
 
-.inv-summary-divider { height: 1px; background: #e0e3e5; position: relative; z-index: 1; }
+.inv-summary-divider { height: 1px; background: var(--app-border); position: relative; z-index: 1; }
 
 .inv-summary-total {
   display: flex;
@@ -55,19 +55,19 @@
 .inv-summary-amount {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #006076;
+  color: var(--accent);
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   letter-spacing: -0.02em;
 }
 
-.inv-summary-literal { font-size: 0.7rem; color: #6f797d; text-align: center; position: relative; z-index: 1; }
+.inv-summary-literal { font-size: 0.7rem; color: var(--muted-text); text-align: center; position: relative; z-index: 1; }
 
 .inv-summary-meta {
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6f797d;
+  color: var(--muted-text);
   text-align: center;
   position: relative;
   z-index: 1;
