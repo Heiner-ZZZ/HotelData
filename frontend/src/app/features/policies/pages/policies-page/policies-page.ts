@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -57,6 +57,23 @@ export class PoliciesPageComponent {
   readonly viewModel = signal<PoliciesViewModel | null>(null);
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  /** Info popover for Estancia section */
+  readonly showEstanciaInfo = signal(false);
+
+  toggleEstanciaInfo(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showEstanciaInfo.update((v) => !v);
+  }
+
+  closeEstanciaInfo(): void {
+    this.showEstanciaInfo.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeEstanciaInfo();
+  }
 
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');

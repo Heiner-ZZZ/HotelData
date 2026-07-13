@@ -259,12 +259,12 @@
   border: 1px solid rgba(0,0,0,0.06);
 }
 
-.swatch-good { background: #86efac; }
-.swatch-caution { background: #fde047; }
-.swatch-warning { background: #fdba74; }
-.swatch-danger { background: #fca5a5; }
-.swatch-na { background: #e5e7eb; }
-.swatch-selected { background: #93c5fd; border-color: #2563eb; }
+.swatch-good { background: color-mix(in srgb, var(--success) 50%, transparent); }
+.swatch-caution { background: color-mix(in srgb, var(--warning) 40%, transparent); }
+.swatch-warning { background: color-mix(in srgb, var(--warning) 35%, transparent); }
+.swatch-danger { background: color-mix(in srgb, var(--danger) 30%, transparent); }
+.swatch-na { background: var(--app-border); }
+.swatch-selected { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
 .swatch-week { background: transparent; border-color: #8b5cf6; border-width: 2px; }
 
 /* Table wrapper for horizontal scroll */
@@ -420,40 +420,40 @@
 }
 
 .cell-val-na {
-  color: #d1d5db;
+  color: var(--muted-text);
 }
 
 /* Color states */
 .cell-good {
-  .cell-val { background: #86efac; color: #14532d; }
-  &:hover .cell-val { background: #4ade80; }
+  .cell-val { background: color-mix(in srgb, var(--success) 50%, transparent); color: color-mix(in srgb, var(--success) 80%, black); }
+  &:hover .cell-val { background: color-mix(in srgb, var(--success) 70%, transparent); }
 }
 
 .cell-caution {
-  .cell-val { background: #fde047; color: #713f12; }
-  &:hover .cell-val { background: #facc15; }
+  .cell-val { background: color-mix(in srgb, var(--warning) 40%, transparent); color: color-mix(in srgb, var(--warning) 90%, black); }
+  &:hover .cell-val { background: color-mix(in srgb, var(--warning) 50%, transparent); }
 }
 
 .cell-warning {
-  .cell-val { background: #fdba74; color: #7c2d12; }
-  &:hover .cell-val { background: #fb923c; }
+  .cell-val { background: color-mix(in srgb, var(--warning) 35%, transparent); color: color-mix(in srgb, var(--warning) 80%, black); }
+  &:hover .cell-val { background: color-mix(in srgb, var(--warning) 55%, transparent); }
 }
 
 .cell-danger {
-  .cell-val { background: #fca5a5; color: #7f1d1d; }
-  &:hover .cell-val { background: #f87171; }
+  .cell-val { background: color-mix(in srgb, var(--danger) 30%, transparent); color: color-mix(in srgb, var(--danger) 80%, black); }
+  &:hover .cell-val { background: color-mix(in srgb, var(--danger) 50%, transparent); }
 }
 
 .cell-na {
-  .cell-val { background: #e5e7eb; color: #9ca3af; }
-  &:hover .cell-val { background: #d1d5db; }
+  .cell-val { background: var(--app-border); color: var(--muted-text); }
+  &:hover .cell-val { background: var(--muted-text); }
 }
 
 .cell-selected {
   .cell-val {
-    box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.15);
-    background: #bfdbfe !important;
-    color: #1e40af !important;
+    box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 15%, transparent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent) !important;
+    color: var(--accent) !important;
   }
 }
 
