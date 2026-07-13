@@ -1,8 +1,8 @@
 .products-panel {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-add-product {
@@ -15,9 +15,9 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
-  border: 1px solid #2563eb;
+  border: 1px solid var(--accent);
   min-height: auto;
 
   .material-symbols-outlined {
@@ -26,7 +26,7 @@
   }
 
   &:hover {
-    background: #1d4ed8;
+    background: color-mix(in srgb, var(--accent) 85%, black);
   }
 }
 
@@ -36,7 +36,7 @@
   justify-content: center;
   gap: 8px;
   padding: 24px 16px;
-  color: #6b7a8d;
+  color: var(--muted-text);
   font-size: 0.9rem;
 
   .loading-spin {
@@ -45,13 +45,13 @@
 }
 
 .products-error {
-  color: #f87171;
+  color: var(--danger);
   padding: 16px;
   font-size: 0.85rem;
 }
 
 .products-empty {
-  color: #6b7a8d;
+  color: var(--muted-text);
   font-size: 0.85rem;
   margin: 0;
   padding: 8px 0;
@@ -67,14 +67,14 @@
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
-    background: #f9fafb;
-    border: 1px solid #f3f4f6;
+    background: var(--surface-soft);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     transition: all 0.15s;
 
     &:hover {
-      border-color: #e5e7eb;
-      background: #ffffff;
+      border-color: var(--app-border);
+      background: var(--surface);
     }
   }
 
@@ -95,8 +95,8 @@
 
       .line-item-qty {
         font-size: 0.75rem;
-        color: #2563eb;
-        background: rgba(37, 99, 235, 0.08);
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
         padding: 1px 6px;
         border-radius: 4px;
       }
@@ -124,7 +124,7 @@
     .line-item-total {
       font-size: 0.9rem;
       font-weight: 600;
-      color: #16a34a;
+      color: var(--success);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
@@ -139,13 +139,13 @@
       background: transparent;
       cursor: pointer;
       border-radius: 6px;
-      color: #5f6f87;
+      color: var(--muted-text);
       min-height: auto;
       padding: 0;
 
       &:hover:not(:disabled) {
-        background: rgba(248, 113, 113, 0.12);
-        color: #f87171;
+        background: color-mix(in srgb, var(--danger) 12%, transparent);
+        color: var(--danger);
       }
 
       &:disabled {
@@ -171,13 +171,13 @@
   justify-content: space-between;
   padding: 12px 12px 0;
   margin-top: 8px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--surface-soft);
   font-size: 0.88rem;
-  color: #111827;
+  color: var(--app-text);
 
   strong {
     font-size: 1rem;
-    color: #16a34a;
+    color: var(--success);
   }
 }
 
@@ -209,15 +209,15 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: rgba(37, 99, 235, 0.06);
-    border: 1px solid rgba(37, 99, 235, 0.12);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 6px;
     font-size: 0.85rem;
 
-    strong { color: #2563eb; }
+    strong { color: var(--accent); }
     .ps-selected-price {
       font-weight: 700;
-      color: #16a34a;
+      color: var(--success);
     }
   }
 
@@ -243,25 +243,25 @@
     justify-content: space-between;
     width: 100%;
     padding: 8px 10px;
-    background: #f9fafb;
-    border: 1px solid #f3f4f6;
+    background: var(--surface-soft);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     cursor: pointer;
     text-align: left;
-    color: #374151;
+    color: var(--app-text);
     font-size: 0.82rem;
     font-family: inherit;
     min-height: auto;
     transition: all 0.12s;
 
     &:hover {
-      border-color: #e5e7eb;
-      background: #ffffff;
+      border-color: var(--app-border);
+      background: var(--surface);
     }
 
     &.is-selected {
-      border-color: #2563eb;
-      background: rgba(37, 99, 235, 0.04);
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 4%, transparent);
     }
 
     .ps-item-info {
@@ -303,8 +303,8 @@
     flex-direction: column;
     gap: 2px;
     padding: 4px;
-    background: #f9fafb;
-    border: 1px solid #f3f4f6;
+    background: var(--surface-soft);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     overflow-y: auto;
     max-height: 320px;
@@ -337,12 +337,12 @@
     transition: all 0.1s;
 
     &:hover {
-      background: rgba(37, 99, 235, 0.06);
-      color: #2563eb;
+      background: color-mix(in srgb, var(--accent) 6%, transparent);
+      color: var(--accent);
     }
 
     &.is-active {
-      background: #2563eb;
+      background: var(--accent);
       color: #fff;
       font-weight: 600;
 
@@ -382,10 +382,10 @@
       justify-content: space-between;
       width: 100%;
       padding: 10px 12px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
+      background: var(--surface-soft);
+      border: 1px solid var(--app-border);
       border-radius: 6px;
-      color: #374151;
+      color: var(--app-text);
       font-size: 0.9rem;
       font-family: inherit;
       cursor: pointer;
@@ -393,7 +393,7 @@
       min-height: auto;
 
       &:hover {
-        border-color: #2563eb;
+        border-color: var(--accent);
       }
 
       .product-dropdown-selected {
@@ -426,11 +426,11 @@
       right: 0;
       max-height: 300px;
       overflow-y: auto;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
       z-index: 10;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      box-shadow: var(--shadow-sm);
 
       .product-group {
         padding: 4px 0;
@@ -458,19 +458,19 @@
         border: none;
         cursor: pointer;
         text-align: left;
-        color: #374151;
+        color: var(--app-text);
         font-size: 0.85rem;
         font-family: inherit;
         min-height: auto;
         transition: all 0.1s;
 
         &:hover {
-          background: #f9fafb;
+          background: var(--surface-soft);
         }
 
         &.is-selected {
-          background: rgba(37, 99, 235, 0.06);
-          color: #2563eb;
+          background: color-mix(in srgb, var(--accent) 6%, transparent);
+          color: var(--accent);
         }
 
           .product-option-info {
@@ -512,7 +512,7 @@
 
       span {
         font-size: 0.8rem;
-        color: #6b7a8d;
+        color: var(--muted-text);
         font-weight: 500;
       }
 

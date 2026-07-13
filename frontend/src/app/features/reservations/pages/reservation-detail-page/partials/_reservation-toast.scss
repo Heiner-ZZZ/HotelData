@@ -10,9 +10,9 @@
 }
 
 .toast-success {
-  background: rgba(22, 163, 74, 0.06);
-  border: 1px solid rgba(22, 163, 74, 0.15);
-  color: #16a34a;
+  background: color-mix(in srgb, var(--success) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
 
   .material-symbols-outlined {
     font-size: 1rem;

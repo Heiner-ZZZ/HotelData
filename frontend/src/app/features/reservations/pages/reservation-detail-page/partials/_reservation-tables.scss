@@ -7,19 +7,19 @@ th,
 td {
   padding: 0.65rem 0.5rem;
   text-align: left;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--surface-soft);
   vertical-align: middle;
 }
 
 th {
   font-weight: 500;
-  color: #6b7280;
+  color: var(--muted-text);
   font-size: 0.82rem;
   width: 35%;
 }
 
 td {
-  color: #374151;
+  color: var(--app-text);
   font-size: 0.88rem;
 }
 
@@ -34,11 +34,11 @@ tr.date-row {
   }
 
   .date-range {
-    color: #111827;
+    color: var(--app-text);
   }
 
   .date-arrow {
-    color: #9ca3af;
+    color: var(--muted-text);
     margin: 0 0.5rem;
   }
 }
@@ -48,9 +48,10 @@ table thead th {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--muted-text);
+  border-bottom: 1px solid var(--app-border);
   width: auto;
   padding: 0.6rem 0.5rem;
-  background: #f9fafb;
+  background: var(--surface-soft);
+
 }
