@@ -176,7 +176,7 @@
 }
 
 .star-badge.is-best {
-  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 50%, transparent);
 }
 
 .better-chip {
@@ -185,8 +185,8 @@
   gap: 0.15rem;
   padding: 0.08rem 0.4rem;
   border-radius: 4px;
-  background: rgba(5, 150, 105, 0.12);
-  color: #059669;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -232,19 +232,19 @@
 }
 
 .score-high {
-  background: #1e7e34;
+  background: var(--success);
 }
 
 .score-badge.is-best {
-  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 50%, transparent);
 }
 
 .score-mid {
-  background: #e67e22;
+  background: var(--warning);
 }
 
 .score-low {
-  background: #c0392b;
+  background: var(--danger);
 }
 
 .remove-btn {
@@ -266,7 +266,7 @@
 }
 
 .remove-btn:hover {
-  background: #d32f2f;
+  background: var(--danger);
   transform: scale(1.1);
 }
 

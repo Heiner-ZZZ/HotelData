@@ -23,7 +23,7 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.55rem 0.2rem 0.4rem;
-  background: rgba(20, 99, 255, 0.04);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
   border: 1px solid var(--app-border);
   border-radius: 999px;
   font-size: 0.72rem;

@@ -19,7 +19,7 @@
 
   &:hover {
     border-color: var(--accent);
-    background: rgba(20, 99, 235, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
     color: var(--accent);
   }
 }
@@ -41,7 +41,7 @@
 
 .add-card:hover {
   border-color: var(--accent);
-  background: rgba(20, 99, 235, 0.03);
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
   transform: translateY(-2px);
 }
 
