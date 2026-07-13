@@ -45,7 +45,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, OnIn
 
       .material-symbols-outlined {
         font-size: 1.5rem;
-        font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        --icon-wght: 500;
       }
     }
   `],
@@ -86,3 +86,4 @@ export class ScrollToTopComponent implements OnInit, OnDestroy {
     this.scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
+

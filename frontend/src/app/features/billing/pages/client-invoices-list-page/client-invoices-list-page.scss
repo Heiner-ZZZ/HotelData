@@ -23,7 +23,7 @@
 
   .summary-icon {
     font-size: 1.75rem;
-    font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+    --icon-wght: 250;
   }
 
   div {
@@ -218,7 +218,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
 .banking-icon {
   font-size: 1.5rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 250;
 }
 
 .banking-details {
@@ -261,3 +261,4 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
     grid-template-columns: 1fr;
   }
 }
+

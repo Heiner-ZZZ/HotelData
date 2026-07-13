@@ -82,7 +82,8 @@
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+    --icon-wght: 300;
+    --icon-opsz: 18;
   }
 }
 
@@ -109,7 +110,8 @@
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+    --icon-wght: 300;
+    --icon-opsz: 18;
   }
 }
 
@@ -126,3 +128,4 @@
   margin: 0;
   line-height: 1.5;
 }
+

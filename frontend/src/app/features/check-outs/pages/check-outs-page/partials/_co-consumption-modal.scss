@@ -166,7 +166,7 @@
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -199,7 +199,7 @@
 
   .material-symbols-outlined {
     font-size: 0.95rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -297,7 +297,7 @@
 
   .material-symbols-outlined {
     font-size: 0.9rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -365,3 +365,4 @@
     margin-top: 1px;
   }
 }
+

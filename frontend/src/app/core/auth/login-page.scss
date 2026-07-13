@@ -102,7 +102,7 @@
     grid-row: 1 / -1;
     align-self: center;
     font-size: 1.35rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    --icon-wght: 300;
     color: var(--muted-text);
   }
 
@@ -216,14 +216,15 @@
 
 .card-head .card-head-icon {
   font-size: 0.85rem;
-  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 500;
+  --icon-opsz: 20;
   vertical-align: middle;
   margin-right: 0.25rem;
 }
 
 .btn-icon {
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-opsz: 20;
 }
 
 .card-footnote {
@@ -233,7 +234,8 @@
 
   .footnote-icon {
     font-size: 0.95rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    --icon-wght: 300;
+    --icon-opsz: 20;
     vertical-align: middle;
     margin-right: 0.25rem;
   }
@@ -295,3 +297,4 @@
     width: clamp(150px, 42vw, 240px);
   }
 }
+

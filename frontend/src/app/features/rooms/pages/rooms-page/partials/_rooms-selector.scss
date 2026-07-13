@@ -27,7 +27,8 @@
 .field-icon {
   font-size: 0.95rem;
   color: var(--muted-text);
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+  --icon-wght: 350;
+  --icon-opsz: 18;
 }
 
 input,
@@ -80,5 +81,6 @@ textarea:focus {
 
 .btn-icon {
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-opsz: 20;
 }
+

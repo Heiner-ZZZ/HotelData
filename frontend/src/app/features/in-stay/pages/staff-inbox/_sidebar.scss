@@ -221,7 +221,7 @@
 
   .material-symbols-outlined {
     font-size: 0.9rem;
-    font-variation-settings: 'FILL' 1;
+    --icon-FILL: 1;
   }
 }
 
@@ -310,3 +310,4 @@
   background: t.$status-cancelled-bg;
   color: t.$status-cancelled-text;
 }
+

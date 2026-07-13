@@ -105,7 +105,7 @@
 
   .material-symbols-outlined {
     font-size: 0.75rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 16;
+    --icon-opsz: 16;
   }
 
   &:hover {
@@ -148,7 +148,8 @@
 .date-input-icon {
   font-size: 0.85rem;
   color: var(--muted-text);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  --icon-wght: 300;
+  --icon-opsz: 18;
   pointer-events: none;
 }
 
@@ -192,7 +193,7 @@
 
   .material-symbols-outlined {
     font-size: 0.85rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -212,7 +213,7 @@
 
   .material-symbols-outlined {
     font-size: 0.9rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 
   &:hover {
@@ -236,7 +237,8 @@
 
 .filter-chip-icon {
   font-size: 0.9rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  --icon-wght: 300;
+  --icon-opsz: 18;
 }
 
 .filter-chip-close {
@@ -254,7 +256,8 @@
 
   .material-symbols-outlined {
     font-size: 0.8rem;
-    font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 16;
+    --icon-wght: 500;
+    --icon-opsz: 16;
   }
 }
 
@@ -430,3 +433,4 @@ th {
     display: none;
   }
 }
+

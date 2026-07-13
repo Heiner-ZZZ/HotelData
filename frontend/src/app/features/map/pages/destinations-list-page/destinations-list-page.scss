@@ -47,7 +47,7 @@
   left: 0.55rem;
   font-size: 1.15rem;
   color: var(--muted-text, #94a3b8);
-  font-variation-settings: 'FILL' 0, 'wght' 300;
+  --icon-wght: 300;
 }
 
 .search-input {
@@ -200,7 +200,7 @@ tr:hover .edit-btn {
 
 .edit-btn .material-symbols-outlined {
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300;
+  --icon-wght: 300;
 }
 
 /* Pagination */
@@ -243,3 +243,4 @@ tr:hover .edit-btn {
   }
   .search-form { min-width: 100%; }
 }
+

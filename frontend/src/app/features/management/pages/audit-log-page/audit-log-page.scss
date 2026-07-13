@@ -133,7 +133,7 @@
 .data-card-head-left .material-symbols-outlined {
   font-size: 1.5rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .data-card-head-left h2 {
@@ -193,7 +193,8 @@
 
 .timeline-marker .material-symbols-outlined {
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .timeline-body {
@@ -371,7 +372,7 @@
 
 .modal-head-icon {
   font-size: 1.4rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .modal-head h2 {
@@ -577,3 +578,4 @@
     margin-left: 0;
   }
 }
+

@@ -34,7 +34,8 @@
 .amenity-icon {
   font-size: 0.8rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .amenity-more {
@@ -71,7 +72,7 @@
 
 .cat-icon {
   font-size: 0.85rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-opsz: 20;
 }
 
 .cat-label {
@@ -106,5 +107,7 @@
 
 .amenity-icon {
   font-size: 0.8rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
+

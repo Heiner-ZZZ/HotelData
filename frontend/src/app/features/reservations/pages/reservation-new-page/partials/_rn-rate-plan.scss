@@ -42,9 +42,11 @@
 
   .material-symbols-outlined {
     font-size: 1.25rem;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 22;
+    --icon-FILL: 1;
+    --icon-opsz: 22;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
   }
 }
 
 @media (max-width: 600px) { .rate-plan-grid { grid-template-columns: 1fr; } }
+

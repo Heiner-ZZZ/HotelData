@@ -123,7 +123,7 @@
 .card-title-icon {
   font-size: 20px;
   color: var(--accent);
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .card-meta {
@@ -699,3 +699,4 @@
   .payroll-hours { font-size: 26px; }
   .roster-table { font-size: 12px; }
 }
+

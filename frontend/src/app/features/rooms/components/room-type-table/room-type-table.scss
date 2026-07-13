@@ -61,7 +61,8 @@
 
 .room-thumb-placeholder span {
   font-size: 1.3rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 300;
+  --icon-opsz: 20;
 }
 
 .data-table tbody tr:hover {
@@ -82,7 +83,8 @@
   color: var(--accent);
   vertical-align: middle;
   margin-right: 0.4rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 300;
+  --icon-opsz: 20;
 }
 
 .roh-badge {
@@ -126,7 +128,7 @@
 
 .cap-icon {
   font-size: 0.95rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-opsz: 20;
 }
 
 /* ── Status Badges ── */
@@ -153,7 +155,8 @@
 
 .badge-icon {
   font-size: 0.95rem;
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-FILL: 1;
+  --icon-opsz: 20;
 }
 
 /* ── Feature badges ── */
@@ -204,7 +207,8 @@
 
 .features-count-icon {
   font-size: 0.8rem;
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+  --icon-FILL: 1;
+  --icon-opsz: 18;
 }
 
 .features-count-num {
@@ -274,7 +278,9 @@
 
 .room-nums-icon {
   font-size: 0.95rem;
-  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  --icon-FILL: 1;
+  --icon-wght: 300;
+  --icon-opsz: 20;
   color: var(--muted-text);
 }
 
@@ -296,7 +302,8 @@
 
   .material-symbols-outlined {
     font-size: 0.95rem;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    --icon-FILL: 1;
+    --icon-opsz: 20;
   }
 
   &.has-rooms {

@@ -28,7 +28,8 @@
 
 .kpi-icon {
   font-size: 0.95rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+  --icon-wght: 350;
+  --icon-opsz: 18;
 }
 
 .kpi-body {
@@ -86,3 +87,4 @@
     font-size: 0.85rem;
   }
 }
+

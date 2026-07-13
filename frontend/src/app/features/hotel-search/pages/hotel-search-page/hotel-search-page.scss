@@ -103,7 +103,7 @@
   .alt-icon {
     font-size: 1.25rem;
     color: var(--accent);
-    font-variation-settings: 'FILL' 0, 'wght' 300;
+    --icon-wght: 300;
   }
 
   .alt-description {
@@ -142,7 +142,7 @@
 
   .chip-icon {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300;
+    --icon-wght: 300;
   }
 }
 
@@ -160,3 +160,4 @@
     grid-template-columns: 1fr;
   }
 }
+

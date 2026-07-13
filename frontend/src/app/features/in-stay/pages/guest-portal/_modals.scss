@@ -76,7 +76,7 @@
     font-size: 1.2rem;
     flex-shrink: 0;
     margin-top: 1px;
-    font-variation-settings: 'FILL' 1;
+    --icon-FILL: 1;
   }
 
   p {
@@ -106,3 +106,4 @@
     &:focus { outline: none; border-color: t.$gp-accent; }
   }
 }
+

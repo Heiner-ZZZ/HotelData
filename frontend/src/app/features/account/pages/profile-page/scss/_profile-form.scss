@@ -20,7 +20,7 @@
 .section-icon {
   font-size: 1.5rem;
   color: $accent;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .field-grid {
@@ -59,7 +59,8 @@
   .input-icon {
     font-size: 1.1rem;
     color: #9ca3af;
-    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+    --icon-wght: 350;
+    --icon-opsz: 20;
     flex-shrink: 0;
   }
 
@@ -134,3 +135,4 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+

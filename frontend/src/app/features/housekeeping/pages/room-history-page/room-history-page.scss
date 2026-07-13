@@ -36,7 +36,8 @@
   .material-symbols-outlined {
     font-size: 0.9rem;
     color: var(--muted-text);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+    --icon-wght: 300;
+    --icon-opsz: 18;
   }
 
   input {
@@ -110,7 +111,7 @@
   .material-symbols-outlined {
     font-size: 1.3rem;
     color: var(--accent);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    --icon-wght: 300;
   }
 
   h2 {
@@ -144,7 +145,7 @@
 
   .material-symbols-outlined {
     font-size: 0.9rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -181,7 +182,7 @@
   .material-symbols-outlined {
     font-size: 1rem;
     color: var(--dot-color, var(--accent));
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -247,7 +248,8 @@
 .transition-arrow {
   font-size: 0.85rem;
   color: var(--muted-text);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+  --icon-wght: 300;
+  --icon-opsz: 18;
 }
 
 .status-badge {
@@ -263,7 +265,7 @@
 
   .badge-icon {
     font-size: 0.8rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 16;
+    --icon-opsz: 16;
   }
 }
 
@@ -291,7 +293,8 @@
 
   .material-symbols-outlined {
     font-size: 0.75rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 14;
+    --icon-wght: 300;
+    --icon-opsz: 14;
   }
 }
 
@@ -333,7 +336,7 @@
 
   .material-symbols-outlined {
     font-size: 0.85rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+    --icon-opsz: 18;
   }
 }
 
@@ -387,3 +390,4 @@
     margin-left: 0;
   }
 }
+

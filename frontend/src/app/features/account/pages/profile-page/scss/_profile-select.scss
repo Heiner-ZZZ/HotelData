@@ -24,7 +24,8 @@
 .select-icon {
   font-size: 1.1rem;
   color: $accent;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
   flex-shrink: 0;
   &.select-icon--muted { color: #9ca3af; }
 }
@@ -84,8 +85,10 @@
 .option-icon {
   font-size: 1.05rem;
   color: $accent;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
   flex-shrink: 0;
   width: 1.3rem;
   text-align: center;
 }
+

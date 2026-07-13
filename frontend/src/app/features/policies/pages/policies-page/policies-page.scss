@@ -58,7 +58,8 @@
 
 .field-icon {
   font-size: 1rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .field-span {
@@ -81,7 +82,7 @@
   font-size: 1.75rem;
   color: var(--accent);
   flex-shrink: 0;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .hero-body {
@@ -138,7 +139,8 @@
 .field-group-icon {
   font-size: 1.1rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .field-row {
@@ -216,7 +218,7 @@
   font-size: 1.5rem;
   color: var(--accent);
   flex-shrink: 0;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 350;
 }
 
 /* ── Autocomplete ── */
@@ -288,7 +290,8 @@
   .material-symbols-outlined {
     font-size: 1.15rem;
     color: var(--muted-text);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    --icon-wght: 300;
+    --icon-opsz: 20;
   }
 
   &:hover,
@@ -391,7 +394,7 @@ textarea {
 
 .btn-icon {
   font-size: 1.05rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --icon-opsz: 20;
 }
 
 .message {
@@ -423,7 +426,8 @@ textarea {
   font-size: 1rem;
   color: var(--muted-text);
   margin-left: auto;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 300;
+  --icon-opsz: 20;
   transition: color 150ms ease, transform 150ms ease;
 }
 
@@ -491,7 +495,8 @@ textarea {
 .info-popover-icon {
   font-size: 1.15rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .info-popover-title {
@@ -518,7 +523,7 @@ textarea {
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    --icon-opsz: 20;
   }
 
   &:hover {
@@ -656,7 +661,8 @@ textarea {
 
   .material-symbols-outlined {
     font-size: 0.9rem;
-    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+    --icon-wght: 350;
+    --icon-opsz: 20;
   }
 
   &--hotel {
@@ -669,3 +675,4 @@ textarea {
 .icon-hotel-warm { color: #d97706; }
 .icon-price-green { color: var(--success); }
 .icon-policy-amber { color: var(--warning); }
+

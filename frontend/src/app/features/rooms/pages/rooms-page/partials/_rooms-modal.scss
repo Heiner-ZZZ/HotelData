@@ -36,7 +36,7 @@
 .modal-head-icon {
   font-size: 1.4rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .modal-head h2 {
@@ -150,7 +150,8 @@
   .input-icon {
     font-size: 1.1rem;
     color: var(--muted-text);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+    --icon-wght: 300;
+    --icon-opsz: 20;
   }
 
   input {
@@ -279,3 +280,4 @@
     transform: translateY(0) scale(1);
   }
 }
+

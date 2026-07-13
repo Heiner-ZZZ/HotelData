@@ -219,7 +219,7 @@ def watch() -> None:
         try:
             stream_opts: dict[str, Any] = {"full_document": "updateLookup"}
             if resume_token:
-                stream_opts["resumeAfter"] = resume_token
+                stream_opts["resume_after"] = resume_token
 
             with booking_orders.watch(pipeline, **stream_opts) as stream:
                 logger.info("Change Stream active — watching booking_orders...")

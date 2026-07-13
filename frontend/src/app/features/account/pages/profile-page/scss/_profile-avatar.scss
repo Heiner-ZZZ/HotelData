@@ -37,7 +37,8 @@
     .material-symbols-outlined {
       font-size: 2.4rem;
       color: #6366f1;
-      font-variation-settings: 'FILL' 1, 'wght' 250, 'GRAD' 0, 'opsz' 24;
+      --icon-FILL: 1;
+      --icon-wght: 250;
     }
   }
 }
@@ -112,3 +113,4 @@
 .social-fb { color: #1877f2 !important; }
 .social-tw { color: #1da1f2 !important; }
 .social-li { color: #0a66c2 !important; }
+

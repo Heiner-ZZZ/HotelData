@@ -98,7 +98,7 @@ export function buildColumnDefs(
         nights.style.cssText = 'display:inline-flex;align-items:center;gap:2px;font-size:0.65rem;font-weight:600;color:#374151;padding:0.1rem 0.35rem;border-radius:3px;white-space:nowrap';
         const moonIcon = document.createElement('span');
         moonIcon.className = 'material-symbols-outlined';
-        moonIcon.style.cssText = 'font-size:0.75rem;font-variation-settings:\'FILL\' 1,\'wght\' 400,\'GRAD\' 0,\'opsz\' 14;color:#1e3a5f';
+        moonIcon.style.cssText = 'font-size:0.75rem;--icon-FILL:1;--icon-opsz:14;color:#1e3a5f';
         moonIcon.textContent = 'nightlight';
         const nightsNum = document.createElement('span');
         nightsNum.textContent = String(p.data?.totalNights || 0);

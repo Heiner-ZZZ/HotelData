@@ -138,10 +138,11 @@
 
 .edit-link .material-symbols-outlined {
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 300;
+  --icon-wght: 300;
 }
 
 @media (max-width: 720px) {
   .map-container { height: 350px; }
   .map-legend { flex-direction: column; gap: 0.5rem; }
 }
+

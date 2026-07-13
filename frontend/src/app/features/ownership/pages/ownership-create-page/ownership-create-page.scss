@@ -82,7 +82,7 @@
 .search-icon {
   font-size: 1.1rem;
   color: var(--muted-text);
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .hotel-search-input {
@@ -161,7 +161,7 @@
 .check-icon,
 .add-icon {
   font-size: 1.2rem;
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .check-icon {
@@ -276,7 +276,7 @@
 
 .btn-submit .material-symbols-outlined {
   font-size: 1rem;
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .btn-spinner {
@@ -298,3 +298,4 @@
     grid-template-columns: 1fr;
   }
 }
+

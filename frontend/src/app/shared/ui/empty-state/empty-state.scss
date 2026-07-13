@@ -20,7 +20,7 @@
 .state-icon {
   font-size: 1.6rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 350;
 }
 
 h2 {

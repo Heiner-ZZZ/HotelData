@@ -23,7 +23,7 @@
   .material-symbols-outlined {
     font-size: 1.35rem;
     color: var(--accent);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    --icon-wght: 300;
   }
 
   h2 {
@@ -124,4 +124,5 @@ tbody tr:hover {
   font-variant-numeric: tabular-nums;
   animation: badge-in 200ms ease;
 }
+
 

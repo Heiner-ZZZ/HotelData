@@ -20,7 +20,7 @@
   .material-symbols-outlined {
     font-size: 1.35rem;
     color: var(--accent);
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    --icon-wght: 300;
   }
 
   h2 {
@@ -177,7 +177,7 @@ tbody tr:hover {
 
   .material-symbols-outlined {
     font-size: 1.1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    --icon-opsz: 20;
   }
 }
 
@@ -189,3 +189,4 @@ tbody tr:hover {
     border-color: var(--success);
   }
 }
+

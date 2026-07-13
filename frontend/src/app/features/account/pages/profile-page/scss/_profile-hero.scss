@@ -24,7 +24,8 @@
 
   .avatar-icon {
     font-size: 2rem;
-    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    --icon-FILL: 1;
+    --icon-wght: 300;
   }
 }
 
@@ -61,3 +62,4 @@
   &.badge-inactive{ background: rgba(239, 68, 68, 0.1); color: $danger; }
   &.badge-muted   { background: rgba(107, 114, 128, 0.08); color: $muted; text-transform: none; font-weight: 500; }
 }
+

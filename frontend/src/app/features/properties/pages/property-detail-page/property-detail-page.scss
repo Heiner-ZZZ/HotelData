@@ -244,7 +244,7 @@
 
 .metric-icon {
   font-size: 1.3rem;
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  --icon-FILL: 1;
 }
 
 .icon-revenue {
@@ -326,7 +326,7 @@
 .card-icon {
   font-size: 1.35rem;
   color: var(--accent);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 }
 
 .icon-ops { color: var(--accent); }
@@ -404,11 +404,13 @@
 .star-icon {
   font-size: 0.95rem;
   color: #d1d5db;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 300;
+  --icon-opsz: 20;
 
   &.star-filled {
     color: #eab308;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    --icon-FILL: 1;
+    --icon-opsz: 20;
   }
 }
 
@@ -562,7 +564,8 @@
 
 .ops-module-icon {
   font-size: 1rem;
-  font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+  --icon-wght: 350;
+  --icon-opsz: 20;
 }
 
 .ops-module-body {
@@ -716,7 +719,7 @@
   color: #d1d5db;
   cursor: pointer;
   transition: color 120ms, transform 120ms;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  --icon-wght: 300;
 
   &:hover {
     transform: scale(1.2);
@@ -724,7 +727,7 @@
 
   &.star-pick--filled {
     color: #eab308;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    --icon-FILL: 1;
   }
 }
 
@@ -874,3 +877,4 @@
     min-height: 1.2rem;
   }
 }
+

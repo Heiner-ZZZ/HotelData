@@ -1,11 +1,20 @@
 .material-symbols-outlined {
+  --icon-FILL: 0;
+  --icon-wght: 400;
+  --icon-GRAD: 0;
+  --icon-opsz: 24;
+
   vertical-align: middle;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-weight: var(--icon-wght);
+  font-variation-settings:
+    'FILL' var(--icon-FILL),
+    'GRAD'  var(--icon-GRAD),
+    'opsz'  var(--icon-opsz);
 }
 
 .btn-icon {
+  --icon-opsz: 20;
   font-size: 1.15rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
 /* ── Icon color overrides ── */

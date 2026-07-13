@@ -140,7 +140,7 @@
 .chip-icon {
   font-size: 0.85rem;
   color: var(--chip-color, #6f797d);
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 /* ═══ State Machine Legend ═══ */
@@ -199,7 +199,7 @@
 .state-node-icon {
   font-size: 0.9rem;
   color: var(--node-color, #6f797d);
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .state-node-arrows {
@@ -380,7 +380,7 @@ tbody tr:hover {
 
 .status-badge-icon {
   font-size: 0.8rem;
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 /* ── Next Transitions Chips ── */
@@ -637,3 +637,4 @@ tbody tr:hover {
   margin: 0;
   font-size: 0.88rem;
 }
+

@@ -27,7 +27,8 @@
 
   .material-symbols-outlined {
     font-size: 0.85rem;
-    font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 18;
+    --icon-wght: 350;
+    --icon-opsz: 18;
   }
 
   &:hover {
@@ -101,3 +102,4 @@
 .icon-create-green { color: var(--success); }
 .icon-physical-amber { color: var(--warning); }
 .icon-data-blue { color: var(--accent); }
+

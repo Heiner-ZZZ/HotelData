@@ -25,7 +25,7 @@
 
   .material-symbols-outlined {
     font-size: 1.15rem;
-    font-variation-settings: 'FILL' 1;
+    --icon-FILL: 1;
   }
 }
 
@@ -120,7 +120,7 @@
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 1;
+    --icon-FILL: 1;
   }
 }
 
@@ -355,3 +355,4 @@
     font-size: 1.15rem;
   }
 }
+

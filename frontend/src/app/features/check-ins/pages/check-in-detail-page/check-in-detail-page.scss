@@ -490,7 +490,7 @@
   margin-left: auto;
   font-size: 1.1rem;
   color: #16a34a;
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
   flex-shrink: 0;
 }
 
@@ -838,3 +838,4 @@
     grid-template-columns: 1fr;
   }
 }
+

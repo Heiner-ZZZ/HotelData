@@ -66,8 +66,9 @@
 
   .star-icon {
     font-size: 20px;
-    font-variation-settings: 'FILL' 1;
+    --icon-FILL: 1;
     &.filled { color: #844910; }
     &.empty { color: var(--outline-variant, #bec8cd); }
   }
 }
+

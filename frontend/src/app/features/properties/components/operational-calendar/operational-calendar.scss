@@ -97,13 +97,12 @@
 
 .op-badge-icon {
   font-size: 1.05rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400;
 }
 
 .op-check {
   font-size: 1rem;
   color: #16a34a;
-  font-variation-settings: 'FILL' 1;
+  --icon-FILL: 1;
 }
 
 .op-x {
@@ -220,7 +219,6 @@
 
 .op-status-icon {
   font-size: 0.85rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400;
 }
 
 .op-status-text {
@@ -250,10 +248,10 @@
 
 .op-fi-icon {
   font-size: 1rem;
-  font-variation-settings: 'FILL' 0, 'wght' 400;
 
   &--rate { color: #2563eb; }
   &--promo { color: #d97706; }
   &--avail { color: #16a34a; }
   &--blocked { color: #dc2626; }
 }
+

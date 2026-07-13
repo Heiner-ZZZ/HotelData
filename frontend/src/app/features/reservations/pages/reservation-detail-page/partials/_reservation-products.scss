@@ -22,7 +22,8 @@
 
   .material-symbols-outlined {
     font-size: 1rem;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+    --icon-wght: 300;
+    --icon-opsz: 18;
   }
 
   &:hover {
@@ -155,7 +156,8 @@
 
       .material-symbols-outlined {
         font-size: 16px;
-        font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+        --icon-wght: 300;
+        --icon-opsz: 18;
       }
 
       .loading-spin {
@@ -547,7 +549,8 @@
 
           .material-symbols-outlined {
             font-size: 16px;
-            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 18;
+            --icon-wght: 300;
+            --icon-opsz: 18;
           }
         }
 
@@ -561,6 +564,7 @@
           color: var(--app-text);
           font-size: 0.9rem;
           font-family: inherit;
+          appearance: textfield;
           -moz-appearance: textfield;
 
           &::-webkit-outer-spin-button,
@@ -594,3 +598,4 @@
     }
   }
 }
+
