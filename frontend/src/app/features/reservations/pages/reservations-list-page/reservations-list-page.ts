@@ -1,12 +1,12 @@
-
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, type WritableSignal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, type WritableSignal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { GridReadyEvent, GridApi } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { HttpClient, httpResource } from '@angular/common/http';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -17,9 +17,9 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
+
 import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
-import { ReservationsApiService, type DateHistoryEntry } from '../../services/reservations-api.service';
+import type { DateHistoryEntry } from '../../services/reservations-api.service';
 import { ReceptionCalendarComponent } from '../../components/reception-calendar/reception-calendar';
 
 import { todayIso, shiftDate } from './reservations-list-page.utils';
@@ -27,6 +27,8 @@ import { buildColumnDefs } from './reservations-list-page.columns';
 import { ReservationsStatsBarComponent } from './components/reservations-stats-bar/reservations-stats-bar';
 import { ReservationsFiltersBarComponent } from './components/reservations-filters-bar/reservations-filters-bar';
 import { ReservationsHistoryModalComponent } from './components/reservations-history-modal/reservations-history-modal';
+import { mapReservationsList, mapReservationStats } from '../../mappers/reservations.mapper';
+import type { ReservationsListDto, ReservationStatsDto } from '../../models/reservations.dto';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -54,18 +56,54 @@ export class ReservationsListPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly reservationsApi = inject(ReservationsApiService);
+  private readonly http = inject(HttpClient);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly actionService = inject(ReservationActionService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<ReservationsListViewModel | null>(null);
-  readonly stats = signal<ReservationStats | null>(null);
-  readonly statsLoading = signal(false);
-  readonly exporting = signal(false);
+  // ─── Reactive query params ───
+  private readonly queryParams = toSignal(
+    this.activatedRoute.queryParamMap.pipe(
+      map((params) => ({
+        page: Number(params.get('page') ?? '1'),
+        createdDate: params.get('date') || '',
+        status: params.get('status') || '',
+        propId: Number(params.get('prop_id') ?? '0'),
+        folio: params.get('folio') || '',
+        stayStatus: params.get('stay_status') || '',
+        bookingSource: params.get('booking_source') || '',
+      })),
+      distinctUntilChanged(
+        (a, b) =>
+          a.page === b.page &&
+          a.createdDate === b.createdDate &&
+          a.status === b.status &&
+          a.propId === b.propId &&
+          a.folio === b.folio &&
+          a.stayStatus === b.stayStatus &&
+          a.bookingSource === b.bookingSource
+      )
+    ),
+    {
+      initialValue: {
+        page: 1,
+        createdDate: '',
+        status: '',
+        propId: 0,
+        folio: '',
+        stayStatus: '',
+        bookingSource: '',
+      },
+    }
+  );
+
+  readonly currentDateFilter = computed(() => this.queryParams().createdDate);
+  readonly currentStatusFilter = computed(() => this.queryParams().status);
+  readonly currentFolioFilter = computed(() => this.queryParams().folio);
+  readonly currentStayStatusFilter = computed(() => this.queryParams().stayStatus);
+  readonly currentSourceFilter = computed(() => this.queryParams().bookingSource);
 
   readonly isStaff = computed(() => {
     const role = this.authService.currentUser()?.primaryRole;
@@ -138,7 +176,7 @@ export class ReservationsListPageComponent {
   /** View toggle: 'calendar' (default for staff) or 'list' (default for clients). */
   readonly viewMode = signal<'list' | 'calendar'>('list');
   /** Property ID for hotel selection (required before showing any view). */
-  readonly calendarPropId = signal(0);
+  readonly calendarPropId = computed(() => this.queryParams().propId || this.propertyCtx.currentPropId() || 0);
   readonly calendarPropLabel = signal('');
 
   /** True when a hotel has been selected via the property selector. */
@@ -148,19 +186,64 @@ export class ReservationsListPageComponent {
     createdDate: ['', [Validators.required]],
   });
 
-  // Current date filter (to sync between switchMap and next)
-  readonly currentDateFilter = signal('');
-  readonly currentStatusFilter = signal('');
-  readonly currentFolioFilter = signal('');
-  readonly currentStayStatusFilter = signal('');
-  readonly currentSourceFilter = signal('');
+  // ─── httpResources (DTO → ViewModel via parse) ───
+  readonly reservationsResource = httpResource<ReservationsListViewModel>(() => {
+    const qp = this.queryParams();
+    const params = new URLSearchParams();
+    params.set('page', String(qp.page));
+    if (qp.createdDate) params.set('date', qp.createdDate);
+    if (qp.status) params.set('status', qp.status);
+    if (!this.isClient() && qp.propId) params.set('prop_id', String(qp.propId));
+    if (qp.folio) params.set('folio', qp.folio);
+    if (qp.stayStatus) params.set('stay_status', qp.stayStatus);
+    if (qp.bookingSource) params.set('booking_source', qp.bookingSource);
+    const query = params.toString();
+    return query ? `/reservations?${query}` : '/reservations';
+  }, {
+    parse: (dto) => mapReservationsList(dto as ReservationsListDto),
+  });
+
+  readonly statsResource = httpResource<ReservationStats>(() => '/reservations/stats', {
+    parse: (dto) => mapReservationStats(dto as ReservationStatsDto),
+  });
+
+  readonly historyDatesResource = httpResource<DateHistoryEntry[]>(() => {
+    if (!this.showHistory()) return undefined;
+    const propId = this.calendarPropId();
+    const params = new URLSearchParams();
+    if (propId) params.set('prop_id', String(propId));
+    const query = params.toString();
+    return query ? `/reservations/dates?${query}` : '/reservations/dates';
+  });
+
+  errorMessage(err: unknown): string {
+    return (err as { message?: string })?.message || 'Intenta nuevamente o revisa la conectividad con la API.';
+  }
+
+  // Inline confirm/reject
+  readonly confirmingId = signal<string | null>(null);
+  readonly rejectingId = signal<string | null>(null);
+  readonly successMessage = signal('');
+
+  // More menu (⋮)
+  readonly showMenu = signal(false);
+  readonly showHistory = signal(false);
+
+  readonly exporting = signal(false);
+
+  constructor() {
+    // Sync date form with URL query params reactively
+    effect(() => {
+      const date = this.currentDateFilter();
+      this.dateForm.controls.createdDate.setValue(date, { emitEvent: false });
+    });
+  }
 
   setViewMode(mode: 'list' | 'calendar') {
     this.viewMode.set(mode);
   }
 
   onCalendarPropSelected(event: { propId: number; label: string }) {
-    this.calendarPropId.set(event.propId);
     this.calendarPropLabel.set(event.label);
     if (event.propId) {
       this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
@@ -178,109 +261,24 @@ export class ReservationsListPageComponent {
     // Could navigate to reservation detail or keep modal open
   }
 
-  // Inline confirm/reject
-  readonly confirmingId = signal<string | null>(null);
-  readonly rejectingId = signal<string | null>(null);
-  readonly successMessage = signal('');
-
-  // More menu (⋮)
-  readonly showMenu = signal(false);
-
-  // Date history
-  readonly showHistory = signal(false);
-  readonly historyDates = signal<DateHistoryEntry[]>([]);
-  readonly historyLoading = signal(false);
-
-  constructor() {
-    this.activatedRoute.queryParamMap
-      .pipe(
-        map((params) => ({
-          page: Number(params.get('page') ?? '1'),
-          createdDate: params.get('date') || '',
-          status: params.get('status') || '',
-          propId: Number(params.get('prop_id') ?? '0'),
-          folio: params.get('folio') || '',
-          stayStatus: params.get('stay_status') || '',
-          bookingSource: params.get('booking_source') || '',
-        })),
-        distinctUntilChanged(
-          (a, b) =>
-            a.page === b.page &&
-            a.createdDate === b.createdDate &&
-            a.status === b.status &&
-            a.propId === b.propId &&
-            a.folio === b.folio &&
-            a.stayStatus === b.stayStatus &&
-            a.bookingSource === b.bookingSource
-        ),
-        switchMap(({ page, createdDate, status, propId, folio, stayStatus, bookingSource }) => {
-          this.viewState.set('loading');
-          this.currentDateFilter.set(createdDate || '');
-          this.currentStatusFilter.set(status || '');
-          this.currentFolioFilter.set(folio || '');
-          this.currentStayStatusFilter.set(stayStatus || '');
-          this.currentSourceFilter.set(bookingSource || '');
-          // Use prop_id from URL, or fall back to context (single-hotel mode)
-          const effectivePropId = propId || this.propertyCtx.currentPropId();
-          if (effectivePropId) this.calendarPropId.set(effectivePropId);
-          // Clients don't send prop_id — backend filters by user_id automatically
-          const clientPropId = this.isClient() ? undefined : (propId || undefined);
-          return this.reservationsApi.getReservations(
-            page,
-            createdDate || undefined,
-            status || undefined,
-            clientPropId,
-            folio || undefined,
-            stayStatus || undefined,
-            bookingSource || undefined
-          );
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (data) => {
-          this.data.set(data);
-          this.dateForm.controls.createdDate.setValue(this.currentDateFilter(), { emitEvent: false });
-          this.viewState.set(data.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
-
-    this.loadStats();
-  }
-
-  private loadStats() {
-    this.statsLoading.set(true);
-    this.reservationsApi
-      .getStats()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (stats) => {
-          this.stats.set(stats);
-          this.statsLoading.set(false);
-        },
-        error: () => this.statsLoading.set(false),
-      });
-  }
-
-  exportCsv() {
-    if (this.exporting()) return;
-    this.exporting.set(true);
-    this.reservationsApi
-      .exportCsv()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `reservas_export_${new Date().toISOString().slice(0, 10)}.csv`;
-          a.click();
-          window.URL.revokeObjectURL(url);
-          this.exporting.set(false);
-        },
-        error: () => this.exporting.set(false),
-      });
+  applyFilter(overrides: { folio?: string; stayStatus?: string; source?: string; status?: string; createdDate?: string } = {}): void {
+    const createdDate = overrides.createdDate ?? this.dateForm.controls.createdDate.value;
+    const status = overrides.status ?? this.currentStatusFilter();
+    const folio = overrides.folio ?? this.currentFolioFilter();
+    const stayStatus = overrides.stayStatus ?? this.currentStayStatusFilter();
+    const source = overrides.source ?? this.currentSourceFilter();
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: {
+        status: status || null,
+        date: createdDate || null,
+        folio: folio || null,
+        stay_status: stayStatus || null,
+        booking_source: source || null,
+        page: null,
+      },
+      queryParamsHandling: 'merge',
+    });
   }
 
   navigateDate(days: number): void {
@@ -306,26 +304,6 @@ export class ReservationsListPageComponent {
     });
   }
 
-  applyFilter(): void {
-    const createdDate = this.dateForm.controls.createdDate.value;
-    const status = this.currentStatusFilter();
-    const folio = this.currentFolioFilter();
-    const stayStatus = this.currentStayStatusFilter();
-    const source = this.currentSourceFilter();
-    void this.router.navigate([], {
-      relativeTo: this.activatedRoute,
-      queryParams: {
-        status: status || null,
-        date: createdDate || null,
-        folio: folio || null,
-        stay_status: stayStatus || null,
-        booking_source: source || null,
-        page: null,
-      },
-      queryParamsHandling: 'merge',
-    });
-  }
-
   goToPage(page: number) {
     const createdDate = this.dateForm.controls.createdDate.value;
     const status = this.currentStatusFilter();
@@ -346,18 +324,15 @@ export class ReservationsListPageComponent {
   }
 
   onFolioSearch(value: string): void {
-    this.currentFolioFilter.set(value);
-    this.applyFilter();
+    this.applyFilter({ folio: value });
   }
 
   onStayStatusFilter(value: string): void {
-    this.currentStayStatusFilter.set(value);
-    this.applyFilter();
+    this.applyFilter({ stayStatus: value });
   }
 
   onSourceFilter(value: string): void {
-    this.currentSourceFilter.set(value);
-    this.applyFilter();
+    this.applyFilter({ source: value });
   }
 
   hasActiveFilters(): boolean {
@@ -366,10 +341,6 @@ export class ReservationsListPageComponent {
 
   clearAllFilters(): void {
     this.dateForm.controls.createdDate.setValue('');
-    this.currentStatusFilter.set('');
-    this.currentFolioFilter.set('');
-    this.currentStayStatusFilter.set('');
-    this.currentSourceFilter.set('');
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
       queryParams: {},
@@ -400,32 +371,37 @@ export class ReservationsListPageComponent {
         ? this.actionService.confirm({ bookingId, guestName })
         : this.actionService.reject({ bookingId, guestName });
 
-    serviceCall
-      .pipe(
-        switchMap(() =>
-          this.reservationsApi.getReservations(
-            1,
-            this.currentDateFilter() || undefined,
-            this.currentStatusFilter() || undefined,
-            undefined,
-            this.currentFolioFilter() || undefined,
-            this.currentStayStatusFilter() || undefined,
-            this.currentSourceFilter() || undefined,
-          ),
-        ),
-        takeUntilDestroyed(this.destroyRef),
-      )
+    serviceCall.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        loadingSignal.set(null);
+        this.successMessage.set(successMsg);
+        this.reservationsResource.reload();
+        this.statsResource.reload();
+        setTimeout(() => this.successMessage.set(''), 3000);
+      },
+      error: () => {
+        loadingSignal.set(null);
+      },
+    });
+  }
+
+  exportCsv() {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.http
+      .get('/reservations/export?format=csv', { responseType: 'blob' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          this.data.set(data);
-          loadingSignal.set(null);
-          this.successMessage.set(successMsg);
-          this.loadStats();
-          setTimeout(() => this.successMessage.set(''), 3000);
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `reservas_export_${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+          this.exporting.set(false);
         },
-        error: () => {
-          loadingSignal.set(null);
-        },
+        error: () => this.exporting.set(false),
       });
   }
 
@@ -438,27 +414,13 @@ export class ReservationsListPageComponent {
   }
 
   openHistory(): void {
-    if (this.historyLoading()) return;
+    if (this.historyDatesResource.isLoading()) return;
     this.closeMenu();
     this.showHistory.set(true);
-    this.historyLoading.set(true);
-    this.reservationsApi
-      .getReservationDates()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (dates) => {
-          this.historyDates.set(dates);
-          this.historyLoading.set(false);
-        },
-        error: () => {
-          this.historyLoading.set(false);
-        },
-      });
   }
 
   closeHistory(): void {
     this.showHistory.set(false);
-    this.historyDates.set([]);
   }
 
   goToDate(date: string): void {

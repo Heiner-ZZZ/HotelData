@@ -67,23 +67,20 @@ export class CheckInsPageComponent {
   );
 
   // ── Declarative data fetching ──
-  private readonly checkInsResource = httpResource<CheckInsDto>(() => {
+  readonly checkInsResource = httpResource<CheckInsViewModel>(() => {
     const { propId, operationDate } = this.routeParams();
     return `/api/management/check-ins?date=${operationDate}${propId ? `&prop_id=${propId}` : ''}`;
+  }, {
+    parse: (res) => mapCheckIns(res as CheckInsDto),
   });
 
   // ── Derived state ──
   readonly viewState = computed(() => {
     if (this.checkInsResource.isLoading()) return 'loading' as const;
     if (this.checkInsResource.error()) return 'error' as const;
-    const vm = this.viewModel();
+    const vm = this.checkInsResource.value();
     if (!vm) return 'loading' as const;
     return vm.items.length ? 'success' as const : 'empty' as const;
-  });
-
-  readonly viewModel = computed<CheckInsViewModel | null>(() => {
-    const dto = this.checkInsResource.value();
-    return dto ? mapCheckIns(dto) : null;
   });
 
   readonly message = signal('');
@@ -93,14 +90,14 @@ export class CheckInsPageComponent {
 
   readonly selectedPropId = computed(() => this.routeParams().propId);
   readonly selectedPropName = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.checkInsResource.value();
     const pid = this.selectedPropId();
     if (!vm) return '';
     const opt = vm.propertyOptions.find(p => p.propId === pid);
     return opt?.label ?? '';
   });
   readonly filter = signal('');
-  readonly propertyOptions = computed(() => this.viewModel()?.propertyOptions ?? []);
+  readonly propertyOptions = computed(() => this.checkInsResource.value()?.propertyOptions ?? []);
   readonly dropdownOpen = signal(false);
 
   // Edit check-in date/time modal
@@ -244,7 +241,7 @@ export class CheckInsPageComponent {
   }
 
   completeCheckIn(bookingId: string): void {
-    const current = this.viewModel();
+    const current = this.checkInsResource.value();
     if (!current) return;
     this.api.completeCheckIn(bookingId).subscribe({
       next: () => {

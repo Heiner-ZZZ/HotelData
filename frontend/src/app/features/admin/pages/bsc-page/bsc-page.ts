@@ -1,15 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 
-import type { ApiError } from '../../../../core/api/api-error.model';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { BscViewModel } from '../../models/bsc.model';
-import { BscApiService } from '../../services/bsc-api.service';
+import type { BscResponseDto } from '../../models/bsc.dto';
+import { mapBscResponse } from '../../mappers/bsc.mapper';
 
 @Component({
   selector: 'app-bsc-page',
@@ -24,16 +25,27 @@ import { BscApiService } from '../../services/bsc-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BscPageComponent {
-  private readonly api = inject(BscApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<BscViewModel | null>(null);
-  readonly errorMessage = signal('');
+  readonly bscResource = httpResource<BscViewModel>(() => '/api/kpi/bsc', {
+    parse: (dto) => mapBscResponse(dto as BscResponseDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.bscResource.isLoading()) return 'loading';
+    if (this.bscResource.error()) return 'error';
+    const vm = this.bscResource.value();
+    if (!vm) return 'loading';
+    return vm.perspectives.length ? 'success' : 'empty';
+  });
+
+  readonly errorMessage = computed(() => {
+    const err = this.bscResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
 
   readonly summaryScoreClass = computed(() => {
-    const s = this.viewModel()?.summary;
+    const s = this.bscResource.value()?.summary;
     if (!s) return '';
     if (s.score >= 80) return 'score-excellent';
     if (s.score >= 60) return 'score-good';
@@ -41,16 +53,12 @@ export class BscPageComponent {
     return 'score-critical';
   });
 
-  constructor() {
-    this.loadBsc();
-  }
-
   onRetry() {
-    this.loadBsc();
+    this.bscResource.reload();
   }
 
   exportReport(): void {
-    const vm = this.viewModel();
+    const vm = this.bscResource.value();
     if (!vm) return;
 
     const rows: string[][] = [];
@@ -80,21 +88,5 @@ export class BscPageComponent {
     a.click();
     URL.revokeObjectURL(url);
     this.toast.show('Reporte BSC exportado como CSV.', 'info', 4000);
-  }
-
-  private loadBsc() {
-    this.viewState.set('loading');
-    this.errorMessage.set('');
-
-    this.api.getBsc().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (vm) => {
-        this.viewModel.set(vm);
-        this.viewState.set(vm.perspectives.length ? 'success' : 'empty');
-      },
-      error: (err: ApiError) => {
-        this.errorMessage.set(err.message || 'No fue posible cargar el Balanced Scorecard.');
-        this.viewState.set('error');
-      },
-    });
   }
 }

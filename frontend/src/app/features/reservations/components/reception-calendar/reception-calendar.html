@@ -1,16 +1,16 @@
 <section class="rc">
-  @if (loading()) {
+  @if (calendarResource.isLoading()) {
     <div class="rc-loading">
       <span class="material-symbols-outlined rc-spin">progress_activity</span>
       <span>Cargando calendario…</span>
     </div>
-  } @else if (error()) {
+  } @else if (calendarResource.error()) {
     <div class="rc-error">
       <span class="material-symbols-outlined">error_outline</span>
       <span>No se pudieron cargar las reservas.</span>
       <button type="button" class="rc-retry" (click)="loadCalendar()">Reintentar</button>
     </div>
-  } @else if (calendarData(); as data) {
+  } @else if (calendarResource.value(); as data) {
     @if (data.rooms.length === 0) {
       <app-empty-state
         icon="event_available"

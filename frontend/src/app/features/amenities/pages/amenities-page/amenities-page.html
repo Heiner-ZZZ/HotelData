@@ -39,7 +39,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (amenitiesResource.value(); as vm) {
         <!-- Expedia-inspired Hero Stats -->
         <section class="hero-grid">
           <article class="surface-card hero-card">
@@ -153,7 +153,7 @@
         </section>
 
         <!-- Search results counter -->
-        @if (viewModel(); as vm) {
+        @if (amenitiesResource.value(); as vm) {
           @let totalServices = vm.categories.reduce((acc, cat) => acc + cat.items.length, 0);
           @let filteredServices = filteredCategories().reduce((acc, cat) => acc + cat.items.length, 0);
           @let searchActive = !!search();

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -11,7 +11,9 @@ import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { SystemUserListItem, SystemUsersViewModel } from '../../models/system-users.model';
+import type { SystemUsersResponseDto } from '../../models/system-users.dto';
 import { SystemUsersApiService } from '../../services/system-users-api.service';
+import { mapSystemUsersResponse } from '../../mappers/system-users.mapper';
 
 type ColumnKey = 'username' | 'email' | 'primaryRole' | 'roles' | 'isActive';
 
@@ -40,11 +42,23 @@ interface ColumnFilter {
 export class SystemUsersPageComponent {
   private readonly api = inject(SystemUsersApiService);
   private readonly toast = inject(ToastService);
-  private readonly destroyRef = inject(DestroyRef);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<SystemUsersViewModel | null>(null);
-  readonly loadErrorMessage = signal('');
+  readonly usersResource = httpResource<SystemUsersViewModel>(() => '/api/admin/users', {
+    parse: (dto) => mapSystemUsersResponse(dto as SystemUsersResponseDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.usersResource.isLoading()) return 'loading';
+    if (this.usersResource.error()) return 'error';
+    const vm = this.usersResource.value();
+    if (!vm) return 'loading';
+    return vm.items.length ? 'success' : 'empty';
+  });
+
+  readonly loadErrorMessage = computed(() => {
+    const err = this.usersResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
 
   readonly searchQuery = signal('');
   readonly pendingUserId = signal<string | null>(null);
@@ -61,7 +75,7 @@ export class SystemUsersPageComponent {
   });
 
   readonly filteredItems = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.usersResource.value();
     if (!vm) return [];
     const f = this.filters();
     const q = this.searchQuery().toLowerCase().trim();
@@ -82,7 +96,7 @@ export class SystemUsersPageComponent {
   });
 
   readonly columnFilters = computed<ColumnFilter[]>(() => {
-    const vm = this.viewModel();
+    const vm = this.usersResource.value();
     if (!vm) return [];
     const f = this.filters();
     return [
@@ -138,10 +152,6 @@ export class SystemUsersPageComponent {
       .sort((a, b) => a.localeCompare(b));
   }
 
-  constructor() {
-    this.loadUsers();
-  }
-
   toggleFilter(col: ColumnKey) {
     this.openFilter.update((v) => (v === col ? null : col));
   }
@@ -179,12 +189,11 @@ export class SystemUsersPageComponent {
     this.pendingUserId.set(userId);
     this.api
       .toggleUserActive(userId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.toast.success(result.message);
           this.pendingUserId.set(null);
-          this.loadUsers();
+          this.usersResource.reload();
         },
         error: (err) => {
           this.pendingUserId.set(null);
@@ -206,12 +215,11 @@ export class SystemUsersPageComponent {
     this.deletingId.set(userId);
     this.api
       .deleteUser(userId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.toast.success(result.message);
           this.deletingId.set(null);
-          this.loadUsers();
+          this.usersResource.reload();
         },
         error: (err) => {
           this.deletingId.set(null);
@@ -222,23 +230,5 @@ export class SystemUsersPageComponent {
 
   onClickOutside(col: ColumnKey) {
     this.openFilter.update((v) => (v === col ? null : v));
-  }
-
-  private loadUsers() {
-    this.viewState.set('loading');
-    this.loadErrorMessage.set('');
-    this.api
-      .getUsers()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set(vm.items.length ? 'success' : 'empty');
-        },
-        error: (error: ApiError) => {
-          this.loadErrorMessage.set(error.message || 'No fue posible cargar los usuarios.');
-          this.viewState.set('error');
-        },
-      });
   }
 }

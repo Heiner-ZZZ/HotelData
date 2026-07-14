@@ -17,7 +17,7 @@
       <app-empty-state title="No encontramos esa reserva" description="La reserva solicitada no existe o ya no está disponible." />
     }
     @default {
-      @if (data(); as vm) {
+      @if (detailResource.value(); as vm) {
         <app-page-header
           eyebrow="Detalle de reserva"
           [title]="vm.bookingId"
@@ -77,9 +77,9 @@
           />
         }
 
-        @if (data(); as current) {
+        @if (vm) {
           <app-reservation-timeline
-            [reservation]="current"
+            [reservation]="vm"
             [isStaff]="isStaff()"
             (successMessage)="onTimelineMessage($event)"
           />

@@ -1,6 +1,6 @@
 <div class="detail-page">
   <!-- ═══ Sticky top bar ═══ -->
-  @if (viewModel(); as vm) {
+  @if (detailResource.value(); as vm) {
     <header class="sticky-bar">
       <div class="sticky-bar-left">
         <a routerLink="/management/properties" class="back-link">
@@ -51,7 +51,7 @@
       </div>
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (detailResource.value(); as vm) {
         <div class="page-body">
           <!-- ═══ Hero metrics ═══ -->
           <div class="metrics-row">

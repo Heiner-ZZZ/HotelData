@@ -3,13 +3,14 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { baseUrlInterceptor } from './core/api/base-url.interceptor';
 import { httpErrorInterceptor } from './core/api/http-error.interceptor';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(withInterceptors([httpErrorInterceptor, authInterceptor])),
+    provideHttpClient(withInterceptors([baseUrlInterceptor, httpErrorInterceptor, authInterceptor])),
     provideRouter(
       routes,
       withInMemoryScrolling({

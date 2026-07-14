@@ -71,23 +71,20 @@ export class CheckOutsPageComponent {
   );
 
   // ── Declarative data fetching ──
-  private readonly checkOutsResource = httpResource<CheckOutsDto>(() => {
+  readonly checkOutsResource = httpResource<CheckOutsViewModel>(() => {
     const { propId, operationDate } = this.routeParams();
     return `/api/management/check-outs?date=${operationDate}${propId ? `&prop_id=${propId}` : ''}`;
+  }, {
+    parse: (res) => mapCheckOuts(res as CheckOutsDto),
   });
 
   // ── Derived state ──
   readonly viewState = computed(() => {
     if (this.checkOutsResource.isLoading()) return 'loading' as const;
     if (this.checkOutsResource.error()) return 'error' as const;
-    const vm = this.viewModel();
+    const vm = this.checkOutsResource.value();
     if (!vm) return 'loading' as const;
     return vm.items.length ? 'success' as const : 'empty' as const;
-  });
-
-  readonly viewModel = computed<CheckOutsViewModel | null>(() => {
-    const dto = this.checkOutsResource.value();
-    return dto ? mapCheckOuts(dto) : null;
   });
 
   readonly message = signal('');
@@ -144,14 +141,14 @@ export class CheckOutsPageComponent {
 
   readonly selectedPropId = computed(() => this.routeParams().propId);
   readonly selectedPropName = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.checkOutsResource.value();
     const pid = this.selectedPropId();
     if (!vm) return '';
     const opt = vm.propertyOptions.find(p => p.propId === pid);
     return opt?.label ?? '';
   });
   readonly filter = signal('');
-  readonly propertyOptions = computed(() => this.viewModel()?.propertyOptions ?? []);
+  readonly propertyOptions = computed(() => this.checkOutsResource.value()?.propertyOptions ?? []);
   readonly dropdownOpen = signal(false);
 
   // More menu (⋮)

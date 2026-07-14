@@ -8,6 +8,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, map } from 'rxjs';
 
 import type { RoomStatusHistoryEntry } from '../../services/housekeeping-api.service';
+import { mapRoomHistoryResponse, type RoomHistoryViewModel, type RoomHistoryDto } from './room-history-page.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -73,15 +74,7 @@ export class RoomHistoryPageComponent {
   readonly editBookingId = signal('');
 
   // ── Data fetching via httpResource (reacts to queryParams changes) ──
-  private readonly historyResource = httpResource<{
-    items: RoomStatusHistoryEntry[];
-    total: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
-    has_next: boolean;
-    has_prev: boolean;
-  }>(() => {
+  private readonly historyResource = httpResource<RoomHistoryViewModel>(() => {
     const qp = this.queryParams();
     const params = new URLSearchParams();
     params.set('page', String(qp.page));
@@ -90,6 +83,8 @@ export class RoomHistoryPageComponent {
     if (qp.roomLabel) params.set('room_label', qp.roomLabel);
     if (qp.bookingId) params.set('booking_id', qp.bookingId);
     return `/api/housekeeping/room-status/history?${params.toString()}`;
+  }, {
+    parse: (res) => mapRoomHistoryResponse(res as RoomHistoryDto),
   });
 
   readonly viewState = computed(() => {
@@ -102,9 +97,9 @@ export class RoomHistoryPageComponent {
 
   readonly historyItems = computed(() => this.historyResource.value()?.items ?? []);
   readonly totalItems = computed(() => this.historyResource.value()?.total ?? 0);
-  readonly totalPages = computed(() => this.historyResource.value()?.total_pages ?? 0);
-  readonly hasPrev = computed(() => this.historyResource.value()?.has_prev ?? false);
-  readonly hasNext = computed(() => this.historyResource.value()?.has_next ?? false);
+  readonly totalPages = computed(() => this.historyResource.value()?.totalPages ?? 0);
+  readonly hasPrev = computed(() => this.historyResource.value()?.hasPrev ?? false);
+  readonly hasNext = computed(() => this.historyResource.value()?.hasNext ?? false);
   readonly pagesArray = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
 
   constructor() {

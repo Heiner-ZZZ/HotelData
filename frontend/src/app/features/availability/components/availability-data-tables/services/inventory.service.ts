@@ -1,6 +1,6 @@
 import { DestroyRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { switchMap } from 'rxjs';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { ApiError } from '../../../../../core/api/api-error.model';
@@ -63,12 +63,11 @@ export class InventoryService {
     this.state.saving.set(true);
     this.api
       .deleteInventory(propId, rt.id, payload.date)
-      .pipe(switchMap(() => this.api.getAvailability(propId, 92)), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          this.state.pageData.set(data);
+        next: () => {
+          this.state.reload();
           this.toast.success('Registro de inventario eliminado');
-          this.calendar.rebuildCalendar();
           this.state.saving.set(false);
         },
         error: (err: ApiError) => {
@@ -94,27 +93,27 @@ export class InventoryService {
         available_rooms: f.availableRooms.value,
         blocked_rooms: f.blockedRooms.value,
       })
-      .pipe(switchMap(() => this.api.getAvailability(propId, 92)), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          this.state.pageData.set(data);
+        next: () => {
+          this.state.reload();
           this.toast.success('Inventario actualizado');
-          this.calendar.rebuildCalendar();
+
+          const savedKey = this.state.savingCell();
+          this.state.savingCell.set(null);
+          if (savedKey) {
+            const f = this.form.controls;
+            const label = `${f.availableRooms.value}/${f.totalRooms.value} disponibles`;
+            this.state.highlightedCell.set({ key: savedKey, label });
+            setTimeout(() => this.state.highlightedCell.set(null), 1200);
+          }
+
           this.form.reset({ roomTypeId: '', date: '', totalRooms: 0, availableRooms: 0, blockedRooms: 0 });
           this.state.activeCell.set(null);
           this.state.editingCell.set(null);
           this.state.hotelRoomsForType.set([]);
           this.state.selectedAvailableRooms.set(new Set());
           this.state.selectedBlockedRooms.set(new Set());
-
-          const savedKey = this.state.savingCell();
-          this.state.savingCell.set(null);
-          if (savedKey) {
-            const [date, rtName] = savedKey.split('|');
-            const inv = data.inventoryItems.find((i) => i.date === date && i.roomTypeName === rtName);
-            this.state.highlightedCell.set({ key: savedKey, label: inv ? `${inv.availableRooms}/${inv.totalRooms} disponibles` : 'Actualizado' });
-            setTimeout(() => this.state.highlightedCell.set(null), 1200);
-          }
           this.state.saving.set(false);
 
           if (this.state.undoState()) {

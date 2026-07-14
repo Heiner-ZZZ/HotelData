@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, NgZone, signal, ViewEncapsulation } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -15,7 +16,9 @@ import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
+import type { RoomsDto } from '../../models/rooms.dto';
 import { RoomsApiService } from '../../services/rooms-api.service';
+import { mapRoomsResponse } from '../../mappers/rooms.mapper';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 import { KpiApiService, type TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
@@ -62,21 +65,33 @@ export class RoomsPageComponent {
   readonly topHotels = signal<TopHotelRoomsItem[]>([]);
   readonly topHotelsState = signal<'loading' | 'success' | 'error'>('loading');
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<RoomsViewModel | null>(null);
-  readonly message = signal('');
-  readonly errorMessage = signal('');
-
   readonly selectedPropId = signal(0);
-  readonly selectedLabel = signal('');
+
+  readonly roomsResource = httpResource<RoomsViewModel>(() => {
+    const propId = this.selectedPropId();
+    return propId > 0 ? `/api/management/rooms?prop_id=${propId}` : undefined;
+  }, {
+    parse: (dto) => mapRoomsResponse(dto as RoomsDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.roomsResource.isLoading()) return 'loading';
+    if (this.roomsResource.error()) return 'error';
+    const vm = this.roomsResource.value();
+    if (!vm) return 'empty';
+    return 'success';
+  });
+
+  readonly selectedLabel = computed(() => this.roomsResource.value()?.hotelName ?? '');
+
+  readonly errorMessage = signal('');
 
   /** 'existing' = seleccionar tipo existente, 'new' = escribir nuevo */
   readonly createMode = signal<'existing' | 'new'>('new');
   readonly selectedExistingRoomTypeId = signal('');
 
   readonly existingRoomTypes = computed(() => {
-    const vm = this.viewModel();
-    return vm?.roomTypes ?? [];
+    return this.roomsResource.value()?.roomTypes ?? [];
   });
 
   readonly createForm = this.formBuilder.nonNullable.group({
@@ -201,15 +216,25 @@ export class RoomsPageComponent {
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((propId) => this.loadRooms(propId));
+      .subscribe((propId) => this.selectedPropId.set(propId));
 
     // Auto-carga en modo single-hotel
     effect(() => {
       if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
         const propId = this.propertyCtx.currentPropId();
         if (propId && this.selectedPropId() !== propId) {
-          this.loadRooms(propId);
+          this.selectedPropId.set(propId);
         }
+      }
+    });
+
+    // Sync property context when fresh data arrives
+    effect(() => {
+      const vm = this.roomsResource.value();
+      if (vm) {
+        this.propertyCtx.setProperty(vm.propId, vm.hotelName);
+      } else if (this.selectedPropId() === 0) {
+        this.propertyCtx.clear();
       }
     });
 
@@ -218,35 +243,6 @@ export class RoomsPageComponent {
       next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
       error: (err) => { console.error('[Rooms] Failed to load top hotels KPI', err); this.topHotelsState.set('error'); },
     });
-  }
-
-  private loadRooms(propId: number) {
-    this.viewState.set('loading');
-    this.message.set('');
-    this.errorMessage.set('');
-
-    if (propId > 0) {
-      this.api.getRooms(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (rooms) => {
-          if (rooms) {
-            this.viewModel.set(rooms);
-            this.selectedPropId.set(rooms.propId);
-            this.selectedLabel.set(rooms.hotelName);
-            this.viewState.set('success');
-            this.propertyCtx.setProperty(rooms.propId, rooms.hotelName);
-          } else {
-            this.viewModel.set(null);
-            this.viewState.set('empty');
-            this.propertyCtx.clear();
-          }
-        },
-        error: (err) => { console.error('[Rooms] Failed to load rooms', err); this.viewState.set('error'); },
-      });
-    } else {
-      this.viewModel.set(null);
-      this.viewState.set('empty');
-      this.propertyCtx.clear();
-    }
   }
 
   onCreateImageUrlChange(url: string) {
@@ -404,17 +400,15 @@ export class RoomsPageComponent {
     this.deleting.set(true);
     this.errorMessage.set('');
     this.api.deleteRoomType(roomTypeId).pipe(
-      switchMap(() => {
-        const current = this.viewModel();
-        return current ? this.api.getRooms(current.propId) : of(null);
-      }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({        next: (rooms) => {
-        this.viewModel.set(rooms);
+    ).subscribe({
+      next: () => {
+        this.roomsResource.reload();
         this.toast.success('Tipo de habitación eliminado');
         this.deleting.set(false);
         this.showDeleteConfirm.set(false);
-      },        error: (error: ApiError) => {
+      },
+      error: (error: ApiError) => {
         this.toast.error(error.message || 'No se pudo eliminar el tipo de habitación.');
         this.deleting.set(false);
       }
@@ -456,17 +450,15 @@ export class RoomsPageComponent {
         }
         return of(null);
       }),
-      switchMap(() => {
-        const current = this.viewModel();
-        return current ? this.api.getRooms(current.propId) : of(null);
-      }),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe({        next: (rooms) => {
-        this.viewModel.set(rooms);
+    ).subscribe({
+      next: () => {
+        this.roomsResource.reload();
         this.toast.success('Tipo de habitación actualizado');
         this.savingEdit.set(false);
         this.showEditModal.set(false);
-      },        error: (error: ApiError) => {
+      },
+      error: (error: ApiError) => {
         this.toast.error(error.message || 'No fue posible actualizar el tipo de habitación.');
         this.savingEdit.set(false);
       }
@@ -474,7 +466,7 @@ export class RoomsPageComponent {
   }
 
   createRoomType() {
-    const current = this.viewModel();
+    const current = this.roomsResource.value();
     if (!current || this.createForm.invalid) {
       this.createForm.markAllAsTouched();
       return;
@@ -496,9 +488,7 @@ export class RoomsPageComponent {
         smoking: value.smoking,
         accessible: value.accessible,
         isActive: value.isActive,
-      }).pipe(
-        switchMap(() => this.api.getRooms(current.propId))
-      );
+      });
     } else {
       // En modo 'Crear nuevo': crear room_type + hotel_room
       request = this.api
@@ -528,16 +518,15 @@ export class RoomsPageComponent {
               );
             }
             return of(roomTypeId);
-          }),
-          switchMap(() => this.api.getRooms(current.propId)),
+          })
         );
     }
 
     request.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (rooms) => {
-        this.viewModel.set(rooms);
+      next: () => {
+        this.roomsResource.reload();
         const msg = mode === 'existing' ? 'Habitación física registrada' : 'Tipo de habitación registrado';
         this.toast.success(msg);
         this.createForm.reset({

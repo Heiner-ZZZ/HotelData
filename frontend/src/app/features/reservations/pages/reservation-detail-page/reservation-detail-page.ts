@@ -1,9 +1,8 @@
-import { CurrencyPipe, DatePipe, PercentPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, ViewEncapsulation } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { distinctUntilChanged, map, switchMap, tap } from 'rxjs';
+import { httpResource, HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, ViewEncapsulation } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -11,7 +10,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
+
 import { ReservationTimelineComponent } from './components/reservation-timeline';
 import { RdHeroComponent } from './partials/rd-hero';
 import { RdInfoPanelsComponent } from './partials/rd-info-panels';
@@ -25,6 +24,8 @@ import { RdProductModalComponent } from './partials/rd-product-modal';
 import { RdRoomModalComponent } from './partials/rd-room-modal';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReservationDetailViewModel } from '../../models/reservations.model';
+import type { ReservationDetailDto } from '../../models/reservations.dto';
+import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { ReservationActionService } from '../../services/reservation-action.service';
 import { ProductsApiService } from '../../../admin/services/products-api.service';
@@ -41,7 +42,7 @@ interface EditForm {
 
 @Component({
   selector: 'app-reservation-detail-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent, FormsModule,
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, ReservationTimelineComponent,
     RdHeroComponent, RdInfoPanelsComponent, RdFinancialPanelsComponent, RdEditFormComponent,
     RdInvoicePanelComponent, RdProductsSectionComponent, RdAssignedRoomsComponent,
     RdHistoryPanelComponent, RdProductModalComponent, RdRoomModalComponent],
@@ -61,12 +62,36 @@ export class ReservationDetailPageComponent {
   private readonly actionService = inject(ReservationActionService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<ReservationDetailViewModel | null>(null);
   readonly cancelPending = signal(false);
   readonly confirmPending = signal(false);
   readonly rejectPending = signal(false);
   readonly successMessage = signal('');
+
+  // ─── Reactive route param ───
+  private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
+    initialValue: this.activatedRoute.snapshot.paramMap,
+  });
+  readonly bookingId = computed(() => this.paramMap().get('bookingId') ?? '');
+
+  // ─── Reservation detail — httpResource nativo ───
+  readonly detailResource = httpResource<ReservationDetailViewModel>(() => {
+    const id = this.bookingId();
+    if (!id) return undefined;
+    return `/reservations/${id}`;
+  }, {
+    parse: (dto) => mapReservationDetail(dto as ReservationDetailDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.detailResource.isLoading()) return 'loading';
+    const err = this.detailResource.error();
+    if (err) {
+      const status = err instanceof HttpErrorResponse ? err.status : undefined;
+      return status === 404 ? 'empty' : 'error';
+    }
+    return this.detailResource.value() ? 'success' : 'loading';
+  });
+
 
   // Edit booking
   readonly editMode = signal(false);
@@ -111,7 +136,7 @@ export class ReservationDetailPageComponent {
   });
 
   readonly canAddProducts = computed(() => {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     return vm && canAssignRooms(vm.status) && this.isStaff();
   });
 
@@ -131,7 +156,7 @@ export class ReservationDetailPageComponent {
   });
 
   readonly canConfirm = computed(() => {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     return vm && vm.status === 'pending' && this.isStaff();
   });
 
@@ -146,19 +171,25 @@ export class ReservationDetailPageComponent {
   });
 
   readonly canEdit = computed(() => {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm) return false;
     return canEditBooking(vm.status, vm.stayStatus, this.todayStr(), vm.checkOutDate);
   });
 
   constructor() {
-    this.loadDetail();
+    // Load products whenever the reservation detail changes
+    effect(() => {
+      const vm = this.detailResource.value();
+      if (vm) {
+        this.loadProducts();
+      }
+    });
   }
 
   // ── Products (Add-on Services) ──
 
   loadProducts() {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm) return;
     this.productsState.set('loading');
     this.lineItemsState.set('loading');
@@ -202,7 +233,7 @@ export class ReservationDetailPageComponent {
   }
 
   addProductToBooking() {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     const product = this.selectedProduct();
     if (!vm || !product || this.addProductSaving()) return;
 
@@ -230,7 +261,7 @@ export class ReservationDetailPageComponent {
   }
 
   async removeLineItem(itemId: string, itemName: string) {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm) return;
     const ok = await this.confirmDialog.open({
       title: 'Eliminar producto',
@@ -261,7 +292,7 @@ export class ReservationDetailPageComponent {
       this.editMode.set(false);
       return;
     }
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (vm) {
       this.editForm.set({
         checkInDate: vm.checkInDate,
@@ -280,7 +311,7 @@ export class ReservationDetailPageComponent {
   }
 
   saveEdit() {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm || this.editSaving()) return;
     const f = this.editForm();
     this.editSaving.set(true);
@@ -299,20 +330,20 @@ export class ReservationDetailPageComponent {
     }
 
     this.reservationsApi.modifyBooking(vm.bookingId, payload)
-      .pipe(
-        switchMap(() => this.reservationsApi.getReservationDetail(vm.bookingId)),
-        takeUntilDestroyed(this.destroyRef),
-      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
+        next: () => {
+          this.detailResource.reload();
           this.editMode.set(false);
           this.editSaving.set(false);
           this.successMessage.set('Reserva modificada exitosamente.');
           setTimeout(() => this.successMessage.set(''), 4000);
         },
-        error: (err: ApiError) => {
-          this.editError.set(err.message || 'Error al modificar la reserva');
+        error: (err: unknown) => {
+          const message = err instanceof HttpErrorResponse
+            ? err.error?.message ?? err.message
+            : (err as { message?: string }).message;
+          this.editError.set(message || 'Error al modificar la reserva');
           this.editSaving.set(false);
         },
       });
@@ -321,7 +352,7 @@ export class ReservationDetailPageComponent {
   readonly cancelPenalty = signal<{free: boolean; amount: number; percent: number; hours: number | null; policyHours: number; oneNightPrice: number; totalNights: number} | null>(null);
 
   async cancelReservation() {
-    const current = this.data();
+    const current = this.detailResource.value();
     if (!current || !current.canCancel || this.cancelPending()) return;
 
     // Fetch penalty preview first
@@ -389,25 +420,24 @@ export class ReservationDetailPageComponent {
     this.cancelPending.set(true);
     this.reservationsApi
       .cancelReservation(bookingId)
-      .pipe(switchMap(() => this.reservationsApi.getReservationDetail(bookingId)), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (detail) => { this.data.set(detail); this.cancelPending.set(false); },
-        error: () => { this.viewState.set('error'); this.cancelPending.set(false); }
+        next: () => { this.detailResource.reload(); this.cancelPending.set(false); },
+        error: () => { this.cancelPending.set(false); }
       });
   }
 
   confirmReservation() {
-    const current = this.data();
+    const current = this.detailResource.value();
     if (!current || !this.canConfirm() || this.confirmPending()) return;
     this.confirmPending.set(true);
     this.successMessage.set('');
 
     this.actionService.confirm({ bookingId: current.bookingId }).pipe(
-      switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (detail) => {
-        this.data.set(detail);
+      next: () => {
+        this.detailResource.reload();
         this.confirmPending.set(false);
         this.successMessage.set('Reserva confirmada exitosamente.');
         setTimeout(() => this.successMessage.set(''), 4000);
@@ -417,17 +447,16 @@ export class ReservationDetailPageComponent {
   }
 
   rejectReservation() {
-    const current = this.data();
+    const current = this.detailResource.value();
     if (!current || !this.canReject() || this.rejectPending()) return;
     this.rejectPending.set(true);
     this.successMessage.set('');
 
     this.actionService.reject({ bookingId: current.bookingId }).pipe(
-      switchMap(() => this.reservationsApi.getReservationDetail(current.bookingId)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (detail) => {
-        this.data.set(detail);
+      next: () => {
+        this.detailResource.reload();
         this.rejectPending.set(false);
         this.successMessage.set('Reserva rechazada.');
         setTimeout(() => this.successMessage.set(''), 4000);
@@ -439,7 +468,7 @@ export class ReservationDetailPageComponent {
   // ── Room Assignment ──
 
   openRoomModal() {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm) return;
     this.showRoomModal.set(true);
     this.roomAssignmentState.set('loading');
@@ -481,7 +510,7 @@ export class ReservationDetailPageComponent {
   }
 
   saveRoomAssignment() {
-    const vm = this.data();
+    const vm = this.detailResource.value();
     if (!vm) return;
     const selected = [...this.selectedRoomIds()];
     if (selected.length === 0) return;
@@ -490,11 +519,10 @@ export class ReservationDetailPageComponent {
     this.roomAssignmentMessage.set('');
 
     this.reservationsApi.assignRooms(vm.bookingId, selected).pipe(
-      switchMap(() => this.reservationsApi.getReservationDetail(vm.bookingId)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (detail) => {
-        this.data.set(detail);
+      next: () => {
+        this.detailResource.reload();
         this.roomAssignmentSaving.set(false);
         this.showRoomModal.set(false);
         this.successMessage.set('Habitaciones asignadas correctamente.');
@@ -532,25 +560,6 @@ export class ReservationDetailPageComponent {
   onTimelineMessage(message: string) {
     this.successMessage.set(message);
     setTimeout(() => this.successMessage.set(''), 4000);
-  }
-
-  private loadDetail() {
-    this.activatedRoute.paramMap
-      .pipe(
-        map((params) => params.get('bookingId') ?? ''),
-        distinctUntilChanged(),
-        tap(() => this.viewState.set('loading')),
-        switchMap((bookingId) => this.reservationsApi.getReservationDetail(bookingId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
-          this.viewState.set('success');
-          this.loadProducts();
-        },
-        error: (error: ApiError) => { this.viewState.set(error.status === 404 ? 'empty' : 'error'); }
-      });
   }
 
 }

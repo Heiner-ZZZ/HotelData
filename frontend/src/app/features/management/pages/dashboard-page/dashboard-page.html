@@ -22,7 +22,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (kpisResource.value(); as vm) {
         <div class="refresh-bar">
           <span class="refresh-info">
             @if (isPolling()) {

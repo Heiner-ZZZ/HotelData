@@ -64,7 +64,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (policiesResource.value(); as vm) {
         <app-policy-summary-cards [items]="vm.summary" />
 
         <section class="hero-grid">

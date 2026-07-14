@@ -1,9 +1,9 @@
-import { DestroyRef, effect, inject, Injectable } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { PropertyContextService } from '../../../shared/services/property-context.service';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -16,6 +16,7 @@ import { BlackoutService } from '../components/availability-data-tables/services
 import { CellService } from '../components/availability-calendar/services/cell.service';
 import { mapAvailability } from '../mappers/availability.mapper';
 import type { AvailabilityDto } from '../models/availability.dto';
+import type { AvailabilityViewModel } from '../models/availability.model';
 
 @Injectable()
 export class AvailabilityStore {
@@ -35,16 +36,22 @@ export class AvailabilityStore {
     { initialValue: 0 },
   );
 
-  readonly state = new AvailabilityState(this.routePropId);
+  readonly state = new AvailabilityState(
+    this.routePropId,
+    computed(() => this.availabilityResource.value() ?? null),
+    () => this.availabilityResource.reload(),
+  );
   readonly calendar = new CalendarService(this.state);
   readonly selection = new SelectionService(this.state, this.calendar, this.api, this.destroyRef, this.toast);
   readonly inventory = new InventoryService(this.state, this.calendar, this.api, this.destroyRef, this.toast, this.formBuilder);
   readonly blackout = new BlackoutService(this.state, this.calendar, this.api, this.destroyRef, this.toast, this.formBuilder);
   readonly cell = new CellService(this.state, this.calendar, this.inventory, this.blackout, this.toast);
 
-  private readonly availabilityResource = httpResource<AvailabilityDto>(() => {
+  private readonly availabilityResource = httpResource<AvailabilityViewModel>(() => {
     const pid = this.routePropId();
     return pid > 0 ? `/api/management/availability?prop_id=${pid}&days=92` : undefined;
+  }, {
+    parse: (res) => mapAvailability(res as AvailabilityDto),
   });
 
   constructor() {
@@ -52,7 +59,6 @@ export class AvailabilityStore {
       const propId = this.routePropId();
       if (!propId) {
         this.state.viewState.set('empty');
-        this.state.pageData.set(null);
         this.state.errorMessage.set('');
         this.state.submitMessage.set('');
         this.state.refreshing.set(false);
@@ -69,10 +75,8 @@ export class AvailabilityStore {
         this.state.refreshing.set(false);
         return;
       }
-      const dto = this.availabilityResource.value();
-      if (dto) {
-        const data = mapAvailability(dto);
-        this.state.pageData.set(data);
+      const data = this.availabilityResource.value();
+      if (data) {
         this.state.viewState.set('success');
         this.state.errorMessage.set('');
         this.propertyCtx.setProperty(data.propId, data.hotelName);

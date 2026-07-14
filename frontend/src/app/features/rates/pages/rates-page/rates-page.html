@@ -61,7 +61,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (ratesResource.value(); as vm) {
         <!-- KPI Grid -->
         @if (kpiData(); as kpi) {
         <app-rate-kpi-grid [data]="kpi" />
@@ -469,7 +469,7 @@
                     </div>
                   </div>
                   <app-promotion-form
-                    [viewModel]="viewModel()"
+                    [viewModel]="ratesResource.value() ?? null"
                     [editingPromo]="editingPromo()"
                     (promoCreated)="refreshAfterPromo(); editingPromo.set(null)"
                     (messageChange)="message.set($event); errorMessage.set('')"

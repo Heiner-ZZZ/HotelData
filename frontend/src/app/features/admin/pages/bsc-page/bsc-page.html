@@ -2,7 +2,7 @@
   <app-page-header
     eyebrow="Balanced Scorecard"
     title="Tablero de Control Estratégico"
-    [description]="(viewModel()?.periodLabel) ?? 'Indicadores clave por perspectiva'"
+    [description]="(bscResource.value()?.periodLabel) ?? 'Indicadores clave por perspectiva'"
   >
     <button type="button" class="header-action-btn" slot="actions" (click)="exportReport()">
       <span class="material-symbols-outlined" aria-hidden="true">download</span>
@@ -27,7 +27,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (bscResource.value(); as vm) {
         <!-- Summary bar -->
         <div class="bsc-summary">
           <div class="summary-score" [class]="summaryScoreClass()">

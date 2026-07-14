@@ -1,6 +1,6 @@
 <div class="dashboard-page">
   <app-page-header
-    eyebrow="Vision ejecutiva"
+    eyebrow="Visión ejecutiva"
     title="HotelData Dashboard"
     description="Panel administrativo con métricas operativas del sistema."
   >
@@ -10,158 +10,153 @@
     </button>
   </app-page-header>
 
-  @switch (viewState()) {
-    @case ('loading') {
-      <app-loading-state label="Cargando dashboard operativo..." />
-    }
-    @case ('error') {
-      <app-error-state
-        [description]="errorMessage()"
-        (retry)="onRetry()"
-      />
-    }
-    @case ('empty') {
+  @if (overview.isLoading()) {
+    <app-loading-state label="Cargando dashboard operativo..." />
+  } @else if (overview.error(); as err) {
+    <app-error-state
+      [description]="err?.message || 'No fue posible cargar los indicadores del panel.'"
+      (retry)="onRetry()"
+    />
+  } @else if (overview.value(); as vm) {
+    @if (vm.kpis.length === 0) {
       <app-empty-state
-        title="No hay metricas disponibles"
-        description="El dashboard no devolvio indicadores para mostrar en esta vista."
+        title="No hay métricas disponibles"
+        description="El dashboard no devolvió indicadores para mostrar en esta vista."
       />
-    }
-    @default {
-      @if (viewModel(); as vm) {
-        <app-occupancy-summary [items]="vm.occupancySummary" />
+    } @else {
+      <app-occupancy-summary [items]="vm.occupancySummary" />
 
-        <!-- Weekly earnings chart + date filter -->
-        <section class="chart-section surface-card">
-          <div class="chart-header">
-            <h3 class="chart-header-title">Ganancias semanales</h3>
-            <div class="chart-header-actions">
-              <button type="button" class="export-btn" (click)="exportChart()" title="Exportar gráfico como PNG">
-                <span class="material-symbols-outlined">download</span>
-                Exportar
-              </button>
-            </div>
-            <div class="date-filter-bar">
-              @for (p of presets; track p.id) {
-                <button
-                  type="button"
-                  class="filter-pill"
-                  [class.active]="!isCustomRange() && activePreset() === p.id"
-                  (click)="setPreset(p.id)"
-                >{{ p.label }}</button>
-              }
+      <!-- Weekly earnings chart + date filter -->
+      <section class="chart-section surface-card">
+        <div class="chart-header">
+          <h3 class="chart-header-title">Ganancias semanales</h3>
+          <div class="chart-header-actions">
+            <button type="button" class="export-btn" (click)="exportChart()" title="Exportar gráfico como PNG">
+              <span class="material-symbols-outlined">download</span>
+              Exportar
+            </button>
+          </div>
+          <div class="date-filter-bar">
+            @for (p of presets; track p.id) {
               <button
                 type="button"
                 class="filter-pill"
-                [class.active]="isCustomRange()"
-                (click)="isCustomRange() ? clearCustomRange() : isCustomRange.set(true)"
-              >
-                {{ isCustomRange() ? 'Cancelar' : 'Personalizar' }}
-              </button>
-            </div>
-          </div>
-
-          @if (isCustomRange()) {
-            <div class="custom-date-row">
-              <label class="date-field">
-                <span>Desde</span>
-                <input type="date" [ngModel]="customStartDate()" (ngModelChange)="customStartDate.set($event)" />
-              </label>
-              <label class="date-field">
-                <span>Hasta</span>
-                <input type="date" [ngModel]="customEndDate()" (ngModelChange)="customEndDate.set($event)" />
-              </label>
-              <button type="button" class="apply-btn" (click)="applyCustomRange()" [disabled]="!customStartDate() || !customEndDate()">
-                <span class="material-symbols-outlined">search</span>
-                Aplicar
-              </button>
-            </div>
-          }
-
-          <div class="dashboard-chart-row">
-            <app-kpi-chart
-              #earningsChart
-              [title]="chartTitle()"
-              [labels]="chartLabels()"
-              [datasets]="chartDatasets()"
-              type="bar"
-              [showLegend]="true"
-              formatValue="currency"
-              [height]="220"
-            />
-            @if (totalCommission() > 0) {
-              <div class="chart-side-summary">
-                <div class="chart-side-label">{{ rangeLabel() }}</div>
-                <div class="chart-side-value">{{ totalCommission() | currency:'USD' }}</div>
-                <div class="chart-side-sub">
-                  {{ totalBookings() }} reservas
-                </div>
-              </div>
+                [class.active]="!isCustomRange() && activePreset() === p.id"
+                (click)="setPreset(p.id)"
+              >{{ p.label }}</button>
             }
+            <button
+              type="button"
+              class="filter-pill"
+              [class.active]="isCustomRange()"
+              (click)="isCustomRange() ? clearCustomRange() : isCustomRange.set(true)"
+            >
+              {{ isCustomRange() ? 'Cancelar' : 'Personalizar' }}
+            </button>
           </div>
-        </section>
+        </div>
 
-        <section class="kpi-grid">
-          @for (kpi of vm.kpis; track kpi.label) {
-            <app-metric-card
-              [label]="kpi.label"
-              [value]="kpi.value"
-              [detail]="kpi.detail"
-              [trend]="kpi.trend"
-              [direction]="kpi.direction"
-              [icon]="kpi.icon"
-            />
+        @if (isCustomRange()) {
+          <div class="custom-date-row">
+            <label class="date-field">
+              <span>Desde</span>
+              <input type="date" [ngModel]="customStartDate()" (ngModelChange)="customStartDate.set($event)" />
+            </label>
+            <label class="date-field">
+              <span>Hasta</span>
+              <input type="date" [ngModel]="customEndDate()" (ngModelChange)="customEndDate.set($event)" />
+            </label>
+            <button type="button" class="apply-btn" (click)="applyCustomRange()" [disabled]="!customStartDate() || !customEndDate()">
+              <span class="material-symbols-outlined">search</span>
+              Aplicar
+            </button>
+          </div>
+        }
+
+        <div class="dashboard-chart-row">
+          <app-kpi-chart
+            #earningsChart
+            [title]="chartTitle()"
+            [labels]="chartLabels()"
+            [datasets]="chartDatasets()"
+            type="bar"
+            [showLegend]="true"
+            formatValue="currency"
+            [height]="220"
+          />
+          @if (totalCommission() > 0) {
+            <div class="chart-side-summary">
+              <div class="chart-side-label">{{ rangeLabel() }}</div>
+              <div class="chart-side-value">{{ totalCommission() | currency:'USD' }}</div>
+              <div class="chart-side-sub">
+                {{ totalBookings() }} reservas
+              </div>
+            </div>
           }
+        </div>
+      </section>
+
+      <section class="kpi-grid">
+        @for (kpi of vm.kpis; track kpi.label) {
+          <app-metric-card
+            [label]="kpi.label"
+            [value]="kpi.value"
+            [detail]="kpi.detail"
+            [trend]="kpi.trend"
+            [direction]="kpi.direction"
+            [icon]="kpi.icon"
+          />
+        }
+      </section>
+
+      <section class="content-grid">
+        <section class="surface-card list-card">
+          <div class="list-card-head">
+            <span class="material-symbols-outlined list-card-icon" aria-hidden="true">storage</span>
+            <h2>Colecciones activas</h2>
+          </div>
+          <ul>
+            @for (item of vm.collectionCounts; track item.label) {
+              <li>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </li>
+            }
+          </ul>
         </section>
 
-        <section class="content-grid">
-          <section class="surface-card list-card">
-            <div class="list-card-head">
-              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">storage</span>
-              <h2>Colecciones activas</h2>
-            </div>
-            <ul>
-              @for (item of vm.collectionCounts; track item.label) {
-                <li>
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.value }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
-
-          <section class="surface-card list-card">
-            <div class="list-card-head">
-              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">home_work</span>
-              <h2>Operación conectada</h2>
-            </div>
-            <ul>
-              @for (item of vm.operationalCounts; track item.label) {
-                <li>
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.value }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
-
-          <section class="surface-card list-card">
-            <div class="list-card-head">
-              <span class="material-symbols-outlined list-card-icon" aria-hidden="true">checklist</span>
-              <h2>Calidad de datos</h2>
-            </div>
-            <ul>
-              @for (item of vm.qualitySummary; track item.label) {
-                <li>
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.value }}</strong>
-                </li>
-              }
-            </ul>
-          </section>
+        <section class="surface-card list-card">
+          <div class="list-card-head">
+            <span class="material-symbols-outlined list-card-icon" aria-hidden="true">home_work</span>
+            <h2>Operación conectada</h2>
+          </div>
+          <ul>
+            @for (item of vm.operationalCounts; track item.label) {
+              <li>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </li>
+            }
+          </ul>
         </section>
 
-        <app-recent-reservations [execution]="vm.latestExecution" />
-      }
+        <section class="surface-card list-card">
+          <div class="list-card-head">
+            <span class="material-symbols-outlined list-card-icon" aria-hidden="true">checklist</span>
+            <h2>Calidad de datos</h2>
+          </div>
+          <ul>
+            @for (item of vm.qualitySummary; track item.label) {
+              <li>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </li>
+            }
+          </ul>
+        </section>
+      </section>
+
+      <app-recent-reservations [execution]="vm.latestExecution" />
     }
   }
 </div>

@@ -1,6 +1,6 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Chart, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
@@ -8,7 +8,9 @@ import { BaseChartDirective } from 'ng2-charts';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ExpensesApiService } from '../../services/expenses-api.service';
+import { mapExpenseDashboard } from '../../mappers/expenses.mapper';
 import type { ExpenseDashboard } from '../../models/expenses.model';
+import type { ExpenseDashboardDto } from '../../models/expenses.dto';
 
 Chart.register(...registerables);
 
@@ -130,11 +132,21 @@ Chart.register(...registerables);
   `,
 })
 export class ExpensesDashboardPageComponent {
-  private readonly destroyRef = inject(DestroyRef);
   private readonly expensesApi = inject(ExpensesApiService);
 
-  readonly viewState = signal<'loading' | 'success' | 'error'>('loading');
-  readonly data = signal<ExpenseDashboard | null>(null);
+  readonly dashboardResource = httpResource<ExpenseDashboard>(
+    () => `/api/expenses/dashboard`,
+    { parse: (dto) => mapExpenseDashboard(dto as ExpenseDashboardDto) },
+  );
+
+  readonly data = computed(() => this.dashboardResource.value());
+
+  readonly viewState = computed(() => {
+    if (this.dashboardResource.error()) return 'error' as const;
+    if (this.dashboardResource.isLoading()) return 'loading' as const;
+    return 'success' as const;
+  });
+
   readonly barChartData = signal<{ labels: string[]; datasets: { label: string; data: number[]; backgroundColor: string | string[]; borderColor: string; borderWidth: number; borderRadius: number; }[] }>({ labels: [], datasets: [] });
 
   readonly barChartOptions: any = {
@@ -175,13 +187,11 @@ export class ExpensesDashboardPageComponent {
   };
 
   constructor() {
-    this.expensesApi.getDashboard().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (result) => {
-        this.data.set(result);
-        this.viewState.set('success');
-        this.buildChartData(result);
-      },
-      error: () => this.viewState.set('error'),
+    effect(() => {
+      const d = this.data();
+      if (d) {
+        this.buildChartData(d);
+      }
     });
   }
 

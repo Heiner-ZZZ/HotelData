@@ -1,23 +1,23 @@
 import { CurrencyPipe } from '@angular/common';
+import { HttpClient, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
-import type { ApiError } from '../../../../core/api/api-error.model';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { MetricCardComponent } from '../../components/metric-card/metric-card';
 import { OccupancySummaryComponent } from '../../components/occupancy-summary/occupancy-summary';
 import { RecentReservationsComponent } from '../../components/recent-reservations/recent-reservations';
+import { mapDashboardResponse } from '../../mappers/dashboard.mapper';
+import type { DashboardApiResponseDto } from '../../models/dashboard.dto';
 import type { DashboardViewModel } from '../../models/dashboard.model';
+import type { WeeklyEarningPointDto } from '../../models/earnings.dto';
 import type { WeeklyEarningPoint } from '../../models/earnings.model';
-import { DashboardApiService } from '../../services/dashboard-api.service';
-import { EarningsApiService } from '../../services/earnings-api.service';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -40,38 +40,37 @@ import { EarningsApiService } from '../../services/earnings-api.service';
 export class DashboardPageComponent {
   @ViewChild('earningsChart') private readonly earningsChartComponent?: KpiChartComponent;
 
-  private readonly dashboardApi = inject(DashboardApiService);
-  private readonly earningsApi = inject(EarningsApiService);
+  private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<DashboardViewModel | null>(null);
-  readonly errorMessage = signal('');
+  // ─── Dashboard overview — httpResource nativo ────────
+  readonly overview = httpResource<DashboardViewModel>(() => '/dashboard/overview', {
+    parse: (dto) => mapDashboardResponse(dto as DashboardApiResponseDto),
+  });
 
-  readonly weeklyEarnings = signal<WeeklyEarningPoint[]>([]);
-  readonly chartLabels = computed(() => this.weeklyEarnings().map((w) => w.label));
-  readonly chartDatasets = computed(() => [
-    {
-      label: 'Comisiones',
-      data: this.weeklyEarnings().map((w) => w.totalCommission),
-      color: '#22c55e',
-    },
-    {
-      label: 'Reservas',
-      data: this.weeklyEarnings().map((w) => w.totalBookings),
-      color: '#1463ff',
-    },
-  ]);
+  // ─── Weekly earnings — httpResource nativo ───────────
+  readonly weeklyEarnings = httpResource<WeeklyEarningPoint[]>(() => {
+    if (this.isCustomRange()) {
+      const sd = this.customStartDate();
+      const ed = this.customEndDate();
+      if (!sd || !ed) return undefined;
+      return `/management/products/earnings/weekly?weeks=0&start_date=${sd}&end_date=${ed}`;
+    }
+    const weeksMap: Record<string, number> = { '3m': 13, '6m': 26, '12m': 52 };
+    const weeks = weeksMap[this.activePreset()] ?? 52;
+    return `/management/products/earnings/weekly?weeks=${weeks}`;
+  }, {
+    parse: (res) => (res as { items: WeeklyEarningPointDto[] }).items.map((dto) => ({
+      label: dto.label,
+      totalCommission: dto.total_commission,
+      totalBookings: dto.total_bookings,
+      paidCount: dto.paid_count,
+      pendingCount: dto.pending_count,
+    })),
+  });
 
-  readonly totalCommission = computed(() =>
-    this.weeklyEarnings().reduce((sum, w) => sum + w.totalCommission, 0),
-  );
-  readonly totalBookings = computed(() =>
-    this.weeklyEarnings().reduce((sum, w) => sum + w.totalBookings, 0),
-  );
-
-  // ─── Date range filter ───────────────────────────────────
+  // ─── Date range filter ───────────────────────────────
   readonly presets = [
     { id: '3m', label: '3 meses' },
     { id: '6m', label: '6 meses' },
@@ -82,6 +81,30 @@ export class DashboardPageComponent {
   readonly customStartDate = signal('');
   readonly customEndDate = signal('');
   readonly isCustomRange = signal(false);
+
+  readonly chartLabels = computed(() => (this.weeklyEarnings.value() ?? []).map((w) => w.label));
+  readonly chartDatasets = computed(() => {
+    const data = this.weeklyEarnings.value() ?? [];
+    return [
+      {
+        label: 'Comisiones',
+        data: data.map((w) => w.totalCommission),
+        color: '#22c55e',
+      },
+      {
+        label: 'Reservas',
+        data: data.map((w) => w.totalBookings),
+        color: '#1463ff',
+      },
+    ];
+  });
+
+  readonly totalCommission = computed(() =>
+    (this.weeklyEarnings.value() ?? []).reduce((sum, w) => sum + w.totalCommission, 0),
+  );
+  readonly totalBookings = computed(() =>
+    (this.weeklyEarnings.value() ?? []).reduce((sum, w) => sum + w.totalBookings, 0),
+  );
 
   readonly rangeLabel = computed(() => {
     if (this.isCustomRange()) {
@@ -100,25 +123,18 @@ export class DashboardPageComponent {
     this.earningsChartComponent?.exportImage(`ganancias-semanales-${today}`);
   }
 
-  constructor() {
-    this.loadDashboard();
-    this.loadWeeklyEarnings();
-  }
-
   onRetry() {
-    this.loadDashboard();
+    this.overview.reload();
   }
 
   setPreset(preset: '3m' | '6m' | '12m') {
     this.activePreset.set(preset);
     this.isCustomRange.set(false);
-    this.loadWeeklyEarnings();
   }
 
   applyCustomRange() {
     if (!this.customStartDate() || !this.customEndDate()) return;
     this.isCustomRange.set(true);
-    this.loadWeeklyEarnings();
   }
 
   clearCustomRange() {
@@ -126,77 +142,25 @@ export class DashboardPageComponent {
     this.customEndDate.set('');
     this.isCustomRange.set(false);
     this.activePreset.set('12m');
-    this.loadWeeklyEarnings();
-    this.loadDashboard();
+    this.overview.reload();
   }
 
   refreshKpis(): void {
-    this.dashboardApi
-      .refreshKpis()
+    this.http
+      .post<{ ok: boolean; display_message: string }>('/dashboard/kpis/refresh', {})
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           if (result.ok) {
             this.toast.show(result.display_message, 'info', 5000);
-            this.loadDashboard();
+            this.overview.reload();
           } else {
             this.toast.show('No se pudieron actualizar los indicadores.', 'error', 5000);
           }
         },
-        error: (err: ApiError) => {
-          this.toast.show(err.message || 'Error al refrescar los indicadores del panel.', 'error', 5000);
-        },
-      });
-  }
-
-  private loadDashboard() {
-    this.viewState.set('loading');
-    this.errorMessage.set('');
-
-    this.dashboardApi
-      .getOverview()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (viewModel) => {
-          this.viewModel.set(viewModel);
-          this.viewState.set(viewModel.kpis.length ? 'success' : 'empty');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible cargar los indicadores del panel.');
-          this.viewState.set('error');
-        }
-      });
-  }
-
-  private loadWeeklyEarnings() {
-    if (this.isCustomRange()) {
-      const sd = this.customStartDate();
-      const ed = this.customEndDate();
-      if (!sd || !ed) return;
-
-      this.earningsApi
-        .getWeeklyEarnings(0, sd, ed)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (data) => this.weeklyEarnings.set(data),
-          error: () => {
-            // Silently fail
-          },
-        });
-      return;
-    }
-
-    // Preset-based: compute weeks
-    const weeksMap: Record<string, number> = { '3m': 13, '6m': 26, '12m': 52 };
-    const weeks = weeksMap[this.activePreset()] ?? 52;
-
-    this.earningsApi
-      .getWeeklyEarnings(weeks)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => this.weeklyEarnings.set(data),
-        error: () => {
-          // Silently fail
+        error: (err: unknown) => {
+          const apiErr = err as { message?: string };
+          this.toast.show(apiErr.message || 'Error al refrescar los indicadores del panel.', 'error', 5000);
         },
       });
   }

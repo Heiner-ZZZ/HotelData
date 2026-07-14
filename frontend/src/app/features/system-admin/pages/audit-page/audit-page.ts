@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -9,7 +9,8 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { AuditViewModel } from '../../models/audit.model';
-import { AuditApiService } from '../../services/audit-api.service';
+import type { AuditActivityDto } from '../../models/audit.dto';
+import { mapAuditActivity } from '../../mappers/audit.mapper';
 
 @Component({
   selector: 'app-audit-page',
@@ -25,37 +26,26 @@ import { AuditApiService } from '../../services/audit-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AuditPageComponent {
-  private readonly api = inject(AuditApiService);
-  private readonly destroyRef = inject(DestroyRef);
+  readonly activityResource = httpResource<AuditViewModel>(() => '/api/audit/activity', {
+    parse: (dto) => mapAuditActivity(dto as AuditActivityDto),
+  });
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<AuditViewModel | null>(null);
-  readonly loadErrorMessage = signal('');
+  readonly viewState = computed<ViewState>(() => {
+    if (this.activityResource.isLoading()) return 'loading';
+    if (this.activityResource.error()) return 'error';
+    const vm = this.activityResource.value();
+    if (!vm) return 'loading';
+    return vm.totalExecutions > 0 || vm.totalSearches > 0 ? 'success' : 'empty';
+  });
+
+  readonly loadErrorMessage = computed(() => {
+    const err = this.activityResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
+
   readonly openSection = signal<string | null>(null);
-
-  constructor() {
-    this.loadActivity();
-  }
 
   toggleSection(key: string) {
     this.openSection.update(v => v === key ? null : key);
-  }
-
-  private loadActivity() {
-    this.viewState.set('loading');
-    this.loadErrorMessage.set('');
-    this.api
-      .getActivity()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set(vm.totalExecutions > 0 || vm.totalSearches > 0 ? 'success' : 'empty');
-        },
-        error: (error: ApiError) => {
-          this.loadErrorMessage.set(error.message || 'No fue posible cargar la actividad.');
-          this.viewState.set('error');
-        },
-      });
   }
 }

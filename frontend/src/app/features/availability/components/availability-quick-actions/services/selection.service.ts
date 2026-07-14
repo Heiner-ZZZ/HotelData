@@ -1,5 +1,5 @@
 import { computed, DestroyRef } from '@angular/core';
-import { switchMap } from 'rxjs';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { ApiError } from '../../../../../core/api/api-error.model';
@@ -139,13 +139,12 @@ export class SelectionService {
 
       this.api
         .saveInventory({ prop_id: propId, room_type_id: cell.roomTypeId, date: cell.date, total_rooms: cell.totalRooms, available_rooms: avail, blocked_rooms: blocked })
-        .pipe(switchMap(() => this.api.getAvailability(propId, 92)), takeUntilDestroyed(this.destroyRef))
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (data) => {
+          next: () => {
             completed++;
-            this.state.pageData.set(data);
+            this.state.reload();
             this.toast.success(`${avail === 0 ? 'no disponible' : `${avail} disponibles`} (${completed}/${total})`);
-            this.calendar.rebuildCalendar();
             if (completed >= total) {
               this.state.selectedCells.set(new Set());
               this.state.clearLastCellKey();
@@ -186,13 +185,12 @@ export class SelectionService {
           blocked_rooms: 1,
           reason: 'Mantenimiento',
         })
-        .pipe(switchMap(() => this.api.getAvailability(propId, 92)), takeUntilDestroyed(this.destroyRef))
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (data) => {
+          next: () => {
             completed++;
-            this.state.pageData.set(data);
+            this.state.reload();
             this.toast.success(`Bloqueo registrado (${completed}/${total})`);
-            this.calendar.rebuildCalendar();
             if (completed >= total) {
               this.state.selectedCells.set(new Set());
               this.state.clearLastCellKey();

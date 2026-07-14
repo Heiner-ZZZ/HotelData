@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map, switchMap, tap } from 'rxjs';
+import { map } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -10,8 +12,10 @@ import { OperationalCalendarComponent } from '../../components/operational-calen
 import type { OperationalCalendarData } from '../../components/operational-calendar/operational-calendar';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { PropertyDetailViewModel } from '../../models/properties.model';
+import type { PropertyDetailResponseDto } from '../../models/properties.dto';
 import { PropertiesApiService } from '../../services/properties-api.service';
 import { ReviewsApiService } from '../../../reviews/services/reviews-api.service';
+import { mapPropertyDetailResponse } from '../../mappers/properties.mapper';
 
 @Component({
   selector: 'app-property-detail-page',
@@ -32,8 +36,23 @@ export class PropertyDetailPageComponent {
   private readonly reviewsApi = inject(ReviewsApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<PropertyDetailViewModel | null>(null);
+  readonly propId = toSignal(
+    this.route.paramMap.pipe(map((params) => Number(params.get('propertyId')))),
+    { initialValue: 0 }
+  );
+
+  readonly detailResource = httpResource<PropertyDetailViewModel>(() => {
+    const propId = this.propId();
+    return propId ? `/api/management/properties/${propId}` : undefined;
+  }, {
+    parse: (dto) => mapPropertyDetailResponse(dto as PropertyDetailResponseDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.detailResource.isLoading()) return 'loading';
+    if (this.detailResource.error()) return 'error';
+    return this.detailResource.value() ? 'success' : 'loading';
+  });
 
   readonly opsCircumference = computed(() => {
     const r = 52;
@@ -41,7 +60,7 @@ export class PropertyDetailPageComponent {
   });
 
   readonly opsOffset = computed(() => {
-    const score = this.viewModel()?.operationalScore ?? 0;
+    const score = this.detailResource.value()?.operationalScore ?? 0;
     const circ = 2 * Math.PI * 52;
     return circ - (circ * score) / 100;
   });
@@ -66,7 +85,7 @@ export class PropertyDetailPageComponent {
     this.calendarLoading.set(true);
     this.api.getOperationalCalendar(propId, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
-        this.calendarData.set(data);
+        this.calendarData.set(data as OperationalCalendarData);
         this.calendarLoading.set(false);
       },
       error: () => this.calendarLoading.set(false),
@@ -94,7 +113,7 @@ export class PropertyDetailPageComponent {
     if (newY !== y || newM !== m) {
       this.calendarYear.set(newY);
       this.calendarMonth.set(newM);
-      this._loadCalendar(this.viewModel()!.propId, newY, newM);
+      this._loadCalendar(this.detailResource.value()?.propId ?? this.propId(), newY, newM);
     }
   }
 
@@ -112,32 +131,21 @@ export class PropertyDetailPageComponent {
   readonly reviewsError = signal(false);
 
   constructor() {
-    this.route.paramMap
-      .pipe(
-        map((params) => Number(params.get('propertyId'))),
-        switchMap((propId) => {
-          this.viewState.set('loading');
-          return this.api.getPropertyDetail(propId);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set('success');
-          // Load operational calendar in background
-          this._loadCalendar(vm.propId, this.calendarYear(), this.calendarMonth());
-          // Load approved reviews in background
-          this.loadReviews(vm.propId);
-        },
-        error: () => this.viewState.set('error')
-      });
+    effect(() => {
+      const vm = this.detailResource.value();
+      if (!vm) return;
+      const propId = vm.propId;
+      const year = untracked(() => this.calendarYear());
+      const month = untracked(() => this.calendarMonth());
+      this._loadCalendar(propId, year, month);
+      this.loadReviews(propId);
+    });
   }
 
   private loadReviews(propId: number) {
     this.reviewsApi.getHotelReviews(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (items) => {
-        this.reviews.set(items.map(r => ({
+        this.reviews.set((items as any[]).map(r => ({
           id: r._id,
           rating: r.rating,
           title: r.title,

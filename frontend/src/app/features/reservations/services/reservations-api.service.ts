@@ -2,8 +2,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
-import { API_CONFIG } from '../../../core/api/api.config';
-
 export interface DateHistoryEntry {
   date: string;
   count: number;
@@ -31,7 +29,7 @@ import type { RatePlanOption, ReservationCreateInput, ReservationCreateResult, R
 import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../models/reception-calendar.model';
 
 /** Raw API response (snake_case) for reception calendar — rooms instead of types. */
-interface ReceptionCalendarDto {
+export interface ReceptionCalendarDto {
   rooms: Array<{
     room_number: string;
     hotel_room_id: string;
@@ -63,7 +61,7 @@ interface ReceptionCalendarDto {
   today: string;
 }
 
-function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData {
+export function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData {
   return {
     rooms: dto.rooms.map(rm => ({
       roomNumber: rm.room_number,
@@ -106,7 +104,6 @@ function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reser
 })
 export class ReservationsApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(API_CONFIG);
 
   getReservations(page: number, createdDate?: string, status?: string, propId?: number, folio?: string, stayStatus?: string, bookingSource?: string) {
     let params = new HttpParams().set('page', String(page));
@@ -129,10 +126,7 @@ export class ReservationsApiService {
       params = params.set('booking_source', bookingSource);
     }
     return this.http
-      .get<ReservationsListDto>(`${this.apiConfig.baseUrl}/reservations`, {
-        params,
-        withCredentials: true
-      })
+      .get<ReservationsListDto>('/reservations', { params })
       .pipe(map((dto) => mapReservationsList(dto)));
   }
 
@@ -141,26 +135,20 @@ export class ReservationsApiService {
     if (propId) {
       params = params.set('prop_id', String(propId));
     }
-    return this.http.get<DateHistoryEntry[]>(`${this.apiConfig.baseUrl}/reservations/dates`, {
-      params,
-      withCredentials: true
-    });
+    return this.http.get<DateHistoryEntry[]>('/reservations/dates', { params });
   }
 
   getOptions() {
     return this.http
-      .get<ReservationOptionsDto>(`${this.apiConfig.baseUrl}/reservations/options`, {
-        withCredentials: true
-      })
+      .get<ReservationOptionsDto>('/reservations/options')
       .pipe(map((dto) => mapReservationOptions(dto)));
   }
 
   previewReservation(input: ReservationCreateInput) {
     return this.http
       .post<ReservationPreviewDto>(
-        `${this.apiConfig.baseUrl}/reservations/preview`,
+        '/reservations/preview',
         mapReservationCreatePayload(input),
-        { withCredentials: true }
       )
       .pipe(map((dto) => mapReservationPreview(dto)));
   }
@@ -168,18 +156,15 @@ export class ReservationsApiService {
   createReservation(input: ReservationCreateInput) {
     return this.http
       .post<ReservationCreateDto>(
-        `${this.apiConfig.baseUrl}/reservations`,
+        '/reservations',
         mapReservationCreatePayload(input),
-        { withCredentials: true }
       )
       .pipe(map((dto) => mapReservationCreateResult(dto) as ReservationCreateResult));
   }
 
   getReservationDetail(bookingId: string) {
     return this.http
-      .get<ReservationDetailDto>(`${this.apiConfig.baseUrl}/reservations/${bookingId}`, {
-        withCredentials: true
-      })
+      .get<ReservationDetailDto>(`/reservations/${bookingId}`)
       .pipe(map((dto) => mapReservationDetail(dto)));
   }
 
@@ -196,93 +181,79 @@ export class ReservationsApiService {
       penalty_amount: number;
       hours_until_checkin: number | null;
       cancellation_hours: number;
-    }>(`${this.apiConfig.baseUrl}/reservations/${bookingId}/cancel-preview`, {
-      withCredentials: true,
-    });
+    }>(`/reservations/${bookingId}/cancel-preview`);
   }
 
   cancelReservation(bookingId: string) {
     return this.http.post<ReservationCancelDto>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/cancel`,
+      `/reservations/${bookingId}/cancel`,
       {},
-      { withCredentials: true }
     );
   }
 
   getStats() {
     return this.http
-      .get<ReservationStatsDto>(`${this.apiConfig.baseUrl}/reservations/stats`, {
-        withCredentials: true
-      })
+      .get<ReservationStatsDto>('/reservations/stats')
       .pipe(map((dto) => mapReservationStats(dto)));
   }
 
   exportCsv() {
-    return this.http.get(`${this.apiConfig.baseUrl}/reservations/export?format=csv`, {
-      withCredentials: true,
+    return this.http.get('/reservations/export?format=csv', {
       responseType: 'blob'
     });
   }
 
   confirmReservation(bookingId: string) {
     return this.http.post<ReservationConfirmRejectDto>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/confirm`,
+      `/reservations/${bookingId}/confirm`,
       {},
-      { withCredentials: true }
     );
   }
 
   rejectReservation(bookingId: string) {
     return this.http.post<ReservationConfirmRejectDto>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/reject`,
+      `/reservations/${bookingId}/reject`,
       {},
-      { withCredentials: true }
     );
   }
 
   modifyBooking(bookingId: string, payload: Record<string, unknown>) {
     return this.http.patch<ReservationConfirmRejectDto>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}`,
+      `/reservations/${bookingId}`,
       payload,
-      { withCredentials: true }
     );
   }
 
   getRoomGuests(bookingId: string) {
     return this.http.get<Record<string, unknown>[]>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/room-guests`,
-      { withCredentials: true }
+      `/reservations/${bookingId}/room-guests`,
     );
   }
 
   saveRoomGuests(bookingId: string, roomGuests: { room_index: number; guests: Record<string, unknown>[] }[]) {
     return this.http.put<Record<string, unknown>[]>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/room-guests`,
+      `/reservations/${bookingId}/room-guests`,
       { room_guests: roomGuests },
-      { withCredentials: true }
     );
   }
 
   getCheckInStatus(bookingId: string) {
     return this.http.get<Record<string, unknown>>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}/check-in-status`,
-      { withCredentials: true }
+      `/reservations/${bookingId}/check-in-status`,
     );
   }
 
   validateCoupon(couponCode: string, propId: number) {
     return this.http.post<{valid: boolean; message: string; discount_percent: number}>(
-      `${this.apiConfig.baseUrl}/reservations/validate-coupon`,
+      '/reservations/validate-coupon',
       { coupon_code: couponCode, prop_id: propId },
-      { withCredentials: true }
     );
   }
 
   createGuestReview(bookingId: string, propId: number, rating: number, title: string, comment: string) {
     return this.http.post(
-      `${this.apiConfig.baseUrl}/reviews/guest`,
+      '/reviews/guest',
       { booking_id: bookingId, prop_id: propId, rating, title, comment },
-      { withCredentials: true }
     );
   }
 
@@ -301,17 +272,14 @@ export class ReservationsApiService {
         room_status: string;
       }>;
       assigned_rooms: string[];
-    }>(`${this.apiConfig.baseUrl}/management/bookings/${bookingId}/available-rooms`, {
-      withCredentials: true,
-    });
+    }>(`/management/bookings/${bookingId}/available-rooms`);
   }
 
   /** Assign physical rooms to a booking */
   assignRooms(bookingId: string, roomIds: string[]) {
     return this.http.post<{ booking_id: string; assigned_rooms: string[]; assigned_count: number }>(
-      `${this.apiConfig.baseUrl}/management/bookings/${bookingId}/assign-rooms`,
+      `/management/bookings/${bookingId}/assign-rooms`,
       { room_ids: roomIds },
-      { withCredentials: true }
     );
   }
 
@@ -319,8 +287,8 @@ export class ReservationsApiService {
   searchUsers(q: string) {
     const params = new HttpParams().set('q', q).set('limit', '10');
     return this.http.get<{ items: Array<{ name: string; email: string; phone: string; cedula: string }> }>(
-      `${this.apiConfig.baseUrl}/management/users/search`,
-      { params, withCredentials: true }
+      '/management/users/search',
+      { params },
     );
   }
 
@@ -329,10 +297,8 @@ export class ReservationsApiService {
     let params = new HttpParams().set('prop_id', String(propId));
     if (startDate) params = params.set('start_date', startDate);
     if (endDate) params = params.set('end_date', endDate);
-    return this.http.get<ReceptionCalendarDto>(`${this.apiConfig.baseUrl}/management/reception/calendar`, {
-      params,
-      withCredentials: true,
-    }).pipe(map(dto => mapReceptionCalendar(dto)));
+    return this.http.get<ReceptionCalendarDto>('/management/reception/calendar', { params })
+      .pipe(map(dto => mapReceptionCalendar(dto)));
   }
 
   /** Fetch available rate plans for a hotel + dates + optional room type */
@@ -345,8 +311,8 @@ export class ReservationsApiService {
       params = params.set('room_type_id', roomTypeId);
     }
     return this.http.get<{ rate_plans: any[] }>(
-      `${this.apiConfig.baseUrl}/reservations/rate-plans`,
-      { params, withCredentials: true }
+      '/reservations/rate-plans',
+      { params },
     ).pipe(map(dto => ({
       rate_plans: (dto.rate_plans || []).map(p => ({
         ratePlanId: p.rate_plan_id,
@@ -374,10 +340,7 @@ export class ReservationsApiService {
       totalRooms: number;
       availableRooms: number;
       message: string;
-    }>(`${this.apiConfig.baseUrl}/reservations/availability-check`, {
-      params,
-      withCredentials: true,
-    });
+    }>('/reservations/availability-check', { params });
   }
 
   /** Process a card payment */
@@ -392,6 +355,6 @@ export class ReservationsApiService {
       amount: number;
       auth_code: string;
       message: string;
-    }>(`${this.apiConfig.baseUrl}/payments/process`, data, { withCredentials: true });
+    }>('/payments/process', data);
   }
 }

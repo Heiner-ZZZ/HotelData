@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
-
 import { DecimalPipe, NgStyle } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { httpResource } from '@angular/common/http';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../../models/reception-calendar.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
+import { mapReceptionCalendar, type ReceptionCalendarDto } from '../../services/reservations-api.service';
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -24,13 +25,53 @@ export class ReceptionCalendarComponent {
   /** Emitted when a reservation bar is clicked. */
   readonly reservationClick = output<ReceptionCalendarReservation>();
 
-  readonly loading = signal(true);
-  readonly error = signal(false);
-  readonly calendarData = signal<ReceptionCalendarData | null>(null);
-
   /** Currently visible date range for navigation (14-day view). */
   readonly viewStartDate = signal('');
   readonly viewEndDate = signal('');
+
+  readonly today = computed(() => this.calendarResource.value()?.today ?? new Date().toISOString().slice(0, 10));
+
+  constructor() {
+    this._resetToThisWeek();
+  }
+
+  /** Get the Monday of the current week. */
+  private _weekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    d.setDate(diff);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+
+  private _toIsoDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private _resetToThisWeek() {
+    const start = this._weekStart(new Date());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 13);
+    this.viewStartDate.set(this._toIsoDate(start));
+    this.viewEndDate.set(this._toIsoDate(end));
+  }
+
+  // ─── httpResource for calendar data (DTO → ViewModel via parse) ───
+  readonly calendarResource = httpResource<ReceptionCalendarData>(() => {
+    const propId = this.propId();
+    const start = this.viewStartDate();
+    const end = this.viewEndDate();
+    if (!propId || !start || !end) return undefined;
+    const params = new URLSearchParams();
+    params.set('prop_id', String(propId));
+    params.set('start_date', start);
+    params.set('end_date', end);
+    const query = params.toString();
+    return query ? `/management/reception/calendar?${query}` : '/management/reception/calendar';
+  }, {
+    parse: (dto) => mapReceptionCalendar(dto as ReceptionCalendarDto),
+  });
 
   /** Detail modal state. */
   readonly selectedReservation = signal<ReceptionCalendarReservation | null>(null);
@@ -45,11 +86,9 @@ export class ReceptionCalendarComponent {
   readonly reassignError = signal<string | null>(null);
   readonly reassignConflict = signal<ReceptionCalendarReservation | null>(null);
 
-  readonly today = signal(new Date().toISOString().slice(0, 10));
-
   /** Computed: days to display in the calendar header. */
   readonly calendarDays = computed<ReceptionCalendarDay[]>(() => {
-    const data = this.calendarData();
+    const data = this.calendarResource.value();
     if (!data) return [];
     const start = new Date(data.startDate + 'T12:00:00');
     const end = new Date(data.endDate + 'T12:00:00');
@@ -85,60 +124,9 @@ export class ReceptionCalendarComponent {
     return `140px repeat(${n}, minmax(60px, 1fr))`;
   });
 
-  constructor() {
-    effect(() => {
-      const propId = this.propId();
-      if (propId > 0) {
-        this._loadCalendar();
-      } else {
-        this.calendarData.set(null);
-        this.loading.set(false);
-      }
-    }, { allowSignalWrites: true });
-  }
-
-  /** Get the Monday of the current week. */
-  private _weekStart(date: Date): Date {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    d.setDate(diff);
-    d.setHours(12, 0, 0, 0);
-    return d;
-  }
-
   /** Public method for retry button. */
   loadCalendar() {
-    this._loadCalendar();
-  }
-
-  private _loadCalendar() {
-    const propId = this.propId();
-    if (!propId) { this.loading.set(false); return; }
-
-    this.loading.set(true);
-    this.error.set(false);
-
-    // 14-day view: current week + next week (Monday to Sunday)
-    const today = new Date();
-    const start = this._weekStart(today);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 13);
-
-    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
-      next: (data) => {
-        this.calendarData.set(data);
-        this.today.set(data.today);
-        this.viewStartDate.set(data.startDate);
-        this.viewEndDate.set(data.endDate);
-        this.loading.set(false);
-      },
-      error: () => { this.error.set(true); this.loading.set(false); },
-    });
-  }
-
-  private _toIsoDate(date: Date): string {
-    return date.toISOString().slice(0, 10);
+    this.calendarResource.reload();
   }
 
   navigateWeek(direction: -1 | 1) {
@@ -151,37 +139,12 @@ export class ReceptionCalendarComponent {
     const end = new Date(start);
     end.setDate(end.getDate() + 13);
 
-    this.loading.set(true);
-    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
-      next: (data) => {
-        this.calendarData.set(data);
-        this.viewStartDate.set(data.startDate);
-        this.viewEndDate.set(data.endDate);
-        this.loading.set(false);
-      },
-      error: () => { this.error.set(true); this.loading.set(false); },
-    });
+    this.viewStartDate.set(this._toIsoDate(start));
+    this.viewEndDate.set(this._toIsoDate(end));
   }
 
   goThisWeek() {
-    const propId = this.propId();
-    if (!propId) return;
-
-    const today = new Date();
-    const start = this._weekStart(today);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 13);
-
-    this.loading.set(true);
-    this.api.getReceptionCalendar(propId, this._toIsoDate(start), this._toIsoDate(end)).subscribe({
-      next: (data) => {
-        this.calendarData.set(data);
-        this.viewStartDate.set(data.startDate);
-        this.viewEndDate.set(data.endDate);
-        this.loading.set(false);
-      },
-      error: () => { this.error.set(true); this.loading.set(false); },
-    });
+    this._resetToThisWeek();
   }
 
   /**
@@ -272,7 +235,7 @@ export class ReceptionCalendarComponent {
 
   /** Total reservations across all rooms. */
   readonly totalReservations = computed(() => {
-    const data = this.calendarData();
+    const data = this.calendarResource.value();
     if (!data) return 0;
     return data.rooms.reduce((sum, rm) => sum + rm.reservations.length, 0);
   });
@@ -328,7 +291,7 @@ export class ReceptionCalendarComponent {
         this.reassignSuccess.set(`${source.guestName} → Habitación ${targetRoomNumber}`);
         this.reassigning.set(false);
         this.dragBookingId.set(null);
-        this._loadCalendar();
+        this.calendarResource.reload();
         setTimeout(() => this.reassignSuccess.set(null), 4000);
       },
       error: (err) => {
@@ -341,7 +304,7 @@ export class ReceptionCalendarComponent {
   }
 
   private _findReservation(bookingId: string): ReceptionCalendarReservation | null {
-    const data = this.calendarData();
+    const data = this.calendarResource.value();
     if (!data) return null;
     for (const rm of data.rooms) {
       for (const r of rm.reservations) {
@@ -380,7 +343,7 @@ export class ReceptionCalendarComponent {
     }
 
     // Find target room in data
-    const data = this.calendarData();
+    const data = this.calendarResource.value();
     const targetRoom = data?.rooms.find(rm => rm.hotelRoomId === targetHotelRoomId);
     const hasActiveReservation = targetRoom?.reservations.some(
       r => r.visualStatus === 'active' || r.visualStatus === 'upcoming'

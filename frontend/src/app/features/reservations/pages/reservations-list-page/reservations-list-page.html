@@ -87,8 +87,8 @@
 
     <!-- Stats bar -->
     <app-reservations-stats-bar
-      [stats]="stats()"
-      [statsLoading]="statsLoading()"
+      [stats]="statsResource.value() ?? null"
+      [statsLoading]="statsResource.isLoading()"
       [currentStatusFilter]="currentStatusFilter()"
       (filterPending)="filterPending()"
     />
@@ -112,64 +112,59 @@
     <!-- Date history modal -->
     <app-reservations-history-modal
       [show]="showHistory()"
-      [dates]="historyDates()"
-      [loading]="historyLoading()"
+      [dates]="historyDatesResource.value() ?? []"
+      [loading]="historyDatesResource.isLoading()"
       (close)="closeHistory()"
       (selectDate)="goToDate($event)"
     />
 
-    @switch (viewState()) {
-      @case ('loading') {
-        <app-loading-state label="Cargando solicitudes..." />
-      }
-      @case ('error') {
-        <app-error-state
-          title="No fue posible cargar las reservas"
-          description="Intenta nuevamente o revisa la conectividad con la API."
-        />
-      }
-      @case ('empty') {
+    @if (reservationsResource.isLoading()) {
+      <app-loading-state label="Cargando solicitudes..." />
+    } @else if (reservationsResource.error(); as err) {
+      <app-error-state
+        title="No fue posible cargar las reservas"
+        [description]="errorMessage(err)"
+      />
+    } @else if (reservationsResource.value(); as vm) {
+      @if (vm.items.length === 0) {
         <app-empty-state
           title="No hay solicitudes todavía"
           description="Crea la primera reserva desde un hotel o desde el formulario directo."
         />
-      }
-      @default {
-        @if (data(); as vm) {
-          <div class="list-header">
-            <h2>Reservas</h2>
-            <span class="list-count">{{ vm.total }} registros</span>
-            <div class="pagination-bar">
-              <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
-                <span class="material-symbols-outlined">chevron_left</span>
-              </button>
-              <span class="page-info">{{ vm.page }} / {{ vm.totalPages || 1 }}</span>
-              <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
-            </div>
+      } @else {
+        <div class="list-header">
+          <h2>Reservas</h2>
+          <span class="list-count">{{ vm.total }} registros</span>
+          <div class="pagination-bar">
+            <button type="button" (click)="goToPage(vm.page - 1)" [disabled]="!vm.hasPrev">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <span class="page-info">{{ vm.page }} / {{ vm.totalPages || 1 }}</span>
+            <button type="button" (click)="goToPage(vm.page + 1)" [disabled]="!vm.hasNext">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
           </div>
+        </div>
 
-          <ag-grid-angular
-            class="reservations-grid"
-            [theme]="theme"
-            [rowData]="vm.items"
-            [columnDefs]="columnDefs"
-            [defaultColDef]="defaultColDef"
-            [getRowId]="getRowId"
-            [loading]="viewState() === 'loading'"
-            [enableCellTextSelection]="true"
-            [headerHeight]="40"
-            [rowHeight]="56"
-            [domLayout]="'autoHeight'"
-            [rowSelection]="{ mode: 'singleRow' }"
-            [rowClassRules]="rowClassRules"
-            style="width: 100%;"
-            (gridReady)="onGridReady($event)"
-            (rowClicked)="onRowClicked($event)"
-            (cellKeyDown)="onCellKeyDown($event)"
-          />
-        }
+        <ag-grid-angular
+          class="reservations-grid"
+          [theme]="theme"
+          [rowData]="vm.items"
+          [columnDefs]="columnDefs"
+          [defaultColDef]="defaultColDef"
+          [getRowId]="getRowId"
+          [loading]="reservationsResource.isLoading()"
+          [enableCellTextSelection]="true"
+          [headerHeight]="40"
+          [rowHeight]="56"
+          [domLayout]="'autoHeight'"
+          [rowSelection]="{ mode: 'singleRow' }"
+          [rowClassRules]="rowClassRules"
+          style="width: 100%;"
+          (gridReady)="onGridReady($event)"
+          (rowClicked)="onRowClicked($event)"
+          (cellKeyDown)="onCellKeyDown($event)"
+        />
       }
     }
   }

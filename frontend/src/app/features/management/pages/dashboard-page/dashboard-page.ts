@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -7,12 +7,13 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { MetricCardComponent } from '../../../admin/components/metric-card/metric-card';
 import { OccupancySummaryComponent } from '../../../admin/components/occupancy-summary/occupancy-summary';
 import { RecentReservationsComponent } from '../../../admin/components/recent-reservations/recent-reservations';
+import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { DashboardViewModel } from '../../../admin/models/dashboard.model';
-import { DashboardApiService } from '../../../admin/services/dashboard-api.service';
+import type { DashboardKpisResponseDto } from '../../../admin/models/dashboard.dto';
+import { mapDashboardResponse } from '../../../admin/mappers/dashboard.mapper';
 
 @Component({
   selector: 'app-management-dashboard-page',
@@ -31,16 +32,30 @@ import { DashboardApiService } from '../../../admin/services/dashboard-api.servi
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ManagementDashboardPageComponent {
-  private readonly dashboardApi = inject(DashboardApiService);
   private readonly destroyRef = inject(DestroyRef);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<DashboardViewModel | null>(null);
-  readonly errorMessage = signal('');
+  readonly kpisResource = httpResource<DashboardViewModel | null>(() => '/dashboard/kpis', {
+    parse: (dto) => {
+      const res = dto as DashboardKpisResponseDto;
+      return res.payload ? mapDashboardResponse(res.payload) : null;
+    },
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.kpisResource.isLoading()) return 'loading';
+    if (this.kpisResource.error()) return 'error';
+    const vm = this.kpisResource.value();
+    return vm ? 'success' : 'empty';
+  });
+
+  readonly errorMessage = computed(() => {
+    const err = this.kpisResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
+
   readonly lastUpdated = signal('');
   readonly isPolling = signal(false);
-  readonly cacheMessage = signal('');
 
   readonly lastUpdatedDisplay = computed(() => {
     const val = this.lastUpdated();
@@ -55,11 +70,26 @@ export class ManagementDashboardPageComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.stopPolling());
-    this.loadKpis();
+
+    effect(() => {
+      const vm = this.kpisResource.value();
+      if (vm) {
+        this.lastUpdated.set(new Date().toISOString());
+      }
+    });
+
+    effect(() => {
+      if (this.viewState() === 'error') {
+        this.stopPolling();
+      }
+    });
+
+    this.startPolling();
   }
 
   onRetry() {
-    this.loadKpis();
+    this.kpisResource.reload();
+    this.startPolling();
   }
 
   private stopPolling() {
@@ -73,51 +103,6 @@ export class ManagementDashboardPageComponent {
   private startPolling() {
     this.stopPolling();
     this.isPolling.set(true);
-    this.pollTimer = setInterval(() => this.pollKpis(), 60000);
-  }
-
-  private pollKpis() {
-    // Don't poll if the view is already in error state (session likely expired)
-    if (this.viewState() === 'error') {
-      this.stopPolling();
-      return;
-    }
-    this.dashboardApi.getKpis().subscribe({
-      next: (result) => {
-        if (result) {
-          this.viewModel.set(result);
-          this.viewState.set('success');
-          this.lastUpdated.set(new Date().toISOString());
-        }
-      },
-      error: () => {
-        // Error polling — stop polling so we don't flood the network
-        this.stopPolling();
-      },
-    });
-  }
-
-  private loadKpis() {
-    this.viewState.set('loading');
-    this.errorMessage.set('');
-    this.cacheMessage.set('');
-
-    this.dashboardApi.getKpis().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (result) => {
-        if (result) {
-          this.viewModel.set(result);
-          this.viewState.set('success');
-          this.lastUpdated.set(new Date().toISOString());
-          this.startPolling();
-        } else {
-          this.cacheMessage.set('Aún no hay KPIs cacheados. Ejecuta el pipeline ETL o refresca desde la página de Monitoreo.');
-          this.viewState.set('empty');
-        }
-      },
-      error: (error: ApiError) => {
-        this.errorMessage.set(error.message || 'No fue posible cargar los indicadores.');
-        this.viewState.set('error');
-      },
-    });
+    this.pollTimer = setInterval(() => this.kpisResource.reload(), 60000);
   }
 }

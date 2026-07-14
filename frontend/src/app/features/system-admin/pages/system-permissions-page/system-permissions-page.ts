@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -9,7 +9,9 @@ import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { RoleDetailModel, SystemPermissionItem, SystemPermissionsViewModel, SystemRolePermissionItem } from '../../models/system-permissions.model';
+import type { SystemPermissionsResponseDto } from '../../models/system-permissions.dto';
 import { SystemPermissionsApiService } from '../../services/system-permissions-api.service';
+import { mapSystemPermissionsResponse } from '../../mappers/system-permissions.mapper';
 
 /** A permission category derived from the code prefix (e.g. 'view_', 'edit_', 'manage_', 'delete_'). */
 function _permissionCategory(code: string): string {
@@ -32,11 +34,23 @@ function _permissionCategory(code: string): string {
 export class SystemPermissionsPageComponent {
   private readonly api = inject(SystemPermissionsApiService);
   private readonly toast = inject(ToastService);
-  private readonly destroyRef = inject(DestroyRef);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<SystemPermissionsViewModel | null>(null);
-  readonly loadErrorMessage = signal('');
+  readonly permissionsResource = httpResource<SystemPermissionsViewModel>(() => '/api/admin/permissions', {
+    parse: (dto) => mapSystemPermissionsResponse(dto as SystemPermissionsResponseDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.permissionsResource.isLoading()) return 'loading';
+    if (this.permissionsResource.error()) return 'error';
+    const vm = this.permissionsResource.value();
+    if (!vm) return 'loading';
+    return vm.roles.length || vm.permissions.length ? 'success' : 'empty';
+  });
+
+  readonly loadErrorMessage = computed(() => {
+    const err = this.permissionsResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
 
   // ── Role editor state ──
   readonly editRoleName = signal<string | null>(null);
@@ -49,7 +63,7 @@ export class SystemPermissionsPageComponent {
 
   // ── Permission categories for the matrix view ──
   readonly permissionCategories = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.permissionsResource.value();
     if (!vm) return [];
     const seen = new Set<string>();
     const cats: Array<{ key: string; permissions: SystemPermissionItem[] }> = [];
@@ -76,10 +90,6 @@ export class SystemPermissionsPageComponent {
   /** Expose permissionCategory to template */
   readonly permissionCategory = _permissionCategory;
 
-  constructor() {
-    this.loadPermissions();
-  }
-
   setTab(tab: 'matrix' | 'roles' | 'catalog') {
     this.activeTab.set(tab);
   }
@@ -90,7 +100,6 @@ export class SystemPermissionsPageComponent {
     this.roleDetail.set(null);
     this.api
       .getRoleDetail(roleName)
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (detail) => {
           this.roleDetail.set(detail);
@@ -130,34 +139,15 @@ export class SystemPermissionsPageComponent {
         description: detail.role.description,
         permission_codes: [...detail.role.permissionCodes],
       })
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.toast.success(res.message);
           this.saving.set(false);
-          this.loadPermissions();
+          this.permissionsResource.reload();
         },
         error: (err: ApiError) => {
           this.toast.error(err.message || 'Error al guardar los permisos del rol.');
           this.saving.set(false);
-        },
-      });
-  }
-
-  private loadPermissions() {
-    this.viewState.set('loading');
-    this.loadErrorMessage.set('');
-    this.api
-      .getPermissionsOverview()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set(vm.roles.length || vm.permissions.length ? 'success' : 'empty');
-        },
-        error: (error: ApiError) => {
-          this.loadErrorMessage.set(error.message || 'No fue posible cargar los permisos.');
-          this.viewState.set('error');
         },
       });
   }

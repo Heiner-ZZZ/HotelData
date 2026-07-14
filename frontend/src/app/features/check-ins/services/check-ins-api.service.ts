@@ -1,11 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
 
-import { API_CONFIG } from '../../../core/api/api.config';
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
-import { mapCheckIns } from '../mappers/check-ins.mapper';
-import type { CheckInsDto } from '../models/check-ins.dto';
 
 export interface DateHistoryEntry {
   date: string;
@@ -17,31 +13,18 @@ export interface DateHistoryEntry {
 @Injectable({ providedIn: 'root' })
 export class CheckInsApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(API_CONFIG);
-
-  getCheckIns(operationDate: string, propId?: number) {
-    let params = new HttpParams().set('date', operationDate);
-    if (propId) {
-      params = params.set('prop_id', String(propId));
-    }
-    return this.http
-      .get<CheckInsDto>(`${this.apiConfig.baseUrl}/management/check-ins`, { params, withCredentials: true })
-      .pipe(catchAuthError(), map((dto) => mapCheckIns(dto)));
-  }
 
   getCheckInDates(propId?: number) {
     let params = new HttpParams();
     if (propId) {
       params = params.set('prop_id', String(propId));
     }
-    return this.http.get<DateHistoryEntry[]>(`${this.apiConfig.baseUrl}/management/check-ins/dates`, {
-      params,
-      withCredentials: true
-    }).pipe(catchAuthError());
+    return this.http.get<DateHistoryEntry[]>('/management/check-ins/dates', { params })
+      .pipe(catchAuthError());
   }
 
   completeCheckIn(bookingId: string) {
-    return this.http.post(`${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/complete`, {}, { withCredentials: true });
+    return this.http.post(`/management/check-ins/${bookingId}/complete`, {});
   }
 
   /** Update check-in date/time using the shared PATCH /api/reservations/{id} endpoint */
@@ -50,9 +33,8 @@ export class CheckInsApiService {
     if (checkInDate !== undefined) payload['check_in_date'] = checkInDate;
     if (checkInTime !== undefined) payload['check_in_time'] = checkInTime;
     return this.http.patch<{ booking_id: string; updated: boolean }>(
-      `${this.apiConfig.baseUrl}/reservations/${bookingId}`,
+      `/reservations/${bookingId}`,
       payload,
-      { withCredentials: true }
     );
   }
 
@@ -61,26 +43,23 @@ export class CheckInsApiService {
   /** Fetch all check-in detail data for the detailed check-in page. */
   getCheckInDetail(bookingId: string) {
     return this.http.get<CheckInDetailDto>(
-      `${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/detail`,
-      { withCredentials: true }
+      `/management/check-ins/${bookingId}/detail`,
     );
   }
 
   /** Save check-in detail fields incrementally (draft). */
   saveCheckInDetail(bookingId: string, payload: Partial<CheckInDetailSavePayload>) {
     return this.http.patch<{ booking_id: string; updated: boolean; fields_updated: string[] }>(
-      `${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/detail`,
+      `/management/check-ins/${bookingId}/detail`,
       payload,
-      { withCredentials: true }
     );
   }
 
   /** Complete check-in with all detail data. */
   completeCheckInWithDetail(bookingId: string, payload: Partial<CheckInDetailSavePayload> & { payment_method?: string }) {
     return this.http.post<{ booking_id: string; stay_status: string; folio?: string; invoice_id?: string }>(
-      `${this.apiConfig.baseUrl}/management/check-ins/${bookingId}/complete`,
+      `/management/check-ins/${bookingId}/complete`,
       payload,
-      { withCredentials: true }
     ).pipe(catchAuthError());
   }
 }

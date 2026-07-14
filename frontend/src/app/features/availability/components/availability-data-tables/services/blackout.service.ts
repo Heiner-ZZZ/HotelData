@@ -1,6 +1,6 @@
 import { DestroyRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { switchMap } from 'rxjs';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { ApiError } from '../../../../../core/api/api-error.model';
@@ -79,12 +79,11 @@ export class BlackoutService {
 
     this.api
       .deleteBlackout(payload.blackoutId)
-      .pipe(switchMap(() => this.api.getAvailability(this.state.selectedPropId(), 92)), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          this.state.pageData.set(data);
+        next: () => {
+          this.state.reload();
           this.toast.success('Bloqueo eliminado correctamente');
-          this.calendar.rebuildCalendar();
           this.state.saving.set(false);
         },
         error: (err: ApiError) => {
@@ -124,12 +123,11 @@ export class BlackoutService {
     const request$ = editing ? this.api.updateBlackout(editing.blackoutId, payload) : this.api.createBlackout(payload as any);
 
     request$
-      .pipe(switchMap(() => this.api.getAvailability(propId, 92)), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          this.state.pageData.set(data);
+        next: () => {
+          this.state.reload();
           this.toast.success('Bloqueo registrado');
-          this.calendar.rebuildCalendar();
           this.form.reset({ roomTypeId: '', startDate: '', endDate: '', blockedRooms: 0, reason: '' });
           this.state.editingBlackout.set(null);
           this.state.blackoutSelectedRooms.set(new Set());

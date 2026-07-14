@@ -13,6 +13,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { mapAmenities, mapAmenitiesPayload } from '../../mappers/amenities.mapper';
 import type { AmenitiesDto } from '../../models/amenities.dto';
+import type { AmenitiesViewModel } from '../../models/amenities.model';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
@@ -52,10 +53,12 @@ export class AmenitiesPageComponent {
   // ── Declarative data fetching with httpResource ──
   // Auto-fetches when prop_id or room_type changes.
   // Returns undefined URL = skip fetch (empty state).
-  private readonly amenitiesResource = httpResource<AmenitiesDto>(() => {
+  readonly amenitiesResource = httpResource<AmenitiesViewModel>(() => {
     const propId = this.selectedPropId();
     if (!propId) return undefined;
     return `/api/management/amenities?prop_id=${propId}&room_type_id=${this.selectedRoomTypeId()}`;
+  }, {
+    parse: (res) => mapAmenities(res as AmenitiesDto),
   });
 
   // ── Derived state ──
@@ -67,12 +70,7 @@ export class AmenitiesPageComponent {
     return 'success' as const;
   });
 
-  readonly viewModel = computed(() => {
-    const dto = this.amenitiesResource.value();
-    return dto ? mapAmenities(dto) : null;
-  });
-
-  readonly selectedLabel = computed(() => this.viewModel()?.hotelName ?? '');
+  readonly selectedLabel = computed(() => this.amenitiesResource.value()?.hotelName ?? '');
 
   // ── Mutable state ──
   readonly selectedAmenities = signal<string[]>([]);
@@ -82,7 +80,7 @@ export class AmenitiesPageComponent {
 
   /** Initialize prices map from catalog when amenities data loads. */
   private _initPricesFromCatalog() {
-    const vm = this.viewModel();
+    const vm = this.amenitiesResource.value();
     if (!vm) return;
     const prices = new Map<string, number>();
     for (const cat of vm.categories) {
@@ -116,7 +114,7 @@ export class AmenitiesPageComponent {
   readonly selectedLookup = computed(() => new Set(this.selectedAmenities().map((item) => item.toLowerCase())));
 
   readonly filteredCategories = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.amenitiesResource.value();
     const q = this.search().trim().toLowerCase();
     if (!vm) return [];
     const categories = vm.categories;
@@ -130,7 +128,7 @@ export class AmenitiesPageComponent {
   });
 
   readonly selectedRoomName = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.amenitiesResource.value();
     const rtId = this.selectedRoomTypeId();
     if (!vm || !rtId) return '';
     return vm.roomTypes.find((rt) => rt.roomTypeId === rtId)?.name ?? rtId;
@@ -139,9 +137,9 @@ export class AmenitiesPageComponent {
   constructor() {
     // Sync active amenities when fresh data arrives from httpResource
     effect(() => {
-      const dto = this.amenitiesResource.value();
-      if (dto) {
-        this.selectedAmenities.set(dto.amenities.active_amenities ?? []);
+      const vm = this.amenitiesResource.value();
+      if (vm) {
+        this.selectedAmenities.set(vm.activeAmenities ?? []);
         this.message.set('');
         this.errorMessage.set('');
         const label = this.selectedLabel();
@@ -189,7 +187,7 @@ export class AmenitiesPageComponent {
   }
 
   saveAmenities(): void {
-    const current = this.viewModel();
+    const current = this.amenitiesResource.value();
     if (!current) return;
     this.api
       .saveAmenities(mapAmenitiesPayload(

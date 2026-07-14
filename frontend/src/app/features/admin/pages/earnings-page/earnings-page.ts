@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ToastService } from '../../../../shared/services/toast.service';
@@ -7,10 +8,11 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ApiError } from '../../../../core/api/api-error.model';
-import type { EarningsSummary, EarningsItem, EarningsList } from '../../models/earnings.model';
+import type { EarningsSummary, EarningsList } from '../../models/earnings.model';
+import type { EarningsSummaryDto, EarningsListDto } from '../../models/earnings.dto';
 import { EarningsApiService } from '../../services/earnings-api.service';
+import { mapSummary, mapList } from '../../mappers/earnings.mapper';
 
 @Component({
   selector: 'app-earnings-page',
@@ -21,54 +23,54 @@ import { EarningsApiService } from '../../services/earnings-api.service';
 })
 export class EarningsPageComponent {
   private readonly api = inject(EarningsApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  readonly summaryState = signal<ViewState>('loading');
-  readonly listState = signal<ViewState>('loading');
-  readonly summary = signal<EarningsSummary | null>(null);
-  readonly list = signal<EarningsList | null>(null);
   readonly currentPage = signal(1);
 
-  constructor() {
-    this.loadData();
-  }
+  readonly summaryResource = httpResource<EarningsSummary>(
+    () => `/api/management/products/earnings/summary`,
+    { parse: (dto) => mapSummary(dto as EarningsSummaryDto) },
+  );
 
-  private loadData() {
-    this.summaryState.set('loading');
-    this.listState.set('loading');
+  readonly listResource = httpResource<EarningsList>(
+    () => `/api/management/products/earnings?page=${this.currentPage()}&page_size=20`,
+    { parse: (dto) => mapList(dto as EarningsListDto) },
+  );
 
-    this.api.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (s) => { this.summary.set(s); this.summaryState.set('success'); },
-      error: () => this.summaryState.set('error'),
-    });
+  readonly summary = computed(() => this.summaryResource.value());
+  readonly list = computed(() => this.listResource.value());
 
-    this.loadList();
-  }
+  readonly summaryState = computed(() => {
+    if (this.summaryResource.error()) return 'error' as const;
+    if (this.summaryResource.isLoading()) return 'loading' as const;
+    return 'success' as const;
+  });
 
-  private loadList() {
-    this.listState.set('loading');
-    this.api.list(this.currentPage()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (l) => { this.list.set(l); this.listState.set(l.items.length ? 'success' : 'empty'); },
-      error: () => this.listState.set('error'),
-    });
-  }
+  readonly listState = computed(() => {
+    if (this.listResource.error()) return 'error' as const;
+    if (this.listResource.isLoading()) return 'loading' as const;
+    const l = this.list();
+    return l && l.items.length ? ('success' as const) : ('empty' as const);
+  });
 
-  goToPage(page: number) {
-    this.currentPage.set(page);
-    this.loadList();
-  }
+
 
   pagesArray(): number[] {
     const total = this.list()?.totalPages ?? 1;
     return Array.from({ length: total }, (_, i) => i + 1);
   }
 
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   markAsPaid(bookingId: string) {
     this.api.markPaid(bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.toast.show('Comisión marcada como pagada.', 'info', 4000);
-        this.loadData();
+        this.summaryResource.reload();
+        this.listResource.reload();
       },
       error: (err: ApiError) => {
         this.toast.show(err.message || 'Error al marcar comisión como pagada.', 'error', 5000);

@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
@@ -15,7 +16,9 @@ import type {
   TaxRate,
   CommissionRate,
 } from '../../models/global-settings.model';
+import type { PlatformConfigDto, TaxRateDto, CommissionRateDto } from '../../models/global-settings.dto';
 import { GlobalSettingsApiService } from '../../services/global-settings-api.service';
+import { mapPlatformConfig, mapTaxRate, mapCommissionRate } from '../../mappers/global-settings.mapper';
 
 type ActiveTab = 'hotels' | 'taxes' | 'commissions' | 'config';
 
@@ -37,18 +40,23 @@ export class GlobalSettingsPageComponent {
   private readonly api = inject(GlobalSettingsApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
+  private configInitialized = false;
 
   readonly activeTab = signal<ActiveTab>('hotels');
 
   // Platform Config
-  readonly configState = signal<ViewState>('loading');
-  readonly config = signal<PlatformConfig | null>(null);
+  readonly configResource = httpResource<PlatformConfig>(
+    () => `/api/admin/global-settings/config`,
+    { parse: (dto) => mapPlatformConfig(dto as PlatformConfigDto) },
+  );
+  readonly config = computed(() => this.configResource.value());
+  readonly configState = computed(() => this.resourceState(this.configResource));
   readonly editCommission = signal(5.0);
   readonly editIva = signal(16.0);
   readonly configSaving = signal(false);
   readonly configMessage = signal('');
 
-  // Hotels
+  // Hotels (kept manual because of pagination + search)
   readonly hotelsState = signal<ViewState>('loading');
   readonly hotels = signal<HotelGlobalItem[]>([]);
   readonly hotelsTotal = signal(0);
@@ -68,8 +76,12 @@ export class GlobalSettingsPageComponent {
   }
 
   // Tax Rates
-  readonly taxState = signal<ViewState>('loading');
-  readonly taxRates = signal<TaxRate[]>([]);
+  readonly taxRatesResource = httpResource<TaxRate[]>(
+    () => `/api/admin/global-settings/tax-rates`,
+    { parse: (dto) => (dto as { items: TaxRateDto[] }).items.map(mapTaxRate) },
+  );
+  readonly taxRates = computed(() => this.taxRatesResource.value() ?? []);
+  readonly taxState = computed(() => this.arrayResourceState(this.taxRatesResource));
   readonly newTaxCountryId = signal<number | null>(null);
   readonly newTaxCountryName = signal('');
   readonly newTaxIva = signal(16.0);
@@ -79,8 +91,12 @@ export class GlobalSettingsPageComponent {
   readonly taxMessage = signal('');
 
   // Commission Rates
-  readonly commissionState = signal<ViewState>('loading');
-  readonly commissionRates = signal<CommissionRate[]>([]);
+  readonly commissionRatesResource = httpResource<CommissionRate[]>(
+    () => `/api/admin/global-settings/commission-rates`,
+    { parse: (dto) => (dto as { items: CommissionRateDto[] }).items.map(mapCommissionRate) },
+  );
+  readonly commissionRates = computed(() => this.commissionRatesResource.value() ?? []);
+  readonly commissionState = computed(() => this.arrayResourceState(this.commissionRatesResource));
   readonly newCommissionPropId = signal<number | null>(null);
   readonly newCommissionPct = signal(5.0);
   readonly editingCommission = signal<number | null>(null);
@@ -89,10 +105,28 @@ export class GlobalSettingsPageComponent {
   readonly commissionMessage = signal('');
 
   constructor() {
-    this.loadConfig();
     this.loadHotels();
-    this.loadTaxRates();
-    this.loadCommissionRates();
+
+    effect(() => {
+      const cfg = this.config();
+      if (cfg && !this.configInitialized) {
+        this.editCommission.set(cfg.defaultCommissionPct);
+        this.editIva.set(cfg.defaultIvaPct);
+        this.configInitialized = true;
+      }
+    });
+  }
+
+  private resourceState(resource: { error(): unknown; isLoading(): boolean; value(): unknown | undefined }): ViewState {
+    if (resource.error()) return 'error';
+    if (resource.isLoading()) return 'loading';
+    return 'success';
+  }
+
+  private arrayResourceState<T>(resource: { error(): unknown; isLoading(): boolean; value(): T[] | undefined }): ViewState {
+    if (resource.error()) return 'error';
+    if (resource.isLoading()) return 'loading';
+    return resource.value()?.length ? 'success' : 'empty';
   }
 
   setTab(tab: ActiveTab) {
@@ -100,21 +134,6 @@ export class GlobalSettingsPageComponent {
   }
 
   // ─── Config ────────────────────────────────────────────────────
-
-  private loadConfig() {
-    this.configState.set('loading');
-    this.api.getConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (cfg) => {
-        this.config.set(cfg);
-        this.editCommission.set(cfg.defaultCommissionPct);
-        this.editIva.set(cfg.defaultIvaPct);
-        this.configState.set('success');
-      },
-      error: () => {
-        this.configState.set('error');
-      },
-    });
-  }
 
   saveConfig() {
     this.configSaving.set(true);
@@ -127,9 +146,11 @@ export class GlobalSettingsPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (cfg) => {
-          this.config.set(cfg);
           this.configSaving.set(false);
           this.configMessage.set('Configuración guardada correctamente');
+          this.editCommission.set(cfg.defaultCommissionPct);
+          this.editIva.set(cfg.defaultIvaPct);
+          this.configResource.reload();
         },
         error: () => {
           this.configSaving.set(false);
@@ -208,22 +229,6 @@ export class GlobalSettingsPageComponent {
 
   // ─── Tax Rates ─────────────────────────────────────────────────
 
-  loadTaxRates() {
-    this.taxState.set('loading');
-    this.api
-      .listTaxRates()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (rates) => {
-          this.taxRates.set(rates);
-          this.taxState.set(rates.length ? 'success' : 'empty');
-        },
-        error: () => {
-          this.taxState.set('error');
-        },
-      });
-  }
-
   addTaxRate() {
     const countryId = this.newTaxCountryId();
     if (countryId === null) return;
@@ -242,7 +247,7 @@ export class GlobalSettingsPageComponent {
           this.newTaxCountryId.set(null);
           this.newTaxCountryName.set('');
           this.newTaxIva.set(16.0);
-          this.loadTaxRates();
+          this.taxRatesResource.reload();
         },
         error: () => {
           this.taxSaving.set(false);
@@ -271,7 +276,7 @@ export class GlobalSettingsPageComponent {
         next: () => {
           this.taxSaving.set(false);
           this.editingTax.set(null);
-          this.loadTaxRates();
+          this.taxRatesResource.reload();
         },
         error: () => {
           this.taxSaving.set(false);
@@ -292,7 +297,7 @@ export class GlobalSettingsPageComponent {
       .deleteTaxRate(countryId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.loadTaxRates(),
+        next: () => this.taxRatesResource.reload(),
         error: () => {
           this.taxMessage.set('Error al eliminar la tasa de IVA');
         },
@@ -300,22 +305,6 @@ export class GlobalSettingsPageComponent {
   }
 
   // ─── Commission Rates ──────────────────────────────────────────
-
-  loadCommissionRates() {
-    this.commissionState.set('loading');
-    this.api
-      .listCommissionRates()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (rates) => {
-          this.commissionRates.set(rates);
-          this.commissionState.set(rates.length ? 'success' : 'empty');
-        },
-        error: () => {
-          this.commissionState.set('error');
-        },
-      });
-  }
 
   addCommissionRate() {
     const propId = this.newCommissionPropId();
@@ -330,7 +319,7 @@ export class GlobalSettingsPageComponent {
           this.commissionSaving.set(false);
           this.newCommissionPropId.set(null);
           this.newCommissionPct.set(5.0);
-          this.loadCommissionRates();
+          this.commissionRatesResource.reload();
         },
         error: () => {
           this.commissionSaving.set(false);
@@ -359,7 +348,7 @@ export class GlobalSettingsPageComponent {
         next: () => {
           this.commissionSaving.set(false);
           this.editingCommission.set(null);
-          this.loadCommissionRates();
+          this.commissionRatesResource.reload();
         },
         error: () => {
           this.commissionSaving.set(false);
@@ -380,7 +369,7 @@ export class GlobalSettingsPageComponent {
       .deleteCommissionRate(propId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.loadCommissionRates(),
+        next: () => this.commissionRatesResource.reload(),
         error: () => {
           this.commissionMessage.set('Error al eliminar la comisión');
         },

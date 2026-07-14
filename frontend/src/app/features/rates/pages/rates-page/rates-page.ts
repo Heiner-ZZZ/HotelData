@@ -3,7 +3,7 @@ import type { PromoEditState } from '../../components/promotion-form/promotion-f
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, forkJoin, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -94,21 +94,23 @@ export class RatesPageComponent {
   );
 
   /** Declarative data fetching — auto-fetches when routePropId changes. */
-  private readonly ratesResource = httpResource<RatesDto>(() => {
+  readonly ratesResource = httpResource<RatesViewModel>(() => {
     const propId = this.routePropId();
     return propId > 0 ? `/api/management/rates?prop_id=${propId}` : undefined;
+  }, {
+    parse: (res) => mapRatesResponse(res as RatesDto),
   });
 
   /* ── State ── */
   readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<RatesViewModel | null>(null);
-  /** Derived from viewModel — no separate API call needed. */
+
+  /** Derived from ratesResource — no separate API call needed. */
   readonly ratePlanOptions = computed<RatePlanOption[]>(() =>
-    (this.viewModel()?.ratePlans ?? []).map((p) => ({ id: p.id, label: p.name }))
+    (this.ratesResource.value()?.ratePlans ?? []).map((p) => ({ id: p.id, label: p.name }))
   );
   /** Calendar items for overview table — today+future by default, all dates when showPastDates is on. */
   readonly overviewCalendarItems = computed<import('../../models/rates.model').RateCalendarItem[]>(() => {
-    const items = this.viewModel()?.calendar ?? [];
+    const items = this.ratesResource.value()?.calendar ?? [];
     if (this.showPastDates()) return items;
     const today = new Date().toISOString().slice(0, 10);
     return items.filter((c) => c.date >= today);
@@ -123,7 +125,7 @@ export class RatesPageComponent {
   readonly selectedPropId = computed(() => this.routePropId());
 
   /** Current property name — derived from loaded data. */
-  readonly selectedLabel = computed(() => this.viewModel()?.hotelLabel ?? '');
+  readonly selectedLabel = computed(() => this.ratesResource.value()?.hotelLabel ?? '');
 
   /** Current section — derived from URL query param. */
   readonly activeSection = computed(() => this.routeSection());
@@ -201,9 +203,9 @@ readonly sidebarSections: SidebarSection[] = [
   { id: 'promos', label: 'Promociones', icon: 'campaign' },
 ];
 
-  /* ── KPI data derived from viewModel ── */
+  /* ── KPI data derived from ratesResource ── */
   readonly kpiData = computed((): KpiData | null => {
-    const vm = this.viewModel();
+    const vm = this.ratesResource.value();
     if (!vm) return null;
     return {
       hotelLabel: vm.hotelLabel,
@@ -215,7 +217,7 @@ readonly sidebarSections: SidebarSection[] = [
     };
   });
 
-  /* ── Calendar data derived from viewModel ── */
+  /* ── Calendar data derived from ratesResource ── */
   readonly calendarMonth = signal(new Date().getMonth());
   readonly calendarYear = signal(new Date().getFullYear());
 
@@ -226,14 +228,14 @@ readonly sidebarSections: SidebarSection[] = [
 
   /** Extract short room "number" from room_type_id (strip 'RT-{prop_id}-' prefix). */
   _roomNumber(rtId: string): string {
-    const vm = this.viewModel();
+    const vm = this.ratesResource.value();
     if (!vm) return rtId;
     const prefix = `RT-${vm.propId}-`;
     return rtId.startsWith(prefix) ? rtId.slice(prefix.length) : rtId;
   }
 
   readonly calendarRows = computed((): RoomTypeCalendarRow[] => {
-    const vm = this.viewModel();
+    const vm = this.ratesResource.value();
     if (!vm) return [];
     const month = this.calendarMonth();
     const year = this.calendarYear();
@@ -292,7 +294,7 @@ readonly sidebarSections: SidebarSection[] = [
 
   /** Events derived from seasonal rules and promotions for the displayed dates. */
   readonly calendarEvents = computed(() => {
-    const vm = this.viewModel();
+    const vm = this.ratesResource.value();
     if (!vm) return [];
     const events: Array<{ date: string; type: 'season' | 'promo' | 'batch' | 'rate_entry'; label: string; color: string }> = [];
 
@@ -340,7 +342,7 @@ readonly sidebarSections: SidebarSection[] = [
 
   /* ── Derived data for tables ── */
   readonly seasonalRuleRows = computed((): SeasonalRuleRow[] => {
-    return (this.viewModel()?.seasonalRules ?? []).map((r) => ({
+    return (this.ratesResource.value()?.seasonalRules ?? []).map((r) => ({
       ruleId: r.ruleId,
       name: r.name,
       ratePlanId: r.ratePlanId,
@@ -367,7 +369,7 @@ readonly sidebarSections: SidebarSection[] = [
         couponAvailable: p.coupon_available ?? 0,
       }));
     }
-    return (this.viewModel()?.promotions ?? []).map((p) => ({
+    return (this.ratesResource.value()?.promotions ?? []).map((p) => ({
       campaignId: p.campaignId,
       name: p.name,
       description: p.description,
@@ -382,18 +384,18 @@ readonly sidebarSections: SidebarSection[] = [
   });
 
   readonly couponRows = computed((): CouponRow[] => {
-    return (this.viewModel()?.coupons ?? []).map((c) => ({
+    return (this.ratesResource.value()?.coupons ?? []).map((c) => ({
       code: c.code,
       activeLabel: c.activeLabel,
     }));
   });
 
 
-  get roomTypes() { return this.viewModel()?.roomTypes ?? []; }
+  get roomTypes() { return this.ratesResource.value()?.roomTypes ?? []; }
 
   /** Map of room_type_id → short room number for the plan table. */
   readonly roomTypeNumberMap = computed<Record<string, string>>(() => {
-    const vm = this.viewModel();
+    const vm = this.ratesResource.value();
     if (!vm) return {};
     const map: Record<string, string> = {};
     for (const rt of vm.roomTypes) {
@@ -419,13 +421,12 @@ readonly sidebarSections: SidebarSection[] = [
       });
     });
 
-    // ── Sync httpResource → viewModel + viewState ──
+    // ── Sync httpResource → viewState + property context ──
     effect(() => {
       const propId = this.selectedPropId();
 
       if (!propId) {
         this.viewState.set('empty');
-        this.viewModel.set(null);
         this.message.set('');
         this.errorMessage.set('');
         this.editingPlan.set(null);
@@ -436,7 +437,7 @@ readonly sidebarSections: SidebarSection[] = [
       }
 
       if (this.ratesResource.isLoading()) {
-        this.viewState.set(this.viewModel() ? 'success' : 'loading');
+        this.viewState.set(this.ratesResource.value() ? 'success' : 'loading');
         return;
       }
 
@@ -446,12 +447,9 @@ readonly sidebarSections: SidebarSection[] = [
         return;
       }
 
-      const dto = this.ratesResource.value();
-      if (dto) {
-        const data = mapRatesResponse(dto);
-        this.viewModel.set(data);
+      const data = this.ratesResource.value();
+      if (data) {
         this.viewState.set('success');
-        this.message.set('');
         this.errorMessage.set('');
         this.propertyCtx.setProperty(data.propId, data.hotelLabel);
       }      }, { allowSignalWrites: true });
@@ -528,7 +526,7 @@ readonly sidebarSections: SidebarSection[] = [
   });
 
   createRatePlan(): void {
-    const current = this.viewModel();
+    const current = this.ratesResource.value();
     if (!current || !this.planName() || this.planBaseRate() <= 0) { return; }
     const obs = this.editingPlan()
       ? this.api.updateRatePlan(this.editingPlan()!.id, {
@@ -542,11 +540,10 @@ readonly sidebarSections: SidebarSection[] = [
           includedAmenities: this.planIncludedAmenities(),
         });
     obs.pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => {
-        this.viewModel.set(rates);
+      next: () => {
+        this.ratesResource.reload();
         this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
         this.editingPlan.set(null);
         this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
@@ -582,35 +579,33 @@ readonly sidebarSections: SidebarSection[] = [
   confirmDeletePlan(): void {
     const planId = this.deleteConfirm(); if (!planId) return;
     this.deleteConfirm.set(null);
-    const current = this.viewModel(); if (!current) return;
+    const current = this.ratesResource.value(); if (!current) return;
     this.api.deleteRatePlan(planId).pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.message.set('Plan tarifario eliminado'); this.errorMessage.set(''); },
+      next: () => { this.ratesResource.reload(); this.message.set('Plan tarifario eliminado'); this.errorMessage.set(''); },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar plan.'); this.message.set(''); },
     });
   }
 
   /* ── Calendar Entry ── */
   saveRate(): void {
-    const current = this.viewModel();
+    const current = this.ratesResource.value();
     if (!current || !this.calendarRatePlanId() || !this.calendarDate() || this.calendarRateAmount() <= 0) { return; }
     this.api.saveRate({
       propId: current.propId, ratePlanId: this.calendarRatePlanId(), date: this.calendarDate(),
       rateAmount: this.calendarRateAmount(), minStayNights: this.calendarMinStayNights(), isClosed: this.calendarIsClosed(),
     }).pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.message.set('Tarifa actualizada'); this.errorMessage.set(''); this.calendarRatePlanId.set(''); this.calendarDate.set(''); this.calendarRateAmount.set(0); this.calendarMinStayNights.set(1); this.calendarIsClosed.set(false); },
+      next: () => { this.ratesResource.reload(); this.message.set('Tarifa actualizada'); this.errorMessage.set(''); this.calendarRatePlanId.set(''); this.calendarDate.set(''); this.calendarRateAmount.set(0); this.calendarMinStayNights.set(1); this.calendarIsClosed.set(false); },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible actualizar la tarifa.'); this.message.set(''); },
     });
   }
 
   /* ── Batch Update ── */
   batchUpdateCalendar(): void {
-    const current = this.viewModel();
+    const current = this.ratesResource.value();
     if (!current || !this.batchRatePlanId() || !this.batchStartDate() || !this.batchEndDate() || this.batchRateAmount() <= 0) { return; }
     if (this.batchStartDate() > this.batchEndDate()) {
       this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
@@ -620,17 +615,16 @@ readonly sidebarSections: SidebarSection[] = [
       propId: current.propId, ratePlanId: this.batchRatePlanId(), startDate: this.batchStartDate(),
       endDate: this.batchEndDate(), rateAmount: this.batchRateAmount(), minStayNights: this.batchMinStayNights() || undefined, onlyWeekends: this.batchOnlyWeekends(),
     }).pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.message.set('Calendario actualizado por lote'); this.errorMessage.set(''); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
+      next: () => { this.ratesResource.reload(); this.message.set('Calendario actualizado por lote'); this.errorMessage.set(''); this.batchRatePlanId.set(''); this.batchStartDate.set(''); this.batchEndDate.set(''); this.batchRateAmount.set(0); this.batchMinStayNights.set(1); this.batchOnlyWeekends.set(false); },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al actualizar calendario por lote.'); this.message.set(''); },
     });
   }
 
   /* ── Generate Calendar ── */
   generateCalendar(): void {
-    const current = this.viewModel();
+    const current = this.ratesResource.value();
     if (!current) return;
     if (this.generateStartDate() && this.generateEndDate() && this.generateStartDate() > this.generateEndDate()) {
       this.errorMessage.set('La fecha de inicio no puede ser mayor a la fecha de fin.');
@@ -640,10 +634,14 @@ readonly sidebarSections: SidebarSection[] = [
       propId: current.propId, ratePlanId: this.generateRatePlanId() || undefined,
       startDate: this.generateStartDate() || undefined, endDate: this.generateEndDate() || undefined,
     }).pipe(
-      switchMap((result) => { this.message.set(`Calendario generado: ${result.entries_generated} entradas`); return this.api.getRates(current.propId); }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.errorMessage.set(''); this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set(''); },
+      next: (result) => {
+        this.ratesResource.reload();
+        this.message.set(`Calendario generado: ${result.entries_generated} entradas`);
+        this.errorMessage.set('');
+        this.generateRatePlanId.set(''); this.generateStartDate.set(''); this.generateEndDate.set('');
+      },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al generar calendario.'); this.message.set(''); },
     });
   }
@@ -676,7 +674,7 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   createSeasonalRule(): void {
-    const current = this.viewModel();
+    const current = this.ratesResource.value();
     this.seasonalPriceTouched.set(true);
     if (!current || !this.seasonalRatePlanId() || !this.seasonalName() || !this.seasonalStartDate() || !this.seasonalEndDate()) {
       this.errorMessage.set('Completa todos los campos requeridos.');
@@ -711,11 +709,10 @@ readonly sidebarSections: SidebarSection[] = [
         });
 
     obs.pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => {
-        this.viewModel.set(rates);
+      next: () => {
+        this.ratesResource.reload();
         this.message.set(edit ? 'Regla de temporada actualizada' : 'Regla de temporada creada');
         this.errorMessage.set('');
         this.cancelEditSeason();
@@ -725,34 +722,37 @@ readonly sidebarSections: SidebarSection[] = [
   }
 
   deleteSeasonalRule(ruleId: string): void {
-    const current = this.viewModel(); if (!current) return;
+    const current = this.ratesResource.value(); if (!current) return;
     this.api.deleteSeasonalRule(ruleId).pipe(
-      switchMap(() => this.api.getRates(current.propId)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (rates) => { this.viewModel.set(rates); this.message.set('Regla de temporada eliminada'); },
+      next: () => { this.ratesResource.reload(); this.message.set('Regla de temporada eliminada'); },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.'); },
     });
   }
 
   /* ── Promotions ── */
   refreshAfterPromo(): void {
-    const current = this.viewModel(); if (!current) return;
-    forkJoin({
-      rates: this.api.getRates(current.propId),
-      promotions: this.api.listPropertyPromotions(current.propId),
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); },
+    const current = this.ratesResource.value(); if (!current) return;
+    this.ratesResource.reload();
+    this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (promotions) => { this.promotionsData.set(promotions); },
+      error: () => { this.errorMessage.set('Error al recargar promociones.'); },
     });
   }
 
   onTogglePromo(campaignId: string): void {
-    const current = this.viewModel(); if (!current) return;
+    const current = this.ratesResource.value(); if (!current) return;
     this.api.togglePromotion(campaignId).pipe(
-      switchMap(() => forkJoin({ rates: this.api.getRates(current.propId), promotions: this.api.listPropertyPromotions(current.propId) })),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); this.message.set('Estado de promoción actualizado'); this.errorMessage.set(''); },
+      next: () => {
+        this.ratesResource.reload();
+        this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (promotions) => { this.promotionsData.set(promotions); this.message.set('Estado de promoción actualizado'); this.errorMessage.set(''); },
+          error: () => { this.errorMessage.set('Error al recargar promociones.'); },
+        });
+      },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al cambiar estado.'); this.message.set(''); },
     });
   }
@@ -762,12 +762,17 @@ readonly sidebarSections: SidebarSection[] = [
   confirmDeletePromo(): void {
     const campaignId = this.promoDeleteConfirm(); if (!campaignId) return;
     this.promoDeleteConfirm.set(null);
-    const current = this.viewModel(); if (!current) return;
+    const current = this.ratesResource.value(); if (!current) return;
     this.api.updatePromotion(campaignId, { isActive: false }).pipe(
-      switchMap(() => forkJoin({ rates: this.api.getRates(current.propId), promotions: this.api.listPropertyPromotions(current.propId) })),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: ({ rates, promotions }) => { this.viewModel.set(rates); this.promotionsData.set(promotions); this.message.set('Promoción desactivada'); this.errorMessage.set(''); },
+      next: () => {
+        this.ratesResource.reload();
+        this.api.listPropertyPromotions(current.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (promotions) => { this.promotionsData.set(promotions); this.message.set('Promoción desactivada'); this.errorMessage.set(''); },
+          error: () => { this.errorMessage.set('Error al recargar promociones.'); },
+        });
+      },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al desactivar promoción.'); this.message.set(''); },
     });
   }

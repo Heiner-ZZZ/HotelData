@@ -48,7 +48,7 @@
       />
     }
     @default {
-      @if (viewModel(); as vm) {
+      @if (roomsResource.value(); as vm) {
         <app-rp-kpi-grid [vm]="vm" />
 
         <app-rp-create-form

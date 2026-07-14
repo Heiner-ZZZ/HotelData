@@ -66,15 +66,18 @@ const _roomNumbersByType = (rooms: HotelRoomInfo[]) => {
 export class AvailabilityState {
   readonly selectedPropId: Signal<number>;
   readonly routePropId: Signal<number>;
+  readonly pageData: Signal<AvailabilityViewModel | null>;
+  readonly reload: () => void;
 
-  constructor(routePropId: Signal<number>) {
+  constructor(routePropId: Signal<number>, pageData: Signal<AvailabilityViewModel | null>, reload: () => void) {
     this.routePropId = routePropId;
     this.selectedPropId = computed(() => routePropId());
+    this.pageData = pageData;
+    this.reload = reload;
   }
 
   // Data
   readonly viewState = signal<'loading' | 'success' | 'error' | 'empty'>('loading');
-  readonly pageData = signal<AvailabilityViewModel | null>(null);
   readonly errorMessage = signal('');
   readonly submitMessage = signal('');
   readonly selectedLabel = computed(() => this.pageData()?.hotelName ?? '');

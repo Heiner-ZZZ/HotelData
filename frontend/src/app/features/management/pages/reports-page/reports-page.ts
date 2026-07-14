@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 
 import { ReportsExportService } from '../../../../shared/services/reports-export.service';
@@ -9,7 +9,9 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ManagementReportsViewModel } from '../../models/management-reports.model';
+import type { ManagementReportsDto } from '../../models/management-reports.dto';
 import { ManagementReportsApiService } from '../../services/management-reports-api.service';
+import { mapManagementReports } from '../../mappers/management-reports.mapper';
 import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-reports.utils';
 
 @Component({
@@ -25,58 +27,47 @@ import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-rep
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ManagementReportsPageComponent {
-  private readonly api = inject(ManagementReportsApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly reports = inject(ReportsExportService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<ManagementReportsViewModel | null>(null);
-  readonly errorMessage = signal('');
+  readonly reportsResource = httpResource<ManagementReportsViewModel>(() => '/api/management/reports', {
+    parse: (dto) => mapManagementReports(dto as ManagementReportsDto),
+  });
 
-  constructor() {
-    this.load();
-  }
+  readonly viewState = computed<ViewState>(() => {
+    if (this.reportsResource.isLoading()) return 'loading';
+    if (this.reportsResource.error()) return 'error';
+    const vm = this.reportsResource.value();
+    if (!vm) return 'loading';
+    return vm.topHotels.length || vm.operationalCounts.length ? 'success' : 'empty';
+  });
+
+  readonly errorMessage = computed(() => {
+    const err = this.reportsResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
 
   retry() {
-    this.load();
+    this.reportsResource.reload();
   }
 
   exportExcel() {
-    const vm = this.viewModel();
+    const vm = this.reportsResource.value();
     if (vm) {
       exportToExcel(vm, this.reports).catch((err) => console.error('[Reports] Excel export failed', err));
     }
   }
 
   exportPdf() {
-    const vm = this.viewModel();
+    const vm = this.reportsResource.value();
     if (vm) {
       exportToPdf(vm, this.reports).catch((err) => console.error('[Reports] PDF export failed', err));
     }
   }
 
   exportDocx() {
-    const vm = this.viewModel();
+    const vm = this.reportsResource.value();
     if (vm) {
       exportToDocx(vm).catch((err) => console.error('[Reports] DOCX export failed', err));
     }
-  }
-
-  private load() {
-    this.viewState.set('loading');
-    this.errorMessage.set('');
-    this.api
-      .getReports()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set(vm.topHotels.length || vm.operationalCounts.length ? 'success' : 'empty');
-        },
-        error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible cargar los reportes operativos.');
-          this.viewState.set('error');
-        }
-      });
   }
 }

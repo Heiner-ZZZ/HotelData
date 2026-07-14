@@ -1,10 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
-
-import { API_CONFIG } from '../../../core/api/api.config';
-import { mapCheckOuts } from '../mappers/check-outs.mapper';
-import type { CheckOutsDto } from '../models/check-outs.dto';
 
 export interface DateHistoryEntry {
   date: string;
@@ -27,27 +22,13 @@ export interface BookingCharge {
 @Injectable({ providedIn: 'root' })
 export class CheckOutsApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(API_CONFIG);
-
-  getCheckOuts(operationDate: string, propId?: number) {
-    let params = new HttpParams().set('date', operationDate);
-    if (propId) {
-      params = params.set('prop_id', String(propId));
-    }
-    return this.http
-      .get<CheckOutsDto>(`${this.apiConfig.baseUrl}/management/check-outs`, { params, withCredentials: true })
-      .pipe(map((dto) => mapCheckOuts(dto)));
-  }
 
   getCheckOutDates(propId?: number) {
     let params = new HttpParams();
     if (propId) {
       params = params.set('prop_id', String(propId));
     }
-    return this.http.get<DateHistoryEntry[]>(`${this.apiConfig.baseUrl}/management/check-outs/dates`, {
-      params,
-      withCredentials: true
-    });
+    return this.http.get<DateHistoryEntry[]>('/management/check-outs/dates', { params });
   }
 
   /** Fetch additional charges (consumptions) for a booking before checkout. */
@@ -61,70 +42,63 @@ export class CheckOutsApiService {
       total_pages: number;
       has_next: boolean;
       has_prev: boolean;
-    }>(`${this.apiConfig.baseUrl}/housekeeping/charges`, { params, withCredentials: true });
+    }>('/housekeeping/charges', { params });
   }
 
   /** Create an additional charge for a booking before checkout. */
   createCharge(bookingId: string, propId: number, concept: string, amount: number, quantity: number, note: string = '', category: string = '') {
     return this.http.post<BookingCharge>(
-      `${this.apiConfig.baseUrl}/housekeeping/charges`,
+      '/housekeeping/charges',
       { booking_id: bookingId, prop_id: propId, concept, amount, quantity, note, category },
-      { withCredentials: true }
     );
   }
 
   /** Delete an additional charge by its ID. */
   deleteCharge(chargeId: string) {
     return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(
-      `${this.apiConfig.baseUrl}/housekeeping/charges/${chargeId}`,
-      { withCredentials: true }
+      `/housekeeping/charges/${chargeId}`,
     );
   }
 
   completeCheckOut(bookingId: string) {
-    return this.http.post(`${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/complete`, {}, { withCredentials: true });
+    return this.http.post(`/management/check-outs/${bookingId}/complete`, {});
   }
 
   /** ═══ Check-Out Detail Page ═══ */
 
   getCheckOutDetail(bookingId: string) {
     return this.http.get<CheckOutDetailDto>(
-      `${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/detail`,
-      { withCredentials: true }
+      `/management/check-outs/${bookingId}/detail`,
     );
   }
 
   saveCheckOutDetail(bookingId: string, payload: Partial<CheckOutDetailSavePayload>) {
     return this.http.patch<{ booking_id: string; updated: boolean; fields_updated: string[] }>(
-      `${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/detail`,
+      `/management/check-outs/${bookingId}/detail`,
       payload,
-      { withCredentials: true }
     );
   }
 
   completeCheckOutWithDetail(bookingId: string, payload: Partial<CheckOutDetailSavePayload> & { split_invoice?: boolean }) {
     return this.http.post<{ booking_id: string; stay_status: string }>(
-      `${this.apiConfig.baseUrl}/management/check-outs/${bookingId}/complete`,
+      `/management/check-outs/${bookingId}/complete`,
       payload,
-      { withCredentials: true }
     );
   }
 
   /** Emit (generate) an invoice for a booking. */
   emitInvoice(bookingId: string, propId: number, subtotal: number, taxes: number) {
     return this.http.post<{ id: string; invoice_number: string; status: string; total: number }>(
-      `${this.apiConfig.baseUrl}/billing/invoices`,
+      '/billing/invoices',
       { booking_id: bookingId, prop_id: propId, subtotal, taxes, notes: '' },
-      { withCredentials: true }
     );
   }
 
   /** Send an existing invoice to the guest by email. */
   sendInvoiceEmail(invoiceId: string) {
     return this.http.post<{ ok: boolean; message: string }>(
-      `${this.apiConfig.baseUrl}/billing/invoices/${invoiceId}/email`,
+      `/billing/invoices/${invoiceId}/email`,
       {},
-      { withCredentials: true }
     );
   }
 }
