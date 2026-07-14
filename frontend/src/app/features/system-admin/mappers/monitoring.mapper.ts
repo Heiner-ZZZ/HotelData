@@ -8,6 +8,7 @@ import type {
   PipelineProgressDto,
   PreparationProgressDto,
   ExecutionStatusResponseDto,
+  ConsolidatedMonitoringDto,
 } from '../models/monitoring.dto';
 import type {
   MonitoringViewModel,
@@ -135,4 +136,8 @@ export function mapMonitoringData(
         }
       : null,
   };
+}
+
+export function mapConsolidatedMonitoringData(dto: ConsolidatedMonitoringDto): MonitoringViewModel {
+  return mapMonitoringData(dto.services, dto.reports, dto.progress, dto.execution);
 }

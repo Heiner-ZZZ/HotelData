@@ -50,6 +50,24 @@ def api_etl_status_execution():
     return execution_status()
 
 
+@JSON_API.get("/etl-status/consolidated")
+def api_etl_status_consolidated():
+    return {
+        "services": {
+            "config": config_status(),
+            "pocketbase": pocketbase_status(),
+            "mongodb": mongodb_status(),
+            "artifacts": artifact_status(),
+        },
+        "reports": report_status(),
+        "progress": {
+            "preparation": preparation_progress(),
+            "pipeline": pipeline_progress(),
+        },
+        "execution": execution_status(),
+    }
+
+
 @JSON_API.get("/etl-status/ga03/progress")
 def api_etl_status_ga03_progress():
     return {

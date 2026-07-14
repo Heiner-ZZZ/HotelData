@@ -16,12 +16,12 @@ import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models/rooms.model';
-import type { RoomsDto } from '../../models/rooms.dto';
+import type { FeatureCatalogDto, RoomsDto } from '../../models/rooms.dto';
 import { RoomsApiService } from '../../services/rooms-api.service';
-import { mapRoomsResponse } from '../../mappers/rooms.mapper';
+import { mapFeatureCatalog, mapRoomsResponse } from '../../mappers/rooms.mapper';
 import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
-import { KpiApiService, type TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
+import type { TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
 import { RpKpiGridComponent } from './partials/rp-kpi-grid';
 import { RpCreateFormComponent } from './partials/rp-create-form';
 import { RpTablesComponent } from './partials/rp-tables';
@@ -53,7 +53,6 @@ export class RoomsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(RoomsApiService);
-  private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   readonly propertyCtx = inject(PropertyContextService);
@@ -62,8 +61,8 @@ export class RoomsPageComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   // ── KPI data (top 5 hotels by rooms) ──
-  readonly topHotels = signal<TopHotelRoomsItem[]>([]);
-  readonly topHotelsState = signal<'loading' | 'success' | 'error'>('loading');
+  readonly topHotelsResource = httpResource<{ items: TopHotelRoomsItem[] }>(() => '/api/kpi/top-hotels/rooms?limit=5');
+  readonly topHotels = computed(() => this.topHotelsResource.value()?.items ?? []);
 
   readonly selectedPropId = signal(0);
 
@@ -176,7 +175,13 @@ export class RoomsPageComponent {
   readonly deleting = signal(false);
 
   /* ── Room Features ── */
-  readonly featureCatalog = signal<FeatureCategory[]>([]);
+  readonly featureCatalogRequested = signal(false);
+  readonly featureCatalogResource = httpResource<FeatureCategory[]>(() => {
+    return this.featureCatalogRequested() ? '/api/management/room-features' : undefined;
+  }, {
+    parse: (raw) => mapFeatureCatalog(raw as FeatureCatalogDto),
+  });
+  readonly featureCatalog = computed(() => this.featureCatalogResource.value() ?? []);
   readonly selectedFeatures = signal<Set<string>>(new Set());
   readonly editingRoomTypeName = signal('');
   readonly editingRoomTypeId = signal('');
@@ -238,11 +243,7 @@ export class RoomsPageComponent {
       }
     });
 
-    // Load top hotels KPI
-    this.kpiApi.getTopHotelsByRooms(5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (res) => { this.topHotels.set(res.items); this.topHotelsState.set('success'); },
-      error: (err) => { console.error('[Rooms] Failed to load top hotels KPI', err); this.topHotelsState.set('error'); },
-    });
+    // Top hotels KPI and feature catalog are now loaded declaratively via httpResource.
   }
 
   onCreateImageUrlChange(url: string) {
@@ -304,15 +305,8 @@ export class RoomsPageComponent {
       });
     });
 
-    // Load feature catalog if not already loaded
-    if (this.featureCatalog().length === 0) {
-      this.api.getFeatureCatalog().pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
-        next: (catalog) => this.featureCatalog.set(catalog),
-        error: (err) => { console.error('[Rooms] Failed to load feature catalog', err); },
-      });
-    }
+    // Trigger feature catalog load (idempotent via httpResource caching)
+    this.featureCatalogRequested.set(true);
   }
 
   /** Toggle a feature on/off in the selected set. */

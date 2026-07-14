@@ -106,7 +106,7 @@ export interface FolioCategory {
   icon: string;
 }
 
-function mapFolio(dto: FolioDto): FolioViewModel {
+export function mapFolio(dto: FolioDto): FolioViewModel {
   return {
     id: dto.id,
     folioNumber: dto.folio_number,

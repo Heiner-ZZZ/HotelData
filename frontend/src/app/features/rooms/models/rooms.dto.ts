@@ -52,6 +52,21 @@ export interface RoomsOptionsDto {
   }>;
 }
 
+export interface FeatureCatalogItemDto {
+  label: string;
+  category: string;
+  icon: string;
+  custom: boolean;
+  source?: string;
+}
+
+export interface FeatureCatalogDto {
+  features: Array<{
+    category: string;
+    items: FeatureCatalogItemDto[];
+  }>;
+}
+
 export interface RoomCreateDto {
   room_type_id?: string;
   prop_id: number;

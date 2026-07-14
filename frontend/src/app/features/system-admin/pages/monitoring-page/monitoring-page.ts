@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -8,8 +9,11 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { MonitoringViewModel, ServiceStatusCard } from '../../models/monitoring.model';
+import type { ServiceStatusCard, MonitoringViewModel } from '../../models/monitoring.model';
+import type { ConsolidatedMonitoringDto } from '../../models/monitoring.dto';
 import { MonitoringApiService } from '../../services/monitoring-api.service';
+import { mapConsolidatedMonitoringData } from '../../mappers/monitoring.mapper';
+
 import type { Observable } from 'rxjs';
 import type { ActionResponseDto } from '../../models/monitoring.dto';
 
@@ -25,15 +29,30 @@ import type { ActionResponseDto } from '../../models/monitoring.dto';
   styleUrl: './monitoring-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MonitoringPageComponent implements OnInit {
+export class MonitoringPageComponent {
   private readonly api = inject(MonitoringApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly viewModel = signal<MonitoringViewModel | null>(null);
-  readonly loadErrorMessage = signal('');
+  readonly monitoringResource = httpResource<MonitoringViewModel>(() => '/api/etl-status/consolidated', {
+    parse: (dto) => mapConsolidatedMonitoringData(dto as ConsolidatedMonitoringDto),
+  });
+
+  readonly viewModel = this.monitoringResource.value;
+
+  readonly isRunning = computed(() => this.viewModel()?.progress.isRunning ?? false);
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.monitoringResource.isLoading()) return 'loading';
+    if (this.monitoringResource.error()) return 'error';
+    return 'success';
+  });
+
+  readonly loadErrorMessage = computed(() => {
+    const err = this.monitoringResource.error();
+    return (err as unknown as ApiError)?.message || '';
+  });
 
   readonly actionMessage = signal('');
   readonly actionError = signal('');
@@ -56,14 +75,33 @@ export class MonitoringPageComponent implements OnInit {
 
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
-  ngOnInit() {
+  constructor() {
     this.destroyRef.onDestroy(() => this.stopPolling());
-    this.loadData();
+
+    effect(() => {
+      const vm = this.viewModel();
+      if (!vm) return;
+
+      if (vm.progress.preparationTarget > 0) {
+        this.targetPocketbase.set(vm.progress.preparationTarget);
+      }
+      if (vm.progress.pipelineTarget > 0) {
+        this.targetMongodb.set(vm.progress.pipelineTarget);
+      }
+    });
+
+    effect(() => {
+      if (this.isRunning()) {
+        this.startPolling();
+      } else {
+        this.stopPolling();
+      }
+    });
   }
 
   private startPolling() {
     this.stopPolling();
-    this.pollTimer = setInterval(() => this.loadData(true), 1000);
+    this.pollTimer = setInterval(() => this.monitoringResource.reload(), 1000);
   }
 
   private stopPolling() {
@@ -94,7 +132,7 @@ export class MonitoringPageComponent implements OnInit {
         if (nativeInput) nativeInput.value = '';
         this.actionMessage.set(result.display_message);
         this.toast.show(result.display_message, 'info', 5000);
-        setTimeout(() => this.loadData(), 300);
+        setTimeout(() => this.monitoringResource.reload(), 300);
       },
       error: (err: ApiError) => {
         this.uploadBusy.set(false);
@@ -172,7 +210,7 @@ export class MonitoringPageComponent implements OnInit {
   refresh() {
     this.actionMessage.set('');
     this.actionError.set('');
-    this.loadData();
+    this.monitoringResource.reload();
   }
 
   serviceTone(tone: ServiceStatusCard['tone']): 'success' | 'warning' | 'danger' {
@@ -186,38 +224,6 @@ export class MonitoringPageComponent implements OnInit {
       : 'N/D';
   }
 
-  private loadData(isPoll = false) {
-    if (!isPoll) {
-      this.viewState.set('loading');
-    }
-    this.loadErrorMessage.set('');
-    this.api
-      .getMonitoringData()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (vm) => {
-          this.viewModel.set(vm);
-          this.viewState.set('success');
-          if (vm.progress.preparationTarget > 0) {
-            this.targetPocketbase.set(vm.progress.preparationTarget);
-          }
-          if (vm.progress.pipelineTarget > 0) {
-            this.targetMongodb.set(vm.progress.pipelineTarget);
-          }
-          if (vm.progress.isRunning) {
-            this.startPolling();
-          } else {
-            this.stopPolling();
-          }
-        },
-        error: (error: ApiError) => {
-          this.stopPolling();
-          this.loadErrorMessage.set(error.message || 'No fue posible cargar el monitoreo.');
-          this.viewState.set('error');
-        },
-      });
-  }
-
   private execAction(action: Observable<ActionResponseDto>) {
     this.actionMessage.set('');
     this.actionError.set('');
@@ -228,7 +234,7 @@ export class MonitoringPageComponent implements OnInit {
         if (result.ok) {
           this.actionMessage.set(result.display_message);
           this.toast.show(result.display_message, 'info', 5000);
-          setTimeout(() => this.loadData(), 500);
+          setTimeout(() => this.monitoringResource.reload(), 500);
         } else {
           this.actionError.set(result.display_message);
           this.toast.show(result.display_message + (result.summary_output ? ' — ' + result.summary_output : ''), 'error', 6000);

@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -31,68 +32,55 @@ export class GuestsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(GuestsApiService);
-  private readonly destroyRef = inject(DestroyRef);
   readonly propertyCtx = inject(PropertyContextService);
 
   private readonly routePropId = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => Number(params.get('prop_id') ?? '0')),
-      distinctUntilChanged(),
-    ),
-    { initialValue: 0 }
-  );
+      this.route.queryParamMap.pipe(
+        map((params) => Number(params.get('prop_id') ?? '0')),
+        distinctUntilChanged(),
+      ),
+      { initialValue: 0 }
+    );
 
   readonly selectedPropId = computed(() => this.routePropId());
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly guests = signal<GuestItem[]>([]);
-  readonly total = signal(0);
   readonly page = signal(1);
   readonly pageSize = signal(20);
-  readonly hasNext = signal(false);
   readonly searchQuery = signal('');
   readonly message = signal('');
   readonly errorMessage = signal('');
 
+  readonly guestsResource = httpResource<GuestsResponse>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    return `/api/management/guests?prop_id=${propId}&q=${encodeURIComponent(this.searchQuery())}&page=${this.page()}&page_size=${this.pageSize()}`;
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.selectedPropId() === 0) return 'empty';
+    if (this.guestsResource.isLoading()) return 'loading';
+    if (this.guestsResource.error()) return 'error';
+    return 'success';
+  });
+  readonly guests = computed<GuestItem[]>(() => this.guestsResource.value()?.items ?? []);
+  readonly total = computed(() => this.guestsResource.value()?.total ?? 0);
+  readonly hasNext = computed(() => this.guestsResource.value()?.has_next ?? false);
+
   /** History modal state */
   readonly showHistoryModal = signal(false);
-  readonly historyLoading = signal(false);
-  readonly historyError = signal('');
-  readonly historyData = signal<GuestBookingsResponse | null>(null);
-  readonly historyBookings = signal<GuestBookingItem[]>([]);
-
-  private loadGuests(propId: number, q: string, p: number): void {
-    this.viewState.set('loading');
-    this.api.listGuests(propId, q, p, this.pageSize()).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (res: GuestsResponse) => {
-        this.guests.set(res.items);
-        this.total.set(res.total);
-        this.page.set(res.page);
-        this.hasNext.set(res.has_next);
-        this.viewState.set('success');
-      },
-      error: () => {
-        this.viewState.set('error');
-        this.errorMessage.set('No se pudieron cargar los huéspedes.');
-      },
-    });
-  }
+  readonly historyGuestEmail = signal<string | null>(null);
+  readonly historyResource = httpResource<GuestBookingsResponse>(() => {
+    const propId = this.selectedPropId();
+    const email = this.historyGuestEmail();
+    if (!propId || !email) return undefined;
+    return `/api/management/guests/${encodeURIComponent(email)}/bookings?prop_id=${propId}`;
+  });
+  readonly historyData = computed(() => this.historyResource.value() ?? null);
+  readonly historyBookings = computed<GuestBookingItem[]>(() => this.historyResource.value()?.items ?? []);
+  readonly historyLoading = computed(() => this.historyResource.isLoading());
+  readonly historyError = computed(() => this.historyResource.error() ? 'No se pudo cargar el historial de reservas.' : '');
 
   constructor() {
-    effect(() => {
-      const propId = this.selectedPropId();
-      if (!propId) {
-        this.viewState.set('empty');
-        this.guests.set([]);
-        this.total.set(0);
-        this.propertyCtx.clear();
-        return;
-      }
-      this.loadGuests(propId, this.searchQuery(), 1);
-    });
-
     // Auto-navigate in single-hotel mode
     effect(() => {
       if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
@@ -117,21 +105,17 @@ export class GuestsPageComponent {
   }
 
   onSearch(): void {
-    const propId = this.selectedPropId();
-    if (!propId) return;
-    this.loadGuests(propId, this.searchQuery(), 1);
+    this.page.set(1);
   }
 
   prevPage(): void {
-    const propId = this.selectedPropId();
-    if (!propId || this.page() <= 1) return;
-    this.loadGuests(propId, this.searchQuery(), this.page() - 1);
+    if (this.selectedPropId() === 0 || this.page() <= 1) return;
+    this.page.update(p => p - 1);
   }
 
   nextPage(): void {
-    const propId = this.selectedPropId();
-    if (!propId || !this.hasNext()) return;
-    this.loadGuests(propId, this.searchQuery(), this.page() + 1);
+    if (this.selectedPropId() === 0 || !this.hasNext()) return;
+    this.page.update(p => p + 1);
   }
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
@@ -141,32 +125,13 @@ export class GuestsPageComponent {
     const propId = this.selectedPropId();
     if (!propId) return;
 
-    this.historyLoading.set(true);
-    this.historyError.set('');
-    this.historyData.set(null);
-    this.historyBookings.set([]);
+    this.historyGuestEmail.set(guest.guest_email);
     this.showHistoryModal.set(true);
-
-    this.api.getGuestBookings(guest.guest_email, propId).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (res) => {
-        this.historyData.set(res);
-        this.historyBookings.set(res.items);
-        this.historyLoading.set(false);
-      },
-      error: () => {
-        this.historyError.set('No se pudo cargar el historial de reservas.');
-        this.historyLoading.set(false);
-      },
-    });
   }
 
   closeHistory(): void {
     this.showHistoryModal.set(false);
-    this.historyData.set(null);
-    this.historyBookings.set([]);
-    this.historyError.set('');
+    this.historyGuestEmail.set(null);
   }
 
   /** Format currency helper. */

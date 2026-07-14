@@ -1,17 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { forkJoin, map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapMonitoringData } from '../mappers/monitoring.mapper';
-import type {
-  ActionResponseDto,
-  ExecutionStatusResponseDto,
-  Ga03ProgressResponseDto,
-  ReportsResponseDto,
-  ServicesResponseDto,
-} from '../models/monitoring.dto';
-import type { MonitoringViewModel } from '../models/monitoring.model';
+import type { ActionResponseDto } from '../models/monitoring.dto';
 
 
 interface UploadResult {
@@ -24,19 +15,6 @@ interface UploadResult {
 export class MonitoringApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
-
-  getMonitoringData() {
-    return forkJoin({
-      services: this.http.get<ServicesResponseDto>(`${this.apiConfig.baseUrl}/etl-status/services`, { withCredentials: true }),
-      reports: this.http.get<ReportsResponseDto>(`${this.apiConfig.baseUrl}/etl-status/reports`, { withCredentials: true }),
-      progress: this.http.get<Ga03ProgressResponseDto>(`${this.apiConfig.baseUrl}/etl-status/ga03/progress`, { withCredentials: true }),
-      execution: this.http.get<ExecutionStatusResponseDto>(`${this.apiConfig.baseUrl}/etl-status/execution`, { withCredentials: true }),
-    }).pipe(
-      map(({ services, reports, progress, execution }) =>
-        mapMonitoringData(services, reports, progress, execution),
-      ),
-    );
-  }
 
   triggerValidate(target = 0) {
     return this.http.post<ActionResponseDto>(

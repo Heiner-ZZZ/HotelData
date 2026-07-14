@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
@@ -11,7 +12,9 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
-import { HotelDetailApiService } from '../../services/hotel-detail-api.service';
+import type { HotelDetailDto, SimilarHotelsResponseDto } from '../../models/hotel-detail.dto';
+import { HotelDetailApiService, mapSimilarHotel } from '../../services/hotel-detail-api.service';
+import { mapHotelDetailResponse } from '../../mappers/hotel-detail.mapper';
 
 @Component({
   selector: 'app-hotel-detail-page',
@@ -22,15 +25,42 @@ import { HotelDetailApiService } from '../../services/hotel-detail-api.service';
 })
 export class HotelDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly hotelDetailApi = inject(HotelDetailApiService);
   private readonly trackingService = inject(TrackingService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly hotel = signal<HotelDetailViewModel | null>(null);
+  private readonly hotelId = toSignal(
+    this.activatedRoute.paramMap.pipe(
+      map((params) => Number(params.get('hotelId') ?? '0')),
+      distinctUntilChanged(),
+    ),
+    { initialValue: 0 }
+  );
+
+  readonly hotelResource = httpResource<HotelDetailViewModel>(() => {
+    const id = this.hotelId();
+    return id > 0 ? `/api/hotels/${id}` : undefined;
+  }, {
+    parse: (dto) => mapHotelDetailResponse(dto as HotelDetailDto),
+  });
+
+  readonly hotel = computed(() => this.hotelResource.value() ?? null);
+  readonly viewState = computed<ViewState>(() => {
+    if (this.hotelResource.isLoading()) return 'loading';
+    const err = this.hotelResource.error() as { status?: number } | null;
+    if (err) return err.status === 404 ? 'empty' : 'error';
+    return this.hotel() ? 'success' : 'loading';
+  });
+
+  readonly similarHotelsResource = httpResource<SimilarHotel[]>(() => {
+    const id = this.hotel()?.id;
+    return id ? `/api/hotels/${id}/similar` : undefined;
+  }, {
+    parse: (dto) => (dto as SimilarHotelsResponseDto).items.map(mapSimilarHotel),
+  });
+  readonly similarHotels = computed(() => this.similarHotelsResource.value() ?? []);
+  readonly similarLoading = computed(() => this.similarHotelsResource.isLoading());
+
   readonly activeTab = signal<string>('overview');
-  readonly similarHotels = signal<SimilarHotel[]>([]);
-  readonly similarLoading = signal(false);
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly selectedGalleryImage = signal<string | null>(null);
   readonly showBooking = signal(false);
@@ -55,27 +85,12 @@ export class HotelDetailPageComponent {
   });
 
   constructor() {
-    this.activatedRoute.paramMap
-      .pipe(
-        map((params) => Number(params.get('hotelId') ?? '0')),
-        distinctUntilChanged(),
-        switchMap((hotelId) => {
-          this.viewState.set('loading');
-          return this.hotelDetailApi.getHotelDetail(hotelId);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (hotel) => {
-          this.hotel.set(hotel);
-          this.viewState.set('success');
-          this.trackingService.trackHotelClick(hotel.id, 'detail');
-          this.loadSimilarHotels(hotel.id);
-        },
-        error: (error: ApiError) => {
-          this.viewState.set(error.status === 404 ? 'empty' : 'error');
-        }
-      });
+    effect(() => {
+      const hotel = this.hotel();
+      if (hotel) {
+        this.trackingService.trackHotelClick(hotel.id, 'detail');
+      }
+    });
   }
 
   readonly shareHotel = () => {
@@ -119,16 +134,4 @@ export class HotelDetailPageComponent {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  private loadSimilarHotels(hotelId: number): void {
-    this.similarLoading.set(true);
-    this.hotelDetailApi.getSimilarHotels(hotelId).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (items) => {
-        this.similarHotels.set(items);
-        this.similarLoading.set(false);
-      },
-      error: () => this.similarLoading.set(false),
-    });
-  }
 }

@@ -1,14 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { switchMap } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { FolioApiService, type FolioCategory, type FolioViewModel, type FolioPosting } from '../../services/folio-api.service';
+import { FolioApiService, mapFolio, type FolioCategory, type FolioViewModel, type FolioPosting, type FolioDto } from '../../services/folio-api.service';
 
 @Component({
   selector: 'app-folio-detail-page',
@@ -19,13 +20,33 @@ import { FolioApiService, type FolioCategory, type FolioViewModel, type FolioPos
 })
 export class FolioDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly folio = signal<FolioViewModel | null>(null);
-  readonly categories = signal<FolioCategory[]>([]);
+  private readonly bookingId = toSignal(
+    this.activatedRoute.paramMap.pipe(
+      map((params) => params.get('bookingId') ?? ''),
+      distinctUntilChanged(),
+    ),
+    { initialValue: '' }
+  );
+
+  readonly categoriesResource = httpResource<FolioCategory[]>(() => '/api/billing/folios/categories');
+  readonly categories = computed(() => this.categoriesResource.value() ?? []);
+
+  readonly folioResource = httpResource<FolioViewModel>(() => {
+    const id = this.bookingId();
+    return id ? `/api/billing/folios/${id}` : undefined;
+  }, {
+    parse: (dto) => mapFolio(dto as FolioDto),
+  });
+  readonly folio = computed(() => this.folioResource.value() ?? null);
+  readonly viewState = computed<ViewState>(() => {
+    if (this.folioResource.isLoading()) return 'loading';
+    if (this.folioResource.error()) return 'error';
+    return this.folio() ? 'success' : 'loading';
+  });
+
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly postingMode = signal<'idle' | 'charge' | 'discount'>('idle');
@@ -134,29 +155,11 @@ export class FolioDetailPageComponent {
   }
 
   constructor() {
-    // Load categories
-    this.folioApi.getCategories().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (cats) => this.categories.set(cats),
-      error: () => {},
+    effect(() => {
+      // Reset posting mode when bookingId changes
+      this.bookingId();
+      this.postingMode.set('idle');
     });
-
-    // Load folio
-    this.activatedRoute.paramMap
-      .pipe(
-        switchMap((params) => {
-          this.viewState.set('loading');
-          this.postingMode.set('idle');
-          return this.folioApi.getFolio(params.get('bookingId')!);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          this.folio.set(data);
-          this.viewState.set('success');
-        },
-        error: () => this.viewState.set('error'),
-      });
   }
 
   startPosting(mode: 'charge' | 'discount'): void {
@@ -188,8 +191,8 @@ export class FolioDetailPageComponent {
       quantity: form.quantity,
       reference_type: 'manual',
     }).subscribe({
-      next: (updated) => {
-        this.folio.set(updated);
+      next: () => {
+        this.folioResource.reload();
         this.actionMessage.set(this.postingMode() === 'charge' ? 'Cargo registrado en el folio.' : 'Descuento aplicado al folio.');
         this.postingMode.set('idle');
         this.postingBusy.set(false);
@@ -208,8 +211,8 @@ export class FolioDetailPageComponent {
     this.postingBusy.set(true);
 
     this.folioApi.closeFolio(this.folio()!.bookingId).subscribe({
-      next: (updated) => {
-        this.folio.set(updated);
+      next: () => {
+        this.folioResource.reload();
         this.actionMessage.set('Folio cerrado correctamente.');
         this.postingBusy.set(false);
       },

@@ -1,9 +1,9 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { httpResource } from '@angular/common/http';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
+import { of } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
@@ -18,7 +18,7 @@ import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { CheckOutRowViewModel, CheckOutsViewModel } from '../../models/check-outs.model';
 import type { CheckOutsDto } from '../../models/check-outs.dto';
 import { CheckOutsApiService, type BookingCharge, type DateHistoryEntry } from '../../services/check-outs-api.service';
-import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
+import type { OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { mapCheckOuts } from '../../mappers/check-outs.mapper';
 
@@ -44,7 +44,6 @@ export class CheckOutsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckOutsApiService);
-  private readonly kpiApi = inject(KpiApiService);
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly apiConfig = inject(API_CONFIG);
@@ -52,7 +51,8 @@ export class CheckOutsPageComponent {
   readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: Operational stats ──
-  readonly opStats = signal<OperationalStatsResponse | null>(null);
+  readonly opStatsResource = httpResource<OperationalStatsResponse>(() => '/api/kpi/operational-stats');
+  readonly opStats = computed(() => this.opStatsResource.value() ?? null);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     operationDate: [todayIso(), Validators.required],
@@ -98,11 +98,27 @@ export class CheckOutsPageComponent {
   readonly consumptionBookingId = signal('');
   readonly consumptionGuestName = signal('');
   readonly consumptionHotelLabel = signal('');
-  readonly consumptionCharges = signal<BookingCharge[]>([]);
   readonly consumptionPropId = signal(0);
   readonly consumptionRoomTotal = signal(0);
-  readonly consumptionLoading = signal(false);
   readonly confirmPending = signal(false);
+
+  private readonly consumptionChargesCache = new Map<string, { items: BookingCharge[] }>();
+  readonly consumptionChargesResource = rxResource<{ items: BookingCharge[] } | undefined, { bookingId: string } | undefined>({
+    params: () => {
+      const bookingId = this.consumptionBookingId();
+      return this.showConsumptionModal() && bookingId ? { bookingId } : undefined;
+    },
+    stream: ({ params }) => {
+      if (!params) return of(undefined);
+      const cached = this.consumptionChargesCache.get(params.bookingId);
+      if (cached) return of(cached);
+      return this.api.getBookingCharges(params.bookingId).pipe(
+        tap((res) => this.consumptionChargesCache.set(params.bookingId, res)),
+      );
+    },
+  });
+  readonly consumptionCharges = computed(() => this.consumptionChargesResource.value()?.items ?? []);
+  readonly consumptionLoading = computed(() => this.consumptionChargesResource.isLoading());
 
   // ═══ Add charge form ═══
   readonly chargeFormVisible = signal(false);
@@ -156,8 +172,24 @@ export class CheckOutsPageComponent {
 
   // Date history
   readonly showHistory = signal(false);
-  readonly historyDates = signal<DateHistoryEntry[]>([]);
-  readonly historyLoading = signal(false);
+  private readonly historyDatesCache = new Map<string, DateHistoryEntry[]>();
+  readonly historyDatesResource = rxResource<DateHistoryEntry[] | undefined, { propId: number } | undefined>({
+    params: () => {
+      if (!this.showHistory()) return undefined;
+      return { propId: this.selectedPropId() };
+    },
+    stream: ({ params }) => {
+      if (!params) return of(undefined);
+      const key = params.propId > 0 ? String(params.propId) : 'global';
+      const cached = this.historyDatesCache.get(key);
+      if (cached) return of(cached);
+      return this.api.getCheckOutDates(params.propId > 0 ? params.propId : undefined).pipe(
+        tap((res) => this.historyDatesCache.set(key, res)),
+      );
+    },
+  });
+  readonly historyDates = computed(() => this.historyDatesResource.value() ?? []);
+  readonly historyLoading = computed(() => this.historyDatesResource.isLoading());
   readonly historyGlobal = signal(false);
 
   readonly filteredOptions = computed(() => {
@@ -167,11 +199,6 @@ export class CheckOutsPageComponent {
   });
 
   constructor() {
-    // Load KPI data
-    this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (stats) => this.opStats.set(stats),
-    });
-
     // Data fetching is handled declaratively via httpResource above
 
     // Auto-carga en modo single-hotel
@@ -242,23 +269,11 @@ export class CheckOutsPageComponent {
     const propId = this.selectedPropId();
     this.historyGlobal.set(!propId);
     this.showHistory.set(true);
-    this.historyLoading.set(true);
     this.errorMessage.set('');
-    this.api.getCheckOutDates(propId || undefined).subscribe({
-      next: (dates) => {
-        this.historyDates.set(dates);
-        this.historyLoading.set(false);
-      },
-      error: () => {
-        this.historyLoading.set(false);
-        this.errorMessage.set('Error al cargar historial de fechas.');
-      }
-    });
   }
 
   closeHistory(): void {
     this.showHistory.set(false);
-    this.historyDates.set([]);
     this.errorMessage.set('');
   }
 
@@ -283,19 +298,7 @@ export class CheckOutsPageComponent {
     this.consumptionRoomTotal.set(item.totalPrice || 0);
     this.consumptionPropId.set(item.propId);
     this.showConsumptionModal.set(true);
-    this.consumptionLoading.set(true);
-    this.consumptionCharges.set([]);
     this.confirmPending.set(false);
-
-    this.api.getBookingCharges(item.bookingId).subscribe({
-      next: (res) => {
-        this.consumptionCharges.set(res.items || []);
-        this.consumptionLoading.set(false);
-      },
-      error: () => {
-        this.consumptionLoading.set(false);
-      },
-    });
   }
 
   closeConsumptionModal(): void {
@@ -334,10 +337,8 @@ export class CheckOutsPageComponent {
         this.chargeSaving.set(false);
         this.chargeError.set('');
         this.chargeFormVisible.set(false);
-        // Refresh charges
-        this.api.getBookingCharges(bookingId).subscribe({
-          next: (res) => this.consumptionCharges.set(res.items || []),
-        });
+        this.consumptionChargesCache.delete(bookingId);
+        this.consumptionChargesResource.reload();
       },
       error: (err: ApiError) => {
         this.chargeSaving.set(false);

@@ -104,3 +104,10 @@ export interface ExecutionStatusResponseDto {
   };
   message?: string;
 }
+
+export interface ConsolidatedMonitoringDto {
+  services: ServicesResponseDto;
+  reports: ReportsResponseDto;
+  progress: Ga03ProgressResponseDto;
+  execution: ExecutionStatusResponseDto;
+}

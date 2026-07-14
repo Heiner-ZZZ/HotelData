@@ -5,7 +5,6 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapRoomCreatePayload, mapRoomsOptions, mapRoomsResponse } from '../mappers/rooms.mapper';
-import type { FeatureCategory } from '../models/rooms.model';
 import type { RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
 
 @Injectable({
@@ -132,29 +131,6 @@ export class RoomsApiService {
   }
 
   /* ── Room Features API ── */
-
-  /** Get the master feature catalog, grouped by category (maps unit_price → unitPrice). */
-  getFeatureCatalog() {
-    return this.http
-      .get<{ features: any[] }>(
-        `${this.apiConfig.baseUrl}/management/room-features`,
-        { withCredentials: true }
-      )
-      .pipe(map((res) => this._mapFeatureCatalog(res.features)));
-  }
-
-  private _mapFeatureCatalog(raw: any[]): FeatureCategory[] {
-    return raw.map((cat: any) => ({
-      category: cat.category,
-      items: (cat.items || []).map((item: any) => ({
-        label: item.label,
-        category: item.category,
-        icon: item.icon,
-        custom: item.custom,
-        source: item.source,
-      })),
-    }));
-  }
 
   /** Get features for a specific room type. */
   getRoomTypeFeatures(propId: number, roomTypeId: string) {

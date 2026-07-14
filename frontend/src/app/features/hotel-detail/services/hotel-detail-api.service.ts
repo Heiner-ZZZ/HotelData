@@ -7,7 +7,7 @@ import { mapHotelDetailResponse } from '../mappers/hotel-detail.mapper';
 import type { HotelDetailDto, SimilarHotelDto, SimilarHotelsResponseDto } from '../models/hotel-detail.dto';
 import type { SimilarHotel } from '../models/hotel-detail.model';
 
-function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
+export function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
   return {
     id: dto.prop_id,
     name: dto.hotel_label,

@@ -214,6 +214,8 @@ export class ReservationsListPageComponent {
     if (propId) params.set('prop_id', String(propId));
     const query = params.toString();
     return query ? `/reservations/dates?${query}` : '/reservations/dates';
+  }, {
+    parse: (dto) => dto as DateHistoryEntry[],
   });
 
   errorMessage(err: unknown): string {

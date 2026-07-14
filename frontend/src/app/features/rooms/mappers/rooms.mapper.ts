@@ -1,5 +1,5 @@
-import type { RoomCreateDto, RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
-import type { RoomFeatureItem, RoomPropertyOption, RoomsViewModel } from '../models/rooms.model';
+import type { FeatureCatalogDto, RoomCreateDto, RoomsDto, RoomsOptionsDto } from '../models/rooms.dto';
+import type { FeatureCategory, RoomFeatureItem, RoomPropertyOption, RoomsViewModel } from '../models/rooms.model';
 
 function normalizeFeatures(features: unknown): RoomFeatureItem[] {
   if (!Array.isArray(features)) return [];
@@ -75,6 +75,18 @@ export function mapRoomsOptions(dto: RoomsOptionsDto): RoomPropertyOption[] {
   return dto.properties.map((item) => ({
     propId: item.prop_id,
     label: item.display_name || `Hotel ${item.prop_id}`
+  }));
+}
+
+export function mapFeatureCatalog(dto: FeatureCatalogDto): FeatureCategory[] {
+  return dto.features.map((cat) => ({
+    category: cat.category,      items: (cat.items || []).map((item) => ({
+      label: item.label,
+      category: item.category,
+      icon: item.icon,
+      custom: item.custom,
+      source: item.source,
+    })),
   }));
 }
 
