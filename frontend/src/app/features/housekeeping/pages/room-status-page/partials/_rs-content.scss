@@ -1,0 +1,213 @@
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--arrow-color, var(--muted-text));
+  font-weight: 500;
+  padding: 0.1rem 0.3rem;
+  background: color-mix(in srgb, var(--arrow-color, var(--muted-text)) 6%, transparent);
+  border-radius: 0.25rem;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 0.65rem;
+  }
+}
+
+.state-arrow-end {
+  color: var(--muted-text);
+  background: var(--surface-hover);
+}
+
+/* ═══ Table Card ═══ */
+
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--surface-raised);
+}
+
+.table-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+}
+
+.table-header-icon {
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.table-header-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.table-header-meta {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+.table-header-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* ═══ Table ═══ */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+thead th {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+.th-actions {
+  text-align: center;
+  min-width: 12rem;
+}
+
+tbody td {
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--surface-raised);
+}
+
+/* ── Columns ── */
+
+.td-room {
+  min-width: 6rem;
+
+  strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--app-text);
+  }
+}
+
+.room-type {
+  display: inline-block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
+.td-prop code {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  background: var(--surface-hover);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+/* ── Status Badge ── */
+
+.td-status {
+  min-width: 8rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--badge-bg, var(--muted-text)) 10%, transparent);
+  color: var(--badge-bg, var(--muted-text));
+  border: 1px solid color-mix(in srgb, var(--badge-bg, var(--muted-text)) 18%, transparent);
+  line-height: 1.4;
+}
+
+.status-badge-icon {
+  font-size: 0.8rem;
+  --icon-FILL: 1;
+}
+
+/* ── Next Transitions Chips ── */
+
+.td-next {
+  min-width: 8rem;
+}
+
+.next-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.next-chip {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--next-color, var(--muted-text));
+  background: color-mix(in srgb, var(--next-color, var(--muted-text)) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--next-color, var(--muted-text)) 14%, transparent);
+  cursor: pointer;
+  transition: all 0.1s;
+
+  &:hover {
+    background: color-mix(in srgb, var(--next-color, var(--muted-text)) 16%, transparent);
+    transform: translateY(-1px);
+  }
+}
+
+.next-chip-end {
+  color: var(--muted-text);
+  background: var(--surface-hover);
+  border-color: transparent;
+  cursor: default;
+
+  &:hover { transform: none; }
+}
+
+/* ── Note column ── */

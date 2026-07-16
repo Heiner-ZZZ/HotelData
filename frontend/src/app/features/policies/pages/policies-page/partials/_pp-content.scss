@@ -1,0 +1,226 @@
+}
+
+.autocomplete-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  &::placeholder {
+    color: var(--gray-400);
+  }
+}
+
+.autocomplete-spinner {
+  position: absolute;
+  right: 0.75rem;
+  top: 2.25rem;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--app-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ap-spin 0.6s linear infinite;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  z-index: 50;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.autocomplete-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 120ms ease;
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+    color: var(--muted-text);
+    --icon-wght: 300;
+    --icon-opsz: 20;
+  }
+
+  &:hover,
+  &.selected {
+    background: var(--accent-light);
+  }
+}
+
+.autocomplete-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+}
+
+@keyframes ap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Inputs / textarea / button ── */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  &::placeholder {
+    color: var(--gray-400);
+  }
+}
+
+/* Compact time inputs */
+input[type="time"] {
+  max-width: 135px;
+  padding: 0.4rem 0.6rem;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: color-mix(in srgb, var(--surface) 70%, var(--gray-400));
+    border-style: dashed;
+  }
+}
+
+/* Number inputs: compact */
+input[type="number"] {
+  max-width: 160px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 120ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-icon {
+  font-size: 1.05rem;
+  --icon-opsz: 20;
+}
+
+.message {
+  border-radius: 8px;
+  font-size: 0.85rem;
+
+  &.success {
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  }
+
+  &.error {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    color: var(--danger);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Info tooltip ── */
+.tooltip-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+  margin-left: auto;
+  --icon-wght: 300;
+  --icon-opsz: 20;
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+/* ── Info popover ── */
+.info-trigger {
+  cursor: pointer;
+  position: relative;
+  z-index: 21;
+
+  &:hover {
+    color: var(--accent);
+    transform: scale(1.15);
+  }
+
+  &--active {
+    color: var(--accent);
+    transform: scale(1.2);
+  }
+}
+
+.info-backdrop {
+  position: fixed;

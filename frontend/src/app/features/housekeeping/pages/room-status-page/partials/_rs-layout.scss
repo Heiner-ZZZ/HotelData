@@ -1,0 +1,213 @@
+/* ═══════════════════════════════════════════════════════════
+   Estado de Habitaciones — Stitch-inspired PMS table UI
+   10 estados · Máquina de estados · Acciones contextuales
+   Flat design · Material 3 palette · Inter typography
+   ═══════════════════════════════════════════════════════════ */
+
+.rs-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--app-text);
+}
+
+/* ═══ Page Header ═══ */
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--app-text);
+}
+
+.page-subtitle {
+  font-size: 0.82rem;
+  color: var(--gray-700);
+  margin: 0.1rem 0 0;
+}
+
+.page-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ═══ Toast ═══ */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  animation: rs-toast-in 220ms ease;
+}
+
+.toast-success {
+  background: rgba(16, 185, 129, 0.06);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.toast-error {
+  background: rgba(186, 26, 26, 0.06);
+  color: var(--danger);
+  border: 1px solid rgba(186, 26, 26, 0.1);
+}
+
+@keyframes rs-toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ Filter Bar ═══ */
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--gray-700);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+
+  &:hover {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+    color: var(--surface);
+  }
+
+  .chip-dot { background: var(--surface); }
+  .chip-icon { color: var(--surface); }
+}
+
+.chip-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--chip-color, var(--muted-text));
+  flex-shrink: 0;
+}
+
+.chip-icon {
+  font-size: 0.85rem;
+  color: var(--chip-color, var(--muted-text));
+  --icon-FILL: 1;
+}
+
+/* ═══ State Machine Legend ═══ */
+
+.state-flow {
+  border: 1px solid var(--app-border);
+  border-radius: 0.75rem;
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.state-flow-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  user-select: none;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  &:hover { background: var(--gray-100); }
+}
+
+.state-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.state-node {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--node-color, var(--muted-text));
+}
+
+.state-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.state-node-icon {
+  font-size: 0.9rem;
+  color: var(--node-color, var(--muted-text));
+  --icon-FILL: 1;
+}
+
+.state-node-arrows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+}
+
+.state-arrow {
+  display: inline-flex;

@@ -1,0 +1,222 @@
+
+/* ═══ Card ═══ */
+
+.fl-card {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 0.75rem;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fl-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--app-border);
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.fl-card-header-bg {
+  margin: -1.15rem -1.15rem 0;
+  padding: 0.85rem 1.15rem;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--app-border);
+  border-radius: 0.75rem 0.75rem 0 0;
+
+  h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+}
+
+.fl-card-icon {
+  font-size: 1.15rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.fl-card-sm-header {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+  margin: 0;
+}
+
+/* ═══ Count Badge ═══ */
+
+.fl-count-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  background: var(--app-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+}
+
+/* ═══ Posting Form ═══ */
+
+.fl-posting-form {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+
+.fl-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  @media (max-width: 500px) { grid-template-columns: 1fr; }
+}
+
+.fl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fl-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.fl-input,
+.fl-select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--app-text);
+  background: var(--surface);
+  transition: border-color 0.12s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+}
+
+.fl-preview {
+  font-size: 0.8rem;
+  color: var(--gray-700);
+  padding: 0.3rem 0;
+  strong { color: var(--accent); font-size: 0.9rem; }
+}
+
+.fl-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+/* ═══ Postings Ledger ═══ */
+
+.fl-card-ledger {
+  padding: 0;
+  overflow: hidden;
+}
+
+.fl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  color: var(--muted-text);
+  font-size: 0.85rem;
+
+  .material-symbols-outlined { font-size: 2.5rem; opacity: 0.4; }
+}
+
+.fl-group {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--app-border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.fl-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 1.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fl-group-icon {
+  font-size: 0.9rem;
+  color: var(--muted-text);
+}
+
+.fl-group-total {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: var(--app-text);
+}
+
+.fl-posting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 1.15rem;
+  transition: background 0.08s;
+
+  &:hover { background: var(--surface-raised); }
+}
+
+.fl-posting-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--app-border);
+  color: var(--muted-text);
+  flex-shrink: 0;
+
+  &.is-charge { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+  &.is-discount { background: var(--danger-light); color: var(--danger); }
+  &.is-payment { background: var(--success-light); color: var(--success); }
+
+  .material-symbols-outlined { font-size: 0.9rem; }
+}
+
+.fl-posting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fl-posting-concept {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--app-text);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.fl-posting-type {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--app-border);
+  padding: 0.08rem 0.35rem;

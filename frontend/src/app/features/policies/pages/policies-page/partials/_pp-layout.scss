@@ -1,0 +1,226 @@
+.policies-page {
+  display: grid;
+  gap: 1.5rem;
+
+  /* ── Staggered fade-in from the top ── */
+  > * {
+    animation: policies-fade-in 400ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
+  }
+  > *:nth-child(1) { animation-delay: 0.00s; }
+  > *:nth-child(2) { animation-delay: 0.06s; }
+  > *:nth-child(3) { animation-delay: 0.12s; }
+  > *:nth-child(4) { animation-delay: 0.18s; }
+  > *:nth-child(5) { animation-delay: 0.24s; }
+  > *:nth-child(6) { animation-delay: 0.30s; }
+  > *:nth-child(7) { animation-delay: 0.36s; }
+  > *:nth-child(8) { animation-delay: 0.42s; }
+  > *:nth-child(9) { animation-delay: 0.48s; }
+  > *:nth-child(10) { animation-delay: 0.54s; }
+}
+
+@keyframes policies-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selector-panel,
+.form-panel,
+.hero-card,
+.message {
+  padding: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field > .ai-input-container {
+  width: 100%;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.field-icon {
+  font-size: 1rem;
+  --icon-wght: 350;
+  --icon-opsz: 20;
+}
+
+.field-span {
+  grid-column: 1 / -1;
+}
+
+.hero-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.hero-icon {
+  font-size: 1.75rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  --icon-wght: 300;
+}
+
+.hero-body {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.hero-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.hero-value {
+  font-size: 1rem;
+}
+
+.hero-detail {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* ── Field Groups ── */
+.field-group {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  position: relative;
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+
+.field-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.field-group-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  --icon-wght: 350;
+  --icon-opsz: 20;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.field-row--compact {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.field-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Ensure textareas in half-width groups span full card width */
+.field-group:not(.field-span) .field-row .field:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  padding: 1rem 1.25rem;
+  margin: -0.25rem -0.25rem 0;
+  background: var(--surface);
+  border-top: 1px solid var(--app-border);
+  z-index: 10;
+  border-radius: 0 0 8px 8px;
+}
+
+.checkbox-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+}
+
+.checkbox-field .field-label {
+  grid-column: 1;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  min-height: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted-text);
+    font-size: 0.8rem;
+  }
+}
+
+.panel-head-icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  --icon-wght: 350;
+}
+
+/* ── Autocomplete ── */
+.autocomplete-wrapper {
+  position: relative;

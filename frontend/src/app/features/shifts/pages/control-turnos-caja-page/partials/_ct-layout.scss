@@ -1,0 +1,231 @@
+/* ═══════════════════════════════════════════════════════════
+   Control de Turnos y Caja
+   Stitch-inspired enterprise PMS layout
+   ═══════════════════════════════════════════════════════════ */
+
+@use '../../../../../styles/scss-variables' as *;
+
+/* ── Tokens ── */
+$sc-accent: var(--accent);
+$sc-accent-light: color-mix(in srgb, var(--teal) 10%, transparent);
+$sc-primary-container: var(--teal);
+$sc-surface: var(--surface);
+$sc-surface-bg: var(--gray-50);
+$sc-text: var(--app-text);
+$sc-text-secondary: var(--muted-text);
+$sc-border: var(--app-border);
+$sc-error: var(--danger);
+$sc-error-bg: var(--danger-light);
+$sc-success: var(--success);
+$sc-success-bg: var(--success-light);
+$sc-warning: var(--warning);
+$sc-warning-bg: var(--warning-light);
+$sc-radius: 12px;
+$sc-radius-lg: 16px;
+$sc-shadow: 0 1px 3px rgba(0,0,0,0.08);
+$sc-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+
+/* ═══════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-container {
+  min-height: 100dvh;
+  background: $sc-surface-bg;
+  color: $sc-text;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 1.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.sc-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: $sc-text-secondary;
+  font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid $sc-border;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sc-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.sc-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: $sc-text-secondary;
+}
+
+.sc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  gap: 0.75rem;
+
+  .sc-empty-icon { font-size: 3rem; color: $sc-text-secondary; opacity: 0.4; }
+  h2 { font-size: 1.25rem; font-weight: 600; margin: 0; }
+  p { color: $sc-text-secondary; font-size: 0.9rem; margin: 0; }
+}
+
+.sc-empty-btn { margin-top: 0.5rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   Open Shift Form
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-open-form {
+  background: $sc-surface;
+  border: 1px solid $sc-border;
+  border-radius: $sc-radius;
+  padding: 1.25rem;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  box-shadow: $sc-shadow;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+
+.sc-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: $sc-text-secondary;
+  }
+
+  input, select {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid $sc-border;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: $sc-surface;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    &:focus { outline: none; border-color: $sc-accent; }
+  }
+}
+
+.sc-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Bento Grid
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-bento {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.25rem;
+}
+
+.sc-left-col {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sc-right-col {
+  grid-column: span 8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Cards
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-card {
+  background: $sc-surface;
+  border: 1px solid $sc-border;
+  border-radius: $sc-radius-lg;
+  padding: 1.25rem;
+  box-shadow: $sc-shadow;
+}
+
+.sc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+
+  .sc-card-icon { color: $sc-primary-container; font-size: 1.25rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Shift Info
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-info-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid $sc-border;
+
+  &:last-child { border-bottom: none; }
+}
+
+.sc-info-label {
+  font-size: 0.85rem;
+  color: $sc-text-secondary;
+}
+
+.sc-info-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Arqueo de Caja
+   ═══════════════════════════════════════════════════════════ */

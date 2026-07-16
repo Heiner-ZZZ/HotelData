@@ -1,0 +1,231 @@
+}
+
+/* ═══ Calendar Grid ═══ */
+
+.calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 110px repeat(7, minmax(140px, 1fr));
+  min-width: 1090px;
+}
+
+/* ── Header Cells ── */
+
+.grid-header {
+  padding: 0.5rem 0.55rem;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--app-border);
+  border-right: 1px solid var(--app-border);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.grid-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border-right: 1px solid var(--app-border);
+}
+
+.grid-corner-icon {
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.grid-corner-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.grid-day-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.4rem 0.35rem;
+
+  &.is-today {
+    background: rgba(0, 96, 118, 0.06);
+  }
+}
+
+.day-name {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-text);
+}
+
+.day-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--app-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  background: var(--accent);
+  color: var(--surface);
+  border-radius: 50%;
+}
+
+/* ── Regular Cells ── */
+
+.grid-cell {
+  border-bottom: 1px solid var(--app-border);
+  border-right: 1px solid var(--app-border);
+}
+
+/* ── Room Cells ── */
+
+.grid-room-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--surface-raised);
+  border-right: 2px solid var(--room-color, var(--muted-text));
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-height: 3.5rem;
+}
+
+.room-info {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.room-label-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--app-text);
+  font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.room-status-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--dot-color, var(--muted-text));
+  flex-shrink: 0;
+}
+
+.room-status-label {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Day Cells ── */
+
+.grid-day-cell {
+  padding: 0.3rem;
+  min-height: 3.5rem;
+  cursor: default;
+  transition: background 0.1s;
+  vertical-align: top;
+}
+
+.is-empty-day {
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 96, 118, 0.04);
+
+    .empty-day-icon { opacity: 1; }
+  }
+}
+
+.empty-day-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 3rem;
+}
+
+.empty-day-icon {
+  font-size: 1rem;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* ── Task Cards ── */
+
+.day-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--task-color, var(--muted-text)) 8%, transparent);
+  border-left: 3px solid var(--task-color, var(--muted-text));
+  transition: all 0.1s;
+
+  &:hover {
+    background: color-mix(in srgb, var(--task-color, var(--muted-text)) 14%, transparent);
+    transform: translateY(-1px);
+  }
+}
+
+.task-card-line {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.task-icon {
+  font-size: 0.75rem;
+  color: var(--task-color, var(--muted-text));
+}
+
+.task-type-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--app-text);
+  line-height: 1.2;
+}
+
+.task-assignee {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.task-assignee-icon {
+  font-size: 0.6rem;
+  color: var(--muted-text);
+}
+
+.task-assignee span:last-child {
+  font-size: 0.6rem;
+  color: var(--gray-700);
+  white-space: nowrap;

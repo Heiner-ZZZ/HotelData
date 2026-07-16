@@ -1,0 +1,231 @@
+  justify-content: center;
+
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.15rem;
+  background: $sc-accent;
+  color: var(--on-accent);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) { background: var(--accent-strong); }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+  .spin { animation: sc-spin 1s linear infinite; }
+}
+
+@keyframes sc-spin { to { transform: rotate(360deg); } }
+
+.sc-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.15rem;
+  background: $sc-surface;
+  color: $sc-text;
+  border: 1px solid $sc-border;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover { background: color-mix(in srgb, $sc-surface, black 3%); border-color: color-mix(in srgb, $sc-border, black 10%); }
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+.sc-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: $sc-accent-light;
+  color: $sc-accent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+
+  &:hover { background: color-mix(in srgb, $sc-accent-light, black 8%); }
+  .material-symbols-outlined { font-size: 0.95rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Modals
+   ═══════════════════════════════════════════════════════════ */
+
+.sc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.sc-modal {
+  background: $sc-surface;
+  border-radius: $sc-radius-lg;
+  max-width: 540px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+.sc-modal-sm { max-width: 420px; }
+
+.sc-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem 0;
+
+  h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+
+  .sc-modal-icon { font-size: 1.4rem; color: $sc-primary-container; }
+  .sc-modal-icon.success { color: $sc-success; }
+}
+
+.sc-modal-body {
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sc-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 1.5rem 1.25rem;
+}
+
+/* Close summary */
+.sc-close-summary-preview,
+.sc-close-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: $sc-surface-bg;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+}
+
+.sc-cs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &.divider {
+    border-top: 1px solid $sc-border;
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    font-weight: 600;
+  }
+
+  &.sc-cs-count { color: $sc-text-secondary; font-size: 0.82rem; }
+
+  strong.negative { color: $sc-error; }
+  strong.positive { color: $sc-accent; }
+}
+
+/* Deposits section in close modal */
+.sc-deposits-section {
+  background: $sc-surface-bg;
+  border: 1px solid $sc-border;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.sc-deposits-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+
+  .sc-form-label { font-size: 0.82rem; font-weight: 500; color: $sc-text-secondary; }
+}
+
+.sc-deposits-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: $sc-text-secondary;
+  font-style: italic;
+}
+
+.sc-deposit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid $sc-border;
+
+  &:last-child { border-bottom: none; }
+}
+
+.sc-deposit-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sc-deposit-amount {
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+}
+
+.sc-deposit-notes {
+  font-size: 0.78rem;
+  color: $sc-text-secondary;
+}
+
+.sc-deposit-remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: $sc-text-secondary;
+  padding: 0.2rem;
+  border-radius: 4px;
+
+  &:hover { background: $sc-error-bg; color: $sc-error; }
+  .material-symbols-outlined { font-size: 1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Utilities
+   ═══════════════════════════════════════════════════════════ */
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+.text-right { text-align: right; }
+.positive { color: $sc-accent; }
+.negative { color: $sc-error; }

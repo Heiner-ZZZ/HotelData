@@ -1,0 +1,231 @@
+/* ═══════════════════════════════════════════════════════════
+   Housekeeping Calendar — Stitch-inspired weekly grid
+   Rooms × Days · Task cards · Quick schedule modal
+   Flat design · Material 3 palette · Inter typography
+   ═══════════════════════════════════════════════════════════ */
+
+.hk-calendar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--app-text);
+}
+
+/* ═══ Page Header ═══ */
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--app-text);
+}
+
+.page-subtitle {
+  font-size: 0.82rem;
+  color: var(--gray-700);
+  margin: 0.1rem 0 0;
+}
+
+.page-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ═══ Week Navigation ═══ */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+}
+
+.week-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+.week-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 9rem;
+  padding: 0 0.5rem;
+}
+
+.week-month {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+  line-height: 1.2;
+}
+
+.week-range {
+  font-size: 0.68rem;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &:hover {
+    background: rgba(0, 96, 118, 0.06);
+    border-color: var(--accent);
+  }
+
+  .material-symbols-outlined { font-size: 0.9rem; }
+}
+
+/* ═══ Summary chips in nav ═══ */
+
+.week-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summary-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 100px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--chip-color, var(--muted-text));
+  background: color-mix(in srgb, var(--chip-color, var(--muted-text)) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip-color, var(--muted-text)) 14%, transparent);
+  white-space: nowrap;
+}
+
+.summary-chip-dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--chip-color, var(--muted-text));
+}
+
+.summary-total {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0.15rem 0.4rem;
+  background: rgba(0, 96, 118, 0.06);
+  border-radius: 100px;
+  white-space: nowrap;
+}
+
+/* ═══ Staff Filter Bar ═══ */
+
+.staff-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0;
+}
+
+.staff-bar-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  margin-right: 0.25rem;
+}
+
+.staff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--gray-700);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--surface);
+
+    .staff-chip-icon { color: var(--surface); }
+  }
+}
+
+.staff-chip-icon {
+  font-size: 0.8rem;
+  color: var(--muted-text);
