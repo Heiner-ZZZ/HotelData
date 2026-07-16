@@ -64,12 +64,12 @@
   gap: 0.55rem;
   padding: 0.65rem 0.85rem;
   margin-bottom: 0.85rem;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-left: 3px solid #f97316;
+  background: var(--warning-light);
+  border: 1px solid color-mix(in srgb, var(--warning) 50%, transparent);
+  border-left: 3px solid var(--warning);
   border-radius: 8px;
   font-size: 0.82rem;
-  color: #9a3412;
+  color: var(--warning-strong);
   line-height: 1.45;
 
   .material-symbols-outlined {

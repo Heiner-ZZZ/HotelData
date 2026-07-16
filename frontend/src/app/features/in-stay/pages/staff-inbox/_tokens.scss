@@ -2,9 +2,9 @@
 
 // Colors
 $si-accent: var(--accent);
-$si-accent-light: #e0f0f4;
+$si-accent-light: color-mix(in srgb, var(--teal) 8%, transparent);
 $si-surface: var(--surface);
-$si-surface-bg: #f5f6f7;
+$si-surface-bg: var(--gray-50);
 $si-surface-soft: var(--surface-hover);
 $si-text: var(--app-text);
 $si-text-secondary: var(--muted-text);

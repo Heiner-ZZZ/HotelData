@@ -17,7 +17,7 @@
 
 .gp-bento-hero {
   grid-column: span 8;
-  background: linear-gradient(135deg, t.$gp-accent 0%, #003d4a 100%);
+  background: linear-gradient(135deg, t.$gp-accent 0%, color-mix(in srgb, var(--teal) 40%, black) 100%);
   border-radius: t.$gp-radius-lg;
   padding: 1.5rem;
   color: white;

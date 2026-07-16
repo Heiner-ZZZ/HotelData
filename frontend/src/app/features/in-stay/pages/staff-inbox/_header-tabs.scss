@@ -55,8 +55,8 @@
   }
 
   &.si-badge-folio {
-    background: #e0f2fe;
-    color: #0369a1;
+    background: color-mix(in srgb, var(--cyan) 8%, transparent);
+    color: color-mix(in srgb, var(--cyan) 65%, black);
   }
 }
 

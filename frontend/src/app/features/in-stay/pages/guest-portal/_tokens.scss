@@ -1,10 +1,10 @@
 /* ── Guest Portal Design Tokens ────────────────────────── */
 
 $gp-accent: var(--accent);
-$gp-accent-light: #e0f0f4;
+$gp-accent-light: color-mix(in srgb, var(--teal) 8%, transparent);
 $gp-primary-container: var(--teal);
 $gp-surface: var(--surface);
-$gp-surface-bg: #f5f6f7;
+$gp-surface-bg: var(--gray-50);
 $gp-text: var(--app-text);
 $gp-text-secondary: var(--muted-text);
 $gp-border: var(--app-border);

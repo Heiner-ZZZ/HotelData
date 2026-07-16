@@ -151,7 +151,7 @@
   }
 
   &.unread {
-    background: #f8fbff;
+    background: var(--surface-raised);
   }
 
   &.selected-left {
