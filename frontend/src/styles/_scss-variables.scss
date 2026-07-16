@@ -1,31 +1,154 @@
+/* ═══════════════════════════════════════════════
+   Design Tokens — HotelData v2
+   Light + Dark theme, semantic color scales
+   ═══════════════════════════════════════════════ */
+
 :root {
+  /* ── Surface & Background ── */
   --app-bg: #f3f6fb;
   --surface: #ffffff;
+  --surface-raised: #fafcff;
   --surface-soft: #eef4ff;
+  --surface-hover: #eef2f7;
+
+  /* ── Text ── */
   --app-text: #162033;
   --muted-text: #5f6f87;
+
+  /* ── Accent (blue) ── */
+  --accent-light: #d6e4ff;
   --accent: #1463ff;
+  --accent-hover: #1d6eff;
+  --accent-active: #60a5fa;
+  --accent-strong: #0f45c9;
+  --on-accent: #ffffff;
+
+  /* ── Success (green) ── */
+  --success-light: #d1fae5;
   --success: #0f8a60;
+  --success-strong: #065f46;
+  --on-success: #ffffff;
+
+  /* ── Warning (amber) ── */
+  --warning-light: #fef3c7;
   --warning: #c98105;
+  --warning-strong: #92400e;
+  --on-warning: #ffffff;
+
+  /* ── Danger (red) ── */
+  --danger-light: #fee2e2;
   --danger: #c93d32;
+  --danger-strong: #991b1b;
+  --on-danger: #ffffff;
+
+  /* ── Purple (multi-select / UI indicators) ── */
+  --purple-light: #ede9fe;
+  --purple: #7c3aed;
+  --purple-strong: #5b21b6;
+
+  /* ── Indigo ── */
+  --indigo-light: #e0e7ff;
+  --indigo: #6366f1;
+  --indigo-strong: #3730a3;
+
+  /* ── Extended palette ── */
+  --yellow: #eab308;
+  --teal: #107a95;
+  --cyan: #0891b2;
+
+  /* ── Border ── */
   --app-border: #d8e0eb;
-  --surface-hover: #eef2f7;
+
+  /* ── Gray scale — 50=lightest, 900=darkest ── */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* ── Shadows ── */
   --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.08);
 }
 
+/* ═══════════════════════════════════════════════
+   Dark Theme
+   ═══════════════════════════════════════════════ */
+
 [data-theme="dark"] {
+  /* ── Surface & Background ── */
   --app-bg: #0d1117;
   --surface: #161b22;
+  --surface-raised: #1e2433;
   --surface-soft: #1c2333;
+  --surface-hover: #1c2128;
+
+  /* ── Text ── */
   --app-text: #e6edf3;
   --muted-text: #8b949e;
+
+  /* ── Accent (blue) ── */
+  --accent-light: #1a3a5c;
   --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --accent-active: #93c5fd;
+  --accent-strong: #58a6ff;
+  --on-accent: #0d1117;
+
+  /* ── Success (green) ── */
+  --success-light: #1a3a2a;
   --success: #3fb950;
+  --success-strong: #56c96a;
+  --on-success: #0d1117;
+
+  /* ── Warning (amber) ── */
+  --warning-light: #3a2a1a;
   --warning: #d29922;
+  --warning-strong: #e5b042;
+  --on-warning: #0d1117;
+
+  /* ── Danger (red) ── */
+  --danger-light: #3a1a1a;
   --danger: #f85149;
+  --danger-strong: #f97169;
+  --on-danger: #0d1117;
+
+  /* ── Purple (multi-select / UI indicators) ── */
+  --purple-light: #2a1a4a;
+  --purple: #a78bfa;
+  --purple-strong: #c4b5fd;
+
+  /* ── Indigo ── */
+  --indigo-light: #1a1a3a;
+  --indigo: #818cf8;
+  --indigo-strong: #a5b4fc;
+
+  /* ── Extended palette ── */
+  --yellow: #facc15;
+  --teal: #22d3ee;
+  --cyan: #06b6d4;
+
+  /* ── Border ── */
   --app-border: #30363d;
-  --surface-hover: #1c2128;
+
+  /* ── Gray scale — inverted: 50=darkest, 900=lightest ── */
+  --gray-50: #161b22;
+  --gray-100: #1c2333;
+  --gray-200: #21262d;
+  --gray-300: #30363d;
+  --gray-400: #484f58;
+  --gray-500: #6e7681;
+  --gray-600: #8b949e;
+  --gray-700: #c9d1d9;
+  --gray-800: #e6edf3;
+  --gray-900: #f0f6fc;
+
+  /* ── Shadows ── */
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 18px 42px rgba(0, 0, 0, 0.32);
 }

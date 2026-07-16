@@ -16,6 +16,10 @@
             "index": "src/index.html",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": [
+              "leaflet",
+              "maplibre-gl"
+            ],
             "assets": [
               {
                 "glob": "**/*",
@@ -45,8 +49,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "20kB",
-                  "maximumError": "40kB"
+                  "maximumWarning": "50kB",
+                  "maximumError": "100kB"
                 }
               ],
               "outputHashing": "all"
