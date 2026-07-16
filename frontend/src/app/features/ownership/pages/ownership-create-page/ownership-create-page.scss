@@ -50,7 +50,7 @@
 
 .field-error {
   font-size: 0.78rem;
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .field-hint {
@@ -165,7 +165,7 @@
 }
 
 .check-icon {
-  color: #27ae60;
+  color: var(--success);
 }
 
 .add-icon {
@@ -214,7 +214,7 @@
 
 .chip-remove:hover {
   background: rgba(201, 61, 50, 0.12);
-  color: #c93d32;
+  color: var(--danger);
 }
 
 .chip-remove .material-symbols-outlined {

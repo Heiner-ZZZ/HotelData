@@ -72,18 +72,18 @@
   font-size: 1.05rem;
 }
 
-.export-btn.excel .btn-icon { color: #0f8a60; }
-.export-btn.pdf .btn-icon   { color: #c93d32; }
+.export-btn.excel .btn-icon { color: var(--success); }
+.export-btn.pdf .btn-icon   { color: var(--danger); }
 .export-btn.word .btn-icon  { color: var(--accent); }
 
 .export-btn.excel:hover {
-  border-color: #0f8a60;
+  border-color: var(--success);
   background: rgba(15, 138, 96, 0.06);
   box-shadow: 0 1px 4px rgba(15, 138, 96, 0.12);
 }
 
 .export-btn.pdf:hover {
-  border-color: #c93d32;
+  border-color: var(--danger);
   background: rgba(201, 61, 50, 0.06);
   box-shadow: 0 1px 4px rgba(201, 61, 50, 0.12);
 }

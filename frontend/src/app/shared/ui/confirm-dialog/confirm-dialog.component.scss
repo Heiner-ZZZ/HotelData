@@ -36,7 +36,7 @@
   flex-shrink: 0;
 }
 .cd-icon-danger { background: var(--danger-light); color: var(--danger); }
-.cd-icon-warning { background: #fffbeb; color: var(--warning); }
+.cd-icon-warning { background: var(--warning-light); color: var(--warning); }
 .cd-icon .material-symbols-outlined { font-size: 22px; }
 
 .cd-title {
@@ -98,10 +98,10 @@
 .cd-btn-confirm:hover { opacity: 0.9; }
 
 .cd-btn-danger { background: var(--danger); }
-.cd-btn-danger:hover { background: #b91c1c; }
+.cd-btn-danger:hover { background: var(--danger-strong); }
 
 .cd-btn-warning { background: var(--warning); }
-.cd-btn-warning:hover { background: #b45309; }
+.cd-btn-warning:hover { background: var(--warning-strong); }
 
 @keyframes cd-fade-in {
   from { opacity: 0; }

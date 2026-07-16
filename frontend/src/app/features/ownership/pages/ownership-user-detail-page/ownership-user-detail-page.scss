@@ -144,7 +144,7 @@
 }
 
 .search-result-item.is-selected {
-  background: color-mix(in srgb, #27ae60 8%, transparent);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
 }
 
 .result-info {
@@ -171,7 +171,7 @@
 }
 
 .search-result-item.is-selected .check-icon {
-  color: #27ae60;
+  color: var(--success);
 }
 
 .load-more {
@@ -235,7 +235,7 @@
 
 .chip-remove:hover {
   background: rgba(201, 61, 50, 0.12);
-  color: #c93d32;
+  color: var(--danger);
 }
 
 .chip-remove .material-symbols-outlined {

@@ -49,7 +49,7 @@
   transition: background 0.2s;
 
   &:hover {
-    background: #1d4ed8;
+    background: var(--accent);
   }
 }
 

@@ -70,7 +70,7 @@
 
 .score-excellent .score-value { color: var(--success); }
 .score-good .score-value { color: var(--warning); }
-.score-fair .score-value { color: #f97316; }
+.score-fair .score-value { color: var(--warning); }
 .score-critical .score-value { color: var(--danger); }
 
 .summary-legend {

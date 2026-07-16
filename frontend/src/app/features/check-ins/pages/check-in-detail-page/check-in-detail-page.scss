@@ -663,7 +663,7 @@
   border-color: var(--success);
 
   &:hover:not(:disabled) {
-    background: #15803d;
+    background: var(--success);
   }
 }
 
