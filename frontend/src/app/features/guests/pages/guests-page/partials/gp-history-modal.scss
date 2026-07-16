@@ -231,5 +231,5 @@
 
   &.active { background: rgba(16, 185, 129, 0.15); color: var(--success); }
   &.warn { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-  &.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+  &.danger { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
 }

@@ -20,9 +20,9 @@
 }
 
 .toast-error {
-  background: rgba(239, 68, 68, 0.08);
+  background: var(--danger-light);
   color: var(--danger);
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
 }
 
 @keyframes ed-toast-in {

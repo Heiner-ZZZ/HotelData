@@ -114,7 +114,7 @@
   &.active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--accent-active);
-    border-color: rgba(20, 99, 255, 0.3);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   }
 }
 

@@ -96,12 +96,12 @@ tbody tr:hover {
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--success-light);
   color: var(--success);
 }
 
 .badge-warning {
-  background: rgba(234, 179, 8, 0.1);
+  background: var(--warning-light);
   color: var(--warning);
 }
 
@@ -150,7 +150,7 @@ tbody tr:hover {
 
   &:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.12);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
   }
 }
 

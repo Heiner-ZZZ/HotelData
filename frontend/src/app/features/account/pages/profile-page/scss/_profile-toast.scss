@@ -15,8 +15,8 @@
     --icon-opsz: 20;
   }
 
-  &.toast-success { background: rgba(16, 185, 129, 0.1); color: $success; border: 1px solid rgba(16, 185, 129, 0.18); }
-  &.toast-error   { background: rgba(239, 68, 68, 0.08); color: $danger; border: 1px solid rgba(239, 68, 68, 0.15); }
+  &.toast-success { background: var(--success-light); color: $success; border: 1px solid color-mix(in srgb, var(--success) 25%, transparent); }
+  &.toast-error   { background: var(--danger-light); color: $danger; border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent); }
 }
 
 @keyframes toast-in {

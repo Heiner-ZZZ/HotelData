@@ -29,9 +29,9 @@
   &:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--accent-strong); }
 
   &.is-active {
-    background: rgba(20, 99, 255, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: $accent;
-    box-shadow: 0 1px 3px rgba(20, 99, 255, 0.12);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   .tab-icon {

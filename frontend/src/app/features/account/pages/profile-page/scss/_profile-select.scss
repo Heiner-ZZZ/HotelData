@@ -18,7 +18,7 @@
   transition: border-color 180ms ease, box-shadow 180ms ease;
 
   &:hover { border-color: $accent; }
-  &:focus-visible { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.1); }
+  &:focus-visible { outline: none; border-color: $accent; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
 }
 
 .select-icon {
@@ -78,7 +78,7 @@
   transition: background 120ms ease, color 120ms ease;
 
   &:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-  &.is-active { background: rgba(20, 99, 255, 0.1); color: $accent; font-weight: 600; }
+  &.is-active { background: color-mix(in srgb, var(--accent) 10%, transparent); color: $accent; font-weight: 600; }
   &:not(:last-child) { border-bottom: 1px solid var(--app-border, var(--gray-100)); }
 }
 

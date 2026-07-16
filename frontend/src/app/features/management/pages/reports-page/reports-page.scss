@@ -91,7 +91,7 @@
 .export-btn.word:hover {
   border-color: var(--accent);
   background: rgba(20, 99, 255, 0.06);
-  box-shadow: 0 1px 4px rgba(20, 99, 255, 0.12);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* ── KPI row ── */

@@ -192,7 +192,7 @@
   color: var(--on-accent);
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(20, 99, 255, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
     transform: translateY(-1px);
   }
 }

@@ -160,13 +160,13 @@
 }
 
 .summary-damage {
-  background: rgba(239, 68, 68, 0.06);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
   color: var(--danger);
-  border-color: rgba(239, 68, 68, 0.12);
+  border-color: color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
 .summary-lost {
-  background: rgba(234, 179, 8, 0.06);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
   color: var(--warning);
   border-color: rgba(234, 179, 8, 0.12);
 }

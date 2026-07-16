@@ -54,7 +54,7 @@
   background: var(--surface-card, $surface);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 
-  &:focus-within { border-color: $accent; box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.1); }
+  &:focus-within { border-color: $accent; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
 
   .input-icon {
     font-size: 1.1rem;
@@ -126,7 +126,7 @@
   cursor: pointer;
   transition: box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
 
-  &:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(20, 99, 255, 0.3); transform: translateY(-1px); }
+  &:hover:not(:disabled) { box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-1px); }
   &:active:not(:disabled) { transform: translateY(0); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 

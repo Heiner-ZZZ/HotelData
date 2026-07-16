@@ -73,13 +73,13 @@
 }
 
 .ciw-badge.pending {
-  background: rgba(234, 179, 8, 0.08);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
   color: var(--warning);
   border: 1px solid rgba(234, 179, 8, 0.12);
 }
 
 .ciw-badge.success {
-  background: rgba(16, 185, 129, 0.08);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.12);
 }
@@ -101,7 +101,7 @@
 .ciw-toast.success {
   background: rgba(16, 185, 129, 0.06);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--success-light);
 }
 
 .ciw-toast.error {

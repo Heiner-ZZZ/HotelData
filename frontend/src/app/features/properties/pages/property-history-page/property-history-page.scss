@@ -94,7 +94,7 @@
   transition: box-shadow 180ms;
 
   &:hover {
-    box-shadow: 0 3px 10px rgba(20, 99, 255, 0.3);
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
   .material-symbols-outlined {
