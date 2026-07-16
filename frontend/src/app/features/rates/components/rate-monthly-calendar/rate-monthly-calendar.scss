@@ -437,13 +437,13 @@
 }
 
 .tier-medium {
-  color: #ca8a04;
-  background: color-mix(in srgb, #ca8a04 10%, transparent);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
 }
 
 .tier-high {
-  color: #ea580c;
-  background: color-mix(in srgb, #ea580c 10%, transparent);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .tier-premium {
@@ -490,8 +490,8 @@
   border-radius: 3px;
 
   &.tier-low { background: var(--success); }
-  &.tier-medium { background: #ca8a04; }
-  &.tier-high { background: #ea580c; }
+  &.tier-medium { background: var(--warning); }
+  &.tier-high { background: var(--danger); }
   &.tier-premium { background: var(--danger); }
 }
 

@@ -12,13 +12,13 @@
   --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
   --portal-accent: var(--accent);
   --portal-accent-hover: var(--accent-strong);
-  --portal-accent-soft: #e8f8ff;
+  --portal-accent-soft: color-mix(in srgb, var(--cyan) 8%, transparent);
   --danger: var(--danger);
   --danger-soft: var(--danger-light);
   --success: var(--success-strong);
   --success-soft: var(--success-light);
   --warning: var(--warning-strong);
-  --warning-soft: #ffdcc3;
+  --warning-soft: color-mix(in srgb, var(--warning) 15%, transparent);
   --surface-soft: var(--surface-hover);
   --gap: 24px;
   --transition: 150ms ease-out;
@@ -340,7 +340,7 @@
   transition: background var(--transition);
 
   &:hover {
-    background: #e8eaec;
+    background: var(--gray-200);
   }
 }
 
@@ -430,7 +430,7 @@
   background: var(--portal-accent-soft) !important;
 
   &:hover {
-    background: #d6f0f8 !important;
+    background: color-mix(in srgb, var(--cyan) 12%, transparent) !important;
   }
 }
 
@@ -595,7 +595,7 @@
 
 .dot-check_in {
   background: var(--accent-light);
-  color: #4e6673;
+  color: var(--gray-600);
 }
 
 .dot-shift_completed {
@@ -604,8 +604,8 @@
 }
 
 .dot-check_out {
-  background: #b6eaff;
-  color: #001f28;
+  background: color-mix(in srgb, var(--cyan) 25%, transparent);
+  color: color-mix(in srgb, var(--teal) 30%, black);
 }
 
 .timeline-content {

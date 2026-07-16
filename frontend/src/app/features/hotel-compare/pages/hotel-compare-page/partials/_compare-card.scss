@@ -69,7 +69,7 @@
   height: 100%;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #1a2d4a, #2e4a72);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 20%, black), color-mix(in srgb, var(--accent-strong) 40%, black));
 }
 
 .carousel-fallback .fallback-icon {
@@ -170,7 +170,7 @@
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
   border-radius: 999px;
-  color: #f5c842;
+  color: var(--yellow);
   font-size: 0.75rem;
   font-weight: 700;
   transition: box-shadow 220ms ease;

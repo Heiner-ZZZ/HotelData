@@ -1,7 +1,7 @@
 // ── Shared variables ────────────────────────────────────────────────────
 $accent: var(--accent);
 $muted: var(--gray-500);
-$border: #e2e5ed;
+$border: var(--gray-200);
 $surface: #fff;
 $danger: var(--danger);
 $success: var(--success);

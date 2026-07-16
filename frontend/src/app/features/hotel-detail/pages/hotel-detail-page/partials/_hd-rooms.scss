@@ -55,8 +55,8 @@
   letter-spacing: 0.04em;
 
   &.badge-recomendado {
-    background: color-mix(in srgb, var(--secondary, #4a626e) 12%, transparent);
-    color: var(--secondary, #4a626e);
+    background: color-mix(in srgb, var(--gray-600) 12%, transparent);
+    color: var(--gray-600);
   }
 }
 

@@ -305,7 +305,7 @@
   margin-top: 8px;
   padding: 10px 12px;
   background: var(--gray-100);
-  border: 1px solid #d1d9e6;
+  border: 1px solid var(--gray-200);
   border-radius: 6px;
 }
 .co-balance-label {
@@ -511,7 +511,7 @@
   color: var(--muted-text);
   white-space: nowrap;
   .co-step.active & { color: var(--accent); }
-  .co-step.done & { color: #065f46; }
+  .co-step.done & { color: var(--success-strong); }
 }
 .co-step-connector {
   width: 32px;
@@ -814,7 +814,7 @@
   transition: all 0.15s;
   .material-symbols-outlined { font-size: 18px; }
   &:hover {
-    background: #f0f9ff;
+    background: var(--surface-soft);
     border-style: solid;
   }
 }
@@ -1086,7 +1086,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
   border-radius: 6px;
   font-size: 12px;
-  color: #0369a1;
+  color: color-mix(in srgb, var(--cyan) 65%, black);
   .material-symbols-outlined {
     font-size: 16px;
     color: var(--success);
@@ -1121,7 +1121,7 @@
   color: var(--app-text);
   transition: all 0.15s;
   &:hover { background: var(--surface-hover); }
-  &.active { border-color: var(--accent); background: #f0f9ff; }
+  &.active { border-color: var(--accent); background: var(--surface-soft); }
 }
 .co-dmg-danger.active {
   border-color: var(--danger);

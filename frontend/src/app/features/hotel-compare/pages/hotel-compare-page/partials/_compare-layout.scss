@@ -18,7 +18,7 @@
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #0f1b2d 0%, #1a2d4a 40%, #244274 100%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 10%, black) 0%, color-mix(in srgb, var(--accent-strong) 20%, black) 40%, color-mix(in srgb, var(--accent-strong) 40%, black) 100%);
 }
 
 .hero-content {
