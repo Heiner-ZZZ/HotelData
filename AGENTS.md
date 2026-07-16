@@ -5,6 +5,64 @@ shell commands, and other important information, read the current plan
 
 # Reglas para Codebuff (Buffy)
 
+## 🏗️ Stack del Frontend — Angular 22 (ESTABLE)
+
+Este proyecto usa **Angular 22** (lanzado junio 2026). Las siguientes APIs son **ESTABLES** (NO experimentales) y deben usarse:
+
+### APIs estables y obligatorias
+
+| API | Estado en v22 | Uso en el proyecto |
+|-----|---------------|-------------------|
+| `httpResource()` | ✅ Estable | ~30+ páginas ya migradas. **Siempre** usar `httpResource` para GETs. POST/PUT/DELETE se mantienen en servicios con `HttpClient`. |
+| `rxResource()` | ✅ Estable | Usar solo cuando el request depende de un Observable. Preferir `httpResource` para casos simples. |
+| `resource()` | ✅ Estable | Para recursos no-HTTP. |
+| `signal()` / `computed()` / `linkedSignal()` / `effect()` | ✅ Estable | 177+ signals, 160+ componentes con OnPush, 37 effects. **Nunca** usar `BehaviorSubject` para estado de UI — siempre `signal`. |
+| `ChangeDetectionStrategy.OnPush` | ✅ Default en v22 | 160+ componentes ya lo usan. **Siempre** agregar `OnPush` a componentes nuevos. |
+| `provideZonelessChangeDetection()` | ✅ Estable (sin prefijo "Experimental") | **NO habilitado aún** en este proyecto. Requiere migración completa a signals. |
+| Signal Forms | ✅ Estable en v22 | **NO adoptado aún.** Se sigue usando Reactive Forms tradicional con `FormGroup`/`FormControl` envueltos en `signal()`. |
+| Nuevo control flow (`@if`, `@for`, `@switch`) | ✅ Estable | Ya en uso. **Nunca** usar `*ngIf`, `*ngFor`, `*ngSwitch` en código nuevo. |
+
+### APIs NO disponibles aún en v22
+
+| API | Estado | Nota |
+|-----|--------|------|
+| `@boundary` / `@error` | ❌ No existe en v22 | Esperado en v22.1 o v23. Seguir usando `resource.error()` como alternativa. |
+
+### TypeScript y toolchain
+
+| Herramienta | Versión | Nota |
+|-------------|---------|------|
+| TypeScript | **6.x** (target: ES2024) | Ver `frontend/tsconfig.json`. TS 5.9- ya no funciona en v22. |
+| Node.js | **24.x** (node:24-alpine) | Node 20 discontinuado para Angular 22. Ver `frontend/Dockerfile`. |
+| Build system | `application` builder (esbuild) | Webpack deprecado. Usar el builder por defecto de Angular 22. |
+
+### 🎨 Design Tokens — Sistema de colores
+
+**ARCHIVO CANÓNICO:** `frontend/src/styles/_scss-variables.scss`
+
+Este archivo define **TODOS** los colores de la app mediante CSS custom properties con light + dark theme.
+
+| Categoría | Tokens | Uso |
+|-----------|--------|-----|
+| Surface | `--surface`, `--surface-raised`, `--surface-soft`, `--surface-hover` | Fondos de cards, modales, paneles |
+| Texto | `--app-text`, `--muted-text` | Texto principal y secundario |
+| Accent (azul) | `--accent-light`, `--accent`, `--accent-hover`, `--accent-active`, `--accent-strong`, `--on-accent` | Botones, links, focus rings |
+| Success (verde) | `--success-light`, `--success`, `--success-strong`, `--on-success` | Badges positivos, KPIs |
+| Warning (ámbar) | `--warning-light`, `--warning`, `--warning-strong`, `--on-warning` | Badges de advertencia |
+| Danger (rojo) | `--danger-light`, `--danger`, `--danger-strong`, `--on-danger` | Errores, badges negativos |
+| Purple | `--purple-light`, `--purple`, `--purple-strong` | Badges de entidad, UI indicators |
+| Indigo | `--indigo-light`, `--indigo`, `--indigo-strong` | Badges de entidad |
+| Extended | `--teal`, `--cyan`, `--yellow` | Colores semánticos adicionales |
+| Gray scale | `--gray-50` → `--gray-900` | Texto secundario, bordes, fondos sutiles |
+| Border | `--app-border` | Bordes de cards, inputs, tablas |
+
+**REGLAS:**
+- 🚫 **NUNCA** usar colores hardcodeados (`#fff`, `#191c1e`, etc.) en SCSS nuevo. Siempre usar tokens.
+- 🚫 **NUNCA** crear bloques `:root` duplicados en partials — heredar del `_scss-variables.scss` global.
+- ✅ Para colores de marca (ej: gradientes decorativos de hotel-card) se permite mantener hex si son identidad visual, no UI semántica.
+- ✅ Usar `color-mix(in srgb, var(--token) X%, transparent)` para variantes claras en vez de crear tokens nuevos.
+- ✅ El sistema soporta **dark mode** vía `[data-theme="dark"]`.
+
 ## 🔴 NUNCA hacer sin autorización explícita del usuario
 
 - **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` sin `--volumes` ni ningún comando que elimine volúmenes de Docker.
