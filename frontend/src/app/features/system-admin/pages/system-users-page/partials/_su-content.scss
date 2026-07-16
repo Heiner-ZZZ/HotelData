@@ -1,0 +1,205 @@
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all $transition;
+  user-select: none;
+
+  strong {
+    font-weight: 600;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  .chip-close {
+    font-size: 0.85rem;
+  }
+}
+
+/* ─── Table ───────────────────────────────── */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+  font-size: 0.875rem;
+}
+
+th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  user-select: none;
+  background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+.th-actions {
+  text-align: right;
+  width: 180px;
+}
+
+.filterable-th {
+  cursor: pointer;
+  transition: background $transition;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  }
+
+  &.filter-active {
+    color: var(--accent);
+  }
+}
+
+.th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.th-arrow {
+  display: inline-flex;
+  font-size: 0.85rem;
+  opacity: 0.35;
+  transition: opacity $transition;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &.active {
+    opacity: 1;
+    color: var(--accent);
+  }
+}
+
+.filterable-th:hover .th-arrow {
+  opacity: 0.7;
+}
+
+/* ─── Filter Dropdown ────────────────────── */
+
+.filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 0.35rem;
+  display: grid;
+  gap: 0.1rem;
+  margin-top: 4px;
+}
+
+.filter-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 450;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--app-text);
+  transition: background $transition, color $transition;
+
+  &:hover {
+    background: var(--accent-light);
+  }
+
+  &.selected {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 500;
+  }
+}
+
+/* ─── Cell Styles ────────────────────────── */
+
+.cell-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--app-text);
+  font-size: 0.875rem;
+}
+
+.user-display {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  margin-top: 0.05rem;
+}
+
+.cell-email {
+  color: var(--muted-text);
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.cell-roles {

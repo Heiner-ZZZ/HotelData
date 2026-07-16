@@ -1,0 +1,193 @@
+.audit-log-page {
+  display: grid;
+  gap: 1.5rem;
+
+  > * {
+    animation: audit-fade-in 400ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
+  }
+  > *:nth-child(1) { animation-delay: 0.00s; }
+  > *:nth-child(2) { animation-delay: 0.06s; }
+  > *:nth-child(3) { animation-delay: 0.12s; }
+  > *:nth-child(4) { animation-delay: 0.18s; }
+  > *:nth-child(5) { animation-delay: 0.24s; }
+}
+
+@keyframes audit-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Filters Bar ── */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.filter-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.filter-field label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+}
+
+.filter-field input,
+.filter-field select {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: inherit;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  font-family: inherit;
+}
+.btn-ghost:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-sm .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+/* ── Data Card ── */
+.data-card {
+  padding: 1.25rem;
+}
+
+.data-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.data-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.data-card-head-left .material-symbols-outlined {
+  font-size: 1.5rem;
+  color: var(--accent);
+  --icon-wght: 300;
+}
+
+.data-card-head-left h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.data-card-head-left p {
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: grid;
+  gap: 0;
+  position: relative;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 1.75rem;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  background: var(--app-border);
+}
+
+.timeline-entry {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-radius: 8px;
+  position: relative;
+}
+
+.timeline-entry:hover {
+  background: var(--accent-light);
+}
+
+.timeline-marker {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--marker-color, var(--accent)) 14%, transparent);
+  color: var(--marker-color, var(--accent));
+  z-index: 1;
+}
+

@@ -1,0 +1,189 @@
+}
+
+// ── Table ──
+
+.invl-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+
+.invl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.invl-table thead th {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+.invl-table tbody td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+.invl-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+// ── Row hover + clickable ──
+
+.invl-row {
+  cursor: pointer;
+  transition: background 100ms;
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
+  }
+
+  &:active {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+}
+
+// ── Column widths ──
+
+.th-inv { min-width: 130px; }
+.th-booking { min-width: 110px; }
+.th-guest { min-width: 120px; }
+.th-amount { width: 6rem; text-align: right !important; }
+.th-pay { width: 5.5rem; text-align: right !important; }
+.th-status { min-width: 100px; }
+.th-date { min-width: 100px; }
+.th-actions { width: 3rem; text-align: center !important; }
+
+// ── Cells ──
+
+.td-inv {
+  font-weight: 600;
+}
+
+.invl-number {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.invl-booking-id {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+}
+
+.invl-guest-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  .invl-guest-icon {
+    font-size: 0.85rem;
+    color: var(--muted-text);
+  }
+}
+
+.td-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+
+  &.paid {
+    color: var(--success);
+    font-weight: 500;
+  }
+
+  &.pending {
+    color: var(--warning);
+    font-weight: 500;
+  }
+}
+
+.mono {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.invl-muted {
+  color: var(--gray-300);
+}
+
+// ── Status badge ──
+
+.invl-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  .badge-icon { font-size: 0.82rem; }
+
+  &.tone-success {
+    background: var(--success-light);
+    color: var(--success);
+  }
+
+  &.tone-warning {
+    background: var(--warning-light);
+    color: var(--warning);
+  }
+
+  &.tone-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+  }
+
+  &.tone-neutral {
+    background: color-mix(in srgb, var(--gray-500) 6%, transparent);
+    color: var(--gray-500);
+  }
+}
+
+// ── Date cell ──
+
+.invl-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+
+  .date-cell-icon { font-size: 0.78rem; }
+}
+
+// ── Detail link ──
+
+.invl-detail-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 6px;
+  color: var(--gray-300);
+  text-decoration: none;
+  transition: all 120ms;
+
+  .material-symbols-outlined { font-size: 1rem; }
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+  }
+}

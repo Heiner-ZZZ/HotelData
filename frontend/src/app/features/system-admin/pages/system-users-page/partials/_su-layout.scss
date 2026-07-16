@@ -1,0 +1,205 @@
+/* ═══════════════════════════════════════════
+   System Users Page — Corporate UI
+   ═══════════════════════════════════════════ */
+
+$radius: 10px;
+$radius-sm: 6px;
+$transition: 0.18s ease;
+
+.users-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loading-wrapper,
+.error-wrapper,
+.empty-wrapper {
+  padding: 2rem 0;
+}
+
+/* ─── Stats Cards ─────────────────────────── */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: $radius;
+  padding: 1.25rem 1.5rem;
+  transition: box-shadow $transition, border-color $transition;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 1.5rem;
+  }
+
+  &--users {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  &--roles {
+    background: color-mix(in srgb, var(--purple) 10%, transparent);
+    color: var(--purple);
+  }
+
+  &--session {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+  }
+}
+
+.stat-body {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--app-text);
+
+  &--sm {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+.stat-label {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+/* ─── Table Card ──────────────────────────── */
+
+.users-table-card {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: $radius;
+  overflow: hidden;
+}
+
+/* ─── Table Toolbar ───────────────────────── */
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.1rem;
+  color: var(--muted-text);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 2.25rem 0.5rem 2.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
+  color: var(--app-text);
+  outline: none;
+  transition: border-color $transition;
+
+  &::placeholder {
+    color: var(--muted-text);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-text);
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    color: var(--app-text);
+  }
+}
+
+.clear-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--muted-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all $transition;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+/* ─── Active Filter Chips ────────────────── */
+
+.active-filters {
+  display: flex;

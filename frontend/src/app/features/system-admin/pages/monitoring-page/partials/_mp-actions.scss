@@ -1,0 +1,188 @@
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+
+.stop-btn {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.stop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.85rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted-text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+td code {
+  font-size: 0.85em;
+  background: rgba(20, 99, 255, 0.08);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.exec-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.exec-item {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.exec-item .label {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.exec-item strong {
+  margin: 0;
+}
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.file-picker {
+  flex: 1;
+  min-width: 220px;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  background: rgba(20, 99, 255, 0.04);
+  color: var(--muted-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.file-label:hover {
+  border-color: var(--accent);
+  background: rgba(20, 99, 255, 0.08);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--app-text);
+}
+
+.modal-card p {
+  margin: 0;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.modal-btn {
+  min-height: 2.5rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+}
+
+.modal-btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.modal-btn-secondary {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.message.success {
+  border: 1px solid rgba(15, 138, 96, 0.2);
+}
+
+.message.error {
+  border: 1px solid rgba(201, 61, 50, 0.2);
+}
+
+@media (max-width: 980px) {
+  .progress-columns,
+  .exec-grid {
+    grid-template-columns: 1fr;
+  }
+}

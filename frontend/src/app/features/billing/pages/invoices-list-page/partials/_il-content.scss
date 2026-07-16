@@ -1,0 +1,188 @@
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+
+  &:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.invl-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  flex: 1;
+  min-width: 200px;
+  max-width: 340px;
+  transition: border-color 150ms;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+.invl-search-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+}
+
+.invl-search-input {
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+
+  &::placeholder { color: var(--gray-400); }
+}
+
+.invl-date-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  transition: border-color 150ms;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+.invl-date-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+}
+
+.invl-date-input {
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  width: 7rem;
+
+  &::-webkit-calendar-picker-indicator {
+    opacity: 0.4;
+  }
+}
+
+.invl-date-sep {
+  color: var(--gray-300);
+  font-size: 0.8rem;
+}
+
+.invl-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: inherit;
+
+  &:hover {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+    background: color-mix(in srgb, var(--danger) 4%, transparent);
+  }
+
+  .material-symbols-outlined { font-size: 0.9rem; }
+}
+
+// ── Table Card ──
+
+.invl-table-card {
+  padding: 1.15rem;
+  border-radius: 12px;
+  display: grid;
+  gap: 0.875rem;
+}
+
+.invl-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.invl-table-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  .invl-head-icon { font-size: 1.25rem; color: var(--accent); }
+  h2 { margin: 0 0 2px; font-size: 1rem; font-weight: 600; }
+}
+
+.invl-meta {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.76rem;
+}
+
+.invl-filter-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+// ── Pagination ──
+
+.invl-pagination {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.invl-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined { font-size: 1rem; }
+  .btn-label {
+    @media (max-width: 640px) { display: none; }
+  }

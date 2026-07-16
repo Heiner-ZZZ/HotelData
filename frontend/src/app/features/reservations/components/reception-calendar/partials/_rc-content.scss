@@ -1,0 +1,196 @@
+  flex-direction: column;
+  justify-content: center;
+}
+
+.rc-cell-label {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+  border-right: 1px solid var(--app-border);
+  min-width: 140px;
+}
+
+.rc-cell-day {
+  align-items: center;
+  padding: 0.3rem 0.1rem;
+  border-left: 1px solid var(--app-border);
+  min-width: 60px;
+}
+
+.rc-day-name {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-text);
+  line-height: 1;
+}
+
+.rc-day-num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.rc-cell-today {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-soft));
+
+  .rc-day-num {
+    background: var(--accent);
+    color: var(--on-accent);
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.rc-cell-weekend {
+  .rc-day-name { color: color-mix(in srgb, var(--accent) 50%, var(--muted-text)); }
+}
+
+/* ─── Reservation rows ─── */
+
+.rc-row {
+  display: grid;
+  position: relative;
+  min-height: 40px;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
+}
+
+.rc-row .rc-cell-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--app-text);
+  padding: 0.35rem 0.65rem;
+}
+
+.rc-room-num {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rc-room-type {
+  display: block;
+  font-size: 0.6rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-cell-bg {
+  border-left: 1px solid color-mix(in srgb, var(--app-border) 30%, transparent);
+  min-width: 60px;
+}
+
+.rc-cell-bg.rc-cell-today {
+  background: color-mix(in srgb, var(--accent) 2%, transparent);
+}
+
+.rc-cell-bg.rc-cell-weekend {
+  background: color-mix(in srgb, var(--surface-soft) 30%, transparent);
+}
+
+.rc-cell-occupied {
+  background: var(--accent-light);
+}
+
+/* ─── Drag row states ─── */
+
+.rc-row-drag-over {
+  background: var(--accent-light);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.rc-row-drag-src {
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BARS
+   ═══════════════════════════════════════════════════════════════ */
+
+.rc-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  min-width: 50px;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 10px;
+  overflow: hidden;
+  transition: box-shadow 120ms, opacity 120ms;
+
+  /* Rhomboid / parallelogram — diagonal sides ( /   / ) */
+  clip-path: polygon(
+    5% 0%,
+    100% 0%,
+    95% 100%,
+    0% 100%
+  );
+
+  &:hover {
+    z-index: 5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.rc-bar-drag {
+  cursor: grab;
+  &:active { cursor: grabbing; }
+}
+
+.rc-bar-dragging {
+  opacity: 0.35;
+}
+
+.rc-bar-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.rc-bar-times {
+  font-size: 0.55rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.8;
+  line-height: 1;
+}
+
+/* Bar colors — solid, no gradients */
+/* box-shadow: inset replaces border: because clip-path clips border
+   inconsistently on diagonal edges, while inset shadow follows
+   the clip-path boundary correctly on all 4 rhomboid sides. */
+.bar-active {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 50%, transparent);
+  color: var(--success);
+  &:hover { background: color-mix(in srgb, var(--success) 30%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 70%, transparent); }
+}
+
+.bar-upcoming {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--warning) 50%, transparent);
+  color: var(--warning);
+  &:hover { background: color-mix(in srgb, var(--warning) 30%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--warning) 70%, transparent); }
+}
+
+.bar-past {
+  background: color-mix(in srgb, var(--muted-text) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted-text) 30%, transparent);
+  color: var(--muted-text);

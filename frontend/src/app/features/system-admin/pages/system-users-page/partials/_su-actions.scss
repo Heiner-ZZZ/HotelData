@@ -1,0 +1,205 @@
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-date {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.cell-actions {
+  text-align: right;
+}
+
+/* ─── Row States ─────────────────────────── */
+
+tbody tr {
+  transition: background $transition;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 2%, transparent);
+  }
+}
+
+.row-inactive {
+  opacity: 0.55;
+}
+
+/* ─── Buttons ─────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all $transition;
+  border-radius: $radius-sm;
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    min-height: 2rem;
+  }
+
+  &-outline {
+    background: transparent;
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+
+    &:hover:not([disabled]) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  }
+
+  &-danger {
+    background: var(--danger);
+    border: 1px solid var(--danger);
+    color: var(--on-accent);
+
+    &:hover:not([disabled]) {
+      background: color-mix(in srgb, var(--danger) 85%, #000);
+      border-color: color-mix(in srgb, var(--danger) 85%, #000);
+    }
+  }
+
+  &-danger-soft {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted-text);
+    min-width: 2rem;
+    padding: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    .material-symbols-outlined {
+      font-size: 1.1rem;
+    }
+
+    &:hover:not([disabled]) {
+      background: var(--danger-light);
+      border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+      color: var(--danger);
+    }
+  }
+
+  &-icon {
+    min-width: 2rem;
+    padding: 0.35rem;
+  }
+}
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Action Group & Confirm ─────────────── */
+
+.action-group {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.action-hint {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  font-style: italic;
+}
+
+.confirm-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--danger);
+  font-weight: 500;
+}
+
+/* ─── Empty Filter ────────────────────────── */
+
+.empty-filter-row td {
+  padding: 2.5rem 1rem !important;
+}
+
+.empty-filter-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+
+  .material-symbols-outlined {
+    font-size: 2rem;
+    opacity: 0.4;
+  }
+}
+
+/* ─── Table Footer ────────────────────────── */
+
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+}
+
+.footer-count {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+}
+
+/* ─── Responsive ──────────────────────────── */
+
+@media (max-width: 860px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-wrap {
+    max-width: none;
+  }
+
+  .cell-roles {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 640px) {
+  .users-page {
+    gap: 1rem;
+  }
+
+  th,
+  td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
