@@ -26,7 +26,7 @@
   transition: background 120ms, color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -86,7 +86,7 @@
   transition: background 120ms, color 120ms, border-color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -100,7 +100,7 @@
   border-color: color-mix(in srgb, var(--danger) 20%, transparent);
 
   &:hover {
-    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    background: var(--danger-light);
     color: var(--danger);
     border-color: color-mix(in srgb, var(--danger) 30%, transparent);
   }

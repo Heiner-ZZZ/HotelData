@@ -245,7 +245,7 @@
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -296,7 +296,7 @@
 
   &:hover,
   &.selected {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
   }
 }
 
@@ -336,7 +336,7 @@ textarea {
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -348,7 +348,7 @@ input[type="time"] {
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: color-mix(in srgb, var(--surface) 70%, #9ca3af);
+    background: color-mix(in srgb, var(--surface) 70%, var(--gray-400));
     border-style: dashed;
   }
 }
@@ -370,7 +370,7 @@ textarea {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -402,15 +402,15 @@ textarea {
   font-size: 0.85rem;
 
   &.success {
-    background: color-mix(in srgb, #22c55e 10%, transparent);
-    color: #16a34a;
-    border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
   }
 
   &.error {
-    background: color-mix(in srgb, #ef4444 10%, transparent);
-    color: #dc2626;
-    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    color: var(--danger);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
   }
 }
 
@@ -488,7 +488,7 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   border-bottom: 1px solid var(--app-border);
 }
 
@@ -656,8 +656,8 @@ textarea {
   font-size: 0.72rem;
   font-weight: 500;
   white-space: nowrap;
-  background: color-mix(in srgb, #8b5cf6 10%, transparent);
-  color: #7c3aed;
+  background: color-mix(in srgb, var(--purple) 10%, transparent);
+  color: var(--purple);
 
   .material-symbols-outlined {
     font-size: 0.9rem;
@@ -666,13 +666,13 @@ textarea {
   }
 
   &--hotel {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
 
 /* Semantic icon color overrides */
-.icon-hotel-warm { color: #d97706; }
+.icon-hotel-warm { color: var(--warning); }
 .icon-price-green { color: var(--success); }
 .icon-policy-amber { color: var(--warning); }
 

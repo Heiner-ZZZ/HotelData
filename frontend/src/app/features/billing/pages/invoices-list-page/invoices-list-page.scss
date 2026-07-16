@@ -8,7 +8,7 @@
   display: grid;
   gap: 1rem;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 // ── Nav tabs ──
@@ -16,8 +16,8 @@
 .invl-nav {
   display: flex;
   gap: 0.25rem;
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 0.25rem;
   width: fit-content;
@@ -37,18 +37,18 @@
   padding: 0.45rem 0.85rem;
   border-radius: 6px;
   text-decoration: none;
-  color: #6f797d;
+  color: var(--muted-text);
   font-size: 0.82rem;
   font-weight: 500;
   transition: all 120ms;
 
   &.active {
-    background: #006076;
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   &:hover:not(.active) {
-    background: #f2f4f6;
+    background: var(--surface-hover);
   }
 }
 
@@ -70,18 +70,18 @@
   gap: 0.65rem;
   padding: 0.85rem 1rem;
   border-radius: 10px;
-  border: 1px solid #e0e3e5;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
   transition: box-shadow 150ms;
 
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
-  &.issued { --stat-c: #d97706; }
-  &.paid   { --stat-c: #059669; }
-  &.cancelled { --stat-c: #ba1a1a; }
-  &.refunded { --stat-c: #6f797d; }
+  &.issued { --stat-c: var(--warning); }
+  &.paid   { --stat-c: var(--success); }
+  &.cancelled { --stat-c: var(--danger); }
+  &.refunded { --stat-c: var(--muted-text); }
 }
 
 .invl-stat-icon {
@@ -110,13 +110,13 @@
 .invl-stat-value {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #191c1e;
+  color: var(--app-text);
   line-height: 1.2;
 }
 
 .invl-stat-label {
   font-size: 0.68rem;
-  color: #6f797d;
+  color: var(--muted-text);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -155,7 +155,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6f797d;
+  color: var(--muted-text);
   margin-right: 0.15rem;
 }
 
@@ -171,10 +171,10 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.3rem 0.7rem;
-  border: 1px solid #e0e3e5;
+  border: 1px solid var(--app-border);
   border-radius: 100px;
-  background: #ffffff;
-  color: #6f797d;
+  background: var(--surface);
+  color: var(--muted-text);
   font-size: 0.76rem;
   font-weight: 500;
   cursor: pointer;
@@ -185,14 +185,14 @@
   .chip-icon { font-size: 0.85rem; }
 
   &.active {
-    background: #006076;
-    color: #fff;
-    border-color: #006076;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
   }
 
   &:hover:not(.active) {
-    border-color: #006076;
-    color: #006076;
+    border-color: var(--accent);
+    color: var(--accent);
   }
 }
 
@@ -200,8 +200,8 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 0.3rem 0.6rem;
   flex: 1;
@@ -210,53 +210,53 @@
   transition: border-color 150ms;
 
   &:focus-within {
-    border-color: #006076;
-    box-shadow: 0 0 0 3px rgba(0, 96, 118, 0.08);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
 .invl-search-icon {
   font-size: 1rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .invl-search-input {
   border: 0;
   background: transparent;
-  color: #191c1e;
+  color: var(--app-text);
   font-size: 0.8rem;
   font-family: inherit;
   outline: none;
   width: 100%;
 
-  &::placeholder { color: #9aa3a8; }
+  &::placeholder { color: var(--gray-400); }
 }
 
 .invl-date-group {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 0.3rem 0.6rem;
   transition: border-color 150ms;
 
   &:focus-within {
-    border-color: #006076;
-    box-shadow: 0 0 0 3px rgba(0, 96, 118, 0.08);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
 .invl-date-icon {
   font-size: 1rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .invl-date-input {
   border: 0;
   background: transparent;
-  color: #191c1e;
+  color: var(--app-text);
   font-size: 0.78rem;
   font-family: inherit;
   outline: none;
@@ -268,7 +268,7 @@
 }
 
 .invl-date-sep {
-  color: #bec8cd;
+  color: var(--gray-300);
   font-size: 0.8rem;
 }
 
@@ -280,7 +280,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #6f797d;
+  color: var(--muted-text);
   font-size: 0.72rem;
   font-weight: 500;
   cursor: pointer;
@@ -288,9 +288,9 @@
   font-family: inherit;
 
   &:hover {
-    color: #ba1a1a;
-    border-color: rgba(186, 26, 26, 0.2);
-    background: rgba(186, 26, 26, 0.04);
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+    background: color-mix(in srgb, var(--danger) 4%, transparent);
   }
 
   .material-symbols-outlined { font-size: 0.9rem; }
@@ -318,21 +318,21 @@
   align-items: center;
   gap: 0.65rem;
 
-  .invl-head-icon { font-size: 1.25rem; color: #006076; }
+  .invl-head-icon { font-size: 1.25rem; color: var(--accent); }
   h2 { margin: 0 0 2px; font-size: 1rem; font-weight: 600; }
 }
 
 .invl-meta {
   margin: 0;
-  color: #6f797d;
+  color: var(--muted-text);
   font-size: 0.76rem;
 }
 
 .invl-filter-badge {
   display: inline-block;
   padding: 1px 6px;
-  background: rgba(0, 96, 118, 0.08);
-  color: #006076;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
   border-radius: 4px;
   font-weight: 600;
   font-size: 0.7rem;
@@ -350,10 +350,10 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.4rem 0.65rem;
-  border: 1px solid #e0e3e5;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191c1e;
+  background: var(--surface);
+  color: var(--app-text);
   font-size: 0.76rem;
   font-weight: 500;
   cursor: pointer;
@@ -361,8 +361,8 @@
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    border-color: #006076;
-    color: #006076;
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   &:disabled {
@@ -380,7 +380,7 @@
 
 .invl-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e0e3e5;
+  border: 1px solid var(--app-border);
   border-radius: 10px;
 }
 
@@ -397,15 +397,15 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6f797d;
-  background: #f7f9fb;
-  border-bottom: 1px solid #e0e3e5;
+  color: var(--muted-text);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--app-border);
   white-space: nowrap;
 }
 
 .invl-table tbody td {
   padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid #eceef0;
+  border-bottom: 1px solid var(--app-border);
   vertical-align: middle;
 }
 
@@ -422,11 +422,11 @@
   color: inherit;
 
   &:hover {
-    background: rgba(0, 96, 118, 0.03);
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
   }
 
   &:active {
-    background: rgba(0, 96, 118, 0.06);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
   }
 }
 
@@ -450,14 +450,14 @@
 .invl-number {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 0.78rem;
-  color: #006076;
+  color: var(--accent);
   letter-spacing: -0.01em;
 }
 
 .invl-booking-id {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 0.72rem;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .invl-guest-cell {
@@ -467,7 +467,7 @@
 
   .invl-guest-icon {
     font-size: 0.85rem;
-    color: #6f797d;
+    color: var(--muted-text);
   }
 }
 
@@ -477,12 +477,12 @@
   font-size: 0.8rem;
 
   &.paid {
-    color: #059669;
+    color: var(--success);
     font-weight: 500;
   }
 
   &.pending {
-    color: #b8860b;
+    color: var(--warning);
     font-weight: 500;
   }
 }
@@ -492,7 +492,7 @@
 }
 
 .invl-muted {
-  color: #bec8cd;
+  color: var(--gray-300);
 }
 
 // ── Status badge ──
@@ -510,23 +510,23 @@
   .badge-icon { font-size: 0.82rem; }
 
   &.tone-success {
-    background: rgba(16, 185, 129, 0.08);
-    color: #059669;
+    background: var(--success-light);
+    color: var(--success);
   }
 
   &.tone-warning {
-    background: rgba(234, 179, 8, 0.08);
-    color: #b8860b;
+    background: var(--warning-light);
+    color: var(--warning);
   }
 
   &.tone-danger {
-    background: rgba(186, 26, 26, 0.06);
-    color: #ba1a1a;
+    background: var(--danger-light);
+    color: var(--danger);
   }
 
   &.tone-neutral {
-    background: rgba(107, 114, 128, 0.06);
-    color: #6b7280;
+    background: color-mix(in srgb, var(--gray-500) 6%, transparent);
+    color: var(--gray-500);
   }
 }
 
@@ -537,7 +537,7 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.74rem;
-  color: #6f797d;
+  color: var(--muted-text);
   white-space: nowrap;
 
   .date-cell-icon { font-size: 0.78rem; }
@@ -552,14 +552,14 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 6px;
-  color: #bec8cd;
+  color: var(--gray-300);
   text-decoration: none;
   transition: all 120ms;
 
   .material-symbols-outlined { font-size: 1rem; }
 
   &:hover {
-    background: rgba(0, 96, 118, 0.08);
-    color: #006076;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
   }
 }

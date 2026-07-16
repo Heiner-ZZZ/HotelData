@@ -17,7 +17,7 @@
     align-items: center;
     justify-content: space-between;
     font-size: 0.85rem;
-    color: #374151;
+    color: var(--gray-700);
     padding: 0.3rem 0;
   }
 
@@ -25,7 +25,7 @@
     color: var(--muted-text);
 
     .summary-amount {
-      color: #374151;
+      color: var(--gray-700);
     }
   }
 

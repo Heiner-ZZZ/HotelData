@@ -30,7 +30,7 @@
   --icon-wght: 350;
   --icon-opsz: 20;
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
 }
 
 h2,

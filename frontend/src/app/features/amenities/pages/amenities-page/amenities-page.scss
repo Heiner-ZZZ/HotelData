@@ -68,22 +68,22 @@
   }
 
   &.accent {
-    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
   &.success {
-    background: color-mix(in srgb, var(--success) 9%, transparent);
+    background: var(--success-light);
     color: var(--success);
   }
 
   &.warning {
-    background: color-mix(in srgb, var(--warning) 9%, transparent);
+    background: var(--warning-light);
     color: var(--warning);
   }
 
   &.info {
-    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
@@ -245,7 +245,7 @@
   gap: 0.3rem;
   font-size: 0.82rem;
   color: var(--muted-text);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   white-space: nowrap;
@@ -313,10 +313,10 @@
 .btn-primary {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 85%, #000);
+    background: var(--accent-strong);
     box-shadow: 0 4px 12px rgba(20, 99, 255, 0.2);
     transform: translateY(-1px);
   }

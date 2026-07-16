@@ -6,8 +6,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 0.625rem;
   padding: 0.25rem;
   width: 100%;
@@ -20,7 +20,7 @@
   padding: 0.4rem 0.75rem;
   border-radius: 0.375rem;
   text-decoration: none;
-  color: #6f797d;
+  color: var(--muted-text);
   font-size: 0.78rem;
   font-weight: 500;
   transition: all 120ms;
@@ -28,12 +28,12 @@
   white-space: nowrap;
 
   &.active {
-    background: #006076;
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   &:hover:not(.active) {
-    background: #f2f4f6;
+    background: var(--surface-hover);
   }
 }
 

@@ -27,7 +27,7 @@
 }
 
 .data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .data-table tbody tr:last-child td {

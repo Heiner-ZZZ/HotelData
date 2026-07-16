@@ -23,7 +23,7 @@
   transition: all 160ms ease;
 
   &:hover { border-color: color-mix(in srgb, var(--app-border) 50%, var(--accent) 50%); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
-  &.is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 4%, transparent); box-shadow: 0 0 0 1px var(--accent); }
+  &.is-selected { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 1px var(--accent); }
 }
 
 .rate-plan-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }

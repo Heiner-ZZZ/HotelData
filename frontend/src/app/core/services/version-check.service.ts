@@ -1,7 +1,9 @@
 import { inject, Injectable, signal, DestroyRef } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval, startWith, switchMap } from 'rxjs';
+
+import { BYPASS_BASE_URL } from '../api/api-context.tokens';
 
 const VERSION_URL = '/assets/version.json';
 const POLL_INTERVAL_MS = 30_000;
@@ -26,6 +28,7 @@ export class VersionCheckService {
           this.http.get<{ build: string }>(VERSION_URL, {
             headers: { 'Cache-Control': 'no-cache' },
             params: { _t: Date.now() }, // cache-bust query param
+            context: new HttpContext().set(BYPASS_BASE_URL, true),
           }),
         ),
         takeUntilDestroyed(destroyRef),

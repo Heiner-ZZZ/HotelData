@@ -19,12 +19,12 @@
   gap: 6px;
   padding: 8px 14px;
   border: 1.5px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   border-radius: 100px;
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--gray-700);
   white-space: nowrap;
   transition: all 0.2s;
   flex-shrink: 0;
@@ -32,12 +32,12 @@
   &:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
     box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent);
   }

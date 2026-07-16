@@ -6,8 +6,8 @@
   .tabs-bar {
     display: flex;
     gap: 4px;
-    background: #0f1419;
-    border: 1px solid #1e293b;
+    background: var(--surface);
+    border: 1px solid var(--app-border);
     border-radius: 12px;
     padding: 4px;
     margin-bottom: 24px;
@@ -22,7 +22,7 @@
       border: none;
       border-radius: 8px;
       background: transparent;
-      color: #8896a6;
+      color: var(--muted-text);
       font-size: 0.9rem;
       font-weight: 500;
       cursor: pointer;
@@ -33,13 +33,13 @@
       }
 
       &:hover {
-        color: #c8d0da;
+        color: var(--gray-700);
         background: rgba(255, 255, 255, 0.04);
       }
 
       &.active {
-        color: #fff;
-        background: #1c2a40;
+        color: var(--gray-900);
+        background: var(--gray-100);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
       }
     }
@@ -50,8 +50,8 @@
   }
 
   .section {
-    background: #0f1419;
-    border: 1px solid #1e293b;
+    background: var(--surface);
+    border: 1px solid var(--app-border);
     border-radius: 12px;
     padding: 24px;
 
@@ -60,12 +60,12 @@
 
       h3 {
         font-size: 1.15rem;
-        color: #e8edf2;
+        color: var(--app-text);
         margin: 0 0 4px;
       }
 
       .section-desc {
-        color: #6b7a8d;
+        color: var(--gray-500);
         font-size: 0.85rem;
         margin: 0;
       }
@@ -81,28 +81,28 @@
       left: 12px;
       top: 50%;
       transform: translateY(-50%);
-      color: #5f6f87;
+      color: var(--muted-text);
       font-size: 20px;
     }
 
     input {
       width: 100%;
       padding: 10px 12px 10px 40px;
-      background: #0a0e14;
-      border: 1px solid #1e293b;
+      background: var(--gray-50);
+      border: 1px solid var(--app-border);
       border-radius: 8px;
-      color: #e8edf2;
+      color: var(--app-text);
       font-size: 0.9rem;
       outline: none;
       transition: border-color 0.2s;
       box-sizing: border-box;
 
       &:focus {
-        border-color: #1463ff;
+        border-color: var(--accent);
       }
 
       &::placeholder {
-        color: #5f6f87;
+        color: var(--muted-text);
       }
     }
   }
@@ -110,14 +110,14 @@
   .message {
     padding: 8px 16px;
     border-radius: 8px;
-    background: #0a2e14;
-    color: #4ade80;
+    background: var(--success-light);
+    color: var(--success);
     font-size: 0.85rem;
     margin-bottom: 12px;
 
     &.error {
-      background: #2e0a0a;
-      color: #f87171;
+      background: var(--danger-light);
+      color: var(--danger);
     }
   }
 
@@ -133,9 +133,9 @@
     thead th {
       text-align: left;
       padding: 10px 12px;
-      color: #6b7a8d;
+      color: var(--gray-500);
       font-weight: 600;
-      border-bottom: 1px solid #1e293b;
+      border-bottom: 1px solid var(--app-border);
       white-space: nowrap;
     }
 
@@ -148,19 +148,19 @@
 
       td {
         padding: 10px 12px;
-        color: #c8d0da;
-        border-bottom: 1px solid #141c27;
+        color: var(--gray-700);
+        border-bottom: 1px solid var(--gray-200);
         vertical-align: middle;
 
         &.cell-id {
-          color: #6b7a8d;
+          color: var(--gray-500);
           font-family: 'SF Mono', 'Fira Code', monospace;
           font-size: 0.8rem;
         }
 
         &.cell-name {
           font-weight: 500;
-          color: #e8edf2;
+          color: var(--app-text);
         }
 
         &.cell-actions {
@@ -174,15 +174,15 @@
     .edit-input {
       width: 120px;
       padding: 6px 8px;
-      background: #0a0e14;
-      border: 1px solid #1e293b;
+      background: var(--gray-50);
+      border: 1px solid var(--app-border);
       border-radius: 6px;
-      color: #e8edf2;
+      color: var(--app-text);
       font-size: 0.85rem;
       outline: none;
 
       &:focus {
-        border-color: #1463ff;
+        border-color: var(--accent);
       }
 
       &.small {
@@ -200,7 +200,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #6b7a8d;
+    color: var(--gray-500);
     cursor: pointer;
     transition: all 0.15s;
 
@@ -210,23 +210,23 @@
 
     &:hover {
       background: rgba(255, 255, 255, 0.06);
-      color: #c8d0da;
+      color: var(--gray-700);
     }
   }
 
   .btn-save {
-    color: #4ade80;
-    &:hover { background: rgba(74, 222, 128, 0.1); }
+    color: var(--success);
+    &:hover { background: var(--success-light); }
   }
 
   .btn-cancel {
-    color: #f87171;
-    &:hover { background: rgba(248, 113, 113, 0.1); }
+    color: var(--danger);
+    &:hover { background: var(--danger-light); }
   }
 
   .btn-delete {
-    color: #f87171;
-    &:hover { background: rgba(248, 113, 113, 0.1); }
+    color: var(--danger);
+    &:hover { background: var(--danger-light); }
   }
 
   .btn-primary {
@@ -234,8 +234,8 @@
     align-items: center;
     gap: 6px;
     padding: 8px 20px;
-    background: #1463ff;
-    color: #fff;
+    background: var(--accent);
+    color: var(--gray-900);
     border: none;
     border-radius: 8px;
     font-size: 0.85rem;
@@ -243,10 +243,10 @@
     cursor: pointer;
     transition: background 0.2s;
 
-    &:hover { background: #0f52d6; }
+    &:hover { background: var(--accent-strong); }
     &:disabled {
-      background: #1c2a40;
-      color: #5f6f87;
+      background: var(--gray-100);
+      color: var(--muted-text);
       cursor: not-allowed;
     }
   }
@@ -260,14 +260,14 @@
 
     .form-input {
       padding: 8px 12px;
-      background: #0a0e14;
-      border: 1px solid #1e293b;
+      background: var(--gray-50);
+      border: 1px solid var(--app-border);
       border-radius: 8px;
-      color: #e8edf2;
+      color: var(--app-text);
       font-size: 0.85rem;
       outline: none;
 
-      &:focus { border-color: #1463ff; }
+      &:focus { border-color: var(--accent); }
 
       &.small { width: 80px; }
     }
@@ -280,7 +280,7 @@
     gap: 4px;
     margin-top: 16px;
     padding-top: 12px;
-    border-top: 1px solid #141c27;
+    border-top: 1px solid var(--gray-200);
 
     button {
       width: 32px;
@@ -291,22 +291,22 @@
       border: none;
       border-radius: 6px;
       background: transparent;
-      color: #6b7a8d;
+      color: var(--gray-500);
       cursor: pointer;
       font-size: 0.85rem;
       transition: all 0.15s;
 
       .material-symbols-outlined { font-size: 18px; }
 
-      &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #c8d0da; }
-      &.active { background: #1463ff; color: #fff; }
+      &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: var(--gray-700); }
+      &.active { background: var(--accent); color: var(--gray-900); }
       &:disabled { opacity: 0.3; cursor: not-allowed; }
     }
   }
 
   .table-footer {
     text-align: center;
-    color: #5f6f87;
+    color: var(--muted-text);
     font-size: 0.8rem;
     margin-top: 8px;
   }
@@ -319,13 +319,13 @@
 
       label {
         display: block;
-        color: #e8edf2;
+        color: var(--app-text);
         font-weight: 500;
         margin-bottom: 4px;
       }
 
       .field-desc {
-        color: #6b7a8d;
+        color: var(--gray-500);
         font-size: 0.8rem;
         margin: 0 0 8px;
       }
@@ -333,15 +333,15 @@
       .form-input {
         width: 100%;
         padding: 10px 12px;
-        background: #0a0e14;
-        border: 1px solid #1e293b;
+        background: var(--gray-50);
+        border: 1px solid var(--app-border);
         border-radius: 8px;
-        color: #e8edf2;
+        color: var(--app-text);
         font-size: 0.9rem;
         outline: none;
         box-sizing: border-box;
 
-        &:focus { border-color: #1463ff; }
+        &:focus { border-color: var(--accent); }
       }
     }
   }
@@ -349,11 +349,11 @@
   .current-values {
     margin-top: 24px;
     padding: 16px;
-    background: #0a0e14;
+    background: var(--gray-50);
     border-radius: 8px;
 
     h4 {
-      color: #8896a6;
+      color: var(--muted-text);
       font-size: 0.85rem;
       margin: 0 0 12px;
       text-transform: uppercase;
@@ -364,30 +364,30 @@
       display: flex;
       justify-content: space-between;
       padding: 6px 0;
-      color: #c8d0da;
+      color: var(--gray-700);
       font-size: 0.85rem;
 
       &.muted {
-        color: #6b7a8d;
+        color: var(--gray-500);
         font-size: 0.8rem;
       }
 
-      strong { color: #e8edf2; }
+      strong { color: var(--app-text); }
     }
   }
 
   .info-footer {
     margin-top: 20px;
     padding: 12px 16px;
-    background: #0a0e14;
-    border: 1px solid #1e293b;
+    background: var(--gray-50);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
 
     p {
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      color: #6b7a8d;
+      color: var(--gray-500);
       font-size: 0.8rem;
       margin: 0;
 

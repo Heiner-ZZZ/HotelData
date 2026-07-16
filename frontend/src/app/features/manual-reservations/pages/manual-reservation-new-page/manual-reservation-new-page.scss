@@ -59,13 +59,13 @@
 
 .alert-error {
   background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+  color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .alert-success {
   background: rgba(16, 185, 129, 0.08);
-  color: #059669;
+  color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.15);
   align-items: center;
   flex-wrap: wrap;
@@ -136,7 +136,7 @@
 
   &.field-error {
     .input-wrap {
-      border-color: #dc2626;
+      border-color: var(--danger);
     }
     .field-error-msg {
       display: block;
@@ -155,7 +155,7 @@
 .field-error-msg {
   display: none;
   font-size: 0.7rem;
-  color: #dc2626;
+  color: var(--danger);
 }
 
 /* ─── Date trigger (custom calendar picker UX) ─── */
@@ -202,7 +202,7 @@
 .date-trigger-placeholder {
   flex: 1;
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: var(--gray-400);
 }
 
 .date-trigger-chevron {
@@ -266,7 +266,7 @@
     min-width: 0;
 
     &::placeholder {
-      color: #9ca3af;
+      color: var(--gray-400);
     }
   }
 
@@ -304,7 +304,7 @@ select option {
   gap: 0.4rem;
   padding: 0.35rem 0.75rem;
   border-radius: 100px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   font-size: 0.82rem;
   justify-self: start;
@@ -378,7 +378,7 @@ select option {
   }
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -411,8 +411,8 @@ select option {
   padding: 0.55rem 1.25rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;

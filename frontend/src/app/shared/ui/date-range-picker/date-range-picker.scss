@@ -106,7 +106,7 @@
   transition: background 0.12s;
 
   &:hover {
-    background: var(--surface-soft, #f0f0f0);
+    background: var(--surface-soft, var(--gray-100));
     color: var(--app-text);
   }
 
@@ -189,7 +189,7 @@
   &.dp-start,
   &.dp-end {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 800;
     z-index: 1;
   }
@@ -203,7 +203,7 @@
   }
 
   &.dp-drag-preview {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-radius: 0;
     font-weight: 500;
@@ -213,7 +213,7 @@
   /* Same date for start and end */
   &.dp-same {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 800;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
   }
@@ -278,8 +278,8 @@
 }
 
 .dp-badge-end {
-  background: color-mix(in srgb, #16a34a 14%, transparent);
-  color: #16a34a;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
 }
 
 .dp-hint {
@@ -293,7 +293,7 @@
   border: none;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.75rem;
   font-weight: 600;
   font-family: inherit;

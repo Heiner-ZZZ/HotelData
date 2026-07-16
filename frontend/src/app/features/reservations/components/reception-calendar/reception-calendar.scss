@@ -87,7 +87,7 @@
   transition: background 120ms, color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -121,7 +121,7 @@
 }
 
 .rc-toast-success {
-  background: color-mix(in srgb, var(--success) 8%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
@@ -162,7 +162,7 @@
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   border: 1px dashed var(--accent);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
   font-size: 0.75rem;
   color: var(--accent);
   font-weight: 500;
@@ -236,7 +236,7 @@
 
   .rc-day-num {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     width: 22px;
     height: 22px;
     display: flex;
@@ -296,13 +296,13 @@
 }
 
 .rc-cell-occupied {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 /* ─── Drag row states ─── */
 
 .rc-row-drag-over {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
@@ -483,7 +483,7 @@
   flex-shrink: 0;
   transition: background 120ms;
 
-  &:hover { background: var(--surface-soft, #f1f5f9); }
+  &:hover { background: var(--surface-soft, var(--gray-100)); }
   .material-symbols-outlined { font-size: 1rem; }
 }
 
@@ -564,7 +564,7 @@
 
 .rc-btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
   &:hover { opacity: 0.9; }
 }

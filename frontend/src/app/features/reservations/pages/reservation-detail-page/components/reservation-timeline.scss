@@ -45,7 +45,7 @@
   gap: 5px;
   padding: 7px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -54,7 +54,7 @@
   transition: background 0.15s;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 85%, black);
+    background: var(--accent-strong);
   }
 }
 
@@ -175,7 +175,7 @@
 .btn-save-edit {
   padding: 8px 18px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -183,7 +183,7 @@
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 85%, black);
+    background: var(--accent-strong);
   }
 
   &:disabled {
@@ -245,7 +245,7 @@ textarea.form-input {
   gap: 5px;
   padding: 9px 20px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -253,7 +253,7 @@ textarea.form-input {
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 85%, black);
+    background: var(--accent-strong);
   }
 
   &:disabled {

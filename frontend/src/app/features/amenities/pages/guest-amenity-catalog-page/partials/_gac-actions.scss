@@ -18,7 +18,7 @@
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     transform: translateY(-1px);
   }
 
@@ -49,14 +49,14 @@
   width: 30px;
   height: 30px;
   border: 1.5px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
-  color: var(--text-1);
+  color: var(--app-text);
 
   &:hover:not(:disabled) {
-    background: var(--surface-2);
+    background: var(--gray-100);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -85,8 +85,8 @@
   gap: 4px;
   font-size: 0.78rem;
   padding: 5px 12px;
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
-  color: #991b1b;
+  background: linear-gradient(135deg, var(--danger-light), color-mix(in srgb, var(--danger-light) 85%, var(--danger)));
+  color: var(--danger-strong);
   border-radius: 8px;
   font-weight: 600;
   white-space: nowrap;

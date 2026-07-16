@@ -14,7 +14,7 @@
   padding: 0 14px;
   border-radius: 12px;
   border: 1.5px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus-within {
@@ -24,7 +24,7 @@
 
   .search-icon {
     font-size: 20px;
-    color: var(--text-3);
+    color: var(--muted-text);
   }
 
   .search-input {
@@ -33,11 +33,11 @@
     background: transparent;
     padding: 10px 0;
     font-size: 0.95rem;
-    color: var(--text-1);
+    color: var(--app-text);
     outline: none;
 
     &::placeholder {
-      color: var(--text-3);
+      color: var(--muted-text);
     }
   }
 
@@ -48,14 +48,14 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--text-3);
+    color: var(--muted-text);
     padding: 4px;
     border-radius: 6px;
     transition: all 0.15s;
 
     &:hover {
-      background: var(--surface-2);
-      color: var(--text-1);
+      background: var(--gray-100);
+      color: var(--app-text);
     }
 
     .material-symbols-outlined {
@@ -70,12 +70,12 @@
   gap: 6px;
   padding: 9px 16px;
   border: 1.5px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   border-radius: 12px;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--gray-700);
   white-space: nowrap;
   transition: all 0.2s;
   flex-shrink: 0;
@@ -87,7 +87,7 @@
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
     box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent);
   }

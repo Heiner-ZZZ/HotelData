@@ -12,7 +12,7 @@
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
-  color: var(--text-primary, #1e293b);
+  color: var(--app-text);
   transition: background 160ms ease;
 
   &:hover {
@@ -32,8 +32,8 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--danger, #e53935);
-  color: #fff;
+  background: var(--danger, var(--danger));
+  color: var(--on-accent);
   font-size: 0.62rem;
   font-weight: 700;
   display: grid;
@@ -55,7 +55,7 @@
   width: 360px;
   max-width: calc(100vw - 32px);
   background: var(--surface, #fff);
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, var(--gray-200));
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   z-index: 100;
@@ -73,7 +73,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, var(--gray-200));
   font-weight: 600;
   font-size: 0.88rem;
 }
@@ -107,7 +107,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 2rem 1rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
   font-size: 0.82rem;
 }
 
@@ -131,7 +131,7 @@
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background 120ms ease;
-  border-bottom: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 50%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border, var(--gray-200)) 50%, transparent);
 
   &:last-child {
     border-bottom: none;
@@ -173,17 +173,17 @@
 .nb-item-title {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-primary, #1e293b);
+  color: var(--app-text);
 }
 
 .nb-item-meta {
   font-size: 0.72rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
 }
 
 .nb-item-time {
   font-size: 0.68rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
   opacity: 0.75;
 }
 
@@ -193,7 +193,7 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.7rem 1rem;
-  border-top: 1px solid var(--border, #e5e7eb);
+  border-top: 1px solid var(--border, var(--gray-200));
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 600;

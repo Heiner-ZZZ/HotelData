@@ -16,7 +16,7 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.75rem 1.25rem;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, var(--gray-200));
   border-radius: 12px;
   background: var(--surface, #fff);
   min-width: 100px;
@@ -24,18 +24,18 @@
 
 .notif-stat-unread {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .notif-stat-val {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  color: var(--app-text);
 }
 
 .notif-stat-lbl {
   font-size: 0.72rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -51,7 +51,7 @@
   display: flex;
   gap: 0.85rem;
   padding: 1rem;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, var(--gray-200));
   border-radius: 12px;
   background: var(--surface, #fff);
   transition: box-shadow 160ms ease;
@@ -100,12 +100,12 @@
 .notif-card-title {
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text-primary, #1e293b);
+  color: var(--app-text);
 }
 
 .notif-card-time {
   font-size: 0.7rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
   white-space: nowrap;
 }
 
@@ -152,10 +152,10 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.45rem 0.85rem;
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border, var(--gray-200));
   border-radius: 8px;
   background: var(--surface, #fff);
-  color: var(--text-primary, #1e293b);
+  color: var(--app-text);
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
@@ -179,6 +179,6 @@
 
 .notif-page-info {
   font-size: 0.8rem;
-  color: var(--muted-text, #6b7280);
+  color: var(--muted-text, var(--gray-500));
 }
 

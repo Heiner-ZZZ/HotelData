@@ -66,7 +66,7 @@
   border: none;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 1rem;
   font-weight: 700;
   padding: 0 1.35rem;
@@ -74,5 +74,5 @@
   transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
-.planner-cta:hover { background: color-mix(in srgb, var(--accent) 85%, black); transform: translateY(-1px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent); }
+.planner-cta:hover { background: var(--accent-strong); transform: translateY(-1px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent); }
 .planner-meta { display: flex; flex-wrap: wrap; gap: 0.65rem; }

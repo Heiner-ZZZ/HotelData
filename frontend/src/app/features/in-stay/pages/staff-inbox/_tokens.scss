@@ -1,28 +1,28 @@
 /* ── Staff Inbox Design Tokens ───────────────────────────── */
 
 // Colors
-$si-accent: #006076;
+$si-accent: var(--accent);
 $si-accent-light: #e0f0f4;
-$si-surface: #ffffff;
+$si-surface: var(--surface);
 $si-surface-bg: #f5f6f7;
-$si-surface-soft: #f2f4f6;
-$si-text: #191c1e;
-$si-text-secondary: #6f797d;
-$si-border: #e0e3e5;
+$si-surface-soft: var(--surface-hover);
+$si-text: var(--app-text);
+$si-text-secondary: var(--muted-text);
+$si-border: var(--app-border);
 
 // Semantic colors
-$status-pending-bg: #fef3c7;
-$status-pending-text: #92400e;
-$status-in-progress-bg: #dbeafe;
-$status-in-progress-text: #1e40af;
-$status-completed-bg: #dcfce7;
-$status-completed-text: #166534;
-$status-cancelled-bg: #fee2e2;
-$status-cancelled-text: #991b1b;
+$status-pending-bg: var(--warning-light);
+$status-pending-text: var(--warning-strong);
+$status-in-progress-bg: var(--accent-light);
+$status-in-progress-text: var(--accent-strong);
+$status-completed-bg: var(--success-light);
+$status-completed-text: var(--success-strong);
+$status-cancelled-bg: var(--danger-light);
+$status-cancelled-text: var(--danger-strong);
 
-$online-green: #16a34a;
-$balance-positive: #ba1a1a;
-$balance-zero: #16a34a;
+$online-green: var(--success);
+$balance-positive: var(--danger);
+$balance-zero: var(--success);
 
 // Spacing
 $si-radius: 12px;

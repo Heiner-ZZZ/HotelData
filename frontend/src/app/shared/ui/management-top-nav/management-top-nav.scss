@@ -37,7 +37,7 @@
 
   &:hover {
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 }
 
@@ -61,7 +61,7 @@
   margin-left: 0.5rem;
   padding: 0.25rem 0.65rem;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
   font-size: 0.78rem;
   font-weight: 600;
@@ -104,7 +104,7 @@
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -134,8 +134,8 @@
   width: 1.15rem;
   height: 1.15rem;
   border-radius: 999px;
-  background: var(--danger, #d32f2f);
-  color: #fff;
+  background: var(--danger, var(--danger));
+  color: var(--on-accent);
   font-size: 0.6rem;
   font-weight: 700;
   display: flex;
@@ -183,7 +183,7 @@
   transition: background 0.15s;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
   }
 }
 
@@ -205,7 +205,7 @@
   }
 
   &.unread {
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    background: var(--accent-light);
   }
 }
 
@@ -299,7 +299,7 @@
   height: 1.75rem;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;

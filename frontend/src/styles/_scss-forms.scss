@@ -65,7 +65,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -93,9 +93,9 @@
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  background: color-mix(in srgb, #3b82f6 8%, transparent);
-  border: 1px solid color-mix(in srgb, #3b82f6 20%, transparent);
-  color: #3b82f6;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
   font-size: 0.82rem;
   font-weight: 600;
 
@@ -114,12 +114,12 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #3b82f6;
+  color: var(--accent);
   cursor: pointer;
   transition: background 120ms;
 
   &:hover {
-    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
   }
 
   .material-symbols-outlined {

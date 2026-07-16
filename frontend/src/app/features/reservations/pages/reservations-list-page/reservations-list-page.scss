@@ -76,7 +76,7 @@
   transition: background 120ms, color 120ms, border-color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -118,7 +118,7 @@
   font-family: inherit;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -149,7 +149,7 @@
 }
 
 .toast-success {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   color: var(--success);
   border: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
 
@@ -203,7 +203,7 @@
     transition: background 0.12s;
 
     &:hover:not(:disabled) {
-      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      background: var(--accent-light);
       color: var(--accent);
     }
     &:disabled { opacity: 0.3; cursor: default; }
@@ -241,7 +241,7 @@
   border-radius: 8px;
   text-decoration: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .secondary-link {
@@ -300,7 +300,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   white-space: nowrap;
@@ -381,12 +381,12 @@
 }
 
 .badge-warning {
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  background: var(--warning-light);
   color: var(--warning);
 }
 
 .badge-success {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
@@ -396,7 +396,7 @@
 }
 
 .badge-info {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 

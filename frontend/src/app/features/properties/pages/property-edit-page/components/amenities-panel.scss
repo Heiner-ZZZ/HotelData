@@ -9,7 +9,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--app-border);
 
   .card-icon {
     font-size: 1.5rem;
@@ -17,7 +17,7 @@
   }
 
   .icon-star-gold {
-    color: #d97706;
+    color: var(--warning);
   }
 
   h2 {
@@ -28,15 +28,15 @@
 
   p {
     margin: 0;
-    color: var(--text-2, #6b7280);
+    color: var(--gray-700);
     font-size: 0.85rem;
   }
 }
 
 .btn-catalog-toggle {
   margin-left: auto;
-  background: var(--color-primary, #1463ff);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   width: 36px;
@@ -72,13 +72,13 @@
   border: 1px solid rgba(20, 99, 255, 0.15);
   border-radius: 20px;
   font-size: 0.85rem;
-  color: var(--color-primary, #1463ff);
+  color: var(--accent);
 
   .chip-remove {
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--color-primary, #1463ff);
+    color: var(--accent);
     display: flex;
     align-items: center;
     padding: 0;
@@ -92,7 +92,7 @@
 }
 
 .empty-hint {
-  color: var(--text-2, #9ca3af);
+  color: var(--muted-text);
   font-size: 0.9rem;
   margin: 0;
   padding: 8px 0;
@@ -100,7 +100,7 @@
 
 .amenity-catalog-panel {
   margin-top: 16px;
-  background: var(--surface-2, #f9fafb);
+  background: var(--gray-100);
   border-radius: 12px;
   padding: 16px;
   max-height: 400px;
@@ -113,13 +113,13 @@
   .input-wrap {
     display: flex;
     align-items: center;
-    background: #fff;
-    border: 1px solid var(--border-color, #e5e7eb);
+    background: var(--surface);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     padding: 0 12px;
 
     .input-icon {
-      color: var(--text-2, #9ca3af);
+      color: var(--muted-text);
       font-size: 1.2rem;
     }
 
@@ -141,7 +141,7 @@
     display: block;
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-2, #6b7280);
+    color: var(--gray-700);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 8px;
@@ -159,8 +159,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: #fff;
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -173,11 +173,11 @@
 
   &.is-active {
     background: rgba(20, 99, 255, 0.08);
-    border-color: var(--color-primary, #1463ff);
-    color: var(--color-primary, #1463ff);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   &:hover {
-    border-color: var(--color-primary, #1463ff);
+    border-color: var(--accent);
   }
 }

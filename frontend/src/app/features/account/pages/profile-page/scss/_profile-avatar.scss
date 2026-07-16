@@ -36,7 +36,7 @@
     height: 100%;
     .material-symbols-outlined {
       font-size: 2.4rem;
-      color: #6366f1;
+      color: var(--indigo);
       --icon-FILL: 1;
       --icon-wght: 250;
     }
@@ -62,14 +62,14 @@
   align-items: center;
   gap: 4px;
   padding: 0.9rem 1rem;
-  border: 2px dashed var(--app-border, #d1d5db);
+  border: 2px dashed var(--app-border, var(--gray-300));
   border-radius: $radius-lg;
   background: rgba(20, 99, 255, 0.03);
   cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease;
   text-align: center;
 
-  &:hover { border-color: $accent; background: rgba(20, 99, 255, 0.06); }
+  &:hover { border-color: $accent; background: color-mix(in srgb, var(--accent) 6%, transparent); }
   &.is-dragover { border-color: $accent; background: rgba(20, 99, 255, 0.1); box-shadow: 0 0 0 4px rgba(20, 99, 255, 0.12); }
   &.is-uploading { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 
@@ -77,7 +77,7 @@
   .upload-icon { font-size: 1.6rem; color: $accent; font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   strong { font-size: 0.82rem; color: $accent; }
   .upload-hint { font-size: 0.72rem; color: var(--muted-text, $muted); line-height: 1.3; }
-  .upload-meta { font-size: 0.65rem; color: #9ca3af; }
+  .upload-meta { font-size: 0.65rem; color: var(--gray-400); }
 }
 
 .avatar-or-url { display: flex; gap: 0.85rem; align-items: center; }

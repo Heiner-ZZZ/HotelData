@@ -1,9 +1,9 @@
 .btn-rooms {
-  border: 1px solid #8b5cf6;
-  background: #8b5cf6;
+  border: 1px solid var(--purple);
+  background: var(--purple);
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, #8b5cf6 85%, black);
+    background: color-mix(in srgb, var(--purple) 85%, black);
   }
 }
 
@@ -54,13 +54,13 @@
     }
 
     .badge-required {
-      background: color-mix(in srgb, #8b5cf6 8%, transparent);
-      color: #8b5cf6;
-      border: 1px solid color-mix(in srgb, #8b5cf6 15%, transparent);
+      background: color-mix(in srgb, var(--purple) 8%, transparent);
+      color: var(--purple);
+      border: 1px solid color-mix(in srgb, var(--purple) 15%, transparent);
     }
 
     .badge-selected {
-      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      background: var(--accent-light);
       color: var(--accent);
       border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     }
@@ -90,7 +90,7 @@
 
       &.is-selected {
         border-color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 4%, transparent);
+        background: var(--accent-light);
       }
 
       &.is-assigned {
@@ -131,7 +131,7 @@
         font-size: 0.72rem;
         padding: 2px 8px;
         border-radius: 4px;
-        background: color-mix(in srgb, var(--success) 12%, transparent);
+        background: var(--success-light);
         color: var(--success);
         font-weight: 600;
       }
@@ -144,7 +144,7 @@
 
     .material-symbols-outlined {
       font-size: 40px;
-      color: #5f6f87;
+      color: var(--muted-text);
       margin-bottom: 8px;
     }
 
@@ -155,7 +155,7 @@
     }
 
     .hint {
-      color: #5f6f87;
+      color: var(--muted-text);
       font-size: 0.8rem;
     }
   }

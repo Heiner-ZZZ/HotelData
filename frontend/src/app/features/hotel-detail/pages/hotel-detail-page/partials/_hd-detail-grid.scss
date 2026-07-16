@@ -19,14 +19,14 @@
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--on-surface, #191c1e);
+  color: var(--on-surface, var(--app-text));
   margin: 0 0 16px;
 }
 
 .section-text {
   font-size: 16px;
   line-height: 1.7;
-  color: var(--on-surface-variant, #3f484c);
+  color: var(--on-surface-variant, var(--gray-700));
   max-width: 720px;
   margin: 0;
 }

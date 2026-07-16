@@ -87,7 +87,7 @@
 }
 
 .btn-secondary:hover {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border-color: var(--accent);
 }
 
@@ -106,7 +106,7 @@
 }
 
 .btn-icon-edit:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -223,7 +223,7 @@
   border: none;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   transition: background 120ms;
 
@@ -244,7 +244,7 @@
   border: none;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -252,7 +252,7 @@
   white-space: nowrap;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 80%, black);
+    background: var(--accent-strong);
   }
 
   &:disabled {

@@ -68,7 +68,7 @@
   .gp-comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 
   .gp-wifi-card .gp-wifi-row { display: flex; gap: 0.4rem; font-size: 0.85rem; margin-top: 0.15rem; .gp-label { color: t.$gp-text-secondary; flex-shrink: 0; } }
-  .gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: #f0f0f0; padding: 0.05rem 0.4rem; border-radius: 4px; }
+  .gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: var(--gray-100); padding: 0.05rem 0.4rem; border-radius: 4px; }
 
   .gp-comp-section-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: t.$gp-text-secondary; margin-top: 0.5rem; .material-symbols-outlined { font-size: 1.1rem; } }
   .gp-policies-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -114,7 +114,7 @@
 .gp-comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 
 .gp-wifi-card .gp-wifi-row { display: flex; gap: 0.4rem; font-size: 0.85rem; margin-top: 0.15rem; .gp-label { color: t.$gp-text-secondary; flex-shrink: 0; } }
-.gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: #f0f0f0; padding: 0.05rem 0.4rem; border-radius: 4px; }
+.gp-wifi-pwd { font-family: 'Courier New', monospace; letter-spacing: 0.05em; background: var(--gray-100); padding: 0.05rem 0.4rem; border-radius: 4px; }
 
 .gp-comp-section-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: t.$gp-text-secondary; margin-top: 0.5rem; .material-symbols-outlined { font-size: 1.1rem; } }
 .gp-policies-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -146,7 +146,7 @@
 
 .gp-chat-msg { display: flex;
   &.guest { justify-content: flex-end; .gp-msg-bubble { background: t.$gp-accent; color: white; border-radius: 12px 12px 4px 12px; } }
-  &.staff { justify-content: flex-start; .gp-msg-bubble { background: #f0f0f0; color: t.$gp-text; border-radius: 12px 12px 12px 4px; } }
+  &.staff { justify-content: flex-start; .gp-msg-bubble { background: var(--gray-100); color: t.$gp-text; border-radius: 12px 12px 12px 4px; } }
 }
 
 .gp-msg-bubble { max-width: 80%; padding: 0.6rem 0.8rem; word-wrap: break-word; }
@@ -164,7 +164,7 @@
   background: t.$gp-accent; color: white;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: background 0.2s;
-  &:hover:not(:disabled) { background: #004d5e; }
+  &:hover:not(:disabled) { background: var(--accent-strong); }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
   .material-symbols-outlined { font-size: 1.15rem; }
 }

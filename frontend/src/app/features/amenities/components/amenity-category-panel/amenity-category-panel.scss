@@ -31,7 +31,7 @@
   .category-icon {
     font-size: 1.4rem;
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     padding: 6px;
     border-radius: 10px;
     --icon-wght: 450;
@@ -117,7 +117,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     transform: translateY(-1px);
   }
@@ -127,7 +127,7 @@
   }
 
   &.is-checked {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
@@ -194,17 +194,17 @@
 
     &.paid {
       background: rgba(251, 191, 36, 0.15);
-      color: #f59e0b;
+      color: var(--warning);
     }
 
     &.included {
       background: rgba(74, 222, 128, 0.1);
-      color: #4ade80;
+      color: var(--success);
     }
 
     &.paid-off {
       background: rgba(251, 191, 36, 0.08);
-      color: #f59e0b;
+      color: var(--warning);
     }
   }
 
@@ -230,7 +230,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #f59e0b;
+    color: var(--warning);
     font-size: 0.65rem;
     font-weight: 700;
     font-family: inherit;

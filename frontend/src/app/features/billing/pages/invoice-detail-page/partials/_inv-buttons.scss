@@ -29,7 +29,7 @@
   border-color: var(--app-border);
 
   &:hover:not(:disabled) {
-    background: #f2f4f6;
+    background: var(--surface-hover);
     border-color: var(--accent);
   }
 }
@@ -40,7 +40,7 @@
   border-color: var(--accent);
 
   &:hover:not(:disabled) {
-    background: #004e60;
+    background: var(--accent-strong);
   }
 }
 

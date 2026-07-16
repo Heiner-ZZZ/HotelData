@@ -24,10 +24,10 @@
   align-items: center;
   padding: 12px 0 10px;
   font-size: 0.85rem;
-  color: var(--text-2);
+  color: var(--gray-700);
 
   strong {
-    color: var(--text-1);
+    color: var(--app-text);
     font-size: 0.9rem;
   }
 }
@@ -57,7 +57,7 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--gray-100);
   font-size: 0.82rem;
 
   &.is-free {
@@ -82,13 +82,13 @@
 
 .cart-item-price {
   font-size: 0.75rem;
-  color: var(--text-3);
+  color: var(--muted-text);
 }
 
 .cart-item-free-badge {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--success);
 }
 
 .cart-item-qty-controls {
@@ -105,15 +105,15 @@
   width: 26px;
   height: 26px;
   border: 1px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   border-radius: 6px;
   cursor: pointer;
-  color: var(--text-2);
+  color: var(--gray-700);
   transition: all 0.12s;
 
   &:hover:not(:disabled) {
     background: var(--surface-3);
-    color: var(--text-1);
+    color: var(--app-text);
     border-color: var(--accent);
   }
 
@@ -135,8 +135,8 @@
   padding: 3px 0;
   font-size: 0.82rem;
   font-weight: 600;
-  background: var(--surface-1);
-  color: var(--text-1);
+  background: var(--surface);
+  color: var(--app-text);
   outline: none;
 
   &:focus {
@@ -169,7 +169,7 @@
   border-top: 1px solid var(--border);
   margin-top: 8px;
   font-size: 0.9rem;
-  color: var(--text-2);
+  color: var(--gray-700);
 
   strong {
     font-size: 1.1rem;
@@ -183,7 +183,7 @@
   gap: 4px;
   padding: 4px 0;
   font-size: 0.78rem;
-  color: #16a34a;
+  color: var(--success);
 
   .material-symbols-outlined {
     font-size: 14px;

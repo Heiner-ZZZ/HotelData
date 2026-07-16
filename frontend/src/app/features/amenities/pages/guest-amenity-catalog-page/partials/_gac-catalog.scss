@@ -10,7 +10,7 @@
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   transition: box-shadow 0.3s;
 
   &:hover {
@@ -37,7 +37,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--text-1);
+  color: var(--app-text);
   font-size: 1rem;
   text-align: left;
   transition: background 0.2s;
@@ -73,8 +73,8 @@
 .cat-count {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--text-3);
-  background: var(--surface-2);
+  color: var(--muted-text);
+  background: var(--gray-100);
   padding: 2px 10px;
   border-radius: 100px;
   min-width: 24px;
@@ -83,7 +83,7 @@
 
 .cat-arrow {
   font-size: 20px;
-  color: var(--text-3);
+  color: var(--muted-text);
   transition: transform 0.3s ease;
 }
 

@@ -38,7 +38,7 @@
   --icon-wght: 350;
   --icon-opsz: 20;
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
 }
 
 strong {
@@ -60,13 +60,13 @@ p {
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
   color: var(--success);
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   border: 1px solid color-mix(in srgb, var(--success) 18%, transparent);
 }
 
 .trend.is-down {
   color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   border-color: color-mix(in srgb, var(--danger) 18%, transparent);
 }
 

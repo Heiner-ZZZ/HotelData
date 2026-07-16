@@ -74,7 +74,7 @@ textarea {
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -256,8 +256,8 @@ select option {
 }
 
 .modal-btn-danger {
-  background: #dc2626;
-  color: #fff;
+  background: var(--danger);
+  color: var(--on-accent);
   &:hover {
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
   }
@@ -269,7 +269,7 @@ select option {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 8px;
   font-size: 0.78rem;
@@ -291,7 +291,7 @@ select option {
 
   &.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
     &:hover {
       opacity: 0.9;
@@ -315,7 +315,7 @@ select option {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.75rem;
-  color: #dc2626;
+  color: var(--danger);
 }
 
 /* ── Amenities Checkbox Fieldset ── */
@@ -383,7 +383,7 @@ select option {
   font-size: 0.82rem;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
   }
 
   input[type="checkbox"] {

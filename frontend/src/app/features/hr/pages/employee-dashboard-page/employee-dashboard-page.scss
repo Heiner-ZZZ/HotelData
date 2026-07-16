@@ -5,24 +5,21 @@
 
 /* ── Design Tokens ── */
 .portal-shell {
-  --portal-bg: #f7f9fb;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
+  --portal-bg: var(--surface-raised);
+  --card-bg: var(--surface);
+  --card-border: var(--gray-200);
   --card-radius: 12px;
   --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
-  --text-primary: #191c1e;
-  --text-secondary: #3f484c;
-  --text-muted: #6f797d;
-  --accent: #006076;
-  --accent-hover: #004e60;
-  --accent-soft: #e8f8ff;
-  --danger: #ba1a1a;
-  --danger-soft: #ffdad6;
-  --success: #166534;
-  --success-soft: #dcfce7;
-  --warning: #844910;
+  --portal-accent: var(--accent);
+  --portal-accent-hover: var(--accent-strong);
+  --portal-accent-soft: #e8f8ff;
+  --danger: var(--danger);
+  --danger-soft: var(--danger-light);
+  --success: var(--success-strong);
+  --success-soft: var(--success-light);
+  --warning: var(--warning-strong);
   --warning-soft: #ffdcc3;
-  --surface-soft: #f2f4f6;
+  --surface-soft: var(--surface-hover);
   --gap: 24px;
   --transition: 150ms ease-out;
 
@@ -44,16 +41,16 @@
 .portal-title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--app-text);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
 .portal-subtitle {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: var(--gray-700);
   margin: 4px 0 0;
-  strong { font-weight: 600; color: var(--text-primary); }
+  strong { font-weight: 600; color: var(--app-text); }
 }
 
 .portal-header-right {
@@ -70,14 +67,14 @@
 .clock-time {
   font-size: 22px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--portal-accent);
   font-family: 'JetBrains Mono', 'Inter', monospace;
   letter-spacing: -0.02em;
 }
 
 .clock-date {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--muted-text);
   text-transform: capitalize;
 }
 
@@ -113,7 +110,7 @@
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--app-text);
   margin: 0;
   display: flex;
   align-items: center;
@@ -122,13 +119,13 @@
 
 .card-title-icon {
   font-size: 20px;
-  color: var(--accent);
+  color: var(--portal-accent);
   --icon-FILL: 1;
 }
 
 .card-meta {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
   white-space: nowrap;
 }
 
@@ -197,7 +194,7 @@
 
 .shift-detail-icon {
   font-size: 18px;
-  color: var(--accent);
+  color: var(--portal-accent);
   margin-top: 1px;
   flex-shrink: 0;
 }
@@ -210,7 +207,7 @@
 .shift-detail-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--muted-text);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -218,7 +215,7 @@
 .shift-detail-value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--app-text);
 }
 
 .shift-notes {
@@ -235,7 +232,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--text-muted);
+  color: var(--muted-text);
   padding: 24px 0;
 
   p { margin: 0; font-size: 13px; }
@@ -271,13 +268,13 @@
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--portal-accent);
+  color: var(--on-accent);
   padding: 12px 20px;
   box-shadow: 0 2px 8px rgba(0,96,118,0.2);
 
   &:hover:not(:disabled) {
-    background: var(--accent-hover);
+    background: var(--portal-accent-hover);
     box-shadow: 0 4px 12px rgba(0,96,118,0.3);
   }
 }
@@ -289,8 +286,8 @@
 
 .btn-outline {
   background: transparent;
-  border: 1px solid var(--text-muted);
-  color: var(--text-primary);
+  border: 1px solid var(--muted-text);
+  color: var(--app-text);
   padding: 10px 16px;
 
   &:hover {
@@ -310,7 +307,7 @@
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--portal-accent);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -350,7 +347,7 @@
 .kpi-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--muted-text);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -358,7 +355,7 @@
 .kpi-value {
   font-size: 26px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--app-text);
 }
 
 .kpi-trend {
@@ -366,7 +363,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
 
   .material-symbols-outlined {
     font-size: 14px;
@@ -410,7 +407,7 @@
   th {
     font-size: 10px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--muted-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid var(--card-border);
@@ -418,7 +415,7 @@
   }
 
   tbody tr {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--gray-100);
     transition: background 0.1s;
 
     &:hover {
@@ -430,7 +427,7 @@
 }
 
 .roster-today {
-  background: var(--accent-soft) !important;
+  background: var(--portal-accent-soft) !important;
 
   &:hover {
     background: #d6f0f8 !important;
@@ -450,12 +447,12 @@
 .day-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--app-text);
 }
 
 .day-num {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
 }
 
 .cell-shift {
@@ -465,7 +462,7 @@
 
 .cell-area {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--gray-700);
 }
 
 .cell-status {
@@ -478,13 +475,13 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--muted-text);
   background: var(--surface-soft);
 }
 
 .status-today {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--portal-accent-soft);
+  color: var(--portal-accent);
 }
 
 .status-active {
@@ -493,7 +490,7 @@
 }
 
 .status-completed {
-  color: var(--text-secondary);
+  color: var(--gray-700);
   background: var(--surface-soft);
 }
 
@@ -515,7 +512,7 @@
   display: block;
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--muted-text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 4px;
@@ -531,13 +528,13 @@
 .payroll-hours {
   font-size: 30px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--app-text);
   line-height: 1;
 }
 
 .payroll-target {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--muted-text);
 }
 
 .progress-bar {
@@ -550,14 +547,14 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #107a95);
+  background: linear-gradient(90deg, var(--portal-accent), var(--teal));
   border-radius: 4px;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .progress-label {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
   margin-top: 6px;
   display: block;
 }
@@ -597,13 +594,13 @@
 }
 
 .dot-check_in {
-  background: #cae3f3;
+  background: var(--accent-light);
   color: #4e6673;
 }
 
 .dot-shift_completed {
-  background: #e0e3e5;
-  color: #3f484c;
+  background: var(--app-border);
+  color: var(--gray-700);
 }
 
 .dot-check_out {
@@ -621,17 +618,17 @@
 .timeline-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--app-text);
 }
 
 .timeline-detail {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
 }
 
 .timeline-time {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-text);
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -643,7 +640,7 @@
   justify-content: center;
   padding: 80px 20px;
   gap: 16px;
-  color: var(--text-muted);
+  color: var(--muted-text);
 
   p { margin: 0; font-size: 14px; }
 }
@@ -652,7 +649,7 @@
   width: 36px;
   height: 36px;
   border: 3px solid var(--surface-soft);
-  border-top-color: var(--accent);
+  border-top-color: var(--portal-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

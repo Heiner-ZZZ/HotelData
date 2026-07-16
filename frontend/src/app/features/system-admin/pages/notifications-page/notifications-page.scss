@@ -53,9 +53,9 @@
   flex-shrink: 0;
 }
 
-.stat-sent .stat-value { color: var(--success, #16a34a); }
-.stat-failed .stat-value { color: var(--warning, #f59e0b); }
-.stat-error .stat-value { color: var(--danger, #dc2626); }
+.stat-sent .stat-value { color: var(--success, var(--success)); }
+.stat-failed .stat-value { color: var(--warning, var(--warning)); }
+.stat-error .stat-value { color: var(--danger, var(--danger)); }
 
 /* ─── Filters bar ─── */
 
@@ -111,21 +111,21 @@
   &:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   &.is-active {
-    border-color: #8b5cf6;
-    color: #fff;
-    background: #8b5cf6;
+    border-color: var(--purple);
+    color: var(--on-accent);
+    background: var(--purple);
 
     &:hover {
-      background: #7c3aed;
-      border-color: #7c3aed;
+      background: var(--purple);
+      border-color: var(--purple);
     }
 
     .material-symbols-outlined {
-      color: #fff;
+      color: var(--on-accent);
     }
   }
 }
@@ -165,7 +165,7 @@
   cursor: pointer;
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
     font-size: 0.72rem;
   }
 
@@ -188,7 +188,7 @@
 .filter-btn-active {
   border-color: var(--accent) !important;
   color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+  background: var(--accent-light) !important;
   gap: 0.25rem;
 
   .material-symbols-outlined {
@@ -217,7 +217,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    background: var(--danger-light);
     color: var(--danger);
   }
 }
@@ -227,7 +227,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.5rem 0.3rem 0.65rem;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   border-radius: 8px;
   font-size: 0.8rem;
@@ -286,7 +286,7 @@
   transition: background 120ms, border-color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -334,7 +334,7 @@
   transition: background 120ms;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -413,13 +413,13 @@ th {
   font-size: 0.75rem;
   font-weight: 600;
   background: rgba(20, 99, 255, 0.08);
-  color: #1463ff;
+  color: var(--accent);
   white-space: nowrap;
 }
 
 .error-msg {
   font-size: 0.78rem;
-  color: var(--danger, #dc2626);
+  color: var(--danger, var(--danger));
   word-break: break-word;
 }
 

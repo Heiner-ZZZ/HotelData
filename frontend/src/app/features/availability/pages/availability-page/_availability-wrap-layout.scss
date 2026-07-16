@@ -168,9 +168,9 @@
 }
 
 .cal-week-room-cell.cell-multi-selected {
-  box-shadow: inset 0 0 0 2px #7c3aed;
-  background: #ede9fe !important;
-  color: #5b21b6 !important;
+  box-shadow: inset 0 0 0 2px var(--purple);
+  background: var(--purple-light) !important;
+  color: var(--purple-strong) !important;
 }
 
 .cal-week-room-cell.cell-highlight {

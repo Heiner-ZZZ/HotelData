@@ -23,7 +23,7 @@
 
   &.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
   }
 }
@@ -106,21 +106,21 @@ button {
 }
 
 .sentiment-positive {
-  background: #e6f7ee;
-  color: #0f8a60;
-  border: 1px solid #b7e0c8;
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success-light);
 }
 
 .sentiment-neutral {
-  background: #fef9e7;
-  color: #b8860b;
-  border: 1px solid #f0d78c;
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid var(--warning-light);
 }
 
 .sentiment-negative {
-  background: #fff2f1;
-  color: #c93d32;
-  border: 1px solid #f5c8c3;
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid var(--danger-light);
 }
 
 .sentiment-icon {

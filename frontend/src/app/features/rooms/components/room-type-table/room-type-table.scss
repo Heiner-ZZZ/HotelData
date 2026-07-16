@@ -54,7 +54,7 @@
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border: 1px dashed color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--muted-text);
 }
@@ -66,7 +66,7 @@
 }
 
 .data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .data-table tbody tr:last-child td {
@@ -119,7 +119,7 @@
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   font-size: 0.82rem;
   font-weight: 600;
@@ -144,12 +144,12 @@
 }
 
 .status-badge.active {
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
 .status-badge.inactive {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
 }
 
@@ -183,7 +183,7 @@
   transition: transform 120ms;
 
   &.count-single {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   }
@@ -195,9 +195,9 @@
   }
 
   &.count-many {
-    background: color-mix(in srgb, #8b5cf6 10%, transparent);
-    color: #8b5cf6;
-    border: 1px solid color-mix(in srgb, #8b5cf6 20%, transparent);
+    background: color-mix(in srgb, var(--purple) 10%, transparent);
+    color: var(--purple);
+    border: 1px solid color-mix(in srgb, var(--purple) 20%, transparent);
   }
 
   &:hover {
@@ -307,7 +307,7 @@
   }
 
   &.has-rooms {
-    background: color-mix(in srgb, var(--success) 10%, transparent);
+    background: var(--success-light);
     color: var(--success);
     border: 1px solid color-mix(in srgb, var(--success) 18%, transparent);
 
@@ -319,7 +319,7 @@
 
   &.no-rooms {
     background: color-mix(in srgb, var(--warning) 8%, transparent);
-    color: #92400e;
+    color: var(--warning-strong);
     border: 1px solid color-mix(in srgb, var(--warning) 18%, transparent);
 
     &:hover {
@@ -363,7 +363,7 @@
 }
 
 .btn-icon-edit:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   transform: translateY(-1px);
 }
 
@@ -381,7 +381,7 @@
 }
 
 .btn-icon-delete:hover {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   transform: translateY(-1px);
 }
 

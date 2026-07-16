@@ -114,7 +114,7 @@
   border: 1px solid var(--app-border);
 
   &.has-selection {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
   }
@@ -207,12 +207,12 @@
   white-space: nowrap;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   &.is-selected {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
   }
 

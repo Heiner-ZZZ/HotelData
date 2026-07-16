@@ -105,7 +105,7 @@
   gap: 0.4rem;
   padding: 0.5rem 0.7rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
   font-size: 0.8rem;
   font-weight: 500;
@@ -140,7 +140,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   font-family: inherit;

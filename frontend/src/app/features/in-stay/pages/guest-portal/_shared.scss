@@ -19,7 +19,7 @@
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
   text-decoration: none;
-  &:hover:not(:disabled) { background: #004d5e; }
+  &:hover:not(:disabled) { background: var(--accent-strong); }
   &:active:not(:disabled) { transform: scale(0.98); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
   .spin { animation: gp-spin-btn 1s linear infinite; }
@@ -77,7 +77,7 @@
   max-width: 480px;
   margin: 1rem auto 0;
   padding: 0.85rem 1.25rem;
-  background: color-mix(in srgb, var(--success) 8%, transparent);
+  background: var(--success-light);
   border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
   border-radius: 10px;
   color: var(--success);
@@ -97,7 +97,7 @@
 /* ── Status badges ── */
 
 .gp-status-pending { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
-.gp-status-in_progress { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.gp-status-in_progress { background: var(--accent-light); color: var(--accent); }
 .gp-status-completed { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
 .gp-status-cancelled { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 

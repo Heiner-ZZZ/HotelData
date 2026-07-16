@@ -16,7 +16,7 @@
   font-family: inherit;
   cursor: pointer;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: 1px solid var(--accent);
   min-height: auto;
 
@@ -27,7 +27,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 85%, black);
+    background: var(--accent-strong);
   }
 }
 
@@ -97,7 +97,7 @@
       .line-item-qty {
         font-size: 0.75rem;
         color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        background: var(--accent-light);
         padding: 1px 6px;
         border-radius: 4px;
       }
@@ -211,7 +211,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 6px;
     font-size: 0.85rem;
@@ -263,7 +263,7 @@
 
     &.is-selected {
       border-color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 4%, transparent);
+      background: var(--accent-light);
     }
 
     .ps-item-info {
@@ -339,18 +339,18 @@
     transition: all 0.1s;
 
     &:hover {
-      background: color-mix(in srgb, var(--accent) 6%, transparent);
+      background: var(--accent-light);
       color: var(--accent);
     }
 
     &.is-active {
       background: var(--accent);
-      color: #fff;
+      color: var(--on-accent);
       font-weight: 600;
 
       .ps-cat-count {
         background: rgba(255,255,255,0.2);
-        color: #fff;
+        color: var(--on-accent);
       }
     }
 
@@ -471,7 +471,7 @@
         }
 
         &.is-selected {
-          background: color-mix(in srgb, var(--accent) 6%, transparent);
+          background: var(--accent-light);
           color: var(--accent);
         }
 

@@ -17,8 +17,8 @@
   padding: 0.55rem 1.25rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -152,7 +152,7 @@ tr:hover {
 
 .booking-code {
   font-size: 0.75rem;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--accent);
@@ -200,8 +200,8 @@ tr:hover {
 }
 
 .badge-success {
-  background: color-mix(in srgb, #059669 10%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
 .cell-action {

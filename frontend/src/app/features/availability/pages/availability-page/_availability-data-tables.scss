@@ -92,7 +92,7 @@ tbody tr:hover {
 }
 
 .badge-success {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
@@ -102,7 +102,7 @@ tbody tr:hover {
 }
 
 .badge-danger {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
 }
 
@@ -116,8 +116,8 @@ tbody tr:hover {
   height: 1.15rem;
   padding: 0 4px;
   border-radius: 10px;
-  background: #7c3aed;
-  color: #fff;
+  background: var(--purple);
+  color: var(--on-accent);
   font-size: 0.6rem;
   font-weight: 700;
   line-height: 1;

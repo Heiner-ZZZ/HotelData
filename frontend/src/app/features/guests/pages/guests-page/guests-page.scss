@@ -45,7 +45,7 @@
   outline: none;
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -56,7 +56,7 @@
   width: 2rem;
   height: 2rem;
   border: none;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
   border-radius: 6px;
   color: var(--accent);
   cursor: pointer;
@@ -104,7 +104,7 @@
     transition: background 120ms ease;
 
     &:hover {
-      background: color-mix(in srgb, var(--accent) 6%, transparent);
+      background: var(--accent-light);
     }
 
     &:last-child td {
@@ -165,7 +165,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
@@ -187,8 +187,8 @@
   white-space: nowrap;
 
   &.active {
-    background: color-mix(in srgb, #10b981 15%, transparent);
-    color: #10b981;
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
   }
 }
 

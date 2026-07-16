@@ -15,10 +15,10 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
-  border: 1px solid var(--border-color, #d0d5dd);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   background: transparent;
-  color: var(--text-color, #1e293b);
+  color: var(--app-text);
   font-size: 0.8125rem;
   font-family: inherit;
   font-weight: 500;
@@ -27,8 +27,8 @@
 }
 
 .layer-btn:hover, .header-action-btn:hover {
-  background: var(--hover-bg, #f1f5f9);
-  border-color: var(--accent, #1463ff);
+  background: var(--hover-bg, var(--gray-100));
+  border-color: var(--accent, var(--accent));
 }
 
 .header-action-btn {
@@ -36,10 +36,10 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
-  border: 1px solid var(--border-color, #d0d5dd);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   background: transparent;
-  color: var(--text-color, #1e293b);
+  color: var(--app-text);
   font-size: 0.8125rem;
   font-family: inherit;
   font-weight: 500;
@@ -51,7 +51,7 @@
 .map-wrapper {
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--app-border);
 }
 
 .map-container {
@@ -74,7 +74,7 @@
 }
 
 .legend-icon { font-size: 1.1rem; }
-.legend-count { color: var(--muted-text, #64748b); font-size: 0.8rem; }
+.legend-count { color: var(--muted-text, var(--gray-500)); font-size: 0.8rem; }
 
 .destinations-panel {
   padding: 1rem;
@@ -107,17 +107,17 @@
 .dest-table th, .dest-table td {
   padding: 0.5rem 0.75rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .dest-table th {
   font-weight: 600;
-  color: var(--muted-text, #64748b);
+  color: var(--muted-text, var(--gray-500));
   white-space: nowrap;
 }
 
 .dest-table tr:hover {
-  background: var(--hover-bg, #f8fafc);
+  background: var(--hover-bg, var(--gray-50));
 }
 
 .coords-cell {
@@ -126,12 +126,12 @@
 }
 
 .no-coords {
-  color: #ef4444;
+  color: var(--danger);
   font-style: italic;
 }
 
 .edit-link {
-  color: var(--accent, #1463ff);
+  color: var(--accent, var(--accent));
   text-decoration: none;
   display: inline-flex;
 }

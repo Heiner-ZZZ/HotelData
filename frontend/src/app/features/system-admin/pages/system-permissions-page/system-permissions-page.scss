@@ -58,17 +58,17 @@ $transition: 0.18s ease;
   }
 
   &--roles {
-    background: color-mix(in srgb, #8b5cf6 10%, transparent);
-    color: #8b5cf6;
+    background: color-mix(in srgb, var(--purple) 10%, transparent);
+    color: var(--purple);
   }
 
   &--perms {
-    background: color-mix(in srgb, #0891b2 10%, transparent);
-    color: #0891b2;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
   }
 
   &--users {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
@@ -149,7 +149,7 @@ $transition: 0.18s ease;
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -165,7 +165,7 @@ $transition: 0.18s ease;
   gap: 0.5rem;
   margin-bottom: 1rem;
   padding: 0.6rem 0.85rem;
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
   border-radius: $radius-sm;
   font-size: 0.8rem;
   color: var(--muted-text);
@@ -233,7 +233,7 @@ $transition: 0.18s ease;
     border-radius: 999px;
     font-size: 0.6rem;
     font-weight: 600;
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     margin-left: 0.3rem;
   }
@@ -317,7 +317,7 @@ $transition: 0.18s ease;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -380,7 +380,7 @@ $transition: 0.18s ease;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   white-space: nowrap;
 }
@@ -443,7 +443,7 @@ $transition: 0.18s ease;
 
   &:hover {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
   }
 }
@@ -502,7 +502,7 @@ $transition: 0.18s ease;
   font-weight: 600;
   font-family: monospace;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -516,8 +516,8 @@ $transition: 0.18s ease;
   font-size: 0.72rem;
   font-weight: 500;
   border-radius: 999px;
-  background: color-mix(in srgb, #8b5cf6 8%, transparent);
-  color: #8b5cf6;
+  background: color-mix(in srgb, var(--purple) 8%, transparent);
+  color: var(--purple);
 }
 
 /* ─── Role Editor ────────────────────────── */
@@ -550,7 +550,7 @@ $transition: 0.18s ease;
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: $radius-sm;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -600,7 +600,7 @@ $transition: 0.18s ease;
   &-primary {
     background: var(--accent);
     border: 1px solid var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     padding: 0.5rem 1.1rem;
     font-size: 0.85rem;
     font-weight: 600;
@@ -610,7 +610,7 @@ $transition: 0.18s ease;
     }
 
     &:hover:not([disabled]) {
-      background: color-mix(in srgb, var(--accent) 85%, #000);
+      background: var(--accent-strong);
     }
   }
 }
@@ -710,7 +710,7 @@ $transition: 0.18s ease;
 
   &.selected {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   input[type='checkbox'] {

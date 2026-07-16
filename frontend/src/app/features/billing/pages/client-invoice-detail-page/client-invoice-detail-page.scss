@@ -40,9 +40,9 @@
 }
 
 .alert-error {
-  background: color-mix(in srgb, #dc2626 8%, transparent);
-  color: #dc2626;
-  border: 1px solid color-mix(in srgb, #dc2626 20%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
 
   .material-symbols-outlined { font-size: 1.1rem; }
 }
@@ -89,7 +89,7 @@
 code {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 0.75rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   padding: 0.1em 0.4em;
   border-radius: 4px;
 }
@@ -234,7 +234,7 @@ code {
   border: 0;
   border-radius: 10px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -376,9 +376,9 @@ code {
   transition: all 120ms;
 
   &:hover:not(:disabled) {
-    border-color: #dc2626;
-    color: #dc2626;
-    background: color-mix(in srgb, #dc2626 5%, transparent);
+    border-color: var(--danger);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 5%, transparent);
   }
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -393,8 +393,8 @@ code {
   padding: 0.7rem 1rem;
   border: 0;
   border-radius: 10px;
-  background: #059669;
-  color: #fff;
+  background: var(--success);
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -419,7 +419,7 @@ code {
 .done-icon {
   .material-symbols-outlined {
     font-size: 3rem;
-    color: #059669;
+    color: var(--success);
     --icon-FILL: 1;
     --icon-wght: 300;
   }
@@ -443,8 +443,8 @@ code {
   gap: 0.4rem;
   padding: 0.75rem 1rem;
   border-radius: 10px;
-  background: color-mix(in srgb, #059669 5%, transparent);
-  border: 1px solid color-mix(in srgb, #059669 20%, transparent);
+  background: color-mix(in srgb, var(--success) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 20%, transparent);
 }
 
 .done-row {
@@ -480,8 +480,8 @@ code {
 .paid-badge-card {
   padding: 1.25rem;
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, #059669 30%, transparent);
-  background: color-mix(in srgb, #059669 5%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 5%, var(--surface));
 }
 
 .paid-badge-content {
@@ -489,13 +489,13 @@ code {
   align-items: flex-start;
   gap: 0.75rem;
 
-  h3 { margin: 0 0 2px; font-size: 0.95rem; color: #059669; }
+  h3 { margin: 0 0 2px; font-size: 0.95rem; color: var(--success); }
   p { margin: 0; font-size: 0.82rem; color: var(--muted-text); }
 }
 
 .paid-icon {
   font-size: 1.75rem;
-  color: #059669;
+  color: var(--success);
   --icon-FILL: 1;
   --icon-wght: 300;
 }

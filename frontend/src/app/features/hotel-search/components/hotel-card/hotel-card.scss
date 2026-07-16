@@ -65,8 +65,8 @@
   transition: background 0.2s, border-color 0.2s;
 
   &.active {
-    background: #fff;
-    border-color: #fff;
+    background: var(--surface);
+    border-color: var(--on-accent);
   }
 
   &:hover:not(.active) {
@@ -150,7 +150,7 @@
 
 .media-chip-accent {
   background: rgba(17, 114, 73, 0.92);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .content-column {
@@ -263,7 +263,7 @@ h2 a {
 
   &.selected {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
@@ -320,7 +320,7 @@ h2 a {
   padding: 0 0.45rem;
   border-radius: 10px;
   background: var(--success);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
   font-size: 0.98rem;
   line-height: 1;
@@ -351,7 +351,7 @@ h2 a {
   padding: 0 1rem;
   border-radius: 10px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
   text-decoration: none;
 }

@@ -1,7 +1,7 @@
 /* ═══ Folio Card ═══ */
 .inv-folio-card {
   border-color: var(--accent);
-  background: linear-gradient(135deg, #fafcff 0%, #f2f8fc 100%);
+  background: linear-gradient(135deg, var(--surface-raised) 0%, #f2f8fc 100%);
 }
 
 .inv-folio-card-header { display: flex; align-items: center; gap: 0.65rem; }

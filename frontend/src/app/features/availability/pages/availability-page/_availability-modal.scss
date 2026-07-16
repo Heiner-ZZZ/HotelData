@@ -62,7 +62,7 @@
 
 .modal-btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover {
     opacity: 0.9;
@@ -70,7 +70,7 @@
 }
 
 .modal-btn-secondary {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 
@@ -81,11 +81,11 @@
 
 .modal-btn-danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
 
   &:hover {
-    background: color-mix(in srgb, var(--danger) 85%, black);
+    background: var(--danger-strong);
   }
 }
 

@@ -17,7 +17,6 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
-import { ProfileSecurityComponent } from './components/profile-security';
 import { PpHeroComponent } from './partials/pp-hero';
 import { PpTabBarComponent } from './partials/pp-tab-bar';
 import { PpPersonalFormComponent } from './partials/pp-personal-form';
@@ -41,7 +40,7 @@ import { ProfileApiService } from '../../services/profile-api.service';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ErrorStateComponent, LoadingStateComponent, ProfileSecurityComponent, ReactiveFormsModule,
+  imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
     PpPreferencesFormComponent, PpAvatarSectionComponent, PpTravelSectionComponent],
   templateUrl: './profile-page.html',

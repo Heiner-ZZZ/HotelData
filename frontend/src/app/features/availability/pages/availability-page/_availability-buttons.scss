@@ -22,7 +22,7 @@
 
     &.is-active {
       background: var(--accent);
-      color: #fff;
+      color: var(--on-accent);
       border-color: var(--accent);
     }
   }
@@ -93,7 +93,7 @@
   border-radius: 100px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -121,7 +121,7 @@
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
   }
 

@@ -17,7 +17,7 @@
 .amenity-icon-wrap {
   width: 40px;
   height: 40px;
-  background: color-mix(in srgb, var(--primary, #006076) 10%, transparent);
+  background: color-mix(in srgb, var(--primary, var(--accent)) 10%, transparent);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -25,5 +25,5 @@
   flex-shrink: 0;
 }
 
-.amenity-icon { font-size: 20px; color: var(--primary, #006076); }
-.amenity-label { font-size: 14px; font-weight: 600; color: var(--on-surface, #191c1e); }
+.amenity-icon { font-size: 20px; color: var(--primary, var(--accent)); }
+.amenity-label { font-size: 14px; font-weight: 600; color: var(--on-surface, var(--app-text)); }

@@ -9,7 +9,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--app-border);
 
   .card-icon {
     font-size: 1.5rem;
@@ -17,7 +17,7 @@
   }
 
   .icon-gallery-purple {
-    color: #7c3aed;
+    color: var(--purple);
   }
 
   h2 {
@@ -28,7 +28,7 @@
 
   p {
     margin: 0;
-    color: var(--text-2, #6b7280);
+    color: var(--gray-700);
     font-size: 0.85rem;
   }
 }
@@ -46,7 +46,7 @@
 
   .reorder-hint {
     font-size: 0.85rem;
-    color: var(--text-2, #6b7280);
+    color: var(--gray-700);
   }
 }
 
@@ -67,7 +67,7 @@
   transition: border-color 0.2s, transform 0.2s;
 
   &:hover {
-    border-color: var(--color-primary, #1463ff);
+    border-color: var(--accent);
 
     .gallery-overlay {
       opacity: 1;
@@ -75,7 +75,7 @@
   }
 
   &.gallery-item--hero {
-    border-color: var(--color-primary, #1463ff);
+    border-color: var(--accent);
   }
 
   &:active {
@@ -94,8 +94,8 @@
   position: absolute;
   top: 6px;
   left: 6px;
-  background: var(--color-primary, #1463ff);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 2px 8px;
@@ -108,7 +108,7 @@
   top: 6px;
   right: 6px;
   background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.75rem;
   font-weight: 600;
   width: 22px;
@@ -126,7 +126,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 4px;
   padding: 2px 6px;
   z-index: 2;
@@ -157,7 +157,7 @@
 
 .gallery-del-btn {
   background: rgba(220, 38, 38, 0.9);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 50%;
   width: 36px;
@@ -169,7 +169,7 @@
   transition: background 0.2s;
 
   &:hover {
-    background: #dc2626;
+    background: var(--danger);
   }
 }
 
@@ -179,7 +179,7 @@
   align-items: center;
   gap: 8px;
   padding: 40px;
-  color: var(--text-2, #9ca3af);
+  color: var(--muted-text);
 
   span {
     font-size: 2.5rem;
@@ -214,7 +214,7 @@
     top: 4px;
     right: 4px;
     background: rgba(0, 0, 0, 0.6);
-    color: #fff;
+    color: var(--on-accent);
     border: none;
     border-radius: 50%;
     width: 28px;
@@ -237,14 +237,14 @@
   gap: 6px;
   padding: 10px 20px;
   background: transparent;
-  color: var(--text-color, #374151);
-  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
 
   &:hover:not(:disabled) {
-    background: var(--surface-2, #f3f4f6);
+    background: var(--gray-100);
   }
 
   &:disabled {
@@ -258,8 +258,8 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  background: var(--color-primary, #1463ff);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -267,7 +267,7 @@
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: var(--color-primary-dark, #1d4ed8);
+    background: var(--accent-strong);
   }
 
   &:disabled {
@@ -281,7 +281,7 @@
   align-items: center;
   gap: 12px;
   margin: 16px 0;
-  color: var(--text-2, #9ca3af);
+  color: var(--muted-text);
   font-size: 0.8rem;
 
   &::before,
@@ -289,7 +289,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border-color, #e5e7eb);
+    background: var(--app-border);
   }
 }
 
@@ -304,13 +304,13 @@
     align-items: center;
     gap: 6px;
     padding: 0 10px;
-    border: 1px solid var(--border-color, #e5e7eb);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     background: var(--surface, #fff);
 
     .input-icon {
       font-size: 1rem;
-      color: var(--text-2, #9ca3af);
+      color: var(--muted-text);
     }
 
     input {
@@ -320,7 +320,7 @@
       padding: 10px 0;
       font-size: 0.9rem;
       background: transparent;
-      color: var(--text-color, #374151);
+      color: var(--app-text);
       font-family: inherit;
     }
   }

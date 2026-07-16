@@ -28,7 +28,7 @@
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
   background: var(--success);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.62rem;
   font-weight: 700;
   white-space: nowrap;
@@ -135,8 +135,8 @@
 }
 
 [data-theme="dark"] .cell-input {
-  background: #1e293b;
-  color: #f1f5f9;
+  background: var(--gray-800);
+  color: var(--gray-100);
   border-color: color-mix(in srgb, var(--accent) 70%, white);
 
   &:focus {
@@ -259,7 +259,7 @@
   border-color: color-mix(in srgb, var(--warning) 25%, transparent);
 
   &:hover {
-    background: color-mix(in srgb, var(--warning) 6%, transparent);
+    background: var(--warning-light);
     border-color: var(--warning);
     box-shadow: 0 3px 8px color-mix(in srgb, var(--warning) 15%, transparent);
   }
@@ -369,15 +369,15 @@
   border-color: color-mix(in srgb, var(--danger) 25%, transparent);
 
   &:hover {
-    background: color-mix(in srgb, var(--danger) 6%, transparent);
+    background: var(--danger-light);
     border-color: var(--danger);
     box-shadow: 0 3px 8px color-mix(in srgb, var(--danger) 15%, transparent);
   }
 }
 
 .qa-multi {
-  border-color: #7c3aed;
-  background: color-mix(in srgb, #7c3aed 4%, var(--surface));
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 4%, var(--surface));
 }
 
 .qa-btn-unavail {
@@ -385,7 +385,7 @@
   border-color: color-mix(in srgb, var(--warning) 25%, transparent);
 
   &:hover {
-    background: color-mix(in srgb, var(--warning) 6%, transparent);
+    background: var(--warning-light);
     border-color: var(--warning);
     box-shadow: 0 3px 8px color-mix(in srgb, var(--warning) 15%, transparent);
   }
@@ -432,7 +432,7 @@
 
   &:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(20, 99, 255, 0.12);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   &:disabled {

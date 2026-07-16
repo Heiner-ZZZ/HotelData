@@ -4,7 +4,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--surface-1);
+  background: var(--surface);
   border-top: 1px solid var(--border);
   z-index: 100;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
@@ -32,13 +32,13 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--text-1);
+  color: var(--app-text);
   padding: 4px 10px 4px 4px;
   border-radius: 10px;
   transition: background 0.15s;
 
   &:hover {
-    background: var(--surface-2);
+    background: var(--gray-100);
   }
 }
 
@@ -55,7 +55,7 @@
   height: 24px;
   padding: 0 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 12px;
   font-size: 0.78rem;
   font-weight: 700;
@@ -71,7 +71,7 @@
 
 .cart-summary-label {
   font-size: 0.78rem;
-  color: var(--text-3);
+  color: var(--muted-text);
 }
 
 .cart-total {
@@ -83,12 +83,12 @@
 .cart-total-free {
   font-weight: 600;
   font-size: 0.85rem;
-  color: #16a34a;
+  color: var(--success);
 }
 
 .drawer-arrow {
   font-size: 18px;
-  color: var(--text-3);
+  color: var(--muted-text);
   transition: transform 0.3s ease;
 }
 
@@ -107,13 +107,13 @@
   background: transparent;
   border-radius: 10px;
   cursor: pointer;
-  color: var(--text-3);
+  color: var(--muted-text);
   transition: all 0.15s;
 
   &:hover {
-    color: #dc2626;
-    border-color: #dc2626;
-    background: #fef2f2;
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--danger-light);
   }
 
   .material-symbols-outlined {
@@ -128,7 +128,7 @@
   padding: 11px 24px;
   border: none;
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 80%, #000));
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.9rem;

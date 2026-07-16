@@ -58,7 +58,7 @@
 
   .input-icon {
     font-size: 1.1rem;
-    color: #9ca3af;
+    color: var(--gray-400);
     --icon-wght: 350;
     --icon-opsz: 20;
     flex-shrink: 0;
@@ -72,7 +72,7 @@
     font-size: 0.88rem;
     color: inherit;
     outline: none;
-    &::placeholder { color: #9ca3af; }
+    &::placeholder { color: var(--gray-400); }
   }
 
   select {
@@ -85,7 +85,7 @@
   }
 }
 
-.field-hint { margin: 3px 0; color: #9ca3af; font-size: 0.72rem; grid-column: 1 / -1; }
+.field-hint { margin: 3px 0; color: var(--gray-400); font-size: 0.72rem; grid-column: 1 / -1; }
 
 .textarea-wrap {
   align-items: flex-start;
@@ -104,7 +104,7 @@
     outline: none;
     resize: vertical;
     line-height: 1.5;
-    &::placeholder { color: #9ca3af; }
+    &::placeholder { color: var(--gray-400); }
   }
 }
 
@@ -119,8 +119,8 @@
   padding: 0.6rem 1.35rem;
   border: 0;
   border-radius: $radius-md;
-  background: linear-gradient(135deg, $accent, #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, $accent, var(--accent));
+  color: var(--on-accent);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;

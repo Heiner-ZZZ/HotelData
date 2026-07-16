@@ -48,11 +48,11 @@
 }
 
 .summary-card--paid {
-  .summary-icon { color: #059669; }
+  .summary-icon { color: var(--success); }
 }
 
 .summary-card--pending {
-  .summary-icon { color: #d97706; }
+  .summary-icon { color: var(--warning); }
 }
 
 .summary-card--total {
@@ -96,7 +96,7 @@
   transition: all 120ms;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -150,7 +150,7 @@ tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); }
 
 .row-pending {
-  background: color-mix(in srgb, #d97706 3%, transparent);
+  background: color-mix(in srgb, var(--warning) 3%, transparent);
 }
 
 .invoice-number {
@@ -203,7 +203,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 3%, transparent); 
   display: grid;
   gap: 1rem;
   border: 1px dashed var(--app-border);
-  background: color-mix(in srgb, var(--surface) 60%, #f9fafb);
+  background: color-mix(in srgb, var(--surface) 60%, var(--gray-50));
 }
 
 .banking-info-head {

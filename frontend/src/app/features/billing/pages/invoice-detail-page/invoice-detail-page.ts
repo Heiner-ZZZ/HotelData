@@ -1,16 +1,18 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of, switchMap } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, map } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { BillableServiceItem, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
+import type { BillableServiceItem, BillableServices, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
+import type { BillableServicesDto, InvoiceDetailDto } from '../../models/billing.dto';
+import { mapBillableServices, mapInvoiceDetail } from '../../mappers/billing.mapper';
 import { BillingApiService } from '../../services/billing-api.service';
 import { FolioApiService } from '../../services/folio-api.service';
 // Import amenityIcon from the amenities feature — resolves Material Symbols icons from amenity labels
@@ -25,15 +27,40 @@ import { amenityIcon } from '../../../amenities/utils/amenity-icons';
 })
 export class InvoiceDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly billingApi = inject(BillingApiService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly folioApi = inject(FolioApiService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly invoice = signal<InvoiceDetailViewModel | null>(null);
-  readonly servicesLoading = signal(false);
+  private readonly invoiceId = toSignal(
+    this.activatedRoute.paramMap.pipe(map(params => params.get('invoiceId') ?? '')),
+    { initialValue: '' }
+  );
+
+  readonly invoiceResource = httpResource<InvoiceDetailViewModel>(() => {
+    const id = this.invoiceId();
+    return id ? `/api/billing/invoices/${id}` : undefined;
+  }, {
+    parse: (res) => mapInvoiceDetail(res as InvoiceDetailDto),
+  });
+
+  readonly servicesResource = httpResource<BillableServices>(() => {
+    const inv = this.invoiceResource.value();
+    if (!inv?.propId) return undefined;
+    const bookingParam = inv.bookingId ? `&booking_id=${inv.bookingId}` : '';
+    return `/api/billing/services?prop_id=${inv.propId}${bookingParam}`;
+  }, {
+    parse: (res) => mapBillableServices(res as BillableServicesDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.invoiceResource.isLoading()) return 'loading';
+    if (this.invoiceResource.error()) return 'error';
+    return this.invoiceResource.value() ? 'success' : 'loading';
+  });
+
+  readonly invoice = computed(() => this.invoiceResource.value() ?? null);
+  readonly servicesLoading = computed(() => this.servicesResource.isLoading());
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly addMode = signal(false);
@@ -43,7 +70,7 @@ export class InvoiceDetailPageComponent {
   readonly removeBusy = signal<string | null>(null);
 
   // Services (amenities) fetched from the API — replaces hardcoded CHARGE_CATEGORIES / QUICK_CHARGES
-  readonly services = signal<BillableServiceItem[]>([]);
+  readonly services = computed(() => this.servicesResource.value()?.all_items ?? []);
 
   /** Flat list of all available service categories for the add-charge dropdown. */
   readonly categories = computed(() => {
@@ -124,46 +151,7 @@ export class InvoiceDetailPageComponent {
 
   readonly canModify = computed(() => this.isIssued());
 
-  constructor() {
-    this.activatedRoute.paramMap
-      .pipe(
-        switchMap((params) => {
-          this.viewState.set('loading');
-          return this.billingApi.getInvoiceDetail(params.get('invoiceId')!);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          this.invoice.set(data);
-          this.viewState.set('success');
-          // Once the invoice is loaded, fetch billable services (amenities)
-          this.loadServices(data);
-        },
-        error: () => this.viewState.set('error'),
-      });
-  }
-
-  /** Fetch billable services from the amenities catalog (hotel + room, deduplicated). */
-  private loadServices(inv: InvoiceDetailViewModel): void {
-    if (!inv.propId) return;
-    this.servicesLoading.set(true);
-    this.billingApi.getServices(inv.propId, inv.bookingId)
-      .pipe(
-        catchError(() => of(null)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (result) => {
-          if (result) {
-            // Use all_items from the API (both free & paid, hotel + room deduplicated)
-            this.services.set(result.all_items);
-          }
-          this.servicesLoading.set(false);
-        },
-        error: () => this.servicesLoading.set(false),
-      });
-  }
+  constructor() {}
 
   /** Starts the add-charge flow. */
   openAddForm(): void {
@@ -194,8 +182,8 @@ export class InvoiceDetailPageComponent {
       unit_price: form.unit_price,
       category: form.category,
     }).subscribe({
-      next: (updated) => {
-        this.invoice.set(updated);
+      next: () => {
+        this.invoiceResource.reload();
         this.actionMessage.set(`Cargo "${form.name}" agregado a la factura.`);
         this.addMode.set(false);
         this.addBusy.set(false);
@@ -225,8 +213,8 @@ export class InvoiceDetailPageComponent {
     this.actionMessage.set(null);
 
     this.billingApi.removeLineItem(this.invoice()!.id, item.itemId).subscribe({
-      next: (updated) => {
-        this.invoice.set(updated);
+      next: () => {
+        this.invoiceResource.reload();
         this.actionMessage.set(`Concepto "${item.name}" eliminado de la factura.`);
         this.removeBusy.set(null);
       },
@@ -265,8 +253,8 @@ export class InvoiceDetailPageComponent {
         category: qc.category,
       }),
     }).subscribe({
-      next: (results) => {
-        this.invoice.set(results.invoice);
+      next: () => {
+        this.invoiceResource.reload();
         this.actionMessage.set(`Cargo "${qc.name}" ($ ${(qc.amount * qc.quantity).toFixed(2)}) agregado al folio y la factura.`);
         this.quickAddBusy.set(null);
       },
@@ -283,7 +271,7 @@ export class InvoiceDetailPageComponent {
     this.billingApi.payInvoice(this.invoice()!.id).subscribe({
       next: () => {
         this.actionMessage.set('Pago procesado exitosamente.');
-        this.invoice.update((i) => (i ? { ...i, status: 'paid' } : i));
+        this.invoiceResource.reload();
       },
       error: () => this.actionError.set('No se pudo procesar el pago.'),
     });
@@ -302,7 +290,7 @@ export class InvoiceDetailPageComponent {
     this.billingApi.cancelInvoice(this.invoice()!.id).subscribe({
       next: () => {
         this.actionMessage.set('Factura anulada correctamente.');
-        this.invoice.update((i) => (i ? { ...i, status: 'cancelled' } : i));
+        this.invoiceResource.reload();
       },
       error: () => this.actionError.set('No se pudo anular la factura.'),
     });

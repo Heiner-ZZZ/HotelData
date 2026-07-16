@@ -18,6 +18,6 @@
 }
 
 /* ── Icon color overrides ── */
-.icon-calendar-purple { color: #7c3aed; }
+.icon-calendar-purple { color: var(--purple); }
 .icon-promo-amber { color: var(--warning); }
 .icon-coupon-blue { color: var(--accent); }

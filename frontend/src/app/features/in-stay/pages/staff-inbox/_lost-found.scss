@@ -185,11 +185,11 @@
   flex-shrink: 0;
 }
 
-.si-lost-found { background: #dbeafe; color: #1e40af; }
-.si-lost-pending { background: #fef3c7; color: #92400e; }
-.si-lost-claimed { background: #dcfce7; color: #166534; }
-.si-lost-disposed { background: #fee2e2; color: #991b1b; }
-.si-lost-returned { background: #dcfce7; color: #166534; }
+.si-lost-found { background: var(--accent-light); color: var(--accent-strong); }
+.si-lost-pending { background: var(--warning-light); color: var(--warning-strong); }
+.si-lost-claimed { background: var(--success-light); color: var(--success-strong); }
+.si-lost-disposed { background: var(--danger-light); color: var(--danger-strong); }
+.si-lost-returned { background: var(--success-light); color: var(--success-strong); }
 
 // ── Detail panel ──
 .si-lost-detail {

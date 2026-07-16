@@ -60,7 +60,7 @@
 }
 
 .back-btn:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--accent);
 }
@@ -88,7 +88,7 @@
 }
 
 .nav-btn:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   border-color: color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--accent);
 }
@@ -196,7 +196,7 @@
 }
 
 .icon-btn:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
@@ -244,8 +244,8 @@
   height: 1rem;
   padding: 0 3px;
   border-radius: 999px;
-  background: var(--danger, #d32f2f);
-  color: #fff;
+  background: var(--danger, var(--danger));
+  color: var(--on-accent);
   font-size: 0.55rem;
   font-weight: 700;
   display: flex;
@@ -292,7 +292,7 @@
   color: var(--accent);
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 }
 
@@ -329,7 +329,7 @@
     background: color-mix(in srgb, var(--accent) 5%, transparent);
 
     &:hover {
-      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      background: var(--accent-light);
     }
   }
 }

@@ -18,8 +18,8 @@
   animation: slide-in 260ms ease;
 }
 
-.toast-success { background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.18); }
-.toast-error { background: rgba(239, 68, 68, 0.08); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.15); }
+.toast-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.18); }
+.toast-error { background: rgba(239, 68, 68, 0.08); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.15); }
 
 @keyframes slide-in {
   from { opacity: 0; transform: translateY(-8px); }
@@ -64,7 +64,7 @@
 
   &.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
   }
 }
@@ -82,7 +82,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -251,8 +251,8 @@ code { font-size: 0.9em; font-family: monospace; background: rgba(20, 99, 255, 0
   cursor: pointer;
   transition: background 120ms, border-color 120ms;
   margin: 0 2px;
-  &:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-color: var(--accent); }
-  &.danger { color: #dc2626; &:hover { background: rgba(220, 38, 38, 0.06); border-color: #dc2626; } }
+  &:hover { background: var(--accent-light); border-color: var(--accent); }
+  &.danger { color: var(--danger); &:hover { background: rgba(220, 38, 38, 0.06); border-color: var(--danger); } }
   .material-symbols-outlined { font-size: 1.1rem; }
 }
 

@@ -9,17 +9,17 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--outline, #6f797d);
+  color: var(--outline, var(--muted-text));
   margin-bottom: 8px;
 
   .crumb {
-    color: var(--outline, #6f797d);
+    color: var(--outline, var(--muted-text));
     text-decoration: none;
-    &:hover { color: var(--primary, #006076); }
+    &:hover { color: var(--primary, var(--accent)); }
   }
 
-  .crumb-current { color: var(--on-surface, #191c1e); }
-  .crumb-sep { font-size: 14px; color: var(--outline, #6f797d); }
+  .crumb-current { color: var(--on-surface, var(--app-text)); }
+  .crumb-sep { font-size: 14px; color: var(--outline, var(--muted-text)); }
 }
 
 .title-row {
@@ -36,7 +36,7 @@
   font-size: 36px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--on-surface, #191c1e);
+  color: var(--on-surface, var(--app-text));
   margin: 0 0 4px;
   line-height: 1.2;
 }
@@ -45,13 +45,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--on-surface-variant, #3f484c);
+  color: var(--on-surface-variant, var(--gray-700));
   font-size: 14px;
   margin: 0 0 8px;
 
-  .loc-icon { font-size: 18px; color: var(--primary, #006076); }
+  .loc-icon { font-size: 18px; color: var(--primary, var(--accent)); }
   .map-link {
-    color: var(--primary, #006076);
+    color: var(--primary, var(--accent));
     font-weight: 700;
     text-decoration: none;
     margin-left: 8px;
@@ -67,8 +67,8 @@
   .star-icon {
     font-size: 20px;
     --icon-FILL: 1;
-    &.filled { color: #844910; }
-    &.empty { color: var(--outline-variant, #bec8cd); }
+    &.filled { color: var(--warning-strong); }
+    &.empty { color: var(--outline-variant, var(--gray-300)); }
   }
 }
 

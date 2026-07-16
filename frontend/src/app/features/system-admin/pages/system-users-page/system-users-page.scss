@@ -58,18 +58,18 @@ $transition: 0.18s ease;
   }
 
   &--users {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
   &--roles {
-    background: color-mix(in srgb, #8b5cf6 10%, transparent);
-    color: #8b5cf6;
+    background: color-mix(in srgb, var(--purple) 10%, transparent);
+    color: var(--purple);
   }
 
   &--session {
-    background: color-mix(in srgb, #0891b2 10%, transparent);
-    color: #0891b2;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
   }
 }
 
@@ -217,7 +217,7 @@ $transition: 0.18s ease;
   padding: 0.3rem 0.6rem;
   font-size: 0.78rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   cursor: pointer;
   transition: all $transition;
@@ -349,12 +349,12 @@ th {
   transition: background $transition, color $transition;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   &.selected {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 500;
   }
 }
@@ -371,7 +371,7 @@ th {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   display: flex;
   align-items: center;
@@ -403,7 +403,7 @@ th {
   font-size: 0.78rem;
   font-weight: 500;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -477,7 +477,7 @@ tbody tr {
   &-danger {
     background: var(--danger);
     border: 1px solid var(--danger);
-    color: #fff;
+    color: var(--on-accent);
 
     &:hover:not([disabled]) {
       background: color-mix(in srgb, var(--danger) 85%, #000);
@@ -500,7 +500,7 @@ tbody tr {
     }
 
     &:hover:not([disabled]) {
-      background: color-mix(in srgb, var(--danger) 8%, transparent);
+      background: var(--danger-light);
       border-color: color-mix(in srgb, var(--danger) 20%, transparent);
       color: var(--danger);
     }

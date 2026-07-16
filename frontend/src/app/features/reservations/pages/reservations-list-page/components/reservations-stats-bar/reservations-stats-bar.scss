@@ -60,8 +60,8 @@
 .stat-pending .stat-value { color: var(--warning); }
 .stat-confirmed .stat-value { color: var(--success); }
 .stat-active .stat-value { color: var(--accent); }
-.stat-checked-in .stat-value { color: #6366f1; }
-.stat-checked-out .stat-value { color: #8b5cf6; }
+.stat-checked-in .stat-value { color: var(--indigo); }
+.stat-checked-out .stat-value { color: var(--purple); }
 .stat-lost .stat-value { color: var(--muted-text); }
 .stat-total .stat-value { color: var(--app-text); }
 

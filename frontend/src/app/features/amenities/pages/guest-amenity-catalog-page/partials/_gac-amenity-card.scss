@@ -9,7 +9,7 @@
   border: 1px solid var(--border);
   overflow: hidden;
   transition: all 0.25s;
-  background: var(--surface-1);
+  background: var(--surface);
 
   &:hover {
     border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
@@ -19,7 +19,7 @@
 
   &.is-in-cart {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 6%, var(--surface-1));
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
@@ -34,7 +34,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--surface-2);
+  background: var(--gray-100);
   overflow: hidden;
 
   &::after {
@@ -44,7 +44,7 @@
     left: 0;
     height: 100%;
     width: calc(var(--stock-ratio, 1) * 100%);
-    background: var(--stock-color, #16a34a);
+    background: var(--stock-color, var(--success));
     border-radius: 0 2px 2px 0;
     transition: width 0.5s ease;
   }
@@ -57,7 +57,7 @@
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   flex-shrink: 0;
 
   .amenity-item-icon {
@@ -81,7 +81,7 @@
 .amenity-label {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-1);
+  color: var(--app-text);
 }
 
 .badge-active {
@@ -89,8 +89,8 @@
   font-size: 0.62rem;
   padding: 1px 6px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  color: #1e40af;
+  background: linear-gradient(135deg, var(--accent-light), color-mix(in srgb, var(--accent-light) 85%, var(--accent)));
+  color: var(--accent-strong);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -101,7 +101,7 @@
   align-items: center;
   gap: 14px;
   font-size: 0.8rem;
-  color: var(--text-2);
+  color: var(--gray-700);
 }
 
 .price-icon,
@@ -123,7 +123,7 @@
   align-items: center;
   gap: 2px;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--success);
 }
 
 .amenity-stock {
@@ -133,7 +133,7 @@
   font-size: 0.78rem;
 
   &.stock-low {
-    color: #dc2626;
+    color: var(--danger);
     font-weight: 600;
   }
 }

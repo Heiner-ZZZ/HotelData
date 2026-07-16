@@ -52,7 +52,7 @@
     min-width: 80px;
 
     &::placeholder {
-      color: #9ca3af;
+      color: var(--gray-400);
     }
   }
 }
@@ -62,7 +62,7 @@
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.78rem;
   font-weight: 600;
   font-family: inherit;
@@ -140,7 +140,7 @@
   transition: background 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
   }
 
   .material-symbols-outlined {
@@ -368,7 +368,7 @@
 
 .page-num-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover {
     background: var(--accent);

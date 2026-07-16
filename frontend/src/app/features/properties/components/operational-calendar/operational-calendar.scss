@@ -52,7 +52,7 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }
@@ -89,9 +89,9 @@
   transition: border-color 180ms, background 180ms, color 180ms;
 
   &.is-ready {
-    border-color: color-mix(in srgb, #16a34a 30%, transparent);
-    background: color-mix(in srgb, #16a34a 6%, transparent);
-    color: #16a34a;
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
+    background: color-mix(in srgb, var(--success) 6%, transparent);
+    color: var(--success);
   }
 }
 
@@ -101,7 +101,7 @@
 
 .op-check {
   font-size: 1rem;
-  color: #16a34a;
+  color: var(--success);
   --icon-FILL: 1;
 }
 
@@ -154,10 +154,10 @@
   transition: background 100ms;
 
   &:last-child { border-right: none; }
-  &:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  &:hover { background: var(--accent-light); }
 
   &.is-today {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     box-shadow: inset 0 0 0 2px var(--accent);
     border-radius: 4px;
   }
@@ -200,20 +200,20 @@
   }
 
   &--rate {
-    background: color-mix(in srgb, #2563eb 10%, transparent);
-    color: #2563eb;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
   }
   &--promo {
-    background: color-mix(in srgb, #d97706 10%, transparent);
-    color: #d97706;
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    color: var(--warning);
   }
   &--avail {
-    background: color-mix(in srgb, #16a34a 10%, transparent);
-    color: #16a34a;
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    color: var(--success);
   }
   &--blocked {
-    background: color-mix(in srgb, #dc2626 10%, transparent);
-    color: #dc2626;
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    color: var(--danger);
   }
 }
 
@@ -249,9 +249,9 @@
 .op-fi-icon {
   font-size: 1rem;
 
-  &--rate { color: #2563eb; }
-  &--promo { color: #d97706; }
-  &--avail { color: #16a34a; }
-  &--blocked { color: #dc2626; }
+  &--rate { color: var(--accent); }
+  &--promo { color: var(--warning); }
+  &--avail { color: var(--success); }
+  &--blocked { color: var(--danger); }
 }
 

@@ -70,7 +70,7 @@
           <nav class="breadcrumbs">
             <a routerLink="/search" class="crumb">Destinos</a>
             <span class="crumb-sep material-symbols-outlined">chevron_right</span>
-            <a routerLink="/search" class="crumb">{{ vm.location?.split(',')?.[0]?.trim() || 'Resultados' }}</a>
+            <a routerLink="/search" class="crumb">{{ vm.location.split(',')[0].trim() || 'Resultados' }}</a>
             <span class="crumb-sep material-symbols-outlined">chevron_right</span>
             <span class="crumb-current">{{ vm.name }}</span>
           </nav>

@@ -32,17 +32,17 @@
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
 
     &:hover {
-      background: color-mix(in srgb, var(--accent) 85%, #000);
+      background: var(--accent-strong);
     }
   }
 
@@ -58,7 +58,7 @@
   gap: 0.4rem;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--app-text);
   font-size: 0.78rem;

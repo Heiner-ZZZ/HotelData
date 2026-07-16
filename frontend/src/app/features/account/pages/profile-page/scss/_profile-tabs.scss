@@ -26,7 +26,7 @@
   cursor: pointer;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 
-  &:hover { background: rgba(20, 99, 255, 0.06); color: #244274; }
+  &:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--accent-strong); }
 
   &.is-active {
     background: rgba(20, 99, 255, 0.1);

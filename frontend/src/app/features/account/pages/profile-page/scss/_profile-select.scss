@@ -27,18 +27,18 @@
   --icon-wght: 350;
   --icon-opsz: 20;
   flex-shrink: 0;
-  &.select-icon--muted { color: #9ca3af; }
+  &.select-icon--muted { color: var(--gray-400); }
 }
 
 .select-label {
   flex: 1;
   text-align: left;
-  &.is-placeholder { color: #9ca3af; }
+  &.is-placeholder { color: var(--gray-400); }
 }
 
 .select-chevron {
   font-size: 1.15rem;
-  color: #9ca3af;
+  color: var(--gray-400);
   transition: transform 200ms ease;
   flex-shrink: 0;
   &.is-open { transform: rotate(180deg); }
@@ -77,9 +77,9 @@
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 
-  &:hover { background: rgba(20, 99, 255, 0.06); }
+  &:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
   &.is-active { background: rgba(20, 99, 255, 0.1); color: $accent; font-weight: 600; }
-  &:not(:last-child) { border-bottom: 1px solid var(--app-border, #f3f4f6); }
+  &:not(:last-child) { border-bottom: 1px solid var(--app-border, var(--gray-100)); }
 }
 
 .option-icon {

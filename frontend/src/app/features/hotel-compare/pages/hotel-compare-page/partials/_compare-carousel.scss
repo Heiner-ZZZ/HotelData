@@ -10,7 +10,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   opacity: 0;
   transition: opacity 200ms ease, background 160ms ease, transform 160ms ease;
@@ -61,7 +61,7 @@
 }
 
 .carousel-dot.is-active {
-  background: #fff;
+  background: var(--surface);
   width: 18px;
   border-radius: 4px;
 }
@@ -106,7 +106,7 @@
   padding: 0.08rem 0.4rem;
   border-radius: 4px;
   background: rgba(5, 150, 105, 0.12);
-  color: #059669;
+  color: var(--success);
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -149,7 +149,7 @@
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .score-high {
@@ -185,7 +185,7 @@
   z-index: 2;
 
   &:hover:not(:disabled) {
-    background: #d32f2f;
+    background: var(--danger);
     transform: scale(1.1);
   }
 

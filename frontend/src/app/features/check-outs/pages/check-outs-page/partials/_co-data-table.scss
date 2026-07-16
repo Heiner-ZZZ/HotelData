@@ -132,7 +132,7 @@ tbody tr:hover {
 }
 
 .badge-success {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
@@ -147,7 +147,7 @@ tbody tr:hover {
 }
 
 .badge-info {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -166,7 +166,7 @@ tbody tr:hover {
   transition: background 120ms, border-color 120ms;
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
   }
 
@@ -185,7 +185,7 @@ tbody tr:hover {
   color: var(--success);
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--success) 10%, transparent);
+    background: var(--success-light);
     border-color: var(--success);
   }
 }

@@ -206,8 +206,8 @@
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; margin-top: 2px;
-  &.msg { background: #dbeafe; .material-symbols-outlined { color: #1e40af; } }
-  &.req { background: #dcfce7; .material-symbols-outlined { color: #166534; } }
+  &.msg { background: var(--accent-light); .material-symbols-outlined { color: var(--accent-strong); } }
+  &.req { background: var(--success-light); .material-symbols-outlined { color: var(--success-strong); } }
   .material-symbols-outlined { font-size: 1.1rem; }
 }
 

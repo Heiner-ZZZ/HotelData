@@ -66,8 +66,8 @@
 
 .gp-request-success {
   display: flex; align-items: center; gap: 0.6rem;
-  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+  background: var(--success-light); border: 1px solid var(--success-light); border-radius: 10px;
   padding: 0.85rem;
   .material-symbols-outlined { color: t.$gp-success; font-size: 1.5rem; }
-  p { margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.4; }
+  p { margin: 0; font-size: 0.85rem; color: var(--success-strong); line-height: 1.4; }
 }

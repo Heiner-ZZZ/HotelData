@@ -143,11 +143,11 @@
 }
 
 .si-folio-paid {
-  background: #d1fae5;
+  background: var(--success-light);
   color: #065f46;
 }
 
 .si-folio-open {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-light);
+  color: var(--warning-strong);
 }

@@ -64,7 +64,7 @@ textarea:focus {
   border: none;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;

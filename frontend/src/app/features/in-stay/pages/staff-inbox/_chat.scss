@@ -343,7 +343,7 @@
   flex-shrink: 0;
 
   &:hover:not(:disabled) {
-    background: #004d5e;
+    background: var(--accent-strong);
   }
 
   &:disabled {

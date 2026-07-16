@@ -113,7 +113,7 @@
 
 /* Occupancy color classes — green monochromatic scale (operational calendar style) */
 .occ-0 {
-  background: color-mix(in srgb, var(--success) 8%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
@@ -134,11 +134,11 @@
 
 .occ-full {
   background: var(--success);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* Legend swatches — green monochromatic */
-.swatch-occ-0 { background: color-mix(in srgb, var(--success) 8%, transparent); }
+.swatch-occ-0 { background: var(--success-light); }
 .swatch-occ-low { background: color-mix(in srgb, var(--success) 30%, transparent); }
 .swatch-occ-mid { background: color-mix(in srgb, var(--success) 50%, transparent); }
 .swatch-occ-high { background: color-mix(in srgb, var(--success) 70%, transparent); }
@@ -175,7 +175,7 @@
   border: 0;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;

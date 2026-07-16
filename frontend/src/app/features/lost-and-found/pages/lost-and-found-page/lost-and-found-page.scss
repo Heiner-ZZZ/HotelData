@@ -12,9 +12,9 @@
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 0.9rem;
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: var(--danger-light);
+  color: var(--danger-strong);
+  border: 1px solid var(--danger-light);
 
   .toast-close {
     background: none;
@@ -47,7 +47,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface-2);
+  background: var(--gray-100);
   border-radius: 8px;
   padding: 0 10px;
   min-width: 200px;
@@ -56,7 +56,7 @@
     box-shadow: 0 0 0 2px var(--accent);
   }
 
-  .search-icon { font-size: 18px; color: var(--text-3); }
+  .search-icon { font-size: 18px; color: var(--muted-text); }
 
   .search-input {
     flex: 1;
@@ -64,10 +64,10 @@
     background: transparent;
     padding: 8px 0;
     font-size: 0.9rem;
-    color: var(--text-1);
+    color: var(--app-text);
     outline: none;
 
-    &::placeholder { color: var(--text-3); }
+    &::placeholder { color: var(--muted-text); }
   }
 }
 
@@ -91,7 +91,7 @@
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--gray-700);
   white-space: nowrap;
   transition: all 0.15s;
 
@@ -99,7 +99,7 @@
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent);
   }
 }
@@ -119,8 +119,8 @@ table {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--text-3);
-    background: var(--surface-2);
+    color: var(--muted-text);
+    background: var(--gray-100);
     text-align: left;
     font-weight: 600;
   }
@@ -136,18 +136,18 @@ table {
   cursor: pointer;
   transition: background 0.1s;
 
-  &:hover { background: var(--surface-2); }
+  &:hover { background: var(--gray-100); }
 }
 
 .item-desc {
   display: block;
   font-size: 0.78rem;
-  color: var(--text-3);
+  color: var(--muted-text);
   margin-top: 2px;
 }
 
 .cell-muted {
-  color: var(--text-3);
+  color: var(--muted-text);
   font-size: 0.85rem;
 }
 
@@ -171,7 +171,7 @@ table {
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--text-2);
+  color: var(--gray-700);
   transition: all 0.15s;
 
   &:hover {
@@ -198,10 +198,10 @@ table {
   width: 36px;
   height: 36px;
   border: 1px solid var(--border);
-  background: var(--surface-1);
+  background: var(--surface);
   border-radius: 8px;
   cursor: pointer;
-  color: var(--text-1);
+  color: var(--app-text);
   transition: all 0.15s;
 
   &:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
@@ -212,7 +212,7 @@ table {
 
 .page-info {
   font-size: 0.85rem;
-  color: var(--text-3);
+  color: var(--muted-text);
   font-weight: 600;
 }
 
@@ -265,19 +265,19 @@ table {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--text-3);
+  color: var(--muted-text);
   border-radius: 6px;
   transition: all 0.15s;
 
-  &:hover { background: var(--surface-2); color: var(--text-1); }
+  &:hover { background: var(--gray-100); color: var(--app-text); }
   .material-symbols-outlined { font-size: 20px; }
 }
 
 .modal-error {
   margin: 8px 16px 0;
   padding: 8px 12px;
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--danger-light);
+  color: var(--danger-strong);
   border-radius: 6px;
   font-size: 0.85rem;
   font-weight: 500;
@@ -301,14 +301,14 @@ table {
   span {
     font-size: 0.78rem;
     font-weight: 600;
-    color: var(--text-2);
+    color: var(--gray-700);
     text-transform: uppercase;
     letter-spacing: 0.02em;
   }
 
   &.required span::after {
     content: ' *';
-    color: #dc2626;
+    color: var(--danger);
   }
 
   input, textarea {
@@ -316,15 +316,15 @@ table {
     border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 0.88rem;
-    background: var(--surface-1);
-    color: var(--text-1);
+    background: var(--surface);
+    color: var(--app-text);
     outline: none;
     transition: border-color 0.15s;
     font-family: inherit;
 
     &:focus { border-color: var(--accent); }
 
-    &::placeholder { color: var(--text-3); }
+    &::placeholder { color: var(--muted-text); }
   }
 }
 
@@ -362,7 +362,7 @@ table {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover:not(:disabled) { opacity: 0.9; }
 }
@@ -370,31 +370,31 @@ table {
 .btn-secondary {
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--text-2);
+  color: var(--gray-700);
 
-  &:hover { background: var(--surface-2); }
+  &:hover { background: var(--gray-100); }
 }
 
 .btn-success {
-  background: #16a34a;
-  color: #fff;
+  background: var(--success);
+  color: var(--on-accent);
 
   &:hover:not(:disabled) { opacity: 0.9; }
 }
 
 .btn-danger {
-  background: #dc2626;
-  color: #fff;
+  background: var(--danger);
+  color: var(--on-accent);
 
   &:hover:not(:disabled) { opacity: 0.9; }
 }
 
 .btn-danger-outline {
-  border: 1px solid #dc2626;
+  border: 1px solid var(--danger);
   background: transparent;
-  color: #dc2626;
+  color: var(--danger);
 
-  &:hover { background: #fef2f2; }
+  &:hover { background: var(--danger-light); }
 }
 
 // Detail grid
@@ -414,12 +414,12 @@ table {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    color: var(--text-3);
+    color: var(--muted-text);
   }
 
   span:last-child {
     font-size: 0.88rem;
-    color: var(--text-1);
+    color: var(--app-text);
   }
 }
 

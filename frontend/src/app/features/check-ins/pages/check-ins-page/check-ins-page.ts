@@ -1,9 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
 
@@ -42,13 +41,12 @@ export class CheckInsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CheckInsApiService);
-  private readonly kpiApi = inject(KpiApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   readonly propertyCtx = inject(PropertyContextService);
 
   // ── KPI: Operational stats ──
-  readonly opStats = signal<OperationalStatsResponse | null>(null);
+  readonly opStatsResource = httpResource<OperationalStatsResponse>(() => '/api/kpi/operational-stats');
+  readonly opStats = computed(() => this.opStatsResource.value() ?? null);
 
   readonly dateForm = this.formBuilder.nonNullable.group({
     operationDate: [todayIso(), Validators.required],
@@ -112,8 +110,13 @@ export class CheckInsPageComponent {
 
   // Date history
   readonly showHistory = signal(false);
-  readonly historyDates = signal<DateHistoryEntry[]>([]);
-  readonly historyLoading = signal(false);
+  readonly historyDatesResource = httpResource<DateHistoryEntry[]>(() => {
+    if (!this.showHistory()) return undefined;
+    const propId = this.selectedPropId();
+    return propId ? `/api/management/check-ins/dates?prop_id=${propId}` : '/api/management/check-ins/dates';
+  });
+  readonly historyDates = computed(() => this.historyDatesResource.value() ?? []);
+  readonly historyLoading = computed(() => this.historyDatesResource.isLoading());
   readonly historyGlobal = signal(false);
 
   readonly filteredOptions = computed(() => {
@@ -123,14 +126,6 @@ export class CheckInsPageComponent {
   });
 
   constructor() {
-    // Load KPI data
-    this.kpiApi.getOperationalStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (stats) => this.opStats.set(stats),
-    });
-
-    // Sync operationDate signal from route params when they change
-    this.routeParams(); // consume the signal to track reactivity
-
     // Auto-carga en modo single-hotel: si no hay prop_id en URL pero el contexto
     // está ready, navegar con el propId del contexto
     effect(() => {
@@ -195,28 +190,14 @@ export class CheckInsPageComponent {
   }
 
   openHistory(): void {
-    if (this.historyLoading()) return;
     this.closeMenu();
-    const propId = this.selectedPropId();
-    this.historyGlobal.set(!propId);
+    this.historyGlobal.set(!this.selectedPropId());
     this.showHistory.set(true);
-    this.historyLoading.set(true);
     this.errorMessage.set('');
-    this.api.getCheckInDates(propId || undefined).subscribe({
-      next: (dates) => {
-        this.historyDates.set(dates);
-        this.historyLoading.set(false);
-      },
-      error: () => {
-        this.historyLoading.set(false);
-        this.errorMessage.set('Error al cargar historial de fechas.');
-      }
-    });
   }
 
   closeHistory(): void {
     this.showHistory.set(false);
-    this.historyDates.set([]);
     this.errorMessage.set('');
   }
 

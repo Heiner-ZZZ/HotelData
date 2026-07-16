@@ -20,7 +20,7 @@
   transition: background 160ms ease, color 160ms ease;
 }
 
-.back-link:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+.back-link:hover { background: var(--accent-light); color: var(--accent); }
 .back-link .material-symbols-outlined { font-size: 1.05rem; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
 
 .step-indicator { display: flex; align-items: center; gap: 0; }
@@ -39,8 +39,8 @@
   transition: background 260ms ease, color 260ms ease;
 }
 
-.step-dot.is-active .step-number { background: var(--accent); color: #fff; }
-.step-dot.is-done .step-number { background: var(--success); color: #fff; }
+.step-dot.is-active .step-number { background: var(--accent); color: var(--on-accent); }
+.step-dot.is-done .step-number { background: var(--success); color: var(--on-accent); }
 .step-dot.is-done .step-number .material-symbols-outlined { font-size: 0.9rem; font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20; }
 
 .step-label { font-size: 0.75rem; color: var(--muted-text); font-weight: 500; }

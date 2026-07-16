@@ -50,7 +50,7 @@
   width: 40px;
   height: 22px;
   border-radius: 999px;
-  background: #d1d5db;
+  background: var(--gray-300);
   transition: background 200ms ease;
   flex-shrink: 0;
 
@@ -62,7 +62,7 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     transition: transform 200ms ease;
   }

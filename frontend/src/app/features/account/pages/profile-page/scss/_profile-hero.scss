@@ -19,8 +19,8 @@
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: linear-gradient(135deg, $accent, #7c3aed);
-  color: #fff;
+  background: linear-gradient(135deg, $accent, var(--purple));
+  color: var(--on-accent);
 
   .avatar-icon {
     font-size: 2rem;

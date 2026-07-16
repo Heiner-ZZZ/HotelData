@@ -18,10 +18,10 @@
 .btn-primary {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
-.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, black); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 28%, transparent); transform: translateY(-1px); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-strong); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 28%, transparent); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {

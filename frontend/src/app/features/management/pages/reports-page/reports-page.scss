@@ -74,7 +74,7 @@
 
 .export-btn.excel .btn-icon { color: #0f8a60; }
 .export-btn.pdf .btn-icon   { color: #c93d32; }
-.export-btn.word .btn-icon  { color: #1463ff; }
+.export-btn.word .btn-icon  { color: var(--accent); }
 
 .export-btn.excel:hover {
   border-color: #0f8a60;
@@ -89,7 +89,7 @@
 }
 
 .export-btn.word:hover {
-  border-color: #1463ff;
+  border-color: var(--accent);
   background: rgba(20, 99, 255, 0.06);
   box-shadow: 0 1px 4px rgba(20, 99, 255, 0.12);
 }
@@ -246,7 +246,7 @@
   display: inline-block;
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   font-size: 0.75rem;
   font-weight: 500;

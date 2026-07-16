@@ -35,36 +35,36 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.cd-icon-danger { background: #fef2f2; color: #dc2626; }
-.cd-icon-warning { background: #fffbeb; color: #d97706; }
+.cd-icon-danger { background: var(--danger-light); color: var(--danger); }
+.cd-icon-warning { background: #fffbeb; color: var(--warning); }
 .cd-icon .material-symbols-outlined { font-size: 22px; }
 
 .cd-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #111827);
+  color: var(--app-text);
 }
 
 .cd-message {
   margin: 0 0 12px;
   font-size: 14px;
   line-height: 1.55;
-  color: var(--text-secondary, #6b7280);
+  color: var(--gray-700);
 }
 
 .cd-details {
   margin: 0 0 20px;
   padding: 10px 14px;
   list-style: none;
-  background: var(--bg-secondary, #f3f4f6);
+  background: var(--gray-100);
   border-radius: 8px;
   display: grid;
   gap: 4px;
 
   li {
     font-size: 12.5px;
-    color: var(--text-secondary, #4b5563);
+    color: var(--gray-700);
     line-height: 1.45;
   }
 }
@@ -86,21 +86,21 @@
 }
 
 .cd-btn-cancel {
-  background: var(--bg-secondary, #f3f4f6);
-  color: var(--text-primary, #374151);
+  background: var(--gray-100);
+  color: var(--app-text);
 }
-.cd-btn-cancel:hover { background: var(--bg-hover, #e5e7eb); }
+.cd-btn-cancel:hover { background: var(--surface-hover); }
 
 .cd-btn-confirm {
-  background: var(--primary, #2563eb);
-  color: #fff;
+  background: var(--primary, var(--accent));
+  color: var(--on-accent);
 }
 .cd-btn-confirm:hover { opacity: 0.9; }
 
-.cd-btn-danger { background: #dc2626; }
+.cd-btn-danger { background: var(--danger); }
 .cd-btn-danger:hover { background: #b91c1c; }
 
-.cd-btn-warning { background: #d97706; }
+.cd-btn-warning { background: var(--warning); }
 .cd-btn-warning:hover { background: #b45309; }
 
 @keyframes cd-fade-in {

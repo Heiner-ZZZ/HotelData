@@ -42,7 +42,7 @@
   }
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -97,7 +97,7 @@
   height: 1.8rem;
   border: 0;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   cursor: pointer;
   transition: background 120ms, opacity 180ms ease;
@@ -129,13 +129,13 @@
   position: relative;
 
   &.is-active {
-    background: #8b5cf6;
-    border-color: #8b5cf6;
-    color: #fff;
+    background: var(--purple);
+    border-color: var(--purple);
+    color: var(--on-accent);
 
     &:hover {
-      background: #7c3aed;
-      border-color: #7c3aed;
+      background: var(--purple);
+      border-color: var(--purple);
     }
   }
 }
@@ -152,8 +152,8 @@
   height: 1rem;
   padding: 0 3px;
   border-radius: 10px;
-  background: #7c3aed;
-  color: #fff;
+  background: var(--purple);
+  color: var(--on-accent);
   font-size: 0.6rem;
   font-weight: 700;
   line-height: 1;
@@ -204,7 +204,7 @@
   }
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
   }
 
   &:disabled {
@@ -214,11 +214,11 @@
 
   &.is-active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
 
     &:hover:not(:disabled) {
-      background: color-mix(in srgb, var(--accent) 85%, #000);
+      background: var(--accent-strong);
     }
 
     &:disabled {
@@ -266,7 +266,7 @@
 .swatch-danger { background: color-mix(in srgb, var(--danger) 30%, transparent); }
 .swatch-na { background: var(--app-border); }
 .swatch-selected { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
-.swatch-week { background: transparent; border-color: #8b5cf6; border-width: 2px; }
+.swatch-week { background: transparent; border-color: var(--purple); border-width: 2px; }
 
 /* Table wrapper for horizontal scroll */
 .cal-table-wrap {
@@ -335,11 +335,11 @@
     right: 2px;
     height: 3px;
     border-radius: 2px 2px 0 0;
-    background: #8b5cf6;
+    background: var(--purple);
   }
 
   .cal-day-num {
-    color: #8b5cf6;
+    color: var(--purple);
   }
 }
 
@@ -461,25 +461,25 @@
 /* Multi-selected cell (for range blocking) */
 .cell-multi-selected {
   .cell-val {
-    box-shadow: 0 0 0 2px #7c3aed, 0 0 0 4px rgba(124, 58, 237, 0.2);
-    background: #ede9fe !important;
-    color: #5b21b6 !important;
+    box-shadow: 0 0 0 2px var(--purple), 0 0 0 4px color-mix(in srgb, var(--purple) 20%, transparent);
+    background: var(--purple-light) !important;
+    color: var(--purple-strong) !important;
     font-weight: 700;
   }
 
   &:hover .cell-val {
-    background: #ddd6fe !important;
+    background: var(--purple-light) !important;
   }
 }
 
 /* Current week column highlight */
 .cell-current-week {
   .cell-val {
-    box-shadow: inset 0 0 0 1.5px #8b5cf6;
+    box-shadow: inset 0 0 0 1.5px var(--purple);
   }
 
   &:hover .cell-val {
-    box-shadow: inset 0 0 0 1.5px #8b5cf6;
+    box-shadow: inset 0 0 0 1.5px var(--purple);
   }
 }
 

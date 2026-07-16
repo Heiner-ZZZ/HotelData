@@ -1,6 +1,7 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { httpResource } from '@angular/common/http';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -109,11 +110,11 @@ export class CheckOutsPageComponent {
       return this.showConsumptionModal() && bookingId ? { bookingId } : undefined;
     },
     stream: ({ params }) => {
-      if (!params) return of(undefined);
+      if (!params) return of<{ items: BookingCharge[] } | undefined>(undefined);
       const cached = this.consumptionChargesCache.get(params.bookingId);
       if (cached) return of(cached);
       return this.api.getBookingCharges(params.bookingId).pipe(
-        tap((res) => this.consumptionChargesCache.set(params.bookingId, res)),
+        tap((res: { items: BookingCharge[] }) => this.consumptionChargesCache.set(params.bookingId, res)),
       );
     },
   });
@@ -179,12 +180,12 @@ export class CheckOutsPageComponent {
       return { propId: this.selectedPropId() };
     },
     stream: ({ params }) => {
-      if (!params) return of(undefined);
+      if (!params) return of<DateHistoryEntry[] | undefined>(undefined);
       const key = params.propId > 0 ? String(params.propId) : 'global';
       const cached = this.historyDatesCache.get(key);
       if (cached) return of(cached);
       return this.api.getCheckOutDates(params.propId > 0 ? params.propId : undefined).pipe(
-        tap((res) => this.historyDatesCache.set(key, res)),
+        tap((res: DateHistoryEntry[]) => this.historyDatesCache.set(key, res)),
       );
     },
   });

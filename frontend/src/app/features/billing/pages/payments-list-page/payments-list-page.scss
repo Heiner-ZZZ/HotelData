@@ -26,7 +26,7 @@
 
   &.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
   }
 }
 
@@ -114,9 +114,9 @@ button {
 }
 
 .refund-btn {
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.06);
-  color: #f59e0b;
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+  color: var(--warning);
   font-size: 0.78rem;
   padding: 0 0.65rem;
   min-height: 2rem;
@@ -124,8 +124,8 @@ button {
   .material-symbols-outlined { font-size: 14px; }
 
   &:hover:not(:disabled) {
-    background: rgba(245, 158, 11, 0.14);
-    border-color: #f59e0b;
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border-color: var(--warning);
   }
 }
 
@@ -137,12 +137,12 @@ button {
   border-radius: 100px;
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.8rem;
-  color: #c8d0da;
+  color: var(--gray-700);
 }
 
 .method-icon {
   font-size: 14px;
-  color: #6b7a8d;
+  color: var(--gray-500);
 }
 
 .inline-link {

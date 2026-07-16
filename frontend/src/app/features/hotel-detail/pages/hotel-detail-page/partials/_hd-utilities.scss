@@ -5,15 +5,15 @@
   gap: 8px;
   margin-top: 16px;
   padding: 12px 16px;
-  background: color-mix(in srgb, var(--primary, #006076) 6%, transparent);
+  background: color-mix(in srgb, var(--primary, var(--accent)) 6%, transparent);
   border-radius: 10px;
   font-size: 14px;
-  color: var(--on-surface-variant, #3f484c);
+  color: var(--on-surface-variant, var(--gray-700));
   line-height: 1.5;
 
   .material-symbols-outlined {
     font-size: 20px;
-    color: var(--primary, #006076);
+    color: var(--primary, var(--accent));
     flex-shrink: 0;
   }
 }

@@ -99,7 +99,7 @@
 .btn-save-edit {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:disabled {
     opacity: 0.6;

@@ -15,7 +15,7 @@
 }
 
 .accordion-header:hover {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
 }
 
 .accordion-header h2 {

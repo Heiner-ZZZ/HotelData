@@ -27,7 +27,7 @@
 }
 
 .data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .data-table tbody tr:last-child td {
@@ -74,13 +74,13 @@
 
 .status-badge.active,
 .toggle-badge-btn.active {
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
 .status-badge.inactive,
 .toggle-badge-btn.inactive {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
 }
 
@@ -91,7 +91,7 @@
 }
 
 .edit-btn {
-  color: var(--accent, #1463ff);
+  color: var(--accent, var(--accent));
   opacity: 0.5;
   transition: opacity 0.15s;
   background: none;
@@ -111,7 +111,7 @@
 }
 
 .delete-btn {
-  color: #dc3545;
+  color: var(--danger);
   opacity: 0.5;
   transition: opacity 0.15s;
   background: none;

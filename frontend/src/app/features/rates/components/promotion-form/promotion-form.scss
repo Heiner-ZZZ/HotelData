@@ -53,7 +53,7 @@ select {
   box-sizing: border-box;
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 
   &:focus {
@@ -62,7 +62,7 @@ select {
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -108,8 +108,8 @@ select option {
   padding: 0.6rem 1.35rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--on-accent);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -143,7 +143,7 @@ select option {
   gap: 0.5rem;
   padding: 0.65rem 1rem;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   font-size: 0.85rem;
   font-weight: 600;
@@ -170,7 +170,7 @@ select option {
   transition: background 120ms ease, color 120ms ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 

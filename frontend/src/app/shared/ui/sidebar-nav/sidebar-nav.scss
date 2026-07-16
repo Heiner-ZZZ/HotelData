@@ -57,7 +57,7 @@
 }
 
 .collapse-btn:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -178,7 +178,7 @@
 }
 
 .section-link:hover {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   border-left-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
@@ -226,7 +226,7 @@
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-left-color: color-mix(in srgb, var(--accent) 30%, transparent);
   }
@@ -286,7 +286,7 @@
 }
 
 .sidebar-icon-btn:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 

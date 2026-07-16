@@ -77,7 +77,7 @@
   border: none;
   border-radius: 7px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -103,7 +103,7 @@
   font-family: inherit;
 }
 .btn-ghost:hover {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -175,7 +175,7 @@
 }
 
 .timeline-entry:hover {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .timeline-marker {
@@ -220,17 +220,17 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
-.entity-room_type { background: color-mix(in srgb, #8b5cf6 12%, transparent); color: #7c3aed; }
-.entity-inventory_entry { background: color-mix(in srgb, #06b6d4 12%, transparent); color: #0891b2; }
-.entity-rate_plan { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #d97706; }
-.entity-rate_calendar { background: color-mix(in srgb, #10b981 12%, transparent); color: #059669; }
-.entity-policy { background: color-mix(in srgb, #ec4899 12%, transparent); color: #db2777; }
-.entity-amenity { background: color-mix(in srgb, #6366f1 12%, transparent); color: #4f46e5; }
-.entity-content { background: color-mix(in srgb, #14b8a6 12%, transparent); color: #0d9488; }
+.entity-room_type { background: color-mix(in srgb, var(--purple) 12%, transparent); color: var(--purple); }
+.entity-inventory_entry { background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); }
+.entity-rate_plan { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+.entity-rate_calendar { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.entity-policy { background: color-mix(in srgb, var(--purple) 14%, transparent); color: color-mix(in srgb, var(--purple) 55%, var(--danger)); }
+.entity-amenity { background: color-mix(in srgb, var(--indigo) 12%, transparent); color: var(--indigo); }
+.entity-content { background: color-mix(in srgb, var(--teal) 12%, transparent); color: var(--teal); }
 
 .action-badge {
   display: inline-flex;
@@ -331,7 +331,7 @@
 
 .page-btn--active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
@@ -414,7 +414,7 @@
 .detail-summary-card {
   padding: 1rem;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
@@ -484,7 +484,7 @@
   gap: 0.35rem;
   padding: 0.3rem 0.6rem;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   font-size: 0.78rem;
 }
 
@@ -520,7 +520,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted-text);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: var(--accent-light);
 }
 
 .diff-table code {

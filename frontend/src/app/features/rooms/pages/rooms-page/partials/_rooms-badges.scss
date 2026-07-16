@@ -11,12 +11,12 @@
 }
 
 .status-badge.active {
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  background: var(--success-light);
   color: var(--success);
 }
 
 .status-badge.inactive {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
 }
 
@@ -40,13 +40,13 @@
   text-overflow: ellipsis;
 
   &.occupied {
-    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    background: var(--warning-light);
     color: var(--warning);
     border: 1px solid color-mix(in srgb, var(--warning) 20%, transparent);
   }
 
   &.free {
-    background: color-mix(in srgb, var(--success) 8%, transparent);
+    background: var(--success-light);
     color: var(--success);
   }
 
@@ -70,7 +70,7 @@
   font-size: 0.85rem;
 
   &.yes {
-    background: color-mix(in srgb, var(--success) 10%, transparent);
+    background: var(--success-light);
     color: var(--success);
   }
 

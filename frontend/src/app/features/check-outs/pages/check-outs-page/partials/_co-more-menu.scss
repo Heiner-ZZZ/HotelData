@@ -17,7 +17,7 @@
   transition: background 120ms, color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -58,7 +58,7 @@
   font-family: inherit;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 

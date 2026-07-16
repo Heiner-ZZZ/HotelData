@@ -11,7 +11,7 @@
   flex-direction: column;
   gap: 1rem;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 /* ═══ Header ═══ */
@@ -29,7 +29,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .ciw-meta {
@@ -37,7 +37,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.75rem;
-  color: #3f484c;
+  color: var(--gray-700);
   margin-top: 0.2rem;
   flex-wrap: wrap;
 }
@@ -46,7 +46,7 @@
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #006076;
+  color: var(--accent);
   background: rgba(0, 96, 118, 0.06);
   padding: 0.1rem 0.4rem;
   border-radius: 0.25rem;
@@ -56,7 +56,7 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #bec8cd;
+  background: var(--gray-300);
 }
 
 .ciw-badge {
@@ -74,13 +74,13 @@
 
 .ciw-badge.pending {
   background: rgba(234, 179, 8, 0.08);
-  color: #b8860b;
+  color: var(--warning);
   border: 1px solid rgba(234, 179, 8, 0.12);
 }
 
 .ciw-badge.success {
   background: rgba(16, 185, 129, 0.08);
-  color: #059669;
+  color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.12);
 }
 
@@ -100,13 +100,13 @@
 
 .ciw-toast.success {
   background: rgba(16, 185, 129, 0.06);
-  color: #059669;
+  color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.1);
 }
 
 .ciw-toast.error {
   background: rgba(186, 26, 26, 0.06);
-  color: #ba1a1a;
+  color: var(--danger);
   border: 1px solid rgba(186, 26, 26, 0.1);
 }
 
@@ -132,7 +132,7 @@
   border: none;
   border-radius: 0.35rem;
   background: transparent;
-  color: #6f797d;
+  color: var(--muted-text);
   font-size: 0.72rem;
   font-weight: 500;
   font-family: inherit;
@@ -141,19 +141,19 @@
   white-space: nowrap;
 
   &:hover {
-    background: #f2f4f6;
-    color: #191c1e;
+    background: var(--surface-hover);
+    color: var(--app-text);
   }
 }
 
 .ciw-step-active {
   background: rgba(0, 96, 118, 0.08);
-  color: #006076;
+  color: var(--accent);
   font-weight: 600;
 }
 
 .ciw-step-done {
-  color: #16a34a;
+  color: var(--success);
 }
 
 .ciw-step-icon {
@@ -168,15 +168,15 @@
   flex: 1;
   height: 1px;
   min-width: 0.75rem;
-  background: #e0e3e5;
+  background: var(--app-border);
   margin: 0 0.15rem;
 }
 
 /* ═══ Card ═══ */
 
 .ciw-card {
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 0.75rem;
   padding: 1.15rem 1.25rem;
   display: flex;
@@ -193,13 +193,13 @@
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #191c1e;
+    color: var(--app-text);
   }
 }
 
 .ciw-card-icon {
   font-size: 1.2rem;
-  color: #006076;
+  color: var(--accent);
 }
 
 /* ═══ Guest Grid ═══ */
@@ -225,26 +225,26 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .ciw-value {
   font-size: 0.85rem;
-  color: #191c1e;
+  color: var(--app-text);
   line-height: 1.5;
 }
 
 .ciw-value-lg {
   font-size: 1rem;
   font-weight: 600;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 /* ═══ Divider ═══ */
 
 .ciw-divider {
   height: 1px;
-  background: #e0e3e5;
+  background: var(--app-border);
 }
 
 /* ═══ Reservation Summary ═══ */
@@ -254,7 +254,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6f797d;
+  color: var(--muted-text);
 }
 
 .ciw-reservation-summary {
@@ -269,11 +269,11 @@
   align-items: center;
   padding: 0.25rem 0;
   font-size: 0.82rem;
-  color: #3f484c;
+  color: var(--gray-700);
 
   strong {
     font-weight: 600;
-    color: #191c1e;
+    color: var(--app-text);
   }
 }
 
@@ -301,8 +301,8 @@
   gap: 0.5rem;
   padding: 0.45rem 0.65rem;
   border-radius: 0.5rem;
-  border: 1px solid #e0e3e5;
-  background: #fafafa;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
 }
 
 .ciw-room-ok {
@@ -320,13 +320,13 @@
   flex-shrink: 0;
 }
 
-.ciw-room-ok .ciw-room-icon { color: #16a34a; }
-.ciw-room-blocked .ciw-room-icon { color: #ba1a1a; }
+.ciw-room-ok .ciw-room-icon { color: var(--success); }
+.ciw-room-blocked .ciw-room-icon { color: var(--danger); }
 
 .ciw-room-label {
   font-weight: 600;
   font-size: 0.82rem;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .ciw-room-status {
@@ -335,13 +335,13 @@
   font-weight: 500;
   padding: 0.1rem 0.4rem;
   border-radius: 0.25rem;
-  background: color-mix(in srgb, var(--room-status-color, #6f797d) 8%, transparent);
-  color: var(--room-status-color, #6f797d);
+  background: color-mix(in srgb, var(--room-status-color, var(--muted-text)) 8%, transparent);
+  color: var(--room-status-color, var(--muted-text));
 }
 
 .ciw-room-warn {
   font-size: 0.68rem;
-  color: #ba1a1a;
+  color: var(--danger);
   font-weight: 500;
   margin-left: 0.25rem;
 }
@@ -355,7 +355,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   background: rgba(234, 179, 8, 0.06);
-  color: #b8860b;
+  color: var(--warning);
   border: 1px solid rgba(234, 179, 8, 0.1);
 }
 
@@ -370,17 +370,17 @@
 .ciw-input {
   width: 100%;
   padding: 0.4rem 0.55rem;
-  border: 1px solid #bec8cd;
+  border: 1px solid var(--gray-300);
   border-radius: 0.35rem;
   font-size: 0.85rem;
   font-family: inherit;
-  color: #191c1e;
-  background: #ffffff;
+  color: var(--app-text);
+  background: var(--surface);
   outline: none;
   transition: border-color 0.12s;
 
   &:focus {
-    border-color: #006076;
+    border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.08);
   }
 }
@@ -404,14 +404,14 @@
   input {
     width: 1rem;
     height: 1rem;
-    accent-color: #006076;
+    accent-color: var(--accent);
     cursor: pointer;
   }
 
   span {
     font-size: 0.85rem;
     font-weight: 500;
-    color: #191c1e;
+    color: var(--app-text);
   }
 }
 
@@ -432,7 +432,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #e0e3e5;
+  border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -440,14 +440,14 @@
   min-height: 2.6rem;
 
   &:hover {
-    background: #f7f9fb;
-    border-color: #bec8cd;
+    background: var(--surface-raised);
+    border-color: var(--gray-300);
   }
 
   input {
     width: 0.95rem;
     height: 0.95rem;
-    accent-color: #006076;
+    accent-color: var(--accent);
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -463,44 +463,44 @@
 
 .ciw-check-item-icon {
   font-size: 1.15rem;
-  color: #6f797d;
+  color: var(--muted-text);
   flex-shrink: 0;
   transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .ciw-checked .ciw-check-item-icon {
-  color: #006076;
+  color: var(--accent);
 }
 
 .ciw-check-text {
   font-size: 0.78rem;
   font-weight: 500;
-  color: #191c1e;
+  color: var(--app-text);
   line-height: 1.3;
 }
 
 /* ═══ Key icon — simple vpn_key ═══ */
 
 .ciw-checked {
-  border-color: #006076;
+  border-color: var(--accent);
   background: rgba(0, 96, 118, 0.03);
 }
 
 .ciw-check-icon {
   margin-left: auto;
   font-size: 1.1rem;
-  color: #16a34a;
+  color: var(--success);
   --icon-FILL: 1;
   flex-shrink: 0;
 }
 
 /* Billing highlight */
 .ciw-check-billing {
-  border-color: #7c3aed;
+  border-color: var(--purple);
   background: rgba(124, 58, 237, 0.03);
 
   .ciw-check-item-icon {
-    color: #7c3aed;
+    color: var(--purple);
   }
 }
 
@@ -511,7 +511,7 @@
   padding: 0.4rem 0.65rem;
   border-radius: 0.4rem;
   font-size: 0.72rem;
-  color: #3f484c;
+  color: var(--gray-700);
   background: rgba(124, 58, 237, 0.04);
   border: 1px solid rgba(124, 58, 237, 0.1);
   grid-column: 1 / -1;
@@ -519,12 +519,12 @@
 
 .ciw-hint-icon {
   font-size: 0.9rem;
-  color: #7c3aed;
+  color: var(--purple);
   flex-shrink: 0;
 }
 
 .ciw-billing-link {
-  color: #7c3aed;
+  color: var(--purple);
   font-weight: 600;
   text-decoration: none;
 
@@ -534,7 +534,7 @@
 }
 
 .ciw-reception-link {
-  color: #006076;
+  color: var(--accent);
   font-weight: 600;
   text-decoration: none;
 
@@ -548,24 +548,24 @@
 .ciw-textarea {
   width: 100%;
   padding: 0.5rem 0.6rem;
-  border: 1px solid #bec8cd;
+  border: 1px solid var(--gray-300);
   border-radius: 0.5rem;
   font-size: 0.82rem;
   font-family: inherit;
-  color: #191c1e;
-  background: #ffffff;
+  color: var(--app-text);
+  background: var(--surface);
   outline: none;
   resize: vertical;
   transition: border-color 0.12s;
   min-height: 70px;
 
   &:focus {
-    border-color: #006076;
+    border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.08);
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--gray-400);
   }
 }
 
@@ -587,13 +587,13 @@
   font-size: 0.72rem;
   padding: 0.15rem 0.5rem;
   border-radius: 100px;
-  background: #f2f4f6;
-  color: #6f797d;
-  border: 1px solid #e0e3e5;
+  background: var(--surface-hover);
+  color: var(--muted-text);
+  border: 1px solid var(--app-border);
 
   &.done {
     background: rgba(22, 163, 74, 0.06);
-    color: #16a34a;
+    color: var(--success);
     border-color: rgba(22, 163, 74, 0.12);
   }
 }
@@ -606,8 +606,8 @@
   left: 0;
   right: 0;
   z-index: 40;
-  background: #ffffff;
-  border-top: 1px solid #e0e3e5;
+  background: var(--surface);
+  border-top: 1px solid var(--app-border);
   padding: 0.65rem 1.5rem;
   display: flex;
   justify-content: space-between;
@@ -648,19 +648,19 @@
 }
 
 .ciw-btn-primary {
-  background: #006076;
-  color: #ffffff;
-  border-color: #006076;
+  background: var(--accent);
+  color: var(--surface);
+  border-color: var(--accent);
 
   &:hover:not(:disabled) {
-    background: #004e60;
+    background: var(--accent-strong);
   }
 }
 
 .ciw-btn-success {
-  background: #16a34a;
-  color: #ffffff;
-  border-color: #16a34a;
+  background: var(--success);
+  color: var(--surface);
+  border-color: var(--success);
 
   &:hover:not(:disabled) {
     background: #15803d;
@@ -668,25 +668,25 @@
 }
 
 .ciw-btn-outline {
-  background: #ffffff;
-  color: #191c1e;
-  border-color: #bec8cd;
+  background: var(--surface);
+  color: var(--app-text);
+  border-color: var(--gray-300);
 
   &:hover:not(:disabled) {
-    background: #f2f4f6;
-    border-color: #006076;
-    color: #006076;
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 }
 
 .ciw-btn-ghost {
   background: transparent;
-  color: #6f797d;
+  color: var(--muted-text);
   border: none;
 
   &:hover {
-    color: #191c1e;
-    background: #f2f4f6;
+    color: var(--app-text);
+    background: var(--surface-hover);
   }
 }
 
@@ -709,26 +709,26 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  background: #ffffff;
-  border: 1px solid #e0e3e5;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
   border-radius: 0.75rem;
 }
 
 .ciw-completed-icon .material-symbols-outlined {
   font-size: 3rem;
-  color: #16a34a;
+  color: var(--success);
 }
 
 .ciw-completed-title {
   font-size: 1.2rem;
   font-weight: 600;
   margin: 0;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .ciw-completed-folio {
   font-size: 0.85rem;
-  color: #006076;
+  color: var(--accent);
   background: rgba(0, 96, 118, 0.04);
   padding: 0.4rem 0.85rem;
   border-radius: 0.5rem;
@@ -740,9 +740,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   padding: 1rem;
-  background: #f7f9fb;
+  background: var(--surface-raised);
   border-radius: 0.5rem;
-  border: 1px solid #e0e3e5;
+  border: 1px solid var(--app-border);
   text-align: left;
   width: 100%;
   max-width: 400px;
@@ -753,13 +753,13 @@
   flex-direction: column;
   gap: 0.1rem;
   font-size: 0.85rem;
-  color: #191c1e;
+  color: var(--app-text);
 }
 
 .ciw-price {
   font-weight: 700;
   font-size: 1rem;
-  color: #006076;
+  color: var(--accent);
 }
 
 .ciw-completed-actions {
@@ -778,7 +778,7 @@
   border-radius: 0.5rem;
   background: rgba(186, 26, 26, 0.04);
   border: 1px solid rgba(186, 26, 26, 0.12);
-  color: #991b1b;
+  color: var(--danger-strong);
   font-size: 0.78rem;
 
   .material-symbols-outlined {
@@ -795,7 +795,7 @@
 
   p {
     margin: 0;
-    color: #6f797d;
+    color: var(--muted-text);
     line-height: 1.4;
   }
 }
@@ -810,14 +810,14 @@
   border-radius: 0.5rem;
   background: rgba(234, 179, 8, 0.06);
   border: 1px solid rgba(234, 179, 8, 0.15);
-  color: #92400e;
+  color: var(--warning-strong);
   font-size: 0.78rem;
 
   .material-symbols-outlined {
     font-size: 1.3rem;
     flex-shrink: 0;
     margin-top: 0.05rem;
-    color: #b8860b;
+    color: var(--warning);
   }
 
   strong {
@@ -828,7 +828,7 @@
 
   p {
     margin: 0;
-    color: #6f797d;
+    color: var(--muted-text);
     line-height: 1.4;
   }
 }

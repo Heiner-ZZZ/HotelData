@@ -134,7 +134,7 @@
 }
 
 .search-result-item:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
 }
 
 .search-result-item:disabled {
@@ -183,7 +183,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.5rem 0.3rem 0.7rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   border-radius: 999px;
   font-size: 0.82rem;
@@ -254,7 +254,7 @@
   align-items: center;
   gap: 0.4rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 999px;
   padding: 0.5rem 1.4rem;
@@ -283,7 +283,7 @@
   width: 1rem;
   height: 1rem;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: var(--on-accent);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

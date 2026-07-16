@@ -8,10 +8,10 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.85rem;
-  border: 1px solid var(--border-color, #d0d5dd);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   background: transparent;
-  color: var(--text-color, #1e293b);
+  color: var(--app-text);
   font-size: 0.8125rem;
   font-family: inherit;
   font-weight: 500;
@@ -21,8 +21,8 @@
 }
 
 .header-action-btn:hover {
-  background: var(--hover-bg, #f1f5f9);
-  border-color: var(--accent, #1463ff);
+  background: var(--hover-bg, var(--gray-100));
+  border-color: var(--accent, var(--accent));
 }
 
 .header-action-btn .material-symbols-outlined {
@@ -47,7 +47,7 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #e8edf2;
+  color: var(--app-text);
 }
 
 .chart-header-actions {
@@ -61,10 +61,10 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.35rem 0.7rem;
-  border: 1px solid #1e293b;
+  border: 1px solid var(--gray-800);
   border-radius: 6px;
   background: transparent;
-  color: #6b7a8d;
+  color: var(--gray-500);
   font-size: 0.75rem;
   font-weight: 600;
   font-family: inherit;
@@ -77,9 +77,9 @@
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: #c8d0da;
-    border-color: #334155;
+    background: color-mix(in srgb, var(--app-text) 4%, transparent);
+    color: var(--gray-700);
+    border-color: var(--gray-700);
   }
 
   &:active {
@@ -95,10 +95,10 @@
 
 .filter-pill {
   padding: 0.3rem 0.7rem;
-  border: 1px solid #1e293b;
+  border: 1px solid var(--gray-800);
   border-radius: 100px;
   background: transparent;
-  color: #6b7a8d;
+  color: var(--gray-500);
   font-size: 0.75rem;
   font-weight: 600;
   font-family: inherit;
@@ -106,14 +106,14 @@
   transition: all 0.15s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: #c8d0da;
-    border-color: #334155;
+    background: color-mix(in srgb, var(--app-text) 4%, transparent);
+    color: var(--gray-700);
+    border-color: var(--gray-700);
   }
 
   &.active {
-    background: rgba(20, 99, 255, 0.12);
-    color: #60a5fa;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent-active);
     border-color: rgba(20, 99, 255, 0.3);
   }
 }
@@ -124,8 +124,8 @@
   gap: 0.75rem;
   margin-bottom: 0.75rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid #1e293b;
+  background: color-mix(in srgb, var(--app-text) 2%, transparent);
+  border: 1px solid var(--gray-800);
   border-radius: 8px;
 }
 
@@ -138,22 +138,22 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6b7a8d;
+    color: var(--gray-500);
   }
 
   input {
     padding: 0.4rem 0.6rem;
-    border: 1px solid #1e293b;
+    border: 1px solid var(--gray-800);
     border-radius: 6px;
-    background: #0a0e14;
-    color: #c8d0da;
+    background: var(--gray-900);
+    color: var(--gray-700);
     font-size: 0.82rem;
     font-family: inherit;
     outline: none;
     transition: border-color 0.15s;
 
     &:focus {
-      border-color: #1463ff;
+      border-color: var(--accent);
     }
 
     &::-webkit-calendar-picker-indicator {
@@ -170,8 +170,8 @@
   padding: 0.4rem 0.85rem;
   border: none;
   border-radius: 6px;
-  background: #1463ff;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 0.78rem;
   font-weight: 600;
   font-family: inherit;
@@ -183,10 +183,7 @@
   }
 
   &:hover:not(:disabled) {
-    background: #1d6eff;
-  }
-
-  &:disabled {
+    background: var(--accent-hover); {
     opacity: 0.4;
     cursor: not-allowed;
   }
@@ -206,8 +203,8 @@
   padding: 1.5rem 2rem;
   text-align: center;
   min-width: 160px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid #1e293b;
+  background: color-mix(in srgb, var(--app-text) 2%, transparent);
+  border: 1px solid var(--gray-800);
   border-radius: 10px;
 }
 
@@ -216,19 +213,19 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b7a8d;
+  color: var(--gray-500);
 }
 
 .chart-side-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #4ade80;
+  color: var(--success);
   line-height: 1.15;
 }
 
 .chart-side-sub {
   font-size: 0.82rem;
-  color: #5f6f87;
+  color: var(--muted-text);
 }
 
 .kpi-grid {

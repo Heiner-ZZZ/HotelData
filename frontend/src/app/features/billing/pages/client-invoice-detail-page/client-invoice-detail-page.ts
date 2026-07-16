@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs';
+import { map } from 'rxjs';
 
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -10,6 +11,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel } from '../../models/billing.model';
+import { mapInvoiceDetail } from '../../mappers/billing.mapper';
 import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({
@@ -21,12 +23,28 @@ import { BillingApiService } from '../../services/billing-api.service';
 })
 export class ClientInvoiceDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly billingApi = inject(BillingApiService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly invoice = signal<InvoiceDetailViewModel | null>(null);
+  private readonly invoiceId = toSignal(
+    this.activatedRoute.paramMap.pipe(map(params => params.get('invoiceId') ?? '')),
+    { initialValue: '' }
+  );
+
+  readonly invoiceResource = httpResource<InvoiceDetailViewModel>(() => {
+    const id = this.invoiceId();
+    return id ? `/api/billing/invoices/${id}` : undefined;
+  }, {
+    parse: (res) => mapInvoiceDetail(res as import('../../models/billing.dto').InvoiceDetailDto),
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    if (this.invoiceResource.isLoading()) return 'loading';
+    if (this.invoiceResource.error()) return 'error';
+    return this.invoiceResource.value() ? 'success' : 'loading';
+  });
+
+  readonly invoice = computed(() => this.invoiceResource.value() ?? null);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
   readonly paying = signal(false);
@@ -36,23 +54,7 @@ export class ClientInvoiceDetailPageComponent {
     year: 'numeric', month: 'long', day: 'numeric',
   }));
 
-  constructor() {
-    this.activatedRoute.paramMap
-      .pipe(
-        switchMap(params => {
-          this.viewState.set('loading');
-          return this.billingApi.getInvoiceDetail(params.get('invoiceId')!);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: data => {
-          this.invoice.set(data);
-          this.viewState.set('success');
-        },
-        error: () => this.viewState.set('error'),
-      });
-  }
+  constructor() {}
 
   startPayment() {
     this.actionError.set(null);
@@ -74,14 +76,12 @@ export class ClientInvoiceDetailPageComponent {
     this.paying.set(true);
     this.actionError.set(null);
 
-    this.billingApi.payMyInvoice(inv.id).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
+    this.billingApi.payMyInvoice(inv.id).subscribe({
       next: (result) => {
         this.paymentReference.set(result.payment?.['reference'] as string || '');
         this.paymentStep.set('done');
         this.paying.set(false);
-        this.invoice.update(i => i ? { ...i, status: 'paid', paidAt: new Date().toISOString() } : i);
+        this.invoiceResource.reload();
       },
       error: (err) => {
         this.actionError.set(err.message || 'Error al procesar el pago. Intenta nuevamente.');

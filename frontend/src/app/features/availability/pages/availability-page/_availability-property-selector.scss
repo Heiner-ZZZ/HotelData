@@ -11,7 +11,7 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.5rem 0.75rem 0.5rem 1rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   border-radius: 100px;
   font-size: 0.9rem;
@@ -131,7 +131,7 @@
 
   &:hover,
   &.is-highlighted {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 

@@ -24,7 +24,7 @@
   }
 
   .material-symbols-outlined {
-    color: var(--primary, #2563eb);
+    color: var(--primary, var(--accent));
     --icon-FILL: 1;
     --icon-wght: 300;
     --icon-opsz: 20;
@@ -57,7 +57,7 @@
 .inv-info-total {
   .inv-value {
     font-size: 1.1rem;
-    color: var(--primary, #2563eb);
+    color: var(--primary, var(--accent));
   }
 }
 
@@ -101,10 +101,10 @@
 .btn-pay-invoice {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 85%, black);
+    background: var(--accent-strong);
   }
 }
 
@@ -128,7 +128,7 @@
 }
 
 .panel-icon {
-  color: var(--primary, #2563eb);
+  color: var(--primary, var(--accent));
   --icon-FILL: 1;
   --icon-wght: 300;
   --icon-opsz: 20;
@@ -141,7 +141,7 @@
   letter-spacing: 0.03em;
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -187,7 +187,7 @@
   }
 
   .total-value {
-    color: var(--primary, #2563eb);
+    color: var(--primary, var(--accent));
     font-size: 1.05rem;
   }
 }
@@ -240,7 +240,7 @@
   }
 
   .total-value {
-    color: var(--primary, #2563eb);
+    color: var(--primary, var(--accent));
     font-size: 1.05rem;
   }
 }

@@ -5,47 +5,47 @@
   min-width: 0;
 
   /* ── Alternating column backgrounds ── */
-  .col-even { background-color: rgba(0, 96, 118, 0.015); }
+  .col-even { background-color: color-mix(in srgb, var(--accent) 1.5%, transparent); }
   .col-odd { background-color: transparent; }
-  .ag-header-cell.col-even { background-color: rgba(0, 96, 118, 0.06); }
-  .ag-header-cell.col-odd { background-color: #f6f8fb; }
+  .ag-header-cell.col-even { background-color: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .ag-header-cell.col-odd { background-color: var(--gray-50); }
 
   /* ── Grid chrome ── */
-  --ag-border-color: #e8ecf1;
-  --ag-row-border-color: #eef1f5;
-  --ag-header-background-color: #f6f8fb;
-  --ag-header-foreground-color: #4a5568;
-  --ag-header-column-resize-handle-color: #dde2e8;
-  --ag-odd-row-background-color: #fafbfc;
-  --ag-row-hover-color: #f0f4ff;
-  --ag-selected-row-background-color: #e8f0fe;
+  --ag-border-color: var(--app-border);
+  --ag-row-border-color: var(--gray-100);
+  --ag-header-background-color: var(--gray-50);
+  --ag-header-foreground-color: var(--gray-600);
+  --ag-header-column-resize-handle-color: var(--gray-200);
+  --ag-odd-row-background-color: var(--gray-50);
+  --ag-row-hover-color: color-mix(in srgb, var(--indigo) 6%, transparent);
+  --ag-selected-row-background-color: color-mix(in srgb, var(--accent) 8%, transparent);
   --ag-font-size: 12.5px;
   --ag-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ag-row-height: 44px;
   --ag-header-height: 38px;
   --ag-header-column-separator-display: block;
-  --ag-header-column-separator-color: #e2e6ec;
-  --ag-input-focus-border-color: #006076;
-  --ag-range-selection-border-color: #006076;
-  --ag-material-primary-color: #006076;
+  --ag-header-column-separator-color: var(--gray-200);
+  --ag-input-focus-border-color: var(--accent);
+  --ag-range-selection-border-color: var(--accent);
+  --ag-material-primary-color: var(--accent);
   --ag-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
   /* ── Zebra striping handled by --ag-odd-row-background-color ── */
 
   /* ── Row hover (AG Grid Quartz uses JS-managed .ag-row-hover class) ── */
   .ag-row.ag-row-hover {
-    background-color: #f0f4ff !important;
-    box-shadow: inset 3px 0 0 #006076;
+    background-color: color-mix(in srgb, var(--indigo) 6%, transparent) !important;
+    box-shadow: inset 3px 0 0 var(--accent);
     transition: background-color 0.12s ease, box-shadow 0.12s ease;
   }
 
   /* ── Selected row ── */
   .ag-row.ag-row-selected {
-    background-color: #e8f0fe !important;
-    box-shadow: inset 3px 0 0 #006076;
+    background-color: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+    box-shadow: inset 3px 0 0 var(--accent);
   }
   .ag-row.ag-row-selected.ag-row-hover {
-    background-color: #dce8fa !important;
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
   }
 
   /* ── Header styling ── */
@@ -59,7 +59,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #4a5568;
+    color: var(--gray-600);
   }
   .ag-header-cell::after {
     content: '';
@@ -68,7 +68,7 @@
     top: 25%;
     height: 50%;
     width: 1px;
-    background: #e2e6ec;
+    background: var(--gray-200);
   }
 
   /* ── Cell padding ── */
@@ -88,24 +88,24 @@
   .ag-paging-panel {
     height: 40px;
     font-size: 12px;
-    color: #5a6677;
-    border-top: 1px solid #e8ecf1;
-    background: #fafbfc;
+    color: var(--muted-text);
+    border-top: 1px solid var(--app-border);
+    background: var(--gray-50);
     padding: 0 12px;
   }
   .ag-paging-button {
     border-radius: 5px;
-    border: 1px solid #dde2e8;
-    background: #fff;
-    color: #4a5568;
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--gray-600);
     width: 28px;
     height: 28px;
     cursor: pointer;
     transition: all 0.12s;
     &:hover {
-      background: #f0f4ff;
-      border-color: #006076;
-      color: #006076;
+      background: color-mix(in srgb, var(--indigo) 6%, transparent);
+      border-color: var(--accent);
+      color: var(--accent);
     }
   }
   .ag-paging-page-summary-panel {
@@ -116,28 +116,28 @@
   &::-webkit-scrollbar { width: 6px; height: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
-    background: #c8d0d8;
+    background: var(--gray-300);
     border-radius: 3px;
-    &:hover { background: #a0aab4; }
+    &:hover { background: var(--gray-400); }
   }
   .ag-body-viewport::-webkit-scrollbar { width: 6px; height: 6px; }
   .ag-body-viewport::-webkit-scrollbar-track { background: transparent; }
   .ag-body-viewport::-webkit-scrollbar-thumb {
-    background: #c8d0d8;
+    background: var(--gray-300);
     border-radius: 3px;
-    &:hover { background: #a0aab4; }
+    &:hover { background: var(--gray-400); }
   }
 
   /* ── Group rows (journal entry headers) — flat-array driven, not treeData ── */
   .ag-row.je-group-row {
-    background: #f8fafc !important;
+    background: var(--gray-50) !important;
     font-weight: 600;
     font-size: 13px;
-    border-bottom: 1px solid #dde2e8 !important;
+    border-bottom: 1px solid var(--gray-200) !important;
     cursor: default;
     transition: background 0.12s;
     &:hover {
-      background: #eef2ff !important;
+      background: color-mix(in srgb, var(--indigo) 6%, transparent) !important;
     }
     .cell-group-row {
       font-family: 'JetBrains Mono', 'Menlo', monospace;
@@ -146,13 +146,13 @@
 
   /* ── Child row indent: subtle left border showing group membership ── */
   .ag-row.je-child-row {
-    box-shadow: inset 3px 0 0 rgba(0, 96, 118, 0.12);
-    background: rgba(0, 96, 118, 0.01);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 12%, transparent);
+    background: color-mix(in srgb, var(--accent) 1%, transparent);
     transition: box-shadow 0.12s ease;
   }
   .ag-row.je-child-row.ag-row-hover {
-    box-shadow: inset 3px 0 0 rgba(0, 96, 118, 0.28);
-    background: rgba(0, 96, 118, 0.03);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 28%, transparent);
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
   }
 
   /* ── Group row elements — use CSS variables for dark mode ── */
@@ -166,12 +166,12 @@
   .group-chevron {
     transition: transform 0.15s ease, color 0.15s ease;
     display: inline-block;
-    color: var(--accent, #1e3c78);
+    color: var(--accent, var(--accent-strong));
     font-size: 11px;
     cursor: pointer;
     user-select: none;
     &:hover {
-      color: #0ea5e9;
+      color: var(--cyan);
       transform: scale(1.15);
     }
   }
@@ -179,13 +179,13 @@
   .group-je-id {
     font-weight: 700;
     font-size: 12.5px;
-    color: var(--app-text, #191c1e);
+    color: var(--app-text, var(--app-text));
     font-family: 'JetBrains Mono', 'Menlo', monospace;
   }
 
   .group-child-badge {
     background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-    color: var(--accent, #4338ca);
+    color: var(--accent, var(--indigo));
     font-size: 9.5px;
     font-weight: 600;
     padding: 1px 6px;
@@ -210,32 +210,32 @@
   }
 
   .group-dc-debit {
-    color: #16a34a;
+    color: var(--success);
   }
   .group-dc-sep {
     color: color-mix(in srgb, var(--app-text) 40%, transparent);
   }
   .group-dc-credit {
-    color: #dc2626;
+    color: var(--danger);
   }
 
   /* ═══ Cell Classes — use CSS variables for dark mode support ═══ */
   .cell-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; font-weight: 450; }
-  .cell-date { color: var(--muted-text, #5f6f87); font-size: 11.5px; }
+  .cell-date { color: var(--muted-text, var(--muted-text)); font-size: 11.5px; }
   .cell-folio {
-    color: var(--accent, #006076);
+    color: var(--accent, var(--accent));
     font-weight: 600;
     cursor: pointer;
     transition: color 0.12s;
     letter-spacing: 0.02em;
-    &:hover { color: var(--accent, #004d5e); text-decoration: underline; text-underline-offset: 2px; }
+    &:hover { color: var(--accent, var(--accent-strong)); text-decoration: underline; text-underline-offset: 2px; }
   }
-  .cell-journal { color: var(--app-text, #1e293b); font-size: 11.5px; letter-spacing: 0.02em; }
-  .cell-account { color: var(--accent, #006076); font-weight: 600; letter-spacing: 0.02em; }
+  .cell-journal { color: var(--app-text, var(--gray-800)); font-size: 11.5px; letter-spacing: 0.02em; }
+  .cell-account { color: var(--accent, var(--accent)); font-weight: 600; letter-spacing: 0.02em; }
   .cell-period {
     font-size: 11px;
-    color: var(--muted-text, #5f6f87);
-    background: var(--surface-soft, #eef2f6);
+    color: var(--muted-text, var(--muted-text));
+    background: var(--surface-soft, var(--gray-100));
     border-radius: 4px;
     padding: 2px 6px;
     font-weight: 500;
@@ -243,7 +243,7 @@
   }
   .cell-cost-center {
     font-size: 11.5px;
-    color: var(--app-text, #1e293b);
+    color: var(--app-text, var(--gray-800));
     font-weight: 450;
   }
 
@@ -262,14 +262,14 @@
     flex-shrink: 0;
   }
   .je-debit {
-    background: color-mix(in srgb, #16a34a 15%, var(--surface));
-    color: #16a34a;
-    border: 1px solid color-mix(in srgb, #16a34a 35%, var(--surface));
+    background: color-mix(in srgb, var(--success) 15%, var(--surface));
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 35%, var(--surface));
   }
   .je-credit {
-    background: color-mix(in srgb, #dc2626 15%, var(--surface));
-    color: #dc2626;
-    border: 1px solid color-mix(in srgb, #dc2626 35%, var(--surface));
+    background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+    color: var(--danger);
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--surface));
   }
 
   /* ── Description cell ── */
@@ -282,22 +282,22 @@
   .desc-label {
     font-size: 12.5px;
     font-weight: 500;
-    color: var(--app-text, #191c1e);
+    color: var(--app-text, var(--app-text));
   }
   .desc-sub {
     font-size: 10.5px;
-    color: var(--muted-text, #6b7a8d);
+    color: var(--muted-text, var(--gray-500));
     font-weight: 400;
   }
 
   /* ── Financial amount cells ── */
   .cell-debit {
-    color: var(--app-text, #191c1e);
+    color: var(--app-text, var(--app-text));
     font-weight: 500;
     text-align: right;
   }
   .cell-credit {
-    color: #166534;
+    color: var(--success-strong);
     font-weight: 500;
     text-align: right;
   }
@@ -308,7 +308,7 @@
 
   /* ── Selection highlight ── */
   .ledger-grid ::selection {
-    background: #58a6ff;
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
   }
 }

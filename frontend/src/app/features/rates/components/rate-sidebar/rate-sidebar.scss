@@ -32,12 +32,12 @@
   position: relative;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    background: var(--accent-light);
     color: var(--app-text);
   }
 
   &.is-active {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     font-weight: 600;
 
@@ -77,7 +77,7 @@
   height: 1.25rem;
   padding: 0 0.35rem;
   border-radius: 100px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-light);
   color: var(--accent);
   font-size: 0.7rem;
   font-weight: 700;

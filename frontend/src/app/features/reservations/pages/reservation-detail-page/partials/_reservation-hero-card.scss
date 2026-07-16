@@ -60,8 +60,8 @@
 }
 
 .hero-status-checked-out {
-  --card-accent: #6366f1;
-  border-color: color-mix(in srgb, #6366f1 30%, var(--app-border));
+  --card-accent: var(--indigo);
+  border-color: color-mix(in srgb, var(--indigo) 30%, var(--app-border));
 }
 
 .hero-status-cancelled,

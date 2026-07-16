@@ -54,28 +54,28 @@
 
   &:hover {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    background: var(--accent-light);
     transform: translateY(-1px);
   }
 
   &.is-available {
     border-color: var(--success);
-    background: color-mix(in srgb, var(--success) 8%, transparent);
-    color: #065f46;
+    background: var(--success-light);
+    color: var(--success-strong);
 
     &:hover {
-      background: color-mix(in srgb, var(--danger) 8%, transparent);
+      background: var(--danger-light);
       border-color: var(--danger);
     }
   }
 
   &.is-blocked {
     border-color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 8%, transparent);
-    color: #991b1b;
+    background: var(--danger-light);
+    color: var(--danger-strong);
 
     &:hover {
-      background: color-mix(in srgb, var(--success) 8%, transparent);
+      background: var(--success-light);
       border-color: var(--success);
     }
   }
@@ -121,7 +121,7 @@
 }
 
 /* Semantic icon color overrides */
-.icon-hotel-warm { color: #d97706; }
+.icon-hotel-warm { color: var(--warning); }
 .icon-room-blue { color: var(--accent); }
 .icon-price-green { color: var(--success); }
 .icon-block-red { color: var(--danger); }
@@ -130,7 +130,7 @@
 
 
 /* Semantic icon color overrides */
-.icon-hotel-warm { color: #d97706; }
+.icon-hotel-warm { color: var(--warning); }
 .icon-room-blue { color: var(--accent); }
 .icon-price-green { color: var(--success); }
 .icon-block-red { color: var(--danger); }

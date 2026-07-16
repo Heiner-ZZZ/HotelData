@@ -21,7 +21,7 @@
 
 .toast-error {
   background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+  color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
@@ -135,7 +135,7 @@
   flex-shrink: 0;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -204,12 +204,12 @@
   user-select: none;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
   }
 
   &.is-active {
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    background: var(--accent-light);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -310,7 +310,7 @@
   font-weight: 700;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .gallery-overlay-actions {
@@ -440,7 +440,7 @@
     font-family: inherit;
 
     &::placeholder {
-      color: #9ca3af;
+      color: var(--gray-400);
     }
   }
 
@@ -527,7 +527,7 @@ select option {
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   transition: transform 180ms;
 
   .toggle-switch.is-active & {
@@ -548,7 +548,7 @@ select option {
   align-items: center;
   gap: 0.3rem;
   padding: 0.3rem 0.5rem 0.3rem 0.6rem;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: var(--accent-light);
   border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
   border-radius: 100px;
   font-size: 0.78rem;
@@ -632,7 +632,7 @@ select option {
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -660,14 +660,14 @@ select option {
   height: 2rem;
   border: 0;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--app-text);
   cursor: pointer;
   transition: background 120ms, color 120ms;
 
   &:hover {
     background: var(--danger);
-    color: #fff;
+    color: var(--on-accent);
   }
 
   .material-symbols-outlined {
@@ -733,7 +733,7 @@ select option {
   border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -758,8 +758,8 @@ select option {
   padding: 0.55rem 1.2rem;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--on-accent);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -900,10 +900,10 @@ select option {
 }
 
 /* Semantic icon color overrides */
-.icon-hotel-warm { color: #d97706; }
-.icon-badge-purple { color: #7c3aed; }
+.icon-hotel-warm { color: var(--warning); }
+.icon-badge-purple { color: var(--purple); }
 .icon-info-blue { color: var(--accent); }
 .icon-policy-amber { color: var(--warning); }
-.icon-star-gold { color: #eab308; }
-.icon-gallery-purple { color: #7c3aed; }
+.icon-star-gold { color: var(--yellow); }
+.icon-gallery-purple { color: var(--purple); }
 

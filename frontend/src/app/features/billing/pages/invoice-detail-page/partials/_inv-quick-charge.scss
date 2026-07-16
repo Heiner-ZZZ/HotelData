@@ -3,7 +3,7 @@
 
 .inv-quick-card {
   border-color: var(--accent);
-  background: linear-gradient(135deg, #fafcff, #f5fafd);
+  background: linear-gradient(135deg, var(--surface-raised), #f5fafd);
   padding: 0.85rem 1.15rem;
 }
 

@@ -3,7 +3,7 @@
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--outline-variant, #bec8cd);
+  border: 1px solid var(--outline-variant, var(--gray-300));
 }
 
 .map-card {
@@ -17,6 +17,6 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   backdrop-filter: blur(8px);
 
-  strong { display: block; color: var(--primary, #006076); margin-bottom: 4px; }
-  p { margin: 0; font-size: 13px; color: var(--on-surface-variant, #3f484c); line-height: 1.4; }
+  strong { display: block; color: var(--primary, var(--accent)); margin-bottom: 4px; }
+  p { margin: 0; font-size: 13px; color: var(--on-surface-variant, var(--gray-700)); line-height: 1.4; }
 }

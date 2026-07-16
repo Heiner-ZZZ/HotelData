@@ -1,17 +1,4 @@
 .login-page {
-  --app-bg: #f3f6fb;
-  --surface: #ffffff;
-  --surface-soft: #eef4ff;
-  --app-text: #162033;
-  --muted-text: #5f6f87;
-  --accent: #1463ff;
-  --success: #0f8a60;
-  --warning: #c98105;
-  --danger: #c93d32;
-  --app-border: #d8e0eb;
-  --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.08);
-
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 440px);
@@ -20,7 +7,7 @@
   padding: 48px clamp(24px, 5vw, 72px);
   background:
     radial-gradient(circle at top left, rgba(20, 99, 255, 0.12), transparent 32%),
-    linear-gradient(180deg, #f7faff 0%, #eef4ff 100%);
+    linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-soft) 100%);
 }
 
 .login-hero {
@@ -117,14 +104,14 @@
     border: 1px solid var(--app-border);
     border-radius: 8px;
     padding: 0 14px;
-    background: #fff;
+    background: var(--surface);
     color: var(--app-text);
   }
 
   input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.14);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
   }
 
   .password-field {
@@ -145,7 +132,7 @@
     height: 40px;
     border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: #fff;
+    background: var(--surface);
     color: var(--accent);
     display: grid;
     place-items: center;
@@ -203,7 +190,7 @@
     border: 0;
     border-radius: 8px;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 700;
     cursor: pointer;
   }
@@ -281,9 +268,9 @@
 }
 
 .notice-error {
-  background: #fff2f1;
-  border: 1px solid #f5c8c3;
-  color: #a13022;
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+  color: var(--danger-strong);
 }
 
 @media (max-width: 960px) {

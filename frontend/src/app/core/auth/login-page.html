@@ -35,6 +35,8 @@
         <span class="input-label">Usuario o correo</span>
         <input
           type="text"
+          id="identifier"
+          name="identifier"
           [value]="identifier()"
           (input)="identifier.set($any($event.target).value)"
           placeholder="superadmin o admin@hoteldata.local"
@@ -48,6 +50,8 @@
         <div class="password-field">
           <input
             [type]="passwordVisible() ? 'text' : 'password'"
+            id="password"
+            name="password"
             [value]="password()"
             (input)="password.set($any($event.target).value)"
             placeholder="Tu contraseña"
@@ -98,7 +102,13 @@
       </label>
 
       <label class="checkbox-field remember-me">
-        <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)">
+        <input
+          type="checkbox"
+          id="rememberMe"
+          name="rememberMe"
+          [checked]="rememberMe()"
+          (change)="rememberMe.set($any($event.target).checked)"
+        >
         <span class="checkbox-label">Recordarme</span>
       </label>
 

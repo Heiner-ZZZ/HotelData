@@ -19,7 +19,7 @@
 
   &:hover {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 }

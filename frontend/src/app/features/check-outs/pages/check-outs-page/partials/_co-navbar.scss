@@ -11,13 +11,13 @@
 }
 
 .toast-success {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
+  background: var(--success-light);
   color: var(--success);
   border: 1px solid color-mix(in srgb, var(--success) 18%, transparent);
 }
 
 .toast-error {
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  background: var(--danger-light);
   color: var(--danger);
   border: 1px solid color-mix(in srgb, var(--danger) 15%, transparent);
 }
@@ -54,7 +54,7 @@
   transition: background 120ms, color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
   }
 
@@ -114,7 +114,7 @@
   transition: background 120ms, color 120ms, border-color 120ms;
 
   &:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: var(--accent-light);
     color: var(--accent);
     border-color: var(--accent);
   }

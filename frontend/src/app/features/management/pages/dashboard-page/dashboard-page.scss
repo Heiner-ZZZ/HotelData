@@ -23,7 +23,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--success);
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
@@ -133,7 +133,7 @@
   --icon-wght: 350;
   --icon-opsz: 20;
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-light);
 }
 
 ul {
