@@ -1,0 +1,197 @@
+// ─── Step Wizard ───
+.co-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 28px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.co-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  min-width: 64px;
+  transition: all 0.2s;
+  position: relative;
+  &:disabled { cursor: default; opacity: 0.5; }
+  &.active .co-step-num {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 2px 8px rgba(16, 122, 149, 0.3);
+  }
+  &.done .co-step-num {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
+  }
+  &:hover:not(:disabled):not(.active) .co-step-num {
+    background: var(--surface-hover);
+  }
+}
+.co-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-container-low, var(--gray-100));
+  color: var(--muted-text);
+  transition: all 0.2s;
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+.co-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  white-space: nowrap;
+  .co-step.active & { color: var(--accent); }
+  .co-step.done & { color: var(--success-strong); }
+}
+.co-step-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--app-border);
+  flex-shrink: 0;
+  &.active { background: var(--accent); }
+}
+
+// ─── Step Card ───
+.co-step-card {
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.co-step-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--on-accent);
+  margin-bottom: 12px;
+}
+.co-step-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--app-text);
+  margin: 0 0 16px;
+}
+
+// ─── Step Actions ───
+.co-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--app-border);
+}
+
+// ─── Buttons ───
+.co-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  &:hover { opacity: 0.9; }
+  &:active { transform: scale(0.98); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.co-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--muted-text);
+  }
+  &:active { transform: scale(0.98); }
+}
+
+// ─── Confirm Box (Step 1) ───
+.co-confirm-box {
+  text-align: center;
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.co-confirm-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text);
+  margin: 0 0 16px;
+}
+.co-confirm-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.co-btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid var(--app-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--surface);
+  color: var(--app-text);
+  .material-symbols-outlined { font-size: 20px; }
+  &:hover { border-color: var(--muted-text); }
+  &.selected {
+    border-width: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  &.co-btn-si.selected {
+    border-color: var(--success);
+    background: var(--success-light);
+    color: var(--success);
+  }
+  &.co-btn-no.selected {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 8%, transparent);
+    color: var(--warning);
+  }
+}
+

@@ -1,0 +1,350 @@
+  border-radius: 10px;
+  color: var(--danger);
+  font-size: 0.82rem;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+}
+
+.reviews-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.review-entry {
+  padding: 1rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.review-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.review-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.review-entry-author {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.review-entry-date {
+  font-size: 0.7rem;
+  color: var(--muted-text);
+}
+
+.review-entry-rating {
+  display: flex;
+  gap: 1px;
+}
+
+.star-icon {
+  font-size: 0.95rem;
+  color: var(--gray-300);
+  --icon-wght: 300;
+  --icon-opsz: 20;
+
+  &.star-filled {
+    color: var(--yellow);
+    --icon-FILL: 1;
+    --icon-opsz: 20;
+  }
+}
+
+.review-entry-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.review-entry-comment {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.staff-response {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 0.78rem;
+
+  .material-symbols-outlined {
+    font-size: 0.9rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .staff-response-label {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.72rem;
+  }
+
+  p {
+    margin: 0.2rem 0 0;
+    color: var(--app-text);
+    line-height: 1.4;
+  }
+}
+
+/* ─── Operational dashboard widget ─── */
+
+.ops-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ops-body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+/* Circular score ring */
+.ops-ring-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.ops-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ops-ring-bg {
+  fill: none;
+  stroke: var(--surface-soft);
+  stroke-width: 8;
+}
+
+.ops-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.ops-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  strong {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--app-text);
+    line-height: 1;
+  }
+
+  small {
+    font-size: 0.7rem;
+    color: var(--muted-text);
+    font-weight: 600;
+  }
+}
+
+/* Module grid */
+.ops-modules {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.ops-module {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  transition: border-color 180ms, background 180ms;
+
+  &--ready {
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
+    background: color-mix(in srgb, var(--success) 5%, var(--surface));
+  }
+}
+
+.ops-module-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--muted-text) 10%, transparent);
+  color: var(--muted-text);
+
+  .ops-module--ready & {
+    background: var(--success-light);
+    color: var(--success);
+  }
+}
+
+.ops-module-icon {
+  font-size: 1rem;
+  --icon-wght: 350;
+  --icon-opsz: 20;
+}
+
+.ops-module-body {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ops-module-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--app-text);
+  line-height: 1;
+
+  .ops-module--ready & {
+    color: var(--success);
+  }
+}
+
+.ops-module-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.ops-module-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  .material-symbols-outlined {
+    font-size: 0.75rem;
+  }
+
+  &--ok {
+    color: var(--success);
+  }
+
+  &--pending {
+    color: var(--muted-text);
+  }
+}
+
+@media (max-width: 760px) {
+  .ops-body {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ops-modules {
+    width: 100%;
+  }
+}
+
+/* ─── Review form card (RF-001) ─── */
+
+.review-form-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  display: grid;
+  gap: 1rem;
+}
+
+.card-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted-text);
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--surface-soft);
+    color: var(--app-text);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
+.review-form-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.review-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-text);
+
+  small {
+    font-weight: 400;
+    color: var(--muted-text);
+  }
+}
+
+.field-input,
+.field-textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--app-text);
+  transition: border-color 180ms, box-shadow 180ms;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  &::placeholder {
+    color: var(--muted-text);

@@ -1,0 +1,285 @@
+  font-weight: 600;
+}
+
+.prio-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.prio-low {
+  background: rgba(107, 114, 128, 0.08); color: var(--gray-500);
+  .prio-dot { background: var(--gray-500); }
+}
+.prio-normal {
+  background: rgba(0, 96, 118, 0.08); color: var(--accent);
+  .prio-dot { background: var(--accent); }
+}
+.prio-high {
+  background: rgba(234, 179, 8, 0.08); color: var(--warning);
+  .prio-dot { background: var(--warning); }
+}
+.prio-urgent {
+  background: rgba(239, 68, 68, 0.08); color: var(--danger);
+  .prio-dot { background: var(--danger); }
+}
+
+// ── Status badge ──
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  .badge-icon { font-size: 0.85rem; }
+}
+
+.badge-scheduled {
+  background: rgba(20, 99, 255, 0.08); color: var(--accent);
+}
+.badge-in_progress {
+  background: rgba(217, 119, 6, 0.08); color: var(--warning);
+}
+.badge-inspection {
+  background: color-mix(in srgb, var(--purple) 8%, transparent); color: var(--purple);
+}
+.badge-completed {
+  background: rgba(16, 185, 129, 0.08); color: var(--success);
+}
+
+// ── Date cell ──
+
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+
+  .date-icon { font-size: 0.82rem; }
+}
+
+// ── Action Buttons ──
+
+.td-actions { text-align: right; }
+
+.action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: inherit;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    transition: transform 120ms;
+  }
+
+  &:hover .material-symbols-outlined { transform: scale(1.1); }
+
+  &.edit {
+    color: var(--muted-text);
+    &:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-color: var(--accent); color: var(--accent); }
+  }
+  &.start {
+    color: var(--accent);
+    &:hover { background: rgba(0, 96, 118, 0.08); border-color: var(--accent); }
+  }
+  &.inspect {
+    color: var(--purple);
+    &:hover { background: color-mix(in srgb, var(--purple) 8%, transparent); border-color: var(--purple); }
+  }
+  &.done {
+    color: var(--success);
+    &:hover { background: rgba(16, 185, 129, 0.08); border-color: var(--success); }
+  }
+  &.delete {
+    color: var(--muted-text);
+    &:hover { background: rgba(239, 68, 68, 0.08); border-color: var(--danger); color: var(--danger); }
+  }
+}
+
+// ════════════════════════════════════════════
+// Complete Maintenance Modal
+// ════════════════════════════════════════════
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 200ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: var(--surface);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  animation: modalSlideIn 220ms ease;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.modal-icon {
+  font-size: 1.3rem;
+  color: var(--accent);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.modal-subtitle {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted-text);
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: all 120ms;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: var(--app-border);
+    color: var(--app-text);
+  }
+
+  .material-symbols-outlined { font-size: 1.15rem; }
+}
+
+.modal-form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem;
+}
+
+.form-divider {
+  height: 1px;
+  background: var(--app-border);
+  margin: 0.1rem 0;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--app-text);
+  user-select: none;
+
+  input[type="checkbox"] {
+    display: none;
+  }
+}
+
+.checkbox-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: all 120ms;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 0.85rem;
+    color: transparent;
+    transition: color 120ms;
+  }
+}
+
+.checkbox-label input:checked + .checkbox-custom {
+  border-color: var(--accent);
+  background: var(--accent);
+
+  .material-symbols-outlined {
+    color: var(--surface);
+  }
+}
+
+.checkbox-hint {
+  margin: -0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  font-style: italic;
+}
+
+// ── Modal actions ──
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+

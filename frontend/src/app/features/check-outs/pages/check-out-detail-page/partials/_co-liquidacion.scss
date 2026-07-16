@@ -1,0 +1,203 @@
+// ─── Liquidation Table (Step 3) ───
+.co-liq-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+.co-liq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-text);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--surface-soft);
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+  }
+  .cell-right { text-align: right; }
+}
+.co-liq-icon {
+  font-size: 14px;
+  color: var(--muted-text);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.co-row-late td {
+  color: var(--warning);
+}
+.co-row-discount td {
+  color: var(--success);
+}
+
+// ─── Liquidation Summary (Step 3) ───
+.co-liq-summary {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+.co-liq-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--app-text);
+}
+.co-liq-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+.co-liq-tax {
+  font-size: 12px;
+  color: var(--muted-text);
+}
+.co-liq-divider {
+  height: 1px;
+  background: var(--app-border);
+  margin: 6px 0;
+}
+.co-liq-grand {
+  font-weight: 700;
+  font-size: 15px;
+  .co-liq-val { font-size: 16px; color: var(--app-text); }
+}
+.co-liq-paid {
+  font-size: 12px;
+  color: var(--success);
+}
+.co-liq-balance {
+  font-weight: 700;
+  .co-liq-val { color: var(--warning); }
+}
+
+// ─── Payment inline (Step 3) ───
+.co-liq-payment {
+  margin-top: 8px;
+}
+.co-liq-pay-row {
+  display: flex;
+  gap: 8px;
+  .co-select { flex: 1; }
+  .co-input { flex: 1; }
+}
+
+// ─── Invoice Actions (Step 4) ───
+.co-invoice-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.co-inv-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  .material-symbols-outlined {
+    font-size: 28px;
+    color: var(--muted-text);
+  }
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    .material-symbols-outlined { color: var(--accent); }
+  }
+}
+.co-inv-primary {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  .material-symbols-outlined { color: var(--accent); }
+}
+.co-inv-btn-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+.co-inv-btn-sub {
+  font-size: 10px;
+  color: var(--muted-text);
+  text-align: center;
+}
+
+// ─── Close / Complete (Step 5) ───
+.co-close-desc {
+  font-size: 13px;
+  color: var(--muted-text);
+  margin: 0 0 12px;
+}
+.co-auto-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.co-auto-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent-light);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: 6px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--cyan) 65%, black);
+  .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--success);
+  }
+  strong { color: var(--app-text); }
+}
+.co-close-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.co-damage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  .co-label { margin-bottom: 0; }
+}
+.co-damage-toggle {
+  display: flex;
+  gap: 4px;
+}
+.co-dmg-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--app-text);
+  transition: all 0.15s;
+  &:hover { background: var(--surface-hover); }
+  &.active { border-color: var(--accent); background: var(--surface-soft); }
+}
+.co-dmg-danger.active {
+  border-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger);
+}
+

@@ -1,0 +1,285 @@
+  border-radius: $radius-sm;
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    min-height: 2rem;
+  }
+
+  &-ghost {
+    background: transparent;
+    border: 1px solid var(--app-border);
+    color: var(--muted-text);
+
+    .material-symbols-outlined {
+      font-size: 1rem;
+    }
+
+    &:hover:not([disabled]) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  }
+
+  &-primary {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--on-accent);
+    padding: 0.5rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    .material-symbols-outlined {
+      font-size: 1.05rem;
+    }
+
+    &:hover:not([disabled]) {
+      background: var(--accent-strong);
+    }
+  }
+}
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Editor Body ────────────────────────── */
+
+.editor-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.editor-perms {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+
+.field-input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--app-text);
+  background: var(--surface);
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color $transition;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+}
+
+.editor-perms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.perm-count {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  font-weight: 500;
+}
+
+.permissions-grid {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.perm-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  cursor: pointer;
+  transition: all $transition;
+  background: var(--surface);
+  user-select: none;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+
+  &.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  input[type='checkbox'] {
+    accent-color: var(--accent);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+.perm-code {
+  font-weight: 600;
+  font-size: 0.8rem;
+  font-family: monospace;
+  color: var(--app-text);
+  min-width: 120px;
+}
+
+.perm-desc {
+  font-size: 0.78rem;
+  color: var(--muted-text);
+}
+
+.editor-actions {
+  padding-top: 0.5rem;
+}
+
+/* ─── Editor Preview ─────────────────────── */
+
+.editor-preview {
+  padding: 1rem;
+  background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
+  border-radius: $radius-sm;
+  border: 1px solid var(--app-border);
+  align-content: start;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.preview-header-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.preview-desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+}
+
+.nav-preview-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: $radius-sm;
+  font-size: 0.78rem;
+
+  &.visible {
+    background: color-mix(in srgb, var(--success) 6%, transparent);
+  }
+
+  &.hidden {
+    opacity: 0.4;
+  }
+}
+
+.nav-icon {
+  font-size: 0.95rem;
+  color: var(--muted-text);
+}
+
+.nav-label {
+  flex: 1;
+  font-weight: 500;
+  color: var(--app-text);
+}
+
+.nav-badge {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.visible-badge {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+
+.hidden-badge {
+  background: color-mix(in srgb, var(--app-border) 30%, transparent);
+  color: var(--muted-text);
+}
+
+/* ─── Responsive ──────────────────────────── */
+
+@media (max-width: 980px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .permissions-page {
+    gap: 1rem;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .matrix-role-th,
+  .matrix-role-td {
+    min-width: 120px;
+  }
+}

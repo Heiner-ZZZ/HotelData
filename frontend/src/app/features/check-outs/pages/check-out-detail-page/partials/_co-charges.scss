@@ -1,0 +1,278 @@
+// ─── Quick Charges (Step 2) ───
+.co-quick-charges {
+  margin-bottom: 16px;
+}
+.co-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.co-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-text);
+  transition: all 0.15s;
+  .material-symbols-outlined {
+    font-size: 22px;
+    color: var(--accent);
+  }
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: 0 1px 4px rgba(16, 122, 149, 0.12);
+  }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ─── Quick Editor (Step 2, inline below quick buttons) ───
+.co-quick-editor {
+  margin-top: 12px;
+  padding: 16px 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  animation: qe-slide-in 0.18s ease;
+}
+.co-qe-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+  margin-bottom: 12px;
+}
+.co-qe-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.co-qe-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+}
+.co-qe-input {
+  width: 80px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--app-text);
+  text-align: center;
+  transition: border-color 0.15s;
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  /* Keep native spinner, it's useful for quantity selection */
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    opacity: 1;
+  }
+}
+.co-qe-total {
+  font-size: 13px;
+  color: var(--muted-text);
+  padding-bottom: 8px;
+  strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+  }
+}
+.co-qe-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.co-qe-cancel {
+  padding: 8px 20px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: var(--hover, var(--gray-100));
+    border-color: var(--muted-text);
+  }
+  &:active { transform: scale(0.98); }
+}
+.co-qe-confirm {
+  padding: 8px 24px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  &:hover { opacity: 0.9; }
+  &:active { transform: scale(0.98); }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes qe-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// ─── Custom Charge Form (Step 2) ───
+.co-custom-charge {
+  margin-bottom: 16px;
+}
+.co-toggle-charge-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px dashed var(--app-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  transition: all 0.15s;
+  .material-symbols-outlined { font-size: 18px; }
+  &:hover {
+    background: var(--surface-soft);
+    border-style: solid;
+  }
+}
+.co-charge-form {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.co-charge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.co-cf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.co-cf-wide {
+  grid-column: 1 / -1;
+}
+.co-btn-charge-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.co-form-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--danger);
+  margin-bottom: 10px;
+  .material-symbols-outlined { font-size: 16px; }
+}
+
+// ─── Current Charges chips (Step 2) ───
+.co-current-charges {
+  margin-top: 16px;
+}
+.co-charge-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.co-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--accent-light);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.co-cat-chip-icon {
+  font-size: 14px;
+}
+
+.co-chip-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--muted-text);
+  transition: all 0.15s ease;
+  .material-symbols-outlined {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  &:hover {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+  &:active {
+    transform: scale(0.88);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+

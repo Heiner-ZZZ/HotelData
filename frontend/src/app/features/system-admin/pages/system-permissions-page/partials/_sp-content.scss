@@ -1,0 +1,285 @@
+  vertical-align: middle;
+}
+
+.matrix-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: all $transition;
+
+  &--active {
+    background: var(--success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 20%, transparent);
+  }
+
+  &--empty {
+    background: color-mix(in srgb, var(--app-border) 40%, transparent);
+  }
+}
+
+.matrix-total-td {
+  text-align: center;
+}
+
+.total-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.8rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* ─── Roles Tab ──────────────────────────── */
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.role-card {
+  border: 1px solid var(--app-border);
+  border-radius: $radius;
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 0.85rem;
+  background: var(--surface);
+  transition: box-shadow $transition, border-color $transition;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  &.highlight {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 2%, var(--surface));
+  }
+}
+
+.role-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.role-card-info {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.role-card-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.role-card-desc {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+.role-badge-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.role-card-body {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.role-section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.access-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.access-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--surface) 95%, var(--app-text));
+}
+
+.access-chip-icon {
+  font-size: 0.85rem;
+}
+
+.role-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: start;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: $radius-sm;
+  padding: 0.4rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--accent);
+  transition: all $transition;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+}
+
+/* ─── Catalog Tab ────────────────────────── */
+
+.catalog-intro {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.catalog-search-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.catalog-table th,
+.catalog-table td {
+  padding: 0.7rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+  font-size: 0.82rem;
+}
+
+.catalog-table th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+}
+
+.catalog-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 2%, transparent);
+}
+
+.perm-code-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: monospace;
+  border-radius: 4px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.perm-desc-cell {
+  color: var(--app-text);
+}
+
+.cat-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--purple) 8%, transparent);
+  color: var(--purple);
+}
+
+/* ─── Role Editor ────────────────────────── */
+
+.role-editor-card {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: $radius;
+  overflow: hidden;
+}
+
+.editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+}
+
+.editor-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editor-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: $radius-sm;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.editor-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+/* ─── Buttons (reused from system-users) ─── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all $transition;

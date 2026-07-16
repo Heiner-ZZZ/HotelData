@@ -1,0 +1,360 @@
+/* ─── Table ─── */
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+thead th {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--app-border);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
+}
+
+.row-success td {
+  opacity: 0.55;
+}
+
+.cell-guest {
+  display: grid;
+  gap: 1px;
+
+  strong {
+    font-size: 0.88rem;
+  }
+}
+
+.cell-code {
+  font-family: monospace;
+  font-size: 0.75rem;
+  display: block;
+}
+
+.cell-muted {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  display: block;
+}
+
+.cell-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-notes {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-text);
+}
+
+.cell-action {
+  text-align: center;
+  width: 48px;
+}
+
+/* ─── Badges ─── */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: rgba(234, 179, 8, 0.1);
+  color: var(--warning);
+}
+
+.badge-muted {
+  background: var(--surface-soft);
+  color: var(--muted-text);
+}
+
+/* ─── Edit time button ─── */
+.btn-edit-time {
+  color: var(--purple);
+
+  &:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: var(--purple);
+  }
+}
+
+/* ─── Edit datetime modal ─── */
+.edit-datetime-form {
+  display: grid;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+
+.edit-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.edit-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.edit-field-input {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.12);
+  }
+}
+
+.edit-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  line-height: 1.5;
+
+  .material-symbols-outlined {
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Modal actions ─── */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover {
+    background: var(--surface-soft);
+  }
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    --icon-opsz: 18;
+  }
+
+  .spinning {
+    animation: spin 800ms linear infinite;
+  }
+}
+
+/* ─── Action button ─── */
+
+.btn-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-light);
+    border-color: var(--accent);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    --icon-opsz: 20;
+  }
+}
+
+/* ─── Responsive ─── */
+
+/* ─── More menu (⋮) ─── */
+
+.more-menu {
+  position: relative;
+}
+
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+
+  &:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.2rem;
+    --icon-opsz: 20;
+  }
+}
+
+.more-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 100;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: menu-drop-in 150ms ease;
+}
+
+.more-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.82rem;
+  color: var(--app-text);
+  cursor: pointer;
+  transition: background 120ms;
+  text-align: left;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    color: var(--muted-text);
+    --icon-wght: 300;
+    --icon-opsz: 18;
+  }
+}
+
+@keyframes menu-drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── History item hotel label ─── */
+
+.history-item-hotel {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  padding: 0.15rem 0.45rem;
+  border-radius: 100px;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* ─── Modal ─── */

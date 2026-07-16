@@ -1,0 +1,280 @@
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+
+  .ciw-value {
+    font-size: 0.8rem;
+  }
+}
+
+/* ═══ Assigned Rooms ═══ */
+
+.ciw-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ciw-room-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+}
+
+.ciw-room-ok {
+  border-color: rgba(22, 163, 74, 0.2);
+  background: rgba(22, 163, 74, 0.03);
+}
+
+.ciw-room-blocked {
+  border-color: rgba(186, 26, 26, 0.2);
+  background: rgba(186, 26, 26, 0.03);
+}
+
+.ciw-room-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.ciw-room-ok .ciw-room-icon { color: var(--success); }
+.ciw-room-blocked .ciw-room-icon { color: var(--danger); }
+
+.ciw-room-label {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--app-text);
+}
+
+.ciw-room-status {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--room-status-color, var(--muted-text)) 8%, transparent);
+  color: var(--room-status-color, var(--muted-text));
+}
+
+.ciw-room-warn {
+  font-size: 0.68rem;
+  color: var(--danger);
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.ciw-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(234, 179, 8, 0.06);
+  color: var(--warning);
+  border: 1px solid rgba(234, 179, 8, 0.1);
+}
+
+/* ═══ Forms ═══ */
+
+.ciw-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ciw-input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--app-text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.12s;
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0, 96, 118, 0.08);
+  }
+}
+
+.ciw-input-mono {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  max-width: 140px;
+}
+
+.ciw-input-narrow {
+  max-width: 80px;
+}
+
+.ciw-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--app-text);
+  }
+}
+
+/* ═══ Verification Checks ═══ */
+
+.ciw-checks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+
+  @media (max-width: 500px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ciw-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  min-height: 2.6rem;
+
+  &:hover {
+    background: var(--surface-raised);
+    border-color: var(--gray-300);
+  }
+
+  input {
+    width: 0.95rem;
+    height: 0.95rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+}
+
+.ciw-check-content {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.ciw-check-item-icon {
+  font-size: 1.15rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.ciw-checked .ciw-check-item-icon {
+  color: var(--accent);
+}
+
+.ciw-check-text {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--app-text);
+  line-height: 1.3;
+}
+
+/* ═══ Key icon — simple vpn_key ═══ */
+
+.ciw-checked {
+  border-color: var(--accent);
+  background: rgba(0, 96, 118, 0.03);
+}
+
+.ciw-check-icon {
+  margin-left: auto;
+  font-size: 1.1rem;
+  color: var(--success);
+  --icon-FILL: 1;
+  flex-shrink: 0;
+}
+
+/* Billing highlight */
+.ciw-check-billing {
+  border-color: var(--purple);
+  background: rgba(124, 58, 237, 0.03);
+
+  .ciw-check-item-icon {
+    color: var(--purple);
+  }
+}
+
+.ciw-check-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--gray-700);
+  background: rgba(124, 58, 237, 0.04);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  grid-column: 1 / -1;
+}
+
+.ciw-hint-icon {
+  font-size: 0.9rem;
+  color: var(--purple);
+  flex-shrink: 0;
+}
+
+.ciw-billing-link {
+  color: var(--purple);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.ciw-reception-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ═══ Textarea ═══ */
+
+.ciw-textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--app-text);
+  background: var(--surface);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.12s;
+  min-height: 70px;
