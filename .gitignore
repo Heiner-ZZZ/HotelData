@@ -250,3 +250,6 @@ secrets/
 credentials/
 .credentials/
 nul
+scripts/generar_word_v3.py
+scripts/globalize_icon_styles.py
+scripts/fix_font_variation_warnings.py
