@@ -12,6 +12,7 @@ const LS_KEY = 'hd-app-version';
 @Injectable({ providedIn: 'root' })
 export class VersionCheckService {
   private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** True when a new version is detected and the user should reload */
   readonly updateAvailable = signal(false);
@@ -19,26 +20,33 @@ export class VersionCheckService {
   /** Latest fetched build timestamp (cached so applyUpdate can skip a second request) */
   private latestBuild = '';
 
-  /** Start polling for version changes. Call once from AppComponent constructor. */
-  startPolling(destroyRef: DestroyRef): void {
+  constructor() {
+    this._startPolling();
+  }
+
+  /** Start polling for version changes. Auto-starts on service init; public for manual restart if needed. */
+  startPolling(): void {
+    this._startPolling();
+  }
+
+  private _startPolling(): void {
     interval(POLL_INTERVAL_MS)
       .pipe(
         startWith(0),
         switchMap(() =>
           this.http.get<{ build: string }>(VERSION_URL, {
             headers: { 'Cache-Control': 'no-cache' },
-            params: { _t: Date.now() }, // cache-bust query param
+            params: { _t: Date.now() },
             context: new HttpContext().set(BYPASS_BASE_URL, true),
           }),
         ),
-        takeUntilDestroyed(destroyRef),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (res) => {
           this.latestBuild = res.build;
           const stored = localStorage.getItem(LS_KEY);
           if (!stored) {
-            // First visit — store version silently
             localStorage.setItem(LS_KEY, res.build);
             return;
           }
