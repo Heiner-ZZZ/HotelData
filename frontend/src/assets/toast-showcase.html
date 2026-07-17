@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast Showcase — HotelData</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #f3f6fb;
+    color: #162033;
+    padding: 2rem;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
+  .subtitle { color: #5f6f87; margin-bottom: 2rem; font-size: 0.9rem; }
+
+  .pattern-section {
+    background: #fff;
+    border: 1px solid #d8e0eb;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .pattern-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .pattern-meta { font-size: 0.75rem; color: #5f6f87; margin-bottom: 1rem; }
+  .pattern-meta code { background: #eef4ff; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; }
+  .pattern-files { font-size: 0.7rem; color: #9ca3af; margin-bottom: 1rem; }
+
+  .toast-grid {
+    display: flex; flex-wrap: wrap; gap: 1rem;
+  }
+  .toast-card {
+    flex: 1; min-width: 220px;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .toast-label {
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #5f6f87;
+  }
+
+  /* ══════════════════════════════════════════
+     PATTERN 1 — COMPACT
+     ══════════════════════════════════════════ */
+  .p1-toast {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 0.85rem; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 500; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    transition: opacity 200ms, transform 200ms;
+    background: #fff; color: #162033; border: 1px solid #d8e0eb;
+  }
+  .p1-toast:hover { transform: translateY(-1px); }
+  .p1-success { background: #d1fae5; color: #065f46; border-color: #d1fae5; }
+  .p1-error { background: #fee2e2; color: #991b1b; border-color: #fee2e2; }
+  .p1-warning { background: #fef3c7; color: #92400e; border-color: #fef3c7; }
+  .p1-info { background: #d6e4ff; color: #0f45c9; border-color: #d6e4ff; }
+  .p1-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .p1-msg { flex: 1; line-height: 1.3; }
+
+  /* ══════════════════════════════════════════
+     PATTERN 2 — STANDARD
+     ══════════════════════════════════════════ */
+  .p2-toast {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.65rem 1rem; border-radius: 10px;
+    font-size: 0.82rem; font-weight: 500; cursor: pointer;
+    animation: p2-in 260ms ease;
+    background: #fff; color: #162033; border: 1px solid #d8e0eb;
+  }
+  @keyframes p2-in { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .p2-success { background: #d1fae5; color: #065f46; border-color: color-mix(in srgb, #0f8a60 25%, transparent); }
+  .p2-error { background: #fee2e2; color: #991b1b; border-color: color-mix(in srgb, #c93d32 20%, transparent); }
+  .p2-warning { background: #fef3c7; color: #92400e; border-color: color-mix(in srgb, #c98105 25%, transparent); }
+  .p2-info { background: #d6e4ff; color: #0f45c9; border-color: color-mix(in srgb, #1463ff 25%, transparent); }
+  .p2-icon { font-size: 1.15rem; flex-shrink: 0; }
+  .p2-msg { flex: 1; }
+
+  /* ══════════════════════════════════════════
+     PATTERN 3 — LARGE (Guest Amenity Catalog)
+     ══════════════════════════════════════════ */
+  .p3-toast {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 14px 16px; border-radius: 12px;
+    font-size: 0.85rem; font-weight: 500; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    background: linear-gradient(135deg, #fff, #fafcff);
+    border: 1px solid #d8e0eb;
+  }
+  .p3-success { background: linear-gradient(135deg, #f0fdf4, #d1fae5); color: #065f46; border-color: #86efac; }
+  .p3-error { background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #991b1b; border-color: #fca5a5; }
+  .p3-warning { background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #92400e; border-color: #fcd34d; }
+  .p3-info { background: linear-gradient(135deg, #eff6ff, #d6e4ff); color: #0f45c9; border-color: #93c5fd; }
+  .p3-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+  .p3-msg { flex: 1; line-height: 1.5; }
+  .p3-msg strong { display: block; font-size: 0.8rem; margin-bottom: 2px; }
+
+  /* ══════════════════════════════════════════
+     PATTERN 4 — WIDE (Reservations List)
+     ══════════════════════════════════════════ */
+  .p4-toast {
+    display: flex; align-items: center; gap: 1.5rem;
+    padding: 0.5rem 1rem; border-radius: 8px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    background: #fff; color: #162033; border: 1px solid #d8e0eb;
+  }
+  .p4-success { background: #d1fae5; color: #065f46; }
+  .p4-error { background: #fee2e2; color: #991b1b; }
+  .p4-warning { background: #fef3c7; color: #92400e; }
+  .p4-info { background: #d6e4ff; color: #0f45c9; }
+  .p4-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .p4-msg { flex: 1; }
+
+  /* ══════════════════════════════════════════
+     PATTERN 5 — ROOM STATUS (compact + subtle)
+     ══════════════════════════════════════════ */
+  .p5-toast {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 0.85rem; border-radius: 0.5rem;
+    font-size: 0.78rem; font-weight: 500; cursor: pointer;
+    background: #fff; color: #162033; border: 1px solid #d8e0eb;
+  }
+  .p5-success { background: #f0fdf4; color: #065f46; border-color: #86efac; }
+  .p5-error { background: #fff5f5; color: #991b1b; border-color: #fca5a5; }
+  .p5-warning { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+  .p5-info { background: #eff6ff; color: #0f45c9; border-color: #93c5fd; }
+  .p5-icon { font-size: 1rem; flex-shrink: 0; }
+  .p5-msg { flex: 1; }
+
+  /* ══════════════════════════════════════════
+     PATTERN 6 — PROFILE SECURITY
+     ══════════════════════════════════════════ */
+  .p6-toast {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 8px;
+    font-size: 0.9rem; font-weight: 500;
+    background: #fff; color: #162033; border: 1px solid #d8e0eb;
+  }
+  .p6-success { background: #d1fae5; color: #065f46; }
+  .p6-error { background: #fee2e2; color: #991b1b; }
+  .p6-warning { background: #fef3c7; color: #92400e; }
+  .p6-info { background: #d6e4ff; color: #0f45c9; }
+  .p6-icon { font-size: 1.25rem; flex-shrink: 0; }
+  .p6-msg { flex: 1; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 1.5rem; margin-bottom: 1.5rem;
+    flex-wrap: wrap; font-size: 0.8rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+  .legend-swatch.s { background: #d1fae5; border: 1px solid #86efac; }
+  .legend-swatch.e { background: #fee2e2; border: 1px solid #fca5a5; }
+  .legend-swatch.w { background: #fef3c7; border: 1px solid #fcd34d; }
+  .legend-swatch.i { background: #d6e4ff; border: 1px solid #93c5fd; }
+
+  /* ── Behavior badges ── */
+  .behavior-tag {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 100px; margin-left: 0.5rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .tag-auto { background: #d1fae5; color: #065f46; }
+  .tag-click { background: #d6e4ff; color: #0f45c9; }
+  .tag-static { background: #f3f4f6; color: #6b7280; }
+
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    .toast-grid { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🍞 Toast Showcase — HotelData</h1>
+<p class="subtitle">6 patrones × 4 estados = 24 variantes. Compará y elegí el mejor.</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch s"></span> Success</div>
+  <div class="legend-item"><span class="legend-swatch e"></span> Error</div>
+  <div class="legend-item"><span class="legend-swatch w"></span> Warning</div>
+  <div class="legend-item"><span class="legend-swatch i"></span> Info</div>
+</div>
+
+<!-- ═══════════ PATTERN 1: COMPACT ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">layers</span>
+    1️⃣ Compact
+    <span class="behavior-tag tag-auto">auto-dismiss</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 0.6rem 0.85rem</code> ·
+    <code>border-radius: 8px</code> ·
+    <code>gap: 0.5rem</code> ·
+    <code>font-size: 0.8rem</code>
+  </div>
+  <div class="pattern-files">📁 app/shared/ui/toast/toast.scss (canónico) · reservation-detail/_reservation-toast.scss</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p1-toast p1-success">
+        <span class="material-symbols-outlined p1-icon">check_circle</span>
+        <span class="p1-msg">Cambios guardados correctamente</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p1-toast p1-error">
+        <span class="material-symbols-outlined p1-icon">error</span>
+        <span class="p1-msg">No se pudo completar la operación</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p1-toast p1-warning">
+        <span class="material-symbols-outlined p1-icon">warning</span>
+        <span class="p1-msg">Revisá los datos antes de continuar</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p1-toast p1-info">
+        <span class="material-symbols-outlined p1-icon">info</span>
+        <span class="p1-msg">Nuevo update disponible v2.4.1</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERN 2: STANDARD ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">grid_view</span>
+    2️⃣ Standard
+    <span class="behavior-tag tag-auto">auto-dismiss</span>
+    <span class="behavior-tag tag-click">click-to-close</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 0.65rem 1rem</code> ·
+    <code>border-radius: 10px</code> ·
+    <code>gap: 0.5rem</code> ·
+    <code>font-size: 0.82rem</code> (+ animación slide-in)
+  </div>
+  <div class="pattern-files">📁 <strong>7 archivos</strong>: availability · check-outs · check-ins · HK tasks · maintenance · additional-charges · profile</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p2-toast p2-success">
+        <span class="material-symbols-outlined p2-icon">check_circle</span>
+        <span class="p2-msg">Check-out completado exitosamente</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p2-toast p2-error">
+        <span class="material-symbols-outlined p2-icon">error</span>
+        <span class="p2-msg">Error al procesar el pago</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p2-toast p2-warning">
+        <span class="material-symbols-outlined p2-icon">warning</span>
+        <span class="p2-msg">La fecha de check-out está próxima</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p2-toast p2-info">
+        <span class="material-symbols-outlined p2-icon">info</span>
+        <span class="p2-msg">3 habitaciones disponibles para upgrade</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERN 3: LARGE ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">view_agenda</span>
+    3️⃣ Large — Guest Amenity Catalog
+    <span class="behavior-tag tag-static">static</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 14px 16px</code> ·
+    <code>border-radius: 12px</code> ·
+    <code>gap: 10px</code> ·
+    <code>align-items: flex-start</code> (+ gradientes + más sombra)
+  </div>
+  <div class="pattern-files">📁 amenities/pages/guest-amenity-catalog-page/partials/_gac-toast.scss</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p3-toast p3-success">
+        <span class="material-symbols-outlined p3-icon">check_circle</span>
+        <div class="p3-msg"><strong>Amenity agregado</strong>Toalla de piscina añadida al carrito</div>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p3-toast p3-error">
+        <span class="material-symbols-outlined p3-icon">error</span>
+        <div class="p3-msg"><strong>Stock agotado</strong>El amenity solicitado no está disponible</div>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p3-toast p3-warning">
+        <span class="material-symbols-outlined p3-icon">warning</span>
+        <div class="p3-msg"><strong>Límite de carrito</strong>Máximo 5 items por categoría</div>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p3-toast p3-info">
+        <span class="material-symbols-outlined p3-icon">info</span>
+        <div class="p3-msg"><strong>Delivery estimado</strong>15-20 min a la habitación 304</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERN 4: WIDE ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">width_wide</span>
+    4️⃣ Wide — Reservations List
+    <span class="behavior-tag tag-static">static</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 0.5rem 1rem</code> ·
+    <code>border-radius: 8px</code> ·
+    <code>gap: 1.5rem</code> ·
+    <code>font-weight: 600</code> (sin bordes de color, solo fondo)
+  </div>
+  <div class="pattern-files">📁 reservations/pages/reservations-list-page/reservations-list-page.scss</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p4-toast p4-success">
+        <span class="material-symbols-outlined p4-icon">check_circle</span>
+        <span class="p4-msg">Reserva #4021 confirmada</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p4-toast p4-error">
+        <span class="material-symbols-outlined p4-icon">error</span>
+        <span class="p4-msg">Conflicto de fechas detectado</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p4-toast p4-warning">
+        <span class="material-symbols-outlined p4-icon">warning</span>
+        <span class="p4-msg">Reserva sin depósito de garantía</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p4-toast p4-info">
+        <span class="material-symbols-outlined p4-icon">info</span>
+        <span class="p4-msg">Mostrando 23 reservas para hoy</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERN 5: ROOM STATUS ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">meeting_room</span>
+    5️⃣ Room Status
+    <span class="behavior-tag tag-auto">auto-dismiss</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 0.5rem 0.85rem</code> ·
+    <code>border-radius: 0.5rem</code> ·
+    <code>gap: 0.4rem</code> ·
+    <code>font-size: 0.78rem</code> (colores más suaves, sin bordes sólidos)
+  </div>
+  <div class="pattern-files">📁 housekeeping/pages/room-status-page/partials/_rs-layout.scss</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p5-toast p5-success">
+        <span class="material-symbols-outlined p5-icon">check_circle</span>
+        <span class="p5-msg">Habitación 204 limpia</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p5-toast p5-error">
+        <span class="material-symbols-outlined p5-icon">error</span>
+        <span class="p5-msg">Falla al reportar estado</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p5-toast p5-warning">
+        <span class="material-symbols-outlined p5-icon">warning</span>
+        <span class="p5-msg">Inspection pendiente en 302</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p5-toast p5-info">
+        <span class="material-symbols-outlined p5-icon">info</span>
+        <span class="p5-msg">Turno de mañana: 12 habitaciones</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERN 6: PROFILE SECURITY ═══════════ -->
+<div class="pattern-section">
+  <div class="pattern-name">
+    <span class="material-symbols-outlined" style="font-size:1.3rem">shield_person</span>
+    6️⃣ Profile Security
+    <span class="behavior-tag tag-static">static</span>
+  </div>
+  <div class="pattern-meta">
+    <code>padding: 12px 16px</code> ·
+    <code>border-radius: 8px</code> ·
+    <code>gap: 12px</code> ·
+    <code>font-size: 0.9rem</code> (estilo más grande sin bordes coloreados)
+  </div>
+  <div class="pattern-files">📁 account/pages/profile-page/components/profile-security.scss</div>
+  <div class="toast-grid">
+    <div class="toast-card">
+      <span class="toast-label">✅ Success</span>
+      <div class="p6-toast p6-success">
+        <span class="material-symbols-outlined p6-icon">verified_user</span>
+        <span class="p6-msg">Contraseña actualizada con éxito</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">❌ Error</span>
+      <div class="p6-toast p6-error">
+        <span class="material-symbols-outlined p6-icon">gpp_bad</span>
+        <span class="p6-msg">Token de verificación inválido</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">⚠️ Warning</span>
+      <div class="p6-toast p6-warning">
+        <span class="material-symbols-outlined p6-icon">security_update_warning</span>
+        <span class="p6-msg">Tu sesión expirará en 5 minutos</span>
+      </div>
+    </div>
+    <div class="toast-card">
+      <span class="toast-label">ℹ️ Info</span>
+      <div class="p6-toast p6-info">
+        <span class="material-symbols-outlined p6-icon">info</span>
+        <span class="p6-msg">Último login: ayer 18:42 desde CDMX</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

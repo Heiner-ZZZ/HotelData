@@ -1,0 +1,184 @@
+<app-page-header
+  eyebrow="Sistema"
+  title="Monedas"
+  description="Administra las monedas disponibles para las propiedades. Las monedas activas aparecen en el selector de cada hotel."
+/>
+
+<div class="currencies-toolbar">
+  <button class="btn-primary" (click)="openAdd()">
+    <span class="material-symbols-outlined">add</span>
+    Nueva moneda
+  </button>
+</div>
+
+@switch (viewState()) {
+  @case ('loading') {
+    <app-loading-state label="Cargando monedas..." />
+  }
+  @case ('error') {
+    <app-error-state
+      title="Error al cargar monedas"
+      description="No se pudieron obtener las monedas. Intenta de nuevo."
+    />
+  }
+  @case ('empty') {
+    <app-empty-state
+      title="Sin monedas"
+      description="No hay monedas configuradas. Crea la primera con el botón de arriba."
+    />
+  }
+  @default {
+    @if (currenciesResource.value(); as currencies) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>Símbolo</th>
+              <th>Decimales</th>
+              <th>Estado</th>
+              <th class="actions-col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cur of currencies; track cur.code) {
+              <tr>
+                <td>
+                  <code class="currency-code">{{ cur.code }}</code>
+                </td>
+                <td>{{ cur.name }}</td>
+                <td class="symbol-cell">{{ cur.symbol }}</td>
+                <td>{{ cur.decimals }}</td>
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.badge-success]="cur.active"
+                    [class.badge-danger]="!cur.active"
+                  >
+                    {{ cur.active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="actions-col">
+                  <button class="icon-btn" title="Editar" (click)="openEdit(cur)">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button class="icon-btn" [title]="cur.active ? 'Desactivar' : 'Activar'" (click)="toggle(cur)">
+                    <span class="material-symbols-outlined">{{ cur.active ? 'toggle_off' : 'toggle_on' }}</span>
+                  </button>
+                  <button class="icon-btn icon-btn-danger" title="Eliminar" (click)="requestDelete(cur.code)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+}
+
+<!-- ═══ Add/Edit Modal ═══ -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingCode() ? 'Editar moneda' : 'Nueva moneda' }}</h3>
+        <button class="modal-close" (click)="closeModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="cur-code">Código ISO <span class="required">*</span></label>
+          <div class="input-wrap">
+            <input
+              id="cur-code"
+              type="text"
+              [ngModel]="form().code"
+              (ngModelChange)="form.update(f => ({...f, code: $event}))"
+              placeholder="MXN"
+              maxlength="3"
+              [disabled]="!!editingCode()"
+              style="text-transform:uppercase"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label for="cur-name">Nombre <span class="required">*</span></label>
+          <div class="input-wrap">
+            <input
+              id="cur-name"
+              type="text"
+              [ngModel]="form().name"
+              (ngModelChange)="form.update(f => ({...f, name: $event}))"
+              placeholder="Peso mexicano"
+            />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="cur-symbol">Símbolo</label>
+            <div class="input-wrap">
+              <input
+                id="cur-symbol"
+                type="text"
+                [ngModel]="form().symbol"
+                (ngModelChange)="form.update(f => ({...f, symbol: $event}))"
+                placeholder="$"
+                maxlength="5"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label for="cur-decimals">Decimales</label>
+            <div class="input-wrap">
+              <input
+                id="cur-decimals"
+                type="number"
+                [ngModel]="form().decimals"
+                (ngModelChange)="form.update(f => ({...f, decimals: +$event}))"
+                min="0"
+                max="4"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" (click)="closeModal()">Cancelar</button>
+        <button class="btn-primary" (click)="save()" [disabled]="saving() || !form().code || !form().name">
+          @if (saving()) {
+            <span class="material-symbols-outlined spin">sync</span>
+            Guardando...
+          } @else {
+            {{ editingCode() ? 'Actualizar' : 'Crear' }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Delete Confirmation Modal ═══ -->
+@if (confirmDeleteCode()) {
+  <div class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-card modal-card-danger" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Eliminar moneda</h3>
+      </div>
+      <div class="modal-body">
+        <p>¿Estás seguro de eliminar la moneda <strong>{{ confirmDeleteCode() }}</strong>?</p>
+        <p class="warning-text">Esta acción no se puede deshacer. Las propiedades que usen esta moneda quedarán sin moneda base.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" (click)="cancelDelete()">Cancelar</button>
+        <button class="btn-danger" (click)="confirmDelete(confirmDeleteCode()!)">
+          <span class="material-symbols-outlined">delete</span>
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+}

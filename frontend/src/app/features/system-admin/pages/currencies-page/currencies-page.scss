@@ -1,0 +1,224 @@
+.currencies-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.currency-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.82rem;
+  background: var(--surface-soft);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.symbol-cell {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.badge-danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.required {
+  color: var(--danger);
+}
+
+.warning-text {
+  color: var(--warning);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-md);
+}
+
+.modal-card-danger {
+  border: 2px solid var(--danger);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  h3 { margin: 0; font-size: 1.05rem; color: var(--app-text); }
+}
+
+.modal-close {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--muted-text);
+  font-size: 1.3rem;
+  padding: 0.25rem;
+  border-radius: 50%;
+
+  &:hover { background: var(--surface-hover); }
+}
+
+.modal-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+/* ─── Fields ─── */
+.field {
+  display: grid;
+  gap: 4px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.input-wrap {
+  input {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--app-text);
+    transition: border-color 180ms;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+  }
+}
+
+/* ─── Buttons ─── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 180ms;
+
+  &:hover:not(:disabled) { background: var(--accent-hover); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-weight: 500;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 180ms;
+
+  &:hover { background: var(--surface-hover); }
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  border: 0;
+  border-radius: 10px;
+  background: var(--danger);
+  color: var(--on-danger);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+
+  &:hover { background: color-mix(in srgb, var(--danger) 85%, black); }
+}
+
+/* ─── Icon buttons ─── */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: all 150ms;
+
+  &:hover { background: var(--surface-hover); color: var(--app-text); }
+
+  .material-symbols-outlined { font-size: 1.15rem; }
+}
+
+.icon-btn-danger:hover { color: var(--danger); background: var(--danger-light); }
+
+.actions-col { text-align: right; white-space: nowrap; }
+.spin { animation: spin 1s linear infinite; }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
