@@ -1,4 +1,4 @@
-import { Component, inject, DestroyRef } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { ToastContainerComponent } from './shared/ui/toast/toast';
@@ -14,6 +14,6 @@ import { VersionCheckService } from './core/services/version-check.service';
 })
 export class App {
   constructor() {
-    inject(VersionCheckService).startPolling(inject(DestroyRef));
+    inject(VersionCheckService).startPolling();
   }
 }

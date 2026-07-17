@@ -6,7 +6,8 @@
     "ng": "ng",
     "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "lint": "ng lint"
   },
   "dependencies": {
     "@angular/cdk": "^22.0.2",
@@ -31,8 +32,12 @@
     "@angular/build": "^22.0.0",
     "@angular/cli": "^22.0.0",
     "@angular/compiler-cli": "^22.0.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@types/leaflet": "^1.9.21",
-    "typescript": "^6.0.2"
+    "angular-eslint": "22.1.0",
+    "eslint": "^10.6.0",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "8.62.1"
   }
 }
