@@ -6,6 +6,7 @@ import { MonitoringPageComponent } from './pages/monitoring-page/monitoring-page
 import { NotificationsPageComponent } from './pages/notifications-page/notifications-page';
 import { SystemPermissionsPageComponent } from './pages/system-permissions-page/system-permissions-page';
 import { SystemUsersPageComponent } from './pages/system-users-page/system-users-page';
+import { CurrenciesPageComponent } from './pages/currencies-page/currencies-page';
 import { BscPageComponent } from '../admin/pages/bsc-page/bsc-page';
 
 export const SYSTEM_ADMIN_ROUTES: Routes = [
@@ -43,6 +44,12 @@ export const SYSTEM_ADMIN_ROUTES: Routes = [
     component: NotificationsPageComponent,
     canActivate: [roleGuard],
     data: { allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
+  },
+  {
+    path: 'currencies',
+    component: CurrenciesPageComponent,
+    canActivate: [roleGuard],
+    data: { allowedRoles: ['super_admin', 'admin_sistema'] }
   },
   {
     path: 'bsc',

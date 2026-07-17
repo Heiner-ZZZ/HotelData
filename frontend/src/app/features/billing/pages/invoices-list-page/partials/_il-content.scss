@@ -1,3 +1,5 @@
+.invl-filter-btn {
+  &.active {
     color: var(--on-accent);
     border-color: var(--accent);
   }
@@ -186,3 +188,4 @@
   .btn-label {
     @media (max-width: 640px) { display: none; }
   }
+}

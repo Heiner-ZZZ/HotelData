@@ -18,6 +18,8 @@ def save_partner_hotel_profile(
     display_name: str,
     description: str,
     display_country_label: str,
+    currency: str = "",
+    accepted_currencies: list[str] | None = None,
     changed_by: str = "angular_api",
     reason: str = "Actualización manual de perfil hotelero",
 ) -> dict[str, Any] | None:
@@ -52,17 +54,26 @@ def save_partner_hotel_profile(
         f"Mercado hotelero {hotel.get('prop_country_id')}" if hotel.get("prop_country_id") is not None else ""
     )
 
+    clean_currency = (clean_text(currency) or "USD").upper()
+    clean_accepted = [c.upper() for c in (accepted_currencies or []) if clean_text(c)]
+    if clean_currency not in clean_accepted:
+        clean_accepted.insert(0, clean_currency)
+
     previous_values = {
         "hotel_name": clean_text(hotel.get("hotel_name")),
         "display_name": clean_text(hotel.get("display_name")) or hotel_display_name(hotel, prop_id),
         "description": clean_text(hotel.get("description")),
         "display_country_label": clean_text(hotel.get("display_country_label")),
+        "currency": clean_text(hotel.get("currency") or "USD"),
+        "accepted_currencies": hotel.get("accepted_currencies") or [hotel.get("currency") or "USD"],
     }
     new_values = {
         "hotel_name": clean_hotel_name,
         "display_name": clean_display_name,
         "description": clean_description,
         "display_country_label": clean_country_label,
+        "currency": clean_currency,
+        "accepted_currencies": clean_accepted,
     }
 
     generated_name = clean_text(hotel.get("original_generated_name"))

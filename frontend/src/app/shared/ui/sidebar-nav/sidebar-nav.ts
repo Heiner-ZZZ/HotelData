@@ -193,6 +193,7 @@ export class SidebarNavComponent {
       items: [
         { label: 'Usuarios', href: '/system/users', icon: 'people', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Permisos', href: '/system/permissions', icon: 'verified_user', allowedRoles: ['super_admin', 'admin_sistema'] },
+        { label: 'Monedas', href: '/system/currencies', icon: 'payments', allowedRoles: ['super_admin', 'admin_sistema'] },
         { label: 'Monitoreo', href: '/system/monitoring', icon: 'monitoring' },
         { label: 'Auditoría', href: '/system/audit', icon: 'history' },
         { label: 'Notificaciones', href: '/system/notifications', icon: 'notifications' },

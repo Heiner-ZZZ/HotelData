@@ -1,3 +1,10 @@
+.form-group {
+  flex: 1;
+  min-width: 160px;
+  display: grid;
+  gap: 0.3rem;
+
+  &.grow-2 { flex: 2; min-width: 240px; }
 
   label {
     font-size: 0.75rem;
@@ -282,3 +289,4 @@
   padding: 0.15rem 0.5rem;
   border-radius: 100px;
   font-size: 0.7rem;
+}

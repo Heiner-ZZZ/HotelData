@@ -27,6 +27,9 @@ export class PropertyContextService {
   readonly currentPropLabel = signal('');
   readonly currentPropLabelShort = signal('');
 
+  readonly currentCurrency = signal('USD');
+  readonly currentAcceptedCurrencies = signal<string[]>(['USD']);
+
   /**
    * The default property ID assigned to this user (single-hotel mode).
    * Never cleared by clear() — survives page-level resets so effects
@@ -179,6 +182,13 @@ export class PropertyContextService {
     this.currentPropId.set(0);
     this.currentPropLabel.set('');
     this.currentPropLabelShort.set('');
+    this.currentCurrency.set('USD');
+    this.currentAcceptedCurrencies.set(['USD']);
+  }
+
+  setCurrency(currency: string, acceptedCurrencies: string[] = []): void {
+    this.currentCurrency.set(currency);
+    this.currentAcceptedCurrencies.set(acceptedCurrencies.length ? acceptedCurrencies : [currency]);
   }
 
   /**

@@ -1,3 +1,4 @@
+.sc-page-btn {
   justify-content: center;
 
   &:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -14,7 +15,7 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.6rem 1.15rem;
-  background: $sc-accent;
+  background: var(--accent);
   color: var(--on-accent);
   border: none;
   border-radius: 8px;
@@ -41,9 +42,9 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.6rem 1.15rem;
-  background: $sc-surface;
-  color: $sc-text;
-  border: 1px solid $sc-border;
+  background: var(--surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
@@ -52,7 +53,7 @@
   text-decoration: none;
   white-space: nowrap;
 
-  &:hover { background: color-mix(in srgb, $sc-surface, black 3%); border-color: color-mix(in srgb, $sc-border, black 10%); }
+  &:hover { background: color-mix(in srgb, var(--surface), black 3%); border-color: color-mix(in srgb, var(--app-border), black 10%); }
   .material-symbols-outlined { font-size: 1.1rem; }
 }
 
@@ -61,8 +62,8 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.3rem 0.6rem;
-  background: $sc-accent-light;
-  color: $sc-accent;
+  background: var(--accent-light);
+  color: var(--accent);
   border: 1px solid transparent;
   border-radius: 6px;
   font-size: 0.78rem;
@@ -71,7 +72,7 @@
   transition: background 0.2s;
   font-family: inherit;
 
-  &:hover { background: color-mix(in srgb, $sc-accent-light, black 8%); }
+  &:hover { background: color-mix(in srgb, var(--accent-light), black 8%); }
   .material-symbols-outlined { font-size: 0.95rem; }
 }
 
@@ -91,8 +92,8 @@
 }
 
 .sc-modal {
-  background: $sc-surface;
-  border-radius: $sc-radius-lg;
+  background: var(--surface);
+  border-radius: 12px;
   max-width: 540px;
   width: 100%;
   box-shadow: 0 8px 32px rgba(0,0,0,0.15);
@@ -109,8 +110,8 @@
 
   h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
 
-  .sc-modal-icon { font-size: 1.4rem; color: $sc-primary-container; }
-  .sc-modal-icon.success { color: $sc-success; }
+  .sc-modal-icon { font-size: 1.4rem; color: var(--accent-light); }
+  .sc-modal-icon.success { color: var(--success); }
 }
 
 .sc-modal-body {
@@ -133,7 +134,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  background: $sc-surface-bg;
+  background: var(--surface-soft);
   border-radius: 10px;
   padding: 0.85rem 1rem;
   font-size: 0.88rem;
@@ -145,22 +146,22 @@
   align-items: center;
 
   &.divider {
-    border-top: 1px solid $sc-border;
+    border-top: 1px solid var(--app-border);
     padding-top: 0.5rem;
     margin-top: 0.25rem;
     font-weight: 600;
   }
 
-  &.sc-cs-count { color: $sc-text-secondary; font-size: 0.82rem; }
+  &.sc-cs-count { color: var(--muted-text); font-size: 0.82rem; }
 
-  strong.negative { color: $sc-error; }
-  strong.positive { color: $sc-accent; }
+  strong.negative { color: var(--danger); }
+  strong.positive { color: var(--accent); }
 }
 
 /* Deposits section in close modal */
 .sc-deposits-section {
-  background: $sc-surface-bg;
-  border: 1px solid $sc-border;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 0.85rem 1rem;
 }
@@ -171,13 +172,13 @@
   align-items: center;
   margin-bottom: 0.5rem;
 
-  .sc-form-label { font-size: 0.82rem; font-weight: 500; color: $sc-text-secondary; }
+  .sc-form-label { font-size: 0.82rem; font-weight: 500; color: var(--muted-text); }
 }
 
 .sc-deposits-empty {
   margin: 0;
   font-size: 0.82rem;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
   font-style: italic;
 }
 
@@ -186,7 +187,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.4rem 0;
-  border-bottom: 1px solid $sc-border;
+  border-bottom: 1px solid var(--app-border);
 
   &:last-child { border-bottom: none; }
 }
@@ -206,18 +207,18 @@
 
 .sc-deposit-notes {
   font-size: 0.78rem;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
 }
 
 .sc-deposit-remove {
   border: none;
   background: none;
   cursor: pointer;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
   padding: 0.2rem;
   border-radius: 4px;
 
-  &:hover { background: $sc-error-bg; color: $sc-error; }
+  &:hover { background: var(--danger)-bg; color: var(--danger); }
   .material-symbols-outlined { font-size: 1rem; }
 }
 
@@ -227,5 +228,5 @@
 
 .mono { font-family: 'JetBrains Mono', monospace; }
 .text-right { text-align: right; }
-.positive { color: $sc-accent; }
-.negative { color: $sc-error; }
+.positive { color: var(--accent); }
+.negative { color: var(--danger); }

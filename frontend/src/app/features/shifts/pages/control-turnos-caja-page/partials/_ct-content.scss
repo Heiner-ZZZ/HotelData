@@ -13,17 +13,17 @@
   padding: 0.4rem 0.5rem;
   border-radius: 6px;
 
-  &.income { background: rgba($sc-accent, 0.03); }
+  &.income { background: rgba(var(--accent), 0.03); }
   &.total-line {
     margin-top: 0.5rem;
     padding: 0.6rem 0.5rem;
-    border-top: 2px dashed $sc-border;
+    border-top: 2px dashed var(--app-border);
   }
 }
 
 .sc-ar-label {
   font-size: 0.82rem;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
 }
 
 .sc-ar-label-bold {
@@ -39,13 +39,13 @@
 .sc-ar-value-bold {
   font-size: 1.1rem;
   font-weight: 700;
-  color: $sc-accent;
+  color: var(--accent);
 }
 
 /* Manual cash input */
 .sc-arqueo-manual {
-  background: $sc-surface-bg;
-  border: 1px solid $sc-border;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 1rem;
 
@@ -66,7 +66,7 @@
     top: 50%;
     transform: translateY(-50%);
     font-family: 'JetBrains Mono', monospace;
-    color: $sc-text-secondary;
+    color: var(--muted-text);
     font-size: 0.9rem;
   }
 }
@@ -74,17 +74,17 @@
 .sc-ar-input {
   width: 100%;
   padding: 0.5rem 0.75rem 0.5rem 1.75rem;
-  border: 1px solid $sc-border;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.95rem;
   text-align: right;
-  background: $sc-surface;
+  background: var(--surface);
   transition: border-color 0.2s;
 
   &:focus {
     outline: none;
-    border-color: $sc-accent;
+    border-color: var(--accent);
   }
 }
 
@@ -94,7 +94,7 @@
   align-items: center;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid $sc-border;
+  border-top: 1px solid var(--app-border);
 
   .sc-ar-label { margin-bottom: 0; }
 }
@@ -106,9 +106,9 @@
   font-size: 0.9rem;
   font-weight: 700;
 
-  &.zero { background: $sc-surface-bg; color: $sc-text; }
-  &.negative { background: $sc-error-bg; color: $sc-error; }
-  &.positive { background: $sc-accent-light; color: $sc-accent; }
+  &.zero { background: var(--surface-soft); color: var(--app-text); }
+  &.negative { background: var(--danger)-bg; color: var(--danger); }
+  &.positive { background: var(--accent)-light; color: var(--accent); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -128,14 +128,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.25rem 0.75rem;
-  border-bottom: 1px solid $sc-border;
+  border-bottom: 1px solid var(--app-border);
 
   .sc-card-title { margin-bottom: 0; }
 }
 
 .sc-audit-count {
   font-size: 0.8rem;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
 }
 
 .sc-audit-table-wrap {
@@ -154,9 +154,9 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: $sc-text-secondary;
-    background: $sc-surface-bg;
-    border-bottom: 1px solid $sc-border;
+    color: var(--muted-text);
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--app-border);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -165,7 +165,7 @@
   td {
     padding: 0.6rem 1.25rem;
     font-size: 0.88rem;
-    border-bottom: 1px solid $sc-border;
+    border-bottom: 1px solid var(--app-border);
   }
 
   tr:last-child td { border-bottom: none; }
@@ -173,17 +173,17 @@
 
 .sc-txn-row {
   transition: background 0.15s;
-  &:hover { background: $sc-surface-bg; }
+  &:hover { background: var(--surface-soft); }
 }
 
-.sc-cell-time { color: $sc-text-secondary; white-space: nowrap; }
-.sc-cell-concept { color: $sc-text; }
+.sc-cell-time { color: var(--muted-text); white-space: nowrap; }
+.sc-cell-concept { color: var(--app-text); }
 .sc-cell-amount { font-weight: 600; white-space: nowrap; }
 
 .sc-table-empty {
   text-align: center;
   padding: 3rem 1.25rem !important;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
   font-size: 0.9rem !important;
 
   .material-symbols-outlined {
@@ -209,23 +209,24 @@
 .badge-card { background: var(--indigo-light); color: var(--indigo-strong); }
 .badge-transfer { background: var(--warning-light); color: var(--warning-strong); }
 .badge-other { background: var(--purple-light); color: var(--purple-strong); }
-.badge-system { background: $sc-surface-bg; color: $sc-text-secondary; }
+.badge-system { background: var(--surface-soft); color: var(--muted-text); }
 
 .sc-audit-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.65rem 1.25rem;
-  border-top: 1px solid $sc-border;
+  border-top: 1px solid var(--app-border);
   font-size: 0.8rem;
-  color: $sc-text-secondary;
+  color: var(--muted-text);
 }
 
 .sc-page-btn {
   padding: 0.25rem;
-  border: 1px solid $sc-border;
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: $sc-surface;
+  background: var(--surface);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+}

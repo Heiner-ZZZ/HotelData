@@ -3,7 +3,7 @@
    Stitch-inspired enterprise PMS layout
    ═══════════════════════════════════════════════════════════ */
 
-@use '../../../../../styles/scss-variables' as *;
+@use '../../../../../../styles/scss-variables';
 
 /* ── Tokens ── */
 $sc-accent: var(--accent);

@@ -156,6 +156,8 @@ def property_profile_update_api(
         display_name=str(payload.get("display_name") or ""),
         description=str(payload.get("description") or ""),
         display_country_label=str(payload.get("display_country_label") or ""),
+        currency=str(payload.get("currency") or ""),
+        accepted_currencies=payload.get("accepted_currencies") or None,
         changed_by=str(payload.get("changed_by") or current_user.get("username", "system")),
         reason=str(payload.get("reason") or "Actualización manual de perfil hotelero"),
     )

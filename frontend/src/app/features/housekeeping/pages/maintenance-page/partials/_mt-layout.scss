@@ -275,10 +275,3 @@
   flex-wrap: wrap;
 }
 
-.form-group {
-  flex: 1;
-  min-width: 160px;
-  display: grid;
-  gap: 0.3rem;
-
-  &.grow-2 { flex: 2; min-width: 240px; }

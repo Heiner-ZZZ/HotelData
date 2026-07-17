@@ -271,3 +271,26 @@
   inset: 1rem 1.5rem 2.5rem;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  gap: 0;
+}
+
+.chart-bar-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  flex: 1;
+}
+
+.chart-bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+  transition: opacity 150ms;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+

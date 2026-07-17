@@ -70,6 +70,8 @@ def profile_payload(hotel: dict[str, Any]) -> dict[str, Any]:
         "profile_badge": profile_badge(hotel),
         "updated_by": hotel.get("updated_by"),
         "updated_at": hotel.get("updated_at").isoformat() if hasattr(hotel.get("updated_at"), "isoformat") else hotel.get("updated_at"),
+        "currency": clean_text(hotel.get("currency") or "USD"),
+        "accepted_currencies": hotel.get("accepted_currencies") or [hotel.get("currency") or "USD"],
     }
 
 

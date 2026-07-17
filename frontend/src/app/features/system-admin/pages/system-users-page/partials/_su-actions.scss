@@ -1,3 +1,4 @@
+.cell-email {
   font-size: 0.82rem;
   color: var(--muted-text);
   max-width: 200px;
@@ -19,7 +20,7 @@
 /* ─── Row States ─────────────────────────── */
 
 tbody tr {
-  transition: background $transition;
+  transition: background 0.18s ease;
 
   &:hover {
     background: color-mix(in srgb, var(--accent) 2%, transparent);
@@ -38,8 +39,8 @@ tbody tr {
   gap: 0.35rem;
   font-family: inherit;
   cursor: pointer;
-  transition: all $transition;
-  border-radius: $radius-sm;
+  transition: all 0.18s ease;
+  border-radius: 6px;
 
   &[disabled] {
     opacity: 0.5;

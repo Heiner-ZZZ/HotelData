@@ -198,6 +198,8 @@ export function mapEditPropertyResponse(dto: EditPropertyResponseDto): EditPrope
     images: (dto.images ?? []).map((i: { image_url: string; title: string }) => ({ imageUrl: i.image_url, title: i.title })),
     amenities: dto.amenities?.active_amenities ?? [],
     amenityCatalog: dto.amenities?.catalog ?? [],
+    currency: (dto as any).currency || 'USD',
+    acceptedCurrencies: (dto as any).accepted_currencies || ['USD'],
   };
 }
 
@@ -260,6 +262,8 @@ export function mapEditPropertySources(
     })),
     amenities: amenities.active_amenities ?? [],
     amenityCatalog: amenities.catalog ?? [],
+    currency: (profileDto as any).currency || 'USD',
+    acceptedCurrencies: (profileDto as any).accepted_currencies || ['USD'],
   };
 }
 

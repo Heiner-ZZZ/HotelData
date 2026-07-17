@@ -1,5 +1,11 @@
+.rc-empty {
+  display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--muted-text);
+  font-size: 0.82rem;
 }
 
 .rc-cell-label {
@@ -60,6 +66,10 @@
   position: relative;
   min-height: 40px;
   border-bottom: 1px solid color-mix(in srgb, var(--app-border) 40%, transparent);
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
 
 .rc-row .rc-cell-label {
@@ -194,3 +204,4 @@
   background: color-mix(in srgb, var(--muted-text) 12%, transparent);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted-text) 30%, transparent);
   color: var(--muted-text);
+}

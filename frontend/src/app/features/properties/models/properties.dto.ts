@@ -213,6 +213,14 @@ export interface ChangeDetailDto extends ChangeRecordDto {
   entity_type?: string;
 }
 
+export interface CurrencyOptionDto {
+  code: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  active: boolean;
+}
+
 export interface PropertyProfileResponseDto {
   hotel: {
     prop_id: number;
@@ -237,4 +245,6 @@ export interface PropertyProfileResponseDto {
     updated_by?: string | null;
     updated_at?: string | null;
   };
+  currency?: string;
+  accepted_currencies?: string[];
 }

@@ -1,6 +1,14 @@
+.reviews-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 16%, transparent);
   border-radius: 10px;
   color: var(--danger);
   font-size: 0.82rem;
+  font-weight: 500;
 
   .material-symbols-outlined {
     font-size: 1.1rem;
@@ -111,6 +119,8 @@
 /* ─── Operational dashboard widget ─── */
 
 .ops-card {
+  padding: 1.25rem;
+  border-radius: 14px;
   display: grid;
   gap: 0.75rem;
 }
@@ -348,3 +358,5 @@
 
   &::placeholder {
     color: var(--muted-text);
+  }
+}

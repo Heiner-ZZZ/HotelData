@@ -186,3 +186,11 @@
 
   &.active {
     background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+  }
+
+  &:hover:not(.active) {
+    background: var(--surface-soft);
+  }
+}

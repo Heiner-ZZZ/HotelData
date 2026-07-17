@@ -1,6 +1,18 @@
+.shift-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  color: var(--muted-text);
   padding: 24px 0;
+  color: var(--muted-text);
+  font-size: 0.85rem;
+
+  .material-symbols-outlined {
+    font-size: 2.5rem;
+    opacity: 0.4;
+  }
 
   p { margin: 0; font-size: 13px; }
 }

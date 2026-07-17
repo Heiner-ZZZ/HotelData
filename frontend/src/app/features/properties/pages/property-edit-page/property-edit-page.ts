@@ -7,10 +7,13 @@ import { filter, firstValueFrom, map, switchMap } from 'rxjs';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { CurrenciesApiService } from '../../../system-admin/services/currencies-api.service';
 import { ImageGalleryComponent } from './components/image-gallery';
 import { AmenitiesPanelComponent } from './components/amenities-panel';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { EditPropertyViewModel } from '../../models/properties.model';
+import type { Currency } from '../../../system-admin/models/currencies.model';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
 @Component({
@@ -25,6 +28,10 @@ export class PropertyEditPageComponent {
   private readonly propertiesApi = inject(PropertiesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly propertyCtx = inject(PropertyContextService);
+  private readonly currenciesApi = inject(CurrenciesApiService);
+
+  readonly activeCurrencies = signal<Currency[]>([]);
 
   readonly viewState = signal<ViewState>('loading');
   readonly saving = signal<'idle' | 'saving' | 'done'>('idle');
@@ -39,6 +46,8 @@ export class PropertyEditPageComponent {
     displayCountryLabel: [''],
     description: ['', Validators.required],
     highlights: [''],
+    currency: ['USD', Validators.required],
+    acceptedCurrencies: [''],
     checkInTime: [''],
     checkOutTime: [''],
     cancellationPolicy: [''],
@@ -48,9 +57,6 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
-<<<<<<< Updated upstream
-    // Track form changes for the save bar (zoneless-safe signal)
-=======
     this.currenciesApi.list(true).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
@@ -61,7 +67,6 @@ export class PropertyEditPageComponent {
       ]),
     });
 
->>>>>>> Stashed changes
     this.form.valueChanges
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -94,6 +99,8 @@ export class PropertyEditPageComponent {
             displayCountryLabel: vm.countryDisplayName,
             description: vm.description,
             highlights: vm.highlights,
+            currency: vm.currency,
+            acceptedCurrencies: vm.acceptedCurrencies.join(', '),
             checkInTime: vm.policies.checkInTime,
             checkOutTime: vm.policies.checkOutTime,
             cancellationPolicy: vm.policies.cancellationPolicy,
@@ -101,6 +108,7 @@ export class PropertyEditPageComponent {
           });
           this.formInitialized.set(true);
           this.viewState.set('success');
+          this.propertyCtx.setCurrency(vm.currency, vm.acceptedCurrencies);
         },
         error: (error) => {
           if (isDevMode()) {
@@ -128,12 +136,13 @@ export class PropertyEditPageComponent {
           display_name: fv.displayName,
           description: fv.description,
           display_country_label: fv.displayCountryLabel,
+          currency: fv.currency,
+          accepted_currencies: this.parseAcceptedCurrencies(fv.acceptedCurrencies),
           reason: 'Actualización manual desde Angular'
         })
       ).then(() => true).catch(() => false)
     );
 
-    // RF-005: Save content (description + highlights)
     checks.push(
       firstValueFrom(
         this.propertiesApi.saveContent(propId, fv.description, fv.highlights)
@@ -170,11 +179,14 @@ export class PropertyEditPageComponent {
           countryDisplayName: fv.displayCountryLabel,
           description: fv.description,
           highlights: fv.highlights ?? '',
+          currency: fv.currency,
+          acceptedCurrencies: this.parseAcceptedCurrencies(fv.acceptedCurrencies),
           manualOverride: true,
           profileBadge: 'Nombre editado manualmente'
         });
         this.saving.set('done');
         this.hasUnsavedChanges.set(false);
+        this.propertyCtx.setCurrency(fv.currency, this.parseAcceptedCurrencies(fv.acceptedCurrencies));
         setTimeout(() => this.saving.set('idle'), 3000);
       } else {
         this.saveError.set('Error al guardar algunos cambios');
@@ -192,6 +204,8 @@ export class PropertyEditPageComponent {
       displayCountryLabel: currentVm.countryDisplayName,
       description: currentVm.description,
       highlights: currentVm.highlights,
+      currency: currentVm.currency,
+      acceptedCurrencies: currentVm.acceptedCurrencies.join(', '),
       checkInTime: currentVm.policies.checkInTime,
       checkOutTime: currentVm.policies.checkOutTime,
       cancellationPolicy: currentVm.policies.cancellationPolicy,
@@ -233,6 +247,12 @@ export class PropertyEditPageComponent {
     if (fv.checkOutTime !== current.policies.checkOutTime) count++;
     if (fv.cancellationPolicy !== current.policies.cancellationPolicy) count++;
     if (fv.petPolicy !== (current.policies.petPolicy === 'true')) count++;
+    if (fv.currency !== current.currency) count++;
+    if (this.parseAcceptedCurrencies(fv.acceptedCurrencies).sort().join(',') !== [...current.acceptedCurrencies].sort().join(',')) count++;
     return count;
+  }
+
+  private parseAcceptedCurrencies(raw: string): string[] {
+    return raw.split(',').map(c => c.trim().toUpperCase()).filter(c => c.length === 3);
   }
 }

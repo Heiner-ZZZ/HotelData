@@ -188,6 +188,43 @@
           </div>
         </section>
 
+        <!-- Currency section -->
+        <section class="surface-card edit-card">
+          <div class="card-head">
+            <span class="material-symbols-outlined card-icon icon-info-blue">payments</span>
+            <div>
+              <h2>Moneda</h2>
+              <p>Configura la moneda base y las monedas aceptadas por esta propiedad</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="field-row">
+              <div class="field">
+                <label for="currency">Moneda base</label>
+                <div class="input-wrap">
+                  <span class="material-symbols-outlined input-icon">attach_money</span>
+                  <select id="currency" formControlName="currency">
+                    @for (cur of activeCurrencies(); track cur.code) {
+                      <option [value]="cur.code">{{ cur.code }} — {{ cur.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="acceptedCurrencies">Monedas aceptadas</label>
+              <div class="input-wrap">
+                <span class="material-symbols-outlined input-icon">list_alt</span>
+                <input id="acceptedCurrencies" type="text" formControlName="acceptedCurrencies" placeholder="USD, MXN, EUR" />
+              </div>
+              <div class="field-hint">
+                <span class="material-symbols-outlined">info</span>
+                <span>Códigos ISO 4217 separados por coma. Ej: USD, MXN, EUR</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <app-amenities-panel
           [amenities]="vm.amenities"
           [amenityCatalog]="vm.amenityCatalog"

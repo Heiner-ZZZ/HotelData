@@ -1,11 +1,13 @@
+.state-arrow {
+  display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  font-size: 0.62rem;
-  color: var(--arrow-color, var(--muted-text));
-  font-weight: 500;
   padding: 0.1rem 0.3rem;
-  background: color-mix(in srgb, var(--arrow-color, var(--muted-text)) 6%, transparent);
   border-radius: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--arrow-color, var(--muted-text));
+  background: color-mix(in srgb, var(--arrow-color, var(--muted-text)) 6%, transparent);
   white-space: nowrap;
 
   .material-symbols-outlined {

@@ -297,14 +297,7 @@
   color: var(--muted-text);
 }
 
-/* ─── Operational card ─── */
-
-.ops-card {
-  padding: 1.25rem;
-  border-radius: 14px;
-  display: grid;
-  gap: 1rem;
-}
+/* ─── Operational card ─── (styles merged into _pd-content.scss) */
 
 .card-head {
   display: flex;
@@ -341,10 +334,3 @@
   gap: 1rem;
 }
 
-.reviews-error {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--danger-light);
-  border: 1px solid color-mix(in srgb, var(--danger) 16%, transparent);

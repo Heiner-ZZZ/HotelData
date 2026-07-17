@@ -116,6 +116,8 @@ export interface EditPropertyViewModel {
     imageUrl: string;
     title: string;
   }>;
+  currency: string;
+  acceptedCurrencies: string[];
   amenities: string[];
   amenityCatalog: Array<{ category: string; items: Array<{ label: string; active: boolean }> }>;
 }

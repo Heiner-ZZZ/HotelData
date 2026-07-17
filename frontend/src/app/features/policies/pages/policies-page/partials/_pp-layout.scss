@@ -31,8 +31,7 @@
 
 .selector-panel,
 .form-panel,
-.hero-card,
-.message {
+.hero-card {
   padding: 1rem;
 }
 
@@ -224,3 +223,5 @@
 /* ── Autocomplete ── */
 .autocomplete-wrapper {
   position: relative;
+  width: 100%;
+}

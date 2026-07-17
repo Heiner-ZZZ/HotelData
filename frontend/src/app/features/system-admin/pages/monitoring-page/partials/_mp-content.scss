@@ -184,3 +184,22 @@
 }
 
 .danger-btn {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  background: var(--danger-light);
+  color: var(--danger);
+  font-weight: 600;
+  cursor: pointer;
+
+  &[disabled] {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  &:hover:not([disabled]) {
+    background: var(--danger);
+    color: var(--on-accent);
+  }
+}

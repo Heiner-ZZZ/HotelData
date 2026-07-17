@@ -81,6 +81,8 @@ export class PropertiesApiService {
       display_name: string;
       description: string;
       display_country_label: string;
+      currency?: string;
+      accepted_currencies?: string[];
       reason?: string;
     }
   ) {
