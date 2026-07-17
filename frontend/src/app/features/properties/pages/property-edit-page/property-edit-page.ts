@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, isDevMode, sign
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { filter, map, switchMap } from 'rxjs';
+import { filter, firstValueFrom, map, switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -48,7 +48,20 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
+<<<<<<< Updated upstream
     // Track form changes for the save bar (zoneless-safe signal)
+=======
+    this.currenciesApi.list(true).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (currencies) => this.activeCurrencies.set(currencies),
+      error: () => this.activeCurrencies.set([
+        { code: 'USD', name: 'Dólar estadounidense', symbol: '$', decimals: 2, active: true },
+        { code: 'MXN', name: 'Peso mexicano', symbol: '$', decimals: 2, active: true },
+      ]),
+    });
+
+>>>>>>> Stashed changes
     this.form.valueChanges
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -109,39 +122,44 @@ export class PropertyEditPageComponent {
     const checks: Promise<boolean>[] = [];
 
     checks.push(
-      this.propertiesApi
-        .saveProfile(propId, {
+      firstValueFrom(
+        this.propertiesApi.saveProfile(propId, {
           hotel_name: fv.hotelName,
           display_name: fv.displayName,
           description: fv.description,
           display_country_label: fv.displayCountryLabel,
           reason: 'Actualización manual desde Angular'
         })
-        .toPromise()
-        .then(() => true)
-        .catch(() => false)
+      ).then(() => true).catch(() => false)
     );
 
     // RF-005: Save content (description + highlights)
     checks.push(
-      this.propertiesApi.saveContent(propId, fv.description, fv.highlights)
-        .toPromise()
-        .then(() => true)
-        .catch(() => false)
+      firstValueFrom(
+        this.propertiesApi.saveContent(propId, fv.description, fv.highlights)
+      ).then(() => true).catch(() => false)
     );
 
-    checks.push(this.propertiesApi.savePolicies(propId, {
-      check_in_time: fv.checkInTime,
-      check_out_time: fv.checkOutTime,
-      cancellation_policy: fv.cancellationPolicy,
-      pet_policy: fv.petPolicy ? 'true' : 'false',
-      children_policy: currentVm.policies.childrenPolicy,
-      extra_bed_policy: currentVm.policies.extraBedPolicy,
-      payment_policy: currentVm.policies.paymentPolicy,
-      house_rules: currentVm.policies.houseRules,
-    }).toPromise().then(() => true).catch(() => false));
+    checks.push(
+      firstValueFrom(
+        this.propertiesApi.savePolicies(propId, {
+          check_in_time: fv.checkInTime,
+          check_out_time: fv.checkOutTime,
+          cancellation_policy: fv.cancellationPolicy,
+          pet_policy: fv.petPolicy ? 'true' : 'false',
+          children_policy: currentVm.policies.childrenPolicy,
+          extra_bed_policy: currentVm.policies.extraBedPolicy,
+          payment_policy: currentVm.policies.paymentPolicy,
+          house_rules: currentVm.policies.houseRules,
+        })
+      ).then(() => true).catch(() => false)
+    );
 
-    checks.push(this.propertiesApi.saveAmenities(propId, currentVm.amenities).toPromise().then(() => true).catch(() => false));
+    checks.push(
+      firstValueFrom(
+        this.propertiesApi.saveAmenities(propId, currentVm.amenities)
+      ).then(() => true).catch(() => false)
+    );
 
     Promise.all(checks).then((results) => {
       if (results.every(r => r)) {
