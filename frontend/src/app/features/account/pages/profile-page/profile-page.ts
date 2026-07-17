@@ -1,8 +1,10 @@
 import { HttpEventType } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   HostListener,
   inject,
@@ -38,6 +40,9 @@ import {
 import type { AvatarUploadResponse } from '../../services/profile-api.service';
 import { ProfileApiService } from '../../services/profile-api.service';
 
+import type { ProfileDto } from '../../models/profile.dto';
+import { mapProfileDtoToViewModel } from '../../mappers/profile.mapper';
+
 @Component({
   selector: 'app-profile-page',
   imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
@@ -67,6 +72,11 @@ export class ProfilePageComponent {
   readonly previewUrl = signal<string | null>(null);
   readonly dragOver = signal(false);
   readonly activeTab = signal<'personal' | 'contact' | 'preferences' | 'social'>('personal');
+
+  // ═══ Data loading — httpResource (replaces manual GET + subscribe) ═══
+  readonly profileResource = httpResource<ProfileViewModel>(() => '/account/profile', {
+    parse: (dto) => mapProfileDtoToViewModel(dto as ProfileDto),
+  });
 
   readonly tabs = [
     { key: 'personal' as const, label: 'Personal', icon: 'badge' },
@@ -159,25 +169,29 @@ export class ProfilePageComponent {
   }
 
   constructor() {
-    this.loadProfile();
+    // React when profile data arrives from httpResource
+    effect(() => {
+      const p = this.profileResource.value();
+      if (p) {
+        this.profile.set(p);
+        this.patchForm(p);
+      }
+    });
+
+    effect(() => {
+      this.loading.set(this.profileResource.isLoading());
+    });
+
+    effect(() => {
+      const err = this.profileResource.error();
+      if (err) {
+        this.errorMessage.set('No fue posible cargar tu perfil.');
+      }
+    });
   }
 
   private loadProfile(): void {
-    this.loading.set(true);
-    this.profileApi
-      .getProfile()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (profile: ProfileViewModel) => {
-          this.profile.set(profile);
-          this.patchForm(profile);
-          this.loading.set(false);
-        },
-        error: () => {
-          this.errorMessage.set('No fue posible cargar tu perfil.');
-          this.loading.set(false);
-        },
-      });
+    this.profileResource.reload();
   }
 
   private patchForm(profile: ProfileViewModel): void {

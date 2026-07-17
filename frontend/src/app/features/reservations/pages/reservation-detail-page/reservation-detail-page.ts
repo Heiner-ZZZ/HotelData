@@ -99,12 +99,30 @@ export class ReservationDetailPageComponent {
   readonly editSaving = signal(false);
   readonly editError = signal('');
 
-  // Products (add-on services)
-  readonly Math = Math; // Expose Math for template expressions
-  readonly productsState = signal<ViewState>('idle');
-  readonly lineItemsState = signal<ViewState>('idle');
-  readonly hotelProducts = signal<HotelProduct[]>([]);
-  readonly lineItems = signal<BookingLineItem[]>([]);
+  // Products (add-on services) — httpResource (auto-fire when detailResource changes)
+  readonly Math = Math;
+  readonly productsResource = httpResource<HotelProduct[]>(() => {
+    const vm = this.detailResource.value();
+    return vm ? `/admin/products?prop_id=${vm.propId}` : undefined;
+  });
+
+  readonly lineItemsResource = httpResource<BookingLineItem[]>(() => {
+    const vm = this.detailResource.value();
+    return vm ? `/admin/bookings/${vm.bookingId}/line-items` : undefined;
+  });
+
+  readonly hotelProducts = computed(() => this.productsResource.value() ?? []);
+  readonly productsState = computed<ViewState>(() => {
+    if (this.productsResource.isLoading()) return 'loading';
+    if (this.productsResource.error()) return 'error';
+    return this.productsResource.value()?.length ? 'success' : 'empty';
+  });
+  readonly lineItems = computed(() => this.lineItemsResource.value() ?? []);
+  readonly lineItemsState = computed<ViewState>(() => {
+    if (this.lineItemsResource.isLoading()) return 'loading';
+    if (this.lineItemsResource.error()) return 'error';
+    return this.lineItemsResource.value()?.length ? 'success' : 'empty';
+  });
   readonly lineItemsTotal = computed(() => this.lineItems().reduce((sum, li) => sum + li.total, 0));
   /** Exclude 'Daños' from sellable products — damages are handled at checkout */
   readonly productsGrouped = computed(() => {
@@ -138,6 +156,20 @@ export class ReservationDetailPageComponent {
   readonly canAddProducts = computed(() => {
     const vm = this.detailResource.value();
     return vm && canAssignRooms(vm.status) && this.isStaff();
+  });
+
+  // Cancel preview — on-demand httpResource via trigger signal
+  readonly cancelPreviewTrigger = signal('');
+  readonly cancelPreviewResource = httpResource<any>(() => {
+    const id = this.cancelPreviewTrigger();
+    return id ? `/reservations/${id}/cancel-preview` : undefined;
+  });
+
+  // Available rooms for assignment — on-demand httpResource via trigger signal
+  readonly availableRoomsTrigger = signal('');
+  readonly availableRoomsResource = httpResource<any>(() => {
+    const id = this.availableRoomsTrigger();
+    return id ? `/reservations/${id}/available-rooms` : undefined;
   });
 
   // Room assignment modal
@@ -177,11 +209,62 @@ export class ReservationDetailPageComponent {
   });
 
   constructor() {
-    // Load products whenever the reservation detail changes
+    // Sync cancel preview result to cancelPenalty signal
     effect(() => {
-      const vm = this.detailResource.value();
-      if (vm) {
-        this.loadProducts();
+      const preview = this.cancelPreviewResource.value();
+      const err = this.cancelPreviewResource.error();
+      if (!this.cancelPreviewTrigger()) return;
+
+      if (preview) {
+        this.cancelPenalty.set({
+          free: preview.free_cancellation,
+          amount: preview.penalty_amount,
+          percent: preview.penalty_percent,
+          hours: preview.hours_until_checkin,
+          policyHours: preview.cancellation_hours,
+          oneNightPrice: (preview as any).one_night_price ?? 0,
+          totalNights: (preview as any).total_nights ?? 1,
+        });
+        const current = this.detailResource.value();
+        if (current) {
+          this.confirmCancellation(current.bookingId, current.guestName);
+        }
+        this.cancelPending.set(false);
+        this.cancelPreviewTrigger.set('');
+      } else if (err && !this.cancelPreviewResource.isLoading()) {
+        // Fallback: show basic confirm dialog
+        this.cancelPending.set(false);
+        this.cancelPreviewTrigger.set('');
+        const current = this.detailResource.value();
+        if (current) {
+          this.confirmDialog.open({
+            title: 'Cancelar reserva',
+            message: `Cancelar la reserva de ${current.guestName}?`,
+            confirmLabel: 'Cancelar reserva',
+            variant: 'danger',
+          }).then((ok) => { if (ok) this.executeCancel(current.bookingId); });
+        }
+      }
+    });
+
+    // Sync available rooms result
+    effect(() => {
+      const result = this.availableRoomsResource.value();
+      const err = this.availableRoomsResource.error();
+      if (!this.availableRoomsTrigger()) return;
+
+      if (result) {
+        this.availableRooms.set(result.available_rooms);
+        this.assignedRoomIds.set(result.assigned_rooms || []);
+        this.roomsRequired.set(result.rooms_required);
+        if (result.assigned_rooms && result.assigned_rooms.length > 0) {
+          this.selectedRoomIds.set(new Set(result.assigned_rooms));
+        }
+        this.roomAssignmentState.set('success');
+        this.availableRoomsTrigger.set('');
+      } else if (err && !this.availableRoomsResource.isLoading()) {
+        this.roomAssignmentState.set('error');
+        this.availableRoomsTrigger.set('');
       }
     });
   }
@@ -189,26 +272,8 @@ export class ReservationDetailPageComponent {
   // ── Products (Add-on Services) ──
 
   loadProducts() {
-    const vm = this.detailResource.value();
-    if (!vm) return;
-    this.productsState.set('loading');
-    this.lineItemsState.set('loading');
-
-    this.productsApi.listHotelProducts(vm.propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (products) => {
-        this.hotelProducts.set(products);
-        this.productsState.set(products.length ? 'success' : 'empty');
-      },
-      error: () => this.productsState.set('error'),
-    });
-
-    this.productsApi.getLineItems(vm.bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (items) => {
-        this.lineItems.set(items);
-        this.lineItemsState.set(items.length ? 'success' : 'empty');
-      },
-      error: () => this.lineItemsState.set('error'),
-    });
+    this.productsResource.reload();
+    this.lineItemsResource.reload();
   }
 
   openProductModal() {
@@ -355,33 +420,9 @@ export class ReservationDetailPageComponent {
     const current = this.detailResource.value();
     if (!current || !current.canCancel || this.cancelPending()) return;
 
-    // Fetch penalty preview first
     this.cancelPending.set(true);
-    this.reservationsApi.getCancelPreview(current.bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (preview) => {
-        this.cancelPending.set(false);
-        this.cancelPenalty.set({
-          free: preview.free_cancellation,
-          amount: preview.penalty_amount,
-          percent: preview.penalty_percent,
-          hours: preview.hours_until_checkin,
-          policyHours: preview.cancellation_hours,
-          oneNightPrice: (preview as any).one_night_price ?? 0,
-          totalNights: (preview as any).total_nights ?? 1,
-        });
-        this.confirmCancellation(current.bookingId, current.guestName);
-      },
-      error: (err) => {
-        this.cancelPending.set(false);
-        // Fallback: show basic confirm
-        this.confirmDialog.open({
-          title: 'Cancelar reserva',
-          message: `¿Cancelar la reserva de ${current.guestName}?`,
-          confirmLabel: 'Cancelar reserva',
-          variant: 'danger',
-        }).then((ok) => { if (ok) this.executeCancel(current.bookingId); });
-      },
-    });
+    // Trigger the cancel preview resource (result handled in effect)
+    this.cancelPreviewTrigger.set(current.bookingId);
   }
 
   private async confirmCancellation(bookingId: string, guestName: string) {
@@ -474,24 +515,8 @@ export class ReservationDetailPageComponent {
     this.roomAssignmentState.set('loading');
     this.roomAssignmentMessage.set('');
     this.selectedRoomIds.set(new Set());
-
-    this.reservationsApi.getAvailableRooms(vm.bookingId).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (result) => {
-        this.availableRooms.set(result.available_rooms);
-        this.assignedRoomIds.set(result.assigned_rooms || []);
-        this.roomsRequired.set(result.rooms_required);
-        // Pre-select already assigned rooms
-        if (result.assigned_rooms && result.assigned_rooms.length > 0) {
-          this.selectedRoomIds.set(new Set(result.assigned_rooms));
-        }
-        this.roomAssignmentState.set('success');
-      },
-      error: () => {
-        this.roomAssignmentState.set('error');
-      }
-    });
+    // Trigger the available rooms resource (result handled in effect)
+    this.availableRoomsTrigger.set(vm.bookingId);
   }
 
   closeRoomModal() {

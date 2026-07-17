@@ -6,7 +6,6 @@ import {
   HostListener,
   inject,
   Input,
-  OnInit,
   OnChanges,
   Output,
   SimpleChanges,
@@ -14,8 +13,8 @@ import {
   computed,
   effect,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, skip } from 'rxjs';
 
 import type { PropertyOption } from '../../models/property-option.model';
 import { PropertyContextService } from '../../services/property-context.service';
@@ -28,11 +27,10 @@ import { PropertySelectorService } from '../../services/property-selector.servic
   styleUrl: './property-selector.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PropertySelectorComponent implements OnInit, OnChanges {
+export class PropertySelectorComponent implements OnChanges {
   private readonly service = inject(PropertySelectorService);
   readonly ctx = inject(PropertyContextService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly filter$ = new Subject<string>();
 
   @Input() selectedPropId = 0;
   @Input() selectedLabel = '';
@@ -86,16 +84,11 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
 
   constructor() {
     // React to context becoming ready (async HTTP call)
-    // This effect runs when ctx.ready() changes to true.
     effect(() => {
       if (this.ctx.ready() && !this.initialized()) {
         this.initFromContext();
       }
     });
-  }
-
-  ngOnInit() {
-    // If context is already ready, initFromContext will be called by the effect
   }
 
   private initFromContext() {
@@ -133,8 +126,9 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
     // --- Modo all (super_admin): cargar normalmente desde la API ---
     this.loadInitialPage();
 
-    this.filter$
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+    // Reactive search pipeline: signal → observable → debounce → API call
+    toObservable(this.filterText)
+      .pipe(skip(1), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.searchValue = term;
         this.page = 1;
@@ -179,7 +173,6 @@ export class PropertySelectorComponent implements OnInit, OnChanges {
 
   onFilterChange(value: string) {
     this.filterText.set(value);
-    this.filter$.next(value);
   }
 
   selectProperty(option: PropertyOption) {

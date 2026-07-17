@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -32,9 +31,7 @@ import { mapPropertyDetailResponse } from '../../mappers/properties.mapper';
 })
 export class PropertyDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly api = inject(PropertiesApiService);
   private readonly reviewsApi = inject(ReviewsApiService);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly propId = toSignal(
     this.route.paramMap.pipe(map((params) => Number(params.get('propertyId')))),
@@ -65,9 +62,16 @@ export class PropertyDetailPageComponent {
     return circ - (circ * score) / 100;
   });
 
-  // Operational calendar — single week view
-  readonly calendarData = signal<OperationalCalendarData | null>(null);
-  readonly calendarLoading = signal(false);
+  // Operational calendar — httpResource auto-fires when detail loads or year/month change
+  readonly calendarResource = httpResource<OperationalCalendarData>(() => {
+    const propId = this.detailResource.value()?.propId ?? this.propId();
+    const year = this.calendarYear();
+    const month = this.calendarMonth();
+    if (!propId || !year || !month) return undefined;
+    return `/api/management/properties/${propId}/calendar?year=${year}&month=${month}`;
+  });
+  readonly calendarData = computed(() => this.calendarResource.value() ?? null);
+  readonly calendarLoading = this.calendarResource.isLoading;
   readonly calendarYear = signal(new Date().getFullYear());
   readonly calendarMonth = signal(new Date().getMonth() + 1);
 
@@ -79,17 +83,6 @@ export class PropertyDetailPageComponent {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     d.setDate(diff);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  private _loadCalendar(propId: number, year: number, month: number) {
-    this.calendarLoading.set(true);
-    this.api.getOperationalCalendar(propId, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (data) => {
-        this.calendarData.set(data as OperationalCalendarData);
-        this.calendarLoading.set(false);
-      },
-      error: () => this.calendarLoading.set(false),
-    });
   }
 
   prevWeek() {
@@ -107,59 +100,29 @@ export class PropertyDetailPageComponent {
   private _setWeekAndLoad(d: Date) {
     const newY = d.getFullYear();
     const newM = d.getMonth() + 1;
-    const y = this.calendarYear();
-    const m = this.calendarMonth();
     this.weekStart.set(`${newY}-${String(newM).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-    if (newY !== y || newM !== m) {
-      this.calendarYear.set(newY);
-      this.calendarMonth.set(newM);
-      this._loadCalendar(this.detailResource.value()?.propId ?? this.propId(), newY, newM);
-    }
+    this.calendarYear.set(newY);
+    this.calendarMonth.set(newM);
   }
 
-  // RF-006: Top approved reviews
-  readonly reviews = signal<Array<{
-    id: string;
-    rating: number;
-    title: string;
-    comment: string;
-    userName: string;
-    createdAt: string;
-    staffResponse: string | null;
-  }>>([]);
-  readonly reviewsLoaded = signal(false);
-  readonly reviewsError = signal(false);
+  // RF-006: Top approved reviews — httpResource auto-fires when detail loads
+  readonly reviewsResource = httpResource<any[]>(() => {
+    const propId = this.detailResource.value()?.propId ?? this.propId();
+    return propId ? `/api/management/properties/${propId}/reviews?approved=true` : undefined;
+  });
+  readonly reviews = computed(() => (this.reviewsResource.value() ?? []).map(r => ({
+    id: r._id,
+    rating: r.rating,
+    title: r.title,
+    comment: r.comment,
+    userName: r.user_display_name || 'Huésped',
+    createdAt: r.created_at || '',
+    staffResponse: r.staff_response ?? null,
+  })));
+  readonly reviewsLoaded = computed(() => !this.reviewsResource.isLoading());
+  readonly reviewsError = computed(() => !!this.reviewsResource.error());
 
   constructor() {
-    effect(() => {
-      const vm = this.detailResource.value();
-      if (!vm) return;
-      const propId = vm.propId;
-      const year = untracked(() => this.calendarYear());
-      const month = untracked(() => this.calendarMonth());
-      this._loadCalendar(propId, year, month);
-      this.loadReviews(propId);
-    });
-  }
-
-  private loadReviews(propId: number) {
-    this.reviewsApi.getHotelReviews(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (items) => {
-        this.reviews.set((items as any[]).map(r => ({
-          id: r._id,
-          rating: r.rating,
-          title: r.title,
-          comment: r.comment,
-          userName: r.user_display_name || 'Huésped',
-          createdAt: r.created_at || '',
-          staffResponse: r.staff_response ?? null,
-        })));
-        this.reviewsLoaded.set(true);
-      },
-      error: () => {
-        this.reviewsLoaded.set(true);
-        this.reviewsError.set(true);
-      },
-    });
+    // effect removed: calendarResource and reviewsResource auto-fire from detailResource.value()
   }
 }

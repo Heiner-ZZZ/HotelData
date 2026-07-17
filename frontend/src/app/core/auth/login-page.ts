@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from './auth.service';
@@ -15,7 +15,6 @@ export class LoginPageComponent {
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
 
   // ── Form fields as signals (no FormBuilder) ──
   readonly identifier = signal('');
@@ -30,16 +29,17 @@ export class LoginPageComponent {
     // Remove theme attributes for login page styling, restore on destroy
     const previousTheme = document.documentElement.getAttribute('data-theme');
     document.documentElement.removeAttribute('data-theme');
-    this.destroyRef.onDestroy(() => {
+    inject(DestroyRef).onDestroy(() => {
       if (previousTheme) {
         document.documentElement.setAttribute('data-theme', previousTheme);
       }
     });
 
-    // Redirect if already authenticated
-    this.authService.ensureSessionLoaded().subscribe((state) => {
-      if (state.authenticated) {
-        void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
+    // Redirect if already authenticated (signal-based, replaces ensureSessionLoaded subscription)
+    effect(() => {
+      if (this.authService.isAuthenticated() && this.authService.sessionLoaded()) {
+        const homeHref = this.authService.authState().homeHref;
+        void this.router.navigateByUrl(this.resolveHomeHref(homeHref));
       }
     });
   }

@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, signal, untracked, ViewEncapsulation } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, GridReadyEvent, GridApi, ColumnHeaderClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
@@ -42,7 +43,6 @@ type TreeRow = LedgerTransaction | JournalEntryGroupRow;
 })
 export class LedgerPageComponent {
   private readonly api = inject(ExpensesApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   readonly ctx = inject(PropertyContextService);
   private readonly reports = inject(ReportsExportService);
@@ -53,9 +53,9 @@ export class LedgerPageComponent {
 
   readonly selectedPropId = signal(0);
   readonly selectedLabel = signal('');
+  readonly selectedPeriod = signal('');
   readonly gridApi = signal<GridApi | null>(null);
 
-  readonly rowData = signal<LedgerTransaction[]>([]);
   readonly summary = signal<LedgerSummary | null>(null);
   readonly trialBalance = signal<TrialBalance | null>(null);
   readonly showTrialBalance = signal(false);
@@ -63,32 +63,73 @@ export class LedgerPageComponent {
   readonly showIncomeStatement = signal(false);
   readonly balanceSheet = signal<BalanceSheet | null>(null);
   readonly showBalanceSheet = signal(false);
-  readonly selectedPeriod = signal('');
   readonly availablePeriods = signal<string[]>([]);
-  readonly loading = signal(false);
   readonly chartAccounts = signal<Map<string, ChartAccount>>(new Map());
   readonly selectedColumnId = signal<string | null>(null);
   readonly pinnedColumns = signal<{ left: string[]; right: string[] }>({ left: [], right: [] });
   readonly groupedMode = signal(true);
-  /** Visible rows after grouping + per-JE expansion filtering. Community-only. */
   readonly treeData = signal<TreeRow[]>([]);
-  /** Set of journalEntryIds that are currently expanded. Empty before first load. */
   readonly expandedGroups = signal<Set<string>>(new Set());
-
-  /** Column visibility dropdown state. */
+  readonly rowData = signal<LedgerTransaction[]>([]);
   readonly columnsDropdownOpen = signal(false);
-  /** Map of colId → visible (true=shown, false=hidden). */
   readonly columnVisibility = signal<Record<string, boolean>>({});
+  readonly loading = signal(false);
+
+  /** Has the user manually toggled any group's expansion? */
+  private expansionUserTouched = false;
+
+  // ═══ Data resources — httpResource (replaces all manual GETs in loadAll) ═══
+
+  readonly summaryResource = httpResource<LedgerSummary>(() => {
+    const propId = this.selectedPropId();
+    return propId ? `/api/expenses/ledger/${propId}/summary` : undefined;
+  });
+
+  readonly periodsResource = httpResource<string[]>(() => {
+    const propId = this.selectedPropId();
+    return propId ? `/api/expenses/ledger/${propId}/periods` : undefined;
+  });
+
+  readonly transactionsResource = httpResource<{ items: LedgerTransaction[] }>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    const period = this.selectedPeriod() || undefined;
+    let url = `/api/expenses/ledger/${propId}/transactions?page=1&page_size=100&sort_by=tx_date&sort_dir=desc`;
+    if (period) url += `&period=${period}`;
+    return url;
+  });
+
+  readonly trialBalanceResource = httpResource<TrialBalance>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    const period = this.selectedPeriod() || undefined;
+    let url = `/api/expenses/ledger/${propId}/trial-balance`;
+    if (period) url += `?period=${period}`;
+    return url;
+  });
+
+  readonly incomeStatementResource = httpResource<IncomeStatement>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    const period = this.selectedPeriod() || undefined;
+    let url = `/api/expenses/ledger/${propId}/income-statement`;
+    if (period) url += `?period=${period}`;
+    return url;
+  });
+
+  readonly balanceSheetResource = httpResource<BalanceSheet>(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    const period = this.selectedPeriod() || undefined;
+    let url = `/api/expenses/ledger/${propId}/balance-sheet`;
+    if (period) url += `?period=${period}`;
+    return url;
+  });
+
+  readonly chartOfAccountsResource = httpResource<ChartAccount[]>(() => `/api/expenses/ledger/chart-of-accounts`);
 
   readonly theme = themeQuartz;
 
-  /** Has the user manually toggled any group's expansion? Once true, we
-   *  stop auto-expanding new JE groups on data reload. */
-  private expansionUserTouched = false;
-
-  /** Declarations declared as `!` so the cellRenderer closures can call
-   *  back into the component (this.toggleGroupExpansion, etc.). Built
-   *  in the constructor. */
   columnDefs!: ColDef<LedgerTransaction>[];
 
   readonly defaultColDef: ColDef = {
@@ -120,28 +161,99 @@ export class LedgerPageComponent {
       this.selectedPropId.set(urlPropId);
       this.selectedLabel.set(this.ctx.currentPropLabel() || `Propiedad #${urlPropId}`);
       this.ctx.setProperty(urlPropId, this.selectedLabel());
-      this.loadAll();
     } else if (ctxPropId) {
       this.selectedPropId.set(ctxPropId);
       this.selectedLabel.set(this.ctx.currentPropLabel());
-      this.loadAll();
     }
 
-    // Reactively reload when URL prop changes
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        const newPropId = Number(params.get('prop_id') ?? '0');
-        if (newPropId && newPropId !== this.selectedPropId()) {
-          this.selectedPropId.set(newPropId);
-          this.selectedLabel.set(this.ctx.currentPropLabel() || `Propiedad #${newPropId}`);
-          this.ctx.setProperty(newPropId, this.selectedLabel());
-          this.loadAll();
-        }
+    // ═══ Reactive effects (replace manual loadAll() + subscriptions) ═══
+
+    // 1. Sync URL ↔ selectedPropId
+    effect(() => {
+      const urlPid = this.urlPropId();
+      if (urlPid && urlPid !== this.selectedPropId()) {
+        untracked(() => {
+          this.selectedPropId.set(urlPid);
+          this.selectedLabel.set(this.ctx.currentPropLabel() || `Propiedad #${urlPid}`);
+          this.ctx.setProperty(urlPid, this.selectedLabel());
+        });
+      }
+    });
+
+    // 2. Reset UI state when prop or period changes
+    effect(() => {
+      // Track both signals to trigger the reset
+      const _pid = this.selectedPropId();
+      const _period = this.selectedPeriod();
+      void _pid; void _period;
+      if (!_pid) return;
+      untracked(() => {
+        this.expandedGroups.set(new Set());
+        this.expansionUserTouched = false;
       });
+    });
+
+    // 3. Map resource values to component signals
+    effect(() => {
+      const s = this.summaryResource.value();
+      if (s !== undefined) untracked(() => this.summary.set(s));
+    });
+
+    effect(() => {
+      const p = this.periodsResource.value();
+      if (p) untracked(() => this.availablePeriods.set(p));
+    });
+
+    effect(() => {
+      const t = this.transactionsResource.value();
+      if (t) {
+        untracked(() => {
+          this.rebuildTreeData(t.items);
+          this.autoSizeGridColumns();
+        });
+      }
+    });
+
+    effect(() => {
+      const tb = this.trialBalanceResource.value();
+      if (tb !== undefined) untracked(() => this.trialBalance.set(tb));
+    });
+
+    effect(() => {
+      const inc = this.incomeStatementResource.value();
+      if (inc !== undefined) untracked(() => this.incomeStatement.set(inc));
+    });
+
+    effect(() => {
+      const bs = this.balanceSheetResource.value();
+      if (bs !== undefined) untracked(() => this.balanceSheet.set(bs));
+    });
+
+    effect(() => {
+      const accounts = this.chartOfAccountsResource.value();
+      if (accounts) {
+        untracked(() => {
+          const map = new Map<string, ChartAccount>();
+          for (const a of accounts) map.set(a.accountCode, a);
+          this.chartAccounts.set(map);
+        });
+      }
+    });
+
+    // 4. Loading state aggregated from all resources
+    effect(() => {
+      const loading = this.summaryResource.isLoading()
+        || this.periodsResource.isLoading()
+        || this.transactionsResource.isLoading()
+        || this.trialBalanceResource.isLoading()
+        || this.incomeStatementResource.isLoading()
+        || this.balanceSheetResource.isLoading()
+        || this.chartOfAccountsResource.isLoading();
+      untracked(() => this.loading.set(loading));
+    });
   }
 
-  // ─── Column definitions (constructed so cellRenderer has `this`) ───
+  // ─── Column definitions ───
 
   private buildColumnDefs(): ColDef<LedgerTransaction>[] {
     return [
@@ -176,7 +288,6 @@ export class LedgerPageComponent {
         sortable: true, filter: true,
         headerClass: 'col-odd',
         cellRenderer: (p: any) => {
-          // Skip the expensive renderer for synthetic group rows (their description is empty).
           if (p.data?.__groupRow) return '';
           const wrapper = document.createElement('div');
           wrapper.className = 'cell-desc col-odd';
@@ -224,9 +335,6 @@ export class LedgerPageComponent {
     ];
   }
 
-  /** Renderer for the journal-entry column. Branches on data.__groupRow to
-   *  show chevron + JE pill for synthetic groups, and the existing
-   *  D/C tag + jeId for leaf rows. */
   private renderJournalCell(p: any): HTMLElement {
     if (p.data?.__groupRow) return this.renderGroupRowCell(p.data as JournalEntryGroupRow);
     return this.renderLeafRowCell(p);
@@ -240,7 +348,7 @@ export class LedgerPageComponent {
 
     const chev = document.createElement('span');
     chev.className = 'group-chevron';
-    chev.textContent = isExpanded ? '\u25BC' : '\u25B6'; // ▼ / ▶
+    chev.textContent = isExpanded ? '\u25BC' : '\u25B6';
     chev.title = isExpanded ? 'Contraer hijos' : 'Expandir hijos';
     chev.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -288,11 +396,6 @@ export class LedgerPageComponent {
     return container;
   }
 
-  // ─── Expansion logic ───
-
-  /** Toggle expansion of a single JE group. Rebuilds treeData so the
-   *  grid picks up the visibility change via AG Grid's reactive
-   *  rowData binding. */
   toggleGroupExpansion(jeId: string): void {
     if (!jeId) return;
     const next = new Set(this.expandedGroups());
@@ -306,13 +409,10 @@ export class LedgerPageComponent {
     this.rebuildTreeData();
   }
 
-  // ─── Standard event handlers / column utilities (unchanged) ───
-
   onPropSelected(event: { propId: number; label: string }) {
     this.selectedPropId.set(event.propId);
     this.selectedLabel.set(event.label);
     this.ctx.setProperty(event.propId, event.label);
-    this.loadAll();
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -413,66 +513,12 @@ export class LedgerPageComponent {
     }, 150);
   }
 
-  private loadAll() {
-    const propId = this.selectedPropId();
-    if (!propId) return;
-    this.loading.set(true);
-    // Drop stale expansion state whenever data reloads. Without this, JEs
-    // added by a new period filter would silently default to collapsed,
-    // and toggles from a previous hotel would carry over.
-    this.expandedGroups.set(new Set());
-    this.expansionUserTouched = false;
-
-    this.api.getLedgerSummary(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (s) => this.summary.set(s),
-      error: (err) => { console.error('[Ledger] Failed to load summary', err); this.summary.set(null); },
-    });
-
-    this.api.getLedgerPeriods(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (periods) => this.availablePeriods.set(periods),
-      error: (err) => { console.error('[Ledger] Failed to load periods', err); this.availablePeriods.set([]); },
-    });
-
-    this.api.getLedgerTransactions(propId, 1, 100, 'tx_date', 'desc', this.selectedPeriod() || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (data) => {
-        this.rebuildTreeData(data.items);
-        this.loading.set(false);
-        this.autoSizeGridColumns();
-      },
-      error: (err) => { console.error('[Ledger] Failed to load transactions', err); this.loading.set(false); },
-    });
-
-    this.api.getTrialBalance(propId, this.selectedPeriod() || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (tb) => this.trialBalance.set(tb),
-      error: (err) => { console.error('[Ledger] Failed to load trial balance', err); this.trialBalance.set(null); },
-    });
-
-    this.api.getIncomeStatement(propId, this.selectedPeriod() || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (inc) => this.incomeStatement.set(inc),
-      error: (err) => { console.error('[Ledger] Failed to load income statement', err); this.incomeStatement.set(null); },
-    });
-
-    this.api.getBalanceSheet(propId, this.selectedPeriod() || undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (bs) => this.balanceSheet.set(bs),
-      error: (err) => { console.error('[Ledger] Failed to load balance sheet', err); this.balanceSheet.set(null); },
-    });
-
-    this.api.getChartOfAccounts().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (accounts) => {
-        const map = new Map<string, ChartAccount>();
-        for (const a of accounts) map.set(a.accountCode, a);
-        this.chartAccounts.set(map);
-      },
-    });
-  }
-
   onFilterChange(event: Event) {
     this.gridApi()?.setGridOption('quickFilterText', (event.target as HTMLInputElement).value);
   }
 
   onPeriodChange(event: Event) {
     this.selectedPeriod.set((event.target as HTMLSelectElement).value);
-    this.loadAll();
   }
 
   toggleTrialBalance() {
@@ -564,7 +610,7 @@ export class LedgerPageComponent {
     URL.revokeObjectURL(url);
   }
 
-  // ─── Tree (grouped view) builder ───
+  // ─── Tree builder ───
 
   private rebuildTreeData(flatItems?: LedgerTransaction[]): void {
     const items = flatItems ?? [...this.rowData()];
@@ -587,8 +633,6 @@ export class LedgerPageComponent {
       return new Date(b.txDate).getTime() - new Date(a.txDate).getTime();
     });
 
-    // Auto-expand everything on first load. After the user starts
-    // toggling, their preferences are preserved.
     if (!this.expansionUserTouched) {
       const allJEs = new Set<string>();
       for (const row of sorted) {
@@ -612,8 +656,6 @@ export class LedgerPageComponent {
         __childCount: groupBuffer.length,
         __groupDebit: groupBuffer.reduce((s, r) => s + (r.debit || 0), 0),
         __groupCredit: groupBuffer.reduce((s, r) => s + (r.credit || 0), 0),
-        // Distinctive ID prefix to avoid collisions with real `_id` values
-        // (especially important for ObjectIds from MongoDB transactions).
         id: ('__ledger_grp__' + jeId) as any,
         accountCode: '',
         description: '',
@@ -645,16 +687,12 @@ export class LedgerPageComponent {
     this.treeData.set(visible);
   }
 
-  // ─── Tooltip helpers ───
-
   accountTooltip(code: string): string {
     const acct = this.chartAccounts().get(code);
     if (!acct) return code;
     const nb = acct.normalBalance === 'debit' ? 'Deudor' : acct.normalBalance === 'credit' ? 'Acreedor' : acct.normalBalance;
     return `${acct.accountName}\nSaldo normal: ${nb}\n${acct.description}`;
   }
-
-  // ─── P&L Bar Chart helpers ───
 
   pnlBarPct(value: number): number {
     const inc = this.incomeStatement();

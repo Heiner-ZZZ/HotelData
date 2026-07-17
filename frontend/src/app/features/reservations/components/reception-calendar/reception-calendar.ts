@@ -33,6 +33,14 @@ export class ReceptionCalendarComponent {
 
   constructor() {
     this._resetToThisWeek();
+
+    // Sync detailResource to detailData/detailLoading signals
+    effect(() => {
+      const data = this.detailResource.value();
+      const loading = this.detailResource.isLoading();
+      this.detailData.set(data ?? null);
+      this.detailLoading.set(loading);
+    });
   }
 
   /** Get the Monday of the current week. */
@@ -77,6 +85,13 @@ export class ReceptionCalendarComponent {
   readonly selectedReservation = signal<ReceptionCalendarReservation | null>(null);
   readonly detailLoading = signal(false);
   readonly detailData = signal<any>(null);
+
+  /** httpResource for reservation detail (on-demand via selectedBookingId trigger). */
+  readonly selectedBookingId = signal('');
+  readonly detailResource = httpResource<any>(() => {
+    const id = this.selectedBookingId();
+    return id ? `/management/reception/reservations/${id}` : undefined;
+  });
 
   /** Drag-and-drop state. */
   readonly dragBookingId = signal<string | null>(null);
@@ -215,18 +230,13 @@ export class ReceptionCalendarComponent {
     event.stopPropagation();
     this.selectedReservation.set(reservation);
     this.reservationClick.emit(reservation);
-
-    this.detailLoading.set(true);
-    this.detailData.set(null);
-    this.api.getReservationDetail(reservation.bookingId).subscribe({
-      next: (data) => { this.detailData.set(data); this.detailLoading.set(false); },
-      error: () => this.detailLoading.set(false),
-    });
+    this.selectedBookingId.set(reservation.bookingId);
   }
 
   closeDetail() {
     this.selectedReservation.set(null);
     this.detailData.set(null);
+    this.selectedBookingId.set('');
   }
 
   formatTime(time: string): string {

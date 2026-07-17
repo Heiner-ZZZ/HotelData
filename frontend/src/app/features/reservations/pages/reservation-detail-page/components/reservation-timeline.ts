@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { LoadingStateComponent } from '../../../../../shared/ui/loading-state/loading-state';
 import type { ReservationDetailViewModel } from '../../../models/reservations.model';
@@ -31,6 +32,13 @@ export class ReservationTimelineComponent {
   readonly guestsSaving = signal(false);
   readonly guestsEditMode = signal(false);
 
+  /** httpResource for room guests — on-demand via enterGuestsMode trigger */
+  readonly roomGuestsTrigger = signal('');
+  readonly roomGuestsResource = httpResource<any[]>(() => {
+    const id = this.roomGuestsTrigger();
+    return id ? `/reservations/${id}/room-guests` : undefined;
+  });
+
   readonly reviewSuccess = signal(false);
   readonly reviewForm = signal({ rating: 0, title: '', comment: '' });
   readonly reviewSubmitting = signal(false);
@@ -49,31 +57,41 @@ export class ReservationTimelineComponent {
     return vm.status === 'confirmed' && vm.rooms > 0;
   });
 
+  constructor() {
+    // Sync roomGuestsResource result to roomGuests signal
+    effect(() => {
+      const items = this.roomGuestsResource.value();
+      const err = this.roomGuestsResource.error();
+      if (!this.roomGuestsTrigger()) return;
+
+      if (items) {
+        const entries: RoomGuestEntry[] = items.map((item: any) => ({
+          roomIndex: item.room_index,
+          guests: (item.guests || []).map((g: any) => ({
+            guestName: g.guest_name || '',
+            guestEmail: g.guest_email || '',
+            guestPhone: g.guest_phone || '',
+            age: g.age ?? null,
+            isChild: !!g.is_child,
+            isPrimaryForRoom: !!g.is_primary_for_room,
+          })),
+        }));
+        this.roomGuests.set(entries);
+        this.guestsLoading.set(false);
+        this.roomGuestsTrigger.set('');
+      } else if (err && !this.roomGuestsResource.isLoading()) {
+        this.guestsLoading.set(false);
+        this.roomGuestsTrigger.set('');
+      }
+    });
+  }
+
   // ── Guest management ──
 
   loadRoomGuests() {
     const vm = this.reservation();
     this.guestsLoading.set(true);
-    this.reservationsApi.getRoomGuests(vm.bookingId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (items: any[]) => {
-          const entries: RoomGuestEntry[] = items.map((item: any) => ({
-            roomIndex: item.room_index,
-            guests: (item.guests || []).map((g: any) => ({
-              guestName: g.guest_name || '',
-              guestEmail: g.guest_email || '',
-              guestPhone: g.guest_phone || '',
-              age: g.age ?? null,
-              isChild: !!g.is_child,
-              isPrimaryForRoom: !!g.is_primary_for_room,
-            })),
-          }));
-          this.roomGuests.set(entries);
-          this.guestsLoading.set(false);
-        },
-        error: () => this.guestsLoading.set(false),
-      });
+    this.roomGuestsTrigger.set(vm.bookingId);
   }
 
   enterGuestsMode() {

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API_CONFIG } from '../api/api.config';
 
@@ -11,38 +11,23 @@ import { API_CONFIG } from '../api/api.config';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class VerifyEmailPageComponent {
-  private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
   private readonly route = inject(ActivatedRoute);
 
-  readonly loading = signal(true);
-  readonly success = signal(false);
-  readonly message = signal('');
-
-  constructor() {
+  readonly verifyResource = httpResource<{ ok: boolean; message: string }>(() => {
     const token = this.route.snapshot.queryParamMap.get('token') || '';
-    if (!token) {
-      this.loading.set(false);
-      this.message.set('Enlace inválido. No se encontró el token de verificación.');
-      return;
+    if (!token) return undefined;
+    return `${this.apiConfig.baseUrl}/account/verify-email?token=${token}`;
+  }, {
+    withCredentials: true,
+  });
+
+  readonly loading = this.verifyResource.isLoading;
+  readonly success = computed(() => this.verifyResource.value()?.ok ?? false);
+  readonly message = computed(() => {
+    if (this.verifyResource.error()) {
+      return 'Error al verificar el correo. El enlace puede haber expirado.';
     }
-    this.http.get<{ ok: boolean; message: string }>(
-      `${this.apiConfig.baseUrl}/account/verify-email`,
-      { params: { token }, withCredentials: true }
-    ).subscribe({
-      next: (res) => {
-        this.loading.set(false);
-        this.success.set(true);
-        this.message.set(res.message || 'Correo verificado exitosamente.');
-      },
-      error: (error: unknown) => {
-        this.loading.set(false);
-        if (error instanceof HttpErrorResponse && error.error?.detail) {
-          this.message.set(error.error.detail);
-        } else {
-          this.message.set('Error al verificar el correo. El enlace puede haber expirado.');
-        }
-      }
-    });
-  }
+    return this.verifyResource.value()?.message ?? 'Enlace inválido. No se encontró el token de verificación.';
+  });
 }

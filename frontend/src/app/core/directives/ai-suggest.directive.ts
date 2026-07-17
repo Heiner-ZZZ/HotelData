@@ -2,9 +2,8 @@ import {
   Directive,
   ElementRef,
   Input,
-  OnInit,
-  Renderer2,
   inject,
+  OnInit,
   OnDestroy
 } from '@angular/core';
 import { NgControl } from '@angular/forms';
@@ -17,7 +16,6 @@ import { AiSuggestService } from '../services/ai-suggest.service';
 })
 export class AiSuggestDirective implements OnInit, OnDestroy {
   private readonly el = inject(ElementRef);
-  private readonly renderer = inject(Renderer2);
   private readonly aiSuggest = inject(AiSuggestService);
   private readonly ngControl = inject(NgControl, { optional: true });
 
@@ -27,6 +25,7 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
   private suggestionPill?: HTMLDivElement;
   private wrapper?: HTMLDivElement;
   private sub?: Subscription;
+  private listeners: Array<{ el: HTMLElement; type: string; fn: EventListener }> = [];
 
   ngOnInit() {
     const nativeEl = this.el.nativeElement;
@@ -34,41 +33,42 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
     if (!parent) return;
 
     // Create a wrapper to hold the input/textarea and the spark button
-    // This avoids modifying the parent's layout (which breaks .field grid layout)
-    this.wrapper = this.renderer.createElement('div');
-    this.renderer.setAttribute(this.wrapper, 'class', 'ai-input-container');
-    this.renderer.setStyle(this.wrapper, 'position', 'relative');
-    this.renderer.setStyle(this.wrapper, 'width', '100%');
+    this.wrapper = document.createElement('div');
+    this.wrapper.setAttribute('class', 'ai-input-container');
+    this.wrapper.style.position = 'relative';
+    this.wrapper.style.width = '100%';
 
     // Move the input/textarea into the wrapper
-    this.renderer.insertBefore(parent, this.wrapper, nativeEl);
-    this.renderer.appendChild(this.wrapper, nativeEl);
+    parent.insertBefore(this.wrapper, nativeEl);
+    this.wrapper.appendChild(nativeEl);
 
     // Add padding to the input so text does not overlap with the spark button
-    this.renderer.setStyle(nativeEl, 'padding-right', '2.5rem');
+    nativeEl.style.paddingRight = '2.5rem';
 
     // Create spark button
-    this.sparkBtn = this.renderer.createElement('button');
-    this.renderer.setAttribute(this.sparkBtn!, 'type', 'button');
-    this.renderer.setAttribute(this.sparkBtn!, 'class', 'btn-ai-spark');
-    this.renderer.setAttribute(this.sparkBtn!, 'title', 'Sugerir idea con IA');
+    this.sparkBtn = document.createElement('button');
+    this.sparkBtn.setAttribute('type', 'button');
+    this.sparkBtn.setAttribute('class', 'btn-ai-spark');
+    this.sparkBtn.setAttribute('title', 'Sugerir idea con IA');
 
     // Create symbol icon
-    const icon = this.renderer.createElement('span');
-    this.renderer.setAttribute(icon, 'class', 'material-symbols-outlined');
-    const iconText = this.renderer.createText('auto_awesome');
-    this.renderer.appendChild(icon, iconText);
-    this.renderer.appendChild(this.sparkBtn!, icon);
+    const icon = document.createElement('span');
+    icon.setAttribute('class', 'material-symbols-outlined');
+    const iconText = document.createTextNode('auto_awesome');
+    icon.appendChild(iconText);
+    this.sparkBtn.appendChild(icon);
 
     // Append spark button inside wrapper
-    this.renderer.appendChild(this.wrapper, this.sparkBtn!);
+    this.wrapper.appendChild(this.sparkBtn);
 
     // Listen to button click events
-    this.renderer.listen(this.sparkBtn!, 'click', (event: Event) => {
+    const clickHandler = (event: Event) => {
       event.stopPropagation();
       event.preventDefault();
       this.triggerSuggestion();
-    });
+    };
+    this.sparkBtn.addEventListener('click', clickHandler);
+    this.listeners.push({ el: this.sparkBtn, type: 'click', fn: clickHandler });
   }
 
   private triggerSuggestion() {
@@ -78,18 +78,18 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
     const fName = this.fieldName || this.el.nativeElement.getAttribute('name') || 'campo';
 
     this.removePill();
-    this.renderer.addClass(this.sparkBtn!, 'loading');
+    this.sparkBtn?.classList.add('loading');
 
     this.sub?.unsubscribe();
     this.sub = this.aiSuggest.getSuggestion(fName, context).subscribe({
       next: (res) => {
-        this.renderer.removeClass(this.sparkBtn!, 'loading');
+        this.sparkBtn?.classList.remove('loading');
         if (res.ok && res.suggestion) {
           this.showSuggestionPill(res.suggestion);
         }
       },
       error: () => {
-        this.renderer.removeClass(this.sparkBtn!, 'loading');
+        this.sparkBtn?.classList.remove('loading');
       }
     });
   }
@@ -101,41 +101,43 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
     const fieldContainer = this.wrapper.parentElement;
     if (!fieldContainer) return;
 
-    this.suggestionPill = this.renderer.createElement('div');
-    this.renderer.setAttribute(this.suggestionPill!, 'class', 'ai-suggestion-pill');
+    this.suggestionPill = document.createElement('div');
+    this.suggestionPill.setAttribute('class', 'ai-suggestion-pill');
 
     // Symbol icon
-    const spark = this.renderer.createElement('span');
-    this.renderer.setAttribute(spark, 'class', 'spark-icon material-symbols-outlined');
-    const sparkText = this.renderer.createText('auto_awesome');
-    this.renderer.appendChild(spark, sparkText);
-    this.renderer.appendChild(this.suggestionPill!, spark);
+    const spark = document.createElement('span');
+    spark.setAttribute('class', 'spark-icon material-symbols-outlined');
+    const sparkText = document.createTextNode('auto_awesome');
+    spark.appendChild(sparkText);
+    this.suggestionPill.appendChild(spark);
 
     // Text label
-    const textSpan = this.renderer.createElement('span');
-    this.renderer.setAttribute(textSpan, 'class', 'text');
-    const labelText = this.renderer.createText('Sugerencia: ');
-    const strongText = this.renderer.createElement('strong');
-    const sugContent = this.renderer.createText(suggestion);
-    this.renderer.appendChild(strongText, sugContent);
-    this.renderer.appendChild(textSpan, labelText);
-    this.renderer.appendChild(textSpan, strongText);
-    this.renderer.appendChild(this.suggestionPill!, textSpan);
+    const textSpan = document.createElement('span');
+    textSpan.setAttribute('class', 'text');
+    const labelText = document.createTextNode('Sugerencia: ');
+    const strongText = document.createElement('strong');
+    const sugContent = document.createTextNode(suggestion);
+    strongText.appendChild(sugContent);
+    textSpan.appendChild(labelText);
+    textSpan.appendChild(strongText);
+    this.suggestionPill!.appendChild(textSpan);
 
     // Apply button badge
-    const badge = this.renderer.createElement('span');
-    this.renderer.setAttribute(badge, 'class', 'apply-badge');
-    const badgeText = this.renderer.createText('Aplicar');
-    this.renderer.appendChild(badge, badgeText);
-    this.renderer.appendChild(this.suggestionPill!, badge);
+    const badge = document.createElement('span');
+    badge.setAttribute('class', 'apply-badge');
+    const badgeText = document.createTextNode('Aplicar');
+    badge.appendChild(badgeText);
+    this.suggestionPill!.appendChild(badge);
 
     // Append suggestion element inside the field container
-    this.renderer.appendChild(fieldContainer, this.suggestionPill!);
+    fieldContainer.appendChild(this.suggestionPill!);
 
     // Handle click to apply
-    this.renderer.listen(this.suggestionPill!, 'click', () => {
+    const pillClickHandler = () => {
       this.applySuggestion(suggestion);
-    });
+    };
+    this.suggestionPill!.addEventListener('click', pillClickHandler);
+    this.listeners.push({ el: this.suggestionPill!, type: 'click', fn: pillClickHandler });
   }
 
   private applySuggestion(suggestion: string) {
@@ -163,12 +165,17 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.sub?.unsubscribe();
     this.removePill();
+    // Clean up event listeners
+    for (const { el, type, fn } of this.listeners) {
+      el.removeEventListener(type, fn);
+    }
+    this.listeners = [];
     // Clean up wrapper - move input back to parent
     if (this.wrapper && this.wrapper.parentElement) {
       const parent = this.wrapper.parentElement;
       const nativeEl = this.el.nativeElement;
-      this.renderer.insertBefore(parent, nativeEl, this.wrapper);
-      this.renderer.removeChild(parent, this.wrapper);
+      parent.insertBefore(nativeEl, this.wrapper);
+      parent.removeChild(this.wrapper);
     }
   }
 }

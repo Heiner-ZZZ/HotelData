@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProfileApiService } from '../../../services/profile-api.service';
 
@@ -14,6 +15,9 @@ export class ProfileSecurityComponent {
 
   protected readonly Math = Math;
 
+  // ═══ Data loading — httpResource (replaces manual GET + subscribe) ═══
+  readonly sessionsResource = httpResource<{ items: unknown[]; total: number }>(() => '/auth/sessions');
+
   readonly totalSessions = signal(0);
   readonly loadingSessions = signal(false);
   readonly sessionsMessage = signal('');
@@ -22,20 +26,16 @@ export class ProfileSecurityComponent {
   readonly terminating = signal(false);
 
   constructor() {
-    this.loadSessions();
-  }
+    effect(() => {
+      const res = this.sessionsResource.value();
+      if (res) {
+        this.totalSessions.set(res.total);
+      }
+    });
 
-  private loadSessions(): void {
-    this.loadingSessions.set(true);
-    this.profileApi.getSessions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.totalSessions.set(response.total);
-          this.loadingSessions.set(false);
-        },
-        error: () => this.loadingSessions.set(false),
-      });
+    effect(() => {
+      this.loadingSessions.set(this.sessionsResource.isLoading());
+    });
   }
 
   requestTerminate(): void {
