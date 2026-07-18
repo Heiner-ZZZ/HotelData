@@ -70,7 +70,7 @@ def staff_new_booking_html(
         "Nueva solicitud de reserva",
         body,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "Puedes gestionar esta y otras reservas desde tu panel de administracion."
         ),
     )
@@ -127,7 +127,7 @@ def staff_check_event_html(
         action_title,
         body,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "El estado de la reserva se actualiza en tiempo real en tu panel."
         ),
     )
@@ -210,7 +210,7 @@ def guest_invoice_html(
         "Gracias por tu visita",
         body,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "Puedes descargar tu factura desde tu panel de huesped."
         ),
     )

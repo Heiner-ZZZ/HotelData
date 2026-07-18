@@ -1,1 +1,1 @@
-"""Future business modules for HotelData Hub."""
+"""Future business modules for HotelData."""

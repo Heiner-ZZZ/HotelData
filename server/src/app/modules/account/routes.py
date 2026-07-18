@@ -315,7 +315,7 @@ def _send_email_change_verification(user: dict, old_email: str, new_email: str) 
         body,
         logo_url=settings.app_base_url,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "El enlace expirara en 7 dias."
         ),
     )

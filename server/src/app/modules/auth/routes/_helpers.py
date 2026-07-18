@@ -135,7 +135,7 @@ def _send_verification_code(email: str, display_name: str, code: str) -> None:
         f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
         f'Hola <strong>{display_name}</strong>,</p>\n'
         f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">\n'
-        f'  Usa el siguiente codigo para completar tu registro en HotelData Hub:\n'
+        f'  Usa el siguiente codigo para completar tu registro en HotelData:\n'
         f'</p>\n'
         f'<table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 20px">\n'
         f'  <tr>{digits_html}</tr>\n'
@@ -151,7 +151,7 @@ def _send_verification_code(email: str, display_name: str, code: str) -> None:
         body,
         logo_url=base_url,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "No compartas este codigo con nadie."
         ),
     )
@@ -171,7 +171,7 @@ def _send_recovery_email(user: dict, token: str) -> None:
         f'Hola <strong>{display_name}</strong>,</p>\n'
         f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
         f'  Recibimos una solicitud para restablecer la contrasena de tu cuenta '
-        f'en HotelData Hub.\n'
+        f'en HotelData.\n'
         f'</p>\n'
         f'{cta_button(reset_link, "Restablecer contrasena")}\n'
         f'<p style="margin:20px 0 0;font-size:13px;color:#6f797d;line-height:1.5">'
@@ -185,8 +185,33 @@ def _send_recovery_email(user: dict, token: str) -> None:
         body,
         logo_url=base_url,
         footer_note=(
-            "Este es un mensaje automatico de HotelData Hub.<br>"
+            "Este es un mensaje automatico de HotelData.<br>"
             "Si no solicitaste restablecer tu contrasena, ignora este correo."
         ),
     )
     send_email(user.get("email", ""), "Recupera tu contrasena — HotelData", html)
+
+
+def _send_property_verification_code(email: str, display_name: str, code: str) -> None:
+    """Send the property-owner onboarding 6-digit verification code.
+
+    Parallel to `_send_verification_code`, but uses the property-onboarding
+    template (different headline, host-specific copy, lists what the
+    panel will unlock). Subject is 'Tu código de activación — HotelData'.
+
+    Called from `register_property.send_property_registration_code` after
+    the `pending_property` subdocument is persisted to `pending_registrations`.
+    """
+    settings = get_settings()
+    base_url = (settings.app_base_url or "https://hoteldata.app").rstrip("/")
+
+    from src.app.email.templates import onboarding_property_verification
+
+    html = onboarding_property_verification(
+        email=email,
+        display_name=display_name,
+        code=code,
+        base_url=base_url,
+        expiry_minutes=PENDING_TTL_MINUTES,
+    )
+    send_email(email, "Tu código de activación — HotelData", html)

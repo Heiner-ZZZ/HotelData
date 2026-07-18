@@ -45,7 +45,7 @@ def logo_img(base_url: str) -> str:
     if is_localhost_url(src):
         return ""
     return (
-        f'<img src="{src}" alt="HotelData Hub" width="160" '
+        f'<img src="{src}" alt="HotelData" width="160" '
         f'style="display:block;max-width:160px;height:auto;border:0">'
     )
 
@@ -129,7 +129,7 @@ def divider() -> str:
 def base_layout(
     headline: str,
     body_content: str,
-    footer_note: str = "Este es un mensaje automatico de HotelData Hub.",
+    footer_note: str = "Este es un mensaje automatico de HotelData.",
     logo_url: str = "",
 ) -> str:
     """Return a complete HTML email page with the HotelData branded layout.
@@ -152,7 +152,7 @@ def base_layout(
         logo_html = (
             '<tr>\n'
             '  <td align="center" style="padding:0 0 16px">\n'
-            f'    <img src="{logoSrc}" alt="HotelData Hub" width="160" '
+            f'    <img src="{logoSrc}" alt="HotelData" width="160" '
             'style="display:block;max-width:160px;height:auto;border:0">\n'
             '  </td>\n'
             '</tr>'
@@ -198,3 +198,73 @@ def base_layout(
   </table>
 </body>
 </html>"""
+
+
+# ─────────────────────────────────────────────────────────────────
+# Property-owner onboarding email
+# ─────────────────────────────────────────────────────────────────
+
+
+def onboarding_property_verification(
+    email: str,
+    display_name: str,
+    code: str,
+    base_url: str = "",
+    expiry_minutes: int = 15,
+) -> str:
+    """Return the FULL HTML document for the property-owner onboarding
+    verification code email.
+
+    Subject (set by the caller via `send_email`): 'Tu código de
+    activación — HotelData'.
+
+    Distinct copy from the regular user-registration verification
+    email: this one frames the recipient as a future hotel host, lists
+    what their management panel will unlock once they confirm, and uses
+    a different headline ('Activa tu panel de gestión') so they don't
+    confuse the two flows mid-onboarding.
+    """
+    # Square digit boxes (consistent visual style with `_send_verification_code`).
+    digits_html = ""
+    for i, digit in enumerate(code):
+        margin_left = "margin-left:6px;" if i > 0 else ""
+        digits_html += (
+            f'<td style="width:44px;height:52px;text-align:center;'
+            f'font-size:26px;font-weight:700;font-family:monospace;'
+            f'color:#191c1e;background:#f7f9fb;border:1px solid #d0d5d8;'
+            f'{margin_left}">'
+            f'{digit}'
+            f'</td>'
+        )
+
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola <strong>{display_name}</strong>,</p>\n'
+        f'<p style="margin:0 0 14px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Estás a un paso de activar tu panel de gestión en HotelData. '
+        f'Usa el siguiente código para confirmar el alta de tu alojamiento '
+        f'y acceder inmediatamente a:\n'
+        f'</p>\n'
+        f'<ul style="margin:0 0 20px;padding-left:20px;font-size:13px;color:#3f484c;line-height:1.6">\n'
+        f'  <li>Gestión de disponibilidad y tarifas</li>\n'
+        f'  <li>Reservas y huéspedes en tiempo real</li>\n'
+        f'  <li>Reportes de revenue y operación</li>\n'
+        f'</ul>\n'
+        f'<table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 20px">\n'
+        f'  <tr>{digits_html}</tr>\n'
+        f'</table>\n'
+        f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Este código expira en <strong>{expiry_minutes} minutos</strong>.<br>'
+        f'Si no solicitaste este registro, ignora este mensaje.'
+        f'</p>'
+    )
+
+    return base_layout(
+        headline="Activa tu panel de gestión",
+        body_content=body_content,
+        footer_note=(
+            "Este es un mensaje automático de HotelData.<br>"
+            "Si no solicitaste este registro, ignora este mensaje."
+        ),
+        logo_url=base_url,
+    )

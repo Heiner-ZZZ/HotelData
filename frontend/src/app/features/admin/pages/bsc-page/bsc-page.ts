@@ -72,7 +72,7 @@ export class BscPageComponent {
 
     const headers = ['Indicador', 'Valor Actual', 'Meta', 'Variación', 'Estado', 'Detalle'];
     const csvContent = [
-      `Balanced Scorecard - HotelData Hub`,
+      `Balanced Scorecard - HotelData`,
       `Período: ${vm.periodLabel}`,
       `Puntaje: ${vm.summary.score}% (${vm.summary.label})`,
       '',

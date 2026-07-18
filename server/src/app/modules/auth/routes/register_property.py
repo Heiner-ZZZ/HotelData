@@ -35,7 +35,7 @@ from src.app.modules.auth.routes._helpers import (
     _is_email_available,
     _is_username_available,
     _now,
-    _send_verification_code,
+    _send_property_verification_code,
 )
 from src.app.security.session import log_user_activity, password_context
 from src.database.connection import get_database
@@ -257,7 +257,7 @@ def send_property_registration_code(
         upsert=True,
     )
 
-    _send_verification_code(clean["email"], clean["user_display_name"], code)
+    _send_property_verification_code(clean["email"], clean["user_display_name"], code)
 
     log_user_activity(
         db,

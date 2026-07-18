@@ -1,6 +1,6 @@
 # Docker local en Windows
 
-Este entorno permite levantar `HotelData Hub Analytics` desde Docker Desktop en Windows, sin depender de WSL.
+Este entorno permite levantar `HotelData Analytics` desde Docker Desktop en Windows, sin depender de WSL.
 
 ## Servicios incluidos
 

@@ -104,7 +104,7 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="HotelData Hub", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(title="HotelData", version="1.0.0", lifespan=lifespan)
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
