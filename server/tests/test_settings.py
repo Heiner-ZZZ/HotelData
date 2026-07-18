@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.app.security.session import SESSION_COOKIE_NAME, get_session, hash_session_token
+from src.app.security.session import SESSION_COOKIE_NAME, get_session
 from tests.conftest import login
 
 

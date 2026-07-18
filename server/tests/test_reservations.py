@@ -9,10 +9,8 @@ Covers:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
 
 import pytest
-from pymongo import ASCENDING
 
 from src.app.modules.reservations.service._helpers import (
     ReservationInput,
@@ -738,7 +736,6 @@ class TestAutoInvoiceOnCheckIn:
         guard clause in complete_check_in().
         """
         from src.app.modules.reservations.service._checkinout import complete_check_in
-        from src.app.modules.reservations.service._helpers import generate_prefixed_id, utc_now
 
         bid = generate_prefixed_id("BK")
         db.booking_orders.insert_one({

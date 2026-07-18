@@ -13,7 +13,6 @@ from src.app.modules.hotels.service.availability import (
     _hotel_min_rate_for_range,
     search_available_hotels,
 )
-from src.app.modules.hotels.service.lookups import _destination_ids
 
 pytestmark = pytest.mark.asyncio
 
