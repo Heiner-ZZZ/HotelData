@@ -1,0 +1,166 @@
+<a class="skip-link" href="#main-content">Saltar al contenido principal</a>
+
+<header class="welcome-header">
+  <div class="welcome-header__inner">
+    <a class="welcome-header__brand" routerLink="/welcome" aria-label="HotelData, ir al inicio">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </a>
+
+    <nav class="welcome-header__actions" aria-label="Acciones de cuenta">
+      <button type="button" class="chip chip--lang" aria-label="Cambiar idioma y moneda">
+        <span class="chip-flag" aria-hidden="true">🌐</span>
+        <span class="chip-label">USD</span>
+      </button>
+
+      <a class="header-link" routerLink="/register">
+        Registra tu alojamiento
+      </a>
+
+      <a class="btn btn--ghost" routerLink="/register">Crear cuenta</a>
+      <a class="btn btn--solid" routerLink="/login">Iniciar sesión</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="welcome-tabs" aria-label="Categorías de búsqueda">
+  <div class="welcome-tabs__inner">
+    @for (item of categories(); track item.key) {
+      <button
+        type="button"
+        class="welcome-tab"
+        [class.is-active]="activeCategory() === item.key"
+        [attr.aria-current]="activeCategory() === item.key ? 'true' : null"
+        (click)="selectCategory(item.key)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+        <span>{{ item.label }}</span>
+      </button>
+    }
+  </div>
+</nav>
+
+<main id="main-content" class="welcome-hero">
+  <div class="welcome-hero__inner">
+    <div class="welcome-hero__copy">
+      <p class="eyebrow">Plataforma HotelData v3</p>
+      <h1 class="hero-title">Gestión hotelera sin fricción</h1>
+      <p class="hero-lead">
+        Reservas, revenue y operación en un solo lugar.
+        Datos en tiempo real para tomar decisiones más inteligentes, sin hojas de cálculo.
+      </p>
+      <div class="welcome-hero__cta">
+        <a class="btn btn--primary" routerLink="/register">
+          <span class="material-symbols-outlined" aria-hidden="true">rocket_launch</span>
+          Probar gratis
+        </a>
+        <a class="btn btn--secondary" routerLink="/login">
+          <span class="material-symbols-outlined" aria-hidden="true">login</span>
+          Ya tengo cuenta
+        </a>
+      </div>
+    </div>
+
+    <aside class="welcome-hero__visual" aria-hidden="true">
+      <div class="visual-card">
+        <span class="visual-card__chip">Live</span>
+        <div class="visual-card__metric">
+          <span class="metric-label">Ocupación hoy</span>
+          <strong class="metric-value">92%</strong>
+        </div>
+        <div class="visual-card__bars">
+          <span style="height: 22%"></span>
+          <span style="height: 48%"></span>
+          <span style="height: 76%"></span>
+          <span style="height: 58%"></span>
+          <span style="height: 92%"></span>
+          <span style="height: 64%"></span>
+          <span style="height: 38%"></span>
+        </div>
+        <div class="visual-card__footer">
+          <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
+          <span>+18% vs semana anterior</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<section class="welcome-search" aria-label="Vista previa de búsqueda">
+  <div class="welcome-search__inner">
+    <div class="search-card" role="group" aria-label="Buscar hoteles">
+      <div class="search-field">
+        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">location_on</span>
+        <div class="search-field__body">
+          <label class="search-field__label" for="welcome-search-destination">Destino</label>
+          <input
+            id="welcome-search-destination"
+            type="text"
+            placeholder="Ciudad, hotel o zona"
+            disabled
+          >
+        </div>
+      </div>
+      <div class="search-field">
+        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">calendar_month</span>
+        <div class="search-field__body">
+          <label class="search-field__label" for="welcome-search-dates">Entrada — Salida</label>
+          <input
+            id="welcome-search-dates"
+            type="text"
+            placeholder="Selecciona fechas"
+            disabled
+          >
+        </div>
+      </div>
+      <div class="search-field">
+        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">group</span>
+        <div class="search-field__body">
+          <label class="search-field__label" for="welcome-search-guests">Huéspedes</label>
+          <input
+            id="welcome-search-guests"
+            type="text"
+            placeholder="2 adultos · 0 niños · 1 hab."
+            disabled
+          >
+        </div>
+      </div>
+      <a class="btn btn--search" routerLink="/search">
+        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+        Buscar
+      </a>
+    </div>
+    <p class="search-hint">
+      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+      Vista previa — inicia sesión para acceder al buscador completo con disponibilidad real.
+    </p>
+  </div>
+</section>
+
+<section class="welcome-features" aria-label="Características de la plataforma">
+  <div class="welcome-features__inner">
+    <header class="features-header">
+      <p class="eyebrow">Por qué HotelData</p>
+      <h2>Todo lo que tu hotel necesita, en una sola plataforma</h2>
+    </header>
+    <div class="features-grid">
+      @for (feature of features(); track feature.title) {
+        <article class="feature-card surface-card">
+          <span class="feature-card__icon" aria-hidden="true">
+            <span class="material-symbols-outlined">{{ feature.icon }}</span>
+          </span>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.description }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>
+
+<footer class="welcome-footer">
+  <div class="welcome-footer__inner">
+    <div class="footer-brand">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </div>
+    <p class="footer-copy">© {{ year }} HotelData · Plataforma académica de gestión hotelera.</p>
+  </div>
+</footer>
