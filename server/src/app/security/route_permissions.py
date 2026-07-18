@@ -13,7 +13,14 @@ class AccessRule:
 
 
 PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest", "/api/public")
-PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code", "/api/auth/refresh", "/api/auth/me", "/api/auth/status", "/api/auth/recover", "/api/auth/reset", "/api/auth/recover/reset", "/auth/logout")
+PUBLIC_PATHS = (
+    "/login", "/auth/login", "/api/auth/login",
+    "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code",
+    "/api/auth/register-property/send-code", "/api/auth/register-property/confirm-code",
+    "/api/auth/refresh", "/api/auth/me", "/api/auth/status",
+    "/api/auth/recover", "/api/auth/reset", "/api/auth/recover/reset",
+    "/auth/logout",
+)
 
 
 ROUTE_RULES = [

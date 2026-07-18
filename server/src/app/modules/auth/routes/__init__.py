@@ -29,11 +29,17 @@ from fastapi import APIRouter
 
 from .login import router, web_router, api_router as _login_api_router
 from .register import api_router as _register_api_router
+from .register_property import api_router as _register_property_api_router
 from .profile import api_router as _profile_api_router, web_router as _profile_web_router
 from .password import api_router as _password_api_router
 
 # Merge all api_router routes into _login_api_router (the main one)
-for sub_router in (_register_api_router, _profile_api_router, _password_api_router):
+for sub_router in (
+    _register_api_router,
+    _register_property_api_router,
+    _profile_api_router,
+    _password_api_router,
+):
     for route in sub_router.routes:
         _login_api_router.routes.append(route)
 

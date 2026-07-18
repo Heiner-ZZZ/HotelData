@@ -24,6 +24,11 @@ export const routes: Routes = [
       import('./core/auth/register-page').then((m) => m.RegisterPageComponent)
   },
   {
+    path: 'onboarding/alojamiento',
+    loadComponent: () =>
+      import('./features/onboarding/onboarding-property').then((m) => m.OnboardingPropertyComponent)
+  },
+  {
     path: 'recover',
     loadComponent: () =>
       import('./core/auth/recover-page').then((m) => m.RecoverPageComponent)
