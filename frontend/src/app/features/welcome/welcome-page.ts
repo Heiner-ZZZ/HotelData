@@ -19,7 +19,10 @@ interface WelcomeFeature {
   selector: 'app-welcome-page',
   imports: [RouterLink],
   templateUrl: './welcome-page.html',
-  styleUrl: './welcome-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    './welcome-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WelcomePageComponent {
@@ -36,12 +39,7 @@ export class WelcomePageComponent {
   readonly activeCategory = signal<string>('hotels');
 
   readonly categories = signal<readonly WelcomeCategory[]>([
-    { key: 'hotels',   label: 'Hoteles',           icon: 'hotel' },
-    { key: 'flights',  label: 'Vuelos',            icon: 'flight' },
-    { key: 'packages', label: 'Vuelo + Hotel',     icon: 'flight_class' },
-    { key: 'cars',     label: 'Alquiler de autos', icon: 'directions_car' },
-    { key: 'tours',    label: 'Atracciones',       icon: 'tour' },
-    { key: 'airport',  label: 'Taxis aeropuerto',  icon: 'local_taxi' }
+    { key: 'hotels', label: 'Hoteles', icon: 'hotel' }
   ]);
 
   readonly features = signal<readonly WelcomeFeature[]>([

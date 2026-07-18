@@ -1,0 +1,81 @@
+/* ═══════════════════════════════════════════════════
+   Auth Shell — Shared chrome for public/auth surfaces
+
+   Provides two reusable building blocks used by:
+     • /welcome (header brand slot)
+     • /login    (centered hero, v1.0+ auth pages)
+     • /register (centered hero, v1.0+ auth pages)
+     • /verify-email (centered hero, v1.0+ auth pages)
+
+   ── .back-home ──────────────────────────────────────
+   Top-left "← Volver al inicio" link pointing to /welcome.
+   Absolute-positioned inside its host page, z-index 1 to
+   stay above content background but below modals/menus.
+
+   ── .brand-mark ─────────────────────────────────────
+   "HotelData." text mark with the yellow accent dot.
+   `.brand-text` inherits color from `.brand-mark`'s
+   context (defaults to var(--app-text); callers can scope
+   a different color via their own selector specificity).
+
+   The class selectors here are scoped inside .brand-mark
+   so navigating-global spans <span class="brand-text">
+   outside any brand-mark wrapper are NOT affected.
+
+   ─────────────────────────────────────────────────── */
+
+.back-home {
+  position: absolute;
+  top: 22px;
+  left: clamp(20px, 4vw, 32px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--muted-text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  z-index: 1;
+  transition: color 160ms ease, background 160ms ease;
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+
+  &:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: baseline;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  padding: 4px 10px;
+  border-radius: 6px;
+
+  .brand-text {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  .brand-dot {
+    color: var(--yellow);
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+
+  &:hover .brand-text { color: var(--accent-strong); }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+}
