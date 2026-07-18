@@ -7,7 +7,11 @@ import { API_CONFIG } from '../api/api.config';
   selector: 'app-recover-page',
   imports: [RouterLink],
   templateUrl: './recover-page.html',
-  styleUrl: './recover-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    '../../../styles/_form-shell.scss',
+    './recover-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RecoverPageComponent {

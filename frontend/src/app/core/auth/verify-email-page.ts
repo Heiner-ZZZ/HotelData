@@ -7,7 +7,10 @@ import { API_CONFIG } from '../api/api.config';
   selector: 'app-verify-email-page',
   imports: [RouterLink],
   templateUrl: './verify-email-page.html',
-  styleUrl: './verify-email-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    './verify-email-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class VerifyEmailPageComponent {
@@ -18,8 +21,6 @@ export class VerifyEmailPageComponent {
     const token = this.route.snapshot.queryParamMap.get('token') || '';
     if (!token) return undefined;
     return `${this.apiConfig.baseUrl}/account/verify-email?token=${token}`;
-  }, {
-    withCredentials: true,
   });
 
   readonly loading = this.verifyResource.isLoading;

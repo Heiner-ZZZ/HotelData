@@ -12,34 +12,6 @@
     var(--app-bg);
 }
 
-.back-home {
-  position: absolute;
-  top: 22px;
-  left: clamp(20px, 4vw, 32px);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  color: var(--muted-text);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  z-index: 1;
-  transition: color 160ms ease, background 160ms ease;
-
-  .material-symbols-outlined { font-size: 1.1rem; }
-
-  &:hover {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
 .register-hero {
   display: grid;
   gap: 12px;
@@ -47,33 +19,7 @@
   text-align: center;
   max-width: 480px;
 }
-
-.brand-mark {
-  display: inline-flex;
-  align-items: baseline;
-  text-decoration: none;
-  letter-spacing: -0.02em;
-  padding: 4px 10px;
-  border-radius: 6px;
-
-  .brand-text {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: var(--app-text);
-  }
-  .brand-dot {
-    color: var(--yellow);
-    font-size: 1.35rem;
-    font-weight: 700;
-  }
-
-  &:hover .brand-text { color: var(--accent-strong); }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 4px;
-  }
-}
-.register-kicker, .eyebrow { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.eyebrow { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
 .hero-copy { max-width: 36ch; }
 .hero-copy h2 { margin: 0 0 12px; font-size: clamp(1.8rem, 3vw, 2.6rem); line-height: 1.08; }
 .hero-copy p { margin: 0; color: var(--muted-text); font-size: 1.05rem; line-height: 1.7; }
@@ -96,31 +42,14 @@
 .card-head-icon { font-size: 0.85rem; vertical-align: middle; margin-right: 0.25rem; }
 
 .register-form { display: grid; gap: 14px; }
-.input-field { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; gap: 4px 10px; font-weight: 600; font-size: 0.9rem; }
-.input-icon { grid-row: 1 / span 2; align-self: center; font-size: 1.25rem; color: var(--muted-text); }
-.input-label { grid-column: 2; }
 .optional { font-weight: 400; color: var(--muted-text); font-size: 0.8rem; }
-input { grid-column: 1 / -1; width: 100%; min-height: 44px; border: 1px solid var(--app-border); border-radius: 8px; padding: 0 14px;background: var(--surface);
-    color: var(--app-text);
-    box-sizing: border-box; }
-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
-.field-error { grid-column: 1 / -1; font-size: 0.78rem; font-weight: 500; color: var(--danger); margin: 0; }
-.password-field { position: relative; grid-column: 1 / -1; }
-.password-field input { padding-right: 48px; }
-.password-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 36px; height: 36px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--surface); color: var(--accent); display: grid; place-items: center; cursor: pointer; }
-.password-toggle-icon { width: 18px; height: 18px; }
 
-button[type="submit"] { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 48px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 700; cursor: pointer; margin-top: 4px; }
-button[disabled] { cursor: wait; opacity: 0.78; }
+button[type="submit"] { margin-top: 4px; }
 .btn-icon { font-size: 1.15rem; }
 
 .card-footnote { margin: 16px 0 0; color: var(--muted-text); text-align: center; }
 .card-footnote a { color: var(--accent); text-decoration: none; font-weight: 600; }
 .card-footnote a:hover { text-decoration: underline; }
-
-.notice { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
-.notice-error { background: var(--danger-light); border: 1px solid var(--danger); color: var(--danger-strong); }
-.notice-success { background: var(--success-light); border: 1px solid var(--success); color: var(--success-strong); }
 
 /* ── Sending indicator (when toggle ON and sending) ── */
 .sending-indicator {

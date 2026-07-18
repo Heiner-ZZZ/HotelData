@@ -10,7 +10,11 @@ import { API_CONFIG } from '../api/api.config';
   selector: 'app-register-page',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './register-page.html',
-  styleUrl: './register-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    '../../../styles/_form-shell.scss',
+    './register-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RegisterPageComponent {

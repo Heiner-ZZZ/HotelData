@@ -1,16 +1,21 @@
+<a class="back-home" routerLink="/welcome">
+  <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+  Volver al inicio
+</a>
+
 <main class="recover-page">
-  <section class="recover-hero">
-    <p class="recover-kicker">HotelData Hub</p>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
-    <div class="hero-copy">
-      <h2>Recuperar acceso</h2>
-      <p>Te enviaremos un enlace para restablecer tu contraseña.</p>
-    </div>
-  </section>
+  <div class="recover-hero">
+    <a routerLink="/welcome" class="brand-mark" aria-label="HotelData, ir al inicio">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </a>
+  </div>
 
   <section class="recover-card surface-card">
     <div class="card-head">
-      <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">lock_reset</span> Recuperación</p>
+      <p class="eyebrow">
+        <span class="material-symbols-outlined card-head-icon">lock_reset</span>
+        Recuperación
+      </p>
       <h2>¿Olvidaste tu contraseña?</h2>
       <p>Ingresa el correo con el que te registraste.</p>
     </div>
@@ -25,11 +30,17 @@
         <div class="notice notice-error">{{ errorMessage() }}</div>
       }
 
-      <form class="recover-form" (ngSubmit)="submit()">
+      <form class="recover-form" (submit)="$event.preventDefault(); submit()">
         <label class="input-field">
           <span class="material-symbols-outlined input-icon">mail</span>
           <span class="input-label">Correo electrónico</span>
-          <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" placeholder="ej: usuario@correo.com" autocomplete="email">
+          <input
+            type="email"
+            [value]="email()"
+            (input)="email.set($any($event.target).value)"
+            placeholder="ej: usuario@correo.com"
+            autocomplete="email"
+          >
         </label>
 
         <button type="submit" [disabled]="submitting()">

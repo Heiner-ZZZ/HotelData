@@ -1,12 +1,16 @@
+@if (loading()) {
+  <a class="back-home" routerLink="/welcome">
+    <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+    Volver al inicio
+  </a>
+}
+
 <main class="verify-page">
-  <section class="verify-hero">
-    <p class="verify-kicker">HotelData Hub</p>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
-    <div class="hero-copy">
-      <h2>Verificación de correo</h2>
-      <p>Confirmando el cambio de tu dirección de correo electrónico.</p>
-    </div>
-  </section>
+  <div class="verify-hero">
+    <a routerLink="/welcome" class="brand-mark" aria-label="HotelData, ir al inicio">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </a>
+  </div>
 
   <section class="verify-card surface-card">
     <div class="card-head">

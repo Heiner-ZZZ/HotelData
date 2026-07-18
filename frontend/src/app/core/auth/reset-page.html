@@ -1,16 +1,21 @@
+<a class="back-home" routerLink="/welcome">
+  <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+  Volver al inicio
+</a>
+
 <main class="reset-page">
-  <section class="reset-hero">
-    <p class="reset-kicker">HotelData Hub</p>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
-    <div class="hero-copy">
-      <h2>Nueva contraseña</h2>
-      <p>Ingresa tu nueva contraseña para acceder a tu cuenta.</p>
-    </div>
-  </section>
+  <div class="reset-hero">
+    <a routerLink="/welcome" class="brand-mark" aria-label="HotelData, ir al inicio">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </a>
+  </div>
 
   <section class="reset-card surface-card">
     <div class="card-head">
-      <p class="eyebrow"><span class="material-symbols-outlined card-head-icon">lock</span> Restablecer</p>
+      <p class="eyebrow">
+        <span class="material-symbols-outlined card-head-icon">lock</span>
+        Restablecer
+      </p>
       <h2>Crear nueva contraseña</h2>
       <p>Mínimo 8 caracteres, mayúscula, minúscula y dígito.</p>
     </div>
@@ -26,12 +31,18 @@
       <div class="notice notice-error">Enlace inválido. No se encontró el token de recuperación.</div>
       <a routerLink="/recover" class="back-link">Solicitar nuevo enlace</a>
     } @else if (!successMessage()) {
-      <form class="reset-form" (ngSubmit)="submit()">
+      <form class="reset-form" (submit)="$event.preventDefault(); submit()">
         <label class="input-field">
           <span class="material-symbols-outlined input-icon">lock</span>
           <span class="input-label">Nueva contraseña</span>
           <div class="password-field">
-            <input [type]="passwordVisible() ? 'text' : 'password'" [value]="password()" (input)="password.set($any($event.target).value)" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+            <input
+              [type]="passwordVisible() ? 'text' : 'password'"
+              [value]="password()"
+              (input)="password.set($any($event.target).value)"
+              placeholder="Mínimo 8 caracteres"
+              autocomplete="new-password"
+            >
             <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" aria-label="Mostrar u ocultar">
               <svg viewBox="0 0 24 24" aria-hidden="true" class="password-toggle-icon">
                 @if (passwordVisible()) {
@@ -49,7 +60,13 @@
           <span class="material-symbols-outlined input-icon">lock</span>
           <span class="input-label">Confirmar contraseña</span>
           <div class="password-field">
-            <input [type]="passwordVisible() ? 'text' : 'password'" [value]="confirmPassword()" (input)="confirmPassword.set($any($event.target).value)" placeholder="Repite la contraseña" autocomplete="new-password">
+            <input
+              [type]="passwordVisible() ? 'text' : 'password'"
+              [value]="confirmPassword()"
+              (input)="confirmPassword.set($any($event.target).value)"
+              placeholder="Repite la contraseña"
+              autocomplete="new-password"
+            >
           </div>
         </label>
 

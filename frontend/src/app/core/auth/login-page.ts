@@ -8,7 +8,11 @@ import { AuthService } from './auth.service';
   selector: 'app-login-page',
   imports: [RouterLink],
   templateUrl: './login-page.html',
-  styleUrl: './login-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    '../../../styles/_form-shell.scss',
+    './login-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoginPageComponent {

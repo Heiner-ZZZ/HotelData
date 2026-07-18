@@ -1,49 +1,115 @@
+/* recover-page — centered single-column. .back-home & .brand-mark come
+   from _auth-shell.scss; form chrome (.input-field, .password-*,
+   .notice*, etc.) comes from _form-shell.scss. This file keeps only
+   page-specific layout (.recover-page grid, .recover-card width,
+   .recover-form gap, .back-link in-card styling, button shape). */
+
 .recover-page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 460px);
-  gap: 48px;
-  align-items: center;
-  padding: 48px clamp(24px, 5vw, 72px);
-  background: radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 32%),
-              linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-soft) 100%);
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-content: center;
+  gap: 24px;
+  padding: 84px clamp(20px, 5vw, 64px) 56px;
+  position: relative;
+  background:
+    radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 8%, transparent), transparent 45%),
+    var(--app-bg);
 }
 
-.recover-hero { display: grid; gap: 28px; }
-.recover-kicker, .eyebrow { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
-.brand-logo { width: clamp(180px, 26vw, 360px); height: auto; display: block; object-fit: contain; filter: drop-shadow(0 16px 28px rgba(20, 99, 255, 0.14)) drop-shadow(0 4px 14px rgba(255, 255, 255, 0.22)); }
-.hero-copy { max-width: 580px; }
-.hero-copy h2 { margin: 0 0 12px; font-size: clamp(1.8rem, 3vw, 2.6rem); line-height: 1.08; }
-.hero-copy p { margin: 0; color: var(--muted-text); font-size: 1.05rem; line-height: 1.7; }
+.recover-hero {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  max-width: 480px;
+}
 
-.recover-card { padding: 28px; border-radius: 8px; }
-.card-head { margin-bottom: 20px; }
-.card-head h2 { margin: 6px 0 10px; font-size: 1.6rem; line-height: 1.1; }
-.card-head p:last-child { margin: 0; color: var(--muted-text); font-size: 0.9rem; }
-.card-head-icon { font-size: 0.85rem; vertical-align: middle; margin-right: 0.25rem; }
+.recover-card {
+  width: min(100%, 460px);
+  padding: 28px;
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
 
-.recover-form { display: grid; gap: 16px; }
-.input-field { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; gap: 4px 10px; font-weight: 600; font-size: 0.9rem; }
-.input-icon { grid-row: 1 / span 2; align-self: center; font-size: 1.25rem; color: var(--muted-text); }
-.input-label { grid-column: 2; }
-input { grid-column: 1 / -1; width: 100%; min-height: 44px; border: 1px solid var(--app-border); border-radius: 8px; padding: 0 14px; background: var(--surface); color: var(--app-text); box-sizing: border-box; }
-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
-.field-error { grid-column: 1 / -1; font-size: 0.78rem; font-weight: 500; color: var(--danger); margin: 0; }
+.card-head {
+  margin-bottom: 20px;
+  text-align: center;
 
-button[type="submit"] { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 48px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 700; cursor: pointer; }
+  h2 { margin: 6px 0 10px; font-size: 1.5rem; line-height: 1.15; }
+  p:last-child { margin: 0; color: var(--muted-text); font-size: 0.92rem; line-height: 1.55; }
+}
+
+.card-head-icon {
+  font-size: 0.85rem;
+  --icon-wght: 500;
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.recover-form {
+  display: grid;
+  gap: 16px;
+}
+
+button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 button[disabled] { cursor: wait; opacity: 0.78; }
+
 .btn-icon { font-size: 1.15rem; }
 
-.card-footnote { margin: 16px 0 0; text-align: center; }
-.card-footnote a, .back-link { color: var(--accent); text-decoration: none; font-weight: 600; }
-.card-footnote a:hover, .back-link:hover { text-decoration: underline; }
-.back-link { display: block; text-align: center; margin-top: 16px; }
+.card-footnote {
+  margin: 16px 0 0;
+  text-align: center;
+  color: var(--muted-text);
+  font-size: 0.92rem;
 
-.notice { margin-bottom: 16px; padding: 14px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; line-height: 1.5; }
-.notice-success { background: var(--success-light); border: 1px solid var(--success); color: var(--success-strong); }
-.notice-error { background: var(--danger-light); border: 1px solid var(--danger); color: var(--danger-strong); }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  a:hover { text-decoration: underline; }
+}
 
-@media (max-width: 960px) {
-  .recover-page { grid-template-columns: 1fr; gap: 28px; align-items: start; }
-  .brand-logo { width: clamp(150px, 42vw, 240px); }
+.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.back-link:hover { text-decoration: underline; }
+
+@media (max-width: 720px) {
+  .recover-page {
+    gap: 18px;
+    padding-top: 72px;
+  }
 }

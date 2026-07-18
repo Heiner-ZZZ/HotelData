@@ -8,7 +8,11 @@ import { API_CONFIG } from '../api/api.config';
   selector: 'app-reset-page',
   imports: [RouterLink],
   templateUrl: './reset-page.html',
-  styleUrl: './reset-page.scss',
+  styleUrls: [
+    '../../../styles/_auth-shell.scss',
+    '../../../styles/_form-shell.scss',
+    './reset-page.scss'
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResetPageComponent {

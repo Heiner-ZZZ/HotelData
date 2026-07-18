@@ -34,6 +34,11 @@ export const routes: Routes = [
       import('./core/auth/reset-page').then((m) => m.ResetPageComponent)
   },
   {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./core/auth/verify-email-page').then((m) => m.VerifyEmailPageComponent)
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./core/layout/public-shell/public-shell').then((m) => m.PublicShellComponent),
