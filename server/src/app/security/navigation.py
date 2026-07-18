@@ -17,7 +17,7 @@ ROLE_DEFAULT_REDIRECTS = {
 }
 
 
-NAVIGATION_BY_ROLE = {
+NAVIGATION_BY_ROLE: dict[str, list[dict[str, Any]]] = {
     "super_admin": [
         {"label": "Sistema", "href": "/system/users", "icon": "icon-admin", "permission": "users.manage"},
         {"label": "Permisos", "href": "/system/permissions", "icon": "icon-auth", "permission": "users.manage"},

@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from src.etl.ga03_airflow import config
 from src.etl.ga03_airflow.bootstrap import validate_environment_03
 from src.etl.ga03_airflow.extract import extract_from_pocketbase_03, save_extract_jsonl_03
 from src.etl.ga03_airflow.load import (
@@ -17,8 +18,7 @@ from src.etl.ga03_airflow.transform import transform_dimensions_03, transform_fa
 
 
 def run_pipeline_03() -> dict[str, Any]:
-    global PIPELINE_STARTED_MONO
-    PIPELINE_STARTED_MONO = time.perf_counter()
+    config.PIPELINE_STARTED_MONO = time.perf_counter()
     try:
         validate_environment_03()
         extract_from_pocketbase_03()

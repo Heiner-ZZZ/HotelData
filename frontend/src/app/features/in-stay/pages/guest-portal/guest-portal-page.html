@@ -752,8 +752,8 @@
         [inputSending]="sendingRequest()"
         [minCheckOut]="portalData()?.session?.check_out?.slice(0, 10) || ''"
         [confirmDisabled]="sendingRequest() || (showExtendFields() && confirmActionType() === 'extend_stay' && !extendDate()) || (showExtendFields() && confirmActionType() === 'late_checkout' && !extendTime())"
-        (onConfirm)="confirmAction()"
-        (onCancel)="showConfirmModal.set(false)"
+        (confirmed)="confirmAction()"
+        (cancelled)="showConfirmModal.set(false)"
       />
     }
 
@@ -762,8 +762,8 @@
       <gp-payment-modal
         [mode]="paymentModalMode()"
         [inputSending]="sendingRequest()"
-        (onConfirm)="confirmPaymentRequest()"
-        (onCancel)="closePaymentModal()"
+        (confirmed)="confirmPaymentRequest()"
+        (cancelled)="closePaymentModal()"
       />
     }
   }

@@ -36,7 +36,7 @@ def _normalize_change(doc: dict[str, Any]) -> dict[str, Any]:
         "old_value": doc.get("old_value", ""),
         "new_value": doc.get("new_value", ""),
         "changed_by": doc.get("changed_by", ""),
-        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),
+        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),  # type: ignore[union-attr]
         "source": doc.get("source", ""),
         "reason": doc.get("reason", ""),
     }
@@ -150,7 +150,7 @@ def get_change_detail(prop_id: int, change_id: str) -> dict[str, Any] | None:
         "old_value": doc.get("old_value", ""),
         "new_value": doc.get("new_value", ""),
         "changed_by": doc.get("changed_by", ""),
-        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),
+        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),  # type: ignore[union-attr]
         "source": doc.get("source", ""),
         "reason": doc.get("reason", ""),
         "entity_type": doc.get("entity_type", "profile"),

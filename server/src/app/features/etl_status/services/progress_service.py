@@ -169,6 +169,5 @@ def pipeline_progress() -> dict:
         "is_running": status == "running",
     }
     if not result.get("target_records"):
-        percent_progress = result.get("percent", 0) or 0
         result["target_records"] = result.get("finally_count") or 0
     return result

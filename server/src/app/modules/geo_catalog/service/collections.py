@@ -65,7 +65,7 @@ def ensure_geo_collections() -> None:
     db = get_database()
     ensure_collection(GEO_COLLECTION, GEO_INDEXES)
     # Auto-seed if collection is empty
-    if db[GEO_COLLECTION].estimated_document_count() == 0:
+    if db[GEO_COLLECTION].estimated_document_count() == 0:  # type: ignore[index]
         now = datetime.now(timezone.utc)
         for entry in _DEFAULT_SEED:
             doc = {**entry, "is_active": True, "created_at": now, "updated_at": None}

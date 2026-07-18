@@ -18,7 +18,6 @@ def _dashboard_quick_stats(db) -> dict[str, Any]:
     collection, _ = active_fact_collection()
     now = now_utc()
     booked = {"$or": [{"$eq": ["$reserva_bool", 1]}, {"$eq": ["$reserva_bool", True]}]}
-    clicked = {"$or": [{"$eq": ["$click_bool", 1]}, {"$eq": ["$click_bool", True]}]}
     pipeline = [
         {
             "$group": {

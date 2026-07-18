@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'gp-confirm-modal',
   imports: [FormsModule],
   template: `
-    <div class="gp-modal-overlay" (click)="onCancel.emit()">
+    <div class="gp-modal-overlay" (click)="cancelled.emit()">
       <div class="gp-modal" (click)="$event.stopPropagation()">
         <div class="gp-modal-header">
           <span class="material-symbols-outlined gp-modal-icon">help</span>
@@ -33,8 +33,8 @@ import { FormsModule } from '@angular/forms';
           }
         </div>
         <div class="gp-modal-footer">
-          <button class="gp-btn-outline" (click)="onCancel.emit()">Cancelar</button>
-          <button class="gp-btn-primary" (click)="onConfirm.emit()" [disabled]="confirmDisabled">
+          <button class="gp-btn-outline" (click)="cancelled.emit()">Cancelar</button>
+          <button class="gp-btn-primary" (click)="confirmed.emit()" [disabled]="confirmDisabled">
             @if (sendingRequest()) {
               <span class="material-symbols-outlined spin">sync</span>
               Enviando...
@@ -68,6 +68,6 @@ export class GpConfirmModalComponent {
   @Input() minCheckOut = '';
   @Input() confirmDisabled = false;
 
-  @Output() onConfirm = new EventEmitter<void>();
-  @Output() onCancel = new EventEmitter<void>();
+  @Output() confirmed = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 }

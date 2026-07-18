@@ -66,7 +66,6 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     )
 
     # ── Corporate contract pricing ──
-    contract_data = None
     contract_id = ""
     pricing_source = ""
     if payload.contract_code:

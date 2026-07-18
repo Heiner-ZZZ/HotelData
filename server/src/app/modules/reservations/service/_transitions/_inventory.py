@@ -38,8 +38,6 @@ def _auto_assign_rooms(
         logger.info("No physical rooms found for prop_id=%s room_type=%s — skipping auto-assign", prop_id, room_type_id)
         return []
 
-    all_room_ids = [r["hotel_room_id"] for r in all_rooms]
-
     overlapping = list(
         db.booking_orders.find(
             {

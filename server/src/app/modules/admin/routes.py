@@ -190,7 +190,7 @@ def security_report_pdf(section: str, current_user: dict = Depends(require_permi
 
 
 def _toggle_user_active_redirect(user_id: str, current_user: dict) -> RedirectResponse:
-    result = toggle_user_active(user_id, current_user)
+    toggle_user_active(user_id, current_user)
     return RedirectResponse(url="/admin/users", status_code=303)
 
 

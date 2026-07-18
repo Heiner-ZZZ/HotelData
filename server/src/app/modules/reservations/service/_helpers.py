@@ -45,8 +45,8 @@ class ReservationInput:
     rate_plan_id: str = ""
     coupon_code: str = ""
     contract_code: str = ""
-    selected_amenities: list[str] = None
-    special_requests: list[str] = None
+    selected_amenities: list[str] | None = None
+    special_requests: list[str] | None = None
     season_id: str = ""
     source: str = "web_request"
     user_id: str | None = None

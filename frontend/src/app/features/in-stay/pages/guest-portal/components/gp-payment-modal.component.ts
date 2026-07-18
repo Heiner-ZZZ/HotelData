@@ -4,7 +4,7 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
   selector: 'gp-payment-modal',
   imports: [],
   template: `
-    <div class="gp-modal-overlay" (click)="onCancel.emit()">
+    <div class="gp-modal-overlay" (click)="cancelled.emit()">
       <div class="gp-modal" (click)="$event.stopPropagation()">
         <div class="gp-modal-header">
           <span class="material-symbols-outlined gp-modal-icon">
@@ -24,8 +24,8 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
           </div>
         </div>
         <div class="gp-modal-footer">
-          <button class="gp-btn-outline" (click)="onCancel.emit()">Cancelar</button>
-          <button class="gp-btn-primary" (click)="onConfirm.emit()" [disabled]="sendingRequest()">
+          <button class="gp-btn-outline" (click)="cancelled.emit()">Cancelar</button>
+          <button class="gp-btn-primary" (click)="confirmed.emit()" [disabled]="sendingRequest()">
             @if (sendingRequest()) {
               <span class="material-symbols-outlined spin">sync</span>
               Enviando...
@@ -46,6 +46,6 @@ export class GpPaymentModalComponent {
   @Input() set mode(value: 'invoice' | 'payment') { this.paymentModalMode.set(value); }
   @Input() set inputSending(value: boolean) { this.sendingRequest.set(value); }
 
-  @Output() onConfirm = new EventEmitter<void>();
-  @Output() onCancel = new EventEmitter<void>();
+  @Output() confirmed = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 }

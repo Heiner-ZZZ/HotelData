@@ -12,7 +12,6 @@ from src.app.security.session import (
     SESSION_COOKIE_NAME,
     create_user_session,
     get_current_user,
-    get_session,
     log_user_activity,
 )
 from src.database.connection import get_database
@@ -109,11 +108,9 @@ def heartbeat(
     request: Request,
     current_user: dict = Depends(require_login),
 ):
-    db = get_database()
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if not token:
         return {"ok": True}
-    session = get_session(db, token)
     return {"ok": True}
 
 

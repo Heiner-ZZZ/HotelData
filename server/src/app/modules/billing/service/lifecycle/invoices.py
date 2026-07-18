@@ -75,7 +75,6 @@ def generate_invoice_for_booking(
 
 
 def create_invoice(payload: InvoiceCreate) -> dict | None:
-    db = get_database()
     booking = _find_booking(payload.booking_id)
     if not booking:
         return None
