@@ -7,10 +7,18 @@
     </a>
 
     <nav class="welcome-header__actions" aria-label="Acciones de cuenta">
-      <button type="button" class="chip chip--lang" aria-label="Cambiar idioma y moneda">
+      <label class="chip chip--lang" aria-label="Cambiar moneda">
         <span class="chip-flag" aria-hidden="true">🌐</span>
-        <span class="chip-label">USD</span>
-      </button>
+        <select
+          class="chip__select"
+          [value]="selectedCurrency()"
+          (change)="onCurrencyChange($any($event.target).value)"
+        >
+          @for (cur of currencies(); track cur.code) {
+            <option [value]="cur.code">{{ cur.code }} — {{ cur.name }}</option>
+          }
+        </select>
+      </label>
 
       <a class="header-link" routerLink="/register">
         Registra tu alojamiento
@@ -24,70 +32,103 @@
 
 <nav class="welcome-tabs" aria-label="Categorías de búsqueda">
   <div class="welcome-tabs__inner">
-    @for (item of categories(); track item.key) {
-      <button
-        type="button"
-        class="welcome-tab"
-        [class.is-active]="activeCategory() === item.key"
-        [attr.aria-current]="activeCategory() === item.key ? 'true' : null"
-        (click)="selectCategory(item.key)"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
-        <span>{{ item.label }}</span>
-      </button>
-    }
+    <button
+      type="button"
+      class="welcome-tab is-active"
+      aria-current="true"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">hotel</span>
+      <span>Hoteles</span>
+    </button>
   </div>
 </nav>
 
-
+<main id="main-content">
 <section class="welcome-search" aria-label="Vista previa de búsqueda">
   <div class="welcome-search__inner">
-    <div class="search-card" role="group" aria-label="Buscar hoteles">
-      <div class="search-field">
-        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">location_on</span>
-        <div class="search-field__body">
-          <label class="search-field__label" for="welcome-search-destination">Destino</label>
-          <input
-            id="welcome-search-destination"
-            type="text"
-            placeholder="Ciudad, hotel o zona"
-            disabled
-          >
+    <div class="booking-bar" role="group" aria-label="Vista previa de buscador">
+      <div class="booking-bar__field">
+        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">location_on</span>
+        <div class="booking-bar__body">
+          <span class="booking-bar__label">Destino</span>
+          <span class="booking-bar__value">Ciudad, hotel o zona</span>
         </div>
       </div>
-      <div class="search-field">
-        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">calendar_month</span>
-        <div class="search-field__body">
-          <label class="search-field__label" for="welcome-search-dates">Entrada — Salida</label>
-          <input
-            id="welcome-search-dates"
-            type="text"
-            placeholder="Selecciona fechas"
-            disabled
-          >
+      <div class="booking-bar__field">
+        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">calendar_month</span>
+        <div class="booking-bar__body">
+          <span class="booking-bar__label">Entrada — Salida</span>
+          <span class="booking-bar__value">Selecciona fechas</span>
         </div>
       </div>
-      <div class="search-field">
-        <span class="material-symbols-outlined search-field__icon" aria-hidden="true">group</span>
-        <div class="search-field__body">
-          <label class="search-field__label" for="welcome-search-guests">Huéspedes</label>
-          <input
-            id="welcome-search-guests"
-            type="text"
-            placeholder="2 adultos · 0 niños · 1 hab."
-            disabled
-          >
+      <div class="booking-bar__field">
+        <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">group</span>
+        <div class="booking-bar__body">
+          <span class="booking-bar__label">Huéspedes</span>
+          <span class="booking-bar__value">2 adultos · 0 niños · 1 hab.</span>
         </div>
       </div>
-      <a class="btn btn--search" routerLink="/search">
+      <a class="btn booking-bar__cta" routerLink="/search">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
         Buscar
       </a>
     </div>
-    <p class="search-hint">
+    <div class="booking-extras" role="group" aria-label="Opciones de búsqueda">
+      <label class="booking-extras__item">
+        <input type="checkbox" disabled />
+        <span>Viaje por trabajo</span>
+      </label>
+      <label class="booking-extras__item">
+        <input type="checkbox" disabled />
+        <span>Añadir vuelos a mi búsqueda</span>
+      </label>
+    </div>
+    <p class="booking-hint">
       <span class="material-symbols-outlined" aria-hidden="true">info</span>
       Vista previa — inicia sesión para acceder al buscador completo con disponibilidad real.
     </p>
+  </div>
+</section>
+
+<section class="reservations-preview" aria-label="Vista previa de reservas">
+  <div class="reservations-preview__inner">
+    <header class="reservations-preview__head">
+      <p class="eyebrow">Reservas en {{ selectedCurrencyLabel() }}</p>
+      <h2>Tarifas mostradas en la moneda que elegiste</h2>
+      <p class="reservations-preview__lead">
+        Vista previa de hospedajes representativos. Inicia sesión con tu cuenta de huésped para ver tus propias
+        reservas y completar pagos.
+      </p>
+    </header>
+
+    <div class="reservations-preview__grid">
+      @for (reservation of previewReservations; track reservation.id) {
+        <article class="reservation-card surface-card">
+          <div class="reservation-card__head">
+            <span
+              class="reservation-card__status"
+              [attr.data-status]="reservation.status"
+            >{{ reservationStatusLabel(reservation.status) }}</span>
+            <span class="reservation-card__checkin">Entrada · {{ reservation.checkIn }}</span>
+          </div>
+          <h3>{{ reservation.hotelName }}</h3>
+          <p class="reservation-card__city">
+            <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+            {{ reservation.city }}
+          </p>
+          <div class="reservation-card__row">
+            <strong class="reservation-card__price">
+              {{ reservation.basePriceUsd | propertyCurrency:selectedCurrency() }}
+              <span class="reservation-card__night">/ noche</span>
+            </strong>
+            <a class="btn reservation-card__cta" routerLink="/search">
+              Ver disponibilidad
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+            </a>
+          </div>
+        </article>
+      }
+    </div>
   </div>
 </section>
 
@@ -110,6 +151,7 @@
     </div>
   </div>
 </section>
+</main>
 
 <footer class="welcome-footer">
   <div class="welcome-footer__inner">

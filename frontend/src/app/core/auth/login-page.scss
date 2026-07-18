@@ -29,14 +29,6 @@
   color: var(--accent);
 }
 
-.hero-tagline {
-  margin: 0;
-  color: var(--muted-text);
-  font-size: 0.95rem;
-  line-height: 1.55;
-  max-width: 36ch;
-}
-
 .login-card {
   width: min(100%, 440px);
   padding: 28px;
@@ -54,13 +46,6 @@
     margin: 6px 0 10px;
     font-size: 1.6rem;
     line-height: 1.15;
-  }
-
-  p:last-child {
-    margin: 0;
-    color: var(--muted-text);
-    line-height: 1.55;
-    font-size: 0.95rem;
   }
 }
 
@@ -270,10 +255,6 @@
   .login-page {
     gap: 18px;
     padding-top: 72px;
-  }
-  .hero-tagline {
-    max-width: 36ch;
-    font-size: 0.92rem;
   }
 }
 

@@ -789,3 +789,10 @@ def guest_list_lost_items(token: str = Query(..., min_length=1)):
         "returned_to": item.get("returned_to", ""),
         "created_at": _iso(item.get("created_at")),
     } for item in items]}
+
+
+# ── Re-export ensure_stay_collections so callers can import it from
+#    `instay.routes` (as `instay/__init__.py` and `app/main.py` lifespan
+#    do). The canonical home stays in `routes_impl/_helpers.py` — this
+#    is just a re-export for module-level access. ───────────────────────────
+from src.app.modules.instay.routes_impl._helpers import ensure_stay_collections  # noqa: F401

@@ -16,7 +16,24 @@ def partner_status() -> ModuleStatus:
     return module_status()
 
 
-from . import audit, hotels, content, rooms, availability, rates, policies, amenities, reports, room_features, guests, currencies
+from . import (
+    amenities,
+    audit,
+    availability,
+    content,
+    currencies,
+    guests,
+    hotels,
+    policies,
+    public_currencies,
+    rates,
+    reports,
+    room_features,
+    rooms,
+)
+
+# Wire the public router so it can be mounted from main.py (no auth required).
+public_router = public_currencies.public_router
 
 __all__ = [
     "api_router",
