@@ -12,7 +12,7 @@ class AccessRule:
     roles: tuple[str, ...] = ()
 
 
-PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest")
+PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest", "/api/public")
 PUBLIC_PATHS = ("/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code", "/api/auth/refresh", "/api/auth/me", "/api/auth/status", "/api/auth/recover", "/api/auth/reset", "/api/auth/recover/reset", "/auth/logout")
 
 
