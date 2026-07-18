@@ -3,6 +3,20 @@ For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
 <!-- SPECKIT END -->
 
+## Skills disponibles
+
+El proyecto tiene skills de dominio ubicadas en `.opencode/skills/`:
+
+| Skill | Propósito |
+|---|---|
+| `architect` | Design-review y planning de arquitectura técnica |
+| `arquitectura-software-senior` | Patrones arquitectónicos (Clean Arch, Hexagonal, DDD, C4, monolith vs microservices) |
+| `backend-senior` | Diseño/review de FastAPI, Pydantic v2, MongoDB, async, testing |
+| `ciberseguridad-senior` | Seguridad: OWASP Top 10, CORS, rate limiting, auth, threat modeling |
+| `frontend-senior` | Angular Signals, zoneless, lazy loading, SSR/SSG, micro-frontends |
+| `frontend-specialist` | UI/UX: componentes, SCSS, responsive, accesibilidad |
+| `gobierno-datos-senior` | Data pipelines, ETL/ELT, Medallion architecture, data quality/lakehouse/mesh |
+
 # Reglas para Codebuff (Buffy)
 
 ## 🏗️ Stack del Frontend — Angular 22 (ESTABLE)
@@ -43,7 +57,8 @@ Este proyecto usa **Angular 22** (lanzado junio 2026). Las siguientes APIs son *
 Este archivo define **TODOS** los colores de la app mediante CSS custom properties con light + dark theme.
 
 | Categoría | Tokens | Uso |
-|-----------|--------|-----|
+|-----------|--------|------|
+| App Background | `--app-bg` | Fondo general de toda la app (detrás de todo) |
 | Surface | `--surface`, `--surface-raised`, `--surface-soft`, `--surface-hover` | Fondos de cards, modales, paneles |
 | Texto | `--app-text`, `--muted-text` | Texto principal y secundario |
 | Accent (azul) | `--accent-light`, `--accent`, `--accent-hover`, `--accent-active`, `--accent-strong`, `--on-accent` | Botones, links, focus rings |
@@ -55,9 +70,11 @@ Este archivo define **TODOS** los colores de la app mediante CSS custom properti
 | Extended | `--teal`, `--cyan`, `--yellow` | Colores semánticos adicionales |
 | Gray scale | `--gray-50` → `--gray-900` | Texto secundario, bordes, fondos sutiles |
 | Border | `--app-border` | Bordes de cards, inputs, tablas |
+| Shadows | `--shadow-sm`, `--shadow-md` | Sombras de cards, modales, dropdowns |
 
 **REGLAS:**
 - 🚫 **NUNCA** usar colores hardcodeados (`#fff`, `#191c1e`, etc.) en SCSS nuevo. Siempre usar tokens.
+- 🚫 **NUNCA** usar emojis en la UI (`✅`, `⚠️`, `⭐`, etc.). Siempre usar iconos del sistema de diseño vía `<span class="material-symbols-outlined">icon_name</span>` (Google Material Symbols). Los nombres de iconos se pasan como texto interno, ej: `check_circle`, `warning`, `star`, `search`, `chevron_right`.
 - 🚫 **NUNCA** crear bloques `:root` duplicados en partials — heredar del `_scss-variables.scss` global.
 - ✅ Para colores de marca (ej: gradientes decorativos de hotel-card) se permite mantener hex si son identidad visual, no UI semántica.
 - ✅ Usar `color-mix(in srgb, var(--token) X%, transparent)` para variantes claras en vez de crear tokens nuevos.
@@ -97,16 +114,9 @@ El pipeline GA03 soporta dos modos controlados por la env var `GA03_INCREMENTAL_
 ### Modo Full (default, `GA03_INCREMENTAL_MODE=false`)
 - Extrae TODOS los registros de PocketBase
 - `delete_many({})` + inserciones en MongoDB (borra y reescribe todo)
-- El comportamiento histórico no cambia
 
 ### Modo Incremental (`GA03_INCREMENTAL_MODE=true`)
-- **1er run**: Extrae todo, guarda `last_extracted_at` (max `created` de PocketBase) en `ga03_execution_state.json`
-- **Runs siguientes**: El extract filtra por `(created>last_extracted_at)`, solo extrae registros nuevos
-- Las dimensiones se cargan con `UpdateOne` + `upsert=True` (no borra lo existente)
-- Los hechos se cargan con `UpdateOne` por `source_record_id` + `upsert=True` (no borra nada, solo agrega nuevos)
-- `expected_records` en estado = cantidad de registros **nuevos** extraídos (no el total)
+- **1er run**: Extrae todo, guarda `last_extracted_at` en `ga03_execution_state.json`
+- **Runs siguientes**: Filtra por `(created>last_extracted_at)`, solo extrae registros nuevos
+- Dimensiones/hechos cargan con `UpdateOne` + `upsert=True` (no borra existente)
 - Si se pierde el archivo de estado, el próximo run será full automáticamente
-
-### Elección
-- Para recargar todo desde 0: `GA03_INCREMENTAL_MODE=false` (o no setearla)
-- Para agregar solo nuevos: `GA03_INCREMENTAL_MODE=true`

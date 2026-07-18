@@ -6,21 +6,21 @@ description: Use when designing, reviewing, or refactoring FastAPI backend code.
 # Senior Backend Engineer — FastAPI + Python 3.12
 
 ## 2026 Stack
-- **FastAPI** 0.115+ / Python 3.12+
-- **Starlette** 1.0.0 (stable ASGI foundation)
+- **Python** 3.12-slim (Docker)
+- **FastAPI** >=0.110 / Python 3.12+
 - **Pydantic v2** (model_config, BeforeValidator, computed fields)
 - **MongoDB** 7+ via `pymongo` (sync driver — FastAPI sync routes are fine)
 - **Redis** via `redis-py` for caching + rate limiting
 - **Auth**: Session-based with `passlib[bcrypt]` + `httpOnly` cookies
 - **Testing**: `pytest` + `httpx.AsyncClient` + `mongomock`
-- **Deploy**: Uvicorn (multi-worker via Gunicorn) in Docker
+- **Deploy**: `uvicorn` directo (`python -m uvicorn src.app.main:app`) en Docker — sin Gunicorn
 
 ## Architecture Principles
 
 ### 1. Application Factory Pattern
 ```python
 def create_app() -> FastAPI:
-    app = FastAPI(title="HotelData Hub", version="1.0.0")
+    app = FastAPI(title="HotelData Hub", version="1.0.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=[...])
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[...])
     app.mount("/static", StaticFiles(directory=...), name="static")
@@ -32,12 +32,14 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     # ... one per module
 
-    @app.on_event("startup")
-    def _seed():
-        ensure_default_catalogs()
-        ensure_user_status_field()
-
     return app
+
+async def lifespan(app: FastAPI):
+    # Startup
+    ensure_default_catalogs()
+    ensure_user_status_field()
+    yield
+    # Shutdown (cleanup if needed)
 
 app = create_app()
 ```
@@ -196,16 +198,16 @@ async def test_login(client):
 
 ### 11. Production Deployment
 ```
-Server:   Uvicorn behind Gunicorn (multi-worker)
-Workers:  2 * CPU cores + 1
-Graceful shutdown: 30s timeout
+Server:   Uvicorn directo
+CMD:      python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+Graceful shutdown: 30s timeout (default)
 Health check: GET /api/health → 200
 Logging: JSON structured logs (loguru or structlog)
 Monitoring: Prometheus metrics via starlette-exporter
 ```
 
 ### 12. Common Pitfalls
-- ❌ `async def` with synchronous MongoDB — use `def` instead
+- ❌ `async def` with synchronous MongoDB (pymongo) — use `def` instead. Motor (async driver) no está en uso.
 - ❌ Importing `Request` in service layer — services get plain params
 - ❌ Hardcoding collection names — use constants/settings
 - ❌ No indexes on query fields — O(n) scans on every request

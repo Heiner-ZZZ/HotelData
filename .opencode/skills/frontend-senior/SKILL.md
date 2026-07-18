@@ -1,18 +1,19 @@
 ---
 name: frontend-senior
-description: Use when designing, reviewing, or refactoring Angular frontend code. Covers Signals-first reactivity, zoneless change detection (default in Angular 21), lazy loading, performance budgets, component architecture, SSR/SSG, micro-frontends, state management, and testing strategies.
+description: Use when designing, reviewing, or refactoring Angular frontend code. Covers Signals-first reactivity, zoneless change detection (default in Angular 22), lazy loading, performance budgets, component architecture, SSR/SSG, micro-frontends, state management, and testing strategies.
 ---
 
-# Senior Frontend Engineer — Angular 21+
+# Senior Frontend Engineer — Angular 22+
 
 ## 2026 Landscape
-- **Angular 21**: Zoneless by default (`provideZonelessChangeDetection()` is now default in `ng new`)
+- **Angular 22**: Zoneless by default (`provideZonelessChangeDetection()` is stable, no "experimental" prefix)
 - **Signals** are the primary reactivity primitive — RxJS is for async orchestration only
 - **Standalone components** (no `NgModule`) are the only pattern — `NgModule` is legacy
+- **`httpResource()`** is stable for GET requests — replaces `HttpClient` + `toSignal()` for reads
+- **`ChangeDetectionStrategy.OnPush`** is the default in new components
 - **`@angular/build`** uses Vite + esbuild — no more Webpack
 - **`@angular/ssr`** (SSR/SSG) stable and recommended for SEO/content apps
 - **Micro-frontends**: Native Federation / Module Federation via `@angular-architects/native-federation`
-- **AI tooling**: Angular MCP Server for AI-assisted development
 
 ## Architecture Principles
 
@@ -95,17 +96,20 @@ private readonly count$ = new BehaviorSubject(0);
 readonly count = this.count$.asObservable();
 ```
 
-#### New in Angular 21:
-- `linkedSignal()` — derived state that can be written to
-- `resource()` — async data fetching with Signals (replaces `async` pipe patterns)
-- `effect()` — use sparingly, only for side effects (console, localStorage, analytics)
+#### Stable APIs in Angular 22:
+- `httpResource()` — **preferred for GET requests** (30+ pages already migrated). Returns a `WritableResource` with `.value`, `.isLoading`, `.error`.
+- `rxResource()` — use only when the request depends on an Observable. Prefer `httpResource` for simple cases.
+- `resource()` — for non-HTTP async resources.
+- `linkedSignal()` — derived writable signal.
+- `effect()` — use sparingly, only for side effects (console, localStorage, analytics). 37 effects in this project.
 
 ### 2. Zoneless Change Detection
-Enable in existing project:
+Stable in Angular 22:
 ```typescript
-provideExperimentalZonelessChangeDetection()
+provideZonelessChangeDetection()  // no "experimental" prefix
 ```
-In Angular 21+ new projects it's on by default. Benefits:
+**Note:** Not yet enabled in this project — requires full migration to Signals first.
+Benefits:
 - Smaller bundle (no `zone.js`)
 - Clearer stack traces
 - Predictable rendering — only signal-dependent bindings update
@@ -126,7 +130,6 @@ Calls services          Pure templates
 ```typescript
 @Component({
   selector: 'app-user-card',
-  standalone: true,
   imports: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `...`
@@ -188,10 +191,10 @@ src/app/
 |---|---|
 | Local component state | `signal()` |
 | Derived state | `computed()` |
-| Server state (GET) | `resource()` or `HttpClient` + `toSignal()` |
+| Server state (GET) | `httpResource()` (preferred) or `rxResource()` when request depends on Observable |
 | Server state (mutate) | `HttpClient` + `signal` + manual update |
 | Cross-component shared | Service with `signal()` (providedIn: 'root') |
-| Complex global state | NgRx Signals (new) or plain service |
+| Complex global state | NgRx Signals or plain service |
 | Form state | `@angular/forms` with `ReactiveFormsModule` |
 
 ### 8. HTTP & Interceptors
@@ -208,14 +211,15 @@ provideHttpClient(
 - Never store tokens client-side — use `httpOnly` cookies (already done in this project)
 
 ### 9. Forms
-- `ReactiveFormsModule` with `nonNullable` form controls
+- **Signal Forms** are stable in Angular 22 (new `form()` / `FormGroup` with signals) but **NOT adopted yet** in this project
+- Continue using `ReactiveFormsModule` with `FormGroup`/`FormControl` wrapped in `signal()`
 - Typed forms: `FormGroup<{ email: FormControl<string> }>`
 - Async validators for remote checks (email uniqueness)
 - `form.valid` + `form.markAllAsTouched()` pattern
 
 ### 10. Testing (2026 Practices)
-- **Vitest** (faster than Jest for Angular) — or Karma with `@angular-builders/jest`
-- `TestBed` with `provideExperimentalZonelessChangeDetection` for zoneless tests
+- **Playwright** for E2E (already installed in this project)
+- `TestBed` with `provideZonelessChangeDetection` for zoneless tests
 - CDK Test Harnesses over raw `querySelector`
 - `HarnessLoader` for Material/CDK component testing
 - Signal testing: read `.()` value directly, no subscribe needed
@@ -232,12 +236,13 @@ provideHttpClient(
 
 ### 12. Build & Deploy (This Project)
 - **Build**: `@angular/build:application` → outputs `dist/frontend/browser/`
-- **Serve**: Multi-stage Docker (node:22-alpine build → nginx:alpine)
+- **Serve**: Multi-stage Docker (node:24-alpine build → nginx:alpine)
 - **Nginx proxy**: `/api/` → `app:8000/api/`, `/auth/` → `app:8000/auth/`
 - **Dev**: `ng serve --proxy-config proxy.conf.json`
 
 ### References
-- Angular 21 changelog: https://github.com/angular/angular/blob/main/CHANGELOG.md
-- Signals guide: https://angular.io/guide/signals
-- Zoneless: https://angular.io/guide/zoneless
-- Performance: https://angular.io/guide/performance
+- Angular 22 changelog: https://github.com/angular/angular/blob/main/CHANGELOG.md
+- Signals guide: https://angular.dev/guide/signals
+- httpResource: https://angular.dev/guide/http/resources
+- Zoneless: https://angular.dev/guide/zoneless
+- Performance: https://angular.dev/guide/performance

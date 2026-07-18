@@ -29,11 +29,11 @@ description: Use when designing system architecture, choosing patterns (monolith
 
 ## This Project Architecture
 
-### Current: Modular Monolith (FastAPI + Angular)
+### Current: Modular Monolith (FastAPI + Angular 22)
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    Nginx (Port 80/4200)              │
-│  /api/* → backend:8000  /static → Angular SPA       │
+│  /api/* → backend:8000  /static → Angular 22 SPA    │
 ├────────────────────┬───────────────────┬────────────┤
 │  modules/          │  features/        │  angular/   │
 │  ─────────         │  ─────────        │  ─────────  │
