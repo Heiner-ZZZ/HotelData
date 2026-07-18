@@ -7,7 +7,7 @@ from typing import Any
 import requests
 
 from src.etl.ga03_airflow._common import auth_headers, request_with_retries, _json_default
-from src.etl.ga03_airflow.config import PHASE, PIPELINE_PROGRESS_STEPS, paths, pocketbase_config
+from src.etl.ga03_airflow.config import PIPELINE_PROGRESS_STEPS, paths, pocketbase_config
 from src.etl.ga03_airflow.progress import write_pipeline_progress, write_state, read_state, _elapsed
 
 

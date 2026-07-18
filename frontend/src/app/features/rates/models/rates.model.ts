@@ -3,20 +3,20 @@ export interface RatesViewModel {
   hotelLabel: string;
   manualOverride: boolean;
   profileBadge: string;
-  roomTypes: Array<{ id: string; name: string }>;
+  roomTypes: { id: string; name: string }[];
   ratePlans: RatePlanItem[];
   calendar: RateCalendarItem[];
-  rateRules: Array<{ label: string; detail: string }>;
+  rateRules: { label: string; detail: string }[];
   seasonalRules: SeasonalRuleItem[];
-  promotions: Array<{
+  promotions: {
     campaignId: string;
     name: string;
     description: string;
     discountPercent: number;
     dateRange: string;
     activeLabel: string;
-  }>;
-  coupons: Array<{ code: string; activeLabel: string }>;
+  }[];
+  coupons: { code: string; activeLabel: string }[];
 }
 
 export interface SeasonalRuleItem {

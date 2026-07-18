@@ -16,7 +16,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   `
 })
 export class PpTabBarComponent {
-  readonly tabs = input.required<Array<{ key: string; label: string; icon: string }>>();
+  readonly tabs = input.required<{ key: string; label: string; icon: string }[]>();
   readonly activeTab = input.required<string>();
   readonly setTab = output<string>();
 }

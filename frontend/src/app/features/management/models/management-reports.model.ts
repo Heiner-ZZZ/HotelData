@@ -3,25 +3,25 @@ export interface ManagementReportsViewModel {
   totalEvents: number;
   reservationsDetected: number;
   grossRevenueLabel: string;
-  topHotels: Array<{
+  topHotels: {
     propId: number;
     displayName: string;
     profileBadge: string;
     grossRevenueLabel: string;
     events: number;
-  }>;
-  topDestinations: Array<{
+  }[];
+  topDestinations: {
     label: string;
     events: number;
     grossRevenueLabel: string;
-  }>;
-  topVisitorCountries: Array<{
+  }[];
+  topVisitorCountries: {
     label: string;
     events: number;
     reservations: number;
-  }>;
-  operationalCounts: Array<{
+  }[];
+  operationalCounts: {
     label: string;
     value: number;
-  }>;
+  }[];
 }

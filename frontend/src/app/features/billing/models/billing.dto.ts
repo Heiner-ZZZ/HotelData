@@ -109,19 +109,19 @@ export interface PaymentItemDto {
 
 /** Response from GET /api/billing/services — billable amenities for the invoice page. */
 export interface BillableServicesDto {
-  categories: Array<{
+  categories: {
     category: string;
-    items: Array<{
+    items: {
       label: string;
       unit_price: number;
-    }>;
-  }>;
-  chargeable: Array<{
+    }[];
+  }[];
+  chargeable: {
     label: string;
     unit_price: number;
-  }>;
-  all_items: Array<{
+  }[];
+  all_items: {
     label: string;
     unit_price: number;
-  }>;
+  }[];
 }

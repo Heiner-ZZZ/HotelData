@@ -7,7 +7,7 @@ export interface SystemUsersResponseDto {
     username: string;
     primary_role: string;
   };
-  users: Array<{
+  users: {
     user_id: string;
     username: string;
     email: string;
@@ -21,7 +21,7 @@ export interface SystemUsersResponseDto {
     can_toggle: boolean;
     toggle_label: string;
     action_hint: string;
-  }>;
+  }[];
 }
 
 export interface SystemUserToggleResponseDto {

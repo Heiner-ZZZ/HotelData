@@ -53,8 +53,8 @@ export class ReservationNewPageComponent {
   /** Availability status per hotel: 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types' */
   readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
 
-  readonly guestSuggestions = signal<Array<{ name: string; email: string; phone: string }>>([]);
-  readonly apiUserResults = signal<Array<{ name: string; email: string; phone: string; cedula: string }>>([]);
+  readonly guestSuggestions = signal<{ name: string; email: string; phone: string }[]>([]);
+  readonly apiUserResults = signal<{ name: string; email: string; phone: string; cedula: string }[]>([]);
   readonly apiSearching = signal(false);
   readonly showGuestDropdown = signal(false);
   readonly guestSearchFocused = signal(false);
@@ -601,7 +601,7 @@ export class ReservationNewPageComponent {
 
     // Merge: API results shown first, then matching localStorage entries (filter out dupes by email)
     const apiEmails = new Set(apiGuests.map(g => g.email.toLowerCase()));
-    const merged: Array<{ name: string; email: string; phone: string; cedula: string; source: 'api' | 'local' }> = [
+    const merged: { name: string; email: string; phone: string; cedula: string; source: 'api' | 'local' }[] = [
       ...apiGuests.map(g => ({ ...g, source: 'api' as const })),
       ...localGuests
         .filter(g => !apiEmails.has(g.email.toLowerCase()))

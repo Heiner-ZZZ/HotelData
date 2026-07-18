@@ -23,7 +23,7 @@ export interface AuditLogResponseDto {
 export interface AuditLogStatsDto {
   total_entries: number;
   today_entries: number;
-  by_entity: Array<{ entity_type: string; count: number; last_action: string }>;
+  by_entity: { entity_type: string; count: number; last_action: string }[];
 }
 
 export interface AuditLogFiltersDto {

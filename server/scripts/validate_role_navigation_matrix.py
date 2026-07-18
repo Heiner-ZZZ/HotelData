@@ -16,7 +16,6 @@ Requiere Node.js 18+ y Python 3.10+.
 
 from __future__ import annotations
 
-import ast
 import re
 import sys
 from pathlib import Path
@@ -400,9 +399,9 @@ def validate_backend_permissions() -> list[str]:
     for regla_str in reglas:
         if '"/api/management"' in regla_str or "'/api/management'" in regla_str:
             if "auditor_datos" not in regla_str or "operador_datos" not in regla_str:
-                errors.append(f"[BACKEND] /api/management debería incluir auditor_datos y operador_datos.")
+                errors.append("[BACKEND] /api/management debería incluir auditor_datos y operador_datos.")
             if "gerente_hotel" not in regla_str:
-                errors.append(f"[BACKEND] /api/management debería incluir gerente_hotel.")
+                errors.append("[BACKEND] /api/management debería incluir gerente_hotel.")
 
     return errors
 

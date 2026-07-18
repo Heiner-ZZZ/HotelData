@@ -169,7 +169,6 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
     """Preview cancellation penalty without actually cancelling."""
     from src.app.core.timezone import local_today
     from src.app.modules.reservations.service.cleanup import _calculate_cancellation_penalty
-    from src.database.connection import get_database
 
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})

@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from pymongo import IndexModel, ASCENDING, DESCENDING
+from pymongo import IndexModel, ASCENDING
 
 from src.database.collections import ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.billing.schemas import ModuleStatus
 
 INVOICES_COLLECTION = "reservation_invoices"
 PAYMENTS_COLLECTION = "reservation_payments"

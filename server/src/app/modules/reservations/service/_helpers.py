@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from src.app.core.state_machine import booking_sm, stay_sm
+from src.app.core.state_machine import booking_sm
 
 
 # ── Reservation (booking.status) lifecycle ──

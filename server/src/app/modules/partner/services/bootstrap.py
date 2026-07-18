@@ -17,7 +17,6 @@ import logging
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
 from src.app.modules.partner.schemas import ModuleStatus
-from src.app.modules.partner.services.audit import ensure_audit_indexes
 from src.database.collections import ensure_collection, drop_index_safe
 
 logger = logging.getLogger(__name__)

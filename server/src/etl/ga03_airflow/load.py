@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from pymongo import UpdateOne
@@ -19,7 +20,6 @@ from src.etl.ta02_load_mongodb import create_ta02_indexes, upsert_dimensions
 
 
 def _insert_fact_jsonl(db, path: Path, batch_size: int = INSERT_BATCH_SIZE) -> int:
-    from pathlib import Path
     inserted = 0
     batch: list[dict[str, Any]] = []
     expected = int(read_state().get("expected_records", 0) or 0)
@@ -104,7 +104,7 @@ def load_dimensions_to_mongodb_03() -> dict[str, int]:
             )
             return mongo_counts
     else:
-        print(f"GA03 incremental: cargando dimensiones con upsert")
+        print("GA03 incremental: cargando dimensiones con upsert")
 
     dimensions: dict[str, list[dict[str, Any]]] = {}
     for collection_name in DIMENSION_KEY_FIELDS:

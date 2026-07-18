@@ -15,7 +15,6 @@ from src.app.modules.partner.services.audit import register_action
 from src.app.modules.reservations.service._transitions._inventory import (
     _auto_assign_rooms,
     _deduct_inventory,
-    _restore_inventory,
 )
 
 logger = logging.getLogger(__name__)

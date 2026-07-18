@@ -7,7 +7,7 @@ from typing import Any
 
 from pymongo import ReturnDocument
 
-from src.app.modules.partner.services._common import clean_text, iso_label, now_utc, safe_bool, safe_positive_int, slugify
+from src.app.modules.partner.services._common import clean_text, iso_label, now_utc, slugify
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 

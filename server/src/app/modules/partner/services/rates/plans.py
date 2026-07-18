@@ -13,7 +13,6 @@ from src.app.modules.partner.services._common import (
     money,
     now_utc,
     safe_bool,
-    safe_positive_int,
     slugify,
 )
 from src.app.modules.partner.services.audit import register_action
@@ -161,8 +160,10 @@ def update_rate_plan(
     if error:
         raise ValueError(error)
 
+    clean_name = clean_text(name)
+
     payload = {
-        "name": clean_text(name),
+        "name": clean_name,
         "description": clean_text(description),
         "room_type_id": clean_text(room_type_id),
         "base_rate": round(float(base_rate), 2),

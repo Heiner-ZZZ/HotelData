@@ -3,9 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from src.etl.ga03_airflow._common import elapsed_ms, _json_default
 from src.etl.ga03_airflow.bootstrap import validate_environment_03
-from src.etl.ga03_airflow.config import PIPELINE_STARTED_MONO
 from src.etl.ga03_airflow.extract import extract_from_pocketbase_03, save_extract_jsonl_03
 from src.etl.ga03_airflow.load import (
     create_indexes_03,

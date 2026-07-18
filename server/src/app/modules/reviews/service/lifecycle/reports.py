@@ -96,7 +96,6 @@ def get_reputation_dashboard(
 ) -> dict:
     """Return reputation dashboard data: GRI, departmental sentiment, recent feedback, and trends."""
     from datetime import timedelta
-    from math import ceil
 
     from src.app.core.timezone import local_now
 

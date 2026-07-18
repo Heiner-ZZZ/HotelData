@@ -35,14 +35,14 @@ export interface PoliciesDto {
     max_stay?: number;
   };
   room_types?: PolicyRoomTypeItem[];
-  per_room_policies?: Array<Record<string, unknown>>;
+  per_room_policies?: Record<string, unknown>[];
 }
 
 export interface PoliciesOptionsDto {
-  properties: Array<{
+  properties: {
     prop_id: number;
     display_name: string;
-  }>;
+  }[];
   total?: number;
   page?: number;
   page_size?: number;

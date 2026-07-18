@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
 
 from bson import ObjectId
 from pymongo import ReturnDocument
@@ -15,13 +14,11 @@ from src.app.modules.billing.service.lifecycle._helpers import (
     _enrich_invoice,
     _enrich_payment,
     _find_booking,
-    _fmt,
     _generate_invoice_number,
     _now,
     _update_both,
     _write_both,
     FACT_INVOICES,
-    FACT_PAYMENTS,
     INVOICES,
     PAYMENTS,
 )

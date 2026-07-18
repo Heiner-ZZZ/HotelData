@@ -66,7 +66,7 @@ export class SystemPermissionsPageComponent {
     const vm = this.permissionsResource.value();
     if (!vm) return [];
     const seen = new Set<string>();
-    const cats: Array<{ key: string; permissions: SystemPermissionItem[] }> = [];
+    const cats: { key: string; permissions: SystemPermissionItem[] }[] = [];
     for (const perm of vm.permissions) {
       const cat = _permissionCategory(perm.permissionCode);
       if (!seen.has(cat)) {

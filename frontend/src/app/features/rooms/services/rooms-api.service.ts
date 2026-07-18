@@ -136,7 +136,7 @@ export class RoomsApiService {
   getRoomTypeFeatures(propId: number, roomTypeId: string) {
     const params = new HttpParams().set('prop_id', String(propId));
     return this.http
-      .get<{ room_type_id: string; features: Array<{ label: string }> }>(
+      .get<{ room_type_id: string; features: { label: string }[] }>(
         `${this.apiConfig.baseUrl}/management/room-features/${roomTypeId}`,
         { params, withCredentials: true }
       )
@@ -144,7 +144,7 @@ export class RoomsApiService {
   }
 
   /** Update features for a room type. */
-  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: Array<{ label: string }>) {
+  updateRoomTypeFeatures(propId: number, roomTypeId: string, features: { label: string }[]) {
     const params = new HttpParams().set('prop_id', String(propId));
     const payload = features.map((f) => ({ label: f.label }));
     return this.http.put(

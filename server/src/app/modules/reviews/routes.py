@@ -10,17 +10,19 @@ from src.app.modules.reviews.schemas import (
 )
 from src.app.modules.reviews.service import (
     create_review,
+    create_review_report,
     create_review_staff,
     create_review_guest,
     delete_review,
-    ensure_reviews_collections,
     get_hotel_reviews,
     get_reputation_dashboard,
     get_review,
+    list_review_reports,
     list_reviews,
     moderate_review,
     module_status,
     respond_to_review,
+    update_review,
 )
 
 router = APIRouter(prefix="/modules/reviews", tags=["modules-reviews"])

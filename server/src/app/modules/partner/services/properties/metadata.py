@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.modules.partner.services._common import _resolve_country_label, _resolve_country_name, clean_text, hotel_display_name, now_utc
+from src.app.modules.partner.services._common import _resolve_country_label, clean_text, hotel_display_name
 from src.database.connection import get_database
 
 

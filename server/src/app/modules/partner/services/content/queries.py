@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.modules.partner.services._common import clean_text, now_utc
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
 

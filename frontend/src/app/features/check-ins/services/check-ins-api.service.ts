@@ -91,13 +91,13 @@ export interface CheckInDetailDto {
   payment_method: string;
   booking_source: string;
   comment: string;
-  assigned_rooms: Array<{
+  assigned_rooms: {
     hotel_room_id: string;
     room_number: string;
     room_label: string;
     floor: string;
     room_status: string;
-  }>;
+  }[];
   check_in_arrival_time: string;
   check_in_has_companions: boolean;
   check_in_companions_count: number;

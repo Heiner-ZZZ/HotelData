@@ -17,7 +17,7 @@ export class ExpensesApiService {
       .pipe(map(dto => mapExpenseDashboard(dto)));
   }
 
-  getInvoices(status?: string, category?: string, vendor?: string, page: number = 1) {
+  getInvoices(status?: string, category?: string, vendor?: string, page = 1) {
     let params = new HttpParams().set('page', String(page));
     if (status) params = params.set('status', status);
     if (category) params = params.set('category', category);
@@ -49,7 +49,7 @@ export class ExpensesApiService {
 
   // ─── Ledger ───
 
-  getLedgerTransactions(propId: number, page: number = 1, pageSize: number = 50, sortField: string = 'tx_date', sortOrder: string = 'desc', period?: string) {
+  getLedgerTransactions(propId: number, page = 1, pageSize = 50, sortField = 'tx_date', sortOrder = 'desc', period?: string) {
     let params = new HttpParams()
       .set('prop_id', String(propId))
       .set('page', String(page))
@@ -62,7 +62,7 @@ export class ExpensesApiService {
   }
 
   getLedgerPeriods(propId: number) {
-    let params = new HttpParams().set('prop_id', String(propId));
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.get<string[]>(`${this.apiConfig.baseUrl}/expenses/ledger/periods`, { params, withCredentials: true });
   }
 
@@ -74,7 +74,7 @@ export class ExpensesApiService {
   }
 
   getLedgerSummary(propId: number) {
-    let params = new HttpParams().set('prop_id', String(propId));
+    const params = new HttpParams().set('prop_id', String(propId));
     return this.http.get<LedgerSummaryDto>(`${this.apiConfig.baseUrl}/expenses/ledger/summary`, { params, withCredentials: true })
       .pipe(map(dto => mapLedgerSummary(dto)));
   }

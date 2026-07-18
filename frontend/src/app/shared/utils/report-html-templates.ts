@@ -252,7 +252,7 @@ export interface StandardReportShellInput {
   title: string;
   subtitle?: string;
   generatedAt?: Date;
-  metaRows?: Array<{ label: string; value: string }>;
+  metaRows?: { label: string; value: string }[];
   bodyHtml: string;
 }
 
@@ -368,8 +368,8 @@ export interface TableColumn {
  */
 export function buildTable(
   columns: TableColumn[],
-  rows: Array<Array<string | number>>,
-  footerRow?: Array<string | number>
+  rows: (string | number)[][],
+  footerRow?: (string | number)[]
 ): string {
   const thead = columns
     .map((c) => {

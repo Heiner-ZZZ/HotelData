@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pymongo import ASCENDING, IndexModel
-from pymongo.database import Database
 
 from src.database.collections import ensure_collection
 from src.database.connection import get_database

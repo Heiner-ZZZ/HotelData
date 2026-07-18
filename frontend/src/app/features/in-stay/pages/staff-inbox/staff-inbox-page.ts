@@ -425,7 +425,7 @@ export class StaffInboxPageComponent implements OnDestroy {
     });
   }
 
-  claimLostItem(itemId: string, returnedTo: string = ''): void {
+  claimLostItem(itemId: string, returnedTo = ''): void {
     if (!returnedTo) { this.toast.warning('Especifica a quién se entregó.'); return; }
     this.api.claimLostItem(itemId, returnedTo).subscribe({
       next: () => { this.toast.success('Objeto reclamado'); this.selectedLostItem.set(null); this.loadLostFound(); },

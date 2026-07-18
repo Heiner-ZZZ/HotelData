@@ -42,7 +42,7 @@ export interface LedgerSummary {
   isBalanced: boolean;
   transactionCount: number;
   journalEntryCount: number;
-  revenueBreakdown: Array<{ accountCode: string; total: number }>;
+  revenueBreakdown: { accountCode: string; total: number }[];
 }
 
 export interface LedgerListResponse {

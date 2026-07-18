@@ -43,7 +43,7 @@ export class AdditionalChargesPageComponent {
   readonly propId = signal(0);
   readonly propLabel = signal('');
 
-  readonly reservations = signal<Array<{ bookingId: string; guestName: string; propId: number; status: string }>>([]);
+  readonly reservations = signal<{ bookingId: string; guestName: string; propId: number; status: string }[]>([]);
   readonly reservationsLoading = signal(false);
   readonly selectedPropId = signal(0);
 

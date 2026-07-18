@@ -1,4 +1,5 @@
-import sqlite3, json
+import sqlite3
+import json
 
 collection = {
   "id": "pbc_2148885117",

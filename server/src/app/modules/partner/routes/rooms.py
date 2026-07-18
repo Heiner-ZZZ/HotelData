@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from fastapi import Body, Form, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+import uuid
 
-from fastapi import Depends
+from fastapi import Body, Depends, Form, HTTPException, Query, Request, status, UploadFile
+from fastapi.responses import JSONResponse
 
 from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.routes._common import require_prop_id

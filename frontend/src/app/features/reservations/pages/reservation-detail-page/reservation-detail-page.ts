@@ -175,7 +175,7 @@ export class ReservationDetailPageComponent {
   // Room assignment modal
   readonly showRoomModal = signal(false);
   readonly roomAssignmentState = signal<'loading' | 'success' | 'error' | 'idle'>('idle');
-  readonly availableRooms = signal<Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; room_status: string }>>([]);
+  readonly availableRooms = signal<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; room_status: string }[]>([]);
   readonly assignedRoomIds = signal<string[]>([]);
   readonly selectedRoomIds = signal<Set<string>>(new Set());
   readonly roomAssignmentSaving = signal(false);

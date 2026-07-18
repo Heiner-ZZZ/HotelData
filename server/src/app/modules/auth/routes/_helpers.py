@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import random
-import re as _re
 import secrets
 from datetime import datetime, timedelta
 from typing import Any
@@ -13,23 +11,11 @@ from fastapi import HTTPException, status
 
 from config.settings import get_settings
 from src.app.email.service import send_email
-from src.app.security.navigation import get_default_redirect_for_role
-from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
-    SESSION_COOKIE_NAME,
-    create_user_session,
     ensure_utc,
     find_user_by_identifier,
-    get_current_user,
-    get_session,
-    invalidate_session,
-    invalidate_user_sessions,
-    log_user_activity,
-    password_context,
     utc_now,
-    verify_password,
 )
-from src.database.connection import get_database
 
 
 LOCK_ATTEMPTS = 5

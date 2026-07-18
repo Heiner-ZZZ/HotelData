@@ -52,8 +52,8 @@ export class GeoCatalogPageComponent {
     stateCode: [''],
     category: [''],
     isoCode: [''],
-    latitude: [<number | null>null],
-    longitude: [<number | null>null],
+    latitude: [(null as number | null)],
+    longitude: [(null as number | null)],
   });
 
   constructor() {
@@ -73,7 +73,7 @@ export class GeoCatalogPageComponent {
           if (type === 'visitor-country') {
             obs = this.api.listVisitorCountries().pipe(
               map((res: any) => {
-                let items = res.items.map((item: any) => ({
+                const items = res.items.map((item: any) => ({
                   id: String(item.visitor_location_country_id),
                   type: 'visitor-country',
                   code: String(item.visitor_location_country_id),
@@ -94,7 +94,7 @@ export class GeoCatalogPageComponent {
           } else if (type === 'visitor-destination') {
             obs = this.api.listVisitorDestinations().pipe(
               map((res: any) => {
-                let items = res.items.map((item: any) => ({
+                const items = res.items.map((item: any) => ({
                   id: String(item.srch_destination_id),
                   type: 'visitor-destination',
                   code: String(item.srch_destination_id),
@@ -115,7 +115,7 @@ export class GeoCatalogPageComponent {
           } else if (type === 'visitor-site') {
             obs = this.api.listVisitorSites().pipe(
               map((res: any) => {
-                let items = res.items.map((item: any) => ({
+                const items = res.items.map((item: any) => ({
                   id: String(item.site_id),
                   type: 'visitor-site',
                   code: String(item.site_id),
@@ -136,7 +136,7 @@ export class GeoCatalogPageComponent {
           } else if (type === 'visitor-hotel') {
             obs = this.api.listVisitorHotels().pipe(
               map((res: any) => {
-                let items = res.items.map((item: any) => ({
+                const items = res.items.map((item: any) => ({
                   id: String(item.prop_id),
                   type: 'visitor-hotel',
                   code: String(item.prop_id),
@@ -294,7 +294,7 @@ export class GeoCatalogPageComponent {
 
     listObs.pipe(
       map((res: any) => {
-        let items = res.items.map((item: any) => {
+        const items = res.items.map((item: any) => {
           let id = '';
           let name = '';
           if (this.activeType() === 'visitor-country') {

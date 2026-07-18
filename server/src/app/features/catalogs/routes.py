@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Form
-from fastapi.responses import RedirectResponse
 
 from src.app.features.catalogs.service import (
     catalog_overview,

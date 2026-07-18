@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, DESCENDING, IndexModel
 
 from src.database.collections import ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.expenses.schemas import ModuleStatus
 
 INVOICES_COLLECTION = "expense_invoices"
 CATEGORIES_COLLECTION = "expense_categories"

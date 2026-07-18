@@ -6,8 +6,8 @@ import { API_CONFIG } from '../../core/api/api.config';
 
 export interface ExcelSheetPayload {
   name: string;
-  headers: Array<{ label: string; [style: string]: unknown }>;
-  rows: Array<Array<string | number | boolean | null>>;
+  headers: { label: string; [style: string]: unknown }[];
+  rows: (string | number | boolean | null)[][];
   column_widths?: Record<string, number>;
   freeze_header?: boolean;
 }

@@ -13,40 +13,40 @@ export interface HotelDetailDto {
   conversion_rate: number;
   click_rate: number;
   source_collection: string;
-  top_destinations: Array<{
+  top_destinations: {
     srch_destination_id: number;
     destination_label: string;
     events: number;
     avg_price_label: string;
-  }>;
-  top_visitor_countries: Array<{
+  }[];
+  top_visitor_countries: {
     visitor_location_country_id: number;
     country_label: string;
     events: number;
     reservations: number;
-  }>;
-  top_sites: Array<{
+  }[];
+  top_sites: {
     site_id: number;
     site_label: string;
     events: number;
     clicks: number;
     reservations: number;
-  }>;
-  hotel_rates: Array<{
+  }[];
+  hotel_rates: {
     date: string;
     rate_plan_id: string;
     rate_amount_label: string;
     min_stay_nights: number | null;
-  }>;
-  hotel_rooms?: Array<{
+  }[];
+  hotel_rooms?: {
     hotel_room_id: string;
     room_number?: string;
     room_label: string;
     room_type_id: string;
     floor?: string;
     is_active: boolean;
-  }>;
-  room_types: Array<{
+  }[];
+  room_types: {
     room_type_id: string;
     name: string;
     base_capacity: number | null;
@@ -56,7 +56,7 @@ export interface HotelDetailDto {
     description?: string;
     features?: string[];
     image_url?: string;
-  }>;
+  }[];
   hotel_policies: {
     check_in_time?: string | null;
     check_out_time?: string | null;
@@ -64,9 +64,9 @@ export interface HotelDetailDto {
     children_policy?: string | null;
     cancellation_policy?: string | null;
   } | null;
-  hotel_images: Array<{
+  hotel_images: {
     image_url: string;
-  }>;
+  }[];
   hotel_content: {
     description?: string | null;
     highlights?: string | null;
@@ -86,13 +86,13 @@ export interface HotelDetailDto {
     longitude?: number;
   } | null;
   review_count: number;
-  reviews: Array<{
+  reviews: {
     review_id?: string;
     reviewer_name?: string;
     review_score?: number;
     review_text?: string;
     created_at?: string;
-  }>;
+  }[];
 }
 
 export interface SimilarHotelDto {

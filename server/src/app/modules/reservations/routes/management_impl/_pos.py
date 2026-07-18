@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 from src.app.modules.housekeeping.schemas import AdditionalChargeCreate
 from src.app.modules.housekeeping.service.lifecycle.charges import create_additional_charge

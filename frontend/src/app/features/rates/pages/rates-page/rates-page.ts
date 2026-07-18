@@ -133,7 +133,7 @@ export class RatesPageComponent {
   readonly editingSeason = signal<{ ruleId: string; ratePlanId: string; name: string; startDate: string; endDate: string; priceOverride: number } | null>(null);
   readonly deleteConfirm = signal<string | null>(null);
   readonly promoDeleteConfirm = signal<string | null>(null);
-  readonly promotionsData = signal<{ campaigns: Array<any>; total: number } | null>(null);
+  readonly promotionsData = signal<{ campaigns: any[]; total: number } | null>(null);
   readonly editingPromo = signal<PromoEditState | null>(null);
 
   /* ── Form signals (replacing FormBuilder) ── */
@@ -296,7 +296,7 @@ readonly sidebarSections: SidebarSection[] = [
   readonly calendarEvents = computed(() => {
     const vm = this.ratesResource.value();
     if (!vm) return [];
-    const events: Array<{ date: string; type: 'season' | 'promo' | 'batch' | 'rate_entry'; label: string; color: string }> = [];
+    const events: { date: string; type: 'season' | 'promo' | 'batch' | 'rate_entry'; label: string; color: string }[] = [];
 
     // Seasonal rules → events per date in range
     for (const rule of vm.seasonalRules) {

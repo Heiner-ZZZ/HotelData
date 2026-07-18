@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, IndexModel
 
 from src.database.collections import drop_index_safe, ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.housekeeping.schemas import ModuleStatus
 
 ROOM_STATUS_COLLECTION = "room_status_log"
 HOUSEKEEPING_COLLECTION = "housekeeping_tasks"

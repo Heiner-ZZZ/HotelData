@@ -222,10 +222,10 @@ export function mapEditPropertySources(
       description?: string;
       highlights?: string;
     };
-    images?: Array<{ image_url: string; title: string }>;
+    images?: { image_url: string; title: string }[];
     amenities?: {
       active_amenities?: string[];
-      catalog?: Array<{ category: string; items: Array<{ label: string; active: boolean }> }>;
+      catalog?: { category: string; items: { label: string; active: boolean }[] }[];
     };
   } | null
 ): EditPropertyViewModel {

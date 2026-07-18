@@ -26,14 +26,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import TypedDict
 
 from bson import ObjectId
 from pymongo import IndexModel, ASCENDING
 from pymongo.errors import OperationFailure
 
 from src.database.collections import ensure_collection
-from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +42,34 @@ OUTBOX_STATUS_PENDING = "pending"
 OUTBOX_STATUS_PROCESSED = "processed"
 OUTBOX_STATUS_FAILED = "failed"
 OUTBOX_MAX_RETRIES = 3
+
+
+class OutboxEvent(TypedDict, total=False):
+    """TypedDict for outbox event documents in MongoDB.
+
+    ``total=False`` means all fields are optional — insert events have
+    ``document`` and ``operational_id``; update events have ``document_id``
+    and ``update``.
+    """
+
+    _id: ObjectId
+    event_type: str
+    target_collection: str
+    fact_collection: str
+    status: str
+    retries: int
+    created_at: datetime
+    # Insert-specific
+    document: dict
+    document_id: ObjectId
+    operational_id: ObjectId
+    # Update-specific
+    update: dict
+    # Lifecycle
+    processed_at: datetime
+    last_error: str
+    error: str
+
 
 OUTBOX_INDEXES = [
     IndexModel([("status", ASCENDING), ("created_at", ASCENDING)], name="idx_outbox_status_created"),
@@ -95,13 +122,13 @@ def write_with_outbox(
             with session.start_transaction():
                 result = db[collection_name].insert_one(doc, session=session)
                 doc["_id"] = result.inserted_id
-                outbox_event["document"]["_id"] = result.inserted_id
+                outbox_event["document"]["_id"] = result.inserted_id  # type: ignore[index]
                 outbox_event["document_id"] = result.inserted_id
                 outbox_event["operational_id"] = result.inserted_id
                 db[OUTBOX_COLLECTION].insert_one(outbox_event, session=session)
 
         # Immediately process the outbox synchronously
-        _process_one(db, collection_name, fact_collection_name, outbox_event)
+        _process_one(db, collection_name, fact_collection_name, outbox_event)  # type: ignore[arg-type]
 
     except OperationFailure:
         logger.exception("Outbox transaction failed for collection=%s", collection_name)
@@ -142,7 +169,7 @@ def update_with_outbox(
                 db[OUTBOX_COLLECTION].insert_one(outbox_event, session=session)
 
         # Immediately process the outbox synchronously
-        _process_one(db, collection_name, fact_collection_name, outbox_event)
+        _process_one(db, collection_name, fact_collection_name, outbox_event)  # type: ignore[arg-type]
 
     except OperationFailure:
         logger.exception("Outbox transaction failed for collection=%s doc_id=%s", collection_name, doc_id)
@@ -173,7 +200,7 @@ def process_pending_outbox(db) -> int:
 # ── Internal helpers ────────────────────────────────────────────────────
 
 
-def _process_one(db, collection_name: str, fact_collection_name: str, event: dict) -> bool:
+def _process_one(db, collection_name: str, fact_collection_name: str, event: OutboxEvent) -> bool:
     """Process a single outbox event: write to the fact collection.
 
     On success, mark the outbox event as processed.

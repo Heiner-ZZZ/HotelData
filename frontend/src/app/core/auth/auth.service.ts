@@ -109,7 +109,7 @@ export class AuthService {
       );
   }
 
-  login(identifier: string, password: string, nextUrl: string | null = null, rememberMe: boolean = false) {
+  login(identifier: string, password: string, nextUrl: string | null = null, rememberMe = false) {
     return this.http
       .post<AuthMeDto>(
         `${this.apiConfig.baseUrl}/auth/login`,

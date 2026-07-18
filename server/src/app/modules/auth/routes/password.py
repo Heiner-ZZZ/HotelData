@@ -131,11 +131,11 @@ def reset_password(request: Request, payload: dict = Body(...)):
             from src.app.email.service import send_email
             from src.app.email.templates import base_layout
             body = (
-                f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
-                f'Tu contrasena fue restablecida exitosamente.</p>\n'
-                f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
-                f'Si no realizaste este cambio, contacta al soporte de inmediato.'
-                f'</p>'
+                '<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+                'Tu contrasena fue restablecida exitosamente.</p>\n'
+                '<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+                'Si no realizaste este cambio, contacta al soporte de inmediato.'
+                '</p>'
             )
             html = base_layout(
                 "Contrasena restablecida",

@@ -7,7 +7,6 @@ Staff endpoints use standard JWT authentication.
 from __future__ import annotations
 
 import asyncio
-import json
 import secrets
 
 from bson import ObjectId
@@ -22,7 +21,6 @@ from src.app.modules.instay.schemas import (
     utc_now,
 )
 from src.app.modules.instay.routes_impl._helpers import (
-    ensure_stay_collections,
     get_session_or_404,
     notify_guest_new_message,
     notify_guest_request_completed,
@@ -439,7 +437,7 @@ async def staff_notifications_stream(
     async def event_generator():
         try:
             # Send initial heartbeat
-            yield f"event: connected\ndata: {{}}\n\n"
+            yield "event: connected\ndata: {}\n\n"
             while True:
                 try:
                     payload = await asyncio.wait_for(queue.get(), timeout=30.0)

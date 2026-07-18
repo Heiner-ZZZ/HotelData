@@ -30,12 +30,12 @@ import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCale
 
 /** Raw API response (snake_case) for reception calendar — rooms instead of types. */
 export interface ReceptionCalendarDto {
-  rooms: Array<{
+  rooms: {
     room_number: string;
     hotel_room_id: string;
     room_type_name: string;
     room_type_id: string;
-    reservations: Array<{
+    reservations: {
       booking_id: string;
       guest_name: string;
       adults: number;
@@ -54,8 +54,8 @@ export interface ReceptionCalendarDto {
       room_number: string;
       total_price: number | null;
       currency: string;
-    }>;
-  }>;
+    }[];
+  }[];
   start_date: string;
   end_date: string;
   today: string;
@@ -264,13 +264,13 @@ export class ReservationsApiService {
       room_type: { name: string; base_capacity: number; max_adults: number } | null;
       rooms_required: number;
       rooms_available: number;
-      available_rooms: Array<{
+      available_rooms: {
         hotel_room_id: string;
         room_number: string;
         room_label: string;
         floor: string;
         room_status: string;
-      }>;
+      }[];
       assigned_rooms: string[];
     }>(`/management/bookings/${bookingId}/available-rooms`);
   }
@@ -286,7 +286,7 @@ export class ReservationsApiService {
   /** Search registered users by name or email for quick guest data prefill */
   searchUsers(q: string) {
     const params = new HttpParams().set('q', q).set('limit', '10');
-    return this.http.get<{ items: Array<{ name: string; email: string; phone: string; cedula: string }> }>(
+    return this.http.get<{ items: { name: string; email: string; phone: string; cedula: string }[] }>(
       '/management/users/search',
       { params },
     );

@@ -54,9 +54,9 @@ export interface PropertyDetailViewModel {
   originalGeneratedName: string;
   operationalScore: number;
   operationalChecks: OperationalCheck[];
-  heroMetrics: Array<{ label: string; value: string; detail: string }>;
-  profileFacts: Array<{ label: string; value: string }>;
-  masterFacts: Array<{ label: string; value: string }>;
+  heroMetrics: { label: string; value: string; detail: string }[];
+  profileFacts: { label: string; value: string }[];
+  masterFacts: { label: string; value: string }[];
 }
 
 export interface DashboardQuickStats {
@@ -112,12 +112,12 @@ export interface EditPropertyViewModel {
     paymentPolicy: string;
     houseRules: string;
   };
-  images: Array<{
+  images: {
     imageUrl: string;
     title: string;
-  }>;
+  }[];
   currency: string;
   acceptedCurrencies: string[];
   amenities: string[];
-  amenityCatalog: Array<{ category: string; items: Array<{ label: string; active: boolean }> }>;
+  amenityCatalog: { category: string; items: { label: string; active: boolean }[] }[];
 }

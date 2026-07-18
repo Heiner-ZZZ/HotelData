@@ -54,7 +54,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   readonly currentUser = this.authService.currentUser;
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
-  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }>>([]);
+  readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
   readonly canViewNotifications = computed(() => {
     const role = this.currentUser()?.primaryRole;
     return role === 'super_admin' || role === 'admin_sistema';

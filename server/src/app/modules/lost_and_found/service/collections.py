@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, DESCENDING, IndexModel
 
 from src.database.collections import ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.lost_and_found.schemas import ModuleStatus
 
 LOST_AND_FOUND_COLLECTION = "lost_and_found"
 

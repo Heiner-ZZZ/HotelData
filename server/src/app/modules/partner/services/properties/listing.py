@@ -8,8 +8,6 @@ from src.app.modules.partner.services.properties.builders import (
     enriched_property_row,
     synthetic_hotel,
 )
-from src.app.modules.partner.services.properties.metadata import ensure_hotel_profile_metadata
-from src.app.modules.partner.services.properties.performance import performance_for_prop
 from src.cache.cache_service import get_cache, set_cache
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database

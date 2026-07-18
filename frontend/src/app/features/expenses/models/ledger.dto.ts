@@ -59,7 +59,7 @@ export interface LedgerSummaryDto {
   is_balanced: boolean;
   transaction_count: number;
   journal_entry_count: number;
-  revenue_breakdown: Array<{ account_code: string; total: number }>;
+  revenue_breakdown: { account_code: string; total: number }[];
 }
 
 export interface TrialBalanceRowDto {

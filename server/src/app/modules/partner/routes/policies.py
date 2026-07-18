@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Body, Form, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 
 from fastapi import Depends
 

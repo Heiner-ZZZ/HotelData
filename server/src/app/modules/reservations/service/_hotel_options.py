@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymongo import ASCENDING
 
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.database.connection import get_database

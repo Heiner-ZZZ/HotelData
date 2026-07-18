@@ -43,7 +43,7 @@ export class NotificationsPageComponent {
   readonly endDate = signal('');
 
   // Available type filter options (populated from stats)
-  readonly typeOptions = signal<Array<{ key: string; label: string }>>([]);
+  readonly typeOptions = signal<{ key: string; label: string }[]>([]);
 
   constructor() {
     this.activatedRoute.queryParamMap

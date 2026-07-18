@@ -13,7 +13,6 @@ import logging
 from typing import Any
 
 from bson import ObjectId
-from pymongo import ReturnDocument
 
 from src.database.connection import get_database
 from ..collections import ROOM_STATUS_COLLECTION, HOUSEKEEPING_COLLECTION

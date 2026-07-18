@@ -11,7 +11,6 @@ from src.app.modules.reservations.service import (
     get_check_in_detail, save_check_in_detail,
     get_check_out_detail, save_check_out_detail,
 )
-from src.app.modules.reservations.service._helpers import utc_now
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_login

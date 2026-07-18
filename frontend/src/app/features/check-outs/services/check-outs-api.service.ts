@@ -46,7 +46,7 @@ export class CheckOutsApiService {
   }
 
   /** Create an additional charge for a booking before checkout. */
-  createCharge(bookingId: string, propId: number, concept: string, amount: number, quantity: number, note: string = '', category: string = '') {
+  createCharge(bookingId: string, propId: number, concept: string, amount: number, quantity: number, note = '', category = '') {
     return this.http.post<BookingCharge>(
       '/housekeeping/charges',
       { booking_id: bookingId, prop_id: propId, concept, amount, quantity, note, category },
@@ -115,7 +115,7 @@ export interface CheckOutInvoiceDto {
   issued_at: string;
   paid_at: string | null;
   notes: string | null;
-  line_items: Array<{
+  line_items: {
     type?: string;
     name?: string;
     concept?: string;
@@ -123,7 +123,7 @@ export interface CheckOutInvoiceDto {
     quantity?: number;
     total?: number;
     created_at?: string;
-  }>;
+  }[];
 }
 
 export interface CheckOutDetailDto {
@@ -145,13 +145,13 @@ export interface CheckOutDetailDto {
   total_nights: number;
   rooms: number;
   room_type_name: string;
-  assigned_rooms: Array<{
+  assigned_rooms: {
     hotel_room_id: string;
     room_number: string;
     room_label: string;
     floor: string;
     room_status: string;
-  }>;
+  }[];
   status: string;
   stay_status: string;
   payment_method: string;

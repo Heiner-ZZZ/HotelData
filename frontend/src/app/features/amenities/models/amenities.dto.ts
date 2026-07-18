@@ -11,25 +11,25 @@ export interface AmenitiesDto {
   };
   amenities: {
     active_amenities: string[];
-    catalog: Array<{
+    catalog: {
       category: string;
-      items: Array<{
+      items: {
         label: string;
         active: boolean;
         unit_price?: number;
-      }>;
-    }>;
+      }[];
+    }[];
   };
   content_page?: {
     description?: string;
     highlights?: string;
   };
-  images?: Array<{
+  images?: {
     image_url: string;
     title: string;
-  }>;
+  }[];
   facilities?: string[];
-  room_types?: Array<{
+  room_types?: {
     room_type_id: string;
     name: string;
     max_adults: number;
@@ -37,7 +37,7 @@ export interface AmenitiesDto {
     base_capacity: number;
     is_active: boolean;
     capacity_label: string;
-  }>;
+  }[];
   room_amenities?: Record<string, {
     active_amenities: string[];
     amenities_text: string;
@@ -45,17 +45,17 @@ export interface AmenitiesDto {
 }
 
 export interface AmenitiesOptionsDto {
-  properties: Array<{
+  properties: {
     prop_id: number;
     display_name: string;
-  }>;
-  catalog?: Array<{
+  }[];
+  catalog?: {
     category: string;
-    items: Array<{
+    items: {
       label: string;
       active: boolean;
-    }>;
-  }>;
+    }[];
+  }[];
   active_amenities?: string[];
 }
 

@@ -19,13 +19,13 @@ export function mapDashboardResponse(dto: DashboardApiResponseDto): DashboardVie
   const headline = overview.headline;
   const quality = overview.latest_quality;
 
-  const collectionCounts: Array<{ label: string; value: number }> = [
+  const collectionCounts: { label: string; value: number }[] = [
     { label: 'Hoteles distintos', value: headline.distinct_hotels },
     { label: 'Destinos distintos', value: headline.distinct_destinations },
     { label: 'Paises distintos', value: headline.distinct_countries },
     { label: 'Eventos totales', value: headline.total_events },
   ];
-  const operationalCounts: Array<{ label: string; value: number }> = [
+  const operationalCounts: { label: string; value: number }[] = [
     { label: 'Habitaciones configuradas', value: headline.configured_room_types ?? 0 },
     { label: 'Habitaciones físicas', value: headline.physical_rooms ?? 0 },
     { label: 'Días de inventario', value: headline.inventory_days ?? 0 },

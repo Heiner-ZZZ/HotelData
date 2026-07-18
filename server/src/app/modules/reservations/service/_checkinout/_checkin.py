@@ -10,7 +10,6 @@ from typing import Any
 from src.database.connection import get_database
 from .._helpers import utc_now
 from src.app.core.timezone import local_today
-from src.app.modules.reservations.notifications import notify_guest_status_change
 from src.app.modules.reservations.service._checkinout._helpers import (
     _generate_folio,
     _notify_guest_check_in,

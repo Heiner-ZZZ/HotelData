@@ -7,5 +7,5 @@ import { Component, input } from '@angular/core';
 })
 export class PropertyFactsPanelComponent {
   readonly title = input.required<string>();
-  readonly facts = input<Array<{ label: string; value: string }>>([]);
+  readonly facts = input<{ label: string; value: string }[]>([]);
 }

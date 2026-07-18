@@ -3,11 +3,11 @@ export interface RatesDto {
   hotel_label: string;
   manual_override?: boolean;
   profile_badge?: string;
-  room_types: Array<{
+  room_types: {
     room_type_id: string;
     name: string;
-  }>;
-  rate_plans: Array<{
+  }[];
+  rate_plans: {
     rate_plan_id: string;
     prop_id: number;
     name: string;
@@ -20,8 +20,8 @@ export interface RatesDto {
     eligible_roles?: string[];
     included_amenities?: string[];
     updated_at_label?: string;
-  }>;
-  calendar: Array<{
+  }[];
+  calendar: {
     date: string;
     rate_plan_id: string;
     plan_name: string;
@@ -29,8 +29,8 @@ export interface RatesDto {
     rate_amount_label: string;
     min_stay_nights: number;
     is_closed: boolean;
-  }>;
-  rate_rules?: Array<{
+  }[];
+  rate_rules?: {
     rule_id?: string;
     rule_name?: string;
     rate_plan_id?: string;
@@ -40,8 +40,8 @@ export interface RatesDto {
     end_date?: string;
     price_override?: number;
     range_label?: string;
-  }>;
-  promotions?: Array<{
+  }[];
+  promotions?: {
     campaign_id: string;
     name: string;
     description?: string;
@@ -49,25 +49,25 @@ export interface RatesDto {
     start_date?: string;
     end_date?: string;
     is_active: boolean;
-  }>;
-  coupon_codes?: Array<{
+  }[];
+  coupon_codes?: {
     coupon_code: string;
     campaign_id: string;
     is_active: boolean;
-  }>;
+  }[];
 }
 
 export interface RatesOptionsDto {
-  properties: Array<{
+  properties: {
     prop_id: number;
     display_name: string;
-  }>;
+  }[];
   total?: number;
   page?: number;
   page_size?: number;
   has_next?: boolean;
-  rate_plans?: Array<{
+  rate_plans?: {
     rate_plan_id: string;
     name: string;
-  }>;
+  }[];
 }

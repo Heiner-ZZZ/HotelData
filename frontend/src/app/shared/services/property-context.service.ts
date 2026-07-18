@@ -10,7 +10,7 @@ import { AuthService } from '../../core/auth/auth.service';
 
 export interface PropertyContextDto {
   mode: string;
-  assigned_properties: Array<{ prop_id: number; label: string }>;
+  assigned_properties: { prop_id: number; label: string }[];
   default_prop_id: number;
 }
 
@@ -40,7 +40,7 @@ export class PropertyContextService {
   /** The property access mode for the current user. */
   readonly mode = signal<'all' | 'single' | 'multi' | 'none'>('all');
   /** Assigned properties (only populated in single/multi mode). */
-  readonly assignedProperties = signal<Array<{ propId: number; label: string }>>([]);
+  readonly assignedProperties = signal<{ propId: number; label: string }[]>([]);
   /** True when the context has been loaded from the backend. */
   readonly ready = signal(false);
 
@@ -129,7 +129,7 @@ export class PropertyContextService {
           console.warn('[PropertyContext] Error cargando contexto, usando fallback all:', status);
           return of({
             mode: 'all' as const,
-            assignedProperties: [] as Array<{ propId: number; label: string }>,
+            assignedProperties: [] as { propId: number; label: string }[],
             defaultPropId: 0,
           });
         }),
@@ -154,7 +154,7 @@ export class PropertyContextService {
 
   private applyContext(ctx: {
     mode: 'all' | 'single' | 'multi' | 'none';
-    assignedProperties: Array<{ propId: number; label: string }>;
+    assignedProperties: { propId: number; label: string }[];
     defaultPropId: number;
   }): void {
     this.mode.set(ctx.mode);

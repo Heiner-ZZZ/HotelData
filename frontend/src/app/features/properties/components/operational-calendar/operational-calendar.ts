@@ -12,7 +12,7 @@ export interface OperationalDay {
   availableRooms: number;
   blockedRooms: number;
   roomNumbers: string[];
-  rooms: Array<{
+  rooms: {
     roomTypeId: string;
     roomTypeName: string;
     roomNumbers: string[];
@@ -20,7 +20,7 @@ export interface OperationalDay {
     availableStatus: string;
     blocked: boolean;
     total: number;
-  }>;
+  }[];
 }
 
 export interface DayHeader {
@@ -77,7 +77,7 @@ export class OperationalCalendarComponent {
     if (!d || !ws) return [];
     const start = new Date(ws);
     const today = new Date();
-    const days: Array<{ day: number; date: string; isToday: boolean; data: OperationalDay | undefined }> = [];
+    const days: { day: number; date: string; isToday: boolean; data: OperationalDay | undefined }[] = [];
     for (let i = 0; i < 7; i++) {
       const dt = new Date(start);
       dt.setDate(start.getDate() + i);

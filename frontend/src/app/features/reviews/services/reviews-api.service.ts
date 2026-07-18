@@ -83,7 +83,7 @@ export class ReviewsApiService {
   }
 
   // Get reputation dashboard data
-  getReputationDashboard(propId?: number, days: number = 30) {
+  getReputationDashboard(propId?: number, days = 30) {
     let params = new HttpParams().set('days', String(days));
     if (propId) params = params.set('prop_id', String(propId));
     return this.http.get<any>(

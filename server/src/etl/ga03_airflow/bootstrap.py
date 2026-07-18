@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from config.settings import get_settings
-from src.etl.ga03_audit import json_default, utc_now_iso
+from src.etl.ga03_audit import utc_now_iso
 from src.etl.ga03_airflow.config import PHASE, PIPELINE_PROGRESS_STEPS, paths, pocketbase_config
 from src.etl.ga03_airflow.progress import write_pipeline_progress, write_state
 

@@ -30,7 +30,7 @@ export class GlobalSettingsApiService {
   // ─── Hotels ───────────────────────────────────────────────────────
 
   listHotels(q = '', page = 1, pageSize = 50): Observable<HotelGlobalList> {
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('q', q)
       .set('page', String(page))
       .set('page_size', String(pageSize));

@@ -167,17 +167,17 @@ export interface EditPropertyResponseDto {
     payment_policy?: string;
     house_rules?: string;
   };
-  images: Array<{
+  images: {
     prop_id: number;
     image_url: string;
     title: string;
     source: string;
     created_at_label?: string;
-  }>;
+  }[];
   images_count: number;
   amenities: {
     active_amenities: string[];
-    catalog: Array<{ category: string; items: Array<{ label: string; active: boolean }> }>;
+    catalog: { category: string; items: { label: string; active: boolean }[] }[];
   };
 }
 

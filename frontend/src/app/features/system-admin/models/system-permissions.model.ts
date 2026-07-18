@@ -9,7 +9,7 @@ export interface SystemRolePermissionItem {
   permissionCount: number;
   permissionCodes: string[];
   permissionCodesLabel: string;
-  accessButtons: Array<{ label: string; href: string; icon: string }>;
+  accessButtons: { label: string; href: string; icon: string }[];
 }
 
 export interface SystemPermissionsViewModel {
@@ -27,8 +27,8 @@ export interface RoleDetailModel {
     roleName: string;
     description: string;
     permissionCodes: string[];
-    accessButtons: Array<{ label: string; href: string; icon: string }>;
-    navigationCatalog: Array<{ label: string; href: string; icon: string; visible: boolean }>;
+    accessButtons: { label: string; href: string; icon: string }[];
+    navigationCatalog: { label: string; href: string; icon: string; visible: boolean }[];
   };
   permissions: SystemPermissionItem[];
 }

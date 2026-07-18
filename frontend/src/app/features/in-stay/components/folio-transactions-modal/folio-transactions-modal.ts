@@ -1,4 +1,4 @@
-import { Component, DestroyRef, EventEmitter, inject, Input, Output, signal } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, inject, Input, Output, signal, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ExpensesApiService } from '../../../expenses/services/expenses-api.service';
@@ -28,7 +28,7 @@ const TYPE_ICONS: Record<string, string> = {
   templateUrl: './folio-transactions-modal.html',
   styleUrl: './folio-transactions-modal.scss',
 })
-export class FolioTransactionsModalComponent {
+export class FolioTransactionsModalComponent implements OnInit {
   private readonly api = inject(ExpensesApiService);
   private readonly destroyRef = inject(DestroyRef);
 

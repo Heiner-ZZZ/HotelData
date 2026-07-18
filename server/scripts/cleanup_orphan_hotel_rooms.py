@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
 from typing import Any
 
 from src.database.connection import get_database
@@ -50,12 +49,12 @@ def main():
     args = parser.parse_args()
 
     print(f"{'='*60}")
-    print(f"  Cleanup Orphan Hotel Rooms")
+    print("  Cleanup Orphan Hotel Rooms")
     print(f"  Mode: {'APPLY (will delete)' if args.apply else 'DRY-RUN (no changes)'}")
     if args.prop_id:
         print(f"  Property: {args.prop_id}")
     else:
-        print(f"  Property: ALL")
+        print("  Property: ALL")
     print(f"{'='*60}")
 
     orphans = find_orphan_rooms(args.prop_id)
@@ -79,8 +78,8 @@ def main():
         deleted = delete_orphan_rooms(args.prop_id)
         print(f"\n🗑️  Deleted {deleted} orphan room(s) from hotel_rooms.")
     else:
-        print(f"\n⚠️  Dry-run mode. Run with --apply to actually delete.")
-        print(f"   Example: python scripts/cleanup_orphan_hotel_rooms.py --prop_id 1 --apply")
+        print("\n⚠️  Dry-run mode. Run with --apply to actually delete.")
+        print("   Example: python scripts/cleanup_orphan_hotel_rooms.py --prop_id 1 --apply")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, input, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, input, output, viewChild, AfterViewInit } from '@angular/core';
 import * as L from 'leaflet';
 
 @Component({
@@ -22,7 +22,7 @@ import * as L from 'leaflet';
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LocationPickerComponent {
+export class LocationPickerComponent implements AfterViewInit {
   readonly lat = input<number | null>(null);
   readonly lng = input<number | null>(null);
   readonly locationChange = output<{ latitude: number; longitude: number }>();

@@ -10,7 +10,6 @@ from passlib.context import CryptContext
 from pymongo.database import Database
 from starlette.requests import Request
 
-from src.database.connection import get_database
 
 
 SESSION_COOKIE_NAME = "hoteldata_session"

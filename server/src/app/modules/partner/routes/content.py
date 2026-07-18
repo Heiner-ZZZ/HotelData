@@ -10,10 +10,7 @@ from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.services import (
     add_partner_hotel_image,
     delete_partner_hotel_image,
-    partner_hotel_content,
-    partner_hotel_content_editor,
     partner_hotel_detail,
-    partner_hotel_images,
     reorder_partner_hotel_images,
     save_partner_hotel_content,
 )

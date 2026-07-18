@@ -16,7 +16,7 @@ export class HrApiService {
       .pipe(map(dto => mapHrDashboard(dto)));
   }
 
-  getEmployees(search?: string, department?: string, isActive?: boolean, page: number = 1, propId?: number) {
+  getEmployees(search?: string, department?: string, isActive?: boolean, page = 1, propId?: number) {
     let params = new HttpParams().set('page', String(page));
     if (search) params = params.set('search', search);
     if (department) params = params.set('department', department);

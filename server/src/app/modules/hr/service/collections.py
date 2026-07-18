@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from pymongo import ASCENDING, IndexModel
 
 from src.database.collections import ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.hr.schemas import ModuleStatus
 
 EMPLOYEES_COLLECTION = "employees"
 DEPARTMENTS_COLLECTION = "employee_departments"

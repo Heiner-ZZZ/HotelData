@@ -123,7 +123,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
     return role === 'super_admin' || role === 'admin_sistema';
   });
 
-  readonly notifications = signal<Array<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }>>([]);
+  readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
 
   readonly unreadCount = computed(() => this.notifications().filter(n => n.unread).length);
 

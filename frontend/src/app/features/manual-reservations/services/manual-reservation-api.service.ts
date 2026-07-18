@@ -8,15 +8,15 @@ import type { ManualReservationListItemDto, ManualReservationResultDto } from '.
 import type { HotelOption, ManualReservationInput, ManualReservationListItem, RoomTypeOption } from '../models/manual-reservation.model';
 
 interface AvailabilityOptionsResponse {
-  properties: Array<{ prop_id: number; display_name: string }>;
-  room_types?: Array<{
+  properties: { prop_id: number; display_name: string }[];
+  room_types?: {
     room_type_id: string;
     name: string;
     max_adults: number;
     max_children: number;
     base_capacity: number;
     is_active: boolean;
-  }>;
+  }[];
 }
 
 @Injectable({
@@ -50,8 +50,8 @@ export class ManualReservationApiService {
   }
 
   /** List manual reservations */
-  getManualReservations(page: number = 1) {
-    let params = new HttpParams().set('page', String(page));
+  getManualReservations(page = 1) {
+    const params = new HttpParams().set('page', String(page));
     return this.http
       .get<{ items: ManualReservationListItemDto[]; page: number; total: number; has_next: boolean; has_prev: boolean }>(
         `${this.apiConfig.baseUrl}/management/manual-reservations`,

@@ -32,13 +32,13 @@ export class RatesApiService {
   getAmenityCatalog(propId: number) {
     const params = new HttpParams().set('prop_id', String(propId));
     return this.http
-      .get<{ catalog: Array<{ category: string; items: Array<{ label: string; unit_price: number; active: boolean }> }> }>(
+      .get<{ catalog: { category: string; items: { label: string; unit_price: number; active: boolean }[] }[] }>(
         `${this.apiConfig.baseUrl}/management/amenities/options`,
         { params, withCredentials: true }
       )
       .pipe(map((res) => {
         const groups = res.catalog || [];
-        const flat: Array<{ category: string; label: string; unit_price: number; active: boolean }> = [];
+        const flat: { category: string; label: string; unit_price: number; active: boolean }[] = [];
         for (const group of groups) {
           for (const item of group.items || []) {
             flat.push({ category: group.category, label: item.label, unit_price: item.unit_price, active: item.active });
@@ -309,7 +309,7 @@ export class RatesApiService {
 
   listPropertyPromotions(propId: number) {
     const params = new HttpParams().set('prop_id', String(propId));
-    return this.http.get<{ campaigns: Array<{
+    return this.http.get<{ campaigns: {
       campaign_id: string;
       name: string;
       description?: string;
@@ -322,7 +322,7 @@ export class RatesApiService {
       coupon_available?: number;
       discount_percent_label?: string;
       hotel_label?: string;
-    }>; total: number }>(
+    }[]; total: number }>(
       `${this.apiConfig.baseUrl}/management/promotions`,
       { params, withCredentials: true }
     );

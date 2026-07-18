@@ -312,7 +312,7 @@ def main() -> int:
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
-    print(f"\nSeed completed:")
+    print("\nSeed completed:")
     print(json.dumps(delta, indent=2))
     print(f"Report saved to: {REPORT_PATH}")
     return 0

@@ -7,10 +7,9 @@ from pymongo import UpdateOne
 
 from config.settings import get_settings
 from src.database.connection import get_database
-from src.etl.ta02_airflow_tasks._state import _count_jsonl, _iter_jsonl, _paths, _read_state, _write_state
+from src.etl.ta02_airflow_tasks._state import _count_jsonl, _iter_jsonl, _paths, _write_state
 from src.etl.ta02_dimensions import DIMENSION_KEY_FIELDS
 from src.etl.ta02_load_mongodb import (
-    collection_counts,
     create_ta02_indexes,
     insert_rejected_records,
     upsert_dimensions,

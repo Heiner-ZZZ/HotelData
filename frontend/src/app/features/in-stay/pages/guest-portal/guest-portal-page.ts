@@ -310,7 +310,7 @@ export class GuestPortalPageComponent implements OnInit {
 
   // ── Lost & Found ──
 
-  readonly lostItems = signal<Array<{_id: string; description: string; status: string; location_found: string; reported_by: string; returned_to: string; created_at: string}>>([]);
+  readonly lostItems = signal<{_id: string; description: string; status: string; location_found: string; reported_by: string; returned_to: string; created_at: string}[]>([]);
 
   private loadLostItems(): void {
     if (!this.tokenValue) return;

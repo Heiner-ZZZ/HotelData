@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from src.database.connection import get_database
-from src.etl.ta02_airflow_tasks._state import _count_jsonl, _paths, _read_state, _write_state
+from src.etl.ta02_airflow_tasks._state import _paths, _read_state, _write_state
 from src.etl.ta02_dimensions import DIMENSION_KEY_FIELDS
 from src.etl.ta02_load_mongodb import collection_counts, insert_execution_report, insert_quality_report
 from src.etl.ta02_fact import utc_now_iso

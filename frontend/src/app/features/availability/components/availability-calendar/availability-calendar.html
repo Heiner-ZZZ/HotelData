@@ -170,7 +170,7 @@
                                      (keydown.escape)="onCancelEdit()"
                                      (blur)="onCommitEdit(day.date, rt.name, inlineInput)"
                                      (click)="$event.stopPropagation()"
-                                     autofocus />
+                                     />
                             </div>
                           } @else if (savingCell() === (day.date + '|' + rt.name)) {
                             <span class="cell-val cell-saving">
@@ -237,7 +237,7 @@
                                        (keydown.enter)="onCommitEdit(day.date, rt.name, inlineInput)"
                                        (keydown.escape)="onCancelEdit()"
                                        (blur)="onCommitEdit(day.date, rt.name, inlineInput)"
-                                       autofocus />
+                                       />
                               </div>
                             } @else {
                               <div class="cal-week-room-info">

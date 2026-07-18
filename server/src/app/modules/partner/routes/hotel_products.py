@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services.hotel_products import (
@@ -17,7 +17,6 @@ from src.app.modules.partner.services.hotel_products import (
     list_hotel_products,
     list_platform_earnings,
     mark_commission_paid,
-    record_platform_earnings,
     remove_booking_line_item,
     update_hotel_product,
 )

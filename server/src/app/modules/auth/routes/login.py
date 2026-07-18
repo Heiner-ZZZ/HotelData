@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Body, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from src.app.security.dependencies import require_login
 from src.app.security.rate_limit import limiter
 from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
     get_current_user,
     invalidate_session,
-    invalidate_user_sessions,
     log_user_activity,
 )
 from src.database.connection import get_database
@@ -24,7 +21,6 @@ from src.app.modules.auth.schemas import ModuleStatus
 from src.app.modules.auth.service import module_status
 
 from ._helpers import (
-    REFRESH_TOKEN_TTL_DAYS,
     _auth_payload,
     _check_account_locked,
     _create_refresh_token,

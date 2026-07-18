@@ -62,11 +62,11 @@ export class InStayApiService {
     return this.http.get<PaginatedResponse<ServiceRequest>>('/api/stay/requests', { params });
   }
 
-  updateRequest(requestId: string, status: string, staffResponse: string = ''): Observable<{ ok: boolean }> {
+  updateRequest(requestId: string, status: string, staffResponse = ''): Observable<{ ok: boolean }> {
     return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, { status, staff_response: staffResponse });
   }
 
-  staffCreateRequest(bookingId: string, requestType: string, description: string = ''): Observable<{ ok: boolean; request_id: string }> {
+  staffCreateRequest(bookingId: string, requestType: string, description = ''): Observable<{ ok: boolean; request_id: string }> {
     return this.http.post<{ ok: boolean; request_id: string }>('/api/stay/requests', {
       booking_id: bookingId,
       request_type: requestType,
@@ -151,11 +151,11 @@ export class InStayApiService {
     return this.http.post<Record<string, unknown>>('/api/lost-and-found', data);
   }
 
-  claimLostItem(itemId: string, returnedTo: string = '', notes: string = ''): Observable<Record<string, unknown>> {
+  claimLostItem(itemId: string, returnedTo = '', notes = ''): Observable<Record<string, unknown>> {
     return this.http.post<Record<string, unknown>>(`/api/lost-and-found/${itemId}/claim`, { returned_to: returnedTo, notes });
   }
 
-  disposeLostItem(itemId: string, notes: string = ''): Observable<Record<string, unknown>> {
+  disposeLostItem(itemId: string, notes = ''): Observable<Record<string, unknown>> {
     return this.http.post<Record<string, unknown>>(`/api/lost-and-found/${itemId}/dispose`, { notes });
   }
 

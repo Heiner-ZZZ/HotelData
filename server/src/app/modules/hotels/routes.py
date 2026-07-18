@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Request, status as http_status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, HTTPException, Query, status as http_status
 
 from src.app.modules.hotels.schemas import ModuleStatus
 from src.app.modules.hotels.service import (

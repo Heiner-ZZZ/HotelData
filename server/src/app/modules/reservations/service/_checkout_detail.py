@@ -15,7 +15,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bson import ObjectId
 
 from src.database.connection import get_database
 from datetime import datetime

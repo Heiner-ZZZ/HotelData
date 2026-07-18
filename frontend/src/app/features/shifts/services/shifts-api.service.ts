@@ -71,7 +71,7 @@ export class ShiftsApiService {
   }
 
   /** Open a new shift */
-  openShift(propId: number, shiftType: string, employee: string, cashInitial: number = 0) {
+  openShift(propId: number, shiftType: string, employee: string, cashInitial = 0) {
     return this.http.post<{ shift: ShiftInfo; message: string }>(
       '/api/reception/shifts/open',
       { prop_id: propId, shift_type: shiftType, employee, cash_initial: cashInitial },
@@ -97,7 +97,7 @@ export class ShiftsApiService {
   }
 
   /** List shifts */
-  listShifts(propId?: number, status?: string, limit: number = 50) {
+  listShifts(propId?: number, status?: string, limit = 50) {
     let params = new HttpParams();
     if (propId) params = params.set('prop_id', String(propId));
     if (status) params = params.set('status', status);

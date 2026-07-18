@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import random
 from datetime import timedelta
-from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from pymongo.errors import DuplicateKeyError

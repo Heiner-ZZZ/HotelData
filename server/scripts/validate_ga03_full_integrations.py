@@ -8,7 +8,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -350,7 +349,7 @@ def run_validation() -> dict[str, Any]:
 
             # Client / traveler
             client_routes = [
-                f"/hotels/search",
+                "/hotels/search",
                 f"/hotels/{prop_id}",
                 f"/hotels/compare?prop_id={prop_id}&prop_id={compare_prop_id}",
             ]

@@ -9,7 +9,6 @@ from typing import Any
 
 import requests
 
-from src.etl.ga03_airflow.config import pocketbase_config
 from src.etl.ta02_dimensions import DIMENSION_KEY_FIELDS
 
 

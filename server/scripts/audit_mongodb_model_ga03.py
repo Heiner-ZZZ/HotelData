@@ -446,7 +446,7 @@ def build_markdown(report: dict[str, Any]) -> str:
     lines.append(f"- Generado: `{report['generated_at']}`")
     lines.append(f"- Base auditada: `{report['database']}`")
     lines.append(f"- URI objetivo: `{report['mongo_uri']}`")
-    lines.append(f"- Modo: `solo lectura`")
+    lines.append("- Modo: `solo lectura`")
     lines.append("")
     lines.append("## Resumen ejecutivo")
     lines.append("")

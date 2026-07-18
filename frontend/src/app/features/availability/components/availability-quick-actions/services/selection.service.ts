@@ -118,7 +118,7 @@ export class SelectionService {
     const vm = this.state.pageData();
     if (!propId || !vm) return;
 
-    const cells: Array<{ date: string; roomTypeName: string; roomTypeId: string; totalRooms: number }> = [];
+    const cells: { date: string; roomTypeName: string; roomTypeId: string; totalRooms: number }[] = [];
     for (const key of this.state.selectedCells()) {
       const [date, roomTypeName] = key.split('|');
       const invItem = vm.inventoryItems.find((i) => i.date === date && i.roomTypeName === roomTypeName);

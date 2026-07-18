@@ -9,7 +9,6 @@ import requests
 from config.settings import get_settings
 from src.etl.ta02_airflow_tasks._state import (
     _auth_headers,
-    _iter_jsonl,
     _json_default,
     _paths,
     _pocketbase_config,

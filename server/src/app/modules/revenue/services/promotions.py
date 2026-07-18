@@ -14,7 +14,6 @@ from src.app.modules.revenue.services.common import (
     _money,
     _now,
     _safe_bool,
-    _safe_float,
     _safe_int,
     _slugify,
 )

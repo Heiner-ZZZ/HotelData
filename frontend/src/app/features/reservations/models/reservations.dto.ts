@@ -47,10 +47,10 @@ export interface ReservationHotelContextDto {
 }
 
 export interface ReservationOptionsDto {
-  hotel_options: Array<{
+  hotel_options: {
     prop_id: number;
     label: string;
-  }>;
+  }[];
 }
 
 export interface ReservationCreateDto {
@@ -93,8 +93,8 @@ export interface ReservationPreviewDto {
     base_nightly_rate: number | null;
     nights: number;
     base_total: number | null;
-    included_amenities: Array<{ label: string; unit_price: number }>;
-    selected_extras: Array<{ label: string; unit_price: number }>;
+    included_amenities: { label: string; unit_price: number }[];
+    selected_extras: { label: string; unit_price: number }[];
     amenity_total: number;
     rate_plan_name: string | null;
     subtotal: number | null;
@@ -166,12 +166,12 @@ export interface ReservationDetailDto {
     guest_phone: string;
     cedula?: string | null;
   } | null;
-  history: Array<{
+  history: {
     status: string;
     changed_at: string;
     reason: string;
     changed_by: string;
-  }>;
+  }[];
   manual: {
     manual_reservation_id: string;
   } | null;
@@ -189,21 +189,21 @@ export interface ReservationDetailDto {
   room_type: RoomTypeInfoDto | null;
   price_breakdown: PriceBreakdownDto | null;
   cancellation_policy: string | null;
-  assigned_rooms?: Array<{
+  assigned_rooms?: {
     hotel_room_id: string;
     room_number: string;
     room_label: string;
     floor: string;
     room_status: string;
-  }>;
-  additional_charges?: Array<{
+  }[];
+  additional_charges?: {
     concept: string;
     amount: number;
     quantity: number;
     total: number;
     note: string;
     created_at: string;
-  }>;
+  }[];
   amenities_count?: number;
   amenities_total?: number;
   can_cancel: boolean;

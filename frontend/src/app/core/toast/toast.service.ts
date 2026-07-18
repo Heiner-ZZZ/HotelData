@@ -11,11 +11,11 @@ const TOAST_DURATION_MS = 3500;
 
 export type ToastType = 'error' | 'warning' | 'info' | 'success' | 'dark';
 
-type ToastPalette = {
+interface ToastPalette {
   bg: string;
   icon: string;
   label: string;
-};
+}
 
 const PALETTES: Record<ToastType, ToastPalette> = {
   error:   { bg: '#dc3545', icon: '✕',  label: 'Error' },

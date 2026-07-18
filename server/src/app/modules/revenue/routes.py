@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Form, HTTPException, Query, Request, status as http_status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, Body, HTTPException, Query, status as http_status
 
 from src.app.modules.revenue.schemas import ModuleStatus
 from src.app.modules.revenue.services import (
-    conversion_overview,
     create_promotion_campaign,
     create_rate_plan,
     get_rate_plan,
     hotel_rates_overview,
     list_property_campaigns,
     module_status,
-    promotions_management_overview,
-    promotions_overview,
-    rate_plans_overview,
-    reservations_overview,
-    revenue_overview,
     save_hotel_rate,
     toggle_promotion_campaign,
     update_promotion_campaign,
-    visitor_markets_overview,
 )
 
 

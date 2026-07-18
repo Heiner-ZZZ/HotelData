@@ -13,21 +13,21 @@ export interface HotelDetailViewModel {
   conversionRate: number;
   clickRate: number;
   sourceCollection: string;
-  basicFacts: Array<{ label: string; value: string }>;
-  topDestinations: Array<{ label: string; events: number; avgPriceLabel: string }>;
-  topVisitorCountries: Array<{ id: number; label: string; events: number; reservations: number }>;
-  topSites: Array<{ id: number; label: string; events: number; clicks: number; reservations: number }>;
-  hotelRates: Array<{ date: string; plan: string; amountLabel: string; minStayLabel: string }>;
-  hotelRooms: Array<{
+  basicFacts: { label: string; value: string }[];
+  topDestinations: { label: string; events: number; avgPriceLabel: string }[];
+  topVisitorCountries: { id: number; label: string; events: number; reservations: number }[];
+  topSites: { id: number; label: string; events: number; clicks: number; reservations: number }[];
+  hotelRates: { date: string; plan: string; amountLabel: string; minStayLabel: string }[];
+  hotelRooms: {
     hotelRoomId: string;
     roomNumber: string;
     roomLabel: string;
     roomTypeId: string;
     floor: string;
     isActive: boolean;
-  }>;
-  roomTypes: Array<{ id: string; name: string; capacityLabel: string; statusLabel: string; description: string; imageUrl: string; features: string[] }>;
-  policies: Array<{ label: string; value: string }>;
+  }[];
+  roomTypes: { id: string; name: string; capacityLabel: string; statusLabel: string; description: string; imageUrl: string; features: string[] }[];
+  policies: { label: string; value: string }[];
   cancellationPolicy: string;
   galleryImages: string[];
   description: string;
@@ -47,12 +47,12 @@ export interface HotelDetailViewModel {
   latitude: number;
   longitude: number;
   reviewCount: number;
-  reviews: Array<{
+  reviews: {
     reviewerName: string;
     score: number;
     text: string;
     date: string;
-  }>;
+  }[];
 }
 
 export interface SimilarHotel {

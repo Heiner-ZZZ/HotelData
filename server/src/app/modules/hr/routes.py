@@ -12,7 +12,6 @@ from src.app.modules.hr.schemas import (
     DepartmentCreate,
     EmployeeCreate,
     EmployeePortalResponse,
-    EmployeeResponse,
     EmployeeShiftCheckIn,
     EmployeeShiftCheckOut,
     EmployeeUpdate,
@@ -20,7 +19,6 @@ from src.app.modules.hr.schemas import (
 )
 from src.app.modules.hr.service.collections import (
     DEPARTMENTS_COLLECTION,
-    DOCUMENTS_COLLECTION,
     EMPLOYEES_COLLECTION,
     SHIFTS_COLLECTION,
     ensure_hr_collections,

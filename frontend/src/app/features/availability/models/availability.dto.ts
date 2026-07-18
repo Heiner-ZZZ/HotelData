@@ -10,13 +10,13 @@ export interface AvailabilityDto {
     min_rate_label?: string;
     source_collection: string;
   };
-  room_types: Array<{
+  room_types: {
     room_type_id: string;
     name: string;
     capacity_label: string;
     is_active: boolean;
-  }>;
-  inventory_items: Array<{
+  }[];
+  inventory_items: {
     date: string;
     room_type_id: string;
     room_type_name: string;
@@ -25,8 +25,8 @@ export interface AvailabilityDto {
     blocked_rooms: number;
     occupancy_label: string;
     occupancy_pct?: number;
-  }>;
-  blackout_items: Array<{
+  }[];
+  blackout_items: {
     blackout_id?: string;
     room_type_id: string;
     start_date: string;
@@ -35,8 +35,8 @@ export interface AvailabilityDto {
     blocked_rooms: number;
     reason: string;
     room_numbers?: string[];
-  }>;
-  availability_blocks?: Array<{
+  }[];
+  availability_blocks?: {
     block_id?: string;
     room_type_id: string;
     start_date: string;
@@ -45,7 +45,7 @@ export interface AvailabilityDto {
     blocked_rooms: number;
     reason: string;
     room_numbers?: string[];
-  }>;
+  }[];
 }
 
 export interface AvailabilitySaveInventoryDto {
@@ -67,18 +67,18 @@ export interface AvailabilitySaveBlackoutDto {
 }
 
 export interface ManagementPropertiesDto {
-  properties: Array<{
+  properties: {
     prop_id: number;
     display_name: string;
-  }>;
+  }[];
   total: number;
   page: number;
   page_size: number;
   has_next: boolean;
-  room_types?: Array<{
+  room_types?: {
     room_type_id: string;
     name: string;
     capacity_label: string;
     is_active: boolean;
-  }>;
+  }[];
 }

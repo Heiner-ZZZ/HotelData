@@ -177,7 +177,7 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
                 html = base_layout(
                     "Correo electronico actualizado",
                     body,
-                    logo_url=settings.app_base_url,
+                    logo_url=get_settings().app_base_url,
                 )
                 send_email(old_email, "Tu correo fue cambiado — HotelData", html)
             except Exception:

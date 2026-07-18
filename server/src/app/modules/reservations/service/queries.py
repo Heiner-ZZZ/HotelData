@@ -285,7 +285,6 @@ def _get_cancellation_policy(db: Any, prop_id: int) -> str | None:
 
 
 def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
-    from bson import ObjectId
 
     db = get_database()
 

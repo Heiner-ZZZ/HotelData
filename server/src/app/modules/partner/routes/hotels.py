@@ -4,7 +4,6 @@ from fastapi import Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from src.app.modules.partner.routes import api_router, legacy_admin_api_router, web_router
-from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     list_hotel_changes,
     get_change_detail,

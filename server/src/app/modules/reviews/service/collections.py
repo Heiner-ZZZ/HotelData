@@ -1,8 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
 from src.database.collections import ensure_collection
+
+if TYPE_CHECKING:
+    from src.app.modules.reviews.schemas import ModuleStatus
 
 COLLECTION = "reviews"
 FACT_COLLECTION = "fact_reviews"

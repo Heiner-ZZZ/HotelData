@@ -36,7 +36,7 @@ export class RateMonthlyCalendarComponent {
   /** Display mode: 'month' (full month) or 'week' (7 days) */
   readonly displayMode = input<'month' | 'week'>('week');
   /** Events per date — shown as colored indicators on cells */
-  readonly events = input<Array<{ date: string; type: string; label: string; color: string }>>([]);
+  readonly events = input<{ date: string; type: string; label: string; color: string }[]>([]);
 
   /** Emit when month changes */
   readonly monthChange = output<{ month: number; year: number }>();
@@ -123,7 +123,7 @@ export class RateMonthlyCalendarComponent {
     return row.days.find((d) => d.date === dateStr);
   }
 
-  getEventsForDate(dateStr: string): Array<{ type: string; label: string; color: string }> {
+  getEventsForDate(dateStr: string): { type: string; label: string; color: string }[] {
     return this.events().filter((e) => e.date === dateStr);
   }
 
@@ -146,7 +146,7 @@ export class RateMonthlyCalendarComponent {
   readonly weekDayLabels = computed(() => {
     const start = this.weekStart();
     const today = new Date();
-    const labels: Array<{ name: string; num: number; isToday: boolean }> = [];
+    const labels: { name: string; num: number; isToday: boolean }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
@@ -173,20 +173,20 @@ export class RateMonthlyCalendarComponent {
   });
 
   /** Week view: build 7 daily cells for a room type row (combining rate data + events). */
-  weekDays(row: RoomTypeCalendarRow): Array<{
+  weekDays(row: RoomTypeCalendarRow): {
     date: string;
     rate: CalendarDayRate | undefined;
-    events: Array<{ type: string; label: string; color: string }>;
+    events: { type: string; label: string; color: string }[];
     isToday: boolean;
-  }> {
+  }[] {
     const start = this.weekStart();
     const today = new Date();
-    const result: Array<{
+    const result: {
       date: string;
       rate: CalendarDayRate | undefined;
-      events: Array<{ type: string; label: string; color: string }>;
+      events: { type: string; label: string; color: string }[];
       isToday: boolean;
-    }> = [];
+    }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);

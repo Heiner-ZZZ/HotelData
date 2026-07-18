@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Body, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from src.app.modules.reservations.service._checkinout import complete_check_in
 from src.database.connection import get_database

@@ -3,28 +3,28 @@ export interface ManagementReportsDto {
   total_events: number;
   reservations_detected: number;
   gross_revenue: number;
-  top_hotels_by_revenue: Array<{
+  top_hotels_by_revenue: {
     prop_id: number;
     display_name: string;
     manual_override: boolean;
     profile_badge: string;
     gross_revenue: number;
     events: number;
-  }>;
-  top_destinations: Array<{
+  }[];
+  top_destinations: {
     srch_destination_id: number;
     label: string;
     events: number;
     gross_revenue: number;
-  }>;
-  top_visitor_countries: Array<{
+  }[];
+  top_visitor_countries: {
     visitor_location_country_id: number;
     label: string;
     events: number;
     reservations: number;
-  }>;
-  operational_counts: Array<{
+  }[];
+  operational_counts: {
     label: string;
     value: number;
-  }>;
+  }[];
 }

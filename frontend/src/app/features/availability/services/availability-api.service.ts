@@ -21,7 +21,7 @@ export class AvailabilityApiService {
   private readonly apiConfig = inject(API_CONFIG);
 
   getAvailability(propId: number, days = 90) {
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('prop_id', String(propId))
       .set('days', String(days));
     return this.http
@@ -33,7 +33,7 @@ export class AvailabilityApiService {
   }
 
   getPropertyOptions(q = '', page = 1, pageSize = 10) {
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('q', q)
       .set('page', String(page))
       .set('page_size', String(pageSize));
@@ -72,7 +72,7 @@ export class AvailabilityApiService {
     });
   }  /** Fetch all hotel rooms for a property (for calendar room-number display). */
   getAllHotelRooms(propId: number) {
-    return this.http.get<{ hotel_rooms: Array<{
+    return this.http.get<{ hotel_rooms: {
       hotel_room_id: string;
       room_number?: string;
       room_label: string;
@@ -80,7 +80,7 @@ export class AvailabilityApiService {
       room_type_name?: string;
       floor?: string;
       is_active: boolean;
-    }> }>(
+    }[] }>(
       `${this.apiConfig.baseUrl}/management/rooms`,
       {
         params: { prop_id: String(propId) },
@@ -105,7 +105,7 @@ export class AvailabilityApiService {
 
   /** Fetch individual hotel rooms for a room type (multi-select support) */
   getHotelRooms(propId: number, roomTypeId: string) {
-    return this.http.get<{ items: Array<{ hotel_room_id: string; room_number: string; room_label: string; floor: string; is_active: boolean }>; total: number }>(
+    return this.http.get<{ items: { hotel_room_id: string; room_number: string; room_label: string; floor: string; is_active: boolean }[]; total: number }>(
       `${this.apiConfig.baseUrl}/management/availability/hotel-rooms`,
       { params: { prop_id: String(propId), room_type_id: roomTypeId }, withCredentials: true }
     );

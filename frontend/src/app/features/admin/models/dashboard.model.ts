@@ -5,10 +5,10 @@ export interface DashboardViewModel {
     status: string;
     executedAt: string;
   } | null;
-  collectionCounts: Array<{ label: string; value: number }>;
-  operationalCounts: Array<{ label: string; value: number }>;
-  qualitySummary: Array<{ label: string; value: string }>;
-  occupancySummary: Array<{ label: string; value: string; icon?: string }>;
+  collectionCounts: { label: string; value: number }[];
+  operationalCounts: { label: string; value: number }[];
+  qualitySummary: { label: string; value: string }[];
+  occupancySummary: { label: string; value: string; icon?: string }[];
 }
 
 export interface DashboardKpi {

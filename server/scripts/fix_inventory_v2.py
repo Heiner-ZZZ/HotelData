@@ -72,7 +72,7 @@ for rtid in inv_types:
             )
             filled_name += result2.modified_count
 
-print(f"\n=== Summary ===")
+print("\n=== Summary ===")
 print(f"  Updated total_rooms: {updated} records")
 print(f"  Deleted (virtual types): {removed} records")
 print(f"  Filled missing room_type_name: {filled_name} records")

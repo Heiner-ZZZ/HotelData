@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from datetime import datetime, timezone
 
 from bson import ObjectId

@@ -37,7 +37,7 @@ export class PropertiesApiService {
       .pipe(map((dto) => mapPropertyDetailResponse(dto)));
   }
 
-  getDashboard(query: string = '', page: number = 1) {
+  getDashboard(query = '', page = 1) {
     let params = new HttpParams().set('page', page);
     if (query.trim()) {
       params = params.set('q', query.trim());
@@ -93,7 +93,7 @@ export class PropertiesApiService {
     );
   }
 
-  saveContent(propId: number, description: string, highlights: string = '') {
+  saveContent(propId: number, description: string, highlights = '') {
     return this.http.put(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/content`,
       { description, highlights },
@@ -136,7 +136,7 @@ export class PropertiesApiService {
   }
 
   reorderImages(propId: number, imageOrder: string[]) {
-    return this.http.put<{ images: Array<{ image_url: string; title: string }>; primary_image: string | null }>(
+    return this.http.put<{ images: { image_url: string; title: string }[]; primary_image: string | null }>(
       `${this.apiConfig.baseUrl}/management/properties/${propId}/images/reorder`,
       { image_order: imageOrder },
       { withCredentials: true }

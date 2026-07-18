@@ -6,7 +6,7 @@ import { API_CONFIG } from '../../core/api/api.config';
 import type { PropertyOption, PropertyOptionsPage } from '../models/property-option.model';
 
 interface PropertiesOptionsDto {
-  properties: Array<{ prop_id: number; display_name: string }>;
+  properties: { prop_id: number; display_name: string }[];
   total: number;
   page: number;
   page_size: number;

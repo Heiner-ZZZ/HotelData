@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
@@ -11,6 +10,7 @@ from src.app.security.dependencies import require_login
 from src.app.security.session import invalidate_user_sessions, log_user_activity, verify_password
 from src.app.security.session import password_context
 from src.database.connection import get_database
+from config.settings import get_settings as _app_settings
 
 from .schemas import PasswordChange, SettingsUpdate
 
@@ -151,16 +151,16 @@ def change_password(request: Request, payload: PasswordChange = Body(...)):
         if email:
             from src.app.email.templates import base_layout
             body = (
-                f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
-                f'Tu contrasena fue cambiada exitosamente.</p>\n'
-                f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
-                f'Si no realizaste este cambio, contacta al soporte de inmediato.'
-                f'</p>'
+                '<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+                'Tu contrasena fue cambiada exitosamente.</p>\n'
+                '<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+                'Si no realizaste este cambio, contacta al soporte de inmediato.'
+                '</p>'
             )
             html = base_layout(
                 "Contrasena actualizada",
                 body,
-                logo_url=settings.app_base_url,
+                logo_url=_app_settings().app_base_url,
             )
             send_email(email, "Tu contrasena fue cambiada — HotelData", html)
     except Exception:

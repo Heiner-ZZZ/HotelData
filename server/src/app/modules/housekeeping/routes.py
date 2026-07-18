@@ -648,7 +648,7 @@ def room_status_transitions_api(
         entity_type="housekeeping_room_status",
         entity_id="transitions",
         action="read",
-        summary=f"Consulta de transiciones de estado válidas",
+        summary="Consulta de transiciones de estado válidas",
         changed_by=current_user.get("username", "system"),
         metadata={"current_status": current_status, "url": str(request.url)},
     )

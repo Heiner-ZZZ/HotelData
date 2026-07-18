@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import Body, HTTPException, Query, status
+from fastapi import Body, Query
 
 from fastapi import Depends
 

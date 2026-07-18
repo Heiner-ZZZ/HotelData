@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 
 from src.database.connection import get_database
 
@@ -70,7 +69,7 @@ def validate_coupon_code(coupon_code: str, prop_id: int) -> tuple[str | None, in
         if campaign:
             campaign_prop = campaign.get("prop_id")
             if campaign_prop and int(campaign_prop) != prop_id:
-                return f"Este código no aplica para este hotel.", None
+                return "Este código no aplica para este hotel.", None
 
     discount_percent = coupon.get("discount_percent", 0)
     if not discount_percent or discount_percent <= 0:

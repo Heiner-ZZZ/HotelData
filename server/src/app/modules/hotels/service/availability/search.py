@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from src.app.modules.hotels.service.lookups import (
@@ -19,7 +19,6 @@ from .helpers import (
     _hotel_display_name,
     _destination_display_name,
     _matching_room_types,
-    _hotel_image_url,
 )
 
 

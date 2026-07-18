@@ -5,7 +5,7 @@ from typing import Any
 import pandas as pd
 
 from src.etl.ta02_airflow_tasks._state import _paths, _read_state, _write_state, _write_jsonl
-from src.etl.ta02_dimensions import DIMENSION_KEY_FIELDS, build_ta02_dimensions
+from src.etl.ta02_dimensions import build_ta02_dimensions
 from src.etl.ta02_fact import REQUIRED_FACT_COLUMNS, transform_fact_hotel_reservations
 
 

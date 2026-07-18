@@ -4,7 +4,6 @@ from typing import Any
 
 from src.app.modules.partner.services._common import (
     _resolve_country_label,
-    _resolve_country_name,
     active_fact_collection,
     destination_display_name,
     hotel_display_name,
@@ -17,7 +16,7 @@ from src.app.modules.partner.services.properties.metadata import (
     profile_badge,
 )
 from src.app.modules.partner.services.properties.performance import performance_for_prop
-from src.cache.cache_service import get_cache, set_cache, delete_cache
+from src.cache.cache_service import get_cache, set_cache
 from src.app.security.hotel_filter import user_can_access_hotel
 from src.database.connection import get_database
 

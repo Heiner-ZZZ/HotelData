@@ -12,7 +12,7 @@ export interface RoomsDto {
     source_collection: string;
   };
   /** Feature item from the API: either a string (legacy) or an object with label & unit_price. */
-  room_types: Array<{
+  room_types: {
     room_type_id: string;
     name: string;
     description: string;
@@ -21,14 +21,14 @@ export interface RoomsDto {
     room_number?: string;
     floor?: string;
     image_url?: string;
-    features?: string[] | Array<{ label: string; unit_price: number }>;
+    features?: string[] | { label: string; unit_price: number }[];
     base_rate?: number;
     view?: string;
     smoking?: boolean;
     accessible?: boolean;
     is_roh?: boolean;
-  }>;
-  hotel_rooms?: Array<{
+  }[];
+  hotel_rooms?: {
     hotel_room_id: string;
     room_type_id: string;
     room_type_name?: string;
@@ -40,16 +40,16 @@ export interface RoomsDto {
     smoking?: boolean;
     accessible?: boolean;
     is_roh?: boolean;
-  }>;
+  }[];
   room_type_count: number;
   hotel_room_count?: number;
 }
 
 export interface RoomsOptionsDto {
-  properties: Array<{
+  properties: {
     prop_id: number;
     display_name: string;
-  }>;
+  }[];
 }
 
 export interface FeatureCatalogItemDto {
@@ -61,10 +61,10 @@ export interface FeatureCatalogItemDto {
 }
 
 export interface FeatureCatalogDto {
-  features: Array<{
+  features: {
     category: string;
     items: FeatureCatalogItemDto[];
-  }>;
+  }[];
 }
 
 export interface RoomCreateDto {

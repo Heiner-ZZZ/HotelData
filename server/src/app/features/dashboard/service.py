@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.features.collections.service import collection_counts
-from src.app.features.quality.service import quality_summary
 from src.database.connection import get_database
 
 

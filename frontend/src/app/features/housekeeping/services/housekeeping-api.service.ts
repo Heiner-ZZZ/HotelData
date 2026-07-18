@@ -305,7 +305,7 @@ export class HousekeepingApiService {
   getUpcomingEvents(propId?: number) {
     let params = new HttpParams();
     if (propId) params = params.set('prop_id', String(propId));
-    return this.http.get<Array<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }>>(
+    return this.http.get<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }[]>(
       '/housekeeping/upcoming-events', { params }
     );
   }

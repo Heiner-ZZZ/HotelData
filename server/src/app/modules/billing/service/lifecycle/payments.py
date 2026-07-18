@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
 
 from bson import ObjectId
 from pymongo import ReturnDocument
@@ -12,7 +11,6 @@ from src.database.connection import get_database
 from src.app.core.state_machine import payment_sm
 from src.app.modules.billing.schemas import PaymentCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
-    _enrich_invoice,
     _enrich_payment,
     _find_booking,
     _now,

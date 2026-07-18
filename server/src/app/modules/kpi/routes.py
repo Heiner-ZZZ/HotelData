@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any
 
 from fastapi import APIRouter, Query
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING
 
 from src.app.core.timezone import local_now, local_today
 

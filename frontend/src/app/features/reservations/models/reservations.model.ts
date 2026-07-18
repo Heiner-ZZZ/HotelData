@@ -221,29 +221,29 @@ export interface ReservationDetailViewModel {
   cancellationFree?: boolean;
   cancellationPenaltyPercent?: number;
   cancellationPenaltyAmount?: number;
-  additionalCharges: Array<{
+  additionalCharges: {
     concept: string;
     amount: number;
     quantity: number;
     total: number;
     note: string;
     createdAt: string;
-  }>;
-  assignedRooms: Array<{
+  }[];
+  assignedRooms: {
     hotelRoomId: string;
     roomNumber: string;
     roomLabel: string;
     floor: string;
     roomStatus: string;
-  }>;
+  }[];
   totalCharges: number;
   amenitiesCount: number;
   amenitiesTotal: number;
-  history: Array<{
+  history: {
     status: string;
     changedAt: string;
     reason: string;
     changedBy: string;
-  }>;
+  }[];
   stayStatus?: string;
 }

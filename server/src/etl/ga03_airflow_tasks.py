@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from src.etl.ga03_airflow import *  # noqa: F401, F403
 

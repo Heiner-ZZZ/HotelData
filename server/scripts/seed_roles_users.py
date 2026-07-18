@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 from passlib.context import CryptContext
 from pymongo import MongoClient
@@ -72,7 +70,7 @@ def seed(uri: str = "mongodb://localhost:27018", db_name: str = "hoteldata_hub")
                 {"$set": {"role_name": role_name, "permission_code": perm}},
                 upsert=True,
             )
-    print(f"Seeded role-permission mappings")
+    print("Seeded role-permission mappings")
 
     for u in USERS:
         from datetime import datetime, timezone

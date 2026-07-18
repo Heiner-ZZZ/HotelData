@@ -25,7 +25,7 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
   private suggestionPill?: HTMLDivElement;
   private wrapper?: HTMLDivElement;
   private sub?: Subscription;
-  private listeners: Array<{ el: HTMLElement; type: string; fn: EventListener }> = [];
+  private listeners: { el: HTMLElement; type: string; fn: EventListener }[] = [];
 
   ngOnInit() {
     const nativeEl = this.el.nativeElement;

@@ -11,8 +11,6 @@ Design principles:
 
 from __future__ import annotations
 
-from typing import Any
-
 
 # ── Config ──
 
@@ -91,13 +89,13 @@ def cta_button(url: str | None, text: str = "Ver detalle") -> str:
     if not final_url:
         # No real URL available — show muted text instead
         return (
-            f'<table width="100%" cellpadding="0" cellspacing="0">\n'
-            f'  <tr>\n'
-            f'    <td align="center" style="padding:4px 0 0;font-size:12px;color:#9ca3af">\n'
-            f'      Inicia sesion en HotelData para ver los detalles.\n'
-            f'    </td>\n'
-            f'  </tr>\n'
-            f'</table>'
+            '<table width="100%" cellpadding="0" cellspacing="0">\n'
+            '  <tr>\n'
+            '    <td align="center" style="padding:4px 0 0;font-size:12px;color:#9ca3af">\n'
+            '      Inicia sesion en HotelData para ver los detalles.\n'
+            '    </td>\n'
+            '  </tr>\n'
+            '</table>'
         )
     return (
         f'<table width="100%" cellpadding="0" cellspacing="0">\n'
@@ -152,12 +150,12 @@ def base_layout(
     if logo_url and not is_localhost_url(logo_url):
         logoSrc = f"{logo_url.rstrip('/')}/assets/logo-hoteldata.png"
         logo_html = (
-            f'<tr>\n'
-            f'  <td align="center" style="padding:0 0 16px">\n'
+            '<tr>\n'
+            '  <td align="center" style="padding:0 0 16px">\n'
             f'    <img src="{logoSrc}" alt="HotelData Hub" width="160" '
-            f'style="display:block;max-width:160px;height:auto;border:0">\n'
-            f'  </td>\n'
-            f'</tr>'
+            'style="display:block;max-width:160px;height:auto;border:0">\n'
+            '  </td>\n'
+            '</tr>'
         )
 
     return f"""<!DOCTYPE html>

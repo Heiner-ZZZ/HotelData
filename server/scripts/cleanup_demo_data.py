@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -155,7 +154,7 @@ def main() -> int:
                 )
 
     # ── Summary ──
-    print(f"\n=== Resumen ===")
+    print("\n=== Resumen ===")
     print(f"  room_types creados: {total_room_types}")
     print(f"  hotel_rooms creados: {total_hotel_rooms}")
     print(f"  room_status_log total: {db.room_status_log.count_documents({})}")

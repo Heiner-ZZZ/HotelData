@@ -112,7 +112,7 @@ export class KpiChartComponent {
           padding: 8,
           callbacks: {
             label: (ctx) => {
-              let val = ctx.parsed.y ?? ctx.parsed.x ?? 0;
+              const val = ctx.parsed.y ?? ctx.parsed.x ?? 0;
               if (fmt === 'currency') return `$${val.toFixed(2)}`;
               if (fmt === 'number') return val.toLocaleString();
               return String(val);

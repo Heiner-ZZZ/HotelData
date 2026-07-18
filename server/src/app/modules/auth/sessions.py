@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
-from pymongo.database import Database
 
 from config.settings import get_settings
 from src.app.email.service import send_email

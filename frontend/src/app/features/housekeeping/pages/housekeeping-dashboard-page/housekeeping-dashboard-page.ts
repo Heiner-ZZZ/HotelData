@@ -131,7 +131,7 @@ export class HousekeepingDashboardPageComponent {
   }
 
   /** Convert floor status_counts to sorted entries for template display. */
-  _floorCounts(counts: Record<string, number>): Array<[string, number]> {
+  _floorCounts(counts: Record<string, number>): [string, number][] {
     return Object.entries(counts).filter(([, v]) => v > 0);
   }
 

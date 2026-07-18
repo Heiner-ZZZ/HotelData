@@ -97,7 +97,7 @@ export class GeoCatalogApiService {
   }
 
   listVisitorCountries() {
-    return this.http.get<{ items: Array<{ visitor_location_country_id: number; country_display_name: string }> }>(
+    return this.http.get<{ items: { visitor_location_country_id: number; country_display_name: string }[] }>(
       `${this.baseUrl}/visitor-countries`,
       { withCredentials: true }
     );
@@ -112,7 +112,7 @@ export class GeoCatalogApiService {
   }
 
   listVisitorDestinations() {
-    return this.http.get<{ items: Array<{ srch_destination_id: number; destination_display_name: string }> }>(
+    return this.http.get<{ items: { srch_destination_id: number; destination_display_name: string }[] }>(
       `${this.baseUrl}/visitor-destinations`,
       { withCredentials: true }
     );
@@ -127,7 +127,7 @@ export class GeoCatalogApiService {
   }
 
   listVisitorSites() {
-    return this.http.get<{ items: Array<{ site_id: number; site_display_name: string }> }>(
+    return this.http.get<{ items: { site_id: number; site_display_name: string }[] }>(
       `${this.baseUrl}/visitor-sites`,
       { withCredentials: true }
     );
@@ -142,7 +142,7 @@ export class GeoCatalogApiService {
   }
 
   listVisitorHotels() {
-    return this.http.get<{ items: Array<{ prop_id: number; hotel_name: string }> }>(
+    return this.http.get<{ items: { prop_id: number; hotel_name: string }[] }>(
       `${this.baseUrl}/visitor-hotels`,
       { withCredentials: true }
     );
