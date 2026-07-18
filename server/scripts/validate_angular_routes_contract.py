@@ -53,7 +53,7 @@ def main() -> int:
         checks.append({"check": label, "ok": ok, "path": normalize_path(path)})
         return read_text(path) if ok else None
 
-    proxy_text = check_exists("proxy.conf.json exists", proxy_path)
+    check_exists("proxy.conf.json exists", proxy_path)
     package_json_text = check_exists("package.json exists", package_json_path)
     auth_guard_text = check_exists("auth.guard.ts exists", auth_guard_path)
     auth_interceptor_text = check_exists("auth.interceptor.ts exists", auth_interceptor_path)
@@ -63,7 +63,7 @@ def main() -> int:
     reservations_routes_text = check_exists("reservations.routes.ts exists", reservations_routes_path)
     hotel_detail_routes_text = check_exists("hotel-detail.routes.ts exists", hotel_detail_routes_path)
     properties_routes_text = check_exists("properties.routes.ts exists", properties_routes_path)
-    system_routes_text = check_exists("system-admin.routes.ts exists", system_routes_path)
+    check_exists("system-admin.routes.ts exists", system_routes_path)
 
     if package_json_text:
         try:

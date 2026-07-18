@@ -94,7 +94,6 @@ def seed():
             concept = posting.get("concept", "")
             amount = float(posting.get("amount", 0) or 0)
             posted_at = posting.get("posted_at")
-            reference_id = posting.get("reference_id", "")
 
             if amount <= 0 or not posted_at:
                 continue

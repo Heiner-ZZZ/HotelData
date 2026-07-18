@@ -23,10 +23,6 @@ function isAlreadyOnLogin(): boolean {
   return window.location.pathname === '/login';
 }
 
-function isAuthProbe(url: string): boolean {
-  return url === '/api/auth/me' || url === '/api/auth/login';
-}
-
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const router = inject(Router);
   const credentialUrl = isCredentialedUrl(request.url);

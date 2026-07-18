@@ -6,7 +6,12 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'login'
+    redirectTo: 'welcome'
+  },
+  {
+    path: 'welcome',
+    loadComponent: () =>
+      import('./features/welcome/welcome-page').then((m) => m.WelcomePageComponent)
   },
   {
     path: 'login',
@@ -178,6 +183,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'login'
+    redirectTo: 'welcome'
   }
 ];

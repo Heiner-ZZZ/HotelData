@@ -133,6 +133,21 @@ export class AuthService {
       );
   }
 
+  /**
+   * Resolve where an authenticated user should land after entering a public
+   * entry route (login, welcome, future marketing pages).
+   * Priority: explicit user override (saved dashboard) → server-supplied
+   * homeHref → public search fallback. Shared by `LoginPageComponent` and
+   * `WelcomePageComponent` so the redirect behavior stays consistent.
+   */
+  resolveDefaultDestination(defaultHref: string | null): string {
+    try {
+      const saved = localStorage.getItem('hoteldata-default-dashboard');
+      if (saved) return saved;
+    } catch { /* localStorage unavailable */ }
+    return defaultHref || '/search';
+  }
+
   ensureSessionLoaded() {
     if (this.sessionLoadedSignal()) {
       return of(this.authStateSignal());

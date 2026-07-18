@@ -1,7 +1,13 @@
+<a class="back-home" routerLink="/welcome">
+  <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+  Volver al inicio
+</a>
+
 <main class="register-page">
   <section class="register-hero">
-    <p class="register-kicker">HotelData Hub</p>
-    <img class="brand-logo" src="/assets/logo-hoteldata.png?v=2026060202" alt="HotelData">
+    <a routerLink="/welcome" class="brand-mark" aria-label="HotelData, ir al inicio">
+      <span class="brand-text">HotelData</span><span class="brand-dot" aria-hidden="true">.</span>
+    </a>
     <div class="hero-copy">
       @if (!awaitingVerification()) {
         <h2>Crea tu cuenta</h2>

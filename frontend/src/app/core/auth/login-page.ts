@@ -39,7 +39,7 @@ export class LoginPageComponent {
     effect(() => {
       if (this.authService.isAuthenticated() && this.authService.sessionLoaded()) {
         const homeHref = this.authService.authState().homeHref;
-        void this.router.navigateByUrl(this.resolveHomeHref(homeHref));
+        void this.router.navigateByUrl(this.authService.resolveDefaultDestination(homeHref));
       }
     });
   }
@@ -57,7 +57,7 @@ export class LoginPageComponent {
     this.authService.login(id, pw, nextUrl, this.rememberMe()).subscribe({
       next: (state) => {
         this.submitting.set(false);
-        void this.router.navigateByUrl(this.resolveHomeHref(state.homeHref));
+        void this.router.navigateByUrl(this.authService.resolveDefaultDestination(state.homeHref));
       },
       error: (error: unknown) => {
         this.submitting.set(false);
@@ -68,11 +68,6 @@ export class LoginPageComponent {
 
   togglePasswordVisibility(): void {
     this.passwordVisible.update((v) => !v);
-  }
-
-  private resolveHomeHref(defaultHref: string | null): string {
-    const saved = localStorage.getItem('hoteldata-default-dashboard');
-    return saved || defaultHref || '/search';
   }
 
   private resolveErrorMessage(error: unknown): string {

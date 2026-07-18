@@ -203,10 +203,14 @@ def list_invoices(
 ):
     db = get_database()
     query: dict = {}
-    if status_filter: query["status"] = status_filter
-    if category: query["category"] = category
-    if vendor: query["vendor_name"] = {"$regex": vendor, "$options": "i"}
-    if prop_id is not None: query["prop_id"] = prop_id
+    if status_filter:
+        query["status"] = status_filter
+    if category:
+        query["category"] = category
+    if vendor:
+        query["vendor_name"] = {"$regex": vendor, "$options": "i"}
+    if prop_id is not None:
+        query["prop_id"] = prop_id
     total = db[INVOICES_COLLECTION].count_documents(query)
     cursor = db[INVOICES_COLLECTION].find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
     items = [_enrich_invoice(doc) for doc in cursor]
@@ -241,9 +245,12 @@ def get_invoice(
     invoice_id: str = Path(...),
 ):
     db = get_database()
-    try: doc = db[INVOICES_COLLECTION].find_one({"_id": ObjectId(invoice_id)})
-    except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
-    if not doc: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    try:
+        doc = db[INVOICES_COLLECTION].find_one({"_id": ObjectId(invoice_id)})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if not doc:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=(doc.get("prop_id") or 0),
@@ -264,12 +271,16 @@ def update_invoice(
     current_user: dict = Depends(require_login),
 ):
     db = get_database()
-    try: oid = ObjectId(invoice_id)
-    except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    try:
+        oid = ObjectId(invoice_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     before = db[INVOICES_COLLECTION].find_one({"_id": oid})
-    if not before: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if not before:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
-    if not update: raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+    if not update:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     update["updated_at"] = datetime.now(timezone.utc)
     if "amount" in update or "tax_amount" in update:
         amt = update.get("amount", before["amount"])
@@ -303,12 +314,16 @@ def delete_invoice(
     current_user: dict = Depends(require_login),
 ):
     db = get_database()
-    try: oid = ObjectId(invoice_id)
-    except Exception: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    try:
+        oid = ObjectId(invoice_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     before = db[INVOICES_COLLECTION].find_one({"_id": oid})
-    if not before: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if not before:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     result = db[INVOICES_COLLECTION].delete_one({"_id": oid})
-    if result.deleted_count == 0: raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
     diff = {
         "deleted": {"old": before.get("status"), "new": "deleted"},
         "vendor_name": {"old": before.get("vendor_name"), "new": None},
@@ -361,7 +376,8 @@ def list_categories(
 def create_category(payload: ExpenseCategoryCreate = Body(...)):
     db = get_database()
     existing = db[CATEGORIES_COLLECTION].find_one({"name": payload.name})
-    if existing: raise HTTPException(status_code=409, detail="La categoría ya existe")
+    if existing:
+        raise HTTPException(status_code=409, detail="La categoría ya existe")
     doc = {"name": payload.name, "description": payload.description, "budget": payload.budget,
            "spent": 0, "remaining": payload.budget, "created_at": datetime.now(timezone.utc)}
     result = db[CATEGORIES_COLLECTION].insert_one(doc)
@@ -373,7 +389,8 @@ def create_category(payload: ExpenseCategoryCreate = Body(...)):
 def create_budget(payload: BudgetCreate = Body(...)):
     db = get_database()
     existing = db[BUDGET_COLLECTION].find_one({"department": payload.department, "period": payload.period})
-    if existing: raise HTTPException(status_code=409, detail=f"Ya existe un presupuesto para {payload.department} en {payload.period}")
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Ya existe un presupuesto para {payload.department} en {payload.period}")
     doc = {"department": payload.department, "period": payload.period, "amount": payload.amount,
            "spent": 0, "remaining": payload.amount, "description": payload.description,
            "created_at": datetime.now(timezone.utc)}
@@ -386,7 +403,8 @@ def create_budget(payload: BudgetCreate = Body(...)):
 def list_budget(period: str | None = Query(default=None)):
     db = get_database()
     query = {}
-    if period: query["period"] = period
+    if period:
+        query["period"] = period
     cursor = db[BUDGET_COLLECTION].find(query).sort("period", -1)
     return [_enrich_budget(doc) for doc in cursor]
 
@@ -411,11 +429,16 @@ def list_ledger(
     """Paginated ledger with server-side sorting and filtering for AG Grid."""
     db = get_database()
     query: dict = {}
-    if prop_id: query["prop_id"] = prop_id
-    if folio_ref: query["folio_ref"] = folio_ref
-    if account_code: query["account_code"] = account_code
-    if accounting_period: query["accounting_period"] = accounting_period
-    if status_filter: query["status"] = status_filter
+    if prop_id:
+        query["prop_id"] = prop_id
+    if folio_ref:
+        query["folio_ref"] = folio_ref
+    if account_code:
+        query["account_code"] = account_code
+    if accounting_period:
+        query["accounting_period"] = accounting_period
+    if status_filter:
+        query["status"] = status_filter
     if search:
         query["$or"] = [
             {"description": {"$regex": search, "$options": "i"}},
