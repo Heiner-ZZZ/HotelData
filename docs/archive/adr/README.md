@@ -1,6 +1,6 @@
 # ADR Index
 
-Decisiones arquitectónicas del proyecto HotelData Hub. Cada ADR es un
+Decisiones arquitectónicas del proyecto HotelData. Cada ADR es un
 contrato: si la decisión cambia, este archivo o el ADR cambia primero.
 
 | # | Título | Estado | Fecha |

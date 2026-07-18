@@ -1,6 +1,6 @@
 # Empresa
 
-HotelData Hub es una empresa tecnologica dedicada a centralizar, validar, limpiar, consultar y analizar informacion hotelera a gran escala para agencias, operadores turisticos y plataformas digitales.
+HotelData es una empresa tecnologica dedicada a centralizar, validar, limpiar, consultar y analizar informacion hotelera a gran escala para agencias, operadores turisticos y plataformas digitales.
 
 La aplicacion no es de reservas. Su foco es la gestion del catalogo hotelero, la trazabilidad del ETL y la calidad de datos.
 

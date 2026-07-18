@@ -1,4 +1,4 @@
-# Auditoría Arquitectónica — HotelData Hub
+# Auditoría Arquitectónica — HotelData
 
 > **Fecha:** 2026-07-17
 > **Alcance:** Frontend (Angular 22) + Backend (FastAPI + MongoDB)

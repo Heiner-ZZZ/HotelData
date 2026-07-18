@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Preparar HotelData Hub Analytics para nuevas funcionalidades de reservas hoteleras sin migrar de framework, sin crear carpetas separadas `backend/frontend` y sin romper las rutas actuales.
+Preparar HotelData Analytics para nuevas funcionalidades de reservas hoteleras sin migrar de framework, sin crear carpetas separadas `backend/frontend` y sin romper las rutas actuales.
 
 El proyecto mantiene FastAPI + Jinja2 + MongoDB.
 

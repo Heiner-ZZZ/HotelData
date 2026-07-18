@@ -404,4 +404,4 @@ Amenities "Wi-Fi", "Piscina", etc. están en 4 archivos distintos.
 
 ---
 
-*Fin del documento — HotelData Hub: Auditoría de Lógica v0.1*
+*Fin del documento — HotelData: Auditoría de Lógica v0.1*

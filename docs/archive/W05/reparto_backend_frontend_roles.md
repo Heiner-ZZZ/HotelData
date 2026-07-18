@@ -2,7 +2,7 @@
 
 ## 1. Vision general del proyecto
 
-HotelData Hub esta dividido en dos grandes capas funcionales:
+HotelData esta dividido en dos grandes capas funcionales:
 
 - `backend`: FastAPI en `src/app` para autenticacion, autorizacion, APIs, logica de negocio y acceso a datos.
 - `frontend`: Angular en `frontend/src/app` para login, navegacion, vistas, formularios y experiencia por rol.

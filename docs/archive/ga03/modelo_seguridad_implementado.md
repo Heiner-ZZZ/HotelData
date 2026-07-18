@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Inicializar un modelo base de seguridad en MongoDB para HotelData Hub Analytics sin romper TA02/GA03 y sin tocar ETL, Airflow, hechos ni dimensiones.
+Inicializar un modelo base de seguridad en MongoDB para HotelData Analytics sin romper TA02/GA03 y sin tocar ETL, Airflow, hechos ni dimensiones.
 
 ## Script
 

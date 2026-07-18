@@ -25,7 +25,7 @@ actor "Administrador" as Admin
 rectangle "PocketBase\nSistema tecnico externo" as PB
 rectangle "MongoDB\nSistema tecnico externo" as MDB
 
-rectangle "HotelData Hub Analytics - GA03" {
+rectangle "HotelData Analytics - GA03" {
   package "1. Experiencia del cliente y busqueda hotelera" {
     usecase "CU01 Buscar hoteles por destino,\nfecha y ocupacion" as CU01
     usecase "CU02 Filtrar hoteles por precio,\nestrellas, promocion y servicios" as CU02

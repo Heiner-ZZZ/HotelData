@@ -1,4 +1,4 @@
-# Casos de uso GA03 - Plataforma HotelData Hub Analytics
+# Casos de uso GA03 - Plataforma HotelData Analytics
 
 GA03 documenta una plataforma web responsiva de reservas hoteleras inspirada en Expedia/Trivago. El avance real ya no se limita solo a analítica y ETL: hoy incluye autenticación por rol, vistas operativas de management, edición segura de perfil hotelero y navegación segmentada por tipo de usuario. Los flujos de pago, PMS/channel manager y una operación hotelera completamente transaccional todavía permanecen parciales o planificados.
 

@@ -1,10 +1,10 @@
-# Documentacion final TA 02 - HotelData Hub
+# Documentacion final TA 02 - HotelData
 
 ## 1. Empresa, mision y vision
 
 ### Empresa
 
-HotelData Hub Analytics es una plataforma empresarial orientada a integrar, transformar, auditar y consultar datos de reservas hoteleras. Su proposito es convertir eventos operacionales provenientes de PocketBase en informacion analitica confiable dentro de MongoDB, usando Python como lenguaje principal de movimiento de datos.
+HotelData Analytics es una plataforma empresarial orientada a integrar, transformar, auditar y consultar datos de reservas hoteleras. Su proposito es convertir eventos operacionales provenientes de PocketBase en informacion analitica confiable dentro de MongoDB, usando Python como lenguaje principal de movimiento de datos.
 
 La solucion esta pensada para equipos de direccion comercial, revenue management, operaciones digitales y gobierno de datos que necesitan entender comportamiento de busqueda, conversion a reserva, precio, promocion, origen del visitante y patrones de ocupacion.
 
@@ -18,7 +18,7 @@ Ser una plataforma de referencia para analitica hotelera empresarial, integrando
 
 ## 2. Objetivos estrategicos, tacticos y operativos
 
-Para HotelData Hub Analytics, los datos son el activo empresarial mas importante. Cada evento de busqueda, click, precio, promocion y reserva representa conocimiento comercial que puede convertirse en productividad, reduccion de incertidumbre y mayor margen de ganancia. Por esta razon, la plataforma organiza la informacion en una tabla de hechos y dimensiones que permiten tomar decisiones en tres niveles: estrategico, tactico y operativo.
+Para HotelData Analytics, los datos son el activo empresarial mas importante. Cada evento de busqueda, click, precio, promocion y reserva representa conocimiento comercial que puede convertirse en productividad, reduccion de incertidumbre y mayor margen de ganancia. Por esta razon, la plataforma organiza la informacion en una tabla de hechos y dimensiones que permiten tomar decisiones en tres niveles: estrategico, tactico y operativo.
 
 | Objetivo estrategico de informacion | Informacion requerida | Decision tactica | Decision operativa | Impacto en productividad | Impacto en margen de ganancia |
 | --- | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Para HotelData Hub Analytics, los datos son el activo empresarial mas importante
 
 ### Alienacion entre objetivos, productividad y margen de ganancia
 
-El modelo dimensional de HotelData Hub Analytics permite transformar eventos operacionales de PocketBase en informacion empresarial preparada para el analisis. La tabla de hechos `fact_hotel_reservations` concentra los eventos de busqueda, click, precio y reserva, mientras que las dimensiones aportan contexto de hotel, destino, pais del visitante, sitio, fecha, promocion, estado de click, estado de reserva, ocupacion, estancia, anticipacion y precio. Esta organizacion convierte datos transaccionales en un activo analitico que puede ser consultado de forma consistente.
+El modelo dimensional de HotelData Analytics permite transformar eventos operacionales de PocketBase en informacion empresarial preparada para el analisis. La tabla de hechos `fact_hotel_reservations` concentra los eventos de busqueda, click, precio y reserva, mientras que las dimensiones aportan contexto de hotel, destino, pais del visitante, sitio, fecha, promocion, estado de click, estado de reserva, ocupacion, estancia, anticipacion y precio. Esta organizacion convierte datos transaccionales en un activo analitico que puede ser consultado de forma consistente.
 
 Desde el punto de vista estrategico, la direccion puede identificar donde se genera mayor valor: que destinos convierten mejor, que segmentos responden a promociones, que perfiles de ocupacion son mas rentables y que canales aportan mayor volumen. Esto permite orientar decisiones de crecimiento y rentabilidad con base en evidencia, no solo en intuicion. La informacion deja de ser un registro operativo aislado y se convierte en una herramienta para maximizar ingresos.
 

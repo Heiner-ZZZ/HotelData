@@ -1,7 +1,7 @@
-# HotelData Hub — Catálogo Completo de Casos de Uso
+# HotelData — Catálogo Completo de Casos de Uso
 
 **Documento**: Referencia de Casos de Uso  
-**Sistema**: HotelData Hub — Plataforma de gestión hotelera y analítica  
+**Sistema**: HotelData — Plataforma de gestión hotelera y analítica  
 **Versión**: 1.0 | **Fecha**: 2026-07-05  
 **Base**: Backend FastAPI + Frontend Angular + MongoDB  
 **CUs totales**: 45 | **Departamentos**: 9 | **Sub-paquetes**: 25
@@ -1847,4 +1847,4 @@
 
 ---
 
-*Fin del documento — Catálogo completo de Casos de Uso del HotelData Hub*
+*Fin del documento — Catálogo completo de Casos de Uso del HotelData*

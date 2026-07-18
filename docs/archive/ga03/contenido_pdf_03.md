@@ -1,8 +1,8 @@
-# Contenido PDF GA03 - HotelData Hub Analytics
+# Contenido PDF GA03 - HotelData Analytics
 
 ## Portada
 
-**Proyecto:** HotelData Hub Analytics  
+**Proyecto:** HotelData Analytics  
 **Entrega:** GA03 - Reservas hoteleras  
 **Tarea:** `TASK_NUMBER=03`  
 **Volumen objetivo:** `TARGET_RECORDS=300000`  
@@ -13,7 +13,7 @@
 
 ## Introducción
 
-GA03 consolida el avance de HotelData Hub Analytics como plataforma web/responsiva de reservas hoteleras inspirada en Expedia/Trivago. El alcance implementado se concentra en datos, analítica, CRUD analítico, auditoría y ETL.
+GA03 consolida el avance de HotelData Analytics como plataforma web/responsiva de reservas hoteleras inspirada en Expedia/Trivago. El alcance implementado se concentra en datos, analítica, CRUD analítico, auditoría y ETL.
 
 No se documentan como implementados login real, roles reales, pagos, PMS, reservas transaccionales completas, habitaciones, tarifas operativas ni CMS hotelero.
 

@@ -1,6 +1,6 @@
 # Modelo futuro GA03
 
-Este documento define el crecimiento planificado de HotelData Hub Analytics hacia una plataforma web/responsiva de reservas hoteleras. No describe funcionalidades ya implementadas salvo cuando se indique explícitamente.
+Este documento define el crecimiento planificado de HotelData Analytics hacia una plataforma web/responsiva de reservas hoteleras. No describe funcionalidades ya implementadas salvo cuando se indique explícitamente.
 
 ## Alcance real de GA03
 

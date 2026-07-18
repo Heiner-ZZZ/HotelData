@@ -2,7 +2,7 @@
 
 ## Empresa ficticia
 
-HotelData Hub Analytics es una unidad empresarial dedicada a integrar, gobernar y analizar datos de busquedas y reservas hoteleras para equipos de revenue management, operaciones digitales y direccion comercial.
+HotelData Analytics es una unidad empresarial dedicada a integrar, gobernar y analizar datos de busquedas y reservas hoteleras para equipos de revenue management, operaciones digitales y direccion comercial.
 
 ## Mision
 

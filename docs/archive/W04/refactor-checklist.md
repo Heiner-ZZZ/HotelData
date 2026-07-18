@@ -1,4 +1,4 @@
-# HotelData Hub - Refactor Checklist
+# HotelData - Refactor Checklist
 
 Lista viva de tareas de refactor arquitectónico, organizadas por fase.
 Las casillas se marcan con `[x]` cuando la tarea está completada y verificada.

@@ -1,8 +1,8 @@
-# Estado general del proyecto HotelData Hub
+# Estado general del proyecto HotelData
 
 ## Resumen ejecutivo
 
-HotelData Hub es un proyecto Python orientado a construir una plataforma empresarial de analitica hotelera usando FastAPI, MongoDB, Airflow y modulos ETL propios. El proyecto ya no debe entenderse como un catalogo simple de hoteles, sino como una base para un flujo analitico de reservas hoteleras con modelo dimensional.
+HotelData es un proyecto Python orientado a construir una plataforma empresarial de analitica hotelera usando FastAPI, MongoDB, Airflow y modulos ETL propios. El proyecto ya no debe entenderse como un catalogo simple de hoteles, sino como una base para un flujo analitico de reservas hoteleras con modelo dimensional.
 
 Actualmente el proyecto tiene una estructura funcional de aplicacion y ETL, pero no debe considerarse completamente terminado ni validado contra datos reales de PocketBase. Hay partes funcionales, partes de demostracion y partes propuestas que requieren revision tecnica antes de presentarse como entrega final.
 

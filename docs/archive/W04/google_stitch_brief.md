@@ -1,14 +1,14 @@
-# Brief para Google Stitch - HotelData Hub Analytics
+# Brief para Google Stitch - HotelData Analytics
 
 ## Objetivo de este documento
 
-Este documento sirve como prompt base para pedirle a Google Stitch que genere alrededor de 15 plantillas de interfaz para el proyecto **HotelData Hub Analytics**, manteniendo una linea visual cercana a Expedia/Hotels/Trivago, pero adaptada a un producto de analitica, operacion hotelera y gobierno de datos.
+Este documento sirve como prompt base para pedirle a Google Stitch que genere alrededor de 15 plantillas de interfaz para el proyecto **HotelData Analytics**, manteniendo una linea visual cercana a Expedia/Hotels/Trivago, pero adaptada a un producto de analitica, operacion hotelera y gobierno de datos.
 
 Tambien resume el estado real del proyecto para que Stitch no diseñe una app imaginaria desconectada de lo que ya existe.
 
 ## Contexto del proyecto
 
-HotelData Hub Analytics es una plataforma orientada al sector hotelero que combina:
+HotelData Analytics es una plataforma orientada al sector hotelero que combina:
 
 - exploracion de hoteles y reservas con una experiencia visual inspirada en Expedia;
 - analitica comercial y operativa;
@@ -400,4 +400,4 @@ Por eso Stitch debe tomar como verdad el **estado actual ampliado**, no una lect
 
 ## Prompt sugerido para Google Stitch
 
-Diseña 15 plantillas coherentes para una plataforma llamada HotelData Hub Analytics. La plataforma combina experiencia de busqueda hotelera inspirada en Expedia con modulos de analitica, revenue, partner central, gobierno de datos, ETL, seguridad y auditoria. Mantén una linea visual cercana a Expedia/Hotels/Trivago en la zona publica y una linea profesional tipo SaaS operacional en la zona autenticada. Los usuarios incluyen cliente, hotel partner, gerente de hotel, revenue manager, marketing hotelero, operador de datos, auditor de datos y super admin. Cada rol debe ver informacion distinta y coherente con su contexto. El sistema consume un dataset de eventos y reservas de Expedia llevado a PocketBase y procesado por ETL con Python, Airflow, MongoDB, Redis, Docker y frontend Angular/FastAPI. Genera plantillas para busqueda, resultados, detalle, comparacion, reservas, partner, inventario, revenue, analytics, ETL, calidad, seguridad y auditoria, manteniendo un mismo sistema de diseño y una experiencia creible de producto real. Evita por completo diseños genericos de IA, dashboards universales sin contexto, layouts abstractos, heroes vacios y componentes que podrian pertenecer a cualquier industria. Cada pantalla debe parecer hecha especificamente para una plataforma hotelera-operativa real.
+Diseña 15 plantillas coherentes para una plataforma llamada HotelData Analytics. La plataforma combina experiencia de busqueda hotelera inspirada en Expedia con modulos de analitica, revenue, partner central, gobierno de datos, ETL, seguridad y auditoria. Mantén una linea visual cercana a Expedia/Hotels/Trivago en la zona publica y una linea profesional tipo SaaS operacional en la zona autenticada. Los usuarios incluyen cliente, hotel partner, gerente de hotel, revenue manager, marketing hotelero, operador de datos, auditor de datos y super admin. Cada rol debe ver informacion distinta y coherente con su contexto. El sistema consume un dataset de eventos y reservas de Expedia llevado a PocketBase y procesado por ETL con Python, Airflow, MongoDB, Redis, Docker y frontend Angular/FastAPI. Genera plantillas para busqueda, resultados, detalle, comparacion, reservas, partner, inventario, revenue, analytics, ETL, calidad, seguridad y auditoria, manteniendo un mismo sistema de diseño y una experiencia creible de producto real. Evita por completo diseños genericos de IA, dashboards universales sin contexto, layouts abstractos, heroes vacios y componentes que podrian pertenecer a cualquier industria. Cada pantalla debe parecer hecha especificamente para una plataforma hotelera-operativa real.

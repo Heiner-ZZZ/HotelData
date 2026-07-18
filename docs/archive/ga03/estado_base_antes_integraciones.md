@@ -2,7 +2,7 @@
 
 ## Proyecto
 
-HotelData Hub Analytics
+HotelData Analytics
 
 ## Estado base
 

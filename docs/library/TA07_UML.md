@@ -1,7 +1,7 @@
 # TA07 — Documento de Diagramas UML
 
 **Asignatura**: Construcción del Software — Sexto semestre
-**Sistema**: HotelData Hub — Plataforma de gestión hotelera y analítica
+**Sistema**: HotelData — Plataforma de gestión hotelera y analítica
 **Base**: TA07_ESPECIFICACIONES.md (Casos de Uso Operativos CU-O01 a CU-O40, Tácticos T14-T15, Estratégico E09)
 **Versión**: 1.0 | **Fecha**: 2026-06-21
 
@@ -9,13 +9,13 @@
 
 # 1. DIAGRAMA DE CASOS DE USO
 
-El diagrama de casos de uso describe la interacción entre los 8 actores del sistema y las 42 funcionalidades principales de HotelData Hub. Los casos de uso se organizan en tres niveles: operativos (CU-O01 a CU-O42), tácticos (CU-T14, CU-T15) y estratégico (CU-E09), cubriendo desde la autenticación JWT hasta la eficiencia operativa del hotel.
+El diagrama de casos de uso describe la interacción entre los 8 actores del sistema y las 42 funcionalidades principales de HotelData. Los casos de uso se organizan en tres niveles: operativos (CU-O01 a CU-O42), tácticos (CU-T14, CU-T15) y estratégico (CU-E09), cubriendo desde la autenticación JWT hasta la eficiencia operativa del hotel.
 
 ## 1.1 Vista General — 40 Casos de Uso Operativos + Tácticos + Estratégico
 
 ```mermaid
 graph TB
-  subgraph "Sistema HotelData Hub"
+  subgraph "Sistema HotelData"
     UC1[CU-O01: Iniciar Sesión JWT]
     UC2[CU-O02: Buscar Hoteles]
     UC3[CU-O03: Filtrar y Comparar]

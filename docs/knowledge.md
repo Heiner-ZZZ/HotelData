@@ -1,4 +1,4 @@
-# HotelData Hub — Knowledge Base
+# HotelData — Knowledge Base
 
 > Documento de referencia única del sistema. Cubre arquitectura, módulos, entidades, relaciones, reglas de negocio y los flujos PMS / CRS / Booking Engine / CRM. Mantener sincronizado con `state_machine.md` y `MIGRATION_PLAN.md`.
 
@@ -53,7 +53,7 @@
 
 ## 1. Visión general
 
-**HotelData Hub** es una plataforma académica de gestión hotelera y analítica, basada en una arquitectura **modular monolítica** con separación clara de capas:
+**HotelData** es una plataforma académica de gestión hotelera y analítica, basada en una arquitectura **modular monolítica** con separación clara de capas:
 
 - **Frontend SPA** (Angular 22) con lazy loading y zoneless-friendly.
 - **Backend API** (FastAPI, Pydantic v2) organizado por dominios de negocio.

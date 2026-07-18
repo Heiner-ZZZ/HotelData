@@ -1,7 +1,7 @@
 # TA07 — Documento de Especificaciones del Sistema HotelData
 
 **Asignatura**: Construcción del Software — Sexto semestre
-**Sistema**: HotelData Hub — Plataforma de gestión hotelera y analítica
+**Sistema**: HotelData — Plataforma de gestión hotelera y analítica
 **Versión del documento**: 1.0 | **Fecha**: 2026-06-21
 **Base**: TAF06 — Estrategia y Visión Arquitectónica
 

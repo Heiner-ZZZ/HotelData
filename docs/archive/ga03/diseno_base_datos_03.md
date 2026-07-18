@@ -2,7 +2,7 @@
 
 ## Contexto técnico
 
-GA03 extiende HotelData Hub Analytics como avance funcional aproximado del 25% del sistema completo. No crea una aplicación separada ni reemplaza TAF01/TA02. La base analítica compartida sigue siendo `hoteldata_hub`.
+GA03 extiende HotelData Analytics como avance funcional aproximado del 25% del sistema completo. No crea una aplicación separada ni reemplaza TAF01/TA02. La base analítica compartida sigue siendo `hoteldata_hub`.
 
 Configuración real de GA03:
 

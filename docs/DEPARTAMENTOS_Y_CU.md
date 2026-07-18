@@ -1,7 +1,7 @@
-# HotelData Hub — Departamentos, Casos de Uso y Colecciones MongoDB
+# HotelData — Departamentos, Casos de Uso y Colecciones MongoDB
 
 **Documento**: Arquitectura Organizacional y Funcional  
-**Sistema**: HotelData Hub — Plataforma de gestión hotelera y analítica  
+**Sistema**: HotelData — Plataforma de gestión hotelera y analítica  
 **Versión**: 2.0 | **Fecha**: 2026-07-04  
 **Base**: Backend FastAPI + Frontend Angular + MongoDB
 
@@ -1404,4 +1404,4 @@ Estos departamentos son lo suficientemente pequeños y cohesivos como para no re
 
 ---
 
-*Fin del documento — HotelData Hub: 9 Departamentos, 40+ Casos de Uso, 110 Colecciones MongoDB, 25 Sub-paquetes*
+*Fin del documento — HotelData: 9 Departamentos, 40+ Casos de Uso, 110 Colecciones MongoDB, 25 Sub-paquetes*

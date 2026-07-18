@@ -2,7 +2,7 @@
 
 ## Admin
 
-El admin puede consultar todas las vistas de HotelData Hub, administrar `system_catalogs` y revisar auditoria de ejecuciones ETL y busquedas.
+El admin puede consultar todas las vistas de HotelData, administrar `system_catalogs` y revisar auditoria de ejecuciones ETL y busquedas.
 
 ## Usuario normal
 

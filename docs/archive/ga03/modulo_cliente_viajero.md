@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Se implementa una primera capa web orientada al cliente/viajero para que HotelData Hub Analytics se vea como una plataforma de busqueda hotelera inspirada en Expedia/Trivago, sin crear reservas reales ni pagos.
+Se implementa una primera capa web orientada al cliente/viajero para que HotelData Analytics se vea como una plataforma de busqueda hotelera inspirada en Expedia/Trivago, sin crear reservas reales ni pagos.
 
 ## Rutas implementadas
 
