@@ -18,7 +18,7 @@ ROOM_STATUS_INDEXES = [
     IndexModel([("prop_id", ASCENDING)], name="idx_rs_prop"),
     IndexModel([("room_label", ASCENDING)], name="idx_rs_room"),
     IndexModel([("status", ASCENDING)], name="idx_rs_status"),
-    IndexModel([("prop_id", ASCENDING), ("hotel_room_id", ASCENDING)], name="idx_rs_prop_room", unique=True),
+    IndexModel([("prop_id", ASCENDING), ("room_label", ASCENDING)], name="idx_rs_prop_room", unique=True),
 ]
 
 ROOM_STATUS_HISTORY_INDEXES = [
@@ -50,7 +50,7 @@ CHARGES_INDEXES = [
 
 
 def ensure_housekeeping_collections() -> None:
-    # Drop old unique index on (prop_id, room_label) — replaced by (prop_id, hotel_room_id)
+    # Ensure unique index on (prop_id, room_label) — matches all code queries
     drop_index_safe(ROOM_STATUS_COLLECTION, "idx_rs_prop_room")
     ensure_collection(ROOM_STATUS_COLLECTION, ROOM_STATUS_INDEXES)
     ensure_collection(ROOM_STATUS_HISTORY_COLLECTION, ROOM_STATUS_HISTORY_INDEXES)

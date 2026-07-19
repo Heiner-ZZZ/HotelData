@@ -38,6 +38,7 @@ def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:
             "display_name": user.get("display_name") or user.get("full_name") or user.get("username") or "",
             "primary_role": user.get("primary_role") or "",
             "is_active": bool(user.get("is_active", True)),
+            "avatar_url": user.get("avatar_url") or "",
         },
         "session": {
             "session_token": session.get("session_token_hash", "") if session else "",
