@@ -80,6 +80,8 @@
     0 8px 32px rgba(0, 0, 0, 0.14),
     0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  /* Reset inherited nowrap so long descriptions wrap inside the popover */
+  white-space: normal;
 
   /* Hidden by default — shown on hover */
   opacity: 0;

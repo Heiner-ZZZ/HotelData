@@ -68,7 +68,7 @@ export class PropertyDetailPageComponent {
     const year = this.calendarYear();
     const month = this.calendarMonth();
     if (!propId || !year || !month) return undefined;
-    return `/api/management/properties/${propId}/calendar?year=${year}&month=${month}`;
+    return `/api/management/properties/${propId}/operational-calendar?year=${year}&month=${month}`;
   });
   readonly calendarData = computed(() => this.calendarResource.value() ?? null);
   readonly calendarLoading = this.calendarResource.isLoading;
@@ -108,7 +108,7 @@ export class PropertyDetailPageComponent {
   // RF-006: Top approved reviews — httpResource auto-fires when detail loads
   readonly reviewsResource = httpResource<any[]>(() => {
     const propId = this.detailResource.value()?.propId ?? this.propId();
-    return propId ? `/api/management/properties/${propId}/reviews?approved=true` : undefined;
+    return propId ? `/api/hotels/${propId}/reviews` : undefined;
   });
   readonly reviews = computed(() => (this.reviewsResource.value() ?? []).map(r => ({
     id: r._id,

@@ -2,12 +2,14 @@ import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ExpensesApiService } from '../../services/expenses-api.service';
 
 @Component({
   selector: 'app-invoice-form-page',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, PropertySelectorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div style="max-width: 650px; margin: 0 auto; padding: 24px;">
@@ -19,6 +21,19 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
       }
 
       <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+        @if (ctx.mode() === 'all') {
+          <div style="margin-bottom: 16px;">
+            <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Propiedad <span style="color: #dc2626;">*</span></label>
+            <app-property-selector
+              [selectedPropId]="selectedPropId()"
+              (propIdChange)="onPropertySelected($event)"
+            />
+            @if (propertyError()) {
+              <div style="color: #dc2626; font-size: 11px; margin-top: 4px;">{{ propertyError() }}</div>
+            }
+          </div>
+        }
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div style="grid-column: 1 / -1;">
             <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Proveedor <span style="color: #dc2626;">*</span></label>
@@ -83,9 +98,13 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
 export class InvoiceFormPageComponent {
   private readonly api = inject(ExpensesApiService);
   private readonly router = inject(Router);
+  readonly ctx = inject(PropertyContextService);
 
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
+  readonly selectedPropId = signal(0);
+  readonly selectedPropLabel = signal('');
+  readonly propertyError = signal<string | null>(null);
 
   form = {
     vendorName: '',
@@ -100,6 +119,13 @@ export class InvoiceFormPageComponent {
 
   submit() {
     if (!this.form.vendorName || !this.form.amount) return;
+
+    if (this.ctx.mode() === 'all' && this.selectedPropId() <= 0) {
+      this.propertyError.set('Selecciona una propiedad para continuar.');
+      return;
+    }
+    this.propertyError.set(null);
+
     this.submitting.set(true);
     this.error.set(null);
 
@@ -112,6 +138,7 @@ export class InvoiceFormPageComponent {
       due_date: this.form.dueDate,
       description: this.form.description,
       notes: this.form.notes,
+      prop_id: this.ctx.mode() === 'all' ? this.selectedPropId() : (this.ctx.currentPropId() || undefined),
     }).subscribe({
       next: () => {
         this.router.navigate(['/management/expenses/invoices']);
@@ -121,6 +148,12 @@ export class InvoiceFormPageComponent {
         this.submitting.set(false);
       },
     });
+  }
+
+  onPropertySelected(event: { propId: number; label: string }) {
+    this.selectedPropId.set(event.propId);
+    this.selectedPropLabel.set(event.label);
+    this.propertyError.set(null);
   }
 
   cancel() { this.router.navigate(['/management/expenses/invoices']); }

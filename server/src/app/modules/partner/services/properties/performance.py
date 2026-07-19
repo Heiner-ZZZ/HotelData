@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from src.app.modules.partner.services._common import active_fact_collection, number
+from src.database.connection import get_database
+from src.app.modules.hotels.service._helpers import _min_real_rate_for_prop
 
 
 def performance_for_prop(prop_id: int) -> dict[str, Any]:
     from src.app.modules.partner.services._common import money as _money
-    from src.database.connection import get_database
 
     collection, source_collection = active_fact_collection()
     booked = {"$or": [{"$eq": ["$reserva_bool", 1]}, {"$eq": ["$reserva_bool", True]}]}
@@ -41,11 +43,22 @@ def performance_for_prop(prop_id: int) -> dict[str, Any]:
 
     searches = int(metrics.get("searches") or 0)
     clicks = int(metrics.get("clicks") or 0)
+
+    # Also count real-time clicks tracked by the web app (anonymous + authenticated).
+    # We limit to the last 30 days so the metric stays aligned with the active
+    # searches window and doesn't grow unbounded.
+    db = get_database()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    click_events_count = db.click_events.count_documents({
+        "prop_id": prop_id,
+        "clicked_at": {"$gte": thirty_days_ago},
+    })
+    clicks += int(click_events_count)
+
     fact_reservations = int(metrics.get("reservations") or 0)
     fact_revenue = float(metrics.get("gross_revenue") or 0.0)
 
     # Also count confirmed operational booking_orders for this hotel
-    db = get_database()
     booking_pipeline = [
         {"$match": {"prop_id": prop_id, "status": "confirmed"}},
         {
@@ -72,7 +85,6 @@ def performance_for_prop(prop_id: int) -> dict[str, Any]:
     click_rate = round((clicks / searches) * 100, 2) if searches else 0.0
 
     # Real min rate from hotel_rate_calendar (today+)
-    from src.app.modules.hotels.service._helpers import _min_real_rate_for_prop
     min_rate_label = _min_real_rate_for_prop(prop_id)
 
     return {
