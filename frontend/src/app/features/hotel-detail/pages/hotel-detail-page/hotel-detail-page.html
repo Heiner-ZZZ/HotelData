@@ -362,7 +362,12 @@
             <!-- Similar Hotels -->
             @if (similarHotels().length) {
               <section class="detail-section">
-                <h2 class="section-title">Hoteles similares</h2>
+                <h2 class="section-title">
+                  Hoteles similares
+                  <button type="button" class="similar-info-btn" (click)="showSimilarInfo.set(true)" aria-label="Informacion sobre hoteles similares" title="Cómo se eligen los hoteles similares">
+                    <span class="material-symbols-outlined">info</span>
+                  </button>
+                </h2>
                 <div class="similar-grid">
                   @for (item of similarHotels(); track item.id) {
                     <a [routerLink]="['/hotels', item.id]" class="similar-card">
@@ -454,6 +459,62 @@
         <!-- ═══════════════════════════════════════════════════
              FOOTER — Minimal
              ═══════════════════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════════════════════
+             SIMILAR HOTELS INFO MODAL
+             ═══════════════════════════════════════════════════ -->
+        @if (showSimilarInfo()) {
+          <div class="gallery-modal-overlay" (click)="showSimilarInfo.set(false)" (window:keydown.escape)="showSimilarInfo.set(false)">
+            <div class="similar-info-modal" (click)="$event.stopPropagation()">
+              <button type="button" class="gallery-modal-close" (click)="showSimilarInfo.set(false)" aria-label="Cerrar">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+              <div class="similar-info-icon">
+                <span class="material-symbols-outlined">travel_explore</span>
+              </div>
+              <h3>Hoteles similares</h3>
+              <p class="similar-info-intro">Nuestro sistema de recomendacion analiza los siguientes criterios para encontrar hoteles parecidos a este:</p>
+              <ul class="similar-info-list">
+                <li>
+                  <span class="material-symbols-outlined">location_on</span>
+                  <div>
+                    <strong>Ubicacion geografica</strong>
+                    <p>Mismo pais o region para garantizar cercania y contexto cultural similar.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="material-symbols-outlined">star</span>
+                  <div>
+                    <strong>Categoria y estrellas</strong>
+                    <p>Hoteles con categoria similar (&#177;1 estrella) para un nivel de servicio equivalente.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="material-symbols-outlined">reviews</span>
+                  <div>
+                    <strong>Puntuacion de huespedes</strong>
+                    <p>Opiniones verificadas y valoraciones reales de otros viajeros.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="material-symbols-outlined">concierge</span>
+                  <div>
+                    <strong>Amenidades y servicios</strong>
+                    <p>Similitud en instalaciones como piscina, gimnasio, WiFi, parking y otros servicios ofrecidos.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="material-symbols-outlined">group</span>
+                  <div>
+                    <strong>Perfil de huespedes</strong>
+                    <p>Tipo de viajero habitual: negocios, familias, parejas o viajeros solos.</p>
+                  </div>
+                </li>
+              </ul>
+              <p class="similar-info-footer">Los resultados se ordenan por puntuacion de similitud (0&#8211;100).</p>
+            </div>
+          </div>
+        }
+
         <!-- ═══════════════════════════════════════════════════
              GALLERY MODAL
              ═══════════════════════════════════════════════════ -->

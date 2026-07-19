@@ -2,7 +2,6 @@ import type { AvailabilityDto, ManagementPropertiesDto } from '../models/availab
 import type {
   AvailabilityBlackoutItem,
   AvailabilityInventoryItem,
-  AvailabilityPropertyOption,
   AvailabilityRoomType,
   AvailabilityViewModel,
   PropertyOptionsPage

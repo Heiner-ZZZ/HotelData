@@ -271,7 +271,7 @@
 
   &:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.08);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
   }
 }
 
@@ -317,7 +317,7 @@
 
   &:hover {
     background: var(--accent-strong);
-    box-shadow: 0 4px 12px rgba(20, 99, 255, 0.2);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
     transform: translateY(-1px);
   }
 
@@ -342,6 +342,185 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
+}
+
+/* ── Photo management panel ── */
+.photo-panel {
+  padding: 1.5rem;
+  border-radius: 16px;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.photo-controls {
+  display: grid;
+  gap: 1rem;
+}
+
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border: 2px dashed var(--app-border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--muted-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  width: fit-content;
+
+  .material-symbols-outlined {
+    font-size: 1.25rem;
+    color: var(--accent);
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.photo-thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.photo-thumb {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.photo-delete-btn {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gray-900) 55%, transparent);
+  color: var(--surface);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, transform 0.15s;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: var(--danger);
+    transform: scale(1.1);
+  }
+}
+
+.photo-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  margin: 0;
+
+  &::before {
+    content: 'progress_activity';
+    font-family: 'Material Symbols Outlined';
+    font-size: 1.2rem;
+    color: var(--accent);
+    animation: photo-spin 1s linear infinite;
+  }
+}
+
+@keyframes photo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.photo-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  margin: 0;
+
+  &::before {
+    content: 'image_not_supported';
+    font-family: 'Material Symbols Outlined';
+    font-size: 1.2rem;
+    color: var(--muted-text);
+  }
+}
+
+.photo-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  width: fit-content;
+
+  .msg-icon {
+    font-size: 1.15rem;
+  }
+
+  &.msg-success {
+    background: var(--success-light);
+    color: var(--success-strong);
+
+    .msg-icon {
+      color: var(--success);
+    }
+  }
+
+  &.msg-error {
+    background: var(--danger-light);
+    color: var(--danger-strong);
+
+    .msg-icon {
+      color: var(--danger);
+    }
+  }
+}
+
+.upload-progress {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  margin: 0;
 }
 
 /* ── Save Action Panel Footer ── */

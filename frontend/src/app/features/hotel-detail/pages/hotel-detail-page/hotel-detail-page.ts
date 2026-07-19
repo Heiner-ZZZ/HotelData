@@ -63,6 +63,7 @@ export class HotelDetailPageComponent {
   readonly activeTab = signal<string>('overview');
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly selectedGalleryImage = signal<string | null>(null);
+  readonly showSimilarInfo = signal(false);
   readonly showBooking = signal(false);
 
   onImageError(key: string) {

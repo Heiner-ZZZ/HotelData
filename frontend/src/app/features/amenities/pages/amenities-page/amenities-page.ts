@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
@@ -37,6 +38,7 @@ export class AmenitiesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AmenitiesApiService);
+  private readonly http = inject(HttpClient);
   private readonly propertyCtx = inject(PropertyContextService);
 
   // ── Route params as signals ──
@@ -150,6 +152,26 @@ export class AmenitiesPageComponent {
     effect(() => {
       if (!this.selectedPropId()) this.propertyCtx.clear();
     });
+    // Sync httpResource → writable photoList signal (needed for optimistic delete)
+    effect(() => {
+      const data = this.photoListRes.value();
+      if (data?.photos) {
+        this.photoList.set(data.photos);
+      }
+    });
+    // Clear photoList when amenity/prop selection becomes empty
+    effect(() => {
+      if (!this.photoAmenity() || !this.selectedPropId()) {
+        this.photoList.set([]);
+      }
+    });
+    // Sync room photo list from httpResource
+    effect(() => {
+      const data = this.roomPhotoListRes.value();
+      if (data?.images) {
+        this.roomPhotoList.set(data.images);
+      }
+    });
   }
 
   onPropSelected(event: { propId: number; label: string }) {
@@ -207,6 +229,158 @@ export class AmenitiesPageComponent {
           this.errorMessage.set(error.message || 'No fue posible guardar los servicios.');
           this.message.set('');
         }
+      });
+  }
+
+  // ═══ Photo upload ═══
+  readonly photoAmenity = signal('');
+  readonly photoUploading = signal(false);
+  readonly photoMessage = signal('');
+  readonly photoMsgType = signal<'success' | 'error' | ''>('');
+  readonly photoList = signal<{ photo_id: string; amenity_label: string; url: string }[]>([]);
+
+  /** httpResource for GET — reactive, auto-fetches when amenity/prop changes. */
+  private readonly photoListRes = httpResource<
+    { ok: boolean; photos: { photo_id: string; amenity_label: string; url: string }[] }
+  >(() => {
+    const label = this.photoAmenity();
+    const propId = this.selectedPropId();
+    if (!label || !propId) return undefined;
+    return `/api/management/amenities/photos?prop_id=${propId}&amenity_label=${encodeURIComponent(label)}`;
+  });
+
+  readonly photoLoading = computed(() => this.photoListRes.isLoading());
+
+  onPhotoAmenityChange(label: string): void {
+    this.photoAmenity.set(label);
+    this.photoMessage.set('');
+    this.photoMsgType.set('');
+  }
+
+  deletePhoto(photoId: string): void {
+    const prev = this.photoList();
+    this.photoList.update((list) => list.filter((p) => p.photo_id !== photoId));
+    this.http
+      .delete(`/api/management/amenities/photos/${photoId}`, { withCredentials: true })
+      .subscribe({
+        error: (err) => {
+          this.photoList.set(prev);
+          this.photoMessage.set(err.error?.message || 'Error al eliminar la foto.');
+          this.photoMsgType.set('error');
+        },
+      });
+  }
+
+  onPhotoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !this.photoAmenity() || !this.selectedPropId()) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    this.photoUploading.set(true);
+    this.photoMessage.set('');
+    this.photoMsgType.set('');
+
+    this.http
+      .post<{ ok: boolean; photo_id: string; message: string }>(
+        `/api/management/amenities/photos?prop_id=${this.selectedPropId()}&amenity_label=${encodeURIComponent(this.photoAmenity())}`,
+        formData,
+        { withCredentials: true },
+      )
+      .subscribe({
+        next: (resp) => {
+          const ok = resp.ok;
+          this.photoMessage.set(ok ? 'Foto subida correctamente.' : (resp.message || 'Error.'));
+          this.photoMsgType.set(ok ? 'success' : 'error');
+          this.photoUploading.set(false);
+          input.value = '';
+          if (ok) this.photoListRes.reload();
+        },
+        error: (err) => {
+          this.photoMessage.set(err.error?.message || 'Error al subir la foto.');
+          this.photoMsgType.set('error');
+          this.photoUploading.set(false);
+          input.value = '';
+        },
+      });
+  }
+
+  // ═══ Room-type photo upload ═══
+  readonly roomPhotoRoomType = signal('');
+  readonly roomPhotoUploading = signal(false);
+  readonly roomPhotoMessage = signal('');
+  readonly roomPhotoMsgType = signal<'success' | 'error' | ''>('');
+  readonly roomPhotoList = signal<{ image_url: string; title: string; room_type_id: string }[]>([]);
+
+  private readonly roomPhotoListRes = httpResource<
+    { ok: boolean; images: { image_url: string; title: string; room_type_id: string }[] }
+  >(() => {
+    const propId = this.selectedPropId();
+    if (!propId) return undefined;
+    return `/api/public/hotels/${propId}/room-images`;
+  });
+
+  readonly filteredRoomPhotos = computed(() => {
+    const rt = this.roomPhotoRoomType();
+    if (!rt) return [];
+    return this.roomPhotoList().filter(p => p.room_type_id === rt);
+  });
+
+  readonly roomPhotoLoading = computed(() => this.roomPhotoListRes.isLoading());
+
+  onRoomPhotoRoomTypeChange(roomTypeId: string): void {
+    this.roomPhotoRoomType.set(roomTypeId);
+    this.roomPhotoMessage.set('');
+    this.roomPhotoMsgType.set('');
+  }
+
+  deleteRoomPhoto(imageUrl: string): void {
+    const prev = this.roomPhotoList();
+    this.roomPhotoList.update((list) => list.filter((p) => p.image_url !== imageUrl));
+    this.http
+      .delete(`/api/management/properties/${this.selectedPropId()}/room-types/images?image_url=${encodeURIComponent(imageUrl)}`, { withCredentials: true })
+      .subscribe({
+        error: (err) => {
+          this.roomPhotoList.set(prev);
+          this.roomPhotoMessage.set(err.error?.message || 'Error al eliminar la foto.');
+          this.roomPhotoMsgType.set('error');
+        },
+      });
+  }
+
+  onRoomPhotoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !this.roomPhotoRoomType() || !this.selectedPropId()) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    this.roomPhotoUploading.set(true);
+    this.roomPhotoMessage.set('');
+    this.roomPhotoMsgType.set('');
+
+    this.http
+      .post<{ ok?: boolean; image_url?: string; detail?: string }>(
+        `/api/management/properties/${this.selectedPropId()}/room-types/images/upload?room_type_id=${encodeURIComponent(this.roomPhotoRoomType())}`,
+        formData,
+        { withCredentials: true },
+      )
+      .subscribe({
+        next: (resp) => {
+          const ok = !resp.detail;
+          this.roomPhotoMessage.set(ok ? 'Foto subida correctamente.' : (resp.detail || 'Error.'));
+          this.roomPhotoMsgType.set(ok ? 'success' : 'error');
+          this.roomPhotoUploading.set(false);
+          input.value = '';
+          if (ok) this.roomPhotoListRes.reload();
+        },
+        error: (err) => {
+          this.roomPhotoMessage.set(err.error?.detail || err.error?.message || 'Error al subir la foto.');
+          this.roomPhotoMsgType.set('error');
+          this.roomPhotoUploading.set(false);
+          input.value = '';
+        },
       });
   }
 }
