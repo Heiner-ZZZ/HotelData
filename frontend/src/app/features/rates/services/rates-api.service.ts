@@ -77,7 +77,7 @@ export class RatesApiService {
     description: string;
     baseRate: number;
     currency: string;
-    roomTypeId?: string;
+    applicableRoomTypes: string[];
     isActive: boolean;
     eligibleRoles?: string[];
     includedAmenities?: string[];
@@ -90,7 +90,7 @@ export class RatesApiService {
         description: payload.description,
         base_rate: payload.baseRate,
         currency: payload.currency,
-        room_type_id: payload.roomTypeId || '',
+        applicable_room_types: payload.applicableRoomTypes,
         is_active: payload.isActive,
         eligible_roles: payload.eligibleRoles ?? [],
         included_amenities: payload.includedAmenities ?? []
@@ -104,7 +104,7 @@ export class RatesApiService {
     description: string;
     baseRate: number;
     currency: string;
-    roomTypeId?: string;
+    applicableRoomTypes: string[];
     isActive: boolean;
     eligibleRoles?: string[];
     includedAmenities?: string[];
@@ -116,7 +116,7 @@ export class RatesApiService {
         description: payload.description,
         base_rate: payload.baseRate,
         currency: payload.currency,
-        room_type_id: payload.roomTypeId || '',
+        applicable_room_types: payload.applicableRoomTypes,
         is_active: payload.isActive,
         eligible_roles: payload.eligibleRoles ?? [],
         included_amenities: payload.includedAmenities ?? []

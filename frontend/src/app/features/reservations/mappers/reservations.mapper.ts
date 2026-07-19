@@ -131,6 +131,9 @@ export function mapReservationPreview(dto: ReservationPreviewDto) {
     taxAmount: dto.tax_amount,
     taxIncluded: dto.tax_included,
     cancellationPolicy: dto.cancellation_policy,
+    depositRequired: dto.deposit_required,
+    depositPercent: dto.deposit_percent,
+    minDepositAmount: dto.min_deposit_amount,
     priceBreakdown: dto.price_breakdown
       ? {
           baseNightlyRate: dto.price_breakdown.base_nightly_rate,

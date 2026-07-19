@@ -135,6 +135,9 @@ export interface ReservationPreview {
   taxAmount?: number;
   taxIncluded?: boolean;
   cancellationPolicy?: string | null;
+  depositRequired?: boolean;
+  depositPercent?: number;
+  minDepositAmount?: number;
   priceBreakdown?: ReservationPreviewPriceBreakdown | null;
 }
 

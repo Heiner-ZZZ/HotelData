@@ -89,6 +89,9 @@ export interface ReservationPreviewDto {
   tax_amount?: number;
   tax_included?: boolean;
   cancellation_policy?: string | null;
+  deposit_required?: boolean;
+  deposit_percent?: number;
+  min_deposit_amount?: number;
   price_breakdown?: {
     base_nightly_rate: number | null;
     nights: number;

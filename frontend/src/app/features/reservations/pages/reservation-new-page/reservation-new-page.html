@@ -169,6 +169,20 @@
           <h2>Pago de la reserva</h2>
         </div>
 
+        @if (preview()?.depositRequired) {
+          <div class="deposit-notice">
+            <span class="material-symbols-outlined">lock</span>
+            <div>
+              <strong>Se requiere garantía con tarjeta</strong>
+              @if (preview()?.minDepositAmount && preview()!.minDepositAmount! > 0) {
+                <p>Para confirmar esta reserva, se requiere un depósito del <strong>{{ preview()?.depositPercent }}%</strong> ({{ preview()?.minDepositAmount | currency:preview()?.currency || 'USD' }}). Se cargará a su tarjeta como garantía.</p>
+              } @else {
+                <p>Este hotel requiere una tarjeta de crédito válida como garantía para confirmar la reserva, aunque no se realice un cargo inmediato.</p>
+              }
+            </div>
+          </div>
+        }
+
         <div class="payment-summary">
           <div class="ps-row">
             <span>{{ selectedHotel()?.label || 'Hotel' }}</span>
