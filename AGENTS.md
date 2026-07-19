@@ -80,6 +80,41 @@ Este archivo define **TODOS** los colores de la app mediante CSS custom properti
 - ✅ Usar `color-mix(in srgb, var(--token) X%, transparent)` para variantes claras en vez de crear tokens nuevos.
 - ✅ El sistema soporta **dark mode** vía `[data-theme="dark"]`.
 
+## 🔐 Credenciales — LEER ANTES DE INTENTAR LOGIN
+
+**ARCHIVO CANÓNICO:** `.credentials/credenciales.md` (oculto, en `.gitignore`)
+
+- **SIEMPRE** leer `.credentials/credenciales.md` antes de hacer `POST /api/auth/login`.
+- **NUNCA** adivinar contraseñas (`admin123`, `password`, `test`, etc.).
+- **NUNCA** probar más de 2 intentos sin verificar credenciales en el archivo.
+- Si una cuenta responde `423 Locked`, desbloquear con el comando documentado abajo.
+
+### Credenciales reales (canónicas en `.credentials/credenciales.md`)
+
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `superadmin` | `Admin12345*` | super_admin (admin total) |
+| `Socio GTA6` | `socio12345*` | gerente_hotel (single-hotel) |
+| `Horuz` | `Horuz12345*` | cliente (huésped) |
+| `carlos.mendoza@hoteldata.local` | `yn_ncfT2TqevSA` | mantenimiento |
+
+### Desbloquear cuenta (423 Locked)
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T server python -c "
+from config.settings import get_settings
+from pymongo import MongoClient
+s = get_settings()
+c = MongoClient(s.mongo_uri)
+db = c[s.mongo_database]
+db.users.update_one(
+    {'username': 'superadmin'},
+    {'\$set': {'failed_login_attempts': 0, 'locked_until': None}}
+)
+print('Desbloqueado')
+c.close()
+"
+
 ## 🔴 NUNCA hacer sin autorización explícita del usuario
 
 - **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` sin `--volumes` ni ningún comando que elimine volúmenes de Docker.

@@ -1142,3 +1142,18 @@ python -m pytest -v --tb=short
 ---
 
 > **Mantenimiento**: este documento se actualiza cuando hay cambios estructurales (nuevos módulos, nuevos routers, nuevos endpoints públicos, nuevas reglas). Para cambios pequeños (UI copy, ajustes de validaciones puntuales) basta con referenciar el commit en `state_machine.md` o `CHANGELOG.md` cuando exista.
+
+---
+
+## Apéndice C — Credenciales demo
+
+> ⚠️ **Archivo canónico**: `.credentials/credenciales.md` (oculto, en `.gitignore`). Este apéndice es solo referencia rápida.
+
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `superadmin` | `Admin12345*` | super_admin |
+| `Socio GTA6` | `socio12345*` | gerente_hotel |
+| `Horuz` | `Horuz12345*` | cliente |
+| `carlos.mendoza@hoteldata.local` | `yn_ncfT2TqevSA` | mantenimiento |
+
+**Regla para agentes**: NUNCA adivinar contraseñas. Leer `.credentials/credenciales.md` primero. Si una cuenta está bloqueada (423), desbloquear vía MongoDB (comando en `AGENTS.md`).
