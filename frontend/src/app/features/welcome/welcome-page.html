@@ -73,9 +73,9 @@
         <div class="booking-bar__body">
           <span class="booking-bar__label">Entrada — Salida</span>
           <div class="booking-bar__dates">
-            <input type="date" formControlName="checkIn" [min]="today" class="booking-bar__date" />
+            <input type="date" formControlName="checkIn" [min]="today" class="booking-bar__date" (change)="onCheckInChange()" />
             <span class="booking-bar__dates-sep" aria-hidden="true">→</span>
-            <input type="date" formControlName="checkOut" [min]="today" class="booking-bar__date" />
+            <input type="date" formControlName="checkOut" [min]="minCheckOut()" class="booking-bar__date" />
           </div>
         </div>
       </div>

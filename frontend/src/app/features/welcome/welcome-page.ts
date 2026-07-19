@@ -84,8 +84,33 @@ export class WelcomePageComponent {
   readonly childRange = [0, 1, 2, 3, 4, 5, 6];
   readonly roomRange = [1, 2, 3, 4, 5];
 
+  /** Minimum check-out date — always at least today, and at least checkIn + 1 day. */
+  readonly minCheckOut = signal(this.today);
+
+  /** Update minCheckOut when checkIn changes so check-out can't be before check-in. */
+  onCheckInChange(): void {
+    const ci = this.searchForm.controls.checkIn.value;
+    if (ci) {
+      const next = new Date(ci);
+      next.setDate(next.getDate() + 1);
+      this.minCheckOut.set(next.toISOString().split('T')[0]);
+      // Clear checkOut if it's now before the new minimum
+      const co = this.searchForm.controls.checkOut.value;
+      if (co && co <= ci) {
+        this.searchForm.controls.checkOut.setValue('');
+      }
+    } else {
+      this.minCheckOut.set(this.today);
+    }
+  }
+
   /** Navigate to /search with the form values as query params. */
   navigateToSearch(): void {
+    if (this.searchForm.invalid) {
+      this.searchForm.markAllAsTouched();
+      return;
+    }
+
     const fv = this.searchForm.getRawValue();
     const params: Record<string, string> = {};
     if (fv.destination.trim()) params['destination'] = fv.destination.trim();
