@@ -35,6 +35,7 @@ def search_available_hotels(
     price_min: float | None = None,
     price_max: float | None = None,
     star_rating: float | None = None,
+    prop_ids: str = "",
     page: int = 1,
     page_size: int = 10,
     content_only: bool = False,
@@ -43,6 +44,15 @@ def search_available_hotels(
     page = max(page, 1)
     page_size = min(max(page_size, 1), 20)
     has_dates = bool(check_in and check_out)
+
+    # Parse explicit prop_ids (comma-separated) — used by favorites page
+    explicit_ids: list[int] = []
+    if prop_ids:
+        for pid in prop_ids.split(","):
+            try:
+                explicit_ids.append(int(pid.strip()))
+            except (ValueError, TypeError):
+                pass
 
     if has_dates:
         try:
@@ -55,28 +65,34 @@ def search_available_hotels(
     destination_lookup = _destination_lookup(destination_ids) if destination_ids else {}
 
     hotel_filter: dict[str, Any] = {}
-    amenities_ids = _amenities_prop_ids(amenities, mode=amenities_mode.lower()) if amenities else []
-    if amenities and not amenities_ids:
-        alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
-        return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
 
-    if destination_ids or amenities_ids:
-        prop_sets = []
-        if destination_ids:
-            fact_prop_ids = set(db.fact_hotel_reservations.distinct(
-                "prop_id", {"srch_destination_id": {"$in": destination_ids}},
-            ))
-            if not fact_prop_ids:
-                alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
-                return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
-            prop_sets.append(fact_prop_ids)
-        if amenities_ids:
-            prop_sets.append(set(amenities_ids))
-        combined = set.intersection(*prop_sets) if prop_sets else set()
-        if not combined:
+    # When explicit IDs are provided, use them directly (bypass destination/amenity lookups)
+    if explicit_ids:
+        hotel_filter["prop_id"] = {"$in": explicit_ids}
+        page_size = min(page_size, len(explicit_ids))
+    else:
+        amenities_ids = _amenities_prop_ids(amenities, mode=amenities_mode.lower()) if amenities else []
+        if amenities and not amenities_ids:
             alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
             return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
-        hotel_filter["prop_id"] = {"$in": list(combined)}
+
+        if destination_ids or amenities_ids:
+            prop_sets: list[set[int]] = []
+            if destination_ids:
+                fact_prop_ids = set(db.fact_hotel_reservations.distinct(
+                    "prop_id", {"srch_destination_id": {"$in": destination_ids}},
+                ))
+                if not fact_prop_ids:
+                    alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+                    return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
+                prop_sets.append(fact_prop_ids)
+            if amenities_ids:
+                prop_sets.append(set(amenities_ids))
+            combined = set.intersection(*prop_sets) if prop_sets else set()
+            if not combined:
+                alt = _suggest_alternative_destinations(destination, exclude_ids=destination_ids) if destination else []
+                return _empty_availability(destination, check_in, check_out, adults, children, rooms, alternatives=alt)
+            hotel_filter["prop_id"] = {"$in": list(combined)}
 
     if star_rating is not None:
         hotel_filter["prop_starrating"] = {"$gte": star_rating}

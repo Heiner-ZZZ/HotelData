@@ -9,9 +9,12 @@ from fastapi.responses import RedirectResponse
 from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.services import (
     add_partner_hotel_image,
+    add_room_type_image,
     delete_partner_hotel_image,
+    delete_room_type_image,
     partner_hotel_detail,
     reorder_partner_hotel_images,
+    reorder_room_type_images,
     save_partner_hotel_content,
 )
 from src.app.security.dependencies import require_login
@@ -137,3 +140,76 @@ def property_image_reorder_api(prop_id: int, payload: dict = Body(...), current_
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {"images": result, "primary_image": result[0]["image_url"] if result else None}
+
+
+# ═══ Room-Type Images ═══
+
+
+@api_router.post("/properties/{prop_id}/room-types/images/upload")
+async def room_type_image_upload_api(
+    prop_id: int,
+    file: UploadFile,
+    room_type_id: str = Query(..., min_length=1),
+    current_user: dict = Depends(require_login),
+):
+    """Upload an image for a specific room type."""
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se permiten archivos de imagen.")
+
+    ext = Path(file.filename or "image.jpg").suffix or ".jpg"
+    filename = f"room_{prop_id}_{room_type_id[:10]}_{uuid.uuid4().hex[:8]}{ext}"
+    upload_dir = Path("/app/data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filepath = upload_dir / filename
+
+    content = await file.read()
+    filepath.write_bytes(content)
+
+    image_url = f"/uploads/{filename}"
+    title = Path(file.filename or "image").stem.replace("-", " ").replace("_", " ").title()
+
+    try:
+        saved = add_room_type_image(
+            prop_id, room_type_id=room_type_id, image_url=image_url, title=title,
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if saved is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    return saved
+
+
+@api_router.delete("/properties/{prop_id}/room-types/images")
+def room_type_image_delete_api(
+    prop_id: int,
+    image_url: str = Query(...),
+    current_user: dict = Depends(require_login),
+):
+    deleted = delete_room_type_image(prop_id, image_url=image_url, changed_by=current_user.get("username", "angular_api"))
+    return {"deleted": deleted}
+
+
+@api_router.put("/properties/{prop_id}/room-types/{room_type_id}/images/reorder")
+def room_type_image_reorder_api(
+    prop_id: int,
+    room_type_id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    image_order = payload.get("image_order")
+    if not isinstance(image_order, list) or not image_order:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_order must be a non-empty list.")
+    try:
+        result = reorder_room_type_images(
+            prop_id, room_type_id=room_type_id,
+            image_order=[str(url) for url in image_order],
+            changed_by=current_user.get("username", "angular_api"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"images": result}

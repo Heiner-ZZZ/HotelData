@@ -53,11 +53,12 @@ def policies_api(
     prop_id: int = Query(..., ge=1),
     room_type_id: str | None = Query(default=None),
     season_id: str | None = Query(default=None),
+    rate_plan_id: str | None = Query(default=None),
 ):
     if room_type_id:
-        detail = partner_hotel_per_room_policies(require_prop_id(prop_id), room_type_id)
+        detail = partner_hotel_per_room_policies(require_prop_id(prop_id), room_type_id, rate_plan_id=rate_plan_id or "")
     else:
-        detail = partner_hotel_policies(require_prop_id(prop_id), season_id=season_id or "")
+        detail = partner_hotel_policies(require_prop_id(prop_id), season_id=season_id or "", rate_plan_id=rate_plan_id or "")
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return detail
@@ -104,6 +105,7 @@ def policies_update_api(
             payment_policy=str(payload.get("payment_policy") or ""),
             house_rules=str(payload.get("house_rules") or ""),
             room_type_id=str(payload.get("room_type_id") or ""),
+            rate_plan_id=str(payload.get("rate_plan_id") or ""),
             season_id=str(payload.get("season_id") or ""),
             # SPEC 022 structured fields
             cancellation_hours=payload.get("cancellation_hours"),

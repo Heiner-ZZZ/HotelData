@@ -77,3 +77,31 @@ def public_list_countries_api(
         if row.get("visitor_location_country_id") is not None
     ]
     return {"countries": countries, "fallback": False}
+
+
+@public_router.get("/hotels/{prop_id}/images")
+def public_hotel_images_api(prop_id: int):
+    """Public endpoint — return hotel custom images ordered by sort_order.
+    Used by the hotel card to show real hotel photos before loremflickr placeholders."""
+    db = get_database()
+    images = list(
+        db.hotel_images.find(
+            {"prop_id": prop_id},
+            {"_id": 0, "image_url": 1, "title": 1, "sort_order": 1},
+        ).sort([("sort_order", 1)])
+    )
+    return {"ok": True, "images": images}
+
+
+@public_router.get("/hotels/{prop_id}/room-images")
+def public_room_type_images_api(prop_id: int):
+    """Public endpoint — return room-type images ordered by sort_order.
+    Used by the hotel card gallery between hotel images and loremflickr placeholders."""
+    db = get_database()
+    images = list(
+        db.room_type_images.find(
+            {"prop_id": prop_id},
+            {"_id": 0, "image_url": 1, "title": 1, "room_type_id": 1, "sort_order": 1},
+        ).sort([("sort_order", 1)])
+    )
+    return {"ok": True, "images": images}

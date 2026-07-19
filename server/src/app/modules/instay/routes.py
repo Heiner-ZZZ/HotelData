@@ -509,12 +509,24 @@ def get_portal_data(token: str = Query(..., min_length=1)):
     prop_id = session["prop_id"]
 
     hotel = db.hotel_profile.find_one({"prop_id": prop_id})
+    # Resolve display name from dim_hotels (canonical source), fall back to hotel_profile
+    dim_hotel = db.dim_hotels.find_one(
+        {"prop_id": prop_id},
+        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+    )
+    hotel_label = (
+        (dim_hotel or {}).get("display_label")
+        or (dim_hotel or {}).get("display_name")
+        or (dim_hotel or {}).get("hotel_name")
+        or (hotel or {}).get("display_name")
+        or (hotel or {}).get("hotel_name", "")
+        or ""
+    )
     policies = list(db.hotel_policies.find({"prop_id": prop_id}, {"_id": 0}))
     amenities = list(db.hotel_amenities.find({"prop_id": prop_id}, {"_id": 0, "name": 1, "icon": 1}))
 
     compendium = CompendiumInfo(
-        hotel_name=hotel.get("display_name", hotel.get("hotel_name", "")) if hotel else "",
-        hotel_address=hotel.get("address", "") if hotel else "",
+        hotel_name=hotel_label,
         hotel_phone=hotel.get("phone", "") if hotel else "",
         wifi_ssid=hotel.get("wifi_ssid", "") if hotel else "",
         wifi_password=hotel.get("wifi_password", "") if hotel else "",

@@ -1,15 +1,28 @@
 from __future__ import annotations
 
-from fastapi import Body, HTTPException, Query, status
+import uuid
+from datetime import datetime, timezone
+
+import gridfs
+from bson import ObjectId
+from fastapi import Body, File, HTTPException, Query, UploadFile, status
 
 from fastapi import Depends
+from fastapi.responses import Response, JSONResponse
 
+from src.database.connection import get_database
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.routes._common import require_prop_id
 from src.app.modules.partner.services import (
     management_property_options,
     partner_hotel_content,
     save_partner_hotel_amenities,
+)
+from src.app.modules.partner.services.content.amenities import (
+    _get_price_defaults,
+    _load_price_defaults_from_db,
+    _GLOBAL_DEFAULTS_PROP_ID,
+    invalidate_price_defaults_cache,
 )
 from src.app.security.dependencies import require_login
 
@@ -66,3 +79,208 @@ def amenities_update_api(
     # Return the full detail format (same as GET) so the frontend mapper
     # can parse it as AmenitiesDto without crashing.
     return partner_hotel_content(prop_id, room_type_id=room_type_id)
+
+
+# ═══ Amenity Photos ═══
+
+_PHOTO_MAX_COUNT = 5
+_PHOTO_MAX_SIZE = 2 * 1024 * 1024  # 2 MB
+_PHOTO_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def _ensure_amenity_photos_indexes():
+    db = get_database()
+    existing = db.amenity_photos.index_information()
+    if "prop_amenity_label" not in existing:
+        db.amenity_photos.create_index(
+            [("prop_id", 1), ("amenity_label", 1)],
+            name="prop_amenity_label",
+        )
+
+
+@api_router.post("/amenities/photos")
+async def upload_amenity_photo(
+    prop_id: int = Query(..., ge=1),
+    amenity_label: str = Query(..., min_length=1),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_login),
+):
+    """Upload a photo for a specific active amenity. Max 5 per amenity."""
+    if file.content_type not in _PHOTO_ALLOWED_TYPES:
+        return JSONResponse(
+            {"ok": False, "message": f"Formato no permitido. Usa JPG, PNG o WebP."},
+            status_code=400,
+        )
+    content = await file.read()
+    if len(content) > _PHOTO_MAX_SIZE:
+        return JSONResponse(
+            {"ok": False, "message": "La imagen no puede superar los 2 MB."},
+            status_code=400,
+        )
+
+    db = get_database()
+    _ensure_amenity_photos_indexes()
+
+    # Limit to max 5 photos per amenity
+    existing_count = db.amenity_photos.count_documents(
+        {"prop_id": prop_id, "amenity_label": amenity_label}
+    )
+    if existing_count >= _PHOTO_MAX_COUNT:
+        return JSONResponse(
+            {"ok": False, "message": f"Máximo {_PHOTO_MAX_COUNT} fotos por amenidad."},
+            status_code=400,
+        )
+
+    fs = gridfs.GridFS(db)
+    filename = f"amenity_{prop_id}_{amenity_label[:20]}_{uuid.uuid4().hex[:8]}"
+    gridfs_id = fs.put(content, filename=filename, content_type=file.content_type)
+
+    doc = {
+        "prop_id": prop_id,
+        "amenity_label": amenity_label,
+        "gridfs_id": gridfs_id,
+        "content_type": file.content_type,
+        "filename": filename,
+        "uploaded_by": current_user.get("username", "system"),
+        "uploaded_at": datetime.now(timezone.utc),
+    }
+    db.amenity_photos.insert_one(doc)
+    return {"ok": True, "photo_id": str(gridfs_id), "message": "Foto subida."}
+
+
+@api_router.delete("/amenities/photos/{photo_id}")
+def delete_amenity_photo(
+    photo_id: str,
+    current_user: dict = Depends(require_login),
+):
+    """Delete an amenity photo by its gridfs_id."""
+    db = get_database()
+    _ensure_amenity_photos_indexes()
+    try:
+        oid = ObjectId(photo_id)
+    except Exception:
+        return JSONResponse({"ok": False, "message": "ID inválido."}, status_code=400)
+
+    doc = db.amenity_photos.find_one_and_delete({"gridfs_id": oid})
+    if not doc:
+        return JSONResponse({"ok": False, "message": "Foto no encontrada."}, status_code=404)
+
+    fs = gridfs.GridFS(db)
+    if fs.exists(oid):
+        fs.delete(oid)
+    return {"ok": True, "message": "Foto eliminada."}
+
+
+# ═══ Amenity Price Defaults (global, not per-hotel) ═══
+
+
+@api_router.get("/amenities/default-prices")
+def get_amenity_default_prices_api(
+    current_user: dict = Depends(require_login),
+):
+    """Return all global amenity price defaults from MongoDB."""
+    defaults = _get_price_defaults()
+    items = [
+        {"label": label, "default_price": price}
+        for label, price in sorted(defaults.items(), key=lambda x: x[0])
+    ]
+    return {"ok": True, "defaults": items, "count": len(items)}
+
+
+@api_router.put("/amenities/default-prices")
+def update_amenity_default_prices_api(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Update global amenity price defaults.
+
+    Accepts a list of {label, default_price} objects.
+    Upserts each one into the ``amenity_price_defaults`` collection.
+    Invalidates the in-memory cache so subsequent lookups use fresh data.
+
+    Body example:
+    ```json
+    {
+      "defaults": [
+        {"label": "spa", "default_price": 45.0},
+        {"label": "taxi", "default_price": 20.0}
+      ]
+    }
+    ```
+    """
+    items = payload.get("defaults")
+    if not isinstance(items, list):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="'defaults' debe ser una lista de {label, default_price}.",
+        )
+
+    db = get_database()
+    existing = db.hotel_content_pages.find_one(
+        {"prop_id": _GLOBAL_DEFAULTS_PROP_ID},
+        {"_id": 0, "amenity_prices": 1},
+    )
+    prices: dict[str, float] = dict((existing or {}).get("amenity_prices") or {})
+    upserted = 0
+    for item in items:
+        label = (item.get("label") or "").strip()
+        if not label:
+            continue
+        try:
+            price = float(item.get("default_price", 0))
+        except (ValueError, TypeError):
+            price = 0.0
+        prices[label] = price
+        upserted += 1
+
+    db.hotel_content_pages.update_one(
+        {"prop_id": _GLOBAL_DEFAULTS_PROP_ID},
+        {
+            "$set": {
+                "amenity_prices": prices,
+                "updated_at": datetime.now(timezone.utc),
+                "updated_by": current_user.get("username", "system"),
+            },
+            "$setOnInsert": {"prop_id": _GLOBAL_DEFAULTS_PROP_ID, "created_at": datetime.now(timezone.utc)},
+        },
+        upsert=True,
+    )
+
+    # Invalidate cache so the next read picks up changes
+    invalidate_price_defaults_cache()
+    # Reload immediately so the response reflects new state
+    reloaded = _load_price_defaults_from_db()
+
+    return {
+        "ok": True,
+        "upserted": upserted,
+        "count": len(reloaded),
+        "message": f"{upserted} precio(s) por defecto actualizado(s).",
+    }
+
+
+@api_router.get("/amenities/photos")
+def list_amenity_photos(
+    prop_id: int = Query(..., ge=1),
+    amenity_label: str = Query(default=""),
+    current_user: dict = Depends(require_login),
+):
+    """List photos for amenities of a property. Optionally filter by amenity_label.
+    Returns list of {photo_id, amenity_label, url}."""
+    db = get_database()
+    _ensure_amenity_photos_indexes()
+    query: dict = {"prop_id": prop_id}
+    if amenity_label:
+        query["amenity_label"] = amenity_label
+    docs = db.amenity_photos.find(query, {"_id": 0}).sort("uploaded_at", 1)
+    return {
+        "ok": True,
+        "photos": [
+            {
+                "photo_id": str(d["gridfs_id"]),
+                "amenity_label": d["amenity_label"],
+                "url": f"/api/amenities/photos/{d['gridfs_id']}",
+            }
+            for d in docs
+        ],
+    }
