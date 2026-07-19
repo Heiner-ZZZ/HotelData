@@ -39,6 +39,10 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
       id: r.room_type_id,
       name: r.name
     })),
+    ratePlanOptions: (dto.rate_plan_options ?? []).map(rp => ({
+      id: rp.rate_plan_id,
+      name: rp.name,
+    })),
     summary: [
       { label: 'Check-in', value: checkIn, detail: 'Horario de llegada' },
       { label: 'Check-out', value: checkOut, detail: 'Horario de salida' },

@@ -18,8 +18,6 @@ import { mapPolicies, mapPoliciesPayload } from '../../mappers/policies.mapper';
 import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import type { PoliciesDto } from '../../models/policies.dto';
 import { PoliciesApiService } from '../../services/policies-api.service';
-import { RatesApiService } from '../../../rates/services/rates-api.service';
-import type { RatePlanOption } from '../../../rates/models/rates.model';
 import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
@@ -47,7 +45,6 @@ export class PoliciesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PoliciesApiService);
-  private readonly ratesApi = inject(RatesApiService);
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
@@ -90,8 +87,8 @@ export class PoliciesPageComponent {
   readonly selectedLabel = computed(() => this.policiesResource.value()?.hotelName ?? '');
   readonly roomTypeOptions = computed(() => this.policiesResource.value()?.roomTypes ?? []);
 
-  /** Rate plan options loaded from the rates API for this property. */
-  readonly ratePlanOptions = signal<RatePlanOption[]>([]);
+  /** Rate plan options — derived from policies resource (backend now includes them). */
+  readonly ratePlanOptions = computed(() => this.policiesResource.value()?.ratePlanOptions ?? []);
 
   /** Hotel-level check-in/check-out — never overridden by room-type policies. */
   private hotelCheckInTime = '';
@@ -152,19 +149,6 @@ export class PoliciesPageComponent {
           this.selectedRatePlanId.set('');
         }
       }
-    });
-
-    // Load rate plan options when prop changes
-    effect(() => {
-      const propId = this.selectedPropId();
-      if (!propId) {
-        this.ratePlanOptions.set([]);
-        return;
-      }
-      this.ratesApi.getRatePlanOptions(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (options) => this.ratePlanOptions.set(options),
-        error: () => this.ratePlanOptions.set([]),
-      });
     });
 
     // Apply side effects when fresh policies arrive

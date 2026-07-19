@@ -37,6 +37,7 @@ export interface PoliciesDto {
   };
   room_types?: PolicyRoomTypeItem[];
   per_room_policies?: Record<string, unknown>[];
+  rate_plan_options?: { rate_plan_id: string; name: string }[];
 }
 
 export interface PoliciesOptionsDto {

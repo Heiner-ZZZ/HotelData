@@ -240,11 +240,18 @@ h2 {
   font-size: 1.35rem;
   line-height: 1.18;
   margin-bottom: 0.35rem;
+  font-weight: 500;
 }
 
 h2 a {
-  color: var(--accent);
+  color: color-mix(in srgb, var(--accent) 65%, #000);
   text-decoration: none;
+  transition: text-underline-offset 0.15s;
+}
+
+.hotel-card:hover h2 a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .meta-line,

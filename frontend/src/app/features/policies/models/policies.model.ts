@@ -49,5 +49,6 @@ export interface PoliciesViewModel {
   minStay: number;
   maxStay: number;
   roomTypes: PolicyRoomTypeOption[];
+  ratePlanOptions: { id: string; name: string }[];
   summary: PolicySummaryItem[];
 }

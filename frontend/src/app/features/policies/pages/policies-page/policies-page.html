@@ -123,7 +123,7 @@
                 >
                   <option value="">Todos los planes (general)</option>
                   @for (rp of ratePlanOptions(); track rp.id) {
-                    <option [value]="rp.id">{{ rp.label }}</option>
+                    <option [value]="rp.id">{{ rp.name }}</option>
                   }
                 </select>
               </label>
