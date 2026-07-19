@@ -274,6 +274,90 @@ def get_avatar(file_id: str):
     )
 
 
+# ═══ Favorites ═══
+
+_favorites_indexes_ready = False
+
+
+def ensure_favorites_indexes():
+    global _favorites_indexes_ready
+    if _favorites_indexes_ready:
+        return
+    db = get_database()
+    db.user_favorites.create_index(
+        [("user_id", 1), ("hotel_id", 1)],
+        unique=True,
+        name="idx_user_favorites_uid_hid",
+    )
+    db.user_favorites.create_index(
+        [("hotel_id", 1), ("added_at", -1)],
+        name="idx_user_favorites_hid",
+    )
+    _favorites_indexes_ready = True
+
+
+@api_router.get("/favorites")
+def get_favorites(request: Request):
+    """Return list of favorited hotel IDs for the authenticated user."""
+    db = get_database()
+    current_user = require_login(request)
+    user_id = current_user["_id"]
+    ensure_favorites_indexes()
+    cursor = db.user_favorites.find({"user_id": user_id}, {"hotel_id": 1, "_id": 0})
+    ids = [doc["hotel_id"] for doc in cursor]
+    return {"ok": True, "favorites": ids}
+
+
+@api_router.post("/favorites")
+def add_favorite(request: Request, payload: dict[str, Any] = Body(...)):
+    """Add a hotel to the user's favorites."""
+    db = get_database()
+    current_user = require_login(request)
+    user_id = current_user["_id"]
+
+    raw = payload.get("hotel_id")
+    try:
+        hotel_id = int(raw)
+    except (TypeError, ValueError):
+        return JSONResponse(
+            {"ok": False, "message": "hotel_id must be a positive integer."},
+            status_code=400,
+        )
+    if hotel_id <= 0:
+        return JSONResponse(
+            {"ok": False, "message": "hotel_id must be a positive integer."},
+            status_code=400,
+        )
+
+    ensure_favorites_indexes()
+    db.user_favorites.update_one(
+        {"user_id": user_id, "hotel_id": hotel_id},
+        {"$setOnInsert": {"added_at": utc_now()}},
+        upsert=True,
+    )
+    log_user_activity(
+        db, action="account.favorite_added", request=request,
+        user=current_user, details={"hotel_id": hotel_id},
+    )
+    return {"ok": True, "hotel_id": hotel_id}
+
+
+@api_router.delete("/favorites/{hotel_id}")
+def remove_favorite(request: Request, hotel_id: int):
+    """Remove a hotel from the user's favorites."""
+    db = get_database()
+    current_user = require_login(request)
+    user_id = current_user["_id"]
+
+    ensure_favorites_indexes()
+    db.user_favorites.delete_one({"user_id": user_id, "hotel_id": hotel_id})
+    log_user_activity(
+        db, action="account.favorite_removed", request=request,
+        user=current_user, details={"hotel_id": hotel_id},
+    )
+    return {"ok": True, "hotel_id": hotel_id}
+
+
 @api_router.get("/verify-email")
 def verify_email(request: Request, token: str = ""):
     if not token:

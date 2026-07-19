@@ -11,6 +11,7 @@ from typing import Any
 
 from src.database.connection import get_database
 from src.app.modules.partner.services._common import normalize_label
+from src.app.modules.partner.services.content.amenities import _amenity_unit_price
 
 
 def get_billable_services(prop_id: int, booking_id: str | None = None) -> dict[str, Any]:
@@ -48,7 +49,7 @@ def get_billable_services(prop_id: int, booking_id: str | None = None) -> dict[s
             if not clean or clean.lower() in seen:
                 continue
             cat = category or _category_for_label(clean)
-            unit_price = stored_prices.get(clean.lower(), _default_price(clean))
+            unit_price = stored_prices.get(clean.lower(), _amenity_unit_price(clean))
             seen[clean.lower()] = {
                 "label": clean,
                 "category": cat,
@@ -135,39 +136,3 @@ def _category_for_label(label: str) -> str:
         if any(kw in normalized for kw in keywords):
             return cat
     return "General"
-
-
-def _default_price(label: str) -> float:
-    """Return a sensible default unit price for common paid amenities."""
-    paid = {
-        "desayuno incluido": 15.0,
-        "desayuno": 15.0,
-        "camas extra": 25.0,
-        "cama extra": 25.0,
-        "cunas": 15.0,
-        "cuna": 15.0,
-        "parking": 20.0,
-        "estacionamiento": 20.0,
-        "minibar": 15.0,
-        "caja fuerte": 5.0,
-        "spa": 40.0,
-        "masajes": 50.0,
-        "masaje": 50.0,
-        "sauna": 25.0,
-        "servicio a la habitacion": 12.0,
-        "servicio a la habitación": 12.0,
-        "cafe": 5.0,
-        "café": 5.0,
-        "bar": 8.0,
-        "restaurante": 0.0,
-        "gimnasio": 10.0,
-        "mascotas": 30.0,
-        "mascota": 30.0,
-        "pet friendly": 30.0,
-        "lavandería": 18.0,
-        "lavanderia": 18.0,
-        "laundry": 18.0,
-        "late check-out": 35.0,
-        "late checkout": 35.0,
-    }
-    return paid.get(label.lower(), 0.0)

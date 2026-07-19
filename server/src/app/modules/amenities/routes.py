@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import logging
 
+import gridfs
+from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 
+from src.database.connection import get_database
 from src.app.security.dependencies import require_login
 from .service import (
     get_guest_amenity_catalog,
@@ -18,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 # Public guest router — no authentication required
 guest_router = APIRouter(prefix="/api/amenities/guest", tags=["amenities-guest"])
+
+# Public photos router — serves amenity photos by gridfs_id
+photos_router = APIRouter(prefix="/api/amenities/photos", tags=["amenities-photos"])
 
 # Admin/protected router for stock management
 admin_router = APIRouter(prefix="/api/amenities/stock", tags=["amenities-stock"])
@@ -50,6 +57,9 @@ def guest_amenity_catalog_by_prop_api(
     before a booking exists. Includes prices and stock but no booking context.
     """
     from src.app.modules.partner.services.content.amenities import amenities_payload_for_prop
+
+# Note: the public amenity photos endpoint is now under photos_router (/api/amenities/photos/property/{prop_id})
+# to avoid auth middleware — /api/amenities/guest requires authenticated roles.
 
     amenities_data = amenities_payload_for_prop(prop_id)
     catalog = amenities_data.get("catalog", [])
@@ -143,5 +153,47 @@ def stock_set_api(
             room_type_id=str(payload.get("room_type_id") or ""),
         )
         return result
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ═══ Public amenity photo serving ═══
+
+@photos_router.get("/{photo_id}")
+def serve_amenity_photo(photo_id: str):
+    """Serve an amenity photo by its gridfs_id. Public — no auth."""
+    try:
+        oid = ObjectId(photo_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de foto inválido.")
+    fs = gridfs.GridFS(get_database())
+    if not fs.exists(oid):
+        raise HTTPException(status_code=404, detail="Foto no encontrada.")
+    gf = fs.get(oid)
+    return Response(
+        content=gf.read(),
+        media_type=gf.content_type or "image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@photos_router.get("/property/{prop_id}")
+def public_amenity_photos(prop_id: int):
+    """Public endpoint — return amenity photo URLs for a property.
+    Used by the hotel card to show real amenity images after placeholder pics."""
+    db = get_database()
+    docs = db.amenity_photos.find(
+        {"prop_id": prop_id},
+        {"_id": 0, "gridfs_id": 1, "amenity_label": 1},
+    ).sort("uploaded_at", 1)
+    return {
+        "ok": True,
+        "photos": [
+            {
+                "photo_id": str(d["gridfs_id"]),
+                "amenity_label": d["amenity_label"],
+                "url": f"/api/amenities/photos/{d['gridfs_id']}",
+            }
+            for d in docs
+        ],
+    }
+

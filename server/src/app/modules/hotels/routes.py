@@ -36,6 +36,7 @@ def availability_search(
     price_min: float | None = Query(default=None, ge=0),
     price_max: float | None = Query(default=None, ge=0),
     star_rating: float | None = Query(default=None, ge=1, le=5),
+    prop_ids: str = "",
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=20),
     content_only: bool = Query(default=False),
@@ -43,6 +44,8 @@ def availability_search(
     """Public operational availability search.
 
     Returns hotels with real-time inventory and rate checks.
+    When ``prop_ids`` is provided (comma-separated), filters results
+    to those specific property IDs (used by favorites page).
     No authentication required.
     """
     return search_available_hotels(
@@ -58,6 +61,7 @@ def availability_search(
         price_min=price_min,
         price_max=price_max,
         star_rating=star_rating,
+        prop_ids=prop_ids,
         page=page,
         page_size=page_size,
         content_only=content_only,

@@ -521,8 +521,8 @@ export class ReservationNewPageComponent {
       this.step.set('details');
       return;
     }
-    // If there's a price > 0, go to payment step instead of submitting directly
-    if ((previewData?.totalPrice ?? 0) > 0) {
+    // If there's a price > 0 OR deposit is required, go to payment step
+    if ((previewData?.totalPrice ?? 0) > 0 || previewData?.depositRequired) {
       this.goToPayment();
       return;
     }

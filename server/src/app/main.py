@@ -57,6 +57,7 @@ from src.app.modules.kpi.routes import router as kpi_api_router
 from src.app.modules.map.routes import router as map_api_router
 from src.app.modules.amenities.routes import admin_router as amenities_admin_router
 from src.app.modules.amenities.routes import guest_router as amenities_guest_router
+from src.app.modules.amenities.routes import photos_router as amenities_photos_router
 from src.app.modules.lost_and_found.routes import api_router as lost_and_found_api_router
 from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
 from src.app.modules.notifications.routes import router as notifications_router
@@ -160,6 +161,7 @@ def create_app() -> FastAPI:
     app.include_router(map_api_router)
     app.include_router(amenities_guest_router)
     app.include_router(amenities_admin_router)
+    app.include_router(amenities_photos_router)
     app.include_router(reception_api_router)
     app.include_router(lost_and_found_api_router)
     app.include_router(lost_and_found_module_router)
