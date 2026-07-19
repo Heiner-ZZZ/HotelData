@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 export interface DateHistoryEntry {
   date: string;
@@ -16,6 +16,7 @@ import {
   mapReservationsList
 } from '../mappers/reservations.mapper';
 import type {
+  CancelPreviewDto,
   ReservationCancelDto,
   ReservationConfirmRejectDto,
   ReservationCreateDto,
@@ -168,20 +169,8 @@ export class ReservationsApiService {
       .pipe(map((dto) => mapReservationDetail(dto)));
   }
 
-  getCancelPreview(bookingId: string) {
-    return this.http.get<{
-      booking_id: string;
-      guest_name: string;
-      check_in_date: string;
-      total_price: number | null;
-      currency: string;
-      total_nights: number;
-      free_cancellation: boolean;
-      penalty_percent: number;
-      penalty_amount: number;
-      hours_until_checkin: number | null;
-      cancellation_hours: number;
-    }>(`/reservations/${bookingId}/cancel-preview`);
+  getCancelPreview(bookingId: string): Observable<CancelPreviewDto> {
+    return this.http.get<CancelPreviewDto>(`/reservations/${bookingId}/cancel-preview`);
   }
 
   cancelReservation(bookingId: string) {

@@ -40,6 +40,13 @@ export class ProfileApiService {
     );
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<{ ok: boolean; message: string }> {
+    return this.http.put<{ ok: boolean; message: string }>('/api/settings/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }
+
   uploadAvatar(file: File): Observable<HttpEvent<AvatarUploadResponse>> {
     const formData = new FormData();
     formData.append('file', file);

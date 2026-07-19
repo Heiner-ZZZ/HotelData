@@ -1,10 +1,10 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { inject, Service } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import type { GuestAmenityCatalogDto, GuestAmenityRequestDto, GuestAmenityRequestResponseDto } from '../models/guest-amenity.dto';
 
-@Service()
+@Injectable({ providedIn: 'root' })
 export class GuestAmenityService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);

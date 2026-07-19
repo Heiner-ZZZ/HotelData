@@ -13,7 +13,7 @@ import type {
 } from '../models/products.dto';
 import type { BookingLineItem, HotelProduct } from '../models/products.model';
 
-function mapProduct(dto: HotelProductDto): HotelProduct {
+export function mapProduct(dto: HotelProductDto): HotelProduct {
   return {
     productId: dto.product_id,
     propId: dto.prop_id,
@@ -26,7 +26,7 @@ function mapProduct(dto: HotelProductDto): HotelProduct {
   };
 }
 
-function mapLineItem(dto: BookingLineItemDto): BookingLineItem {
+export function mapLineItem(dto: BookingLineItemDto): BookingLineItem {
   return {
     itemId: dto.item_id,
     productId: dto.product_id,

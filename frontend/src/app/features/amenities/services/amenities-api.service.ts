@@ -1,12 +1,12 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { inject, Service } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { catchAuthError } from '../../../shared/utils/catch-auth-error';
 import { mapAmenities, mapAmenitiesOptions } from '../mappers/amenities.mapper';
 import type { AmenitiesDto, AmenitiesOptionsDto, AmenitiesSaveDto } from '../models/amenities.dto';
 
-@Service()
+@Injectable({ providedIn: 'root' })
 export class AmenitiesApiService {
   private readonly http = inject(HttpClient);
 
