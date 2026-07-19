@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { of } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -14,6 +16,7 @@ import type { PropertyDetailViewModel } from '../../models/properties.model';
 import type { PropertyDetailResponseDto } from '../../models/properties.dto';
 import { PropertiesApiService } from '../../services/properties-api.service';
 import { ReviewsApiService } from '../../../reviews/services/reviews-api.service';
+import type { ReviewsListDto } from '../../../reviews/models/reviews.dto';
 import { mapPropertyDetailResponse } from '../../mappers/properties.mapper';
 
 @Component({
@@ -105,12 +108,20 @@ export class PropertyDetailPageComponent {
     this.calendarMonth.set(newM);
   }
 
-  // RF-006: Top approved reviews — httpResource auto-fires when detail loads
-  readonly reviewsResource = httpResource<any[]>(() => {
-    const propId = this.detailResource.value()?.propId ?? this.propId();
-    return propId ? `/api/hotels/${propId}/reviews` : undefined;
+  // RF-006: Approved reviews — rxResource fires when detail or page changes
+  readonly reviewsPageSize = 10;
+  readonly reviewsPage = signal(1);
+  readonly reviewsResource = rxResource<ReviewsListDto | undefined, { propId: number; page: number } | undefined>({
+    params: () => {
+      const propId = this.detailResource.value()?.propId ?? this.propId();
+      return propId ? { propId, page: this.reviewsPage() } : undefined;
+    },
+    stream: ({ params }) => {
+      if (!params) return of(undefined);
+      return this.reviewsApi.getHotelReviews(params.propId, params.page, this.reviewsPageSize);
+    },
   });
-  readonly reviews = computed(() => (this.reviewsResource.value() ?? []).map(r => ({
+  readonly reviews = computed(() => (this.reviewsResource.value()?.items ?? []).map(r => ({
     id: r._id,
     rating: r.rating,
     title: r.title,
@@ -121,8 +132,23 @@ export class PropertyDetailPageComponent {
   })));
   readonly reviewsLoaded = computed(() => !this.reviewsResource.isLoading());
   readonly reviewsError = computed(() => !!this.reviewsResource.error());
+  readonly reviewsHasNext = computed(() => this.reviewsResource.value()?.has_next ?? false);
+  readonly reviewsHasPrev = computed(() => this.reviewsResource.value()?.has_prev ?? false);
+
+  nextReviewsPage(): void {
+    if (this.reviewsHasNext()) this.reviewsPage.update(p => p + 1);
+  }
+
+  prevReviewsPage(): void {
+    if (this.reviewsHasPrev()) this.reviewsPage.update(p => Math.max(1, p - 1));
+  }
 
   constructor() {
-    // effect removed: calendarResource and reviewsResource auto-fire from detailResource.value()
+    // Reset reviews page when the route property changes
+    effect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      this.propId();
+      this.reviewsPage.set(1);
+    });
   }
 }

@@ -46,10 +46,26 @@ def get_review(review_id: str) -> dict | None:
     return _enrich(doc) if doc else None
 
 
-def get_hotel_reviews(prop_id: int, limit: int = 5) -> list[dict]:
+def get_hotel_reviews(prop_id: int, page: int = 1, page_size: int = 5) -> dict:
     db = get_database()
-    cursor = db[COLLECTION].find({"prop_id": prop_id, "moderation_status": "approved"}).sort("created_at", -1).limit(limit)
-    return [_enrich(doc) for doc in cursor]
+    query = {"prop_id": prop_id, "moderation_status": "approved"}
+    total = db[COLLECTION].count_documents(query)
+    cursor = (
+        db[COLLECTION]
+        .find(query)
+        .sort("created_at", -1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
+    return {
+        "items": [_enrich(doc) for doc in cursor],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
+        "has_next": page * page_size < total,
+        "has_prev": page > 1,
+    }
 
 
 def delete_review(review_id: str) -> bool:

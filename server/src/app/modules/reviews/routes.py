@@ -35,11 +35,18 @@ def reviews_module_status():
     return module_status()
 
 
-# RF-006: Public endpoint — top 5 approved reviews for a hotel
+# RF-006: Public endpoint — approved reviews for a hotel
 @public_router.get("/{prop_id}/reviews")
-def hotel_reviews_api(prop_id: int = Path(..., ge=1)):
-    """Return top 5 approved reviews for a hotel (public, no auth required)."""
-    return get_hotel_reviews(prop_id, limit=5)
+def hotel_reviews_api(
+    prop_id: int = Path(..., ge=1),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=5, ge=1, le=100),
+):
+    """Return approved reviews for a hotel (public, no auth required).
+
+    Defaults to the first 5 most recent reviews; use page/page_size to paginate.
+    """
+    return get_hotel_reviews(prop_id, page=page, page_size=page_size)
 
 
 @api_router.post("", status_code=201)

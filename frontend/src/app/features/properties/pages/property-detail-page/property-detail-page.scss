@@ -5,3 +5,28 @@
 @use 'partials/pd-layout' as *;
 @use 'partials/pd-content' as *;
 @use 'partials/pd-actions' as *;
+
+// ═══════════════════════════════════════════════
+// Reviews pagination
+// ═══════════════════════════════════════════════
+
+.reviews-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--app-border);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

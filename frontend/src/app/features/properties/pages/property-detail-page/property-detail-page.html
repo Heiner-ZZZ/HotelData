@@ -228,6 +228,18 @@
                       </article>
                     }
                   </div>
+                  @if (reviewsHasPrev() || reviewsHasNext()) {
+                    <div class="reviews-pagination">
+                      <button type="button" class="btn-secondary" [disabled]="!reviewsHasPrev()" (click)="prevReviewsPage()">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                        Anterior
+                      </button>
+                      <button type="button" class="btn-secondary" [disabled]="!reviewsHasNext()" (click)="nextReviewsPage()">
+                        Siguiente
+                        <span class="material-symbols-outlined">chevron_right</span>
+                      </button>
+                    </div>
+                  }
                 } @else {
                   <p class="empty-hint">Esta propiedad aún no tiene reseñas aprobadas.</p>
                 }

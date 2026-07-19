@@ -92,10 +92,14 @@ export class ReviewsApiService {
     ).pipe(map(dto => mapReputationDashboard(dto)));
   }
 
-  // Get top approved reviews for a hotel (public, no auth)
-  getHotelReviews(propId: number) {
-    return this.http.get<ReviewDetailDto[]>(
+  // Get approved reviews for a hotel (public, no auth)
+  getHotelReviews(propId: number, page = 1, pageSize = 5) {
+    const params = new HttpParams()
+      .set('page', String(page))
+      .set('page_size', String(pageSize));
+    return this.http.get<ReviewsListDto>(
       `${this.apiConfig.baseUrl}/hotels/${propId}/reviews`,
+      { params },
     );
   }
 }
