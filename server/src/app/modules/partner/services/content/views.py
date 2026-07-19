@@ -64,6 +64,13 @@ def partner_hotel_policies(prop_id: int, season_id: str = "", rate_plan_id: str 
             {"_id": 0},
         )
     )
+    # Include rate plan options so the UI dropdown doesn't need a separate API call
+    detail["rate_plan_options"] = [
+        {"rate_plan_id": p["rate_plan_id"], "name": p.get("name", p["rate_plan_id"])}
+        for p in get_database().rate_plans.find(
+            {"prop_id": prop_id}, {"_id": 0, "rate_plan_id": 1, "name": 1}
+        )
+    ]
     return detail
 
 
@@ -74,6 +81,13 @@ def partner_hotel_per_room_policies(prop_id: int, room_type_id: str, rate_plan_i
         return None
     detail["policies"] = policies_for_prop(prop_id, room_type_id=room_type_id, rate_plan_id=rate_plan_id)
     detail["room_type_id"] = room_type_id
+    # Include rate plan options for the dropdown
+    detail["rate_plan_options"] = [
+        {"rate_plan_id": p["rate_plan_id"], "name": p.get("name", p["rate_plan_id"])}
+        for p in get_database().rate_plans.find(
+            {"prop_id": prop_id}, {"_id": 0, "rate_plan_id": 1, "name": 1}
+        )
+    ]
     return detail
 
 

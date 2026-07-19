@@ -17,6 +17,7 @@ from src.app.modules.revenue.services.common import (
     _safe_int,
     _slugify,
 )
+from src.app.core.timezone import local_today
 from src.database.connection import get_database
 
 
@@ -142,12 +143,31 @@ def update_promotion_campaign(
     start_date: str | None = None,
     end_date: str | None = None,
     is_active: Any = None,
+    coupon_count: int | None = None,
 ) -> dict[str, Any]:
-    """RF-006: Editar campaña promocional."""
+    """RF-006: Editar campaña promocional.
+
+    Validations applied before any mutation:
+    - Cannot edit if the campaign has already expired (end_date < today).
+    - Cannot edit if any coupon in this campaign has already been used.
+    - coupon_count adjusts unused coupons (remove excess, generate more).
+    """
     db = get_database()
     existing = db.promotion_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0})
     if not existing:
         raise ValueError(f"Campaña {campaign_id} no encontrada.")
+
+    # ── Guard 1: Expired campaign ──
+    campaign_end = existing.get("end_date", "")
+    if campaign_end and campaign_end < local_today():
+        raise ValueError("No se puede editar una campaña que ya ha vencido.")
+
+    # ── Guard 2: Used coupons exist ──
+    used_count = db.coupon_codes.count_documents({"campaign_id": campaign_id, "used": True})
+    if used_count > 0:
+        raise ValueError(
+            f"No se puede modificar esta campaña porque tiene {used_count} cupón(es) ya utilizado(s) en reservas."
+        )
 
     update: dict[str, Any] = {"updated_at": _now()}
 
@@ -181,6 +201,32 @@ def update_promotion_campaign(
             {"$set": {"is_active": active, "updated_at": _now()}},
         )
 
+    # ── coupon_count adjustment ──
+    if coupon_count is not None:
+        new_count = max(1, min(coupon_count, 1000))
+        current_total = db.coupon_codes.count_documents({"campaign_id": campaign_id})
+        if new_count < current_total:
+            # Reduce: delete unused coupons first (oldest first)
+            to_delete = current_total - new_count
+            unused = list(db.coupon_codes.find(
+                {"campaign_id": campaign_id, "used": {"$ne": True}},
+                {"coupon_code": 1, "_id": 0},
+            ).sort([("created_at", 1)]).limit(to_delete))
+            if len(unused) < to_delete:
+                raise ValueError(
+                    f"No se puede reducir a {new_count} cupones: solo hay {len(unused)} "
+                    f"sin usar de los {to_delete} que se necesitan eliminar."
+                )
+            for doc in unused:
+                db.coupon_codes.delete_one({"coupon_code": doc["coupon_code"]})
+        elif new_count > current_total:
+            # Increase: generate additional coupons
+            prop_id = int(existing.get("prop_id", 0))
+            disc = int(update.get("discount_percent") or existing.get("discount_percent", 0))
+            active = bool(existing.get("is_active", True))
+            _generate_coupon_codes(db, campaign_id, prop_id, disc, active, new_count - current_total)
+        update["coupon_count"] = new_count
+
     db.promotion_campaigns.update_one(
         {"campaign_id": campaign_id},
         {"$set": update},
@@ -192,11 +238,27 @@ def update_promotion_campaign(
 
 
 def toggle_promotion_campaign(campaign_id: str) -> dict[str, Any]:
-    """RF-003: Activar/desactivar campaña."""
+    """RF-003: Activar/desactivar campaña.
+
+    Cannot toggle if the campaign has already expired or has used coupons.
+    """
     db = get_database()
-    existing = db.promotion_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0, "is_active": 1})
+    existing = db.promotion_campaigns.find_one({"campaign_id": campaign_id}, {"_id": 0, "is_active": 1, "end_date": 1})
     if not existing:
         raise ValueError(f"Campaña {campaign_id} no encontrada.")
+
+    # Guard: Expired campaign
+    campaign_end = existing.get("end_date", "")
+    if campaign_end and campaign_end < local_today():
+        raise ValueError("No se puede activar/desactivar una campaña que ya ha vencido.")
+
+    # Guard: Used coupons
+    used_count = db.coupon_codes.count_documents({"campaign_id": campaign_id, "used": True})
+    if used_count > 0:
+        raise ValueError(
+            f"No se puede cambiar el estado de esta campaña porque tiene {used_count} cupón(es) ya utilizado(s) en reservas."
+        )
+
     new_active = not existing.get("is_active", False)
     db.promotion_campaigns.update_one(
         {"campaign_id": campaign_id},

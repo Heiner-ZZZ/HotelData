@@ -141,6 +141,7 @@ def update_promotion_api(campaign_id: str, payload: dict = Body(...)):
             start_date=payload.get("start_date"),
             end_date=payload.get("end_date"),
             is_active=payload.get("is_active"),
+            coupon_count=payload.get("coupon_count"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
