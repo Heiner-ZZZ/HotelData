@@ -37,6 +37,32 @@
   </div>
 </header>
 
+<!-- Auth toast: slides down when unauthenticated user clicks a hotel -->
+@if (showAuthToast()) {
+  <aside class="auth-toast" role="alert" aria-live="polite">
+    <div class="auth-toast__inner">
+      <span class="material-symbols-outlined auth-toast__icon" aria-hidden="true">info</span>
+      <div class="auth-toast__body">
+        <strong>¿Querés ver este hotel?</strong>
+        <span>Registrate gratis para explorar hoteles, comparar tarifas y gestionar tus reservas.</span>
+      </div>
+      <div class="auth-toast__actions">
+        <a class="btn btn--ghost btn--sm" routerLink="/register">
+          <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+          Crear cuenta
+        </a>
+        <a class="btn btn--solid btn--sm" (click)="dismissAuthToast()" routerLink="/login">
+          <span class="material-symbols-outlined" aria-hidden="true">login</span>
+          Iniciar sesión
+        </a>
+      </div>
+      <button type="button" class="auth-toast__close" (click)="dismissAuthToast()" aria-label="Cerrar">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+  </aside>
+}
+
 <nav class="welcome-tabs" aria-label="Categorías de búsqueda">
   <div class="welcome-tabs__inner">
     <button
@@ -108,6 +134,60 @@
       </button>
     </form>
 
+  </div>
+</section>
+
+<!-- ═══ Featured hotels ═══ -->
+<section class="welcome-featured" aria-label="Hoteles destacados">
+  <div class="welcome-featured__inner">
+    <header class="welcome-featured__head">
+      <h2 class="welcome-featured__title">Hoteles destacados</h2>
+      <a class="welcome-featured__all" routerLink="/search">
+        Ver todos
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+      </a>
+    </header>
+
+    @let hotels = featuredHotels();
+    @if (hotels.length) {
+      <div class="welcome-featured__grid">
+        @for (h of hotels; track h.id) {
+          <a class="hotel-card" [href]="hotelDetailHref(h.id)" (click)="handleHotelClick(h.id, $event)">
+            <div class="hotel-card__img">
+              @if (h.imageUrl) {
+                <img [src]="h.imageUrl" [alt]="h.name" loading="lazy" />
+              } @else {
+                <span class="material-symbols-outlined hotel-card__placeholder">hotel</span>
+              }
+            </div>
+            <div class="hotel-card__body">
+              <p class="hotel-card__location" [title]="h.location">
+                <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+                {{ h.location || 'Ubicación no especificada' }}
+              </p>
+              <h3 class="hotel-card__name">{{ h.name }}</h3>
+              <div class="hotel-card__meta">
+                @if (h.stars) {
+                  <span class="hotel-card__stars" [attr.aria-label]="h.stars + ' estrellas'">
+                    @for (s of starArray(h.stars); track s) {
+                      <span class="material-symbols-outlined" aria-hidden="true">star</span>
+                    }
+                  </span>
+                }
+                @if (h.score) {
+                  <span class="hotel-card__score">{{ h.score.toFixed(1) }}</span>
+                }
+              </div>
+              @if (h.rateLabel) {
+                <p class="hotel-card__rate">Desde <strong>{{ h.rateLabel }}</strong> / noche</p>
+              }
+            </div>
+          </a>
+        }
+      </div>
+    } @else {
+      <p class="welcome-featured__empty">Cargando hoteles destacados…</p>
+    }
   </div>
 </section>
 </main>

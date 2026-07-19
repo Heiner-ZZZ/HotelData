@@ -14,6 +14,17 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PropertyContextService } from '../../shared/services/property-context.service';
 import { API_CONFIG } from '../../core/api/api.config';
 
+/** Featured hotel card shown on the welcome landing. */
+interface FeaturedHotel {
+  readonly id: number;
+  readonly name: string;
+  readonly location: string;
+  readonly stars: number | null;
+  readonly score: number | null;
+  readonly imageUrl: string | null;
+  readonly rateLabel: string | null;
+}
+
 interface WelcomeCategory {
   readonly key: string;
   readonly label: string;
@@ -122,6 +133,67 @@ export class WelcomePageComponent {
 
     const qs = new URLSearchParams(params).toString();
     void this.router.navigateByUrl(qs ? `/search?${qs}` : '/search');
+  }
+
+  // ── Featured hotels (public, no-auth) ───────────────────────────────────
+
+  readonly featuredHotelsResource = httpResource<{ items: FeaturedHotel[] }>(
+    () => `${this.apiConfig.baseUrl}/hotels/availability?sort_by=rating&page_size=3`,
+    {
+      parse: (dto) => {
+        const raw = dto as { items?: Array<{
+          prop_id: number; display_name: string; prop_starrating: number | null;
+          prop_review_score: number | null; image_url: string | null;
+          destination_labels: string[]; min_nightly_rate_label: string | null;
+        }> };
+        const items: FeaturedHotel[] = (raw.items ?? []).map((h) => ({
+          id: h.prop_id,
+          name: h.display_name,
+          location: (h.destination_labels ?? [])[0] ?? '',
+          stars: h.prop_starrating,
+          score: h.prop_review_score,
+          imageUrl: h.image_url,
+          rateLabel: h.min_nightly_rate_label,
+        }));
+        return { items };
+      }
+    }
+  );
+
+  readonly featuredHotels = computed(() => this.featuredHotelsResource.value()?.items ?? []);
+
+  /** Hotel detail link for the featured cards. */
+  hotelDetailHref(propId: number): string {
+    return `/hotels/${propId}`;
+  }
+
+  /** Star rating as an array for the *ngFor-style loop in the template. */
+  starArray(n: number | null): number[] {
+    return Array.from({ length: n ?? 0 }, (_, i) => i);
+  }
+
+  // ── Auth toast (slide-down banner for unauthenticated hotel clicks) ─────
+
+  readonly showAuthToast = signal(false);
+  private authToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Handle click on a featured hotel card. If not authenticated, show the
+   *  register/login toast instead of navigating (prevents 401 errors). */
+  handleHotelClick(hotelId: number, event: Event): void {
+    event.preventDefault();
+    if (this.authService.isAuthenticated()) {
+      void this.router.navigateByUrl(`/hotels/${hotelId}`);
+      return;
+    }
+    if (this.authToastTimer) clearTimeout(this.authToastTimer);
+    this.showAuthToast.set(true);
+    this.authToastTimer = setTimeout(() => this.dismissAuthToast(), 8000);
+  }
+
+  /** Dismiss the auth toast banner. */
+  dismissAuthToast(): void {
+    if (this.authToastTimer) { clearTimeout(this.authToastTimer); this.authToastTimer = null; }
+    this.showAuthToast.set(false);
   }
 
   /** Whether the user has an active session — drives the redirect effect below. */
