@@ -1,9 +1,5 @@
 <div class="hotel-search-page">
-  <app-page-header
-    [eyebrow]="'Cliente / viajero'"
-    [title]="'Buscar hoteles'"
-    [description]="'Encuentra hoteles con disponibilidad real y tarifas en tiempo real.'"
-  />
+  <app-page-header [title]="'Buscar hoteles'" />
 
   <div class="page-grid">
     <app-filter-sidebar [filters]="currentFilters()" (submitted)="updateFilters($event)" />

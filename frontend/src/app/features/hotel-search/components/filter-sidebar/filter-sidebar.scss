@@ -75,6 +75,17 @@ select {
   color: var(--app-text);
 }
 
+/* Hide the browser's default date placeholder (e.g. "dd/mm/aaaa")
+   until the user picks a date — keep only the calendar icon visible. */
+input[type="date"] {
+  color: transparent;
+
+  &:valid,
+  &:focus {
+    color: var(--app-text);
+  }
+}
+
 .form-actions {
   display: flex;
   gap: 0.75rem;

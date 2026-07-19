@@ -97,8 +97,7 @@ export class HotelCardComponent implements OnInit {
 
   get headlineMeta(): string {
     const starsValue = this.hotel().stars;
-    const stars = typeof starsValue === 'number' ? `${starsValue.toFixed(1)} estrellas` : 'Categoría por confirmar';
-    return `Hotel #${this.hotel().id} · ${stars}`;
+    return typeof starsValue === 'number' ? `${starsValue.toFixed(1)} estrellas` : 'Categoría por confirmar';
   }
 
   get summaryText(): string {

@@ -6,7 +6,6 @@ import { Component, input, output } from '@angular/core';
     <div class="sort-control surface-card">
       <div class="copy-block">
         <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrados</strong>
-        <span>Disponibilidad y tarifas en tiempo real</span>
       </div>
       <div class="actions">
         <button type="button" (click)="previous.emit()" [disabled]="!hasPrev()">Anterior</button>
