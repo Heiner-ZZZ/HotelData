@@ -76,7 +76,7 @@ export const routes: Routes = [
       import('./core/layout/account-shell/account-shell').then((m) => m.AccountShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
-      allowedRoles: ['cliente']
+      allowedRoles: ['super_admin', 'admin_sistema', 'cliente', 'recepcionista', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
     },
     children: [
       {

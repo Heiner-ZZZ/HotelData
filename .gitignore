@@ -253,3 +253,8 @@ nul
 scripts/generar_word_v3.py
 scripts/globalize_icon_styles.py
 scripts/fix_font_variation_warnings.py
+docs/BITACORA_ERRORES_Y_REINICIOS.md
+frontend/src/assets/fonts/img_max_size2.avif
+frontend/src/assets/fonts/playa_nav_reserva7.avif
+frontend/src/assets/fonts/playa_max_size.webp
+frontend/src/assets/fonts/playa_nav_reserva2.png
