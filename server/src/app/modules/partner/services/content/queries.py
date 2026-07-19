@@ -19,10 +19,11 @@ def _content_page_defaults(prop_id: int) -> dict[str, Any]:
     }
 
 
-def _policy_defaults(prop_id: int, room_type_id: str = "", season_id: str = "") -> dict[str, Any]:
+def _policy_defaults(prop_id: int, room_type_id: str = "", rate_plan_id: str = "", season_id: str = "") -> dict[str, Any]:
     return {
         "prop_id": prop_id,
         "room_type_id": room_type_id,
+        "rate_plan_id": rate_plan_id,
         "season_id": season_id,
         "check_in_time": "",
         "check_out_time": "",
@@ -46,19 +47,40 @@ def content_page_for_prop(prop_id: int) -> dict[str, Any]:
     return page or _content_page_defaults(prop_id)
 
 
-def policies_for_prop(prop_id: int, room_type_id: str = "", season_id: str = "") -> dict[str, Any]:
+def policies_for_prop(prop_id: int, room_type_id: str = "", rate_plan_id: str = "", season_id: str = "") -> dict[str, Any]:
+    """Resolve policies with hierarchy: rate_plan > room_type > hotel-wide.
+
+    If rate_plan_id is provided, looks for rate-plan-specific policies first.
+    Falls back to room-type-specific, then hotel-wide policies.
+    Returns default empty policies if nothing is configured.
+    """
     db = get_database()
-    filter_: dict[str, object] = {"prop_id": prop_id}
-    if room_type_id:
-        filter_["room_type_id"] = room_type_id
-    else:
-        filter_["room_type_id"] = {"$in": ["", None]}
-    if season_id:
-        filter_["season_id"] = season_id
-    else:
-        filter_["season_id"] = {"$in": ["", None]}
-    policies = db.hotel_policies.find_one(filter_, {"_id": 0})
-    return policies or _policy_defaults(prop_id, room_type_id=room_type_id, season_id=season_id)
+
+    def _build_filter(rt: str, rp: str = "", se: str = "") -> dict[str, object]:
+        f: dict[str, object] = {"prop_id": prop_id}
+        if rp:
+            f["rate_plan_id"] = rp
+        elif rt:
+            f["room_type_id"] = rt
+            f["rate_plan_id"] = {"$in": ["", None]}
+        else:
+            f["room_type_id"] = {"$in": ["", None]}
+            f["rate_plan_id"] = {"$in": ["", None]}
+        if se:
+            f["season_id"] = se
+        else:
+            f["season_id"] = {"$in": ["", None]}
+        return f
+
+    # Try rate_plan-level first (only if rate_plan_id provided)
+    if rate_plan_id:
+        policies = db.hotel_policies.find_one(_build_filter("", rate_plan_id, season_id), {"_id": 0})
+        if policies:
+            return policies
+
+    # Fall back to room_type-level or hotel-wide
+    policies = db.hotel_policies.find_one(_build_filter(room_type_id, "", season_id), {"_id": 0})
+    return policies or _policy_defaults(prop_id, room_type_id=room_type_id, rate_plan_id=rate_plan_id, season_id=season_id)
 
 
 def images_for_prop(prop_id: int) -> list[dict[str, Any]]:

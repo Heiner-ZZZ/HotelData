@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from src.app.modules.partner.services._common import normalize_label, split_multiline_tokens
 from src.app.modules.partner.services.content.queries import content_page_for_prop
+from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
+
+# ── In-memory cache for amenity price defaults (stored in hotel_content_pages with prop_id=0) ──
+_PRICE_DEFAULTS_CACHE: dict[str, float] | None = None
+_GLOBAL_DEFAULTS_PROP_ID = 0  # Sentinel prop_id for global amenity price defaults
 
 DEFAULT_AMENITIES_CATALOG: dict[str, list[str]] = {
     "General": ["Wi-Fi", "Recepcion 24 horas", "Aire acondicionado", "Parking", "Piscina", "Gimnasio"],
@@ -12,6 +20,15 @@ DEFAULT_AMENITIES_CATALOG: dict[str, list[str]] = {
     "Negocios": ["Centro de negocios", "Salas de reuniones"],
     "Familia": ["Habitaciones familiares", "Cunas", "Camas extra"],
     "Bienestar": ["Spa", "Sauna", "Masajes"],
+    "Transporte": [
+        "Traslado al aeropuerto",
+        "Shuttle gratuito",
+        "Valet parking",
+        "Alquiler de auto",
+        "Alquiler de bicicletas",
+        "Transporte privado",
+        "Taxi",
+    ],
 }
 
 
@@ -31,33 +48,65 @@ def _amenity_category(label: str) -> str:
     return "General"
 
 
+def _load_price_defaults_from_db() -> dict[str, float]:
+    """Load global amenity price defaults from hotel_content_pages (prop_id=0).
+
+    Returns empty dict if the document is missing or MongoDB is unavailable.
+    Results are cached in module-level ``_PRICE_DEFAULTS_CACHE``.
+    """
+    global _PRICE_DEFAULTS_CACHE
+    try:
+        db = get_database()
+        page = db.hotel_content_pages.find_one(
+            {"prop_id": _GLOBAL_DEFAULTS_PROP_ID},
+            {"_id": 0, "amenity_prices": 1},
+        )
+        defaults: dict[str, float] = {}
+        raw_prices = (page or {}).get("amenity_prices") or {}
+        for label, price in raw_prices.items():
+            clean_label = (str(label) or "").strip().lower()
+            if clean_label:
+                try:
+                    defaults[clean_label] = float(price)
+                except (ValueError, TypeError):
+                    defaults[clean_label] = 0.0
+
+        _PRICE_DEFAULTS_CACHE = defaults
+        if defaults:
+            logger.info("Loaded %d global amenity price defaults from hotel_content_pages.", len(defaults))
+        else:
+            logger.warning(
+                "No global amenity price defaults found (prop_id=0). "
+                "All amenity prices will default to $0. "
+                "Run seed_amenity_price_defaults.py to populate."
+            )
+        return defaults
+    except Exception:
+        logger.exception("Failed to load global amenity price defaults from MongoDB.")
+        _PRICE_DEFAULTS_CACHE = {}
+        return {}
+
+
+def invalidate_price_defaults_cache() -> None:
+    """Clear the in-memory cache so the next lookup re-reads from MongoDB."""
+    global _PRICE_DEFAULTS_CACHE
+    _PRICE_DEFAULTS_CACHE = None
+
+
+def _get_price_defaults() -> dict[str, float]:
+    """Return cached price defaults, loading from DB on first call."""
+    global _PRICE_DEFAULTS_CACHE
+    if _PRICE_DEFAULTS_CACHE is None:
+        return _load_price_defaults_from_db()
+    return _PRICE_DEFAULTS_CACHE
+
+
 def _amenity_unit_price(label: str) -> float:
-    """Return a default unit price for paid amenities."""
-    paid = {
-        "desayuno incluido": 15.0,
-        "desayuno": 15.0,
-        "camas extra": 25.0,
-        "cama extra": 25.0,
-        "cunas": 15.0,
-        "cuna": 15.0,
-        "parking": 20.0,
-        "estacionamiento": 20.0,
-        "minibar": 15.0,
-        "caja fuerte": 5.0,
-        "spa": 40.0,
-        "masajes": 50.0,
-        "sauna": 25.0,
-        "servicio a la habitacion": 12.0,
-        "servicio a la habitación": 12.0,
-        "cafe": 5.0,
-        "café": 5.0,
-        "bar": 8.0,
-        "restaurante": 0.0,
-        "gimnasio": 10.0,
-        "mascotas": 30.0,
-        "pet friendly": 30.0,
-    }
-    return paid.get(label.lower(), 0.0)
+    """Return a default unit price for paid amenities, from MongoDB.
+
+    Falls back to 0.0 if no default is configured for the given label.
+    """
+    return _get_price_defaults().get(label.lower(), 0.0)
 
 
 def _build_catalog(active_items: list[str], page: dict[str, Any]) -> list[dict[str, Any]]:

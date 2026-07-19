@@ -29,7 +29,9 @@ CONTENT_COLLECTIONS: dict[str, list[IndexModel]] = {
         IndexModel([("created_at", DESCENDING)], name="created_at_-1"),
     ],
     "hotel_policies": [
-        IndexModel([("prop_id", ASCENDING)], name="prop_id_1", unique=True),
+        IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
+        IndexModel([("rate_plan_id", ASCENDING)], name="rate_plan_id_1"),
+        IndexModel([("prop_id", ASCENDING), ("rate_plan_id", ASCENDING), ("room_type_id", ASCENDING), ("season_id", ASCENDING)], name="prop_rate_room_season", unique=True),
         IndexModel([("updated_at", DESCENDING)], name="updated_at_-1"),
     ],
     "hotel_content_pages": [

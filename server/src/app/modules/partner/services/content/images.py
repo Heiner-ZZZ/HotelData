@@ -112,3 +112,111 @@ def reorder_partner_hotel_images(
         ).sort([("sort_order", 1)])
     )
     return images
+
+
+# ═══════════════════════════════════════════════════════════
+# Room-Type Images (same pattern as hotel_images, scoped to prop_id + room_type_id)
+# ═══════════════════════════════════════════════════════════
+
+
+def _next_room_image_sort_order(prop_id: int, room_type_id: str) -> int:
+    db = get_database()
+    last = db.room_type_images.find_one(
+        {"prop_id": prop_id, "room_type_id": room_type_id},
+        sort=[("sort_order", -1)],
+        projection={"sort_order": 1},
+    )
+    return (last.get("sort_order", 0) if last else 0) + 1
+
+
+def add_room_type_image(
+    prop_id: int,
+    *,
+    room_type_id: str,
+    image_url: str,
+    title: str = "",
+    changed_by: str = "partner_web",
+) -> dict[str, Any] | None:
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        return None
+    image_url = clean_text(image_url)
+    title = clean_text(title)
+    room_type_id = clean_text(room_type_id)
+    if not image_url:
+        raise ValueError("Debe ingresar una URL de imagen.")
+    if not room_type_id:
+        raise ValueError("Debe especificar el tipo de habitacion.")
+
+    db = get_database()
+    existing_count = db.room_type_images.count_documents(
+        {"prop_id": prop_id, "room_type_id": room_type_id}
+    )
+    if existing_count >= 10:
+        raise ValueError("Maximo 10 imagenes por tipo de habitacion.")
+
+    sort_order = _next_room_image_sort_order(prop_id, room_type_id)
+    payload = {
+        "prop_id": prop_id,
+        "room_type_id": room_type_id,
+        "image_url": image_url,
+        "title": title,
+        "sort_order": sort_order,
+        "source": "partner_manual",
+        "updated_at": now_utc(),
+    }
+    document = db.room_type_images.find_one_and_update(
+        {"prop_id": prop_id, "room_type_id": room_type_id, "image_url": image_url},
+        {"$set": payload, "$setOnInsert": {"created_at": now_utc()}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+        projection={"_id": 0},
+    )
+    register_content_change(prop_id, "room_type_images", "upsert", payload, changed_by=changed_by)
+    return document
+
+
+def delete_room_type_image(
+    prop_id: int,
+    *,
+    image_url: str,
+    changed_by: str = "angular_api",
+) -> bool:
+    db = get_database()
+    result = db.room_type_images.delete_one({"prop_id": prop_id, "image_url": image_url})
+    if result.deleted_count:
+        register_content_change(prop_id, "room_type_images", "delete", {"image_url": image_url}, changed_by=changed_by)
+    return result.deleted_count > 0
+
+
+def reorder_room_type_images(
+    prop_id: int,
+    *,
+    room_type_id: str,
+    image_order: list[str],
+    changed_by: str = "angular_api",
+) -> list[dict[str, Any]]:
+    detail = partner_hotel_detail(prop_id)
+    if detail is None:
+        raise ValueError("Property not found")
+
+    db = get_database()
+    now = now_utc()
+    for index, image_url in enumerate(image_order):
+        sort_order = index + 1
+        db.room_type_images.update_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "image_url": clean_text(image_url)},
+            {"$set": {"sort_order": sort_order, "updated_at": now}},
+        )
+
+    register_content_change(
+        prop_id, "room_type_images", "reorder",
+        {"room_type_id": room_type_id, "image_order": image_order, "count": len(image_order)},
+        changed_by=changed_by,
+    )
+    return list(
+        db.room_type_images.find(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "image_url": {"$in": image_order}},
+            {"_id": 0},
+        ).sort([("sort_order", 1)])
+    )
