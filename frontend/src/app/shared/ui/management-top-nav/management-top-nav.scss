@@ -287,6 +287,8 @@
   padding: 0;
   border-radius: 999px;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: background 0.15s;
 
   &:hover {
@@ -307,6 +309,14 @@
   font-weight: 700;
   flex-shrink: 0;
   letter-spacing: 0.03em;
+  overflow: hidden;
+
+  .avatar-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
 }
 
 .user-info {

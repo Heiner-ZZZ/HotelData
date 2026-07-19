@@ -63,8 +63,14 @@
     </div>
 
     <!-- User Profile -->
-    <div class="user-profile">
-      <div class="user-avatar">{{ initials() }}</div>
+    <a class="user-profile" routerLink="/management/profile" aria-label="Ir a mi perfil">
+      <div class="user-avatar">
+        @if (currentUser()?.avatarUrl; as url) {
+          <img [src]="url" alt="Avatar" class="avatar-photo" />
+        } @else {
+          {{ initials() }}
+        }
+      </div>
       <div class="user-info">
         <span class="user-name">{{ firstName() }}</span>
         @if (surname()) {
@@ -72,6 +78,6 @@
         }
         <span class="user-role">{{ roleLabel() }}</span>
       </div>
-    </div>
+    </a>
   </div>
 </header>

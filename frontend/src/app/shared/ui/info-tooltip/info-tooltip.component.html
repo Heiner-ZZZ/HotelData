@@ -1,0 +1,20 @@
+<!-- Global Info Tooltip — hover only -->
+<div class="info-tooltip">
+  <!-- Default (i) icon: italic letter with circular border -->
+  @if (icon() === 'info') {
+    <span class="info-tooltip__letter" aria-hidden="true">i</span>
+  } @else {
+    <span class="info-tooltip__icon material-symbols-outlined" aria-hidden="true">{{ icon() }}</span>
+  }
+
+  <!-- Popover card (shown on hover via CSS) -->
+  <div class="info-tooltip__popover" role="tooltip">
+    @if (title()) {
+      <div class="info-tooltip__head">
+        <span class="material-symbols-outlined info-tooltip__head-icon">{{ icon() === 'info' ? 'info' : icon() }}</span>
+        <span class="info-tooltip__head-title">{{ title() }}</span>
+      </div>
+    }
+    <div class="info-tooltip__body" [innerHTML]="text()"></div>
+  </div>
+</div>

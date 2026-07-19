@@ -1,15 +1,19 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 @Component({
   selector: 'app-pp-hero',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="profile-hero">
       <div class="avatar-ring">
-        <span class="material-symbols-outlined avatar-icon">person</span>
+        @if (vm()?.avatarUrl; as url) {
+          <img [ngSrc]="url" width="72" height="72" alt="Avatar" class="avatar-img" />
+        } @else {
+          <span class="material-symbols-outlined avatar-icon">person</span>
+        }
       </div>
       <div class="hero-text">
         <h1>{{ vm()?.displayName }}</h1>

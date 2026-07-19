@@ -28,7 +28,7 @@ import type { ReservationDetailDto } from '../../models/reservations.dto';
 import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { ReservationActionService } from '../../services/reservation-action.service';
-import { ProductsApiService } from '../../../admin/services/products-api.service';
+import { ProductsApiService, mapProduct, mapLineItem } from '../../../admin/services/products-api.service';
 import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
 import { canAssignRooms, canEditBooking } from '../../utils/reservation-status.util';
@@ -38,6 +38,15 @@ interface EditForm {
   checkOutDate: string;
   rooms: number;
   comment: string;
+}
+
+interface AvailableRoomsResponse {
+  prop_id: number;
+  room_type: { name: string; base_capacity: number; max_adults: number } | null;
+  rooms_required: number;
+  rooms_available: number;
+  available_rooms: { hotel_room_id: string; room_number: string; room_label: string; floor: string; room_status: string }[];
+  assigned_rooms: string[];
 }
 
 @Component({
@@ -101,14 +110,21 @@ export class ReservationDetailPageComponent {
 
   // Products (add-on services) — httpResource (auto-fire when detailResource changes)
   readonly Math = Math;
+  // Products + line items via httpResource. Backend wraps responses in
+  // `{ items: [...] }`; the `parse` function unwraps and reuses the
+  // existing `mapProduct` / `mapLineItem` mappers from ProductsApiService.
   readonly productsResource = httpResource<HotelProduct[]>(() => {
     const vm = this.detailResource.value();
-    return vm ? `/admin/products?prop_id=${vm.propId}` : undefined;
+    return vm ? `/management/products/hotels/${vm.propId}` : undefined;
+  }, {
+    parse: (raw: any) => (raw?.items ?? []).map(mapProduct),
   });
 
   readonly lineItemsResource = httpResource<BookingLineItem[]>(() => {
     const vm = this.detailResource.value();
-    return vm ? `/admin/bookings/${vm.bookingId}/line-items` : undefined;
+    return vm ? `/management/products/bookings/${vm.bookingId}/line-items` : undefined;
+  }, {
+    parse: (raw: any) => (raw?.items ?? []).map(mapLineItem),
   });
 
   readonly hotelProducts = computed(() => this.productsResource.value() ?? []);
@@ -167,9 +183,9 @@ export class ReservationDetailPageComponent {
 
   // Available rooms for assignment — on-demand httpResource via trigger signal
   readonly availableRoomsTrigger = signal('');
-  readonly availableRoomsResource = httpResource<any>(() => {
+  readonly availableRoomsResource = httpResource<AvailableRoomsResponse>(() => {
     const id = this.availableRoomsTrigger();
-    return id ? `/reservations/${id}/available-rooms` : undefined;
+    return id ? `/management/bookings/${id}/available-rooms` : undefined;
   });
 
   // Room assignment modal

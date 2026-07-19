@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -21,6 +21,7 @@ import { PoliciesApiService } from '../../services/policies-api.service';
 import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 
 @Component({
   selector: 'app-policies-page',
@@ -30,6 +31,7 @@ import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.direc
     KpiChartComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    InfoTooltipComponent,
     PolicySummaryCardsComponent,
     PropertySelectorComponent,
     ReactiveFormsModule,
@@ -80,23 +82,6 @@ export class PoliciesPageComponent {
 
   readonly selectedLabel = computed(() => this.policiesResource.value()?.hotelName ?? '');
   readonly roomTypeOptions = computed(() => this.policiesResource.value()?.roomTypes ?? []);
-
-  /** Info popover for Estancia section */
-  readonly showEstanciaInfo = signal(false);
-
-  toggleEstanciaInfo(event: MouseEvent): void {
-    event.stopPropagation();
-    this.showEstanciaInfo.update((v) => !v);
-  }
-
-  closeEstanciaInfo(): void {
-    this.showEstanciaInfo.set(false);
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.closeEstanciaInfo();
-  }
 
   /** Hotel-level check-in/check-out — never overridden by room-type policies. */
   private hotelCheckInTime = '';

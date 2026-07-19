@@ -11,6 +11,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { PropertiesDashboardViewModel } from '../../models/properties.model';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
 @Component({
@@ -20,6 +21,7 @@ import { PropertiesApiService } from '../../services/properties-api.service';
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    InfoTooltipComponent,
     ReactiveFormsModule,
     RouterLink
   ],

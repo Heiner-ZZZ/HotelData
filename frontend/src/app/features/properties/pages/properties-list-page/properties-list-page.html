@@ -239,12 +239,12 @@
                       @if (item.performance.includesOperationalBookings) {
                         <span class="res-breakdown">
                           <span class="res-amount">
-                            <span class="material-symbols-outlined res-info-icon" title="Reservas historicas del dataset original de busquedas">info</span>
+                            <app-info-tooltip text="Reservas históricas del dataset original de búsquedas (CSV fuente del ETL)."></app-info-tooltip>
                             <strong>{{ item.performance.historicalReservations }}</strong>
                           </span>
                           <span class="res-plus">+</span>
                           <span class="res-amount res-current">
-                            <span class="material-symbols-outlined res-info-icon" title="Reservas operacionales del sistema activo">info</span>
+                            <app-info-tooltip text="Reservas operacionales del sistema activo (creadas por huéspedes y recepción)."></app-info-tooltip>
                             <strong>{{ item.performance.operationalReservations }}</strong>
                           </span>
                           <span class="res-eq">=</span>

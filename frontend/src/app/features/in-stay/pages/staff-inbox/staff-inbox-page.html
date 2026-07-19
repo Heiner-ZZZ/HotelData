@@ -114,7 +114,8 @@
                   <span class="si-tl-room">
                     Hab. {{ item.roomLabel }}
                     @if (item.type === 'message' && dndFor(item.roomLabel)) {
-                      <span class="si-dnd-badge" title="No Molestar — esta habitación tiene el modo No Molestar activado">
+                      <span class="si-dnd-badge">
+                        <app-info-tooltip icon="do_not_disturb" text="<strong>No Molestar</strong> — esta habitacion tiene el modo No Molestar activado. El huesped no recibira notificaciones."></app-info-tooltip>
                         <span class="material-symbols-outlined">do_not_disturb</span>
                         No Molestar
                       </span>

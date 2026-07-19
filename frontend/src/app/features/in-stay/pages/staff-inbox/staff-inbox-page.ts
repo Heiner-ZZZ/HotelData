@@ -12,6 +12,7 @@ import { ExpensesApiService } from '../../../expenses/services/expenses-api.serv
 import { StaySseService } from '../../services/stay-sse.service';
 import { FolioPaymentModalComponent } from '../../components/folio-payment-modal/folio-payment-modal';
 import { FolioTransactionsModalComponent } from '../../components/folio-transactions-modal/folio-transactions-modal';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { Conversation, ChatMessage, ServiceRequest, StaySession, LostItem } from '../../models/in-stay.model';
 import type { LedgerFolio } from '../../../expenses/models/ledger.model';
 
@@ -81,6 +82,7 @@ function getRequestIcon(type?: string): string {
     PropertySelectorComponent,
     FolioPaymentModalComponent,
     FolioTransactionsModalComponent,
+    InfoTooltipComponent,
   ],
   templateUrl: './staff-inbox-page.html',
   styleUrl: './staff-inbox-page.scss',

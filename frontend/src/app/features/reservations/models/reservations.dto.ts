@@ -231,3 +231,26 @@ export interface ReservationConfirmRejectDto {
   booking_id: string;
   status: string;
 }
+
+/**
+ * Raw backend response for the cancel-preview endpoint. Returned by
+ * `ReservationsApiService.getCancelPreview()` and consumed by the
+ * reservation-detail page's effect that drives the cancellation
+ * confirmation dialog. `one_night_price` and `total_nights` are emitted
+ * by the backend but weren't part of the inferred shape before; they
+ * are typed as optional to match the runtime (`?? 0` / `?? 1` defaults).
+ */
+export interface CancelPreviewDto {
+  booking_id: string;
+  guest_name: string;
+  check_in_date: string;
+  total_price: number | null;
+  currency: string;
+  total_nights: number;
+  free_cancellation: boolean;
+  penalty_percent: number;
+  penalty_amount: number;
+  hours_until_checkin: number | null;
+  cancellation_hours: number;
+  one_night_price?: number;
+}

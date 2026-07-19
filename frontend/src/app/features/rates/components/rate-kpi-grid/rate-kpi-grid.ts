@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 
 export interface KpiData {
   hotelLabel: string;
@@ -11,7 +12,7 @@ export interface KpiData {
 
 @Component({
   selector: 'app-rate-kpi-grid',
-  imports: [],
+  imports: [InfoTooltipComponent],
   templateUrl: './rate-kpi-grid.html',
   styleUrl: './rate-kpi-grid.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

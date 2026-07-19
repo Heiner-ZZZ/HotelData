@@ -7,23 +7,17 @@ import {
   signal
 } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { PropertyContextService } from '../../shared/services/property-context.service';
-import { PropertyCurrencyPipe } from '../../shared/pipes/property-currency.pipe';
 import { API_CONFIG } from '../../core/api/api.config';
 
 interface WelcomeCategory {
   readonly key: string;
   readonly label: string;
   readonly icon: string;
-}
-
-interface WelcomeFeature {
-  readonly icon: string;
-  readonly title: string;
-  readonly description: string;
 }
 
 /** Shape of a row in the `system_currencies` collection (MongoDB). */
@@ -34,43 +28,6 @@ interface SystemCurrencyDto {
   readonly decimals: number;
   readonly active: boolean;
 }
-
-/** Synthetic preview tiles shown in /welcome — uses selected currency. */
-interface PreviewReservation {
-  readonly id: string;
-  readonly hotelName: string;
-  readonly city: string;
-  readonly basePriceUsd: number;
-  readonly status: 'confirmed' | 'pending' | 'checked_in';
-  readonly checkIn: string;
-}
-
-const PREVIEW_RESERVATIONS: readonly PreviewReservation[] = [
-  {
-    id: 'rsv-001',
-    hotelName: 'Hotel Lima Centro',
-    city: 'Lima, PE',
-    basePriceUsd: 120,
-    status: 'confirmed',
-    checkIn: '15 nov 2026'
-  },
-  {
-    id: 'rsv-002',
-    hotelName: 'Resort Cancún Playa',
-    city: 'Cancún, MX',
-    basePriceUsd: 340,
-    status: 'pending',
-    checkIn: '22 nov 2026'
-  },
-  {
-    id: 'rsv-003',
-    hotelName: 'Hotel Quito Histórico',
-    city: 'Quito, EC',
-    basePriceUsd: 95,
-    status: 'checked_in',
-    checkIn: '18 nov 2026'
-  }
-];
 
 /**
  * Single-tab category list. Hoisted to module scope as a placeholder so
@@ -94,7 +51,7 @@ const FALLBACK_CURRENCIES: readonly SystemCurrencyDto[] = [
 
 @Component({
   selector: 'app-welcome-page',
-  imports: [RouterLink, PropertyCurrencyPipe],
+  imports: [RouterLink, ReactiveFormsModule],
   templateUrl: './welcome-page.html',
   styleUrls: [
     '../../../styles/_auth-shell.scss',
@@ -104,11 +61,43 @@ const FALLBACK_CURRENCIES: readonly SystemCurrencyDto[] = [
 })
 export class WelcomePageComponent {
   private readonly authService = inject(AuthService);
+  private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly apiConfig = inject(API_CONFIG);
 
   readonly year = new Date().getFullYear();
+
+  // ── Search form ─────────────────────────────────────────────────────────
+  readonly today = new Date().toISOString().split('T')[0];
+
+  readonly searchForm = this.formBuilder.nonNullable.group({
+    destination: [''],
+    checkIn: ['', Validators.required],
+    checkOut: ['', Validators.required],
+    adults: ['2'],
+    children: ['0'],
+    rooms: ['1'],
+  });
+
+  readonly guestRange = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  readonly childRange = [0, 1, 2, 3, 4, 5, 6];
+  readonly roomRange = [1, 2, 3, 4, 5];
+
+  /** Navigate to /search with the form values as query params. */
+  navigateToSearch(): void {
+    const fv = this.searchForm.getRawValue();
+    const params: Record<string, string> = {};
+    if (fv.destination.trim()) params['destination'] = fv.destination.trim();
+    if (fv.checkIn) params['check_in'] = fv.checkIn;
+    if (fv.checkOut) params['check_out'] = fv.checkOut;
+    if (fv.adults !== '2') params['adults'] = fv.adults;
+    if (fv.children !== '0') params['children'] = fv.children;
+    if (fv.rooms !== '1') params['rooms'] = fv.rooms;
+
+    const qs = new URLSearchParams(params).toString();
+    void this.router.navigateByUrl(qs ? `/search?${qs}` : '/search');
+  }
 
   /** Whether the user has an active session — drives the redirect effect below. */
   readonly hasSession = computed(
@@ -139,18 +128,9 @@ export class WelcomePageComponent {
 
   /** Currency the user picked — initialised from localStorage when present. */
   readonly selectedCurrency = signal<string>(this.readStoredCurrency());
-  readonly selectedCurrencyLabel = computed(
-    () => this.selectedCurrency() || 'USD'
-  );
-
-  // ── Synthetic reservation preview (uses selected currency) ──────────────
-
-  readonly previewReservations = PREVIEW_RESERVATIONS;
-  readonly previewCurrency = this.selectedCurrency;
 
   constructor() {
     // Auto-redirect authenticated visitors straight to their dashboard.
-    // Mirrors the pattern used in LoginPageComponent.
     effect(() => {
       if (this.hasSession()) {
         const homeHref = this.authService.authState().homeHref;
@@ -158,10 +138,7 @@ export class WelcomePageComponent {
       }
     });
 
-    // Whenever the user picks a currency on the public landing, propagate it
-    // to PropertyContextService so the `propertyCurrency` pipe (used across
-    // the registered-guest booking view, in-stay portal, billing, etc.)
-    // formats amounts in the same currency.
+    // Propagate currency choice to PropertyContextService for downstream pipes.
     effect(() => {
       const code = this.selectedCurrency();
       if (!code) return;
@@ -176,42 +153,15 @@ export class WelcomePageComponent {
     this.writeStoredCurrency(code);
   }
 
-  /** Human label for the reservation status pill on preview cards. */
-  reservationStatusLabel(status: PreviewReservation['status']): string {
-    switch (status) {
-      case 'confirmed':  return 'Confirmada';
-      case 'pending':    return 'Pendiente';
-      case 'checked_in': return 'En curso';
-    }
+  /** Convierte código ISO de moneda (USD, MXN, EUR...) a emoji de bandera. */
+  currencyFlag(code: string): string {
+    const cc = code === 'EUR' ? 'EU' : code.slice(0, 2);
+    const a = cc.charCodeAt(0); const b = cc.charCodeAt(1);
+    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
+    return String.fromCodePoint(0x1F1E6 + a - 65, 0x1F1E6 + b - 65);
   }
 
-  // ── Features section (unchanged from previous turns) ─────────────────────
-
-  readonly features = signal<readonly WelcomeFeature[]>([
-    {
-      icon: 'event_available',
-      title: 'Reservas sin fricción',
-      description:
-        'Disponibilidad en tiempo real, check-in express y confirmaciones automáticas en cada canal de venta.'
-    },
-    {
-      icon: 'monitoring',
-      title: 'Revenue dinámico',
-      description:
-        'Tarifas ajustadas por demanda, segmento y estacionalidad desde un único panel con datos vivos.'
-    },
-    {
-      icon: 'support_agent',
-      title: 'Operación centralizada',
-      description:
-        'Housekeeping, mantenimiento y huéspedes coordinados desde cualquier dispositivo, en cualquier turno.'
-    }
-  ]);
-
   // ── LocalStorage helpers (currency persistence) ──────────────────────────
-  // /welcome is client-only (loadComponent, no SSR) and localStorage is
-  // universally available in browsers we support. Direct read/write is
-  // safe here — no try/catch needed.
 
   private readStoredCurrency(): string {
     const v = localStorage.getItem(CURRENCY_STORAGE_KEY);

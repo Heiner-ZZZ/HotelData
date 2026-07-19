@@ -3,6 +3,7 @@ import { httpResource } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   ElementRef,
@@ -30,7 +31,6 @@ import type { ProfileViewModel } from '../../models/profile.model';
 import type { SelectOption } from '../../models/profile.model';
 import {
   DOCUMENT_TYPES,
-  LANGUAGE_OPTIONS,
   TRAVEL_ACCOMMODATION_OPTIONS,
   TRAVEL_BUDGET_OPTIONS,
   TRAVEL_COMPANIONS_OPTIONS,
@@ -78,14 +78,21 @@ export class ProfilePageComponent {
     parse: (dto) => mapProfileDtoToViewModel(dto as ProfileDto),
   });
 
-  readonly tabs = [
-    { key: 'personal' as const, label: 'Personal', icon: 'badge' },
-    { key: 'contact' as const, label: 'Contacto', icon: 'contact_mail' },
-    { key: 'social' as const, label: 'Redes y viajes', icon: 'travel_explore' },
-    { key: 'preferences' as const, label: 'Preferencias', icon: 'settings' },
-  ];
+  readonly tabs = computed(() => {
+    const allTabs = [
+      { key: 'personal' as const, label: 'Personal', icon: 'badge' },
+      { key: 'contact' as const, label: 'Contacto', icon: 'contact_mail' },
+      { key: 'social' as const, label: 'Redes y viajes', icon: 'travel_explore' },
+      { key: 'preferences' as const, label: 'Preferencias', icon: 'settings' },
+    ];
+    // Only guests see Redes y viajes; admin/staff tabs are Personal, Contacto, Preferencias
+    const role = this.profile()?.primaryRole;
+    if (role && role !== 'cliente') {
+      return allTabs.filter(t => t.key !== 'social');
+    }
+    return allTabs;
+  });
 
-  readonly languageOptions = LANGUAGE_OPTIONS;
   readonly documentTypes = DOCUMENT_TYPES;
   readonly travelPurposeOptions = TRAVEL_PURPOSE_OPTIONS;
   readonly travelBudgetOptions = TRAVEL_BUDGET_OPTIONS;

@@ -6,7 +6,7 @@
   <div class="profile-page">
     <app-pp-hero [vm]="vm" />
 
-    <app-pp-tab-bar [tabs]="tabs" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
+    <app-pp-tab-bar [tabs]="tabs()" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
 
     @if (successMessage()) {
       <div class="toast toast-success">
@@ -23,14 +23,6 @@
 
     <form class="profile-form" [formGroup]="form" (ngSubmit)="save()">
       @if (activeTab() === 'personal') {
-        <app-pp-personal-form [form]="form" [documentTypes]="documentTypes" />
-      }
-
-      @if (activeTab() === 'contact') {
-        <app-pp-contact-form [form]="form" />
-      }
-
-      @if (activeTab() === 'social') {
         <app-pp-avatar-section
           [form]="form"
           [uploading]="uploading()"
@@ -44,6 +36,14 @@
           (onDrop)="onDrop($event)"
         />
 
+        <app-pp-personal-form [form]="form" [documentTypes]="documentTypes" />
+      }
+
+      @if (activeTab() === 'contact') {
+        <app-pp-contact-form [form]="form" />
+      }
+
+      @if (activeTab() === 'social') {
         <app-pp-travel-section
           [form]="form"
           [travelPurposeOptions]="travelPurposeOptions"
@@ -55,7 +55,7 @@
       }
 
       @if (activeTab() === 'preferences') {
-        <app-pp-preferences-form [form]="form" [languageOptions]="languageOptions" />
+        <app-pp-preferences-form [form]="form" />
       }
 
       <div class="form-footer">

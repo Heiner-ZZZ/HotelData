@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 
+import { ProfilePasswordComponent } from '../components/profile-password';
 import { ProfileSecurityComponent } from '../components/profile-security';
-import type { SelectOption } from '../../../models/profile.model';
 
 @Component({
   selector: 'app-pp-preferences-form',
   standalone: true,
-  imports: [ReactiveFormsModule, ProfileSecurityComponent],
+  imports: [ReactiveFormsModule, ProfilePasswordComponent, ProfileSecurityComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="form-section">
@@ -15,20 +15,7 @@ import type { SelectOption } from '../../../models/profile.model';
         <span class="material-symbols-outlined section-icon">settings</span>
         <div>
           <h2>Preferencias</h2>
-          <p>Idioma, notificaciones y comunicaciones.</p>
-        </div>
-      </div>
-      <div class="field-grid">
-        <div class="field">
-          <label for="preferredLanguage">Idioma preferido</label>
-          <div class="input-wrap">
-            <span class="material-symbols-outlined input-icon">language</span>
-            <select id="preferredLanguage" [formControl]="form()?.controls?.preferredLanguage">
-              @for (opt of languageOptions(); track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
-              }
-            </select>
-          </div>
+          <p>Notificaciones y comunicaciones.</p>
         </div>
       </div>
 
@@ -71,9 +58,10 @@ import type { SelectOption } from '../../../models/profile.model';
     </section>
 
     <app-profile-security />
+
+    <app-profile-password />
   `
 })
 export class PpPreferencesFormComponent {
   readonly form = input<any>(null);
-  readonly languageOptions = input<SelectOption[]>([]);
 }

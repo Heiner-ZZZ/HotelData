@@ -8,7 +8,7 @@
 
     <nav class="welcome-header__actions" aria-label="Acciones de cuenta">
       <label class="chip chip--lang" aria-label="Cambiar moneda">
-        <span class="chip-flag" aria-hidden="true">🌐</span>
+        <span class="chip-flag" aria-hidden="true" [innerHTML]="currencyFlag(selectedCurrency())"></span>
         <select
           class="chip__select"
           [value]="selectedCurrency()"
@@ -21,11 +21,18 @@
       </label>
 
       <a class="header-link" routerLink="/onboarding/alojamiento">
+        <span class="material-symbols-outlined" aria-hidden="true">domain_add</span>
         Registra tu alojamiento
       </a>
 
-      <a class="btn btn--ghost" routerLink="/register">Crear cuenta</a>
-      <a class="btn btn--solid" routerLink="/login">Iniciar sesión</a>
+      <a class="btn btn--ghost" routerLink="/register">
+        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+        Crear cuenta
+      </a>
+      <a class="btn btn--solid" routerLink="/login">
+        <span class="material-symbols-outlined" aria-hidden="true">login</span>
+        Iniciar sesión
+      </a>
     </nav>
   </div>
 </header>
@@ -44,111 +51,63 @@
 </nav>
 
 <main id="main-content">
-<section class="welcome-search" aria-label="Vista previa de búsqueda">
+<section class="welcome-search" aria-label="Buscador de hoteles">
   <div class="welcome-search__inner">
-    <div class="booking-bar" role="group" aria-label="Vista previa de buscador">
+    <form class="booking-bar" [formGroup]="searchForm" (ngSubmit)="navigateToSearch()" role="search" aria-label="Buscar hoteles">
       <div class="booking-bar__field">
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">location_on</span>
         <div class="booking-bar__body">
-          <span class="booking-bar__label">Destino</span>
-          <span class="booking-bar__value">Ciudad, hotel o zona</span>
+          <label class="booking-bar__label" for="welcome-dest">Destino</label>
+          <input
+            id="welcome-dest"
+            type="text"
+            formControlName="destination"
+            placeholder="Ciudad, hotel o zona"
+            class="booking-bar__input"
+            autocomplete="off"
+          />
         </div>
       </div>
-      <div class="booking-bar__field">
+      <div class="booking-bar__field booking-bar__field--dates">
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">calendar_month</span>
         <div class="booking-bar__body">
           <span class="booking-bar__label">Entrada — Salida</span>
-          <span class="booking-bar__value">Selecciona fechas</span>
+          <div class="booking-bar__dates">
+            <input type="date" formControlName="checkIn" [min]="today" class="booking-bar__date" />
+            <span class="booking-bar__dates-sep" aria-hidden="true">→</span>
+            <input type="date" formControlName="checkOut" [min]="today" class="booking-bar__date" />
+          </div>
         </div>
       </div>
-      <div class="booking-bar__field">
+      <div class="booking-bar__field booking-bar__field--guests">
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">group</span>
         <div class="booking-bar__body">
           <span class="booking-bar__label">Huéspedes</span>
-          <span class="booking-bar__value">2 adultos · 0 niños · 1 hab.</span>
+          <div class="booking-bar__guests">
+            <select formControlName="adults" class="booking-bar__select" aria-label="Adultos" title="Adultos">
+              @for (n of guestRange; track n) {
+                <option [value]="n">{{ n }} {{ n === 1 ? 'adulto' : 'adultos' }}</option>
+              }
+            </select>
+            <select formControlName="children" class="booking-bar__select" aria-label="Niños" title="Niños">
+              @for (n of childRange; track n) {
+                <option [value]="n">{{ n }} {{ n === 1 ? 'niño' : 'niños' }}</option>
+              }
+            </select>
+            <select formControlName="rooms" class="booking-bar__select" aria-label="Habitaciones" title="Habitaciones">
+              @for (n of roomRange; track n) {
+                <option [value]="n">{{ n }} {{ n === 1 ? 'hab.' : 'habs.' }}</option>
+              }
+            </select>
+          </div>
         </div>
       </div>
-      <a class="btn booking-bar__cta" routerLink="/search">
+      <button type="submit" class="booking-bar__cta">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
         Buscar
-      </a>
-    </div>
-    <div class="booking-extras" role="group" aria-label="Opciones de búsqueda">
-      <label class="booking-extras__item">
-        <input type="checkbox" disabled />
-        <span>Viaje por trabajo</span>
-      </label>
-      <label class="booking-extras__item">
-        <input type="checkbox" disabled />
-        <span>Añadir vuelos a mi búsqueda</span>
-      </label>
-    </div>
-    <p class="booking-hint">
-      <span class="material-symbols-outlined" aria-hidden="true">info</span>
-      Vista previa — inicia sesión para acceder al buscador completo con disponibilidad real.
-    </p>
-  </div>
-</section>
+      </button>
+    </form>
 
-<section class="reservations-preview" aria-label="Vista previa de reservas">
-  <div class="reservations-preview__inner">
-    <header class="reservations-preview__head">
-      <p class="eyebrow">Reservas en {{ selectedCurrencyLabel() }}</p>
-      <h2>Tarifas mostradas en la moneda que elegiste</h2>
-      <p class="reservations-preview__lead">
-        Vista previa de hospedajes representativos. Inicia sesión con tu cuenta de huésped para ver tus propias
-        reservas y completar pagos.
-      </p>
-    </header>
-
-    <div class="reservations-preview__grid">
-      @for (reservation of previewReservations; track reservation.id) {
-        <article class="reservation-card surface-card">
-          <div class="reservation-card__head">
-            <span
-              class="reservation-card__status"
-              [attr.data-status]="reservation.status"
-            >{{ reservationStatusLabel(reservation.status) }}</span>
-            <span class="reservation-card__checkin">Entrada · {{ reservation.checkIn }}</span>
-          </div>
-          <h3>{{ reservation.hotelName }}</h3>
-          <p class="reservation-card__city">
-            <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-            {{ reservation.city }}
-          </p>
-          <div class="reservation-card__row">
-            <strong class="reservation-card__price">
-              {{ reservation.basePriceUsd | propertyCurrency:selectedCurrency() }}
-              <span class="reservation-card__night">/ noche</span>
-            </strong>
-            <a class="btn reservation-card__cta" routerLink="/search">
-              Ver disponibilidad
-              <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-            </a>
-          </div>
-        </article>
-      }
-    </div>
-  </div>
-</section>
-
-<section class="welcome-features" aria-label="Características de la plataforma">
-  <div class="welcome-features__inner">
-    <header class="features-header">
-      <p class="eyebrow">Por qué HotelData</p>
-      <h2>Todo lo que tu hotel necesita, en una sola plataforma</h2>
-    </header>
-    <div class="features-grid">
-      @for (feature of features(); track feature.title) {
-        <article class="feature-card surface-card">
-          <span class="feature-card__icon" aria-hidden="true">
-            <span class="material-symbols-outlined">{{ feature.icon }}</span>
-          </span>
-          <h3>{{ feature.title }}</h3>
-          <p>{{ feature.description }}</p>
-        </article>
-      }
-    </div>
   </div>
 </section>
 </main>

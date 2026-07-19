@@ -7,9 +7,7 @@
       <p class="kpi-label">Hotel</p>
       <h3 class="kpi-value">{{ data().hotelLabel }}</h3>
     </div>
-    <span class="kpi-info" title="Operación comercial de tarifas{{ data().profileBadge ? '. ' + data().profileBadge : '' }}">
-      <span class="material-symbols-outlined info-icon">info</span>
-    </span>
+    <app-info-tooltip [text]="'Operacion comercial de tarifas' + (data().profileBadge ? '. ' + data().profileBadge : '')"></app-info-tooltip>
   </article>
 
   <article class="kpi-card glass">
@@ -20,9 +18,7 @@
       <p class="kpi-label">Planes Tarifarios</p>
       <h3 class="kpi-value">{{ data().ratePlansCount }}</h3>
     </div>
-    <span class="kpi-info" title="Planes tarifarios configurados para esta propiedad">
-      <span class="material-symbols-outlined info-icon">info</span>
-    </span>
+    <app-info-tooltip text="Planes tarifarios configurados para esta propiedad"></app-info-tooltip>
   </article>
 
   <article class="kpi-card glass">
@@ -33,9 +29,7 @@
       <p class="kpi-label">Calendario</p>
       <h3 class="kpi-value">{{ data().calendarCount }}</h3>
     </div>
-    <span class="kpi-info" title="Filas recientes de tarifa por fecha">
-      <span class="material-symbols-outlined info-icon">info</span>
-    </span>
+    <app-info-tooltip text="Filas recientes de tarifa por fecha"></app-info-tooltip>
   </article>
 
   <article class="kpi-card glass promo-card">
@@ -56,8 +50,6 @@
         </div>
       </div>
     </div>
-    <span class="kpi-info" title="{{ data().promotionsCount }} campañas · {{ data().couponsCount }} cupones">
-      <span class="material-symbols-outlined info-icon">info</span>
-    </span>
+    <app-info-tooltip [text]="data().promotionsCount + ' campanas, ' + data().couponsCount + ' cupones'"></app-info-tooltip>
   </article>
 </section>

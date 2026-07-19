@@ -4,6 +4,7 @@ export interface AuthUser {
   displayName: string;
   primaryRole: string;
   isActive: boolean;
+  avatarUrl: string;
 }
 
 export interface AuthSession {
@@ -28,6 +29,7 @@ export interface AuthMeDto {
     display_name?: string;
     primary_role: string;
     is_active?: boolean;
+    avatar_url?: string;
   } | null;
   session: {
     token?: string | null;

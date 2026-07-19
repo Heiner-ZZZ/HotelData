@@ -1,0 +1,174 @@
+/* ═══════════════════════════════════════════════════════════
+   Info Tooltip — global reusable popover (hover only)
+   Design tokens-first.
+   ═══════════════════════════════════════════════════════════ */
+
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: default;
+  flex-shrink: 0;
+
+  /* Circular (i) border */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--muted-text);
+    transition: border-color 160ms ease, background 160ms ease;
+  }
+
+  &__icon {
+    position: relative;
+    z-index: 1;
+    font-size: 0.95rem;
+    color: var(--muted-text);
+    line-height: 1;
+    transition: color 160ms ease;
+    pointer-events: none;
+    --icon-wght: 400;
+    --icon-opsz: 20;
+  }
+
+  &__letter {
+    position: relative;
+    z-index: 1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-style: italic;
+    color: var(--muted-text);
+    line-height: 1;
+    transition: color 160ms ease;
+    pointer-events: none;
+  }
+
+  /* Hover state */
+  &:hover::before {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  &:hover .info-tooltip__letter,
+  &:hover .info-tooltip__icon {
+    color: var(--accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 50%;
+  }
+}
+
+/* ── Popover card ────────────────────────────────── */
+.info-tooltip__popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+
+  /* Hidden by default — shown on hover */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.96);
+  transition:
+    opacity 180ms ease,
+    visibility 180ms ease,
+    transform 200ms cubic-bezier(0.21, 0.69, 0.43, 1);
+  pointer-events: none;
+
+  .info-tooltip:hover & {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+}
+
+/* ── Popover header (icon + title) ──────── */
+.info-tooltip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--accent-light);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.info-tooltip__head-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  --icon-wght: 350;
+  --icon-opsz: 20;
+}
+
+.info-tooltip__head-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text);
+  flex: 1;
+}
+
+/* ── Popover body (supports innerHTML: p, strong, ul, li, em) ── */
+.info-tooltip__body {
+  padding: 0.8rem 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--app-text);
+
+  :first-child { margin-top: 0; }
+  :last-child { margin-bottom: 0; }
+
+  p {
+    margin: 0 0 0.55rem;
+  }
+
+  strong {
+    font-weight: 700;
+    color: var(--accent-strong);
+  }
+
+  em {
+    color: var(--muted-text);
+  }
+
+  ul {
+    margin: 0 0 0.55rem;
+    padding-left: 1.1rem;
+    list-style: none;
+
+    li {
+      position: relative;
+      padding-left: 0.4rem;
+      margin-bottom: 0.3rem;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: -0.6rem;
+        top: 0.55em;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.55;
+      }
+    }
+  }
+}

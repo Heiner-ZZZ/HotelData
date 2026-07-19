@@ -25,46 +25,6 @@
   white-space: nowrap;
 }
 
-/* ── Image Thumbnail ── */
-.cell-img {
-  width: 56px;
-  padding-right: 0 !important;
-}
-
-.room-thumb {
-  display: block;
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-  border: 1px solid var(--app-border);
-  background: var(--surface-card);
-  transition: transform 180ms, box-shadow 180ms;
-}
-
-.room-thumb:hover {
-  transform: scale(1.12);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.room-thumb-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: var(--accent-light);
-  border: 1px dashed color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--muted-text);
-}
-
-.room-thumb-placeholder span {
-  font-size: 1.3rem;
-  --icon-wght: 300;
-  --icon-opsz: 20;
-}
-
 .data-table tbody tr:hover {
   background: var(--accent-light);
 }
@@ -76,15 +36,6 @@
 .data-table code {
   font-size: 0.8rem;
   color: var(--muted-text);
-}
-
-.table-icon {
-  font-size: 1.1rem;
-  color: var(--accent);
-  vertical-align: middle;
-  margin-right: 0.4rem;
-  --icon-wght: 300;
-  --icon-opsz: 20;
 }
 
 .roh-badge {

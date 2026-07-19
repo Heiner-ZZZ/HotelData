@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 
 import type { RoomFeatureItem, RoomTypeItem } from '../../models/rooms.model';
 
 @Component({
   selector: 'app-room-type-table',
+  imports: [InfoTooltipComponent],
   templateUrl: './room-type-table.html',
   styleUrl: './room-type-table.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

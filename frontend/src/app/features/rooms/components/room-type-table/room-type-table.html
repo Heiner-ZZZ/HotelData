@@ -2,7 +2,6 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th></th>
         <th>Nombre</th>
         <th>N°</th>
         <th>Piso</th>
@@ -17,17 +16,7 @@
     <tbody>
       @for (room of items(); track room.id) {
         <tr>
-          <td class="cell-img">
-            @if (room.imageUrl) {
-              <img [src]="room.imageUrl" alt="{{ room.name }}" class="room-thumb" loading="lazy" />
-            } @else {
-              <div class="room-thumb-placeholder">
-                <span class="material-symbols-outlined">meeting_room</span>
-              </div>
-            }
-          </td>
           <td>
-            <span class="material-symbols-outlined table-icon">meeting_room</span>
             {{ room.name }}
             @if (room.isRoh) {
               <span class="roh-badge">ROH</span>
@@ -35,7 +24,7 @@
           </td>
           <td>
             @if (room.linkedRoomNumbers) {
-              <div class="room-nums-cell" title="Habitaciones físicas: {{ room.linkedRoomNumbers }}">
+              <div class="room-nums-cell">
                 <span class="material-symbols-outlined room-nums-icon">door_sliding</span>
                 {{ room.linkedRoomNumbers }}
               </div>
@@ -46,7 +35,14 @@
             }
           </td>
           <td>{{ room.floor || '--' }}</td>
-          <td class="desc-cell">{{ room.description }}</td>
+          <td class="desc-cell">
+            @if (room.description) {
+              <app-info-tooltip [text]="room.description"></app-info-tooltip>
+              {{ room.description }}
+            } @else {
+              —
+            }
+          </td>
           <td>
             <span class="capacity-pill">
               <span class="material-symbols-outlined cap-icon">group</span>
@@ -55,7 +51,8 @@
           </td>
           <td class="features-cell">
             @if (room.features.length > 0) {
-              <div class="features-summary" [title]="room.features.join(', ')">
+              <div class="features-summary">
+                <app-info-tooltip [text]="room.features.map(f => f.label).join(', ')"></app-info-tooltip>
                 <span class="features-count-badge"
                       [class.count-single]="room.features.length === 1"
                       [class.count-few]="room.features.length >= 2 && room.features.length <= 3"
@@ -80,12 +77,12 @@
           </td>
           <td class="cell-physical-count">
             @if (room.physicalRoomCount > 0) {
-              <span class="physical-count-badge has-rooms" [title]="room.physicalRoomCount + ' habitacion(es) fisica(s)'">
+              <span class="physical-count-badge has-rooms">
                 <span class="material-symbols-outlined">door_sliding</span>
                 {{ room.physicalRoomCount }}
               </span>
             } @else {
-              <span class="physical-count-badge no-rooms" title="Sin habitaciones fisicas asignadas">
+              <span class="physical-count-badge no-rooms">
                 <span class="material-symbols-outlined">door_sliding</span>
                 —
               </span>

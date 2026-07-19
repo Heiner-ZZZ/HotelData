@@ -131,7 +131,7 @@
                 <span class="material-symbols-outlined field-group-icon">schedule</span>
                 <span>Horarios</span>
                 @if (selectedRoomTypeId()) {
-                  <span class="tooltip-icon material-symbols-outlined" title="Los horarios de check-in y check-out son globales para todo el hotel. No se pueden modificar por tipo de habitación.">info</span>
+                  <app-info-tooltip text="Los horarios de <strong>check-in</strong> y <strong>check-out</strong> son globales para todo el hotel. No se pueden modificar por tipo de habitación."></app-info-tooltip>
                 }
               </div>
               <div class="field-row">
@@ -162,31 +162,12 @@
               <div class="field-group-header">
                 <span class="material-symbols-outlined field-group-icon">nights_stay</span>
                 <span>Estancia</span>
-                <span class="tooltip-icon material-symbols-outlined info-trigger"
-                      (click)="toggleEstanciaInfo($event)"
-                      [class.info-trigger--active]="showEstanciaInfo()">info</span>
+                <app-info-tooltip
+                  title="Rango de estancia"
+                  icon="nights_stay"
+                  text="<p>Define el rango de noches permitido por reserva. Las reservas que no cumplan este rango serán <strong>rechazadas automáticamente</strong>.</p><ul><li><strong>Mínimo</strong> — noches mínimas requeridas por reserva.</li><li><strong>Máximo</strong> — noches máximas permitidas por reserva.</li></ul><p>Aplica a todas las habitaciones del hotel, independientemente del tipo.</p>">
+                </app-info-tooltip>
               </div>
-
-              @if (showEstanciaInfo()) {
-                <div class="info-backdrop" (click)="closeEstanciaInfo()"></div>
-                <div class="info-popover">
-                  <div class="info-popover-head">
-                    <span class="material-symbols-outlined info-popover-icon">nights_stay</span>
-                    <span class="info-popover-title">Rango de estancia</span>
-                    <button type="button" class="info-popover-close" (click)="closeEstanciaInfo()" aria-label="Cerrar">
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
-                  </div>
-                  <div class="info-popover-body">
-                    <p>Define el rango de noches permitido por reserva. Las reservas que no cumplan este rango serán <strong>rechazadas automáticamente</strong>.</p>
-                    <ul>
-                      <li><strong>Mínimo</strong> — noches mínimas requeridas por reserva.</li>
-                      <li><strong>Máximo</strong> — noches máximas permitidas por reserva.</li>
-                    </ul>
-                    <p class="info-popover-note">Aplica a todas las habitaciones del hotel, independientemente del tipo.</p>
-                  </div>
-                </div>
-              }
 
               <div class="field-row field-row--compact">
                 <label class="field">

@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -23,6 +24,7 @@ import type { ActionResponseDto } from '../../models/monitoring.dto';
     ErrorStateComponent,
     LoadingStateComponent,
     PageHeaderComponent,
+    InfoTooltipComponent,
     StatusBadgeComponent,
   ],
   templateUrl: './monitoring-page.html',
@@ -71,8 +73,6 @@ export class MonitoringPageComponent {
 
   readonly incrementalMode = signal(false);
   readonly etlModeLabel = computed(() => this.incrementalMode() ? 'Incremental' : 'Completo');
-  readonly showInfoTip = signal(false);
-
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
   constructor() {
@@ -186,11 +186,6 @@ export class MonitoringPageComponent {
       message: `Esta acción detendrá el proceso de ${label} GA03 en ejecución. ¿Desea continuar?`,
       handler: () => this.execAction(this.api.triggerStop(process)),
     });
-  }
-
-  toggleInfoTip(event: MouseEvent) {
-    event.stopPropagation();
-    this.showInfoTip.update(v => !v);
   }
 
   toggleSection(key: string) {

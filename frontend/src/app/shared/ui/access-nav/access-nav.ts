@@ -122,6 +122,10 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
     }
 
     if (role !== 'cliente') {
+      const canAccessManagement = ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'].includes(role);
+      if (canAccessManagement) {
+        items.push({ label: 'Perfil', href: '/management/profile', icon: 'person' });
+      }
       items.push({ label: 'Vista pública', href: '/search', icon: 'public' });
     }
 

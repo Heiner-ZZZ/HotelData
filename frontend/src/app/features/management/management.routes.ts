@@ -119,5 +119,10 @@ export const MANAGEMENT_ROUTES: Routes = [
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)
+  },
+  {
+    path: 'profile',
+    loadComponent: () =>
+      import('../account/pages/profile-page/profile-page').then((m) => m.ProfilePageComponent)
   }
 ];

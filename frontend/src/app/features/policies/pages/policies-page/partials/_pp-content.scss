@@ -194,33 +194,3 @@ textarea {
   }
 }
 
-/* ── Info tooltip ── */
-.tooltip-icon {
-  font-size: 1rem;
-  color: var(--muted-text);
-  margin-left: auto;
-  --icon-wght: 300;
-  --icon-opsz: 20;
-  transition: color 150ms ease, transform 150ms ease;
-}
-
-/* ── Info popover ── */
-.info-trigger {
-  cursor: pointer;
-  position: relative;
-  z-index: 21;
-
-  &:hover {
-    color: var(--accent);
-    transform: scale(1.15);
-  }
-
-  &--active {
-    color: var(--accent);
-    transform: scale(1.2);
-  }
-}
-
-.info-backdrop {
-  position: fixed;
-}
