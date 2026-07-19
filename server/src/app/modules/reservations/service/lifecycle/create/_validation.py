@@ -11,32 +11,36 @@ def _validate_deposit(
     total_price: float | None,
     season_id: str = "",
     room_type_id: str = "",
+    rate_plan_id: str = "",
     manual_reservation: bool = False,
 ) -> str | None:
     """Check if the hotel policy requires a minimum deposit.
 
+    Checks rate-plan-specific policies first, then room-type, then hotel-wide.
     Returns an error message if a deposit is required but not met,
     or None if the booking passes validation.
     """
     if manual_reservation:
         return None
     db = get_database()
-    policy_filter: dict[str, object] = {"prop_id": prop_id}
-    if room_type_id:
-        policy_filter["room_type_id"] = room_type_id
-    else:
-        policy_filter["room_type_id"] = {"$in": ["", None]}
-    if season_id:
-        policy_filter["season_id"] = season_id
-    else:
-        policy_filter["season_id"] = {"$in": ["", None]}
-    policy = db.hotel_policies.find_one(
-        policy_filter,
-        {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
-    )
+    # Hierarchy: rate_plan > room_type > hotel-wide
+    policy = None
+    # 1. Rate-plan-specific
+    if rate_plan_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "rate_plan_id": rate_plan_id},
+            {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
+        )
+    # 2. Room-type-specific
+    if not policy and room_type_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "rate_plan_id": {"$in": ["", None]}},
+            {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
+        )
+    # 3. Hotel-wide fallback
     if not policy:
         policy = db.hotel_policies.find_one(
-            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "season_id": {"$in": ["", None]}},
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
             {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
         )
     if not policy:

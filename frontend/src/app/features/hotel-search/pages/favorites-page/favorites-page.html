@@ -1,0 +1,32 @@
+<app-page-header
+  title="Mis Favoritos"
+  [description]="favoriteCount() + ' hotel' + (favoriteCount() !== 1 ? 'es' : '') + ' guardado' + (favoriteCount() !== 1 ? 's' : '')"
+></app-page-header>
+
+@switch (viewState()) {
+  @case ('loading') {
+    <app-loading-state message="Cargando tus favoritos..." />
+  }
+  @case ('error') {
+    <app-error-state
+      title="No pudimos cargar tus favoritos"
+      description="Intenta nuevamente o revisa la conectividad."
+      (retry)="hotelsRes.reload()"
+    />
+  }
+  @case ('empty') {
+    <app-empty-state
+      icon="favorite_border"
+      title="Aún no tienes favoritos"
+      description="Guarda hoteles con el corazón para verlos aquí rápidamente."
+    />
+    <a class="browse-link" routerLink="/search">Explorar hoteles</a>
+  }
+  @case ('success') {
+    <div class="favorites-grid">
+      @for (hotel of items(); track hotel.id) {
+        <app-hotel-card [hotel]="hotel" />
+      }
+    </div>
+  }
+}

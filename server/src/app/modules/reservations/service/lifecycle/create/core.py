@@ -47,7 +47,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
 
     avail_error = _check_availability(
         payload.prop_id, payload.check_in_date, payload.check_out_date,
-        payload.rooms, payload.room_type_id,
+        payload.rooms, payload.room_type_id, rate_plan_id=payload.rate_plan_id,
     )
     if avail_error:
         raise ValueError(f"Cannot create booking: {avail_error}")
@@ -89,6 +89,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     deposit_error = _validate_deposit(
         payload.prop_id, total_price,
         season_id=season_id, room_type_id=payload.room_type_id,
+        rate_plan_id=payload.rate_plan_id,
         manual_reservation=manual_reservation,
     )
     if deposit_error:
@@ -294,6 +295,7 @@ def modify_booking(
     else:
         avail_error = _check_availability(
             int(booking.get("prop_id", 0)), new_check_in, new_check_out, new_rooms, new_room_type,
+            rate_plan_id=booking.get("rate_plan_id", ""),
         )
         if avail_error:
             raise ValueError(f"Cannot modify booking: {avail_error}")

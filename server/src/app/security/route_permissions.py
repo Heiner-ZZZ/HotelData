@@ -12,7 +12,7 @@ class AccessRule:
     roles: tuple[str, ...] = ()
 
 
-PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest", "/api/public")
+PUBLIC_PREFIXES = ("/static", "/api/hotels", "/api/stay/guest", "/api/public", "/api/amenities/photos")
 PUBLIC_PATHS = (
     "/login", "/auth/login", "/api/auth/login",
     "/api/auth/register", "/api/auth/send-code", "/api/auth/confirm-code",
@@ -67,7 +67,13 @@ ROUTE_RULES = [
     AccessRule("/api/kpi",
         roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "auditor_datos", "operador_datos"),
     ),
-    AccessRule("/api/account", roles=("cliente", "super_admin", "admin_sistema")),
+    # /api/account/* is self-service (the user's own profile + avatar).
+    # Same role policy as /api/settings: any authenticated staff or guest.
+    AccessRule("/api/account",
+        roles=("cliente", "super_admin", "admin_sistema", "hotel_partner",
+               "gerente_hotel", "revenue_manager", "marketing_hotelero",
+               "operador_datos", "auditor_datos", "maintenance"),
+    ),
     AccessRule("/api/stay/my-session",
         roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel",
                "revenue_manager", "marketing_hotelero", "operador_datos", "auditor_datos", "maintenance"),
