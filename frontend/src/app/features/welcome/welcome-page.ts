@@ -84,8 +84,8 @@ export class WelcomePageComponent {
 
   readonly searchForm = this.formBuilder.nonNullable.group({
     destination: [''],
-    checkIn: ['', Validators.required],
-    checkOut: ['', Validators.required],
+    checkIn: [''],
+    checkOut: [''],
     adults: ['2'],
     children: ['0'],
     rooms: ['1'],
@@ -117,11 +117,6 @@ export class WelcomePageComponent {
 
   /** Navigate to /search with the form values as query params. */
   navigateToSearch(): void {
-    if (this.searchForm.invalid) {
-      this.searchForm.markAllAsTouched();
-      return;
-    }
-
     const fv = this.searchForm.getRawValue();
     const params: Record<string, string> = {};
     if (fv.destination.trim()) params['destination'] = fv.destination.trim();
