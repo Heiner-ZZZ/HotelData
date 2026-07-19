@@ -43,11 +43,11 @@ def partner_hotel_content_editor(prop_id: int) -> dict[str, Any] | None:
     return detail
 
 
-def partner_hotel_policies(prop_id: int, season_id: str = "") -> dict[str, Any] | None:
+def partner_hotel_policies(prop_id: int, season_id: str = "", rate_plan_id: str = "") -> dict[str, Any] | None:
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
-    detail["policies"] = policies_for_prop(prop_id, season_id=season_id)
+    detail["policies"] = policies_for_prop(prop_id, season_id=season_id, rate_plan_id=rate_plan_id)
     detail["recent_changes"] = recent_content_changes(prop_id)
     # Include room types so the UI can offer per-room-type policies
     from src.app.modules.partner.services.rooms import _room_types_for_prop
@@ -67,12 +67,12 @@ def partner_hotel_policies(prop_id: int, season_id: str = "") -> dict[str, Any] 
     return detail
 
 
-def partner_hotel_per_room_policies(prop_id: int, room_type_id: str) -> dict[str, Any] | None:
-    """Get policies for a specific room type."""
+def partner_hotel_per_room_policies(prop_id: int, room_type_id: str, rate_plan_id: str = "") -> dict[str, Any] | None:
+    """Get policies for a specific room type (and optionally rate plan)."""
     detail = partner_hotel_detail(prop_id)
     if detail is None:
         return None
-    detail["policies"] = policies_for_prop(prop_id, room_type_id=room_type_id)
+    detail["policies"] = policies_for_prop(prop_id, room_type_id=room_type_id, rate_plan_id=rate_plan_id)
     detail["room_type_id"] = room_type_id
     return detail
 

@@ -170,6 +170,7 @@ def save_partner_hotel_policies(
     payment_policy: str = "",
     house_rules: str = "",
     room_type_id: str = "",
+    rate_plan_id: str = "",
     season_id: str = "",
     # New structured fields (SPEC 022)
     cancellation_hours: Any = None,
@@ -194,13 +195,18 @@ def save_partner_hotel_policies(
 
     db = get_database()
     clean_room_type = clean_text(room_type_id)
+    clean_rate_plan = clean_text(rate_plan_id)
     clean_season = clean_text(season_id)
-    # Build the filter: hotel-wide (room_type_id="") or per-room-type, optionally per-season
+    # Build the filter: rate_plan > room_type > hotel-wide, optionally per-season
     filter_: dict[str, object] = {"prop_id": prop_id}
-    if clean_room_type:
+    if clean_rate_plan:
+        filter_["rate_plan_id"] = clean_rate_plan
+    elif clean_room_type:
         filter_["room_type_id"] = clean_room_type
+        filter_["rate_plan_id"] = {"$in": ["", None]}
     else:
         filter_["room_type_id"] = {"$in": ["", None]}
+        filter_["rate_plan_id"] = {"$in": ["", None]}
     if clean_season:
         filter_["season_id"] = clean_season
     else:
@@ -236,6 +242,7 @@ def save_partner_hotel_policies(
     payload: dict[str, Any] = {
         "prop_id": prop_id,
         "room_type_id": clean_room_type,
+        "rate_plan_id": clean_rate_plan,
         "season_id": clean_season,
         "cancellation_policy": clean_text(cancellation_policy),
         "pet_policy": clean_text(pet_policy),
@@ -247,9 +254,9 @@ def save_partner_hotel_policies(
         "updated_at": now_utc(),
     }
 
-    # Check-in/check-out: only set for hotel-wide saves (not per-room-type),
+    # Check-in/check-out: only set for hotel-wide saves (not per-room-type or per-rate-plan),
     # because these are global hotel settings
-    if not clean_room_type:
+    if not clean_room_type and not clean_rate_plan:
         payload["check_in_time"] = ci
         payload["check_out_time"] = co
 
@@ -282,7 +289,12 @@ def save_partner_hotel_policies(
         return_document=ReturnDocument.AFTER,
         projection={"_id": 0},
     )
-    scope = f" para tipo de habitación '{clean_room_type}'" if clean_room_type else ""
+    scope_parts: list[str] = []
+    if clean_rate_plan:
+        scope_parts.append(f"plan tarifario '{clean_rate_plan}'")
+    elif clean_room_type:
+        scope_parts.append(f"tipo de habitación '{clean_room_type}'")
+    scope = f" para {' + '.join(scope_parts)}" if scope_parts else ""
     register_action(
         prop_id=prop_id,
         entity_type="policy",

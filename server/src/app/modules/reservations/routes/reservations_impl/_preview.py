@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -11,6 +12,8 @@ from src.app.modules.reservations.service.lifecycle.create import _check_availab
 from src.app.modules.reservations.service.lifecycle.create.core import _get_cancellation_policy_text
 from src.app.modules.partner.services.content.amenities import _amenity_unit_price
 from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
 
 
 def _compute_amenity_breakdown(
@@ -95,6 +98,7 @@ def preview_reservation(payload: dict) -> dict:
         avail_error = _check_availability(
             reservation_input.prop_id, reservation_input.check_in_date,
             reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,
+            rate_plan_id=reservation_input.rate_plan_id or "",
         )
         total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             reservation_input.prop_id, reservation_input.room_type_id,
@@ -103,6 +107,43 @@ def preview_reservation(payload: dict) -> dict:
             rate_plan_id=reservation_input.rate_plan_id or None,
         )
         cancellation_policy = _get_cancellation_policy_text(reservation_input.prop_id)
+
+        # ── Deposit policy check ──
+        deposit_required = False
+        deposit_percent = 0
+        min_deposit_amount = 0.0
+        try:
+            db = get_database()
+            dep_policy = None
+            # Hierarchy: rate_plan > room_type > hotel-wide
+            rp_id = reservation_input.rate_plan_id or ""
+            rt_id = reservation_input.room_type_id or ""
+            if rp_id:
+                dep_policy = db.hotel_policies.find_one(
+                    {"prop_id": reservation_input.prop_id, "rate_plan_id": rp_id},
+                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
+                )
+            if not dep_policy and rt_id:
+                dep_policy = db.hotel_policies.find_one(
+                    {"prop_id": reservation_input.prop_id, "room_type_id": rt_id, "rate_plan_id": {"$in": ["", None]}},
+                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
+                )
+            if not dep_policy:
+                dep_policy = db.hotel_policies.find_one(
+                    {"prop_id": reservation_input.prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
+                    {"_id": 0, "deposit_required": 1, "deposit_percent": 1},
+                )
+            if dep_policy:
+                deposit_required = bool(dep_policy.get("deposit_required", False))
+                deposit_percent = int(dep_policy.get("deposit_percent", 0) or 0)
+                if deposit_required and deposit_percent > 0 and total_price:
+                    min_deposit_amount = round(total_price * deposit_percent / 100, 2)
+        except Exception:
+            logger.warning(
+                "Failed to resolve deposit policy for prop_id=%s rate_plan=%s room_type=%s — assuming deposit required as fail-safe",
+                reservation_input.prop_id, rp_id, rt_id, exc_info=True,
+            )
+            deposit_required = True
 
         # ── Amenity price breakdown ──
         amenity_breakdown = _compute_amenity_breakdown(
@@ -121,6 +162,9 @@ def preview_reservation(payload: dict) -> dict:
             "tax_amount": tax_amount,
             "tax_included": tax_included,
             "cancellation_policy": cancellation_policy,
+            "deposit_required": deposit_required,
+            "deposit_percent": deposit_percent,
+            "min_deposit_amount": min_deposit_amount,
             # Price breakdown with amenities
             "price_breakdown": {
                 "base_nightly_rate": round(total_price / total_nights, 2) if total_price and total_nights else None,

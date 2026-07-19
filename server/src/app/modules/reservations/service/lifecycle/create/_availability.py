@@ -14,6 +14,7 @@ def _check_availability(
     check_out_date: str,
     rooms: int,
     room_type_id: str = "",
+    rate_plan_id: str = "",
 ) -> str | None:
     try:
         check_in = datetime.strptime(check_in_date, "%Y-%m-%d")
@@ -29,19 +30,24 @@ def _check_availability(
 
     requested_nights = len(dates)
 
-    # ── min_stay baseline from hotel_policies ──
-    policy_filter: dict[str, object] = {"prop_id": prop_id}
-    if room_type_id:
-        policy_filter["room_type_id"] = room_type_id
-    else:
-        policy_filter["room_type_id"] = {"$in": ["", None]}
-    hotel_policy = db.hotel_policies.find_one(
-        policy_filter,
-        {"_id": 0, "min_stay": 1, "max_stay": 1},
-    )
+    # ── min_stay baseline from hotel_policies (rate_plan > room_type > hotel-wide) ──
+    hotel_policy = None
+    # 1. Rate-plan-specific
+    if rate_plan_id:
+        hotel_policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "rate_plan_id": rate_plan_id},
+            {"_id": 0, "min_stay": 1, "max_stay": 1},
+        )
+    # 2. Room-type-specific
+    if not hotel_policy and room_type_id:
+        hotel_policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "rate_plan_id": {"$in": ["", None]}},
+            {"_id": 0, "min_stay": 1, "max_stay": 1},
+        )
+    # 3. Hotel-wide fallback
     if not hotel_policy:
         hotel_policy = db.hotel_policies.find_one(
-            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
             {"_id": 0, "min_stay": 1, "max_stay": 1},
         )
     policy_min_stay = hotel_policy.get("min_stay") if hotel_policy else None

@@ -84,10 +84,11 @@ def _calculate_cancellation_penalty(
     total_price: float | None,
     total_nights: int,
     room_type_id: str = "",
+    rate_plan_id: str = "",
 ) -> dict[str, Any]:
     """Determine if a cancellation penalty applies based on hotel policy.
 
-    Checks per-room-type policies first, then falls back to hotel-wide.
+    Checks rate-plan-specific policies first, then room-type, then hotel-wide.
 
     Returns a dict with:
       - free_cancellation: bool
@@ -101,16 +102,24 @@ def _calculate_cancellation_penalty(
                 "hours_until_checkin": None, "cancellation_hours": 0}
 
     db = get_database()
-    # Prefer room-type-specific policy, fall back to hotel-wide
+    # Hierarchy: rate_plan > room_type > hotel-wide
     policy = None
-    if room_type_id:
+    # 1. Rate-plan-specific policy
+    if rate_plan_id:
         policy = db.hotel_policies.find_one(
-            {"prop_id": prop_id, "room_type_id": room_type_id},
+            {"prop_id": prop_id, "rate_plan_id": rate_plan_id},
             {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
         )
+    # 2. Room-type-specific policy
+    if not policy and room_type_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "rate_plan_id": {"$in": ["", None]}},
+            {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
+        )
+    # 3. Hotel-wide fallback
     if not policy:
         policy = db.hotel_policies.find_one(
-            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}},
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
             {"_id": 0, "cancellation_hours": 1, "cancellation_penalty_percent": 1},
         )
     if not policy:
@@ -184,6 +193,7 @@ def cancel_booking(booking_id: str, *, reason: str = "cancelled_by_user", change
         total_price=booking.get("total_price"),
         total_nights=int(booking.get("total_nights", 0)),
         room_type_id=booking.get("room_type_id", ""),
+        rate_plan_id=booking.get("rate_plan_id", ""),
     )
 
     changed_at = utc_now()

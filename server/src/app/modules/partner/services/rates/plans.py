@@ -34,6 +34,10 @@ def _rate_plans_for_prop(prop_id: int, limit: int = 50) -> list[dict[str, Any]]:
             item["eligible_roles"] = []
         if "included_amenities" not in item:
             item["included_amenities"] = []
+        # Backfill applicable_room_types for legacy documents (Gap 1 migration)
+        if "applicable_room_types" not in item:
+            rt = item.get("room_type_id", "")
+            item["applicable_room_types"] = [rt] if rt else []
     return items
 
 
@@ -74,6 +78,7 @@ def create_rate_plan(
     base_rate: Any,
     currency: str,
     room_type_id: str = "",
+    applicable_room_types: list[str] | None = None,
     base_occupancy: int = 2,
     extra_adult_price: float = 0.0,
     extra_child_price: float = 0.0,
@@ -97,12 +102,22 @@ def create_rate_plan(
     rate_plan_id = f"RP-{prop_id}-{slugify(clean_name)}"
     base_rate_value = round(float(base_rate), 2)
 
+    # Resolve applicable_room_types: new field takes priority, fall back to legacy room_type_id
+    resolved_room_types: list[str] = []
+    if applicable_room_types:
+        resolved_room_types = [clean_text(rt) for rt in applicable_room_types if clean_text(rt)]
+    elif room_type_id:
+        resolved_room_types = [clean_text(room_type_id)]
+    # Backfill room_type_id for backward compat (first applicable type, or empty)
+    backfill_room_type_id = resolved_room_types[0] if resolved_room_types else ""
+
     payload = {
         "rate_plan_id": rate_plan_id,
         "prop_id": prop_id,
         "name": clean_name,
         "description": clean_text(description),
-        "room_type_id": clean_text(room_type_id),
+        "room_type_id": backfill_room_type_id,
+        "applicable_room_types": resolved_room_types,
         "base_rate": base_rate_value,
         "currency": clean_text(currency) or "USD",
         "base_occupancy": max(1, int(base_occupancy or 2)),
@@ -140,6 +155,7 @@ def update_rate_plan(
     base_rate: Any,
     currency: str,
     room_type_id: str = "",
+    applicable_room_types: list[str] | None = None,
     base_occupancy: int = 2,
     extra_adult_price: float = 0.0,
     extra_child_price: float = 0.0,
@@ -162,10 +178,19 @@ def update_rate_plan(
 
     clean_name = clean_text(name)
 
+    # Resolve applicable_room_types: new field takes priority, fall back to legacy room_type_id
+    resolved_room_types: list[str] = []
+    if applicable_room_types:
+        resolved_room_types = [clean_text(rt) for rt in applicable_room_types if clean_text(rt)]
+    elif room_type_id:
+        resolved_room_types = [clean_text(room_type_id)]
+    backfill_room_type_id = resolved_room_types[0] if resolved_room_types else ""
+
     payload = {
         "name": clean_name,
         "description": clean_text(description),
-        "room_type_id": clean_text(room_type_id),
+        "room_type_id": backfill_room_type_id,
+        "applicable_room_types": resolved_room_types,
         "base_rate": round(float(base_rate), 2),
         "currency": clean_text(currency) or "USD",
         "base_occupancy": max(1, int(base_occupancy or 2)),
