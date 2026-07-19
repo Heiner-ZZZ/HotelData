@@ -24,6 +24,7 @@ export interface PoliciesDto {
     payment_policy?: string;
     house_rules?: string;
     room_type_id?: string;
+    rate_plan_id?: string;
     // SPEC 022 structured fields
     cancellation_hours?: number;
     cancellation_penalty_percent?: number;
@@ -60,6 +61,7 @@ export interface PoliciesSaveDto {
   payment_policy: string;
   house_rules: string;
   room_type_id?: string;
+  rate_plan_id?: string;
   // SPEC 022 structured fields
   cancellation_hours?: number;
   cancellation_penalty_percent?: number;

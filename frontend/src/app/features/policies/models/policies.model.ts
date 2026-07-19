@@ -38,6 +38,7 @@ export interface PoliciesViewModel {
   paymentPolicy: string;
   houseRules: string;
   roomTypeId: string;
+  ratePlanId: string;
   // SPEC 022 structured fields
   cancellationHours: number;
   cancellationPenaltyPercent: number;

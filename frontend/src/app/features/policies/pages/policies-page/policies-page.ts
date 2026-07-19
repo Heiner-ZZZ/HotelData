@@ -18,6 +18,8 @@ import { mapPolicies, mapPoliciesPayload } from '../../mappers/policies.mapper';
 import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
 import type { PoliciesDto } from '../../models/policies.dto';
 import { PoliciesApiService } from '../../services/policies-api.service';
+import { RatesApiService } from '../../../rates/services/rates-api.service';
+import type { RatePlanOption } from '../../../rates/models/rates.model';
 import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PolicySummaryCardsComponent } from '../../components/policy-summary-cards/policy-summary-cards';
 import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
@@ -45,6 +47,7 @@ export class PoliciesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PoliciesApiService);
+  private readonly ratesApi = inject(RatesApiService);
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
@@ -59,12 +62,16 @@ export class PoliciesPageComponent {
 
   readonly selectedPropId = signal(0);
   readonly selectedRoomTypeId = signal('');
+  readonly selectedRatePlanId = signal('');
 
   readonly policiesResource = httpResource<PoliciesViewModel>(() => {
     const propId = this.selectedPropId();
     if (!propId) return undefined;
     const roomTypeId = this.selectedRoomTypeId();
-    return `/api/management/policies?prop_id=${propId}${roomTypeId ? '&room_type_id=' + roomTypeId : ''}`;
+    const ratePlanId = this.selectedRatePlanId();
+    const rtParam = roomTypeId ? '&room_type_id=' + roomTypeId : '';
+    const rpParam = ratePlanId ? '&rate_plan_id=' + ratePlanId : '';
+    return `/api/management/policies?prop_id=${propId}${rtParam}${rpParam}`;
   }, {
     parse: (dto) => mapPolicies(dto as PoliciesDto),
   });
@@ -82,6 +89,9 @@ export class PoliciesPageComponent {
 
   readonly selectedLabel = computed(() => this.policiesResource.value()?.hotelName ?? '');
   readonly roomTypeOptions = computed(() => this.policiesResource.value()?.roomTypes ?? []);
+
+  /** Rate plan options loaded from the rates API for this property. */
+  readonly ratePlanOptions = signal<RatePlanOption[]>([]);
 
   /** Hotel-level check-in/check-out — never overridden by room-type policies. */
   private hotelCheckInTime = '';
@@ -104,7 +114,6 @@ export class PoliciesPageComponent {
     paymentPolicy: [''],
     petPolicy: [''],
     houseRules: [''],
-    roomTypeId: [''],
   });
 
   constructor() {
@@ -140,8 +149,22 @@ export class PoliciesPageComponent {
         if (propId && this.selectedPropId() !== propId) {
           this.selectedPropId.set(propId);
           this.selectedRoomTypeId.set('');
+          this.selectedRatePlanId.set('');
         }
       }
+    });
+
+    // Load rate plan options when prop changes
+    effect(() => {
+      const propId = this.selectedPropId();
+      if (!propId) {
+        this.ratePlanOptions.set([]);
+        return;
+      }
+      this.ratesApi.getRatePlanOptions(propId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (options) => this.ratePlanOptions.set(options),
+        error: () => this.ratePlanOptions.set([]),
+      });
     });
 
     // Apply side effects when fresh policies arrive
@@ -179,7 +202,6 @@ export class PoliciesPageComponent {
         paymentPolicy: vm.paymentPolicy,
         petPolicy: vm.petPolicy,
         houseRules: vm.houseRules,
-        roomTypeId: vm.roomTypeId,
       });
     });
   }
@@ -198,6 +220,16 @@ export class PoliciesPageComponent {
     if (roomTypeId === this.selectedRoomTypeId()) return;
     this.message.set('');
     this.selectedRoomTypeId.set(roomTypeId);
+    // Clear rate plan when switching room type (mutually exclusive scoping)
+    if (roomTypeId) this.selectedRatePlanId.set('');
+  }
+
+  switchRatePlan(ratePlanId: string) {
+    if (ratePlanId === this.selectedRatePlanId()) return;
+    this.message.set('');
+    this.selectedRatePlanId.set(ratePlanId);
+    // Clear room type when switching rate plan (mutually exclusive scoping)
+    if (ratePlanId) this.selectedRoomTypeId.set('');
   }
 
   savePolicies() {
@@ -236,6 +268,7 @@ export class PoliciesPageComponent {
       petPolicy: raw.petPolicy,
       houseRules: raw.houseRules,
       roomTypeId: rtId,
+      ratePlanId: this.selectedRatePlanId(),
     });
     this.api
       .savePolicies(payload)

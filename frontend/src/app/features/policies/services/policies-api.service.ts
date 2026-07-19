@@ -27,10 +27,13 @@ export class PoliciesApiService {
       .pipe(catchAuthError(), map((dto) => mapPoliciesOptions(dto)));
   }
 
-  getPolicies(propId: number, roomTypeId?: string) {
+  getPolicies(propId: number, roomTypeId?: string, ratePlanId?: string) {
     let params = new HttpParams().set('prop_id', String(propId));
     if (roomTypeId) {
       params = params.set('room_type_id', roomTypeId);
+    }
+    if (ratePlanId) {
+      params = params.set('rate_plan_id', ratePlanId);
     }
     return this.http
       .get<PoliciesDto>(`${this.apiConfig.baseUrl}/management/policies`, {

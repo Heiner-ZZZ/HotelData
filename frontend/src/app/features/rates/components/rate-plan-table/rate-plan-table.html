@@ -20,10 +20,14 @@
           </td>
           <td class="desc-cell">{{ item.description }}</td>
           <td class="desc-cell">
-            @if (item.roomTypeId && roomTypeNumbers()[item.roomTypeId]) {
-              {{ roomTypeNumbers()[item.roomTypeId] }}
+            @if (item.applicableRoomTypes?.length) {
+              @for (rtId of item.applicableRoomTypes; track rtId) {
+                <span class="room-type-chip">{{ roomTypeNumbers()[rtId] || rtId }}</span>
+              }
+            } @else if (item.roomTypeId) {
+              {{ roomTypeNumbers()[item.roomTypeId] || item.roomTypeId }}
             } @else {
-              {{ item.roomTypeId || '—' }}
+              —
             }
           </td>
           <td><strong>${{ item.baseRateLabel }}</strong></td>

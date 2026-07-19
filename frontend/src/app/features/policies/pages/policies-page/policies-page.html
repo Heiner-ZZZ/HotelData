@@ -96,25 +96,47 @@
           </div>
 
           <div class="room-type-scope">
-            <label class="field">
-              <span class="field-label">
-                <span class="field-icon material-symbols-outlined">meeting_room</span>
-                Aplicar políticas a
-              </span>
-              <select
-                [value]="selectedRoomTypeId()"
-                (change)="switchRoomType(($any($event.target)).value)"
-              >
-                <option value="">Todo el hotel (general)</option>
-                @for (rt of roomTypeOptions(); track rt.id) {
-                  <option [value]="rt.id">{{ rt.name }}</option>
-                }
-              </select>
-            </label>
+            <div class="field-row">
+              <label class="field">
+                <span class="field-label">
+                  <span class="field-icon material-symbols-outlined">meeting_room</span>
+                  Tipo de habitación
+                </span>
+                <select
+                  [value]="selectedRoomTypeId()"
+                  (change)="switchRoomType(($any($event.target)).value)"
+                >
+                  <option value="">Todo el hotel (general)</option>
+                  @for (rt of roomTypeOptions(); track rt.id) {
+                    <option [value]="rt.id">{{ rt.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">
+                  <span class="field-icon material-symbols-outlined">sell</span>
+                  Plan tarifario
+                </span>
+                <select
+                  [value]="selectedRatePlanId()"
+                  (change)="switchRatePlan(($any($event.target)).value)"
+                >
+                  <option value="">Todos los planes (general)</option>
+                  @for (rp of ratePlanOptions(); track rp.id) {
+                    <option [value]="rp.id">{{ rp.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
             @if (selectedRoomTypeId()) {
               <span class="scope-badge">
                 <span class="material-symbols-outlined">meeting_room</span>
                 Políticas específicas para este tipo de habitación
+              </span>
+            } @else if (selectedRatePlanId()) {
+              <span class="scope-badge scope-badge--rate-plan">
+                <span class="material-symbols-outlined">sell</span>
+                Políticas específicas para este plan tarifario
               </span>
             } @else {
               <span class="scope-badge scope-badge--hotel">
