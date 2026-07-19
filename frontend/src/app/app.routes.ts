@@ -11,7 +11,7 @@ export const routes: Routes = [
   {
     path: 'welcome',
     loadComponent: () =>
-      import('./features/welcome/welcome-page').then((m) => m.WelcomePageComponent)
+      import('./features/welcome/pages/welcome-page/welcome-page').then((m) => m.WelcomePageComponent)
   },
   {
     path: 'login',

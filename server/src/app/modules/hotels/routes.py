@@ -38,6 +38,7 @@ def availability_search(
     star_rating: float | None = Query(default=None, ge=1, le=5),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=20),
+    content_only: bool = Query(default=False),
 ):
     """Public operational availability search.
 
@@ -59,6 +60,7 @@ def availability_search(
         star_rating=star_rating,
         page=page,
         page_size=page_size,
+        content_only=content_only,
     )
 
 

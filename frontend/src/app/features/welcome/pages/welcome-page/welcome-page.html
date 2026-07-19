@@ -169,7 +169,7 @@
               <div class="hotel-card__meta">
                 @if (h.stars) {
                   <span class="hotel-card__stars" [attr.aria-label]="h.stars + ' estrellas'">
-                    @for (s of starArray(h.stars); track s) {
+                    @for (s of STAR_5.slice(0, h.stars ?? 0); track s) {
                       <span class="material-symbols-outlined" aria-hidden="true">star</span>
                     }
                   </span>

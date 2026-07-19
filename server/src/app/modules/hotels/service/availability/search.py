@@ -37,6 +37,7 @@ def search_available_hotels(
     star_rating: float | None = None,
     page: int = 1,
     page_size: int = 10,
+    content_only: bool = False,
 ) -> dict[str, Any]:
     db = get_database()
     page = max(page, 1)
@@ -79,6 +80,9 @@ def search_available_hotels(
 
     if star_rating is not None:
         hotel_filter["prop_starrating"] = {"$gte": star_rating}
+
+    if content_only:
+        hotel_filter["display_name"] = {"$exists": True, "$ne": ""}
 
     total_candidates = db.dim_hotels.count_documents(hotel_filter)
     if total_candidates == 0:

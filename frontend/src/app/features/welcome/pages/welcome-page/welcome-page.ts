@@ -1,0 +1,194 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+
+import { AuthService } from '../../../../core/auth/auth.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { API_CONFIG } from '../../../../core/api/api.config';
+
+import {
+  CURRENCY_STORAGE_KEY,
+  FALLBACK_CURRENCIES,
+  type FeaturedHotel,
+  type SystemCurrencyDto,
+} from '../../models/welcome.models';
+import { currencyFlag, mapFeaturedHotels } from '../../mappers/welcome.mapper';
+
+@Component({
+  selector: 'app-welcome-page',
+  imports: [RouterLink, ReactiveFormsModule],
+  templateUrl: './welcome-page.html',
+  styleUrls: [
+    '../../../../../styles/_auth-shell.scss',
+    './welcome-page.scss',
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class WelcomePageComponent {
+  private readonly authService = inject(AuthService);
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly propertyCtx = inject(PropertyContextService);
+  private readonly apiConfig = inject(API_CONFIG);
+
+  readonly year = new Date().getFullYear();
+
+  // ── Search form ─────────────────────────────────────────────────────────
+
+  readonly today = new Date().toISOString().split('T')[0];
+
+  readonly searchForm = this.formBuilder.nonNullable.group({
+    destination: [''],
+    checkIn: [''],
+    checkOut: [''],
+    adults: ['2'],
+    children: ['0'],
+    rooms: ['1'],
+  });
+
+  readonly guestRange = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  readonly childRange = [0, 1, 2, 3, 4, 5, 6];
+  readonly roomRange = [1, 2, 3, 4, 5];
+
+  readonly minCheckOut = signal(this.today);
+
+  onCheckInChange(): void {
+    const ci = this.searchForm.controls.checkIn.value;
+    if (ci) {
+      const next = new Date(ci);
+      next.setDate(next.getDate() + 1);
+      this.minCheckOut.set(next.toISOString().split('T')[0]);
+      const co = this.searchForm.controls.checkOut.value;
+      if (co && co <= ci) {
+        this.searchForm.controls.checkOut.setValue('');
+      }
+    } else {
+      this.minCheckOut.set(this.today);
+    }
+  }
+
+  navigateToSearch(): void {
+    const fv = this.searchForm.getRawValue();
+    const params: Record<string, string> = {};
+    if (fv.destination.trim()) params['destination'] = fv.destination.trim();
+    if (fv.checkIn) params['check_in'] = fv.checkIn;
+    if (fv.checkOut) params['check_out'] = fv.checkOut;
+    if (fv.adults !== '2') params['adults'] = fv.adults;
+    if (fv.children !== '0') params['children'] = fv.children;
+    if (fv.rooms !== '1') params['rooms'] = fv.rooms;
+
+    const qs = new URLSearchParams(params).toString();
+    void this.router.navigateByUrl(qs ? `/search?${qs}` : '/search');
+  }
+
+  // ── Featured hotels ─────────────────────────────────────────────────────
+
+  readonly featuredHotelsResource = httpResource<{ items: FeaturedHotel[] }>(
+    () => `${this.apiConfig.baseUrl}/hotels/availability?sort_by=rating&page_size=3&content_only=true`,
+    {
+      parse: (dto) => ({ items: mapFeaturedHotels(dto as { items?: Array<{
+        prop_id: number; display_name: string; prop_starrating: number | null;
+        prop_review_score: number | null; image_url: string | null;
+        destination_labels: string[]; min_nightly_rate_label: string | null;
+      }> }) }),
+    },
+  );
+
+  readonly featuredHotels = computed(() => this.featuredHotelsResource.value()?.items ?? []);
+
+  hotelDetailHref(propId: number): string {
+    return `/hotels/${propId}`;
+  }
+
+  readonly STAR_5 = [0, 1, 2, 3, 4];
+
+  // ── Auth toast ──────────────────────────────────────────────────────────
+
+  readonly showAuthToast = signal(false);
+  private authToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  handleHotelClick(hotelId: number, event: Event): void {
+    event.preventDefault();
+    if (this.authService.isAuthenticated()) {
+      void this.router.navigateByUrl(`/hotels/${hotelId}`);
+      return;
+    }
+    if (this.authToastTimer) clearTimeout(this.authToastTimer);
+    this.showAuthToast.set(true);
+    this.authToastTimer = setTimeout(() => this.dismissAuthToast(), 8000);
+  }
+
+  dismissAuthToast(): void {
+    if (this.authToastTimer) { clearTimeout(this.authToastTimer); this.authToastTimer = null; }
+    this.showAuthToast.set(false);
+  }
+
+  readonly hasSession = computed(
+    () => this.authService.isAuthenticated() && this.authService.sessionLoaded(),
+  );
+
+  // ── Currency chip ───────────────────────────────────────────────────────
+
+  readonly currenciesResource = httpResource<{ currencies: SystemCurrencyDto[] }>(
+    () => `${this.apiConfig.baseUrl}/public/currencies`,
+    {
+      parse: (dto) => {
+        const raw = (dto as { currencies?: SystemCurrencyDto[] })?.currencies ?? [];
+        const cleaned = raw.filter((c) => c?.code && c.active !== false);
+        return { currencies: cleaned.length ? cleaned : [...FALLBACK_CURRENCIES] };
+      },
+    },
+  );
+
+  readonly currencies = computed<readonly SystemCurrencyDto[]>(() => {
+    const fromApi = this.currenciesResource.value()?.currencies;
+    return fromApi && fromApi.length ? fromApi : FALLBACK_CURRENCIES;
+  });
+
+  readonly selectedCurrency = signal<string>(this.readStoredCurrency());
+
+  constructor() {
+    effect(() => {
+      if (this.hasSession()) {
+        const homeHref = this.authService.authState().homeHref;
+        void this.router.navigateByUrl(this.authService.resolveDefaultDestination(homeHref));
+      }
+    });
+
+    effect(() => {
+      const code = this.selectedCurrency();
+      if (!code) return;
+      this.propertyCtx.setCurrency(code, [code]);
+    });
+  }
+
+  onCurrencyChange(code: string): void {
+    if (!code || code === this.selectedCurrency()) return;
+    this.selectedCurrency.set(code);
+    this.writeStoredCurrency(code);
+  }
+
+  /** Delegates to the mapper for the flag emoji. */
+  currencyFlag(code: string): string {
+    return currencyFlag(code);
+  }
+
+  // ── LocalStorage helpers ────────────────────────────────────────────────
+
+  private readStoredCurrency(): string {
+    const v = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return v && v.trim().length === 3 ? v.trim().toUpperCase() : 'USD';
+  }
+
+  private writeStoredCurrency(code: string): void {
+    localStorage.setItem(CURRENCY_STORAGE_KEY, code.toUpperCase());
+  }
+}

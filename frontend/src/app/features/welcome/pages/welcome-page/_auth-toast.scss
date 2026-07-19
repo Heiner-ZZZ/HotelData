@@ -1,0 +1,117 @@
+/* ═══════════════════════════════════════════════════
+   Auth-toast partial — fixed slide-down banner that
+   appears when an unauthenticated user clicks a
+   hotel card. Includes the slideDown animation.
+   ═══════════════════════════════════════════════════ */
+
+.auth-toast {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+  box-shadow: var(--shadow-lg);
+  animation: toastSlideDown 320ms ease-out;
+
+  &__inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 14px clamp(20px, 4vw, 40px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  &__icon {
+    font-size: 1.5rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    --icon-wght: 500;
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    strong {
+      font-size: 0.92rem;
+      color: var(--app-text);
+    }
+
+    span {
+      font-size: 0.82rem;
+      color: var(--muted-text);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  &__close {
+    border: 0;
+    background: transparent;
+    color: var(--muted-text);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 160ms ease, background 160ms ease;
+
+    &:hover {
+      color: var(--app-text);
+      background: var(--surface-hover);
+    }
+
+    .material-symbols-outlined {
+      font-size: 1.15rem;
+    }
+  }
+}
+
+@keyframes toastSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Small button variant used inside the toast */
+.btn--sm {
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+}
+
+/* Toast responsive */
+@media (max-width: 640px) {
+  .auth-toast {
+    &__inner {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    &__actions {
+      width: 100%;
+
+      .btn { flex: 1; }
+    }
+
+    &__close { position: absolute; top: 8px; right: 12px; }
+  }
+}
