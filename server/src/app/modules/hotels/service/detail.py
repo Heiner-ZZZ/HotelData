@@ -13,6 +13,7 @@ from ._helpers import (
 )
 from .lookups import _country_lookup, _destination_lookup, _site_lookup
 from .search import _enrich_hotel_metrics
+from src.app.modules.partner.services._common import _resolve_country_label
 from src.database.connection import get_database
 
 
@@ -160,6 +161,8 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     collection, source_collection = _active_fact_collection()
     db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0}) or {}
+    resolved_country = _resolve_country_label(hotel)
+    hotel = {**hotel, "country_display_name": resolved_country}
     pipeline = [
         {"$match": {"prop_id": prop_id}},
         {"$group": {"_id": "$prop_id", "prop_id": {"$first": "$prop_id"}, **_metric_projection()}},
@@ -170,6 +173,8 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
 
     item = _enrich_hotel_metrics([metrics or {"prop_id": prop_id, "events": 0, "reservations": 0, "clicks": 0, "destinations": []}])[0]
     item["source_collection"] = source_collection
+    # Use the same country resolution logic as the management API
+    item["country_display_name"] = hotel["country_display_name"]
     item["hotel"] = hotel
     item["min_rate_label"] = _min_real_rate_for_prop(prop_id)
     item["top_destinations"] = top_destinations_for_hotel(prop_id)

@@ -83,6 +83,16 @@ export class PropertySelectorComponent implements OnChanges {
   });
 
   constructor() {
+    // Reactive search pipeline: signal → observable → debounce → API call.
+    // Set up outside of any effect so toObservable() has an injection context.
+    toObservable(this.filterText)
+      .pipe(skip(1), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((term) => {
+        this.searchValue = term;
+        this.page = 1;
+        this.loadPage();
+      });
+
     // React to context becoming ready (async HTTP call)
     effect(() => {
       if (this.ctx.ready() && !this.initialized()) {
@@ -125,15 +135,6 @@ export class PropertySelectorComponent implements OnChanges {
 
     // --- Modo all (super_admin): cargar normalmente desde la API ---
     this.loadInitialPage();
-
-    // Reactive search pipeline: signal → observable → debounce → API call
-    toObservable(this.filterText)
-      .pipe(skip(1), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((term) => {
-        this.searchValue = term;
-        this.page = 1;
-        this.loadPage();
-      });
   }
 
   ngOnChanges(changes: SimpleChanges) {
