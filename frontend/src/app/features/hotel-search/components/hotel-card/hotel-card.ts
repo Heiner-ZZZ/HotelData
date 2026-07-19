@@ -1,6 +1,10 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../../../core/auth/auth.service';
+import { FavoritesService } from '../../../../core/favorites/favorites.service';
+import { toast } from '../../../../core/toast/toast.service';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
 import type { HotelSearchResult } from '../../models/hotel-search.model';
 
@@ -8,9 +12,12 @@ import type { HotelSearchResult } from '../../models/hotel-search.model';
   selector: 'app-hotel-card',
   imports: [RouterLink],
   templateUrl: './hotel-card.html',
-  styleUrl: './hotel-card.scss'
+  styleUrl: './hotel-card.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HotelCardComponent implements OnInit {
+  private readonly auth = inject(AuthService);
+  private readonly favorites = inject(FavoritesService);
   private readonly tracking = inject(TrackingService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -18,27 +25,61 @@ export class HotelCardComponent implements OnInit {
   readonly compareMode = input(false);
   readonly compareSelected = output<number>();
 
+  /** Favorite state — O(1) lookup via direct Set membership. */
+  readonly isFavorited = computed(() => this.favorites.favoriteIds().has(this.hotel().id));
+
   readonly fallbackImg = signal(false);
   readonly currentImageIdx = signal(0);
   readonly noTransition = signal(false);
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
-  readonly totalImages = 3;
+
+  /** Custom hotel photos — httpResource, auto-fetches when hotel changes. */
+  private readonly hotelPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
+    () => `/api/public/hotels/${this.hotel().id}/images`,
+  );
+
+  /** Amenity photos — httpResource, auto-fetches when hotel changes. */
+  private readonly amenityPhotosRes = httpResource<{ ok: boolean; photos: { url: string }[] }>(
+    () => `/api/amenities/photos/property/${this.hotel().id}`,
+  );
+
+  /** Room-type images — httpResource, auto-fetches when hotel changes. */
+  private readonly roomPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
+    () => `/api/public/hotels/${this.hotel().id}/room-images`,
+  );
+
+  readonly BASE_GALLERY_COUNT = 3;
+
+  /** Combined gallery: hotel images + room-type images + loremflickr + amenity photos. */
+  readonly galleryImages = computed(() => {
+    const h = this.hotel();
+    if (this.fallbackImg()) return [];
+    const hotelImgs = (this.hotelPhotosRes.value()?.images ?? []).map((img) => img.image_url);
+    const roomImgs = (this.roomPhotosRes.value()?.images ?? []).map((img) => img.image_url);
+    const amenityImgs = (this.amenityPhotosRes.value()?.photos ?? []).map((p) => p.url);
+    const lorem = [
+      `https://loremflickr.com/400/250/hotel?lock=${h.id}1`,
+      `https://loremflickr.com/400/250/hotel,lobby?lock=${h.id}2`,
+      `https://loremflickr.com/400/250/hotel,pool?lock=${h.id}3`,
+    ];
+    return [...hotelImgs, ...roomImgs, ...lorem, ...amenityImgs];
+  });
+
+  /** Total images in the carousel — dynamic based on gallery. */
+  readonly totalImages = computed(() => this.galleryImages().length);
+
+  /** Generate dot indices for the carousel indicators. */
+  readonly dotIndices = computed(() => {
+    const count = this.totalImages();
+    if (count <= this.BASE_GALLERY_COUNT) return [0, 1, 2] as const;
+    return Array.from({ length: count }, (_, i) => i);
+  });
 
   ngOnInit() {
     this.destroyRef.onDestroy(() => {
       if (this.rotationTimer) clearInterval(this.rotationTimer);
     });
   }
-
-  readonly galleryImages = computed(() => {
-    const h = this.hotel();
-    if (this.fallbackImg()) return [];
-    return [
-      `https://loremflickr.com/400/250/hotel?lock=${h.id}1`,
-      `https://loremflickr.com/400/250/hotel,lobby?lock=${h.id}2`,
-      `https://loremflickr.com/400/250/hotel,pool?lock=${h.id}3`
-    ];
-  });
 
   readonly imageUrl = computed(() => {
     const h = this.hotel();
@@ -56,7 +97,7 @@ export class HotelCardComponent implements OnInit {
   startRotation() {
     if (this.fallbackImg() || this.rotationTimer) return;
     this.rotationTimer = setInterval(() => {
-      const next = (this.currentImageIdx() + 1) % this.totalImages;
+      const next = (this.currentImageIdx() + 1) % this.totalImages();
       if (next === 0) {
         this.noTransition.set(true);
         this.currentImageIdx.set(0);
@@ -148,5 +189,17 @@ export class HotelCardComponent implements OnInit {
 
   toggleCompare(): void {
     this.compareSelected.emit(this.hotel().id);
+  }
+
+  toggleFav(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.auth.isAuthenticated()) {
+      toast('Inicia sesión para guardar hoteles favoritos', 'info', 3000);
+      return;
+    }
+
+    this.favorites.toggle(this.hotel().id);
   }
 }

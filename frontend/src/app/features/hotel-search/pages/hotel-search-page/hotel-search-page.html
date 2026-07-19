@@ -1,5 +1,11 @@
 <div class="hotel-search-page">
-  <app-page-header [title]="'Buscar hoteles'" />
+  <div class="page-header-row">
+    <app-page-header [title]="'Buscar hoteles'" />
+    <a class="favorites-nav-link" routerLink="/search/favorites">
+      <span class="material-symbols-outlined">favorite</span>
+      Mis Favoritos
+    </a>
+  </div>
 
   <div class="page-grid">
     <app-filter-sidebar [filters]="currentFilters()" (submitted)="updateFilters($event)" />

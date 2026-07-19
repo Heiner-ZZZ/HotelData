@@ -26,6 +26,7 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
     paymentPolicy: dto.policies.payment_policy || '',
     houseRules: dto.policies.house_rules || '',
     roomTypeId: dto.policies.room_type_id || '',
+    ratePlanId: dto.policies.rate_plan_id || '',
     cancellationHours: cancelHours,
     cancellationPenaltyPercent: cancelPenaltyPct,
     petsAllowed: dto.policies.pets_allowed ?? false,
@@ -78,6 +79,7 @@ export function mapPoliciesPayload(vm: PoliciesViewModel): PoliciesSaveDto {
     payment_policy: vm.paymentPolicy,
     house_rules: vm.houseRules,
     room_type_id: vm.roomTypeId || undefined,
+    rate_plan_id: vm.ratePlanId || undefined,
     // Always send numeric/boolean fields; backend handles via default=None
     cancellation_hours: vm.cancellationHours,
     cancellation_penalty_percent: vm.cancellationPenaltyPercent,

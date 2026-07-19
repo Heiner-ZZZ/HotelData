@@ -84,6 +84,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (role === 'cliente') {
       items.push(
         { label: 'Mis reservas', href: '/account/bookings', icon: 'book_online' },
+        { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' },
         { label: 'Perfil', href: '/account/profile', icon: 'person' }
       );
     }
@@ -101,7 +102,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
       items: [
         { label: 'Buscar hoteles', href: '/search', icon: 'search' },
         { label: 'Hotel destacado', href: '/hotels/partner-1', icon: 'star' },
-        { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online', allowedRoles: ['cliente'] }
+        { label: 'Reservas del viajero', href: '/account/bookings', icon: 'book_online', allowedRoles: ['cliente'] },
+        { label: 'Mis Favoritos', href: '/search/favorites', icon: 'favorite' }
       ]
     }
   ];
