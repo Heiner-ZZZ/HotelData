@@ -37,6 +37,7 @@ export interface RatePlanItem {
   baseRate: number;
   currency: string;
   roomTypeId?: string;
+  applicableRoomTypes?: string[];
   activeLabel: string;
   eligibleRoles?: string[];
   includedAmenities?: string[];

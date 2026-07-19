@@ -16,6 +16,7 @@ export interface RatesDto {
     base_rate_label: string;
     currency: string;
     room_type_id?: string;
+    applicable_room_types?: string[];
     is_active: boolean;
     eligible_roles?: string[];
     included_amenities?: string[];

@@ -19,6 +19,7 @@ export function mapRatesResponse(dto: RatesDto): RatesViewModel {
       baseRate: plan.base_rate,
       currency: plan.currency,
       roomTypeId: plan.room_type_id,
+      applicableRoomTypes: plan.applicable_room_types ?? (plan.room_type_id ? [plan.room_type_id] : []),
       activeLabel: plan.is_active ? 'Sí' : 'No',
       eligibleRoles: plan.eligible_roles ?? [],
       includedAmenities: plan.included_amenities ?? []

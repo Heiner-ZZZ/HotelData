@@ -129,7 +129,7 @@ export class RatesPageComponent {
 
   /** Current section — derived from URL query param. */
   readonly activeSection = computed(() => this.routeSection());
-  readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; roomTypeId: string; isActive: boolean } | null>(null);
+  readonly editingPlan = signal<{ id: string; name: string; description: string; baseRate: number; currency: string; applicableRoomTypes: string[]; isActive: boolean } | null>(null);
   readonly editingSeason = signal<{ ruleId: string; ratePlanId: string; name: string; startDate: string; endDate: string; priceOverride: number } | null>(null);
   readonly deleteConfirm = signal<string | null>(null);
   readonly promoDeleteConfirm = signal<string | null>(null);
@@ -141,7 +141,15 @@ export class RatesPageComponent {
   // Plan form
   readonly planName = signal('');
   readonly planDescription = signal('');
-  readonly planRoomTypeId = signal('');
+  /** Applicable room types — multi-select via checkbox grid. */
+  readonly planApplicableRoomTypes = signal<string[]>([]);
+
+  togglePlanRoomType(roomTypeId: string): void {
+    this.planApplicableRoomTypes.update((current) => {
+      const exists = current.includes(roomTypeId);
+      return exists ? current.filter((id) => id !== roomTypeId) : [...current, roomTypeId];
+    });
+  }
   readonly planBaseRate = signal(0);
   readonly planCurrency = signal('USD');
   readonly planIsActive = signal(true);
@@ -258,11 +266,16 @@ readonly sidebarSections: SidebarSection[] = [
       dateFilter = (d) => dates.includes(d);
     }
 
-    // Rate plan → room type mapping
-    const planToRoomType = new Map<string, string>();
+    // Rate plan → applicable room types: N:N mapping
+    // Build a Set<ratePlanId> per room type for O(1) lookup
+    const roomTypePlanIds = new Map<string, Set<string>>();
     for (const plan of vm.ratePlans) {
-      if (plan.roomTypeId) {
-        planToRoomType.set(plan.id, plan.roomTypeId);
+      const rtIds = plan.applicableRoomTypes ?? (plan.roomTypeId ? [plan.roomTypeId] : []);
+      for (const rtId of rtIds) {
+        if (!roomTypePlanIds.has(rtId)) {
+          roomTypePlanIds.set(rtId, new Set());
+        }
+        roomTypePlanIds.get(rtId)!.add(plan.id);
       }
     }
 
@@ -271,7 +284,7 @@ readonly sidebarSections: SidebarSection[] = [
       roomTypeName: rt.name,
       roomTypeNumber: this._roomNumber(rt.id),
       days: vm.calendar
-        .filter((c) => planToRoomType.get(c.ratePlanId) === rt.id && dateFilter(c.date))
+        .filter((c) => roomTypePlanIds.get(rt.id)?.has(c.ratePlanId) && dateFilter(c.date))
         .map((c) => {
           const amount = c.rateAmount;
           let tier: 'low' | 'medium' | 'high' | 'premium' = 'medium';
@@ -531,12 +544,12 @@ readonly sidebarSections: SidebarSection[] = [
     const obs = this.editingPlan()
       ? this.api.updateRatePlan(this.editingPlan()!.id, {
           name: this.planName(), description: this.planDescription(), baseRate: this.planBaseRate(),
-          currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
+          currency: this.planCurrency(), applicableRoomTypes: this.planApplicableRoomTypes(), isActive: this.planIsActive(),
           includedAmenities: this.planIncludedAmenities(),
         })
       : this.api.createRatePlan({
           propId: current.propId, name: this.planName(), description: this.planDescription(),
-          baseRate: this.planBaseRate(), currency: this.planCurrency(), roomTypeId: this.planRoomTypeId(), isActive: this.planIsActive(),
+          baseRate: this.planBaseRate(), currency: this.planCurrency(), applicableRoomTypes: this.planApplicableRoomTypes(), isActive: this.planIsActive(),
           includedAmenities: this.planIncludedAmenities(),
         });
     obs.pipe(
@@ -546,7 +559,7 @@ readonly sidebarSections: SidebarSection[] = [
         this.ratesResource.reload();
         this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
         this.editingPlan.set(null);
-        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
+        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
       },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.'); this.message.set(''); },
     });
@@ -555,10 +568,10 @@ readonly sidebarSections: SidebarSection[] = [
   onEditPlan(plan: any): void {
     this.editingPlan.set({
       id: plan.id, name: plan.name, description: plan.description, baseRate: plan.baseRate,
-      currency: plan.currency, roomTypeId: plan.roomTypeId ?? '', isActive: plan.activeLabel === 'Sí',
+      currency: plan.currency, applicableRoomTypes: plan.applicableRoomTypes ?? [], isActive: plan.activeLabel === 'Sí',
     });
     this.planName.set(plan.name); this.planDescription.set(plan.description); this.planBaseRate.set(plan.baseRate);
-    this.planCurrency.set(plan.currency); this.planRoomTypeId.set(plan.roomTypeId ?? ''); this.planIsActive.set(plan.activeLabel === 'Sí');
+    this.planCurrency.set(plan.currency); this.planApplicableRoomTypes.set(plan.applicableRoomTypes ?? []); this.planIsActive.set(plan.activeLabel === 'Sí');
     this.planIncludedAmenities.set(plan.includedAmenities ?? []);
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -570,7 +583,7 @@ readonly sidebarSections: SidebarSection[] = [
 
   cancelEditPlan(): void {
     this.editingPlan.set(null);
-    this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planRoomTypeId.set(''); this.planIsActive.set(true);
+    this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true);
     this.planIncludedAmenities.set([]);
   }
 
