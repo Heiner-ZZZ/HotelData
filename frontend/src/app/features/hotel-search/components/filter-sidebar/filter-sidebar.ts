@@ -1,4 +1,4 @@
-import { Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 import type { HotelSearchFilters } from '../../models/hotel-search.model';
@@ -7,7 +7,8 @@ import type { HotelSearchFilters } from '../../models/hotel-search.model';
   selector: 'app-filter-sidebar',
   imports: [ReactiveFormsModule],
   templateUrl: './filter-sidebar.html',
-  styleUrl: './filter-sidebar.scss'
+  styleUrl: './filter-sidebar.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FilterSidebarComponent {
   readonly filters = input.required<HotelSearchFilters>();

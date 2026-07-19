@@ -75,6 +75,17 @@ select {
   color: var(--app-text);
 }
 
+/* Hide spinner arrows on number inputs — keeps the sidebar's clean look. */
+input[type="number"] {
+  -moz-appearance: textfield;
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
 /* Hide the browser's default date placeholder (e.g. "dd/mm/aaaa")
    until the user picks a date — keep only the calendar icon visible. */
 input[type="date"] {

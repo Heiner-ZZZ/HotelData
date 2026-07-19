@@ -1,5 +1,15 @@
 <article class="hotel-card surface-card" (mouseenter)="startRotation()" (mouseleave)="stopRotation()">
   <a class="media-column" [routerLink]="['/hotels', hotel().id]" [class]="imageTheme" [class.img-loaded]="!fallbackImg()" aria-label="Abrir detalle del hotel" (click)="trackClick()">
+    <!-- Favorite button — top-right corner of the image -->
+    <button
+      class="favorite-btn"
+      type="button"
+      [class.is-fav]="isFavorited()"
+      [attr.aria-label]="isFavorited() ? 'Quitar de favoritos' : 'Guardar en favoritos'"
+      (click)="toggleFav($event)"
+    >
+      <span class="material-symbols-outlined">{{ isFavorited() ? 'favorite' : 'favorite_border' }}</span>
+    </button>
     @if (!fallbackImg() && galleryImages().length) {
       <div class="card-img-strip" [style.transform]="stripOffset()" [style.transition]="noTransition() ? 'none' : ''">
         @for (img of galleryImages(); track $index) {
@@ -7,7 +17,7 @@
         }
       </div>
       <div class="card-dots">
-        @for (i of [0, 1, 2]; track i) {
+        @for (i of dotIndices(); track i) {
           <button
             class="card-dot"
             [class.active]="currentImageIdx() === i"
@@ -20,7 +30,6 @@
       <img class="card-bg-img card-bg-single" [src]="imageUrl()" alt="" loading="lazy" (error)="onImgError()" />
     }
     <div class="media-overlay">
-      <span class="media-chip">Hotel {{ hotel().id }}</span>
       @if (hotel().minNightlyRate) {
         <span class="media-chip media-chip-accent">Desde {{ hotel().minNightlyRateLabel }}</span>
       }

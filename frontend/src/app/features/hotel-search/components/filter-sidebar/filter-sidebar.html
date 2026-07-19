@@ -23,36 +23,33 @@
     <div class="field-grid">
       <label class="field">
         <span>Adultos</span>
-        <input formControlName="adults" inputmode="numeric" placeholder="1">
+        <input formControlName="adults" type="number" min="1" placeholder="1">
       </label>
       <label class="field">
         <span>Niños</span>
-        <input formControlName="children" inputmode="numeric" placeholder="0">
+        <input formControlName="children" type="number" min="0" placeholder="0">
       </label>
     </div>
 
     <label class="field">
-      <span>Habitaciones</span>
-      <input formControlName="rooms" inputmode="numeric" placeholder="1">
+      <span>Habitaciones</span>        <input formControlName="rooms" type="number" min="1" placeholder="1">
     </label>
 
     <fieldset class="field-section">
       <legend>Precio por noche</legend>
       <div class="field-grid">
         <label class="field">
-          <span>Mínimo</span>
-          <input formControlName="minPrice" inputmode="decimal" placeholder="0">
-        </label>
-        <label class="field">
-          <span>Máximo</span>
-          <input formControlName="maxPrice" inputmode="decimal" placeholder="300">
+          <span>Mínimo</span>            <input formControlName="minPrice" type="number" min="0" placeholder="0">
+          </label>
+          <label class="field">
+            <span>Máximo</span>
+            <input formControlName="maxPrice" type="number" min="0" placeholder="300">
         </label>
       </div>
     </fieldset>
 
     <label class="field">
-      <span>Estrellas mínimas</span>
-      <input formControlName="minStars" inputmode="decimal" placeholder="3">
+      <span>Estrellas mínimas</span>        <input formControlName="minStars" type="number" min="0" max="5" step="0.5" placeholder="3">
     </label>
 
     <label class="field">
