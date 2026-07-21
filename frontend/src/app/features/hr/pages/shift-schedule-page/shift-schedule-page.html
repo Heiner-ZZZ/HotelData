@@ -1,0 +1,142 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Asignación de Turnos — Shift Schedule Management
+     ═══════════════════════════════════════════════════════════ -->
+
+<div class="ss-shell">
+  <!-- ── Header ── -->
+  <header class="ss-header">
+    <div class="ss-header-left">
+      <button class="btn btn-icon btn-back" (click)="goBack()" title="Volver">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <div>
+        <h1 class="ss-title">Asignación de Turnos</h1>
+        <p class="ss-subtitle">Programa los turnos de los empleados</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Employee Selector ── -->
+  <section class="ss-selector">
+    <label class="ss-label">
+      <span class="material-symbols-outlined">badge</span>
+      Empleado
+    </label>
+    <select class="ss-select" (change)="selectEmployee($any($event.target).value)">
+      <option value="">-- Seleccionar empleado --</option>
+      @for (emp of employees(); track emp.id) {
+        <option [value]="emp.id" [selected]="emp.id === selectedEmployeeId()">
+          {{ emp.fullName }} — {{ emp.position }}
+        </option>
+      }
+    </select>
+  </section>
+
+  @if (selectedEmployeeId()) {
+    <!-- ── Week Navigation ── -->
+    <div class="ss-week-nav">
+      <button class="btn btn-icon" (click)="selectWeek(weekOffset() - 1)" title="Semana anterior">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+      <span class="ss-week-label">
+        {{ weekDays()[0]?.date }} — {{ weekDays()[6]?.date }}
+      </span>
+      <button class="btn btn-icon" (click)="selectWeek(weekOffset() + 1)" title="Semana siguiente">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+
+    <!-- ── Weekly Calendar Grid ── -->
+    <div class="ss-calendar">
+      <div class="ss-cal-header">
+        @for (day of weekDays(); track day.date) {
+          <div class="ss-cal-day-header" [class.ss-today]="day.isToday">
+            <span class="ss-day-name">{{ day.dayName }}</span>
+            <span class="ss-day-num">{{ day.dayNum }}</span>
+          </div>
+        }
+      </div>
+      <div class="ss-cal-body">
+        @for (day of weekDays(); track day.date) {
+          <div class="ss-cal-cell" [class.ss-today]="day.isToday" (click)="editShift(undefined, day.date)">
+            @if (shiftsByDate().get(day.date); as shift) {
+              <div class="ss-shift-card" [class.ss-shift-pending]="shift.status === 'pending'"
+                   [class.ss-shift-active]="shift.status === 'active'"
+                   [class.ss-shift-completed]="shift.status === 'completed'">
+                <div class="ss-shift-time">{{ shift.scheduledStart }}–{{ shift.scheduledEnd }}</div>
+                @if (shift.area) {
+                  <div class="ss-shift-area">{{ shift.area }}</div>
+                }
+                <div class="ss-shift-actions">
+                  <button class="ss-shift-btn ss-shift-edit" (click)="editShift(shift); $event.stopPropagation()" title="Editar">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button class="ss-shift-btn ss-shift-del" (click)="deleteShift(shift); $event.stopPropagation()" title="Eliminar">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="ss-add-hint">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span class="ss-add-text">Asignar</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ── Shift Form ── -->
+    <div class="ss-form-card">
+      <h3 class="ss-form-title">
+        <span class="material-symbols-outlined">{{ editingShiftId() ? 'edit_calendar' : 'add' }}</span>
+        {{ editingShiftId() ? 'Editar Turno' : 'Nuevo Turno' }}
+        @if (formDate()) {
+          <span class="ss-form-date">{{ formDate() }}</span>
+        }
+      </h3>
+      <div class="ss-form-grid">
+        <div class="ss-field">
+          <label class="ss-field-label">Fecha</label>
+          <input type="date" class="ss-input" [value]="formDate()"
+                 (change)="formDate.set($any($event.target).value)" />
+        </div>
+        <div class="ss-field">
+          <label class="ss-field-label">Inicio</label>
+          <input type="time" class="ss-input" [value]="formStart()"
+                 (change)="formStart.set($any($event.target).value)" />
+        </div>
+        <div class="ss-field">
+          <label class="ss-field-label">Fin</label>
+          <input type="time" class="ss-input" [value]="formEnd()"
+                 (change)="formEnd.set($any($event.target).value)" />
+        </div>
+        <div class="ss-field">
+          <label class="ss-field-label">Área / Ubicación</label>
+          <input type="text" class="ss-input" placeholder="Ej: Recepción, Piso 1..." [value]="formArea()"
+                 (change)="formArea.set($any($event.target).value)" />
+        </div>
+        <div class="ss-field ss-field-wide">
+          <label class="ss-field-label">Notas (opcional)</label>
+          <input type="text" class="ss-input" placeholder="Instrucciones adicionales..." [value]="formNotes()"
+                 (change)="formNotes.set($any($event.target).value)" />
+        </div>
+      </div>
+      <div class="ss-form-actions">
+        @if (editingShiftId()) {
+          <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+        }
+        <button class="btn btn-primary btn-sm" (click)="saveShift()" [disabled]="saving()">
+          <span class="material-symbols-outlined">{{ saving() ? 'hourglass_top' : 'save' }}</span>
+          {{ saving() ? 'Guardando...' : editingShiftId() ? 'Actualizar Turno' : 'Crear Turno' }}
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="ss-empty">
+      <span class="material-symbols-outlined">calendar_month</span>
+      <p>Selecciona un empleado para ver y gestionar sus turnos</p>
+    </div>
+  }
+</div>

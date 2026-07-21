@@ -1,0 +1,212 @@
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
+import { switchMap, map, BehaviorSubject } from 'rxjs';
+
+import { HrApiService } from '../../services/hr-api.service';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { toast } from '../../../../core/toast/toast.service';
+import type { EmployeeListItem, ShiftItem, ShiftCreatePayload } from '../../models/hr.model';
+
+@Component({
+  selector: 'app-shift-schedule-page',
+  standalone: true,
+  imports: [DatePipe],
+  templateUrl: './shift-schedule-page.html',
+  styleUrl: './shift-schedule-page.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class ShiftSchedulePageComponent {
+  private readonly api = inject(HrApiService);
+  private readonly router = inject(Router);
+  private readonly propCtx = inject(PropertyContextService);
+
+  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+
+  readonly todayStr = new Date().toISOString().substring(0, 10);
+
+  // ── State ──
+  readonly employees = signal<EmployeeListItem[]>([]);
+  readonly selectedEmployeeId = signal<string>('');
+
+  // Week navigation
+  readonly weekOffset = signal(0);
+
+  readonly weekStart = computed(() => this._getWeekStart(this.weekOffset()));
+  readonly weekEnd = computed(() => {
+    const d = new Date(this.weekStart());
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().substring(0, 10);
+  });
+
+  readonly weekDays = computed(() => {
+    const start = new Date(this.weekStart());
+    const days: { date: string; dayName: string; dayNum: number; isToday: boolean }[] = [];
+    const names = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().substring(0, 10);
+      days.push({
+        date: dateStr,
+        dayName: names[d.getDay()],
+        dayNum: d.getDate(),
+        isToday: dateStr === this.todayStr,
+      });
+    }
+    return days;
+  });
+
+  // Shifts for selected employee in current week range
+  readonly shifts = toSignal(
+    this.refresh$.pipe(
+      switchMap(() => {
+        const empId = this.selectedEmployeeId();
+        if (!empId) return [null];
+        return this.api.getShifts(empId, undefined, this.weekStart(), this.weekEnd());
+      })
+    )
+  );
+
+  // Build a lookup by date for quick access
+  readonly shiftsByDate = computed(() => {
+    const data = this.shifts();
+    if (!data) return new Map<string, ShiftItem>();
+    const map = new Map<string, ShiftItem>();
+    for (const s of data.items) {
+      map.set(s.date, s);
+    }
+    return map;
+  });
+
+  // ── Form state ──
+  readonly formDate = signal(this.todayStr);
+  readonly formStart = signal('09:00');
+  readonly formEnd = signal('17:00');
+  readonly formArea = signal('');
+  readonly formNotes = signal('');
+  readonly editingShiftId = signal<string | null>(null);
+  readonly saving = signal(false);
+
+  constructor() {
+    this._loadEmployees();
+  }
+
+  private _loadEmployees() {
+    const propId = this.propCtx.currentPropId() || undefined;
+    this.api.getEmployees(undefined, undefined, true, 1, propId).subscribe({
+      next: (res) => this.employees.set(res.items),
+    });
+  }
+
+  selectEmployee(id: string) {
+    this.selectedEmployeeId.set(id);
+    this.refresh$.next();
+  }
+
+  selectWeek(offset: number) {
+    this.weekOffset.set(offset);
+    this.refresh$.next();
+  }
+
+  /** Open form to create/edit a shift */
+  editShift(shift?: ShiftItem, date?: string) {
+    if (shift) {
+      this.editingShiftId.set(shift.id);
+      this.formDate.set(shift.date);
+      this.formStart.set(shift.scheduledStart);
+      this.formEnd.set(shift.scheduledEnd);
+      this.formArea.set(shift.area);
+      this.formNotes.set(shift.notes);
+    } else {
+      this.editingShiftId.set(null);
+      this.formDate.set(date || this.todayStr);
+      this.formStart.set('09:00');
+      this.formEnd.set('17:00');
+      this.formArea.set('');
+      this.formNotes.set('');
+    }
+  }
+
+  cancelEdit() {
+    this.editingShiftId.set(null);
+  }
+
+  saveShift() {
+    const empId = this.selectedEmployeeId();
+    if (!empId) {
+      toast('Selecciona un empleado.', 'warning', 4000);
+      return;
+    }
+    const date = this.formDate();
+    const start = this.formStart();
+    const end = this.formEnd();
+    if (!date || !start || !end) {
+      toast('Completa fecha, inicio y fin del turno.', 'warning', 4000);
+      return;
+    }
+
+    this.saving.set(true);
+    const payload: ShiftCreatePayload = {
+      employeeId: empId,
+      date,
+      scheduledStart: start,
+      scheduledEnd: end,
+      area: this.formArea(),
+      notes: this.formNotes(),
+    };
+
+    // Convert to snake_case for API
+    const apiPayload = {
+      employee_id: payload.employeeId,
+      date: payload.date,
+      scheduled_start: payload.scheduledStart,
+      scheduled_end: payload.scheduledEnd,
+      area: payload.area || '',
+      notes: payload.notes || '',
+    };
+
+    const editId = this.editingShiftId();
+    const request = editId
+      ? this.api.updateShift(editId, apiPayload as any)
+      : this.api.createShift(apiPayload as any);
+
+    request.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.editingShiftId.set(null);
+        this.refresh$.next();
+        toast(editId ? 'Turno actualizado.' : 'Turno creado.', 'success', 4000);
+      },
+      error: () => {
+        this.saving.set(false);
+        toast('Error al guardar el turno.', 'error', 5000);
+      },
+    });
+  }
+
+  deleteShift(shift: ShiftItem) {
+    if (!confirm(`Eliminar turno del ${shift.date} (${shift.scheduledStart}-${shift.scheduledEnd})?`)) return;
+    this.api.deleteShift(shift.id).subscribe({
+      next: () => {
+        this.refresh$.next();
+        toast('Turno eliminado.', 'info', 4000);
+      },
+      error: () => toast('Error al eliminar el turno.', 'error', 5000),
+    });
+  }
+
+  goBack() {
+    this.router.navigate(['/management/hr/directory']);
+  }
+
+  private _getWeekStart(offset: number): string {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const diff = now.getDate() - day + (offset * 7); // Start on Sunday
+    const d = new Date(now);
+    d.setDate(diff);
+    return d.toISOString().substring(0, 10);
+  }
+}

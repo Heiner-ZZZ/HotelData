@@ -1,0 +1,452 @@
+/* ═══════════════════════════════════════════════════════════
+   Shift Schedule Page — Asignación de Turnos
+   ═══════════════════════════════════════════════════════════ */
+
+.ss-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+/* ── Header ── */
+.ss-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.ss-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ss-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ss-subtitle {
+  font-size: 13px;
+  color: var(--gray-700);
+  margin: 4px 0 0;
+}
+
+/* ── Employee Selector ── */
+.ss-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.ss-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--accent);
+  }
+}
+
+.ss-select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--app-text);
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+}
+
+/* ── Week Navigation ── */
+.ss-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  width: fit-content;
+}
+
+.ss-week-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+  min-width: 200px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Calendar Grid ── */
+.ss-calendar {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.ss-cal-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.ss-cal-day-header {
+  padding: 12px 8px;
+  text-align: center;
+  border-right: 1px solid var(--gray-100);
+
+  &:last-child { border-right: none; }
+
+  &.ss-today {
+    background: var(--accent-light);
+  }
+}
+
+.ss-day-name {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ss-day-num {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--app-text);
+  margin-top: 2px;
+}
+
+.ss-cal-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 120px;
+}
+
+.ss-cal-cell {
+  min-height: 120px;
+  padding: 6px;
+  border-right: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--gray-100);
+  cursor: pointer;
+  transition: background 100ms ease;
+  position: relative;
+
+  &:nth-child(7n) { border-right: none; }
+  &:nth-last-child(-n+7) { border-bottom: none; }
+
+  &:hover {
+    background: var(--surface-soft);
+  }
+
+  &.ss-today {
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+}
+
+/* ── Shift Card inside cell ── */
+.ss-shift-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  transition: box-shadow 150ms ease;
+
+  &:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+}
+
+.ss-shift-pending {
+  border-left: 3px solid var(--warning);
+}
+
+.ss-shift-active {
+  border-left: 3px solid var(--success);
+}
+
+.ss-shift-completed {
+  border-left: 3px solid var(--muted-text);
+  opacity: 0.7;
+}
+
+.ss-shift-time {
+  font-weight: 700;
+  color: var(--app-text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.ss-shift-area {
+  font-size: 10px;
+  color: var(--muted-text);
+  margin-bottom: 4px;
+}
+
+.ss-shift-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.ss-shift-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--surface);
+  transition: background 100ms ease;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+  }
+}
+
+.ss-shift-edit {
+  color: var(--accent);
+  &:hover { background: var(--accent-light); }
+}
+
+.ss-shift-del {
+  color: var(--danger);
+  &:hover { background: var(--danger-light); }
+}
+
+/* ── Add hint (empty cell) ── */
+.ss-add-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 80px;
+  gap: 4px;
+  color: var(--muted-text);
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+
+  .material-symbols-outlined {
+    font-size: 22px;
+  }
+
+  .ss-add-text {
+    font-size: 10px;
+    font-weight: 600;
+  }
+}
+
+.ss-cal-cell:hover .ss-add-hint {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ── Form ── */
+.ss-form-card {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.ss-form-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text);
+  margin: 0 0 16px;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--accent);
+  }
+}
+
+.ss-form-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-text);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 4px;
+}
+
+.ss-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ss-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ss-field-wide {
+  grid-column: span 2;
+}
+
+.ss-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ss-input {
+  padding: 8px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--app-text);
+  transition: border-color 150ms ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  &::placeholder {
+    color: var(--muted-text);
+    opacity: 0.6;
+  }
+}
+
+.ss-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── Empty state ── */
+.ss-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 12px;
+  color: var(--muted-text);
+
+  .material-symbols-outlined {
+    font-size: 48px;
+    opacity: 0.3;
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+/* ── Buttons (reuse) ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  font-family: inherit;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:active:not(:disabled) { transform: scale(0.97); }
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+
+  .material-symbols-outlined { font-size: 20px; color: var(--muted-text); }
+  &:hover { background: var(--surface-soft); }
+}
+
+.btn-back {
+  .material-symbols-outlined { color: var(--accent); font-size: 22px; }
+  &:hover { background: var(--accent-light); }
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover:not(:disabled) { background: var(--accent-hover); }
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover { background: var(--surface-soft); }
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .ss-shell { padding: 16px; }
+  .ss-form-grid { grid-template-columns: repeat(2, 1fr); }
+  .ss-field-wide { grid-column: span 2; }
+}
+
+@media (max-width: 640px) {
+  .ss-form-grid { grid-template-columns: 1fr; }
+  .ss-field-wide { grid-column: span 1; }
+  .ss-calendar { overflow-x: auto; }
+  .ss-cal-cell { min-height: 100px; }
+}

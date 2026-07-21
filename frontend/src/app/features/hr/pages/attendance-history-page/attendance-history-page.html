@@ -1,0 +1,208 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Historial de Asistencias — Employee Attendance Log
+     ═══════════════════════════════════════════════════════════ -->
+
+@if (attendance(); as data) {
+<div class="att-shell">
+
+  <!-- ── Page Header ── -->
+  <header class="att-header">
+    <div class="att-header-left">
+      <button class="btn btn-icon btn-back" (click)="goBack()" title="Volver al portal">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <div>
+        <h1 class="att-title">Historial de Asistencias</h1>
+        <p class="att-subtitle">
+          <strong>{{ data.employeeName }}</strong>
+          &middot; {{ monthLabel() }}
+        </p>
+      </div>
+    </div>
+    <div class="att-header-right">
+      <button class="btn btn-export" (click)="exportCSV()" title="Exportar a CSV">
+        <span class="material-symbols-outlined">download</span>
+        CSV
+      </button>
+      <div class="month-nav">
+        <button class="btn btn-icon" (click)="prevMonth()" title="Mes anterior">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <span class="month-label">{{ monthLabel() }}</span>
+        <button class="btn btn-icon" (click)="nextMonth()" [disabled]="isAtOrPastCurrentMonth()" title="Mes siguiente">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Summary Cards ── -->
+  <div class="att-summary">
+    <div class="summary-card">
+      <span class="summary-icon sum-icon-present">
+        <span class="material-symbols-outlined">how_to_reg</span>
+      </span>
+      <div class="summary-text">
+        <span class="summary-value">{{ data.summary.daysWorked }}</span>
+        <span class="summary-label">Días Trabajados</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon sum-icon-hours">
+        <span class="material-symbols-outlined">schedule</span>
+      </span>
+      <div class="summary-text">
+        <span class="summary-value">{{ formatHours(data.summary.totalHours) }}</span>
+        <span class="summary-label">Total Horas</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon sum-icon-avg">
+        <span class="material-symbols-outlined">trending_up</span>
+      </span>
+      <div class="summary-text">
+        <span class="summary-value">{{ formatHours(data.summary.avgHoursPerDay) }}</span>
+        <span class="summary-label">Promedio / Día</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon sum-icon-pct">
+        <span class="material-symbols-outlined">target</span>
+      </span>
+      <div class="summary-text">
+        <span class="summary-value">{{ data.summary.onTimePercentage }}%</span>
+        <span class="summary-label">Puntualidad</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="att-tabs">
+    <button class="att-tab" [class.active]="activeTab() === 'all'" (click)="setTab('all')">
+      Todas
+      <span class="tab-count">{{ data.records.length }}</span>
+    </button>
+    <button class="att-tab" [class.active]="activeTab() === 'present'" (click)="setTab('present')">
+      <span class="material-symbols-outlined tab-icon">check_circle</span>
+      Presentes
+    </button>
+    <button class="att-tab" [class.active]="activeTab() === 'absent'" (click)="setTab('absent')">
+      <span class="material-symbols-outlined tab-icon">cancel</span>
+      Faltas
+    </button>
+  </div>
+
+  <!-- ── Records Table ── -->
+  <div class="att-table-wrap">
+    <table class="att-table">
+      <thead>
+        <tr>
+          <th class="col-date">FECHA</th>
+          <th class="col-day">DÍA</th>
+          <th class="col-shift">TURNO</th>
+          <th class="col-checkin">CHECK-IN</th>
+          <th class="col-checkout">CHECK-OUT</th>
+          <th class="col-hours">HORAS</th>
+          <th class="col-status">ESTADO</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (record of filteredRecords(); track record.date) {
+          <tr [class.row-today]="isToday(record.date)">
+            <td class="cell-date">
+              <span class="date-num">{{ record.date.substring(8, 10) }}</span>
+            </td>
+            <td class="cell-day">
+              <span class="day-label">{{ record.dayName }}</span>
+            </td>
+            <td class="cell-shift">
+              @if (record.shiftStart) {
+                {{ record.shiftStart }} – {{ record.shiftEnd }}
+              } @else {
+                <span class="text-muted">—</span>
+              }
+            </td>
+            <td class="cell-checkin">
+              @if (record.checkIn) {
+                <span class="check-badge check-ok">
+                  <span class="material-symbols-outlined">login</span>
+                  {{ formatTime(record.checkIn) }}
+                </span>
+              } @else if (record.status === 'rest') {
+                <span class="text-muted">—</span>
+              } @else {
+                <span class="check-badge check-miss">
+                  <span class="material-symbols-outlined">block</span>
+                  Sin registro
+                </span>
+              }
+            </td>
+            <td class="cell-checkout">
+              @if (record.checkOut) {
+                <span class="check-badge check-ok">
+                  <span class="material-symbols-outlined">logout</span>
+                  {{ formatTime(record.checkOut) }}
+                </span>
+              } @else if (record.status === 'rest') {
+                <span class="text-muted">—</span>
+              } @else {
+                <span class="text-muted">—</span>
+              }
+            </td>
+            <td class="cell-hours">
+              @if (record.hoursWorked !== null && record.hoursWorked !== undefined) {
+                <span class="hours-badge">{{ formatHours(record.hoursWorked) }}</span>
+              } @else if (record.status === 'rest') {
+                <span class="text-muted">—</span>
+              } @else {
+                <span class="hours-badge hours-zero">0h 0m</span>
+              }
+            </td>
+            <td class="cell-status">
+              @if (record.status === 'rest') {
+                <span class="att-status status-rest">
+                  <span class="material-symbols-outlined">bedtime</span>
+                  Descanso
+                </span>
+              } @else if (record.checkIn && record.checkOut) {
+                <span class="att-status status-complete">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  Completo
+                </span>
+              } @else if (record.checkIn && !record.checkOut) {
+                <span class="att-status status-active">
+                  <span class="material-symbols-outlined">schedule</span>
+                  En curso
+                </span>
+              } @else if (record.status === 'completed' && !record.checkIn) {
+                <span class="att-status status-missed">
+                  <span class="material-symbols-outlined">error</span>
+                  Falta
+                </span>
+              } @else {
+                <span class="att-status status-pending">
+                  <span class="material-symbols-outlined">hourglass_empty</span>
+                  Pendiente
+                </span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="cell-empty">
+              <span class="material-symbols-outlined empty-icon">event_busy</span>
+              <p>No hay registros de asistencia para {{ monthLabel() }}</p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+</div>
+} @else {
+  <div class="att-loading">
+    <div class="att-loading-spinner"></div>
+    <p>Cargando historial de asistencias...</p>
+  </div>
+}
