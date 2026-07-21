@@ -17,12 +17,12 @@ import { PropertyContextService } from '../../../../shared/services/property-con
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
         <div>
-          <h1 style="font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">Alta de Nuevo Empleado</h1>
-          <p style="font-size: 13px; color: #64748b; margin: 0;">Registro y configuración inicial para nuevas contrataciones.</p>
+          <h1 style="font-size: 22px; font-weight: 700; color: var(--app-text); margin: 0 0 4px;">Alta de Nuevo Empleado</h1>
+          <p style="font-size: 13px; color: var(--muted-text); margin: 0;">Registro y configuración inicial para nuevas contrataciones.</p>
         </div>
         <div style="display: flex; gap: 8px;">
           <button (click)="submit()" class="btn-primary" [disabled]="submitting() || step() < 4"
-            style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; opacity: 0.4;">
+            style="padding: 10px 20px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; opacity: 0.4;">
             @if (submitting()) { Guardando... } @else { Finalizar Registro }
           </button>
         </div>
@@ -32,62 +32,62 @@ import { PropertyContextService } from '../../../../shared/services/property-con
         <div style="min-width: 0;">
 
       <!-- Stepper -->
-      <div style="display: flex; align-items: center; justify-content: space-between; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 24px; margin-bottom: 24px; position: relative;">
-        <div style="position: absolute; left: 60px; right: 60px; top: 50%; height: 2px; background: #e2e8f0; z-index: 0;"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 16px 24px; margin-bottom: 24px; position: relative;">
+        <div style="position: absolute; left: 60px; right: 60px; top: 50%; height: 2px; background: var(--app-border); z-index: 0;"></div>
         @for (s of steps; track s.num; let i = $index) {
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; background: white; padding: 0 8px; z-index: 1; cursor: pointer;" (click)="step() >= s.num && step.set(s.num)">
-            <div [style]="step() >= s.num ? 'background:#2563eb;color:white;' : 'background:#f1f5f9;color:#94a3b8;'"
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--surface); padding: 0 8px; z-index: 1; cursor: pointer;" (click)="step() >= s.num && step.set(s.num)">
+            <div [style]="step() >= s.num ? 'background:var(--accent);color:white;' : 'background: var(--surface-hover);color:var(--muted-text);'"
               style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; transition: all 0.2s;">
               {{ s.num }}
             </div>
-            <span [style]="step() >= s.num ? 'color:#0f172a;font-weight:600;' : 'color:#94a3b8;'"
+            <span [style]="step() >= s.num ? 'color:var(--app-text);font-weight:600;' : 'color:var(--muted-text);'"
               style="font-size: 11px; white-space: nowrap;">{{ s.label }}</span>
           </div>
         }
       </div>
 
       @if (error()) {
-        <div style="padding: 10px 14px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; margin-bottom: 16px;">{{ error() }}</div>
+        <div style="padding: 10px 14px; background: var(--danger-light); color: var(--danger-strong); border: 1px solid var(--danger-light); border-radius: 8px; font-size: 12px; margin-bottom: 16px;">{{ error() }}</div>
       }
       @if (success()) {
-        <div style="padding: 10px 14px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; margin-bottom: 16px;">{{ success() }}</div>
+        <div style="padding: 10px 14px; background: var(--success-light); color: var(--success-strong); border: 1px solid var(--success-light); border-radius: 8px; font-size: 12px; margin-bottom: 16px;">{{ success() }}</div>
       }
 
       <!-- Step 1: Personal Info -->
       @if (step() === 1) {
-        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-          <h3 style="font-size: 16px; font-weight: 600; color: #0f172a; margin: 0 0 4px;">Información Personal</h3>
-          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 20px;">Datos básicos del nuevo empleado.</p>
+        <div style="background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 24px;">
+          <h3 style="font-size: 16px; font-weight: 600; color: var(--app-text); margin: 0 0 4px;">Información Personal</h3>
+          <p style="font-size: 12px; color: var(--muted-text); margin: 0 0 20px;">Datos básicos del nuevo empleado.</p>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div style="grid-column: 1 / -1;">
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Nombre Completo <span style="color: #dc2626;">*</span></label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Nombre Completo <span style="color: var(--danger);">*</span></label>
               <input type="text" [(ngModel)]="form.fullName"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">ID / Pasaporte <span style="color: #dc2626;">*</span></label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">ID / Pasaporte <span style="color: var(--danger);">*</span></label>
               <input type="text" [(ngModel)]="form.idDocument"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Teléfono</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Teléfono</label>
               <input type="tel" [(ngModel)]="form.phone"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Email Corporativo</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Email Corporativo</label>
               <input type="email" [(ngModel)]="form.email"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div style="grid-column: 1 / -1;">
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Dirección</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Dirección</label>
               <input type="text" [(ngModel)]="form.address"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
           </div>
           <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
             <button (click)="nextStep()" [disabled]="!form.fullName || !form.idDocument"
-              style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; &:disabled { opacity: 0.4; }">
+              style="padding: 10px 20px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; &:disabled { opacity: 0.4; }">
               Siguiente →
             </button>
           </div>
@@ -96,80 +96,80 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 
       <!-- Step 2: Employment Details + Replacement -->
       @if (step() === 2) {
-        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-          <h3 style="font-size: 16px; font-weight: 600; color: #0f172a; margin: 0 0 4px;">Detalles de Empleo</h3>
-          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 20px;">Puesto, departamento y configuración laboral.</p>
+        <div style="background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 24px;">
+          <h3 style="font-size: 16px; font-weight: 600; color: var(--app-text); margin: 0 0 4px;">Detalles de Empleo</h3>
+          <p style="font-size: 12px; color: var(--muted-text); margin: 0 0 20px;">Puesto, departamento y configuración laboral.</p>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Departamento</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Departamento</label>
               <input type="text" [(ngModel)]="form.department" placeholder="Ej: Recepción"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Puesto</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Puesto</label>
               <input type="text" [(ngModel)]="form.position" placeholder="Ej: Recepcionista"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Fecha de Contratación</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Fecha de Contratación</label>
               <input type="date" [(ngModel)]="form.hireDate"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Salario (MXN)</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Salario (MXN)</label>
               <input type="number" [(ngModel)]="form.salary"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Contacto de Emergencia</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Contacto de Emergencia</label>
               <input type="text" [(ngModel)]="form.emergencyContact"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Tel. Emergencia</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Tel. Emergencia</label>
               <input type="tel" [(ngModel)]="form.emergencyPhone"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
             </div>
             <div style="grid-column: 1 / -1;">
-              <label style="font-size: 12px; font-weight: 500; color: #475569; display: block; margin-bottom: 4px;">Notas</label>
+              <label style="font-size: 12px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 4px;">Notas</label>
               <textarea [(ngModel)]="form.notes" rows="2" placeholder="Observaciones adicionales..."
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: inherit; box-sizing: border-box; resize: vertical; outline: none;"></textarea>
+                style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; font-family: inherit; box-sizing: border-box; resize: vertical; outline: none;"></textarea>
             </div>
           </div>
 
           <!-- User Account Link -->
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--app-border);">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <h4 style="font-size: 14px; font-weight: 600; color: #0f172a; margin: 0;">Cuenta de Usuario</h4>
+              <h4 style="font-size: 14px; font-weight: 600; color: var(--app-text); margin: 0;">Cuenta de Usuario</h4>
               @if (!selectedUser()) {
                 <button type="button" (click)="openCreateUserModal()"
-                  style="display: flex; align-items: center; gap: 4px; padding: 5px 12px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">
+                  style="display: flex; align-items: center; gap: 4px; padding: 5px 12px; background: var(--success-light); color: var(--success); border: 1px solid var(--success-light); border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">
                   <span class="material-symbols-outlined" style="font-size: 14px;">person_add</span>
                   Crear usuario
                 </button>
               }
             </div>
-            <p style="font-size: 11px; color: #94a3b8; margin: 0 0 10px;">Vincula este empleado a una cuenta de usuario existente para que pueda iniciar sesión.</p>
+            <p style="font-size: 11px; color: var(--muted-text); margin: 0 0 10px;">Vincula este empleado a una cuenta de usuario existente para que pueda iniciar sesión.</p>
 
             @if (selectedUser(); as user) {
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--success-light); border: 1px solid var(--success-light); border-radius: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span class="material-symbols-outlined" style="color: #16a34a; font-size: 20px;">person_check</span>
+                  <span class="material-symbols-outlined" style="color: var(--success); font-size: 20px;">person_check</span>
                   <div>
-                    <span style="font-size: 13px; font-weight: 500; color: #166534;">{{ user.display_name || user.username }}</span>
-                    <span style="font-size: 11px; color: #15803d; display: block;">{{ user.email }}</span>
-                    <span style="font-size: 10px; color: #65a30d;">{{ user.primary_role }}</span>
+                    <span style="font-size: 13px; font-weight: 500; color: var(--success-strong);">{{ user.display_name || user.username }}</span>
+                    <span style="font-size: 11px; color: var(--success); display: block;">{{ user.email }}</span>
+                    <span style="font-size: 10px; color: var(--success);">{{ user.primary_role }}</span>
                   </div>
                 </div>
                 <button type="button" (click)="clearUser()"
-                  style="background: none; border: none; color: #16a34a; cursor: pointer; font-size: 18px; padding: 2px;" title="Desvincular">
+                  style="background: none; border: none; color: var(--success); cursor: pointer; font-size: 18px; padding: 2px;" title="Desvincular">
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
             } @else {
               <div style="position: relative;">
-                <div style="display: flex; align-items: center; gap: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                  <span class="material-symbols-outlined" style="color: #94a3b8; font-size: 18px; padding: 0 0 0 10px;">search</span>
+                <div style="display: flex; align-items: center; gap: 0; border: 1px solid var(--app-border); border-radius: 8px; overflow: hidden;">
+                  <span class="material-symbols-outlined" style="color: var(--muted-text); font-size: 18px; padding: 0 0 0 10px;">search</span>
                   <input type="text"
                     [value]="userSearchFilter()"
                     (input)="userSearchFilter.set($any($event).target.value); userDropdownOpen.set(true)"
@@ -178,21 +178,21 @@ import { PropertyContextService } from '../../../../shared/services/property-con
                     placeholder="Buscar usuario por nombre o email..."
                     style="flex: 1; padding: 8px 10px; border: none; font-size: 13px; outline: none;" />
                   @if (usersLoading()) {
-                    <span class="material-symbols-outlined spinning" style="color: #94a3b8; font-size: 16px; padding: 0 10px;">sync</span>
+                    <span class="material-symbols-outlined spinning" style="color: var(--muted-text); font-size: 16px; padding: 0 10px;">sync</span>
                   }
                 </div>
                 @if (userDropdownOpen()) {
-                  <ul style="position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin: 4px 0 0; padding: 4px 0; list-style: none; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <ul style="position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: var(--surface); border: 1px solid var(--app-border); border-radius: 8px; margin: 4px 0 0; padding: 4px 0; list-style: none; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                     @for (u of filteredUsers(); track u.user_id) {
                       <li (mousedown)="selectUser(u)"
                         style="padding: 8px 14px; cursor: pointer; font-size: 13px; display: flex; flex-direction: column; gap: 1px; transition: background 0.15s;"
                         (mouseenter)="userHovered.set(u.user_id)" (mouseleave)="userHovered.set(null)"
-                        [style.background]="userHovered() === u.user_id ? '#f1f5f9' : ''">
-                        <span style="font-weight: 500; color: #0f172a;">{{ u.display_name || u.username }}</span>
-                        <span style="font-size: 11px; color: #64748b;">{{ u.email }} · {{ u.primary_role }}</span>
+                        [style.background]="userHovered() === u.user_id ? 'var(--surface-hover)' : ''">
+                        <span style="font-weight: 500; color: var(--app-text);">{{ u.display_name || u.username }}</span>
+                        <span style="font-size: 11px; color: var(--muted-text);">{{ u.email }} · {{ u.primary_role }}</span>
                       </li>
                     } @empty {
-                      <li style="padding: 10px 14px; font-size: 12px; color: #94a3b8; text-align: center;">
+                      <li style="padding: 10px 14px; font-size: 12px; color: var(--muted-text); text-align: center;">
                         @if (usersLoading()) {
                           Buscando usuarios...
                         } @else {
@@ -204,39 +204,39 @@ import { PropertyContextService } from '../../../../shared/services/property-con
                 }
               </div>
             }
-            <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">Selecciona un usuario para vincularlo al empleado, o crea uno nuevo con el botón superior.</p>
+            <p style="font-size: 10px; color: var(--muted-text); margin: 4px 0 0;">Selecciona un usuario para vincularlo al empleado, o crea uno nuevo con el botón superior.</p>
           </div>
 
           <!-- Replacement Logic -->
-          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
+          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--app-border);">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
               <div>
-                <h4 style="font-size: 14px; font-weight: 600; color: #0f172a; margin: 0;">Lógica de Reemplazo</h4>
-                <p style="font-size: 11px; color: #94a3b8; margin: 2px 0 0;">¿Este empleado reemplaza a alguien?</p>
+                <h4 style="font-size: 14px; font-weight: 600; color: var(--app-text); margin: 0;">Lógica de Reemplazo</h4>
+                <p style="font-size: 11px; color: var(--muted-text); margin: 2px 0 0;">¿Este empleado reemplaza a alguien?</p>
               </div>
               <label style="position: relative; display: inline-flex; align-items: center; cursor: pointer;">
                 <input type="checkbox" [(ngModel)]="form.replacesEmployee" class="sr-only"
                   style="position: absolute; opacity: 0; width: 0; height: 0;" />
-                <div [style]="form.replacesEmployee ? 'background:#2563eb;' : 'background:#e2e8f0;'"
+                <div [style]="form.replacesEmployee ? 'background:var(--accent);' : 'background:var(--app-border);'"
                   style="width: 40px; height: 22px; border-radius: 999px; transition: all 0.2s; position: relative;">
                   <div [style]="form.replacesEmployee ? 'transform: translateX(18px);' : 'transform: translateX(2px);'"
-                    style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; top: 2px; transition: all 0.2s;"></div>
+                    style="width: 18px; height: 18px; background: var(--surface); border-radius: 50%; position: absolute; top: 2px; transition: all 0.2s;"></div>
                 </div>
               </label>
             </div>
             @if (form.replacesEmployee) {
-              <div style="background: #f0f4ff; border: 1px solid #e0e7ff; border-radius: 10px; padding: 16px;">
-                <p style="font-size: 12px; color: #4338ca; margin: 0 0 10px;">Selecciona al empleado a reemplazar y qué transferir:</p>
+              <div style="background: var(--accent-light); border: 1px solid var(--accent-light); border-radius: 10px; padding: 16px;">
+                <p style="font-size: 12px; color: var(--indigo); margin: 0 0 10px;">Selecciona al empleado a reemplazar y qué transferir:</p>
                 <input type="text" [(ngModel)]="form.replacesEmployeeId" placeholder="ID del empleado a reemplazar..."
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e0e7ff; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; margin-bottom: 10px;" />
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--accent-light); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; margin-bottom: 10px;" />
                 <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #334155; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
                     <input type="checkbox" [(ngModel)]="form.transferShifts" /> Transferir turnos
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #334155; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
                     <input type="checkbox" [(ngModel)]="form.transferPermissions" /> Transferir permisos
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #334155; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
                     <input type="checkbox" [(ngModel)]="form.transferTasks" /> Transferir tareas
                   </label>
                 </div>
@@ -246,11 +246,11 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 
           <div style="margin-top: 20px; display: flex; justify-content: space-between;">
             <button (click)="prevStep()"
-              style="padding: 10px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; cursor: pointer;">
+              style="padding: 10px 20px; background: var(--surface); border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; cursor: pointer;">
               ← Anterior
             </button>
             <button (click)="nextStep()"
-              style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
+              style="padding: 10px 20px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
               Siguiente →
             </button>
           </div>
@@ -259,9 +259,9 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 
       <!-- Step 3: Confirmation -->
       @if (step() === 3) {
-        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-          <h3 style="font-size: 16px; font-weight: 600; color: #0f172a; margin: 0 0 4px;">Confirmación</h3>
-          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 20px;">Revisa los datos antes de finalizar.</p>
+        <div style="background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 24px;">
+          <h3 style="font-size: 16px; font-weight: 600; color: var(--app-text); margin: 0 0 4px;">Confirmación</h3>
+          <p style="font-size: 12px; color: var(--muted-text); margin: 0 0 20px;">Revisa los datos antes de finalizar.</p>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
             <div><strong>Nombre:</strong> {{ form.fullName }}</div>
             <div><strong>Documento:</strong> {{ form.idDocument }}</div>
@@ -274,7 +274,7 @@ import { PropertyContextService } from '../../../../shared/services/property-con
             <div><strong>Usuario vinculado:</strong> {{ selectedUserLabel() || '—' }}</div>
           </div>
           @if (form.replacesEmployee && form.replacesEmployeeId) {
-            <div style="margin-top: 16px; padding: 10px; background: #f0f4ff; border-radius: 8px; font-size: 12px; color: #4338ca;">
+            <div style="margin-top: 16px; padding: 10px; background: var(--accent-light); border-radius: 8px; font-size: 12px; color: var(--indigo);">
               Reemplazará al empleado ID: {{ form.replacesEmployeeId }}
               @if (form.transferShifts) { · Turnos }
               @if (form.transferPermissions) { · Permisos }
@@ -282,20 +282,20 @@ import { PropertyContextService } from '../../../../shared/services/property-con
             </div>
           }
           <div style="margin-top: 20px; display: flex; justify-content: space-between;">
-            <button (click)="prevStep()" style="padding: 10px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; cursor: pointer;">← Anterior</button>
-            <button (click)="step.set(4)" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Finalizar →</button>
+            <button (click)="prevStep()" style="padding: 10px 20px; background: var(--surface); border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; cursor: pointer;">← Anterior</button>
+            <button (click)="step.set(4)" style="padding: 10px 20px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Finalizar →</button>
           </div>
         </div>
       }
 
       <!-- Step 4: Submit -->
       @if (step() === 4) {
-        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; text-align: center;">
-          <span class="material-symbols-outlined" style="font-size: 48px; color: #22c55e;">check_circle</span>
-          <h3 style="font-size: 18px; font-weight: 600; color: #0f172a; margin: 12px 0 4px;">¿Listo para registrar?</h3>
-          <p style="font-size: 13px; color: #64748b; margin: 0 0 20px;">Al confirmar se creará el empleado en el sistema.</p>
+        <div style="background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 24px; text-align: center;">
+          <span class="material-symbols-outlined" style="font-size: 48px; color: var(--success);">check_circle</span>
+          <h3 style="font-size: 18px; font-weight: 600; color: var(--app-text); margin: 12px 0 4px;">¿Listo para registrar?</h3>
+          <p style="font-size: 13px; color: var(--muted-text); margin: 0 0 20px;">Al confirmar se creará el empleado en el sistema.</p>
           <button (click)="submit()" [disabled]="submitting()"
-            style="padding: 12px 32px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
+            style="padding: 12px 32px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
             {{ submitting() ? 'Registrando...' : 'Confirmar y Registrar' }}
           </button>
         </div>
@@ -304,34 +304,34 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 
         <!-- Right Sidebar: Document Checklist -->
         <div style="min-width: 0;">
-          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+          <div style="background: var(--surface); border: 1px solid var(--app-border); border-radius: 12px; padding: 20px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <span class="material-symbols-outlined" style="color: #2563eb; font-size: 18px;">assignment</span>
-              <h3 style="font-size: 14px; font-weight: 600; color: #0f172a; margin: 0;">Documentación Obligatoria</h3>
+              <span class="material-symbols-outlined" style="color: var(--accent); font-size: 18px;">assignment</span>
+              <h3 style="font-size: 14px; font-weight: 600; color: var(--app-text); margin: 0;">Documentación Obligatoria</h3>
             </div>
-            <p style="font-size: 11px; color: #94a3b8; margin: 0 0 16px;">Archivos requeridos para completar el alta.</p>
+            <p style="font-size: 11px; color: var(--muted-text); margin: 0 0 16px;">Archivos requeridos para completar el alta.</p>
 
             <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
               @for (doc of documentChecklist(); track doc.key) {
-                <li style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <li style="background: var(--surface-soft); border: 1px solid var(--app-border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
                   <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                      <span class="material-symbols-outlined" style="font-size: 16px; color: #cbd5e1;">{{ doc.icon }}</span>
-                      <span style="font-size: 12px; font-weight: 500; color: #1e293b;">{{ doc.label }}</span>
+                      <span class="material-symbols-outlined" style="font-size: 16px; color: var(--app-border);">{{ doc.icon }}</span>
+                      <span style="font-size: 12px; font-weight: 500; color: var(--app-text);">{{ doc.label }}</span>
                     </div>
-                    <span [style]="doc.status === 'completed' ? 'background:#dcfce7;color:#166534;' : 'background:#fee2e2;color:#991b1b;'"
+                    <span [style]="doc.status === 'completed' ? 'background:var(--success-light);color:var(--success-strong);' : 'background:var(--danger-light);color:var(--danger-strong);'"
                       style="padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600;">
                       {{ doc.status === 'completed' ? 'Completado' : 'Pendiente' }}
                     </span>
                   </div>
                   @if (doc.status === 'completed') {
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b; background: white; padding: 6px 8px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted-text); background: var(--surface); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--app-border);">
                       <span class="material-symbols-outlined" style="font-size: 14px;">picture_as_pdf</span>
                       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ doc.filename }}</span>
                     </div>
                   } @else {
                     <button (click)="uploadDocument(doc.key)"
-                      style="width: 100%; padding: 6px 0; background: transparent; border: 1px dashed #cbd5e1; border-radius: 6px; font-size: 11px; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                      style="width: 100%; padding: 6px 0; background: transparent; border: 1px dashed var(--app-border); border-radius: 6px; font-size: 11px; color: var(--muted-text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
                       <span class="material-symbols-outlined" style="font-size: 14px;">upload</span>
                       Subir Archivo
                     </button>
@@ -341,23 +341,23 @@ import { PropertyContextService } from '../../../../shared/services/property-con
             </ul>
 
             <!-- Hotel Assignment -->
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--app-border);">
               <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 16px; color: #2563eb;">hotel</span>
-                <span style="font-size: 12px; font-weight: 600; color: #0f172a;">Asignación a Hotel</span>
+                <span class="material-symbols-outlined" style="font-size: 16px; color: var(--accent);">hotel</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--app-text);">Asignación a Hotel</span>
               </div>
               @if (hasCurrentHotel) {
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #166534;">
+                <div style="background: var(--success-light); border: 1px solid var(--success-light); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--success-strong);">
                   <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">check_circle</span>
                   Asignado automáticamente a <strong>{{ propCtx.currentPropLabel() }}</strong>
                 </div>
-                <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">El nuevo empleado trabajará en el mismo hotel que tú.</p>
+                <p style="font-size: 10px; color: var(--muted-text); margin: 4px 0 0;">El nuevo empleado trabajará en el mismo hotel que tú.</p>
               } @else {
                 <app-property-selector
                   [selectedPropId]="form.propId ?? 0"
                   (propIdChange)="onHotelSelected($event)">
                 </app-property-selector>
-                <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 0;">Selecciona el hotel al que se asignará el empleado.</p>
+                <p style="font-size: 10px; color: var(--muted-text); margin: 4px 0 0;">Selecciona el hotel al que se asignará el empleado.</p>
               }
             </div>
           </div>
@@ -368,50 +368,50 @@ import { PropertyContextService } from '../../../../shared/services/property-con
       @if (showCreateUserModal()) {
         <div style="position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;" (click)="closeCreateUserModal()">
           <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.4);"></div>
-          <div (click)="$event.stopPropagation()" style="position: relative; background: white; border-radius: 14px; padding: 28px; width: 440px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;">
+          <div (click)="$event.stopPropagation()" style="position: relative; background: var(--surface); border-radius: 14px; padding: 28px; width: 440px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="color: #16a34a; font-size: 22px;">person_add</span>
-                <h3 style="font-size: 16px; font-weight: 600; color: #0f172a; margin: 0;">Crear Usuario</h3>
+                <span class="material-symbols-outlined" style="color: var(--success); font-size: 22px;">person_add</span>
+                <h3 style="font-size: 16px; font-weight: 600; color: var(--app-text); margin: 0;">Crear Usuario</h3>
               </div>
-              <button type="button" (click)="closeCreateUserModal()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 20px;">
+              <button type="button" (click)="closeCreateUserModal()" style="background: none; border: none; color: var(--muted-text); cursor: pointer; font-size: 20px;">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
 
             @if (createUserError()) {
-              <div style="padding: 8px 12px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; margin-bottom: 14px;">{{ createUserError() }}</div>
+              <div style="padding: 8px 12px; background: var(--danger-light); color: var(--danger-strong); border: 1px solid var(--danger-light); border-radius: 8px; font-size: 12px; margin-bottom: 14px;">{{ createUserError() }}</div>
             }
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
               <div>
-                <label style="font-size: 11px; font-weight: 500; color: #475569; display: block; margin-bottom: 3px;">Username <span style="color:#dc2626;">*</span></label>
+                <label style="font-size: 11px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 3px;">Username <span style="color:var(--danger);">*</span></label>
                 <input type="text" [(ngModel)]="newUserForm.username" placeholder="usuario.ejemplo"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
               </div>
               <div>
-                <label style="font-size: 11px; font-weight: 500; color: #475569; display: block; margin-bottom: 3px;">Email <span style="color:#dc2626;">*</span></label>
+                <label style="font-size: 11px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 3px;">Email <span style="color:var(--danger);">*</span></label>
                 <input type="email" [(ngModel)]="newUserForm.email" placeholder="correo@hotel.com"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
               </div>
               <div>
-                <label style="font-size: 11px; font-weight: 500; color: #475569; display: block; margin-bottom: 3px;">Nombre visible</label>
+                <label style="font-size: 11px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 3px;">Nombre visible</label>
                 <input type="text" [(ngModel)]="newUserForm.displayName" placeholder="Nombre Completo"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
               </div>
               <div>
-                <label style="font-size: 11px; font-weight: 500; color: #475569; display: block; margin-bottom: 3px;">Contraseña <span style="color:#dc2626;">*</span></label>
+                <label style="font-size: 11px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 3px;">Contraseña <span style="color:var(--danger);">*</span></label>
                 <input [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="newUserForm.password" placeholder="Mínimo 6 caracteres"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
-                <label style="display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; color: #94a3b8; cursor: pointer;">
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none;" />
+                <label style="display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; color: var(--muted-text); cursor: pointer;">
                   <input type="checkbox" [checked]="showPassword()" (change)="showPassword.set($any($event.target).checked)" style="width: 12px; height: 12px;" />
                   Mostrar contraseña
                 </label>
               </div>
               <div>
-                <label style="font-size: 11px; font-weight: 500; color: #475569; display: block; margin-bottom: 3px;">Rol <span style="color:#dc2626;">*</span></label>
+                <label style="font-size: 11px; font-weight: 500; color: var(--muted-text); display: block; margin-bottom: 3px;">Rol <span style="color:var(--danger);">*</span></label>
                 <select [(ngModel)]="newUserForm.role"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; background: white;">
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; background: var(--surface);">
                   @for (r of hotelRoles; track r.value) {
                     <option [value]="r.value">{{ r.label }}</option>
                   }
@@ -421,11 +421,11 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 
             <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
               <button type="button" (click)="closeCreateUserModal()"
-                style="padding: 9px 18px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; cursor: pointer;">
+                style="padding: 9px 18px; background: var(--surface); border: 1px solid var(--app-border); border-radius: 8px; font-size: 13px; cursor: pointer;">
                 Cancelar
               </button>
               <button type="button" (click)="submitCreateUser()" [disabled]="createUserSaving()"
-                style="padding: 9px 18px; background: #16a34a; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
+                style="padding: 9px 18px; background: var(--success); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
                 @if (createUserSaving()) {
                   <span class="material-symbols-outlined spinning" style="font-size: 14px; vertical-align: middle;">sync</span>
                   Creando...

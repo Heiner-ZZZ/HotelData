@@ -232,7 +232,7 @@ function mapDirtyRoom(dto: DirtyRoomDto): DirtyRoom {
 }
 
 function mapDailyDuty(dto: DailyDutyDto): DailyDuty {
-  return { label: dto.label, icon: dto.icon };
+  return { label: dto.label, icon: dto.icon, description: dto.description };
 }
 
 export function mapPortalTasks(dto: PortalTasksDto): PortalTasksData {

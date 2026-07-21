@@ -67,7 +67,7 @@
 
   &.badge-role    { background: color-mix(in srgb, var(--accent) 10%, transparent); color: $accent; }
   &.badge-active  { background: var(--success-light); color: $success; }
-  &.badge-inactive{ background: rgba(239, 68, 68, 0.1); color: $danger; }
-  &.badge-muted   { background: rgba(107, 114, 128, 0.08); color: $muted; text-transform: none; font-weight: 500; }
+  &.badge-inactive{ background: var(--danger-light); color: $danger; }
+  &.badge-muted   { background: var(--surface-hover); color: $muted; text-transform: none; font-weight: 500; }
 }
 

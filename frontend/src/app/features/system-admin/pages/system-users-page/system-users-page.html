@@ -1,4 +1,5 @@
 <div class="users-page">
+  <app-confirm-dialog />
   <app-page-header
     eyebrow="Administración del Sistema"
     title="Usuarios"
@@ -166,23 +167,13 @@
                     </td>
                     <td class="cell-date">{{ user.createdAtLabel }}</td>
                     <td class="cell-actions">
-                      @if (confirmDeleteId() === user.userId) {
-                        <div class="confirm-delete">
-                          <span>¿Eliminar?</span>
-                          <button
-                            class="btn btn-sm btn-danger"
-                            (click)="confirmDelete(user.userId)"
-                            [disabled]="deletingId() === user.userId"
-                          >{{ deletingId() === user.userId ? '…' : 'Sí' }}</button>
-                          <button class="btn btn-sm btn-outline" (click)="cancelDelete()">No</button>
-                        </div>
-                      } @else if (user.canToggle) {
+                      @if (user.canToggle) {
                         <div class="action-group">
                           <button
                             type="button"
                             class="btn btn-sm btn-outline"
                             [disabled]="pendingUserId() === user.userId"
-                            (click)="toggleUser(user.userId)"
+                            (click)="toggleUser(user.userId, user.username, user.toggleLabel)"
                           >
                             @if (pendingUserId() === user.userId) {
                               <span class="material-symbols-outlined spinning">refresh</span>
@@ -193,7 +184,7 @@
                             type="button"
                             class="btn btn-sm btn-icon btn-danger-soft"
                             [disabled]="deletingId() === user.userId"
-                            (click)="requestDelete(user.userId)"
+                            (click)="requestDelete(user.userId, user.username)"
                             title="Eliminar usuario"
                           >
                             <span class="material-symbols-outlined">delete</span>

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { httpResource } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -28,6 +30,7 @@ interface ColumnFilter {
 @Component({
   selector: 'app-system-users-page',
   imports: [
+    ConfirmDialogComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     FormsModule,
@@ -42,6 +45,7 @@ interface ColumnFilter {
 export class SystemUsersPageComponent {
   private readonly api = inject(SystemUsersApiService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly usersResource = httpResource<SystemUsersViewModel>(() => '/api/admin/users', {
     parse: (dto) => mapSystemUsersResponse(dto as SystemUsersResponseDto),
@@ -62,7 +66,6 @@ export class SystemUsersPageComponent {
 
   readonly searchQuery = signal('');
   readonly pendingUserId = signal<string | null>(null);
-  readonly confirmDeleteId = signal<string | null>(null);
   readonly deletingId = signal<string | null>(null);
 
   readonly openFilter = signal<ColumnKey | null>(null);
@@ -185,7 +188,17 @@ export class SystemUsersPageComponent {
     return this.activeFilterCount > 0 || this.searchQuery().trim().length > 0;
   }
 
-  toggleUser(userId: string) {
+  async toggleUser(userId: string, username: string, currentLabel: string) {
+    const action = currentLabel === 'Activar' ? 'activar' : 'desactivar';
+    const confirmed = await this.confirmDialog.open({
+      title: `${currentLabel} usuario`,
+      message: `¿Estás seguro de que deseas ${action} al usuario «${username}»?`,
+      variant: currentLabel === 'Desactivar' ? 'warning' : 'default',
+      confirmLabel: currentLabel,
+      cancelLabel: 'Cancelar',
+    });
+    if (!confirmed) return;
+
     this.pendingUserId.set(userId);
     this.api
       .toggleUserActive(userId)
@@ -202,16 +215,17 @@ export class SystemUsersPageComponent {
       });
   }
 
-  requestDelete(userId: string) {
-    this.confirmDeleteId.set(userId);
-  }
+  async requestDelete(userId: string, username: string) {
+    const confirmed = await this.confirmDialog.open({
+      title: 'Eliminar usuario',
+      message: `¿Estás seguro de que deseas eliminar permanentemente al usuario «${username}»?`,
+      details: ['Esta acción no se puede deshacer.', 'Se eliminarán todos los datos asociados a esta cuenta.'],
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+    });
+    if (!confirmed) return;
 
-  cancelDelete() {
-    this.confirmDeleteId.set(null);
-  }
-
-  confirmDelete(userId: string) {
-    this.confirmDeleteId.set(null);
     this.deletingId.set(userId);
     this.api
       .deleteUser(userId)

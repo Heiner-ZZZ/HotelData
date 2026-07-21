@@ -214,6 +214,7 @@ export interface DirtyRoomDto {
 export interface DailyDutyDto {
   label: string;
   icon: string;
+  description?: string;
 }
 
 export interface PortalTasksDto {

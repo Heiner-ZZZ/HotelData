@@ -129,6 +129,39 @@
   white-space: nowrap;
 }
 
+.card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: inherit;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--app-border);
+    color: var(--accent);
+  }
+}
+
 /* ── Shift Card (4 cols) ── */
 .shift-card {
   grid-column: span 4;

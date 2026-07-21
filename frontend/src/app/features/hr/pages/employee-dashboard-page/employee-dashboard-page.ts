@@ -219,6 +219,25 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
   }
 
 
+  /** Sections that are currently collapsed (by name). */
+  readonly collapsedSections = signal<Set<string>>(new Set());
+
+  toggleCollapse(section: string): void {
+    this.collapsedSections.update(s => {
+      const next = new Set(s);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  }
+
+  isCollapsed(section: string): boolean {
+    return this.collapsedSections().has(section);
+  }
+
   doCheckIn() {
     const data = this.portal();
     if (!data?.currentShift) return;

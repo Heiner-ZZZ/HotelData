@@ -196,6 +196,7 @@ export interface DirtyRoom {
 export interface DailyDuty {
   label: string;
   icon: string;
+  description?: string;
 }
 
 export interface PortalTasksData {

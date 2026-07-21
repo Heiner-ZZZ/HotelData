@@ -1,8 +1,8 @@
 // ── Shared variables ────────────────────────────────────────────────────
 $accent: var(--accent);
-$muted: var(--gray-500);
-$border: var(--gray-200);
-$surface: #fff;
+$muted: var(--muted-text);
+$border: var(--app-border);
+$surface: var(--surface);
 $danger: var(--danger);
 $success: var(--success);
 $radius-sm: 8px;
