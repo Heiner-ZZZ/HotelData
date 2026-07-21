@@ -34,7 +34,16 @@
               —
             }
           </td>
-          <td>{{ room.floor || '--' }}</td>
+          <td>
+            @if (room.floor) {
+              {{ room.floor }}
+            } @else {
+              <span class="floor-missing" title="Esta habitación no tiene piso asignado — corrige el dato en hotel_rooms">
+                <span class="material-symbols-outlined">warning</span>
+                Sin piso
+              </span>
+            }
+          </td>
           <td class="desc-cell">
             @if (room.description) {
               <app-info-tooltip [text]="room.description"></app-info-tooltip>

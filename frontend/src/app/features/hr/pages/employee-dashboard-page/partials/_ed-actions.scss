@@ -166,6 +166,14 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.timeline-empty {
+  color: var(--muted-text);
+  text-align: center;
+  padding: 24px 0;
+  margin: 0;
+  font-size: 13px;
+}
+
 /* ── Loading ── */
 .portal-loading {
   display: flex;
