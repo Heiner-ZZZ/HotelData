@@ -5,17 +5,52 @@
 </p>
 
 <p align="center">
-  <strong>Plataforma de gestión hotelera todo-en-uno</strong><br>
-  Angular 22 · FastAPI · MongoDB
+  <strong>PMS + CRS + Booking Engine</strong><br>
+  Angular 22 · FastAPI · MongoDB · ClickHouse
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular" alt="Angular 22">
   <img src="https://img.shields.io/badge/FastAPI-1.0.0-009688?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb" alt="MongoDB">
-  <img src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python" alt="Python 3.13">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python" alt="Python 3.12">
   <img src="https://img.shields.io/badge/TypeScript-6.x-3178C6?logo=typescript" alt="TypeScript 6">
 </p>
+
+---
+
+## ¿Qué es HotelData?
+
+HotelData es una plataforma hotelera modular que cubre tres dominios de negocio:
+
+| Dominio | Descripción |
+|---------|-------------|
+| **PMS** — Property Management System | Operación diaria del hotel: check-in/out, housekeeping, facturación, limpieza, mantenimiento, estado de habitaciones, estancia activa (staff inbox + guest portal) |
+| **CRS** — Central Reservation System | Gestión centralizada de inventario, tarifas, disponibilidad, reservas, planes y políticas |
+| **Booking Engine** | Motor de reservas directo: búsqueda, comparador, detalle de hotel, calendario de tarifas, confirmación y pago |
+
+Además incluye módulos corporativos: RRHH, gastos y ledger contable, gestión de propiedades, reseñas y reputación, KPI, revenue management, notificaciones, entre otros.
+
+---
+
+## Estado actual y hoja de ruta
+
+HotelData vive hoy en su **capa operativa** — los 27 módulos backend y 34 módulos frontend corren contra MongoDB como fuente de verdad transaccional.
+
+**Próximamente**: capa táctica y estratégica sobre **ClickHouse** (base de datos columnar) para:
+- Revenue analytics y KPIs históricos
+- Dashboards ejecutivos y Balanced Scorecard
+- Reportería ETL-based sobre grandes volúmenes
+- Data warehouse para BI
+
+La arquitectura planeada es:
+
+```
+[Operacional]    MongoDB  ──→  API REST ──→ Angular SPA
+                      │
+                      ▼
+[Táctico/Estratégico] ClickHouse ──→ API Analítica ──→ Dashboards + BI
+```
 
 ---
 
@@ -24,10 +59,14 @@
 | Capa | Tecnología |
 |------|-----------|
 | **Frontend** | Angular 22 · TypeScript 6.x · Signals · SCSS · OnPush |
-| **Backend** | FastAPI · Python 3.13 · Pydantic v2 · Async |
-| **Base de datos** | MongoDB 8.0 (motor transaccional + réplica set) |
+| **Backend** | FastAPI · Python 3.12 · Pydantic v2 · Async |
+| **Base de datos transaccional** | MongoDB 8.0 (réplica set, motor transaccional) |
+| **Base de datos analítica** | ClickHouse *(próximamente)* |
 | **Infraestructura** | Docker Compose · Nginx · Node 24 Alpine |
-| **ETL / Data** | Airflow · PocketBase |
+| **ETL / Data pipeline** | Airflow · PocketBase (origen legacy) |
+| **Calidad** | Ruff · MyPy · pytest |
+
+---
 
 ## Módulos del sistema
 
@@ -96,14 +135,7 @@
 | `tracking` | Tracking de eventos |
 | `users` | Usuarios y roles |
 
-## Fast facts
-
-- ~**866+ commits** en `ta06-integrations`
-- **379** archivos Python
-- **426** componentes TypeScript
-- **373** partials SCSS
-- **140** templates HTML
-- **58** colecciones en MongoDB modeladas
+---
 
 ## Cómo ejecutar
 
