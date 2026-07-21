@@ -169,3 +169,39 @@ export interface ShiftCreatePayload {
   area?: string;
   notes?: string;
 }
+
+// ─── Portal Tasks & Operations ───
+
+export interface PortalTask {
+  id: string;
+  type: 'cleaning' | 'maintenance';
+  roomLabel: string;
+  taskType: string;
+  title?: string;
+  status: string;
+  priority: string;
+  note: string;
+  scheduledDate: string;
+  createdAt: string;
+}
+
+export interface DirtyRoom {
+  roomLabel: string;
+  roomNumber: string;
+  status: string;
+  floor: string;
+  note: string;
+}
+
+export interface DailyDuty {
+  label: string;
+  icon: string;
+}
+
+export interface PortalTasksData {
+  employeeId: string;
+  employeeName: string;
+  assignedTasks: PortalTask[];
+  dirtyRooms: DirtyRoom[];
+  dailyDuties: DailyDuty[];
+}

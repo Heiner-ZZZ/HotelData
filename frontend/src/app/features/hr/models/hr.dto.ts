@@ -187,3 +187,39 @@ export interface ShiftCreateDto {
   area?: string;
   notes?: string;
 }
+
+// ─── Portal Tasks & Operations ───
+
+export interface PortalTaskDto {
+  id: string;
+  type: 'cleaning' | 'maintenance';
+  room_label: string;
+  task_type: string;
+  title?: string;
+  status: string;
+  priority: string;
+  note: string;
+  scheduled_date: string;
+  created_at: string;
+}
+
+export interface DirtyRoomDto {
+  room_label: string;
+  room_number: string;
+  status: string;
+  floor: string;
+  note: string;
+}
+
+export interface DailyDutyDto {
+  label: string;
+  icon: string;
+}
+
+export interface PortalTasksDto {
+  employee_id: string;
+  employee_name: string;
+  assigned_tasks: PortalTaskDto[];
+  dirty_rooms: DirtyRoomDto[];
+  daily_duties: DailyDutyDto[];
+}

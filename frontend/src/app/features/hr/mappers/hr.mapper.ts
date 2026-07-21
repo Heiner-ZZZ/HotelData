@@ -201,6 +201,50 @@ export function mapShiftList(dto: ShiftListDto): ShiftList {
   };
 }
 
+// ─── Portal Tasks ───
+
+import type { PortalTaskDto, DirtyRoomDto, DailyDutyDto, PortalTasksDto } from '../models/hr.dto';
+import type { PortalTask, DirtyRoom, DailyDuty, PortalTasksData } from '../models/hr.model';
+
+function mapPortalTask(dto: PortalTaskDto): PortalTask {
+  return {
+    id: dto.id,
+    type: dto.type,
+    roomLabel: dto.room_label,
+    taskType: dto.task_type,
+    title: dto.title,
+    status: dto.status,
+    priority: dto.priority,
+    note: dto.note,
+    scheduledDate: dto.scheduled_date,
+    createdAt: dto.created_at,
+  };
+}
+
+function mapDirtyRoom(dto: DirtyRoomDto): DirtyRoom {
+  return {
+    roomLabel: dto.room_label,
+    roomNumber: dto.room_number,
+    status: dto.status,
+    floor: dto.floor,
+    note: dto.note,
+  };
+}
+
+function mapDailyDuty(dto: DailyDutyDto): DailyDuty {
+  return { label: dto.label, icon: dto.icon };
+}
+
+export function mapPortalTasks(dto: PortalTasksDto): PortalTasksData {
+  return {
+    employeeId: dto.employee_id,
+    employeeName: dto.employee_name,
+    assignedTasks: (dto.assigned_tasks || []).map(mapPortalTask),
+    dirtyRooms: (dto.dirty_rooms || []).map(mapDirtyRoom),
+    dailyDuties: (dto.daily_duties || []).map(mapDailyDuty),
+  };
+}
+
 export function mapEmployeePortal(dto: EmployeePortalDto): EmployeePortal {
   return {
     employee: mapEmployeeDetail(dto.employee),

@@ -256,6 +256,100 @@
       </div>
     </section>
 
+    <!-- ═══ Tasks & Operations (col 1–8) ═══ -->
+    @if (portalTasks(); as ptasks) {
+    <section class="card tasks-section">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="material-symbols-outlined card-title-icon">assignment</span>
+          Mis Tareas & Operaciones
+        </h2>
+        <span class="card-meta">{{ ptasks.assignedTasks.length }} tarea(s) · {{ ptasks.dirtyRooms.length }} hab(s) sucia(s)</span>
+      </div>
+
+      <div class="tasks-grid">
+        <!-- ── Assigned Tasks ── -->
+        <div class="tasks-panel">
+          <h3 class="panel-title">
+            <span class="material-symbols-outlined">checklist</span>
+            Tareas Asignadas
+          </h3>
+          @if (ptasks.assignedTasks.length) {
+            <div class="task-list">
+              @for (task of ptasks.assignedTasks; track task.id) {
+                <div class="task-row" [class.task-cleaning]="task.type === 'cleaning'" [class.task-maintenance]="task.type === 'maintenance'">
+                  <span class="task-type-icon material-symbols-outlined">
+                    {{ task.type === 'cleaning' ? 'cleaning_services' : 'build' }}
+                  </span>
+                  <div class="task-info">
+                    <span class="task-room">{{ task.roomLabel }}</span>
+                    <span class="task-desc">{{ task.taskType || task.title }}</span>
+                    <span class="task-meta">
+                      <span class="priority-dot" [class]="'prio-' + task.priority"></span>
+                      {{ task.priority }} · {{ task.status }}
+                    </span>
+                  </div>
+                  <div class="task-actions">
+                    @if (task.type === 'cleaning') {
+                      @if (task.status === 'pending') {
+                        <button class="btn-action-sm start" (click)="startPortalTask(task)" title="Iniciar tarea">
+                          <span class="material-symbols-outlined">play_arrow</span>
+                        </button>
+                      }
+                      @if (task.status === 'in_progress') {
+                        <button class="btn-action-sm done" (click)="completePortalTask(task)" title="Completar tarea">
+                          <span class="material-symbols-outlined">check</span>
+                        </button>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-hint">Sin tareas pendientes</p>
+          }
+        </div>
+
+        <!-- ── Dirty Rooms ── -->
+        <div class="tasks-panel">
+          <h3 class="panel-title">
+            <span class="material-symbols-outlined">meeting_room</span>
+            Habitaciones por Limpiar
+          </h3>
+          @if (ptasks.dirtyRooms.length) {
+            <div class="room-grid">
+              @for (room of ptasks.dirtyRooms; track room.roomLabel) {
+                <div class="room-chip" [class.room-vacant]="room.status.includes('vacant')" [class.room-occupied]="room.status.includes('occupied')">
+                  <span class="room-chip-num">{{ room.roomNumber || room.roomLabel }}</span>
+                  <span class="room-chip-status">{{ room.status === 'vacant_dirty' ? 'Vacante Sucia' : room.status === 'occupied_dirty' ? 'Ocupada Sucia' : room.status }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-hint">Todas las habitaciones están limpias</p>
+          }
+        </div>
+
+        <!-- ── Daily Duties ── -->
+        <div class="tasks-panel">
+          <h3 class="panel-title">
+            <span class="material-symbols-outlined">today</span>
+            Oficios Diarios
+          </h3>
+          <ul class="duties-list">
+            @for (duty of ptasks.dailyDuties; track duty.label) {
+              <li class="duty-item">
+                <span class="material-symbols-outlined duty-icon">{{ duty.icon }}</span>
+                <span>{{ duty.label }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+    }
+
     <!-- ═══ Sidebar: Payroll + Timeline (col 9–12) ═══ -->
     <aside class="portal-sidebar">
       <!-- Payroll -->

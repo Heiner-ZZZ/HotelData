@@ -545,6 +545,164 @@ def employee_portal(
 
 
 # ═══════════════════════════════════════════════════════════
+# Employee Portal — Tasks & Operations
+# ═══════════════════════════════════════════════════════════
+
+@api_router.get("/portal/{employee_id}/tasks")
+def employee_portal_tasks(
+    employee_id: str = Path(...),
+    current_user: dict = Depends(require_login),
+):
+    """Return the employee's assigned tasks, dirty rooms, and daily duties.
+
+    Aggregates from housekeeping_tasks, maintenance_tasks, and room_status_log.
+    """
+    db = get_database()
+    try:
+        emp_oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True})
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    emp_name = emp.get("full_name", "")
+    emp_prop_id = emp.get("prop_id")
+    emp_dept = (emp.get("department") or "").strip().lower()
+
+    # ── Assigned housekeeping tasks (not completed/deleted) ──
+    hk_query: dict = {
+        "assigned_to": {"$regex": emp_name, "$options": "i"},
+        "status": {"$nin": ["completed", "deleted"]},
+    }
+    if emp_prop_id is not None:
+        hk_query["prop_id"] = emp_prop_id
+
+    hk_tasks = []
+    for doc in db["housekeeping_tasks"].find(hk_query).sort("created_at", -1).limit(20):
+        hk_tasks.append({
+            "id": str(doc["_id"]),
+            "type": "cleaning",
+            "room_label": doc.get("room_label", ""),
+            "task_type": doc.get("task_type", ""),
+            "status": doc.get("status", "pending"),
+            "priority": doc.get("priority", "normal"),
+            "note": doc.get("note", ""),
+            "scheduled_date": doc.get("scheduled_date", ""),
+            "created_at": doc["created_at"].isoformat() if isinstance(doc.get("created_at"), datetime) else str(doc.get("created_at", "")),
+        })
+
+    # ── Maintenance tasks for the property (not completed/deleted) ──
+    mt_tasks = []
+    if emp_prop_id is not None:
+        mt_query: dict = {
+            "prop_id": emp_prop_id,
+            "status": {"$nin": ["completed", "deleted"]},
+        }
+        for doc in db["maintenance_tasks"].find(mt_query).sort("scheduled_date", -1).limit(20):
+            mt_tasks.append({
+                "id": str(doc["_id"]),
+                "type": "maintenance",
+                "room_label": doc.get("room_label", ""),
+                "title": doc.get("title", ""),
+                "task_type": doc.get("task_type", ""),
+                "status": doc.get("status", "scheduled"),
+                "priority": doc.get("priority", "normal"),
+                "scheduled_date": doc.get("scheduled_date", ""),
+                "created_at": doc["created_at"].isoformat() if isinstance(doc.get("created_at"), datetime) else str(doc.get("created_at", "")),
+            })
+
+    # ── Dirty rooms in the employee's property ──
+    dirty_rooms = []
+    if emp_prop_id is not None:
+        dirty_query: dict = {
+            "prop_id": emp_prop_id,
+            "status": {"$in": ["vacant_dirty", "occupied_dirty", "dirty"]},
+        }
+        for doc in db["room_status_log"].find(dirty_query).sort("room_label", 1).limit(20):
+            dirty_rooms.append({
+                "room_label": doc.get("room_label", ""),
+                "room_number": doc.get("room_number", ""),
+                "status": doc.get("status", ""),
+                "floor": doc.get("floor", ""),
+                "note": doc.get("note", ""),
+            })
+
+    # ── Daily duties checklist ──
+    duties_map = {
+        "limpieza": [
+            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart"},
+            {"label": "Cambiar sábanas y toallas", "icon": "bed"},
+            {"label": "Limpiar baño y reponer amenities", "icon": "shower"},
+            {"label": "Aspirar y trapear piso", "icon": "mop"},
+            {"label": "Sacar basura de habitaciones", "icon": "delete"},
+            {"label": "Reportar daños encontrados", "icon": "report"},
+        ],
+        "housekeeping": [
+            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart"},
+            {"label": "Cambiar sábanas y toallas", "icon": "bed"},
+            {"label": "Limpiar baño y reponer amenities", "icon": "shower"},
+            {"label": "Aspirar y trapear piso", "icon": "mop"},
+            {"label": "Sacar basura de habitaciones", "icon": "delete"},
+            {"label": "Reportar daños encontrados", "icon": "report"},
+        ],
+        "mantenimiento": [
+            {"label": "Revisar reportes de averías", "icon": "plumbing"},
+            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit"},
+            {"label": "Verificar sistemas eléctricos", "icon": "bolt"},
+            {"label": "Revisar cerraduras y puertas", "icon": "door_front"},
+            {"label": "Documentar reparaciones", "icon": "description"},
+        ],
+        "maintenance": [
+            {"label": "Revisar reportes de averías", "icon": "plumbing"},
+            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit"},
+            {"label": "Verificar sistemas eléctricos", "icon": "bolt"},
+            {"label": "Revisar cerraduras y puertas", "icon": "door_front"},
+            {"label": "Documentar reparaciones", "icon": "description"},
+        ],
+        "recepción": [
+            {"label": "Revisar llegadas y salidas del día", "icon": "event"},
+            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number"},
+            {"label": "Atender check-ins programados", "icon": "login"},
+            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent"},
+            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long"},
+        ],
+        "reception": [
+            {"label": "Revisar llegadas y salidas del día", "icon": "event"},
+            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number"},
+            {"label": "Atender check-ins programados", "icon": "login"},
+            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent"},
+            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long"},
+        ],
+    }
+    daily_duties = duties_map.get(emp_dept, [
+        {"label": "Revisar asignaciones del día", "icon": "task_alt"},
+        {"label": "Completar check-in de turno", "icon": "how_to_reg"},
+        {"label": "Atender solicitudes pendientes", "icon": "pending_actions"},
+        {"label": "Reportar novedades al supervisor", "icon": "report"},
+    ])
+
+    register_action(
+        prop_id=emp_prop_id or 0,
+        entity_type="employee_portal_tasks",
+        entity_id=employee_id,
+        action="read",
+        summary=f"Consulta de tareas del portal de empleado {employee_id}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"hk_tasks": len(hk_tasks), "mt_tasks": len(mt_tasks), "dirty_rooms": len(dirty_rooms)},
+    )
+
+    return {
+        "employee_id": employee_id,
+        "employee_name": emp_name,
+        "assigned_tasks": hk_tasks + mt_tasks,
+        "dirty_rooms": dirty_rooms,
+        "daily_duties": daily_duties,
+    }
+
+
+# ═══════════════════════════════════════════════════════════
 # My Portal (self-service redirect for employees)
 # ═══════════════════════════════════════════════════════════
 

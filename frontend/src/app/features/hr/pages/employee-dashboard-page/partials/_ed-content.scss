@@ -304,3 +304,227 @@
   font-size: 12px;
   color: var(--gray-700);
 }
+
+/* ── Tasks & Operations Section (col 1–8) ── */
+.tasks-section {
+  grid-column: span 8;
+}
+
+.tasks-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tasks-panel {
+  background: var(--surface-soft);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-text);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--accent);
+  }
+}
+
+/* ── Priority Dots ── */
+.prio-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.prio-low { background: var(--gray-500); }
+.prio-normal { background: var(--accent); }
+.prio-high { background: var(--warning); }
+.prio-urgent { background: var(--danger); }
+
+/* ── Task List ── */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  transition: border-color 120ms, box-shadow 120ms;
+
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+}
+
+.task-cleaning {
+  border-left: 3px solid var(--success);
+}
+
+.task-maintenance {
+  border-left: 3px solid var(--warning);
+}
+
+.task-type-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  color: var(--muted-text);
+}
+
+.task-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-room {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.task-desc {
+  font-size: 11px;
+  color: var(--gray-700);
+}
+
+.task-meta {
+  font-size: 10px;
+  color: var(--muted-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: capitalize;
+}
+
+.task-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-action-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: inherit;
+
+  .material-symbols-outlined { font-size: 16px; }
+
+  &.start {
+    color: var(--accent);
+    &:hover { background: var(--accent-light); border-color: var(--accent); }
+  }
+  &.done {
+    color: var(--success);
+    &:hover { background: var(--success-light); border-color: var(--success); }
+  }
+}
+
+/* ── Dirty Rooms Grid ── */
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.room-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  background: var(--surface);
+  border: 2px solid var(--app-border);
+  border-radius: 8px;
+  text-align: center;
+  transition: border-color 120ms;
+
+  &:hover { border-color: var(--danger); }
+}
+
+.room-vacant { border-color: var(--warning); }
+.room-occupied { border-color: var(--danger); }
+
+.room-chip-num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--app-text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.room-chip-status {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-text);
+}
+
+/* ── Daily Duties ── */
+.duties-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.duty-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--app-text);
+  background: var(--surface);
+  border-radius: 6px;
+
+  .duty-icon {
+    font-size: 17px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+}
+
+.empty-hint {
+  text-align: center;
+  color: var(--muted-text);
+  font-size: 12px;
+  padding: 20px 0;
+  margin: 0;
+}

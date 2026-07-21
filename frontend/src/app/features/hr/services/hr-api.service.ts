@@ -3,8 +3,8 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapEmployeeDetail, mapEmployeeList, mapHrDashboard, mapEmployeePortal, mapAttendanceResponse, mapShiftList } from '../mappers/hr.mapper';
-import type { EmployeeDetailDto, EmployeeListDto, EmployeePortalDto, AttendanceResponseDto, ShiftListDto, ShiftCreateDto } from '../models/hr.dto';
+import { mapEmployeeDetail, mapEmployeeList, mapHrDashboard, mapEmployeePortal, mapAttendanceResponse, mapShiftList, mapPortalTasks } from '../mappers/hr.mapper';
+import type { EmployeeDetailDto, EmployeeListDto, EmployeePortalDto, AttendanceResponseDto, ShiftListDto, ShiftCreateDto, PortalTasksDto } from '../models/hr.dto';
 
 @Injectable({ providedIn: 'root' })
 export class HrApiService {
@@ -114,5 +114,31 @@ export class HrApiService {
       `${this.apiConfig.baseUrl}/hr/${employeeId}/attendance`,
       { params, withCredentials: true },
     ).pipe(map(dto => mapAttendanceResponse(dto)));
+  }
+
+  // ─── Portal Tasks & Operations ───
+
+  getPortalTasks(employeeId: string) {
+    return this.http.get<PortalTasksDto>(
+      `${this.apiConfig.baseUrl}/hr/portal/${employeeId}/tasks`,
+      { withCredentials: true },
+    ).pipe(map(dto => mapPortalTasks(dto)));
+  }
+
+  /** Quick action: start a housekeeping task (pending → in_progress) */
+  startTask(taskId: string, payload: Record<string, unknown>) {
+    return this.http.put(
+      `${this.apiConfig.baseUrl}/housekeeping/tasks/${taskId}`, payload,
+      { withCredentials: true },
+    );
+  }
+
+  /** Quick action: complete a housekeeping task */
+  completeTask(taskId: string) {
+    return this.http.post(
+      `${this.apiConfig.baseUrl}/housekeeping/tasks/${taskId}/complete`,
+      { note: '' },
+      { withCredentials: true },
+    );
   }
 }

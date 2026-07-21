@@ -5,7 +5,7 @@ import { DatePipe } from '@angular/common';
 import { switchMap, timer, map, BehaviorSubject } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
-import type { EmployeePortal } from '../../models/hr.model';
+import type { EmployeePortal, PortalTasksData, PortalTask } from '../../models/hr.model';
 import { toast } from '../../../../core/toast/toast.service';
 
 @Component({
@@ -74,6 +74,49 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
 
   readonly shiftLoading = signal(false);
 
+  /** Portal tasks & operations data (loaded once on init) */
+  readonly portalTasks = signal<PortalTasksData | null>(null);
+  readonly tasksLoading = signal(false);
+
+  /** Quick action: mark a task as in_progress */
+  startPortalTask(task: PortalTask): void {
+    this.tasksLoading.set(true);
+    const payload = {
+      prop_id: 0,
+      room_label: task.roomLabel,
+      status: 'in_progress',
+      task_type: task.taskType || '',
+      priority: task.priority,
+      note: task.note || '',
+      scheduled_date: task.scheduledDate || '',
+      room_number: '',
+      room_type_id: '',
+    };
+    this.api.startTask(task.id, payload).subscribe({
+      next: () => { this.tasksLoading.set(false); this._loadPortalTasks(); toast('Tarea iniciada', 'success', 3000); },
+      error: () => { this.tasksLoading.set(false); toast('Error al iniciar tarea', 'error', 4000); },
+    });
+  }
+
+  /** Quick action: mark a cleaning task as completed */
+  completePortalTask(task: PortalTask): void {
+    this.tasksLoading.set(true);
+    this.api.completeTask(task.id).subscribe({
+      next: () => { this.tasksLoading.set(false); this._loadPortalTasks(); toast('Tarea completada', 'success', 3000); },
+      error: () => { this.tasksLoading.set(false); toast('Error al completar tarea', 'error', 4000); },
+    });
+  }
+
+  /** Load portal tasks from the backend */
+  private _loadPortalTasks(): void {
+    const data = this.portal();
+    if (!data) return;
+    this.api.getPortalTasks(data.employee.id).subscribe({
+      next: (pt) => this.portalTasks.set(pt),
+      error: () => { /* non-critical – tasks panel simply stays empty */ },
+    });
+  }
+
   constructor() {
     // ── Auto register attendance on first load if shift is pending ──
     effect(() => {
@@ -81,9 +124,8 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
       if (!data) return;
 
       this._tryAutoCheckin(data);
-
-      // ── Schedule auto check-out if shift is active ──
       this._scheduleAutoCheckout(data);
+      this._loadPortalTasks();
     });
   }
 
