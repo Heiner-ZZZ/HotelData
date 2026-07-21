@@ -1,5 +1,5 @@
 <!-- Global Info Tooltip — hover only -->
-<div class="info-tooltip">
+<div class="info-tooltip" [class.info-tooltip--small]="small()">
   <!-- Default (i) icon: italic letter with circular border -->
   @if (icon() === 'info') {
     <span class="info-tooltip__letter" aria-hidden="true">i</span>

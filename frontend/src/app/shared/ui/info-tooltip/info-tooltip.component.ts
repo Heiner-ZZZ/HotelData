@@ -28,4 +28,7 @@ export class InfoTooltipComponent {
 
   /** Optional material icon name (defaults to 'info'). */
   readonly icon = input<string>('info');
+
+  /** Shrink the trigger icon to ~14px for tight table columns. Popover stays full size. */
+  readonly small = input<boolean>(false);
 }

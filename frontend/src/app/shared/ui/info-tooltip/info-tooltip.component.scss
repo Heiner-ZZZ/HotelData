@@ -65,6 +65,24 @@
   }
 }
 
+/* ── Small variant (compact tables) — only shrinks the trigger, popover stays full size ── */
+.info-tooltip--small {
+  width: 14px;
+  height: 14px;
+
+  &::before {
+    border-width: 1.2px;
+  }
+
+  .info-tooltip__letter {
+    font-size: 0.52rem;
+  }
+
+  .info-tooltip__icon {
+    font-size: 0.68rem;
+  }
+}
+
 /* ── Popover card ────────────────────────────────── */
 .info-tooltip__popover {
   position: absolute;
