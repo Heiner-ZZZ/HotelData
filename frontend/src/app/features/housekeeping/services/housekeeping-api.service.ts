@@ -88,6 +88,7 @@ export interface AdditionalChargeItem {
   total: number;
   note: string;
   createdAt: string;
+  chargeDate: string;
 }
 
 export interface DashboardRoomItem {
@@ -259,8 +260,16 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<AdditionalChargeItem>>('/housekeeping/charges', { params });
   }
 
-  createCharge(payload: { booking_id: string; prop_id: number; concept: string; amount: number; quantity?: number; note?: string }) {
+  createCharge(payload: { booking_id: string; prop_id: number; concept: string; amount: number; quantity?: number; note?: string; charge_date?: string }) {
     return this.http.post<AdditionalChargeItem>('/housekeeping/charges', payload);
+  }
+
+  updateCharge(chargeId: string, payload: { concept?: string; amount?: number; quantity?: number; note?: string; charge_date?: string }) {
+    return this.http.put<AdditionalChargeItem>(`/housekeeping/charges/${chargeId}`, payload);
+  }
+
+  deleteCharge(chargeId: string) {
+    return this.http.delete<{ ok: boolean; deleted_id: string; booking_id: string }>(`/housekeeping/charges/${chargeId}`);
   }
 
   // ── Cleaning Actions ──

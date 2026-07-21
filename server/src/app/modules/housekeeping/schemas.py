@@ -159,6 +159,15 @@ class AdditionalChargeCreate(BaseModel):
     quantity: int = 1
     category: str = ""  # minibar, spa, restaurante, lavanderia, parking, mascotas, room_service, danos, late_checkout
     note: str = ""
+    charge_date: str = ""  # ISO datetime string; if empty, server uses now_iso()
+
+
+class AdditionalChargeUpdate(BaseModel):
+    concept: str | None = None
+    amount: float | None = None
+    quantity: int | None = None
+    note: str | None = None
+    charge_date: str | None = None
 
 
 class AdditionalChargeResponse(BaseModel):

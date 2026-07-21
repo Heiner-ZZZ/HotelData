@@ -178,6 +178,7 @@
 }
 
 .th-room, .th-type, .th-prio, .th-assign, .th-status, .th-date { min-width: 100px; }
+.th-note { min-width: 60px; }
 .th-actions { min-width: 160px; text-align: right; }
 
 .task-row {
@@ -293,6 +294,33 @@
 }
 .badge-done {
   background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);
+}
+
+// ── Scheduled Date ──
+
+// ── Note column ──
+
+.td-note {
+  white-space: nowrap;
+}
+
+.note-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.note-short {
+  font-size: 0.73rem;
+  color: var(--app-text);
+  max-width: 3.5ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-muted {
+  color: var(--muted-text);
+  font-size: 0.75rem;
 }
 
 // ── Date cell ──

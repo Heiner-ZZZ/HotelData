@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, SlicePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy, Component, computed, effect, inject, signal,
 } from '@angular/core';
@@ -14,6 +14,7 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { HousekeepingApiService, type RoomStatusItem } from '../../services/housekeeping-api.service';
 import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 
 // ─────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function getQuickActions(status: string): QuickAction[] {
 
 @Component({
   selector: 'app-room-status-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ConfirmDialogComponent, HousekeepingSubNavComponent],
+  imports: [DatePipe, SlicePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ConfirmDialogComponent, InfoTooltipComponent, HousekeepingSubNavComponent],
   templateUrl: './room-status-page.html',
   styleUrl: './room-status-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

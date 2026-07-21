@@ -18,7 +18,7 @@ from ..collections import (
 from ...schemas import now_iso, ROOM_STATUSES, ROOM_STATUS_COLORS
 
 # Label for rooms whose hotel_rooms record has no floor set
-FLOOR_UNKNOWN = "Sin piso"
+FLOOR_UNKNOWN = "Sin asignar"
 
 
 def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:

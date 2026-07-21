@@ -180,12 +180,14 @@
                     </div>
                   </td>
                   <td class="td-note">
-                    <span class="note-wrap" [class.note-wrap-has-content]="item.note" [attr.tabindex]="item.note ? 0 : null">
-                      <span class="note-text">{{ item.note || '—' }}</span>
-                      @if (item.note) {
-                        <span class="note-tooltip">{{ item.note }}</span>
-                      }
-                    </span>
+                    @if (item.note) {
+                      <div class="note-inner">
+                        <span class="note-short">{{ item.note | slice:0:5 }}</span>
+                        <app-info-tooltip [text]="item.note" [small]="true"></app-info-tooltip>
+                      </div>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
                   </td>
                   <td class="td-time">
                     {{ (item.updatedAt || item.createdAt) | date:'dd/MM HH:mm' }}

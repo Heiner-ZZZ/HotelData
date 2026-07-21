@@ -1,4 +1,4 @@
-import { SlicePipe } from '@angular/common';
+import { DatePipe, SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,6 +10,10 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
+import { AmountInputDirective } from '../../../../shared/ui/amount-input/amount-input.directive';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
@@ -18,7 +22,7 @@ import { ReservationsApiService } from '../../../reservations/services/reservati
 
 @Component({
   selector: 'app-additional-charges-page',
-  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ReactiveFormsModule, SlicePipe, HousekeepingSubNavComponent],
+  imports: [EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ReactiveFormsModule, DatePipe, SlicePipe, InfoTooltipComponent, AmountInputDirective, ConfirmDialogComponent, HousekeepingSubNavComponent],
 
   templateUrl: './additional-charges-page.html',
   styleUrl: './additional-charges-page.scss',
@@ -32,6 +36,7 @@ export class AdditionalChargesPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly viewState = signal<ViewState | 'no-property'>('no-property');
   readonly data = signal<PaginatedResponse<AdditionalChargeItem> | null>(null);
@@ -40,6 +45,7 @@ export class AdditionalChargesPageComponent {
 
   readonly filterBookingId = signal('');
   readonly showCreateForm = signal(false);
+  readonly editingId = signal<string | null>(null);
   readonly propId = signal(0);
   readonly propLabel = signal('');
 
@@ -52,6 +58,7 @@ export class AdditionalChargesPageComponent {
     concept: ['', Validators.required],
     amount: [0, [Validators.required, Validators.min(0.01)]],
     quantity: [1, [Validators.required, Validators.min(1)]],
+    chargeDate: [''],
     note: [''],
   });
 
@@ -99,18 +106,53 @@ export class AdditionalChargesPageComponent {
   }
 
   get totalFormatted(): string {
-    const amount = this.createForm.controls.amount.value || 0;
+    const amount = parseFloat(String(this.createForm.controls.amount.value)) || 0;
     const qty = this.createForm.controls.quantity.value || 1;
     return (amount * qty).toFixed(2);
   }
 
   toggleCreateForm(): void {
     this.showCreateForm.update((v) => !v);
+    this.editingId.set(null);
     if (this.showCreateForm()) {
-      this.createForm.reset({ bookingId: '', concept: '', amount: 0, quantity: 1, note: '' });
+      this.createForm.reset({ bookingId: '', concept: '', amount: '0.00' as any, quantity: 1, chargeDate: '', note: '' });
       this.selectedPropId.set(0);
       this.loadReservations();
     }
+  }
+
+  startEdit(item: AdditionalChargeItem): void {
+    this.editingId.set(item.id);
+    this.showCreateForm.set(true);
+    // Convert chargeDate ISO to datetime-local format
+    let dt = '';
+    if (item.chargeDate) {
+      try {
+        const d = new Date(item.chargeDate);
+        if (!isNaN(d.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, '0');
+          dt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+      } catch { /* leave empty */ }
+    }
+    queueMicrotask(() => {
+      this.createForm.patchValue({
+        bookingId: item.bookingId || '',
+        concept: item.concept || '',
+        amount: parseFloat((item.amount || 0).toFixed(2)).toFixed(2) as any,
+        quantity: item.quantity || 1,
+        chargeDate: dt,
+        note: item.note || '',
+      });
+    });
+    // Load reservations so the select has options
+    this.loadReservations();
+    this.selectedPropId.set(item.propId || 0);
+  }
+
+  cancelForm(): void {
+    this.showCreateForm.set(false);
+    this.editingId.set(null);
   }
 
   onReservationSelect(bookingId: string): void {
@@ -122,26 +164,86 @@ export class AdditionalChargesPageComponent {
 
   submitCharge(): void {
     if (this.createForm.invalid) return;
-    const val = this.createForm.getRawValue();
-    this.api
-      .createCharge({
-        booking_id: val.bookingId,
-        prop_id: this.selectedPropId(),
-        concept: val.concept,
-        amount: val.amount,
-        quantity: val.quantity,
-        note: val.note || undefined,
-      })
+    const raw = this.createForm.getRawValue();
+    // Parse amount from string (could be "25.00" from blur or "25" from manual input)
+    const amount = parseFloat(String(raw.amount)) || 0;
+    const editId = this.editingId();
+
+    if (editId) {
+      // ── Update existing charge ──
+      this.api
+        .updateCharge(editId, {
+          concept: raw.concept,
+          amount,
+          quantity: raw.quantity,
+          charge_date: raw.chargeDate || undefined,
+          note: raw.note || undefined,
+        })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.message.set('Cargo actualizado correctamente');
+            this.errorMessage.set('');
+            this.showCreateForm.set(false);
+            this.editingId.set(null);
+            this.refresh();
+          },
+          error: (err) => {
+            this.errorMessage.set(err.error?.detail || err.message || 'Error al actualizar cargo. Solo se pueden editar cargos del mismo día.');
+            this.message.set('');
+          },
+        });
+    } else {
+      // ── Create new charge ──
+      this.api
+        .createCharge({
+          booking_id: raw.bookingId,
+          prop_id: this.selectedPropId(),
+          concept: raw.concept,
+          amount,
+          quantity: raw.quantity,
+          charge_date: raw.chargeDate || undefined,
+          note: raw.note || undefined,
+        })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.message.set('Cargo registrado exitosamente');
+            this.errorMessage.set('');
+            this.showCreateForm.set(false);
+            this.refresh();
+          },
+          error: (err) => {
+            this.errorMessage.set(err.message || 'Error al registrar cargo');
+            this.message.set('');
+          },
+        });
+    }
+  }
+
+  async deleteChargeWithConfirm(item: AdditionalChargeItem): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar cargo',
+      message: `¿Eliminar el cargo "${item.concept}" de la reserva ${item.bookingId.slice(0, 12)}...?`,
+      details: [
+        `Monto: $${item.total.toFixed(2)} USD`,
+        'Se generará un ajuste de reversión en el folio del huésped.',
+      ],
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    this.api.deleteCharge(item.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.message.set('Cargo registrado exitosamente');
+          this.message.set('Cargo eliminado y reversión aplicada al folio');
           this.errorMessage.set('');
-          this.showCreateForm.set(false);
           this.refresh();
         },
         error: (err) => {
-          this.errorMessage.set(err.message || 'Error al registrar cargo');
+          this.errorMessage.set(err.message || 'Error al eliminar cargo');
           this.message.set('');
         },
       });

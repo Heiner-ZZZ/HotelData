@@ -3,6 +3,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { lastValueFrom, Observable, switchMap } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
+import { SlicePipe } from '@angular/common';
 
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
@@ -13,6 +14,7 @@ import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-n
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { HousekeepingApiService, type HousekeepingTaskItem, type RoomStatusItem, type StaffUser } from '../../services/housekeeping-api.service';
 
 function todayLocalIso(): string {
@@ -59,8 +61,8 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   selector: 'app-housekeeping-tasks-page',
   imports: [
     EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
-    PropertySelectorComponent, ReactiveFormsModule, HousekeepingSubNavComponent,
-    ConfirmDialogComponent,
+    PropertySelectorComponent, ReactiveFormsModule, SlicePipe, HousekeepingSubNavComponent,
+    ConfirmDialogComponent, InfoTooltipComponent,
   ],
   templateUrl: './housekeeping-tasks-page.html',
   styleUrl: './housekeeping-tasks-page.scss',

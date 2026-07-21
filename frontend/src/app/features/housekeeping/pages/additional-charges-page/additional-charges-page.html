@@ -16,6 +16,9 @@
     </div>
   </div>
 
+  <!-- Confirm Dialog (global, shared) -->
+  <app-confirm-dialog />
+
   @if (message()) {
     <div class="toast toast-success" (click)="message.set('')">
       <span class="material-symbols-outlined">check_circle</span>
@@ -49,7 +52,7 @@
 
   @if (showCreateForm()) {
     <section class="surface-card form-card">
-      <h3>Registrar cargo adicional</h3>
+      <h3>{{ editingId() ? 'Editar cargo' : 'Registrar cargo adicional' }}</h3>
       <form [formGroup]="createForm" (ngSubmit)="submitCharge()" class="charge-form">
         <div class="form-row">
           <div class="form-group">
@@ -60,7 +63,7 @@
                 Cargando reservas...
               </div>
             } @else {
-              <select id="bookingId" formControlName="bookingId" (change)="onReservationSelect($any($event.target).value)">
+              <select id="bookingId" formControlName="bookingId" [disabled]="!!editingId()" (change)="onReservationSelect($any($event.target).value)">
                 <option value="">Selecciona una reserva...</option>
                 @for (r of reservations(); track r.bookingId) {
                   <option [value]="r.bookingId">
@@ -78,7 +81,7 @@
         <div class="form-row">
           <div class="form-group">
             <label for="amount">Monto unitario (USD) *</label>
-            <input id="amount" type="number" formControlName="amount" min="0.01" step="0.01" />
+            <input id="amount" type="text" inputmode="decimal" formControlName="amount" appAmountInput placeholder="0.00" />
           </div>
           <div class="form-group">
             <label for="quantity">Cantidad</label>
@@ -89,14 +92,29 @@
             <div class="total-display"><strong>${{ totalFormatted }} USD</strong></div>
           </div>
         </div>
-        <div class="form-group">
-          <label for="note">Nota</label>
-          <input id="note" type="text" formControlName="note" placeholder="Detalle opcional" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="chargeDate">Fecha y hora</label>
+            <input id="chargeDate" type="datetime-local" formControlName="chargeDate" />
+            <span class="field-hint">Si se deja vacío, se usará la fecha y hora actual.</span>
+          </div>
+          <div class="form-group grow-2">
+            <label for="note">Nota</label>
+            <input id="note" type="text" formControlName="note" placeholder="Detalle opcional" />
+          </div>
         </div>
-        <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
-          <span class="material-symbols-outlined">receipt_long</span>
-          Registrar cargo
-        </button>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" [disabled]="createForm.invalid">
+            <span class="material-symbols-outlined">{{ editingId() ? 'save' : 'receipt_long' }}</span>
+            {{ editingId() ? 'Guardar cambios' : 'Registrar cargo' }}
+          </button>
+          @if (editingId()) {
+            <button type="button" class="btn-secondary" (click)="cancelForm()">
+              <span class="material-symbols-outlined">close</span>
+              Cancelar
+            </button>
+          }
+        </div>
       </form>
     </section>
   }
@@ -150,18 +168,45 @@
                   <th>Total</th>
                   <th>Nota</th>
                   <th>Fecha</th>
+                  <th class="th-actions"></th>
                 </tr>
               </thead>
               <tbody>
                 @for (item of d.items; track item.id) {
                   <tr>
-                    <td><code>{{ item.bookingId | slice:0:12 }}...</code></td>
+                    <td class="cell-reserva">
+                      <div class="cell-reserva-inner">
+                        <code>{{ item.bookingId | slice:0:12 }}...</code>
+                        <app-info-tooltip [text]="'<strong>Reserva completa:</strong> ' + item.bookingId" [small]="true"></app-info-tooltip>
+                      </div>
+                    </td>
                     <td><strong>{{ item.concept }}</strong></td>
                     <td>${{ item.amount.toFixed(2) }}</td>
                     <td>{{ item.quantity }}</td>
                     <td><strong>${{ item.total.toFixed(2) }}</strong></td>
-                    <td class="cell-notes">{{ item.note || '--' }}</td>
-                    <td class="cell-time">{{ item.createdAt | slice:0:16 }}</td>
+                    <td class="cell-notes">
+                      @if (item.note) {
+                        <div class="cell-notes-inner">
+                          <span>{{ item.note | slice:0:28 }}{{ item.note.length > 28 ? '...' : '' }}</span>
+                            <app-info-tooltip [text]="item.note" [small]="true"></app-info-tooltip>
+                        </div>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                    <td class="cell-time">{{ (item.chargeDate || item.createdAt) | date:'dd/MM/yy HH:mm' }}</td>
+                    <td class="td-actions">
+                      <button type="button" class="btn-action edit"
+                        (click)="startEdit(item)"
+                        title="Editar cargo" aria-label="Editar cargo">
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                      <button type="button" class="btn-action delete"
+                        (click)="deleteChargeWithConfirm(item)"
+                        title="Eliminar cargo" aria-label="Eliminar cargo">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </td>
                   </tr>
                 }
               </tbody>

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, sta
 
 from src.app.modules.housekeeping.schemas import (
     AdditionalChargeCreate,
+    AdditionalChargeUpdate,
     HousekeepingTaskCreate,
     MaintenanceTaskCreate,
     ModuleStatus,
@@ -34,6 +35,7 @@ from src.app.modules.housekeeping.service import (
     module_status,
     start_cleaning,
     sync_room_status_from_hotel_rooms,
+    update_additional_charge,
     update_housekeeping_task,
     update_maintenance_task,
     update_room_status_bulk,
@@ -628,6 +630,30 @@ def charge_delete_api(
         summary=f"Eliminación de cargo adicional {charge_id} — booking {result.get('booking_id', '')}",
         changed_by=current_user.get("username", "system"),
         diff={"deleted_id": {"old": None, "new": charge_id}},
+    )
+    return result
+
+
+@api_router.put("/charges/{charge_id}")
+def charge_update_api(
+    charge_id: str,
+    payload: AdditionalChargeUpdate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Update an additional charge. Only allowed if created today (same calendar day)."""
+    result = update_additional_charge(charge_id, payload)
+    if result is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo actualizar: el cargo no existe o fue creado en otro día.",
+        )
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_charge",
+        entity_id=charge_id,
+        action="update",
+        summary=f"Actualización de cargo adicional {charge_id} — {result.get('concept', '')}",
+        changed_by=current_user.get("username", "system"),
     )
     return result
 

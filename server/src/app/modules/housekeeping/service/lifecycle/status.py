@@ -209,9 +209,16 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
 
         existing = db[ROOM_STATUS_COLLECTION].find_one(
             {"prop_id": prop_id, "hotel_room_id": hotel_room_id},
-            {"_id": 1},
+            {"_id": 1, "floor": 1},
         )
         if existing:
+            # Update floor if it's missing or changed
+            existing_floor = existing.get("floor")
+            if (floor is not None) and (existing_floor is None or existing_floor != floor):
+                db[ROOM_STATUS_COLLECTION].update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": {"floor": floor, "updated_at": now}}
+                )
             continue
 
         doc = {
