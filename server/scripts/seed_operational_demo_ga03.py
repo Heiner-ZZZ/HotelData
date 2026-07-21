@@ -57,6 +57,9 @@ def before_counts(db) -> dict[str, int]:
 
 def seed_room_type(db, prop_id: int, hotel_name: str, spec: dict[str, Any]) -> dict[str, Any]:
     room_type_id = f"RT-{prop_id}-{spec['slug']}"
+    # Preserve existing floor if present; default to "1" for new records
+    existing = db.room_types.find_one({"room_type_id": room_type_id}, {"floor": 1})
+    floor_val = (existing or {}).get("floor", "1")
     payload = {
         "room_type_id": room_type_id,
         "prop_id": prop_id,
@@ -65,6 +68,7 @@ def seed_room_type(db, prop_id: int, hotel_name: str, spec: dict[str, Any]) -> d
         "base_capacity": spec["base_capacity"],
         "max_adults": spec["max_adults"],
         "max_children": spec["max_children"],
+        "floor": floor_val,
         "is_active": True,
         "demo_seed": True,
         "source": SEED_SOURCE,
