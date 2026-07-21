@@ -83,6 +83,9 @@
     </details>
   }
 
+  <!-- Confirm Dialog (global, shared) -->
+  <app-confirm-dialog />
+
   @switch (viewState()) {
     @case ('no-property') {
       <div class="no-property-prompt">
@@ -138,7 +141,6 @@
             <thead>
               <tr>
                 <th>Habitación</th>
-                <th>Prop</th>
                 <th>Estado</th>
                 <th>Próximas Transiciones</th>
                 <th>Nota</th>
@@ -155,9 +157,6 @@
                       <span class="room-type">{{ item.roomTypeId }}</span>
                     }
                   </td>
-                  <td class="td-prop">
-                    <code>#{{ item.propId }}</code>
-                  </td>
                   <td class="td-status">
                     <span class="status-badge"
                       [style.--badge-bg]="getStatusColor(item.status)"
@@ -171,7 +170,7 @@
                       @for (ns of getNextStatuses(item.status); track ns) {
                         <span class="next-chip"
                           [style.--next-color]="getStatusColor(ns)"
-                          (click)="updateStatusInline(item, ns)">
+                          (click)="confirmTransition(item, ns)">
                           {{ getStatusLabel(ns) }}
                         </span>
                       }
@@ -181,7 +180,12 @@
                     </div>
                   </td>
                   <td class="td-note">
-                    <span class="note-text">{{ item.note || '—' }}</span>
+                    <span class="note-wrap" [class.note-wrap-has-content]="item.note" [attr.tabindex]="item.note ? 0 : null">
+                      <span class="note-text">{{ item.note || '—' }}</span>
+                      @if (item.note) {
+                        <span class="note-tooltip">{{ item.note }}</span>
+                      }
+                    </span>
                   </td>
                   <td class="td-time">
                     {{ (item.updatedAt || item.createdAt) | date:'dd/MM HH:mm' }}
@@ -194,7 +198,7 @@
                           <button type="button"
                             class="qa-btn qa-btn-{{ act.variant }}"
                             [disabled]="savingRow().has(item.id)"
-                            (click)="executeAction(item, act)"
+                            (click)="confirmAction(item, act)"
                             [title]="'→ ' + act.description">
                             @if (savingRow().has(item.id)) {
                               <span class="material-symbols-outlined qa-spin">sync</span>

@@ -2,11 +2,15 @@ import type {
   EmployeeDetailDto, EmployeeItemDto, EmployeeListDto, HrDashboardDto,
   EmployeePortalDto, EmployeeShiftDto, EmployeeKpiDto,
   WeeklyRosterEntryDto, PayrollDto, TimelineEventDto,
+  AttendanceRecordDto, AttendanceSummaryDto, AttendanceResponseDto,
+  ShiftItemDto, ShiftListDto,
 } from '../models/hr.dto';
 import type {
   EmployeeDetail, EmployeeListItem, HrDashboard,
   EmployeePortal, EmployeeShift, EmployeeKpis,
   WeeklyRosterEntry, Payroll, TimelineEvent,
+  AttendanceRecord, AttendanceSummary, AttendanceResponse,
+  ShiftItem, ShiftList,
 } from '../models/hr.model';
 
 function mapEmployeeItem(dto: EmployeeItemDto): EmployeeListItem {
@@ -110,6 +114,8 @@ function mapRosterEntry(dto: WeeklyRosterEntryDto): WeeklyRosterEntry {
     shiftEnd: dto.shift_end,
     area: dto.area,
     status: dto.status,
+    actualCheckIn: dto.actual_check_in,
+    actualCheckOut: dto.actual_check_out,
   };
 }
 
@@ -129,6 +135,69 @@ function mapTimelineEvent(dto: TimelineEventDto): TimelineEvent {
     detail: dto.detail,
     timestamp: dto.timestamp,
     icon: dto.icon,
+  };
+}
+
+function mapAttendanceRecord(dto: AttendanceRecordDto): AttendanceRecord {
+  return {
+    date: dto.date,
+    dayName: dto.day_name,
+    shiftStart: dto.shift_start,
+    shiftEnd: dto.shift_end,
+    checkIn: dto.check_in,
+    checkOut: dto.check_out,
+    hoursWorked: dto.hours_worked,
+    status: dto.status,
+    area: dto.area,
+  };
+}
+
+function mapAttendanceSummary(dto: AttendanceSummaryDto): AttendanceSummary {
+  return {
+    totalDays: dto.total_days,
+    daysWorked: dto.days_worked,
+    totalHours: dto.total_hours,
+    avgHoursPerDay: dto.avg_hours_per_day,
+    onTimePercentage: dto.on_time_percentage,
+    month: dto.month,
+  };
+}
+
+export function mapAttendanceResponse(dto: AttendanceResponseDto): AttendanceResponse {
+  return {
+    employeeId: dto.employee_id,
+    employeeName: dto.employee_name,
+    month: dto.month,
+    records: (dto.records || []).map(mapAttendanceRecord),
+    summary: mapAttendanceSummary(dto.summary),
+  };
+}
+
+function mapShiftItem(dto: ShiftItemDto): ShiftItem {
+  return {
+    id: dto.id,
+    employeeId: dto.employee_id,
+    date: dto.date,
+    scheduledStart: dto.scheduled_start,
+    scheduledEnd: dto.scheduled_end,
+    area: dto.area,
+    status: dto.status,
+    actualCheckIn: dto.actual_check_in,
+    actualCheckOut: dto.actual_check_out,
+    notes: dto.notes,
+    employeeName: dto.employee_name,
+  };
+}
+
+export function mapShiftList(dto: ShiftListDto): ShiftList {
+  return {
+    items: (dto.items || []).map(mapShiftItem),
+    total: dto.total,
+    page: dto.page,
+    pageSize: dto.page_size,
+    totalPages: dto.total_pages,
+    hasNext: dto.has_next,
+    hasPrev: dto.has_prev,
   };
 }
 

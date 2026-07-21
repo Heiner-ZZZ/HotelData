@@ -11,7 +11,9 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { HousekeepingApiService, type RoomStatusItem } from '../../services/housekeeping-api.service';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 
 // ─────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ function getQuickActions(status: string): QuickAction[] {
 
 @Component({
   selector: 'app-room-status-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, HousekeepingSubNavComponent],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ConfirmDialogComponent, HousekeepingSubNavComponent],
   templateUrl: './room-status-page.html',
   styleUrl: './room-status-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -144,6 +146,7 @@ export class RoomStatusPageComponent {
   private readonly router = inject(Router);
   private readonly api = inject(HousekeepingApiService);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   // ── Reactive route params ──
   private readonly queryParams = toSignal(this.route.queryParamMap);
@@ -161,6 +164,44 @@ export class RoomStatusPageComponent {
 
   /** Track which rows are currently saving (by room id). */
   readonly savingRow = signal<Set<string>>(new Set());
+
+  async confirmAction(item: RoomStatusItem, action: QuickAction): Promise<void> {
+    const label = this.getActionLabel(action, item);
+    const details: string[] = [
+      `Habitación: ${item.roomLabel}`,
+      `Acción: ${label}`,
+    ];
+    if (action.targetStatus) {
+      details.push(`Transición: ${this.getStatusLabel(item.status)} → ${this.getStatusLabel(action.targetStatus)}`);
+    }
+    const confirmed = await this.confirmDialog.open({
+      title: 'Confirmar acción',
+      message: `¿Aplicar «${label}» a la habitación ${item.roomLabel}?`,
+      details,
+      variant: action.variant === 'danger' ? 'danger' : action.variant === 'warning' ? 'warning' : 'default',
+    });
+    if (confirmed) {
+      await this.executeAction(item, action);
+    }
+  }
+
+  async confirmTransition(item: RoomStatusItem, newStatus: string): Promise<void> {
+    if (newStatus === item.status) return;
+    const fromLabel = this.getStatusLabel(item.status);
+    const toLabel = this.getStatusLabel(newStatus);
+    const confirmed = await this.confirmDialog.open({
+      title: 'Cambiar estado',
+      message: `¿Transicionar habitación ${item.roomLabel} a «${toLabel}»?`,
+      details: [
+        `Habitación: ${item.roomLabel}`,
+        `Transición: ${fromLabel} → ${toLabel}`,
+      ],
+      variant: 'warning',
+    });
+    if (confirmed) {
+      await this.updateStatusInline(item, newStatus);
+    }
+  }
 
   // ── Resource: fetch room statuses ──
   readonly resource = rxResource<any, any>({

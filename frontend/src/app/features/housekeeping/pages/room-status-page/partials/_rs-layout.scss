@@ -147,7 +147,7 @@
 
 .state-flow {
   border: 1px solid var(--app-border);
-  border-radius: 0.75rem;
+  border-radius: 0;
   background: var(--surface-raised);
   overflow: hidden;
 }
@@ -182,7 +182,7 @@
 .state-node {
   background: var(--surface);
   border: 1px solid var(--app-border);
-  border-radius: 0.5rem;
+  border-radius: 0;
   padding: 0.55rem 0.65rem;
   border-left: 3px solid var(--node-color, var(--muted-text));
 }

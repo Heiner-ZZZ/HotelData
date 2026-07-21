@@ -95,6 +95,8 @@ export interface WeeklyRosterEntryDto {
   shift_end: string;
   area: string;
   status: string;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
 }
 
 export interface PayrollDto {
@@ -112,6 +114,35 @@ export interface TimelineEventDto {
   icon: string;
 }
 
+export interface AttendanceRecordDto {
+  date: string;
+  day_name: string;
+  shift_start: string;
+  shift_end: string;
+  check_in: string | null;
+  check_out: string | null;
+  hours_worked: number | null;
+  status: string;
+  area: string;
+}
+
+export interface AttendanceSummaryDto {
+  total_days: number;
+  days_worked: number;
+  total_hours: number;
+  avg_hours_per_day: number;
+  on_time_percentage: number;
+  month: string;
+}
+
+export interface AttendanceResponseDto {
+  employee_id: string;
+  employee_name: string;
+  month: string;
+  records: AttendanceRecordDto[];
+  summary: AttendanceSummaryDto;
+}
+
 export interface ShiftCheckInDto {
   employee_id: string;
   timestamp?: string;
@@ -121,5 +152,38 @@ export interface ShiftCheckInDto {
 export interface ShiftCheckOutDto {
   employee_id: string;
   timestamp?: string;
+  notes?: string;
+}
+
+export interface ShiftItemDto {
+  id: string;
+  employee_id: string;
+  date: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  area: string;
+  status: string;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  notes: string;
+  employee_name?: string;
+}
+
+export interface ShiftListDto {
+  items: ShiftItemDto[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface ShiftCreateDto {
+  employee_id: string;
+  date: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  area?: string;
   notes?: string;
 }

@@ -85,6 +85,8 @@ export interface WeeklyRosterEntry {
   shiftEnd: string;
   area: string;
   status: string;
+  actualCheckIn: string | null;
+  actualCheckOut: string | null;
 }
 
 export interface Payroll {
@@ -100,4 +102,70 @@ export interface TimelineEvent {
   detail: string;
   timestamp: string;
   icon: string;
+}
+
+// ─── Attendance History ───
+
+export interface AttendanceRecord {
+  date: string;
+  dayName: string;
+  shiftStart: string;
+  shiftEnd: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  hoursWorked: number | null;
+  status: string;
+  area: string;
+}
+
+export interface AttendanceSummary {
+  totalDays: number;
+  daysWorked: number;
+  totalHours: number;
+  avgHoursPerDay: number;
+  onTimePercentage: number;
+  month: string;
+}
+
+export interface AttendanceResponse {
+  employeeId: string;
+  employeeName: string;
+  month: string;
+  records: AttendanceRecord[];
+  summary: AttendanceSummary;
+}
+
+// ─── Shift Schedule ───
+
+export interface ShiftItem {
+  id: string;
+  employeeId: string;
+  date: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  area: string;
+  status: string;
+  actualCheckIn: string | null;
+  actualCheckOut: string | null;
+  notes: string;
+  employeeName?: string;
+}
+
+export interface ShiftList {
+  items: ShiftItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface ShiftCreatePayload {
+  employeeId: string;
+  date: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  area?: string;
+  notes?: string;
 }
