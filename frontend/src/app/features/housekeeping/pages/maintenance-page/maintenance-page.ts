@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -57,7 +58,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   imports: [
     KeyValuePipe, ReactiveFormsModule,
     PropertySelectorComponent, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
-    HousekeepingSubNavComponent,
+    HousekeepingSubNavComponent, ConfirmDialogComponent,
   ],
   templateUrl: './maintenance-page.html',
   styleUrl: './maintenance-page.scss',
@@ -288,6 +289,12 @@ export class MaintenancePageComponent {
 
   // ── Quick actions ──
   async markInProgress(item: MaintenanceTaskItem): Promise<void> {
+    const confirmed = await this.confirmDialog.open({
+      title: 'Iniciar mantenimiento',
+      message: `¿Iniciar el mantenimiento «${item.title}» en Hab. ${item.roomLabel}?`,
+      variant: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await lastValueFrom(this.api.updateMaintenance(item.id, {
         prop_id: item.propId,
@@ -310,6 +317,12 @@ export class MaintenancePageComponent {
   }
 
   async markInspection(item: MaintenanceTaskItem): Promise<void> {
+    const confirmed = await this.confirmDialog.open({
+      title: 'Enviar a inspección',
+      message: `¿Enviar «${item.title}» a inspección?`,
+      variant: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await lastValueFrom(this.api.updateMaintenance(item.id, {
         prop_id: item.propId,

@@ -138,14 +138,6 @@ tbody tr:hover {
   font-weight: 500;
 }
 
-.td-prop code {
-  font-size: 0.72rem;
-  color: var(--muted-text);
-  background: var(--surface-hover);
-  padding: 0.1rem 0.35rem;
-  border-radius: 0.25rem;
-}
-
 /* ── Status Badge ── */
 
 .td-status {
@@ -213,3 +205,70 @@ tbody tr:hover {
 }
 
 /* ── Note column ── */
+
+.td-note {
+  max-width: 10rem;
+}
+
+.note-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.note-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--app-text);
+  max-width: 9rem;
+}
+
+.note-wrap-has-content {
+  cursor: pointer;
+
+  .note-text {
+    border-bottom: 1px dotted var(--muted-text);
+  }
+}
+
+.note-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  max-width: 20rem;
+  min-width: 8rem;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  pointer-events: none;
+
+  // Little arrow pointing up
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--app-border);
+  }
+}
+
+.note-wrap:hover .note-tooltip,
+.note-wrap:focus-within .note-tooltip {
+  display: block;
+}
