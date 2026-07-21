@@ -91,7 +91,7 @@ export const routes: Routes = [
       import('./core/layout/management-shell/management-shell').then((m) => m.ManagementShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
-      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos']
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
     },
     children: [
       {

@@ -174,6 +174,7 @@ export class SidebarNavComponent {
       items: [
         { label: 'Empleados', href: '/management/hr/directory', icon: 'badge' },
         { label: 'Alta', href: '/management/hr/onboarding', icon: 'person_add' },
+        { label: 'Turnos', href: '/management/hr/shifts', icon: 'schedule' },
       ]
     },
     {

@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -59,6 +60,7 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   imports: [
     EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
     PropertySelectorComponent, ReactiveFormsModule, HousekeepingSubNavComponent,
+    ConfirmDialogComponent,
   ],
   templateUrl: './housekeeping-tasks-page.html',
   styleUrl: './housekeeping-tasks-page.scss',
@@ -278,8 +280,8 @@ export class HousekeepingTasksPageComponent {
   }
 
   startEdit(item: HousekeepingTaskItem): void {
-    this.editingId.set(item.id);
     this.showCreateForm.set(true);
+    this.editingId.set(item.id);
     // Map scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
     let dt = todayLocalIso();
     if (item.scheduledDate) {
@@ -415,6 +417,13 @@ export class HousekeepingTasksPageComponent {
   // ── Quick actions ──
 
   async startCleaning(item: HousekeepingTaskItem): Promise<void> {
+    const confirmed = await this.confirmDialog.open({
+      title: 'Iniciar limpieza',
+      message: `¿Iniciar limpieza en Hab. ${item.roomLabel}?`,
+      details: [`Tarea: ${this.taskTypeLabels[item.taskType] || item.taskType}`, `Asignado: ${item.assignedTo || 'Sin asignar'}`],
+      variant: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await lastValueFrom(this.api.startCleaning(item.propId, item.roomLabel, item.assignedTo || 'system'));
       this.message.set(`🧹 Limpieza iniciada — Hab. ${item.roomLabel}`);
@@ -427,6 +436,12 @@ export class HousekeepingTasksPageComponent {
   }
 
   async markInspection(item: HousekeepingTaskItem): Promise<void> {
+    const confirmed = await this.confirmDialog.open({
+      title: 'Enviar a inspección',
+      message: `¿Enviar la tarea de Hab. ${item.roomLabel} a inspección?`,
+      variant: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await lastValueFrom(this.api.updateTask(item.id, {
         prop_id: item.propId,
