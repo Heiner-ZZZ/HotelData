@@ -206,16 +206,35 @@ def update_room_type(
         return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
     if not safe_bool(is_roh):
-        db.hotel_rooms.update_one(
-            {"hotel_room_id": f"HR-{room_type_id}"},
-            {"$set": {
-                "room_label": clean_name, "is_active": payload["is_active"],
-                "is_roh": payload["is_roh"], "room_number": clean_room_number,
-                "floor": payload["floor"], "view": payload["view"],
-                "smoking": payload["smoking"], "accessible": payload["accessible"],
-                "updated_at": now_utc(),
-            }},
+        # Cascade floor/view/smoking/accessible/room_label to ALL hotel_rooms of this type
+        cascade_fields = {
+            "floor": payload["floor"],
+            "view": payload["view"],
+            "smoking": payload["smoking"],
+            "accessible": payload["accessible"],
+            "room_label": clean_name,
+            "is_active": payload["is_active"],
+            "is_roh": payload["is_roh"],
+            "updated_at": now_utc(),
+        }
+        result = db.hotel_rooms.update_many(
+            {"room_type_id": room_type_id},
+            {"$set": cascade_fields},
         )
+        # Also sync floor to room_status_log for all affected rooms in one call
+        if result.modified_count > 0:
+            hrids = [
+                hr["hotel_room_id"]
+                for hr in db.hotel_rooms.find(
+                    {"room_type_id": room_type_id},
+                    {"hotel_room_id": 1},
+                )
+            ]
+            if hrids:
+                db.room_status_log.update_many(
+                    {"prop_id": prop_id, "hotel_room_id": {"$in": hrids}},
+                    {"$set": {"floor": cascade_fields["floor"]}},
+                )
     register_action(
         prop_id=prop_id, entity_type="room_type", entity_id=room_type_id,
         action="update", summary=f"Tipo de habitación '{clean_name}' actualizado",
