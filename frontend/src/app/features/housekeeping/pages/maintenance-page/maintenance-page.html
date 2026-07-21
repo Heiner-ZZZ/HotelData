@@ -87,6 +87,20 @@
           </button>
         </div>
       </div>
+      <div class="filter-row secondary">
+        <div class="filter-chips compact">
+          <span class="filter-label">Prioridad</span>
+          @for (p of priorities; track p) {
+            <button type="button" class="chip-filter chip-prio"
+              [class.active]="priorityFilter() === p"
+              [class.prio-low]="p === 'low'"
+              [class.prio-normal]="p === 'normal'"
+              [class.prio-high]="p === 'high'"
+              [class.prio-urgent]="p === 'urgent'"
+              (click)="setPriorityFilter(p)">{{ priorityLabels[p] }}</button>
+          }
+        </div>
+      </div>
     </section>
 
     <!-- ═══ Create / Edit Form ═══ -->

@@ -77,6 +77,7 @@ export class MaintenancePageComponent {
 
   readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
   readonly statusFilter = computed(() => this.qp()?.get('status') ?? '');
+  readonly priorityFilter = computed(() => this.qp()?.get('priority') ?? '');
   readonly currentPage = computed(() => Math.max(1, Number(this.qp()?.get('page') ?? '1')));
   readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
 
@@ -91,11 +92,12 @@ export class MaintenancePageComponent {
       return {
         propId: pid,
         status: this.statusFilter() || undefined,
+        priority: this.priorityFilter() || undefined,
         page: this.currentPage(),
       };
     },
     stream: ({ params }) => {
-      const { propId, status, page } = params as any;
+      const { propId, status, priority, page } = params as any;
 
       // Sync rooms + fetch room items with metadata
       this.api.syncRoomStatus(propId).subscribe({
@@ -108,7 +110,7 @@ export class MaintenancePageComponent {
         error: () => {},
       });
 
-      return this.api.getMaintenance(propId, status, page);
+      return this.api.getMaintenance(propId, status, priority, page);
     },
   });
 
@@ -196,6 +198,15 @@ export class MaintenancePageComponent {
     });
   }
 
+  setPriorityFilter(priority: string): void {
+    const next = priority === this.priorityFilter() ? '' : priority;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { priority: next || null, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
   // ── Pagination ──
   goToPage(page: number): void {
     void this.router.navigate([], {
@@ -224,17 +235,30 @@ export class MaintenancePageComponent {
   }
 
   startEdit(item: MaintenanceTaskItem): void {
-    this.editingId.set(item.id);
     this.showCreateForm.set(true);
-    this.createForm.setValue({
-      roomLabel: item.roomLabel,
-      taskType: item.taskType,
-      title: item.title,
-      description: item.description || '',
-      priority: item.priority,
-      scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 16) : todayLocalIso(),
-      autoBlock: item.autoBlock,
-      status: item.status || 'scheduled',
+    this.editingId.set(item.id);
+    // Defer patchValue so select options render before value is set
+    queueMicrotask(() => {
+      // Normalize scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
+      let dt = todayLocalIso();
+      if (item.scheduledDate) {
+        const raw = item.scheduledDate;
+        if (raw.includes('T')) {
+          dt = raw.slice(0, 16);
+        } else if (raw.length >= 10) {
+          dt = raw.slice(0, 10) + 'T00:00';
+        }
+      }
+      this.createForm.patchValue({
+        roomLabel: item.roomNumber || item.roomLabel || '',
+        taskType: item.taskType || 'preventive',
+        title: item.title || '',
+        description: item.description || '',
+        priority: item.priority || 'normal',
+        scheduledDate: dt,
+        autoBlock: item.autoBlock ?? true,
+        status: item.status || 'scheduled',
+      });
     });
   }
 

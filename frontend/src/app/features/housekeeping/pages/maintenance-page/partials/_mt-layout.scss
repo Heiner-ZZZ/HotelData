@@ -128,6 +128,16 @@
   border-left: 3px solid var(--success);
 }
 
+.chip-prio {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+
+  &.prio-low.active { background: var(--gray-500); border-color: var(--gray-500); }
+  &.prio-normal.active { background: var(--accent); border-color: var(--accent); }
+  &.prio-high.active { background: var(--warning); border-color: var(--warning); }
+  &.prio-urgent.active { background: var(--danger); border-color: var(--danger); }
+}
+
 // ── Common tokens ──
 
 .surface-card {

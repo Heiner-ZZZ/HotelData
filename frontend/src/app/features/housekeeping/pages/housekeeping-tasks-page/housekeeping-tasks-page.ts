@@ -115,12 +115,13 @@ export class HousekeepingTasksPageComponent {
         propId: pid,
         status: this.statusFilter() || undefined,
         assignedTo: this.assignedToFilter() || undefined,
+        priority: this.priorityFilter() || undefined,
         page: this.currentPage(),
       };
     },
     stream: ({ params }) => {
       const r = params as any;
-      return this.api.getTasks(r.propId, r.status, r.assignedTo, r.page);
+      return this.api.getTasks(r.propId, r.status, r.assignedTo, r.priority, r.page);
     },
   });
 
@@ -282,6 +283,8 @@ export class HousekeepingTasksPageComponent {
   startEdit(item: HousekeepingTaskItem): void {
     this.showCreateForm.set(true);
     this.editingId.set(item.id);
+    // Defer patchValue so select options render before value is set
+    queueMicrotask(() => {
     // Map scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
     let dt = todayLocalIso();
     if (item.scheduledDate) {
@@ -294,7 +297,7 @@ export class HousekeepingTasksPageComponent {
       } catch { /* fallback to todayLocalIso */ }
     }
     this.createForm.patchValue({
-      roomLabel: item.roomLabel || '',
+      roomLabel: item.roomNumber || item.roomLabel || '',
       taskType: item.taskType || 'cleaning',
       priority: item.priority || 'normal',
       assignedTo: item.assignedTo || '',
@@ -302,6 +305,7 @@ export class HousekeepingTasksPageComponent {
       scheduledDate: dt,
       status: item.status || 'pending',
     });
+    }); // end queueMicrotask
   }
 
   /** Get display name for a room option. */

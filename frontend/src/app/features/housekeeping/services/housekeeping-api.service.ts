@@ -199,11 +199,12 @@ export class HousekeepingApiService {
 
   // ── Housekeeping Tasks ──
 
-  getTasks(propId?: number, status?: string, assignedTo?: string, page = 1) {
+  getTasks(propId?: number, status?: string, assignedTo?: string, priority?: string, page = 1) {
     let params = new HttpParams().set('page', String(page));
     if (propId) params = params.set('prop_id', String(propId));
     if (status) params = params.set('status', status);
     if (assignedTo) params = params.set('assigned_to', assignedTo);
+    if (priority) params = params.set('priority', priority);
     return this.http.get<PaginatedResponse<HousekeepingTaskItem>>('/housekeeping/tasks', { params });
   }
 
@@ -225,10 +226,11 @@ export class HousekeepingApiService {
 
   // ── Maintenance ──
 
-  getMaintenance(propId?: number, status?: string, page = 1) {
+  getMaintenance(propId?: number, status?: string, priority?: string, page = 1) {
     let params = new HttpParams().set('page', String(page));
     if (propId) params = params.set('prop_id', String(propId));
     if (status) params = params.set('status', status);
+    if (priority) params = params.set('priority', priority);
     return this.http.get<PaginatedResponse<MaintenanceTaskItem>>('/housekeeping/maintenance', { params });
   }
 
