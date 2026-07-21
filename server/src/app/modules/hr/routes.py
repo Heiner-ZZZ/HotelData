@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar as _cal
 from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
@@ -14,6 +15,7 @@ from src.app.modules.hr.schemas import (
     EmployeePortalResponse,
     EmployeeShiftCheckIn,
     EmployeeShiftCheckOut,
+    EmployeeShiftCreate,
     EmployeeUpdate,
     ModuleStatus,
 )
@@ -76,13 +78,17 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
     password_hash = _password_ctx.hash(password)
     now = datetime.now(timezone.utc)
 
+    emp_prop_id = employee_doc.get("prop_id")
+    assigned_hotels: list[int] = [emp_prop_id] if emp_prop_id is not None else []
+
     user_doc = {
         "username": username,
         "email": user_email,
         "password_hash": password_hash,
         "display_name": employee_doc.get("full_name", username),
         "primary_role": role,
-        "prop_id": employee_doc.get("prop_id"),
+        "prop_id": emp_prop_id,
+        "assigned_hotels": assigned_hotels,
         "is_active": True,
         "created_at": now,
         "updated_at": now,
@@ -336,11 +342,13 @@ def employee_portal(
     request: Request,
     employee_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
+    week_start: str | None = Query(default=None, description="YYYY-MM-DD of the Monday of the week to show. Defaults to current week."),
 ):
     """Return the full portal payload for an employee dashboard.
 
     Aggregates: employee info, current shift, KPIs from operations,
-    weekly roster, payroll hours, and recent activity timeline.
+    weekly roster (for the given week_start or current week),
+    payroll hours, and recent activity timeline.
     """
     db = get_database()
     try:
@@ -366,7 +374,7 @@ def employee_portal(
     })
     if shift_doc:
         current_shift = {
-            "id": str(shift_doc.pop("_id")),
+            "id": str(shift_doc.get("_id")),
             "employee_id": shift_doc.get("employee_id", ""),
             "date": shift_doc.get("date", ""),
             "scheduled_start": shift_doc.get("scheduled_start", ""),
@@ -407,14 +415,23 @@ def employee_portal(
         "upsells_target": 5,
     }
 
-    # ── Weekly Roster ──
-    today_dt = now.date()
-    monday = today_dt - timedelta(days=today_dt.weekday())
+    # ── Weekly Roster (supports week_start navigation) ──
+    if week_start:
+        try:
+            monday_dt = datetime.strptime(week_start, "%Y-%m-%d").date()
+            # Ensure it's a Monday; if not, shift to the nearest Monday
+            if monday_dt.weekday() != 0:
+                monday_dt = monday_dt - timedelta(days=monday_dt.weekday())
+        except ValueError:
+            monday_dt = now.date() - timedelta(days=now.date().weekday())
+    else:
+        monday_dt = now.date() - timedelta(days=now.date().weekday())
+
     day_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
     weekly_roster: list[dict] = []
     for i in range(7):
-        day_dt = monday + timedelta(days=i)
+        day_dt = monday_dt + timedelta(days=i)
         date_str = day_dt.strftime("%Y-%m-%d")
         shift = db[SHIFTS_COLLECTION].find_one({
             "employee_id": employee_id,
@@ -430,10 +447,13 @@ def employee_portal(
             "shift_end": shift.get("scheduled_end", "") if shift else "",
             "area": shift.get("area", "") if shift else "",
             "status": shift.get("status", "rest") if shift else "rest",
+            "actual_check_in": shift["actual_check_in"].isoformat() if shift and isinstance(shift.get("actual_check_in"), datetime) else None,
+            "actual_check_out": shift["actual_check_out"].isoformat() if shift and isinstance(shift.get("actual_check_out"), datetime) else None,
         }
         weekly_roster.append(entry)
 
     # ── Payroll ──
+    today_dt = now.date()
     month_start_str = today_dt.replace(day=1).strftime("%Y-%m-%d")
     month_shifts = list(db[SHIFTS_COLLECTION].find({
         "employee_id": employee_id,
@@ -530,17 +550,402 @@ def employee_portal(
 
 @api_router.get("/my-portal")
 def my_portal(current_user: dict = Depends(require_login)):
-    """Return the employee portal URL for the currently logged-in user."""
+    """Return the employee portal URL for the currently logged-in user.
+
+    Also syncs assigned_hotels from the employee record to the user document
+    so housekeeping / property-aware APIs work correctly.
+    """
     db = get_database()
     user_id = str(current_user.get("_id"))
-    emp = db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1})
+    emp = db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1, "prop_id": 1})
     if not emp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró un perfil de empleado vinculado a este usuario.")
+
+    # ── Sync assigned_hotels to user doc ──
+    emp_prop_id = emp.get("prop_id")
+    if emp_prop_id is not None:
+        user_assigned = current_user.get("assigned_hotels", [])
+        if not user_assigned or emp_prop_id not in user_assigned:
+            db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$addToSet": {"assigned_hotels": emp_prop_id}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+            )
+
     return {
         "employee_id": str(emp["_id"]),
         "full_name": emp.get("full_name", ""),
         "portal_url": f"/management/hr/portal/{str(emp['_id'])}",
     }
+
+
+# ═══════════════════════════════════════════════════════════
+# Attendance History
+# ═══════════════════════════════════════════════════════════
+
+@api_router.get("/{employee_id}/attendance")
+def employee_attendance(
+    employee_id: str = Path(...),
+    month: str | None = Query(default=None, description="YYYY-MM format, defaults to current month"),
+    current_user: dict = Depends(require_login),
+):
+    """Return attendance records for an employee in a given month.
+
+    Calculates real hours from actual_check_in → actual_check_out.
+    Returns a summary with total days, hours, and punctuality.
+    """
+    db = get_database()
+    try:
+        emp_oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True}, {"full_name": 1, "prop_id": 1})
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+
+    now = datetime.now(timezone.utc)
+    today = now.date()
+
+    # Parse month or default to current
+    if month and len(month) == 7:
+        try:
+            year = int(month[:4])
+            mon = int(month[5:7])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de mes inválido. Use YYYY-MM")
+    else:
+        year = today.year
+        mon = today.month
+
+    month_str = f"{year:04d}-{mon:02d}"
+
+    # Calculate month start and end dates
+    _, last_day = _cal.monthrange(year, mon)
+    month_start_str = f"{year:04d}-{mon:02d}-01"
+    month_end_str = f"{year:04d}-{mon:02d}-{last_day:02d}"
+
+    day_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    # Fetch ALL shifts for this employee in the month
+    shifts = list(db[SHIFTS_COLLECTION].find({
+        "employee_id": employee_id,
+        "date": {"$gte": month_start_str, "$lte": month_end_str},
+    }).sort("date", 1))
+
+    # Build a lookup by date
+    shifts_by_date: dict[str, dict] = {}
+    for s in shifts:
+        d = s.get("date", "")
+        if d not in shifts_by_date:
+            shifts_by_date[d] = s
+
+    records: list[dict] = []
+    total_worked_seconds = 0.0
+    days_worked = 0
+    on_time_count = 0
+    scheduled_days = 0
+
+    # Iterate all days in the month
+    for day_num in range(1, last_day + 1):
+        date_str = f"{year:04d}-{mon:02d}-{day_num:02d}"
+        day_dt = datetime(year, mon, day_num, tzinfo=timezone.utc)
+        day_idx = day_dt.weekday()  # Monday=0
+        day_name = day_names[day_idx]
+
+        shift = shifts_by_date.get(date_str)
+
+        if shift:
+            check_in = shift.get("actual_check_in")
+            check_out = shift.get("actual_check_out")
+            sched_start = shift.get("scheduled_start", "")
+            sched_end = shift.get("scheduled_end", "")
+            status = shift.get("status", "pending")
+            area = shift.get("area", "")
+
+            # Calculate real hours
+            hours_worked: float | None = None
+            if isinstance(check_in, datetime) and isinstance(check_out, datetime):
+                delta = check_out - check_in
+                hours_worked = round(delta.total_seconds() / 3600, 2)
+            elif isinstance(check_in, datetime) and sched_start and sched_end:
+                # Has check-in but no check-out — use scheduled end as fallback
+                try:
+                    hi, mi = map(int, sched_end.split(":"))
+                    check_out_fallback = datetime(year, mon, day_num, hi, mi, tzinfo=timezone.utc)
+                    delta = check_out_fallback - check_in
+                    if delta.total_seconds() > 0:
+                        hours_worked = round(delta.total_seconds() / 3600, 2)
+                except (ValueError, IndexError):
+                    pass
+
+            cin_iso = check_in.isoformat() if isinstance(check_in, datetime) else None
+            cout_iso = check_out.isoformat() if isinstance(check_out, datetime) else None
+
+            if hours_worked is not None and hours_worked > 0:
+                total_worked_seconds += hours_worked
+                days_worked += 1
+
+            # Punctuality: check-in before scheduled_start + 15min grace
+            if isinstance(check_in, datetime) and sched_start:
+                try:
+                    h, m = map(int, sched_start.split(":"))
+                    scheduled_dt = datetime(year, mon, day_num, h, m, tzinfo=timezone.utc)
+                    grace_dt = scheduled_dt + timedelta(minutes=15)
+                    if check_in <= grace_dt:
+                        on_time_count += 1
+                except (ValueError, IndexError):
+                    pass
+
+            if status != "rest":
+                scheduled_days += 1
+
+            records.append({
+                "date": date_str,
+                "day_name": day_name,
+                "shift_start": sched_start,
+                "shift_end": sched_end,
+                "check_in": cin_iso,
+                "check_out": cout_iso,
+                "hours_worked": hours_worked,
+                "status": status,
+                "area": area,
+            })
+        else:
+            # No shift scheduled for this day
+            records.append({
+                "date": date_str,
+                "day_name": day_name,
+                "shift_start": "",
+                "shift_end": "",
+                "check_in": None,
+                "check_out": None,
+                "hours_worked": None,
+                "status": "rest",
+                "area": "",
+            })
+
+    total_hours = round(total_worked_seconds, 1)
+    avg_hours = round(total_hours / days_worked, 1) if days_worked else 0
+    on_time_pct = round((on_time_count / scheduled_days) * 100, 1) if scheduled_days else 100
+
+    result = {
+        "employee_id": employee_id,
+        "employee_name": emp.get("full_name", ""),
+        "month": month_str,
+        "records": records,
+        "summary": {
+            "total_days": last_day,
+            "days_worked": days_worked,
+            "total_hours": total_hours,
+            "avg_hours_per_day": avg_hours,
+            "on_time_percentage": on_time_pct,
+            "month": month_str,
+        },
+    }
+
+    register_action(
+        prop_id=emp.get("prop_id", 0),
+        entity_type="employee_attendance",
+        entity_id=employee_id,
+        action="read",
+        summary=f"Consulta de historial de asistencias ({month_str})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"employee_id": employee_id, "month": month_str},
+    )
+    return result
+
+
+# ═══════════════════════════════════════════════════════════
+# Shift CRUD (schedule management)
+# ═══════════════════════════════════════════════════════════
+
+def _enrich_shift(doc: dict) -> dict:
+    doc["id"] = str(doc.pop("_id"))
+    for f in ("created_at", "updated_at"):
+        if isinstance(doc.get(f), datetime):
+            doc[f] = doc[f].isoformat()
+    if isinstance(doc.get("actual_check_in"), datetime):
+        doc["actual_check_in"] = doc["actual_check_in"].isoformat()
+    if isinstance(doc.get("actual_check_out"), datetime):
+        doc["actual_check_out"] = doc["actual_check_out"].isoformat()
+    return doc
+
+
+@api_router.post("/shifts", status_code=201)
+def create_shift(
+    payload: EmployeeShiftCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Create a new shift for an employee."""
+    db = get_database()
+    now = datetime.now(timezone.utc)
+
+    # Verify employee exists
+    try:
+        emp_oid = ObjectId(payload.employee_id)
+        emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid}, {"full_name": 1})
+        if not emp:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID de empleado inválido")
+
+    doc = {
+        "employee_id": payload.employee_id,
+        "date": payload.date,
+        "scheduled_start": payload.scheduled_start,
+        "scheduled_end": payload.scheduled_end,
+        "area": payload.area,
+        "notes": payload.notes,
+        "status": "pending",
+        "actual_check_in": None,
+        "actual_check_out": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = db[SHIFTS_COLLECTION].insert_one(doc)
+    doc["_id"] = result.inserted_id
+
+    register_action(
+        prop_id=emp.get("prop_id", 0),
+        entity_type="employee_shift",
+        entity_id=str(result.inserted_id),
+        action="create",
+        summary=f"Turno creado: {emp.get('full_name', '')} - {payload.date} {payload.scheduled_start}-{payload.scheduled_end}",
+        changed_by=current_user.get("username", "system"),
+        metadata={"employee_id": payload.employee_id, "date": payload.date},
+    )
+    return _enrich_shift(doc)
+
+
+@api_router.get("/shifts")
+def list_shifts(
+    request: Request,
+    employee_id: str | None = Query(default=None),
+    date: str | None = Query(default=None, description="YYYY-MM-DD"),
+    date_from: str | None = Query(default=None, description="YYYY-MM-DD"),
+    date_to: str | None = Query(default=None, description="YYYY-MM-DD"),
+    status_filter: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    current_user: dict = Depends(require_login),
+):
+    """List shifts with optional filters."""
+    from math import ceil
+    db = get_database()
+    query: dict = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    if date:
+        query["date"] = date
+    if date_from or date_to:
+        date_query: dict = {}
+        if date_from:
+            date_query["$gte"] = date_from
+        if date_to:
+            date_query["$lte"] = date_to
+        if date_query:
+            query["date"] = date_query
+    if status_filter:
+        query["status"] = status_filter
+
+    total = db[SHIFTS_COLLECTION].count_documents(query)
+    cursor = (
+        db[SHIFTS_COLLECTION]
+        .find(query)
+        .sort([("date", 1), ("scheduled_start", 1)])
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
+    items = [_enrich_shift(doc) for doc in cursor]
+
+    register_action(
+        prop_id=0,
+        entity_type="employee_shift",
+        entity_id="list",
+        action="read",
+        summary=f"Listado de turnos (total={total})",
+        changed_by=current_user.get("username", "system"),
+        metadata={"employee_id": employee_id, "date": date, "url": str(request.url)},
+    )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, ceil(total / page_size)) if total else 1,
+        "has_next": page * page_size < total,
+        "has_prev": page > 1,
+    }
+
+
+@api_router.put("/shifts/{shift_id}")
+def update_shift(
+    shift_id: str = Path(...),
+    payload: EmployeeShiftCreate = Body(...),
+    current_user: dict = Depends(require_login),
+):
+    """Update a shift."""
+    db = get_database()
+    try:
+        oid = ObjectId(shift_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+
+    before = db[SHIFTS_COLLECTION].find_one({"_id": oid})
+    if not before:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+
+    now = datetime.now(timezone.utc)
+    update = {
+        "employee_id": payload.employee_id,
+        "date": payload.date,
+        "scheduled_start": payload.scheduled_start,
+        "scheduled_end": payload.scheduled_end,
+        "area": payload.area,
+        "notes": payload.notes,
+        "updated_at": now,
+    }
+    db[SHIFTS_COLLECTION].update_one({"_id": oid}, {"$set": update})
+
+    diff = {
+        k: {"old": before.get(k), "new": v}
+        for k, v in update.items() if k != "updated_at" and before.get(k) != v
+    }
+    register_action(
+        prop_id=0,
+        entity_type="employee_shift",
+        entity_id=shift_id,
+        action="update",
+        summary=f"Turno actualizado: {payload.date}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff if diff else None,
+    )
+    return _enrich_shift(db[SHIFTS_COLLECTION].find_one({"_id": oid}))
+
+
+@api_router.delete("/shifts/{shift_id}", status_code=204)
+def delete_shift(
+    shift_id: str = Path(...),
+    current_user: dict = Depends(require_login),
+):
+    """Delete a shift."""
+    db = get_database()
+    try:
+        oid = ObjectId(shift_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+    result = db[SHIFTS_COLLECTION].delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
+    register_action(
+        prop_id=0,
+        entity_type="employee_shift",
+        entity_id=shift_id,
+        action="delete",
+        summary=f"Turno eliminado: {shift_id}",
+        changed_by=current_user.get("username", "system"),
+    )
 
 
 # ═══════════════════════════════════════════════════════════

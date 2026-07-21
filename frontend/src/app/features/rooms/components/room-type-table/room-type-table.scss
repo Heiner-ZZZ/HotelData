@@ -55,6 +55,21 @@
   cursor: help;
 }
 
+.floor-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--warning-strong);
+  border: 1px dashed color-mix(in srgb, var(--warning) 30%, transparent);
+  cursor: help;
+  white-space: nowrap;
+}
+
 .desc-cell {
   color: var(--muted-text);
   max-width: 200px;

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" font-family="Arial" font-size="10">
+  <title>TA11 — Arquitectura 3 capas: PocketBase → MongoDB → ClickHouse</title>
+  <desc>Diagrama de arquitectura con 3 capas de base de datos. Airflow ETL extrae de PocketBase (relacional) y MongoDB (no relacional operativo), transforma y carga a ClickHouse (columnar tactico). MongoDB alimenta el consumo tactico via Informe Simple directo. ClickHouse alimenta el consumo tactico con agregaciones analiticas.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="black"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="480" y="22" text-anchor="middle" font-weight="bold">TA11 — Arquitectura 3 capas: PocketBase (relacional) → MongoDB (no relacional) → ClickHouse (columnar)</text>
+
+  <!-- Box 1: PocketBase (top-left) -->
+  <rect x="60" y="50" width="280" height="85" fill="none" stroke="black" stroke-width="2"/>
+  <text x="200" y="68" text-anchor="middle" font-weight="bold">CAPA 1 — POCKETBASE (BDR Relacional)</text>
+  <text x="200" y="83" text-anchor="middle">Base relacional (SQLite embebido)</text>
+  <text x="200" y="98" text-anchor="middle">Dataset Expedia: 600K registros</text>
+  <text x="200" y="113" text-anchor="middle">Tablas normalizadas (source)</text>
+  <text x="200" y="128" text-anchor="middle">Fuente del dataset hotelero</text>
+
+  <!-- Box 2: MongoDB (top-right) -->
+  <rect x="620" y="50" width="280" height="85" fill="none" stroke="black" stroke-width="2"/>
+  <text x="760" y="68" text-anchor="middle" font-weight="bold">CAPA 2 — MONGODB (No Relacional)</text>
+  <text x="760" y="83" text-anchor="middle">BD documental / Operativa</text>
+  <text x="760" y="98" text-anchor="middle">~120 colecciones transaccionales</text>
+  <text x="760" y="113" text-anchor="middle">App FastAPI/Angular lee/escribe</text>
+  <text x="760" y="128" text-anchor="middle">Informes SIMPLES + fuente ETL</text>
+
+  <!-- Arrow: PocketBase -> Airflow -->
+  <path d="M 200 135 L 200 160 L 340 160 L 340 185" fill="none" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="210" y="155" text-anchor="start">Extract (dataset Expedia)</text>
+
+  <!-- Arrow: MongoDB -> Airflow -->
+  <path d="M 760 135 L 760 160 L 620 160 L 620 185" fill="none" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="750" y="155" text-anchor="end">Extract (datos operacionales)</text>
+
+  <!-- Box 3: Airflow ETL (center, below both sources) -->
+  <rect x="280" y="185" width="400" height="120" fill="none" stroke="black" stroke-width="2"/>
+  <text x="480" y="203" text-anchor="middle" font-weight="bold">PIPELINE ETL / ELT (Airflow)</text>
+  <text x="480" y="218" text-anchor="middle">DAG: hoteldata_ga03_etl</text>
+  <text x="480" y="233" text-anchor="middle">validate_environment → extract (PocketBase + MongoDB)</text>
+  <text x="480" y="248" text-anchor="middle">→ validate_schema → build_dim_* (12 dimensiones)</text>
+  <text x="480" y="263" text-anchor="middle">→ build_fact_reservations → build_fact_reviews</text>
+  <text x="480" y="278" text-anchor="middle">→ build_fact_invoices → build_fact_payments</text>
+  <text x="480" y="293" text-anchor="middle">→ load_to_clickhouse (upsert) → quality_report</text>
+
+  <!-- Arrow: Airflow -> ClickHouse -->
+  <line x1="480" y1="305" x2="480" y2="338" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="488" y="325" text-anchor="start">Transform + Load (upsert)</text>
+
+  <!-- Box 4: ClickHouse (center) -->
+  <rect x="340" y="340" width="280" height="110" fill="none" stroke="black" stroke-width="2"/>
+  <text x="480" y="358" text-anchor="middle" font-weight="bold">CAPA 3 — CLICKHOUSE (Columnar)</text>
+  <text x="480" y="373" text-anchor="middle">BD columnar OLAP / Tactica</text>
+  <text x="480" y="388" text-anchor="middle">Modelo Fact-Dim (estrella)</text>
+  <text x="480" y="403" text-anchor="middle">fact_hotel_reservations (600K)</text>
+  <text x="480" y="418" text-anchor="middle">fact_reviews · fact_resv_invoices</text>
+  <text x="480" y="433" text-anchor="middle">fact_resv_payments · fact_hotel_events</text>
+  <text x="480" y="448" text-anchor="middle">+ 12 dimensiones (dim_*)</text>
+
+  <!-- Arrow: ClickHouse -> Consumo -->
+  <line x1="480" y1="450" x2="480" y2="493" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="488" y="475" text-anchor="start">Agregaciones / BI</text>
+
+  <!-- Box 5: Consumo Tactico (bottom center) -->
+  <rect x="340" y="495" width="280" height="80" fill="none" stroke="black" stroke-width="2"/>
+  <text x="480" y="513" text-anchor="middle" font-weight="bold">CONSUMO TACTICO</text>
+  <text x="480" y="528" text-anchor="middle">Dashboards, reportes, KPIs, BI</text>
+  <text x="480" y="543" text-anchor="middle">Angular: dashboard, reports, map</text>
+  <text x="480" y="558" text-anchor="middle">kpi_summary (cache) + Redis</text>
+
+  <!-- Bypass: MongoDB -> Consumo (Informe Simple, dashed, far right then left) -->
+  <path d="M 900 95 L 930 95 L 930 535 L 620 535" fill="none" stroke="black" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+  <text x="942" y="315" text-anchor="middle" transform="rotate(90, 942, 315)">Informe Simple (directo desde MongoDB, sin agregaciones)</text>
+
+  <!-- Legend -->
+  <text x="480" y="615" text-anchor="middle" font-weight="bold">Leyenda</text>
+  <line x1="80" y1="635" x2="130" y2="635" stroke="black" stroke-width="2"/>
+  <text x="138" y="638" text-anchor="start">Flujo ETL/ELT (Airflow: PocketBase + MongoDB → ClickHouse)</text>
+  <line x1="80" y1="655" x2="130" y2="655" stroke="black" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="138" y="658" text-anchor="start">Informe Simple (directo desde MongoDB)</text>
+  <text x="480" y="690" text-anchor="middle" font-style="italic">3 capas: PocketBase (relacional) · MongoDB (no relacional) · ClickHouse (columnar) — ETL via Airflow</text>
+</svg>

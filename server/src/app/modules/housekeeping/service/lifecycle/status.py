@@ -194,7 +194,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
     now = now_iso()
     rooms = list(db[HOTEL_ROOMS_COLLECTION].find(
         {"prop_id": prop_id},
-        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "room_number": 1, "is_active": 1},
+        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "room_number": 1, "floor": 1, "is_active": 1},
     ))
 
     created = 0
@@ -203,6 +203,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
         room_type_id = room.get("room_type_id", "")
         room_label = room.get("room_label", "")
         room_number = room.get("room_number", "")
+        floor = room.get("floor")
         if not hotel_room_id:
             continue
 
@@ -213,7 +214,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
         if existing:
             continue
 
-        db[ROOM_STATUS_COLLECTION].insert_one({
+        doc = {
             "prop_id": prop_id,
             "hotel_room_id": hotel_room_id,
             "room_type_id": room_type_id,
@@ -223,7 +224,10 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
             "note": "",
             "created_at": now,
             "updated_at": now,
-        })
+        }
+        if floor is not None:
+            doc["floor"] = floor
+        db[ROOM_STATUS_COLLECTION].insert_one(doc)
         created += 1
 
     return {"synced": True, "prop_id": prop_id, "created": created, "total_rooms": len(rooms)}
@@ -351,4 +355,5 @@ def _enrich_room_status(doc: dict) -> dict:
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["propId"] = doc.get("prop_id", 0)
     doc["hotelRoomId"] = doc.get("hotel_room_id", "")
+    doc["floor"] = doc.get("floor")
     return doc

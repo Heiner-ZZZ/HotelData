@@ -8,7 +8,6 @@ Returns:
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from src.database.connection import get_database
@@ -18,15 +17,8 @@ from ..collections import (
 )
 from ...schemas import now_iso, ROOM_STATUSES, ROOM_STATUS_COLORS
 
-
-def _extract_floor(room_label: str) -> str:
-    """Extract floor number from room label (e.g. '1201' → '1', '305' → '3')."""
-    digits = re.sub(r'\D', '', room_label)
-    if len(digits) >= 3:
-        return digits[0]
-    if len(digits) >= 2:
-        return digits[0]
-    return "0"
+# Label for rooms whose hotel_rooms record has no floor set
+FLOOR_UNKNOWN = "Sin piso"
 
 
 def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
@@ -104,13 +96,26 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
         doc["statusColor"] = ROOM_STATUS_COLORS.get(doc.get("status", ""), "#6f797d")
         rooms_list.append(doc)
 
-        floor = _extract_floor(doc.get("room_label", doc.get("roomNumber", "")))
+        # Read floor directly from room_status_log (populated by sync or upsert)
+        floor = doc.get("floor")
+        if floor is not None and str(floor):
+            floor = str(floor)
+        else:
+            floor = FLOOR_UNKNOWN
         if floor not in floors_map:
             floors_map[floor] = []
         floors_map[floor].append(doc)
 
-    # Sort floors naturally
-    sorted_floors = sorted(floors_map.keys(), key=lambda f: int(f) if f.isdigit() else 999)
+    # Sort floors: numeric first, then "Sin piso" last
+    def _floor_sort_key(f: str) -> tuple:
+        if f == FLOOR_UNKNOWN:
+            return (1, 0)  # after all numeric floors
+        try:
+            return (0, int(f))
+        except ValueError:
+            return (0, f)
+
+    sorted_floors = sorted(floors_map.keys(), key=_floor_sort_key)
 
     floors: list[dict[str, Any]] = []
     for fl in sorted_floors:
