@@ -43,7 +43,8 @@ def create_housekeeping_task(payload: HousekeepingTaskCreate) -> dict[str, Any]:
 
 def list_housekeeping_tasks(
     prop_id: int | None = None, status_filter: str | None = None,
-    assigned_to: str | None = None, page: int = 1, page_size: int = 20,
+    assigned_to: str | None = None, priority: str | None = None,
+    page: int = 1, page_size: int = 20,
 ) -> dict[str, Any]:
     db = get_database()
     query: dict[str, Any] = {"status": {"$ne": "deleted"}}
@@ -53,6 +54,8 @@ def list_housekeeping_tasks(
         query["status"] = status_filter
     if assigned_to:
         query["assigned_to"] = assigned_to
+    if priority:
+        query["priority"] = priority
     total = db[HOUSEKEEPING_COLLECTION].count_documents(query)
     cursor = db[HOUSEKEEPING_COLLECTION].find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
     items = [_enrich_hk_task(doc) for doc in cursor]
@@ -81,7 +84,7 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
             if prop_id and room_label:
                 from ..collections import ROOM_STATUS_COLLECTION
                 db[ROOM_STATUS_COLLECTION].update_one(
-                    {"prop_id": prop_id, "room_label": room_label},
+                    {"prop_id": prop_id, "$or": [{"room_label": room_label}, {"room_number": room_label}]},
                     {
                         "$set": {
                             "status": "clean",
@@ -207,8 +210,12 @@ def delete_housekeeping_task(task_id: str) -> dict[str, Any] | None:
 def _enrich_hk_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     # camelCase aliases for frontend
+    doc["propId"] = doc.get("prop_id", 0)
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["roomNumber"] = doc.get("room_number", "")
+    doc["taskType"] = doc.get("task_type", "")
+    doc["assignedTo"] = doc.get("assigned_to", "")
+    doc["scheduledDate"] = doc.get("scheduled_date", "")
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])

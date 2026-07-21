@@ -14,6 +14,14 @@ from ..collections import MAINTENANCE_COLLECTION
 from ...schemas import MaintenanceTaskCreate, now_iso
 
 
+def _room_match(prop_id: int, room_label: str) -> dict:
+    """Build a query that matches a room_status_log doc by room_label OR room_number.
+
+    Resilient to inconsistencies where the caller passes a room number as room_label.
+    """
+    return {"prop_id": prop_id, "$or": [{"room_label": room_label}, {"room_number": room_label}]}
+
+
 def _auto_block_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -> None:
     """Mark the room as 'maintenance' in room_status_log and create blackout_date.
 
@@ -22,9 +30,9 @@ def _auto_block_room(db: Any, prop_id: int, room_label: str, scheduled_date: str
     """
     if not room_label:
         return
-    # Update room status to 'maintenance'
+    # Update room status to 'maintenance' — match by room_label OR room_number
     db.room_status_log.update_one(
-        {"prop_id": prop_id, "room_label": room_label},
+        _room_match(prop_id, room_label),
         {
             "$set": {"status": "maintenance_requested", "note": "Mantenimiento programado", "updated_at": now_iso()},
             "$setOnInsert": {"created_at": now_iso()},
@@ -59,12 +67,13 @@ def _unblock_room(db: Any, prop_id: int, room_label: str, scheduled_date: str) -
     """
     if not room_label:
         return
-    # Only restore if the room is still in a blocked state
-    current = db.room_status_log.find_one({"prop_id": prop_id, "room_label": room_label}, {"status": 1})
+    # Only restore if the room is still in a blocked state — match by room_label OR room_number
+    match = _room_match(prop_id, room_label)
+    current = db.room_status_log.find_one(match, {"status": 1})
     if current and current.get("status") in ("maintenance_requested", "out_of_service", "out_of_order"):
         # Restore to vacant_clean (the new housekeeping status)
         db.room_status_log.update_one(
-            {"prop_id": prop_id, "room_label": room_label},
+            match,
             {"$set": {"status": "vacant_clean", "note": "", "updated_at": now_iso()}},
         )
     # Remove blackout dates created by maintenance
@@ -112,6 +121,7 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
 
 def list_maintenance_tasks(
     prop_id: int | None = None, status_filter: str | None = None,
+    priority: str | None = None,
     page: int = 1, page_size: int = 20,
 ) -> dict[str, Any]:
     db = get_database()
@@ -120,6 +130,8 @@ def list_maintenance_tasks(
         query["prop_id"] = prop_id
     if status_filter:
         query["status"] = status_filter
+    if priority:
+        query["priority"] = priority
     total = db[MAINTENANCE_COLLECTION].count_documents(query)
     cursor = db[MAINTENANCE_COLLECTION].find(query).sort("scheduled_date", -1).skip((page - 1) * page_size).limit(page_size)
     items = [_enrich_mt_task(doc) for doc in cursor]
@@ -211,8 +223,12 @@ def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
 def _enrich_mt_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     # camelCase aliases for frontend
+    doc["propId"] = doc.get("prop_id", 0)
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["roomNumber"] = doc.get("room_number", "")
+    doc["taskType"] = doc.get("task_type", "")
+    doc["scheduledDate"] = doc.get("scheduled_date", "")
+    doc["autoBlock"] = doc.get("auto_block", False)
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])

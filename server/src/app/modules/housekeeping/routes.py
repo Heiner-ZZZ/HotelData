@@ -281,6 +281,7 @@ def hk_task_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     assigned_to: str | None = Query(default=None),
+    priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
@@ -290,6 +291,7 @@ def hk_task_list_api(
         prop_id=prop_id,
         status_filter=status_filter,
         assigned_to=assigned_to,
+        priority=priority,
         page=page,
         page_size=page_size,
     )
@@ -432,6 +434,7 @@ def mt_task_list_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
+    priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
@@ -440,6 +443,7 @@ def mt_task_list_api(
     result = list_maintenance_tasks(
         prop_id=prop_id,
         status_filter=status_filter,
+        priority=priority,
         page=page,
         page_size=page_size,
     )
