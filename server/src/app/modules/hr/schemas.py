@@ -26,6 +26,7 @@ class EmployeeCreate(BaseModel):
     notes: str = ""
     prop_id: int | None = None  # Hotel/property assignment
     user_id: str | None = None  # Optional link to users collection for login credentials
+    daily_duties: list[dict] | None = None  # [{label: str, icon: str}, ...] — customizable per employee
 
     # Replacement logic
     replaces_employee_id: str | None = None
@@ -47,6 +48,7 @@ class EmployeeUpdate(BaseModel):
     notes: str | None = None
     is_active: bool | None = None
     user_id: str | None = None  # Link/unlink to a users collection account
+    daily_duties: list[dict] | None = None  # [{label: str, icon: str}, ...]
 
 
 class EmployeeResponse(BaseModel):

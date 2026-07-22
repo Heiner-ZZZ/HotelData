@@ -629,59 +629,10 @@ def employee_portal_tasks(
                 "note": doc.get("note", ""),
             })
 
-    # ── Daily duties checklist ──
-    duties_map = {
-        "limpieza": [
-            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart"},
-            {"label": "Cambiar sábanas y toallas", "icon": "bed"},
-            {"label": "Limpiar baño y reponer amenities", "icon": "shower"},
-            {"label": "Aspirar y trapear piso", "icon": "mop"},
-            {"label": "Sacar basura de habitaciones", "icon": "delete"},
-            {"label": "Reportar daños encontrados", "icon": "report"},
-        ],
-        "housekeeping": [
-            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart"},
-            {"label": "Cambiar sábanas y toallas", "icon": "bed"},
-            {"label": "Limpiar baño y reponer amenities", "icon": "shower"},
-            {"label": "Aspirar y trapear piso", "icon": "mop"},
-            {"label": "Sacar basura de habitaciones", "icon": "delete"},
-            {"label": "Reportar daños encontrados", "icon": "report"},
-        ],
-        "mantenimiento": [
-            {"label": "Revisar reportes de averías", "icon": "plumbing"},
-            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit"},
-            {"label": "Verificar sistemas eléctricos", "icon": "bolt"},
-            {"label": "Revisar cerraduras y puertas", "icon": "door_front"},
-            {"label": "Documentar reparaciones", "icon": "description"},
-        ],
-        "maintenance": [
-            {"label": "Revisar reportes de averías", "icon": "plumbing"},
-            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit"},
-            {"label": "Verificar sistemas eléctricos", "icon": "bolt"},
-            {"label": "Revisar cerraduras y puertas", "icon": "door_front"},
-            {"label": "Documentar reparaciones", "icon": "description"},
-        ],
-        "recepción": [
-            {"label": "Revisar llegadas y salidas del día", "icon": "event"},
-            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number"},
-            {"label": "Atender check-ins programados", "icon": "login"},
-            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent"},
-            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long"},
-        ],
-        "reception": [
-            {"label": "Revisar llegadas y salidas del día", "icon": "event"},
-            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number"},
-            {"label": "Atender check-ins programados", "icon": "login"},
-            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent"},
-            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long"},
-        ],
-    }
-    daily_duties = duties_map.get(emp_dept, [
-        {"label": "Revisar asignaciones del día", "icon": "task_alt"},
-        {"label": "Completar check-in de turno", "icon": "how_to_reg"},
-        {"label": "Atender solicitudes pendientes", "icon": "pending_actions"},
-        {"label": "Reportar novedades al supervisor", "icon": "report"},
-    ])
+    # ── Daily duties from employee record (with department fallback) ──
+    daily_duties = emp.get("daily_duties")
+    if not daily_duties or not isinstance(daily_duties, list):
+        daily_duties = _default_duties_for_dept(emp_dept)
 
     register_action(
         prop_id=emp_prop_id or 0,
@@ -917,6 +868,64 @@ def employee_attendance(
 # Shift CRUD (schedule management)
 # ═══════════════════════════════════════════════════════════
 
+def _default_duties_for_dept(department: str) -> list[dict]:
+    """Return default daily duties for a given department. Used as fallback when
+    an employee has no custom duties configured."""
+    dept = department.strip().lower()
+    duties_map: dict[str, list[dict]] = {
+        "limpieza": [
+            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart", "description": ""},
+            {"label": "Cambiar sábanas y toallas", "icon": "bed", "description": ""},
+            {"label": "Limpiar baño y reponer amenities", "icon": "shower", "description": ""},
+            {"label": "Aspirar y trapear piso", "icon": "mop", "description": ""},
+            {"label": "Sacar basura de habitaciones", "icon": "delete", "description": ""},
+            {"label": "Reportar daños encontrados", "icon": "report", "description": ""},
+        ],
+        "housekeeping": [
+            {"label": "Revisar carrito de limpieza", "icon": "shopping_cart", "description": ""},
+            {"label": "Cambiar sábanas y toallas", "icon": "bed", "description": ""},
+            {"label": "Limpiar baño y reponer amenities", "icon": "shower", "description": ""},
+            {"label": "Aspirar y trapear piso", "icon": "mop", "description": ""},
+            {"label": "Sacar basura de habitaciones", "icon": "delete", "description": ""},
+            {"label": "Reportar daños encontrados", "icon": "report", "description": ""},
+        ],
+        "mantenimiento": [
+            {"label": "Revisar reportes de averías", "icon": "plumbing", "description": ""},
+            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit", "description": ""},
+            {"label": "Verificar sistemas eléctricos", "icon": "bolt", "description": ""},
+            {"label": "Revisar cerraduras y puertas", "icon": "door_front", "description": ""},
+            {"label": "Documentar reparaciones", "icon": "description", "description": ""},
+        ],
+        "maintenance": [
+            {"label": "Revisar reportes de averías", "icon": "plumbing", "description": ""},
+            {"label": "Inspeccionar A/C y calefacción", "icon": "ac_unit", "description": ""},
+            {"label": "Verificar sistemas eléctricos", "icon": "bolt", "description": ""},
+            {"label": "Revisar cerraduras y puertas", "icon": "door_front", "description": ""},
+            {"label": "Documentar reparaciones", "icon": "description", "description": ""},
+        ],
+        "recepción": [
+            {"label": "Revisar llegadas y salidas del día", "icon": "event", "description": ""},
+            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number", "description": ""},
+            {"label": "Atender check-ins programados", "icon": "login", "description": ""},
+            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent", "description": ""},
+            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long", "description": ""},
+        ],
+        "reception": [
+            {"label": "Revisar llegadas y salidas del día", "icon": "event", "description": ""},
+            {"label": "Confirmar reservas pendientes", "icon": "confirmation_number", "description": ""},
+            {"label": "Atender check-ins programados", "icon": "login", "description": ""},
+            {"label": "Gestionar solicitudes de huéspedes", "icon": "support_agent", "description": ""},
+            {"label": "Cierre de caja y reporte diario", "icon": "receipt_long", "description": ""},
+        ],
+    }
+    return duties_map.get(dept, [
+        {"label": "Revisar asignaciones del día", "icon": "task_alt", "description": ""},
+        {"label": "Completar check-in de turno", "icon": "how_to_reg", "description": ""},
+        {"label": "Atender solicitudes pendientes", "icon": "pending_actions", "description": ""},
+        {"label": "Reportar novedades al supervisor", "icon": "report", "description": ""},
+    ])
+
+
 def _enrich_shift(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     for f in ("created_at", "updated_at"):
@@ -1142,6 +1151,7 @@ def create_employee(
         "notes": payload.notes,
         "prop_id": payload.prop_id,
         "user_id": payload.user_id,
+        "daily_duties": payload.daily_duties if payload.daily_duties is not None else _default_duties_for_dept(payload.department),
         "is_active": True,
         "created_at": now,
         "updated_at": now,

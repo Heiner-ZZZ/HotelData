@@ -149,7 +149,7 @@ def create_room_type(
             {
                 "$set": {
                     "hotel_room_id": f"HR-{room_type_id}", "prop_id": prop_id,
-                    "room_type_id": room_type_id, "room_label": clean_name,
+                    "room_type_id": room_type_id, "room_label": clean_room_number or clean_name,
                     "is_active": payload["is_active"], "is_roh": payload["is_roh"],
                     "room_number": clean_room_number, "floor": payload["floor"],
                     "view": payload["view"], "smoking": payload["smoking"],
@@ -206,13 +206,13 @@ def update_room_type(
         return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
     if not safe_bool(is_roh):
-        # Cascade floor/view/smoking/accessible/room_label to ALL hotel_rooms of this type
+        # Cascade floor/view/smoking/accessible to ALL hotel_rooms of this type.
+        # room_label is NOT cascaded – each hotel_room keeps its unique room_number as label.
         cascade_fields = {
             "floor": payload["floor"],
             "view": payload["view"],
             "smoking": payload["smoking"],
             "accessible": payload["accessible"],
-            "room_label": clean_name,
             "is_active": payload["is_active"],
             "is_roh": payload["is_roh"],
             "updated_at": now_utc(),
@@ -276,7 +276,7 @@ def create_hotel_room_for_type(
         "room_type_id": room_type_id,
         "room_number": clean_room_number,
         "floor": clean_text(floor),
-        "room_label": f"{room_type_name} {clean_room_number}",
+        "room_label": clean_room_number,
         "view": clean_text(view),
         "smoking": safe_bool(smoking),
         "accessible": safe_bool(accessible),
