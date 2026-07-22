@@ -19,42 +19,42 @@ export const SYSTEM_ADMIN_ROUTES: Routes = [
     path: 'users',
     component: SystemUsersPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema'] }
+    data: { requiredPermission: 'users.read', allowedRoles: ['super_admin', 'admin_sistema'] }
   },
   {
     path: 'permissions',
     component: SystemPermissionsPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema'] }
+    data: { requiredPermission: 'roles.read', allowedRoles: ['super_admin', 'admin_sistema'] }
   },
   {
     path: 'audit',
     component: AuditPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
+    data: { requiredPermission: 'audit.read', allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
   },
   {
     path: 'monitoring',
     component: MonitoringPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
+    data: { requiredPermission: 'monitoring.read', allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
   },
   {
     path: 'notifications',
     component: NotificationsPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
+    data: { requiredPermission: 'monitoring.read', allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
   },
   {
     path: 'currencies',
     component: CurrenciesPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema'] }
+    data: { requiredPermission: 'settings.read', allowedRoles: ['super_admin', 'admin_sistema'] }
   },
   {
     path: 'bsc',
     component: BscPageComponent,
     canActivate: [roleGuard],
-    data: { allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
+    data: { requiredPermission: 'monitoring.read', allowedRoles: ['super_admin', 'admin_sistema', 'auditor_datos', 'operador_datos'] }
   }
 ];

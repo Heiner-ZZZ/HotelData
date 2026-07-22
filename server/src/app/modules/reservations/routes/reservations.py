@@ -30,8 +30,8 @@ from src.app.modules.reservations.routes.reservations_impl import (
     validate_rate_plan_eligibility,
     export_reservations_csv,
     preview_reservation,
-)
-from src.app.security.dependencies import require_login
+)from src.app.security.dependencies import require_permission
+
 from src.database.connection import get_database
 
 _router_logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def reservations_list_api(
     folio: str | None = Query(default=None),
     stay_status: str | None = Query(default=None, alias="stay_status"),
     booking_source: str | None = Query(default=None, alias="booking_source"),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     from src.app.modules.reservations.service.queries import list_bookings as _list
     return _list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, folio=folio, stay_status=stay_status, booking_source=booking_source, user=current_user)
@@ -67,13 +67,13 @@ def reservations_list_api(
 @api_router.get("/dates")
 def reservation_dates_api(
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     return list_reservation_dates(prop_id=prop_id, user=current_user)
 
 
 @api_router.get("/options")
-def reservations_options_api(current_user: dict = Depends(require_login)):
+def reservations_options_api(current_user: dict = Depends(require_permission("reservations.read"))):
     return {"hotel_options": reservation_hotel_options(user=current_user)}
 
 
@@ -82,7 +82,7 @@ def reservation_availability_check_api(
     prop_id: int = Query(..., ge=1),
     check_in: str = Query(...),
     check_out: str = Query(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Check if a hotel has room types and inventory available for a given date range."""
     return check_hotel_availability(prop_id, check_in, check_out)
@@ -94,19 +94,19 @@ def available_rate_plans_api(
     check_in: str = Query(...),
     check_out: str = Query(...),
     room_type_id: str = Query(default=""),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Return available rate plans for a hotel + date range + optional room type."""
     return list_rate_plans_with_rates(prop_id, check_in, check_out, room_type_id)
 
 
 @api_router.post("/preview")
-def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.read"))):
     return preview_reservation(payload)
 
 
 @api_router.post("", status_code=status.HTTP_201_CREATED)
-def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.create"))):
     try:
         user_role = current_user.get("primary_role", "")
         elig_error = validate_rate_plan_eligibility(payload, user_role)
@@ -125,7 +125,7 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
 
 
 @api_router.post("/validate-coupon")
-def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.read"))):
     coupon_code = payload.get("coupon_code") or payload.get("promo_code")
     prop_id = payload.get("prop_id")
     if not coupon_code:
@@ -137,7 +137,7 @@ def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(
 
 
 @api_router.get("/stats")
-def reservation_stats_api(current_user: dict = Depends(require_login)):
+def reservation_stats_api(current_user: dict = Depends(require_permission("reservations.read"))):
     return get_reservation_stats(user=current_user)
 
 
@@ -146,7 +146,7 @@ def reservation_export_api(
     format: str = Query(default="csv"),
     status_filter: str | None = Query(default=None, alias="status"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     output, raw_date = export_reservations_csv(status_filter=status_filter, prop_id=prop_id)
     return StreamingResponse(
@@ -157,7 +157,7 @@ def reservation_export_api(
 
 
 @api_router.get("/{booking_id}")
-def reservation_detail_api(booking_id: str, current_user: dict = Depends(require_login)):
+def reservation_detail_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     detail = get_booking_detail(booking_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -165,7 +165,7 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 
 
 @api_router.get("/{booking_id}/cancel-preview")
-def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_login)):
+def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     """Preview cancellation penalty without actually cancelling."""
     from src.app.core.timezone import local_today
     from src.app.modules.reservations.service.cleanup import _calculate_cancellation_penalty
@@ -209,7 +209,7 @@ def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends
 
 
 @api_router.post("/{booking_id}/cancel")
-def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.delete"))):
     try:
         return cancel_booking(booking_id, reason=str(payload.get("reason") or "cancelled_by_user"),
             changed_by=str(payload.get("changed_by") or current_user.get("username", "web")))
@@ -218,7 +218,7 @@ def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), cu
 
 
 @api_router.post("/{booking_id}/confirm")
-def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
     role = current_user.get("primary_role", "")
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede confirmar reservas.")
@@ -230,7 +230,7 @@ def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), c
 
 
 @api_router.post("/{booking_id}/reject")
-def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
     role = current_user.get("primary_role", "")
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede rechazar reservas.")
@@ -242,7 +242,7 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
 
 
 @api_router.patch("/{booking_id}")
-def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_login)):
+def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
     try:
         return modify_booking(booking_id,
             check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
@@ -258,12 +258,12 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
 
 
 @api_router.get("/{booking_id}/room-guests")
-def room_guests_get_api(booking_id: str, current_user: dict = Depends(require_login)):
+def room_guests_get_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     return get_room_guests(booking_id)
 
 
 @api_router.put("/{booking_id}/room-guests")
-def room_guests_put_api(booking_id: str, payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def room_guests_put_api(booking_id: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.update"))):
     try:
         return save_room_guests(booking_id, payload.get("room_guests", []))
     except ValueError as exc:
@@ -271,5 +271,5 @@ def room_guests_put_api(booking_id: str, payload: dict = Body(...), current_user
 
 
 @api_router.get("/{booking_id}/check-in-status")
-def check_in_status_api(booking_id: str, current_user: dict = Depends(require_login)):
+def check_in_status_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     return get_check_in_status(booking_id)

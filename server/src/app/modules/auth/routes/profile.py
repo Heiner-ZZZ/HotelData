@@ -92,8 +92,10 @@ def me_api(request: Request):
             "navigation": get_navigation_for_user(None),
         }
     from src.app.security.navigation import get_default_redirect_for_role
+    from src.app.security.permissions import get_user_permission_codes
     home_href = get_default_redirect_for_role(user.get("primary_role"))
-    return _auth_payload(user, session, home_href)
+    codes = get_user_permission_codes(db, user)
+    return _auth_payload(user, session, home_href, codes)
 
 
 @web_router.get("/me")
@@ -135,11 +137,13 @@ def refresh_session(request: Request, payload: dict = Body(...)):
     log_user_activity(db, action="auth.refresh", request=request, user=user)
     _, session = get_current_user(db, new_token)
     from src.app.security.navigation import get_default_redirect_for_role
+    from src.app.security.permissions import get_user_permission_codes
     home_href = get_default_redirect_for_role(user.get("primary_role"))
+    codes = get_user_permission_codes(db, user)
 
     new_refresh = _create_refresh_token(db, user)
     response = JSONResponse({
-        **_auth_payload(user, session, home_href),
+        **_auth_payload(user, session, home_href, codes),
         "refresh_token": new_refresh,
     })
     response.set_cookie(

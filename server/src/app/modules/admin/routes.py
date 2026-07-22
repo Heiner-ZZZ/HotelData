@@ -363,12 +363,12 @@ def ownership_roles_list(current_user: dict = Depends(require_permission("users.
 @api_router.get("/navigation")
 def navigation_items_api(request: Request, current_user: dict = Depends(require_login)):
     """Return all navigation items with a ``visible`` flag based on the
-    current user's expanded permission set."""
-    from src.app.security.navigation import get_all_navigation_items
-    from src.database.connection import get_database
-    from src.app.security.permissions import get_user_permission_codes
+    current user's expanded permission set.
 
-    db = get_database()
-    codes = get_user_permission_codes(db, current_user)
+    Uses the already-computed ``request.state.permission_codes`` (set by
+    the role_access_middleware) to avoid redundant DB queries."""
+    from src.app.security.navigation import get_all_navigation_items
+
+    codes = getattr(request.state, "permission_codes", set())
     items = get_all_navigation_items(codes)
     return {"items": items}

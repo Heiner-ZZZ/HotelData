@@ -114,10 +114,12 @@ def login_api(
 
     _, session = get_current_user(db, token)
     from src.app.security.navigation import get_default_redirect_for_role
+    from src.app.security.permissions import get_user_permission_codes
     home_href = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(user.get("primary_role"))
 
     max_age = 365 * 24 * 60 * 60  # sessions only expire on explicit logout
-    response = JSONResponse(_auth_payload(user, session, home_href))
+    codes = get_user_permission_codes(db, user)
+    response = JSONResponse(_auth_payload(user, session, home_href, codes))
     response.set_cookie(
         SESSION_COOKIE_NAME, token,
         httponly=True, samesite="lax",

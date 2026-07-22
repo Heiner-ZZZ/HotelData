@@ -76,6 +76,7 @@ export const routes: Routes = [
       import('./core/layout/account-shell/account-shell').then((m) => m.AccountShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
+      requiredPermission: 'account.read',
       allowedRoles: ['super_admin', 'admin_sistema', 'cliente', 'recepcionista', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
     },
     children: [
@@ -91,6 +92,7 @@ export const routes: Routes = [
       import('./core/layout/management-shell/management-shell').then((m) => m.ManagementShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
+      requiredPermission: 'dashboard.read',
       allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
     },
     children: [
@@ -112,6 +114,7 @@ export const routes: Routes = [
       import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
+      requiredPermission: 'users.manage',
       allowedRoles: ['super_admin']
     },
     children: [
@@ -128,6 +131,7 @@ export const routes: Routes = [
       import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
+      requiredPermission: 'users.read',
       allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos']
     },
     children: [
@@ -154,6 +158,7 @@ export const routes: Routes = [
       import('./core/layout/system-admin-shell/system-admin-shell').then((m) => m.SystemAdminShellComponent),
     canActivate: [authGuard, roleGuard],
     data: {
+      requiredPermission: 'users.read',
       allowedRoles: ['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos']
     },
     children: [

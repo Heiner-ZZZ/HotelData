@@ -18,6 +18,7 @@ export interface AuthState {
   user: AuthUser | null;
   session: AuthSession | null;
   homeHref: string | null;
+  permissionCodes: string[];
 }
 
 export interface AuthMeDto {
@@ -39,4 +40,5 @@ export interface AuthMeDto {
   } | null;
   home_href?: string;
   login_url?: string;
+  permission_codes?: string[];
 }

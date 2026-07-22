@@ -28,7 +28,8 @@ RECOVERY_TOKEN_TTL_MINUTES = 60
 _now = utc_now
 
 
-def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:
+def _auth_payload(user: dict, session: dict | None, home_href: str, permission_codes: set[str] | None = None) -> dict:
+    codes_list = sorted(list(permission_codes)) if permission_codes else []
     return {
         "authenticated": True,
         "user": {
@@ -47,6 +48,7 @@ def _auth_payload(user: dict, session: dict | None, home_href: str) -> dict:
         },
         "home_href": home_href,
         "login_url": "/login",
+        "permission_codes": codes_list,
     }
 
 

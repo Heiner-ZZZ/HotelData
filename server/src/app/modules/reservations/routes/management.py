@@ -13,7 +13,7 @@ from src.app.modules.reservations.service import (
 )
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 from src.app.modules.reservations.routes.management_impl import (
@@ -34,7 +34,7 @@ management_api_router = APIRouter(prefix="/api/management", tags=["management-op
 def check_in_dates_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.read")),
 ):
     result = list_check_in_dates(prop_id=prop_id)
     register_action(
@@ -54,7 +54,7 @@ def check_ins_api(
     request: Request,
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.read")),
 ):
     result = list_check_ins(operation_date=operation_date, prop_id=prop_id, user=current_user)
     register_action(
@@ -73,7 +73,7 @@ def check_ins_api(
 def check_in_update_datetime_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.manage")),
 ):
     db = get_database()
     before = db.booking_orders.find_one({"booking_id": booking_id}, {"check_in_date": 1, "check_in_time": 1, "prop_id": 1})
@@ -107,7 +107,7 @@ def check_in_update_datetime_api(
 def check_in_detail_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.read")),
 ):
     """Return all check-in detail data for the booking page."""
     try:
@@ -130,7 +130,7 @@ def check_in_detail_api(
 def check_in_save_detail_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.manage")),
 ):
     """Save check-in detail fields incrementally (draft)."""
     db = get_database()
@@ -186,7 +186,7 @@ def check_in_complete_api(
     booking_id: str,
     payload: dict = Body(default={}),
     request: Request = None,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-ins.manage")),
 ):
     db = get_database()
     before = db.booking_orders.find_one(
@@ -240,7 +240,7 @@ def check_in_complete_api(
 def check_out_dates_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-outs.read")),
 ):
     result = list_check_out_dates(prop_id=prop_id)
     register_action(
@@ -260,7 +260,7 @@ def check_outs_api(
     request: Request,
     operation_date: str = Query(..., alias="date"),
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-outs.read")),
 ):
     result = list_check_outs(operation_date=operation_date, prop_id=prop_id, user=current_user)
     register_action(
@@ -279,7 +279,7 @@ def check_outs_api(
 def check_out_detail_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-outs.read")),
 ):
     """Return all check-out detail data for the liquidation page."""
     try:
@@ -302,7 +302,7 @@ def check_out_detail_api(
 def check_out_save_detail_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-outs.manage")),
 ):
     """Save check-out detail fields incrementally (draft)."""
     db = get_database()
@@ -358,7 +358,7 @@ def check_out_complete_api(
     booking_id: str,
     payload: dict = Body(default={}),
     request: Request = None,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("check-outs.manage")),
 ):
     db = get_database()
     before = db.booking_orders.find_one(
@@ -424,7 +424,7 @@ def check_out_complete_api(
 def booking_pos_charge_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("charges.manage")),
 ):
     """POS: add a charge to an actively checked-in booking during the stay."""
     db = get_database()
@@ -459,7 +459,7 @@ def user_search_api(
     request: Request,
     q: str = Query(..., min_length=1),
     limit: int = Query(default=10, ge=1, le=50),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("users.read")),
 ):
     """Search registered users by name or email for quick guest data prefill."""
     db = get_database()
@@ -485,7 +485,7 @@ def user_search_api(
 def booking_available_rooms_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """List available physical rooms for a booking based on its room type and prop."""
     db = get_database()
@@ -507,7 +507,7 @@ def booking_available_rooms_api(
 def booking_assign_rooms_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.update")),
 ):
     """Assign specific physical rooms to a booking."""
     db = get_database()

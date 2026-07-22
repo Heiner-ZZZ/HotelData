@@ -19,7 +19,8 @@ export class AuthService {
     authenticated: false,
     user: null,
     session: null,
-    homeHref: null
+    homeHref: null,
+    permissionCodes: [],
   });
   private readonly sessionLoadedSignal = signal(false);
 
@@ -54,7 +55,8 @@ export class AuthService {
       authenticated: false,
       user: null,
       session: null,
-      homeHref: null
+      homeHref: null,
+      permissionCodes: [],
     });
   }
 
@@ -62,6 +64,13 @@ export class AuthService {
   readonly currentUser = computed(() => this.authStateSignal().user);
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);
   readonly sessionLoaded = this.sessionLoadedSignal.asReadonly();
+
+  /** Check if the current user has a specific permission code (or *.*). */
+  readonly hasPermission = computed(() => {
+    const codes = this.authStateSignal().permissionCodes;
+    if (codes.includes('*.*')) return (_code: string) => true;
+    return (code: string) => codes.includes(code);
+  });
 
   loadSession() {
     // If no stored session flag, skip the HTTP call entirely — avoids a
@@ -71,7 +80,8 @@ export class AuthService {
         authenticated: false,
         user: null,
         session: null,
-        homeHref: null
+        homeHref: null,
+        permissionCodes: [],
       };
       this.authStateSignal.set(anonymousState);
       this.sessionLoadedSignal.set(true);
@@ -100,7 +110,8 @@ export class AuthService {
             authenticated: false,
             user: null,
             session: null,
-            homeHref: null
+            homeHref: null,
+            permissionCodes: [],
           };
           this.authStateSignal.set(anonymousState);
           this.sessionLoadedSignal.set(true);
@@ -175,7 +186,8 @@ export class AuthService {
             createdAt: dto.session.created_at
           }
         : null,
-      homeHref: dto.home_href ?? null
+      homeHref: dto.home_href ?? null,
+      permissionCodes: dto.permission_codes ?? [],
     };
   }
 }

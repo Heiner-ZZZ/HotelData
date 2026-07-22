@@ -50,7 +50,7 @@ from src.app.modules.housekeeping.routes_impl import (
     validate_sync_payload,
 )
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_login, require_permission
 
 router = APIRouter(prefix="/modules/housekeeping", tags=["modules-housekeeping"])
 api_router = APIRouter(prefix="/api/housekeeping", tags=["housekeeping-api"])
@@ -69,7 +69,7 @@ def housekeeping_module_status() -> ModuleStatus:
 @api_router.put("/room-status", status_code=200)
 def room_status_upsert_api(
     payload: RoomStatusLogCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.create")),
 ):
     """Create or update a room's status."""
     from src.database.connection import get_database
@@ -105,7 +105,7 @@ def room_status_list_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """List room statuses with optional filtering."""
     result = list_room_status(
@@ -134,7 +134,7 @@ def room_status_history_api(
     booking_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """List room status change history for auditing."""
     result = list_room_status_history(
@@ -160,7 +160,7 @@ def room_status_history_api(
 def room_status_get_api(
     request: Request,
     record_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Get a single room status record."""
     result = get_room_status(record_id)
@@ -181,7 +181,7 @@ def room_status_get_api(
 @api_router.post("/room-status/bulk")
 def room_status_bulk_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Update status for multiple rooms at once."""
     prop_id, room_labels, new_status, note = validate_bulk_update(payload)
@@ -204,7 +204,7 @@ def room_status_bulk_api(
 @api_router.post("/room-status/sync")
 def room_status_sync_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Auto‑seed room_status_log from hotel_rooms for a property."""
     prop_id = validate_sync_payload(payload)
@@ -224,7 +224,7 @@ def room_status_sync_api(
 @api_router.post("/room-status/cleanup-orphans")
 def room_status_cleanup_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.delete")),
 ):
     """Remove orphaned room_status_log entries whose hotel_room_id or
     room_type_id no longer exist in hotel_rooms or room_types.
@@ -256,7 +256,7 @@ def room_status_cleanup_api(
 @api_router.post("/tasks", status_code=201)
 def hk_task_create_api(
     payload: HousekeepingTaskCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.create")),
 ):
     """Create a new housekeeping task."""
     result = create_housekeeping_task(payload)
@@ -286,7 +286,7 @@ def hk_task_list_api(
     priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """List housekeeping tasks."""
     result = list_housekeeping_tasks(
@@ -313,7 +313,7 @@ def hk_task_list_api(
 def hk_task_complete_api(
     task_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Mark a housekeeping task as completed."""
     from src.database.connection import get_database
@@ -346,7 +346,7 @@ def hk_task_complete_api(
 def hk_task_update_api(
     task_id: str,
     payload: HousekeepingTaskCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Update a housekeeping task."""
     from src.database.connection import get_database
@@ -384,7 +384,7 @@ def hk_task_update_api(
 @api_router.delete("/tasks/{task_id}")
 def hk_task_delete_api(
     task_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.delete")),
 ):
     """Logically delete a housekeeping task."""
     result = delete_housekeeping_task(task_id)
@@ -410,7 +410,7 @@ def hk_task_delete_api(
 @api_router.post("/maintenance", status_code=201)
 def mt_task_create_api(
     payload: MaintenanceTaskCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("maintenance.manage")),
 ):
     """Create a new maintenance task."""
     result = create_maintenance_task(payload)
@@ -439,7 +439,7 @@ def mt_task_list_api(
     priority: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("maintenance.read")),
 ):
     """List maintenance tasks."""
     result = list_maintenance_tasks(
@@ -465,7 +465,7 @@ def mt_task_list_api(
 def mt_task_update_api(
     task_id: str,
     payload: MaintenanceTaskCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("maintenance.update")),
 ):
     """Update a maintenance task."""
     from src.database.connection import get_database
@@ -504,7 +504,7 @@ def mt_task_update_api(
 def mt_task_complete_api(
     task_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("maintenance.update")),
 ):
     """Mark a maintenance task as completed."""
     from src.database.connection import get_database
@@ -536,7 +536,7 @@ def mt_task_complete_api(
 @api_router.delete("/maintenance/{task_id}")
 def mt_task_delete_api(
     task_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("maintenance.manage")),
 ):
     """Logically delete a maintenance task."""
     result = delete_maintenance_task(task_id)
@@ -562,7 +562,7 @@ def mt_task_delete_api(
 @api_router.post("/charges", status_code=201)
 def charge_create_api(
     payload: AdditionalChargeCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("charges.manage")),
 ):
     """Register an additional charge against a booking."""
     result = create_additional_charge(payload)
@@ -592,7 +592,7 @@ def charge_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("charges.read")),
 ):
     """List additional charges."""
     result = list_additional_charges(
@@ -616,7 +616,7 @@ def charge_list_api(
 @api_router.delete("/charges/{charge_id}")
 def charge_delete_api(
     charge_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("charges.manage")),
 ):
     """Delete an additional charge (e.g., added by mistake)."""
     result = delete_additional_charge(charge_id)
@@ -638,7 +638,7 @@ def charge_delete_api(
 def charge_update_api(
     charge_id: str,
     payload: AdditionalChargeUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("charges.manage")),
 ):
     """Update an additional charge. Only allowed if created today (same calendar day)."""
     result = update_additional_charge(charge_id, payload)
@@ -667,7 +667,7 @@ def charge_update_api(
 def room_status_transitions_api(
     request: Request,
     current_status: str | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Return valid transitions for the housekeeping cycle.
     If current_status is provided, returns only valid next statuses.
@@ -688,7 +688,7 @@ def room_status_transitions_api(
 @api_router.post("/cleaning/start")
 def cleaning_start_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Start a cleaning session. Marks room as cleaning_in_progress.
 
@@ -729,7 +729,7 @@ def cleaning_start_api(
 @api_router.post("/cleaning/complete")
 def cleaning_complete_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Complete a cleaning session with the housekeeper's report.
 
@@ -784,7 +784,7 @@ def cleaning_complete_api(
 @api_router.post("/cleaning/approve")
 def cleaning_approve_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Supervisor approves the cleaning → room becomes vacant_clean.
 
@@ -833,7 +833,7 @@ def cleaning_approve_api(
 def housekeeping_dashboard_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Return aggregated KPIs for housekeeping efficiency monitoring (CU-E09)."""
     result = get_housekeeping_dashboard(prop_id=prop_id)
@@ -855,7 +855,7 @@ def weekly_calendar_api(
     prop_id: int = Query(..., ge=1, description="Property ID"),
     week_start: str = Query(..., description="Start date in YYYY-MM-DD format"),
     assigned_to: str | None = Query(default=None, description="Filter by staff name"),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Return a weekly calendar grid: rooms × days with scheduled tasks and maintenance events.
 
@@ -883,7 +883,7 @@ def weekly_calendar_api(
 def housekeeping_staff_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Return staff users assigned to a property who have maintenance/housekeeping roles."""
     staff = query_housekeeping_staff(prop_id=prop_id)
@@ -904,7 +904,7 @@ def upcoming_events_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     days: int = Query(default=30, ge=1, le=90),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Return upcoming tasks and maintenance events for calendar display."""
     result = list_upcoming_events(prop_id=prop_id, days=days)

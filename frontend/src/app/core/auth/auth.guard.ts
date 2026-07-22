@@ -11,6 +11,17 @@ function hasAllowedRole(role: string | undefined, allowedRoles: string[] | undef
   return !!role && allowedRoles.includes(role);
 }
 
+function hasRequiredPermission(permissionCodes: string[], requiredPermission: string | undefined): boolean {
+  if (!requiredPermission) {
+    return true;
+  }
+  // *.* super_admin wildcard grants access to everything
+  if (permissionCodes.includes('*.*')) {
+    return true;
+  }
+  return permissionCodes.includes(requiredPermission);
+}
+
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -33,16 +44,27 @@ export const roleGuard: CanActivateFn = (route) => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const allowedRoles = route.data?.['allowedRoles'] as string[] | undefined;
+  const requiredPermission = route.data?.['requiredPermission'] as string | undefined;
 
   const resolveAuthorizedState = () => {
     const authState = authService.authState();
     if (!authState.authenticated) {
       return router.createUrlTree(['/login']);
     }
+    // Permission-based check (migration: OR with legacy roles)
+    if (requiredPermission && hasRequiredPermission(authState.permissionCodes, requiredPermission)) {
+      return true;
+    }
+    // Legacy role-based check (backward compat)
     if (hasAllowedRole(authState.user?.primaryRole, allowedRoles)) {
       return true;
     }
-    return router.parseUrl(authState.homeHref || '/search');
+    // If either guard was applicable and failed, redirect
+    if (requiredPermission || (allowedRoles?.length ?? 0) > 0) {
+      return router.parseUrl(authState.homeHref || '/search');
+    }
+    // No restrictions → allow
+    return true;
   };
 
   if (authService.sessionLoaded()) {

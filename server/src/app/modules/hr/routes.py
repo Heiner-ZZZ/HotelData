@@ -27,7 +27,7 @@ from src.app.modules.hr.service.collections import (
     module_status,
 )
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_login, require_permission
 
 _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -141,6 +141,7 @@ def hr_module_status():
 def hr_dashboard(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     """Return HR KPIs: total employees, active, by department, recent hires."""
     db = get_database()
@@ -151,14 +152,13 @@ def hr_dashboard(
         db[EMPLOYEES_COLLECTION].find({"is_active": True})
         .sort("created_at", -1).limit(5)
     )
-    user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id or 0,
         entity_type="hr_dashboard",
         entity_id="dashboard",
         action="read",
         summary="Consulta de dashboard de RRHH",
-        changed_by=user.get("username", "anonymous"),
+        changed_by=current_user.get("username", "system"),
         metadata={"prop_id": prop_id, "url": str(request.url)},
     )
     return {
@@ -178,18 +178,18 @@ def hr_dashboard(
 def list_departments(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     db = get_database()
     cursor = db[DEPARTMENTS_COLLECTION].find().sort("name", 1)
     items = [_enrich_department(d) for d in cursor]
-    user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id or 0,
         entity_type="department",
         entity_id="list",
         action="read",
         summary=f"Listado de departamentos ({len(items)} items)",
-        changed_by=user.get("username", "anonymous"),
+        changed_by=current_user.get("username", "system"),
         metadata={"prop_id": prop_id, "count": len(items), "url": str(request.url)},
     )
     return items
@@ -198,7 +198,7 @@ def list_departments(
 @api_router.post("/departments", status_code=201)
 def create_department(
     payload: DepartmentCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.create")),
 ):
     db = get_database()
     existing = db[DEPARTMENTS_COLLECTION].find_one({"name": payload.name})
@@ -237,7 +237,7 @@ def create_department(
 def shift_check_in(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckIn = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.update")),
 ):
     """Record an employee check-in for a shift."""
     db = get_database()
@@ -287,7 +287,7 @@ def shift_check_in(
 def shift_check_out(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckOut = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.update")),
 ):
     """Record an employee check-out for a shift."""
     db = get_database()
@@ -343,6 +343,7 @@ def employee_portal(
     employee_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
     week_start: str | None = Query(default=None, description="YYYY-MM-DD of the Monday of the week to show. Defaults to current week."),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     """Return the full portal payload for an employee dashboard.
 
@@ -523,14 +524,13 @@ def employee_portal(
     recent_events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
     recent_events = recent_events[:5]
 
-    user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id or emp_prop_id or 0,
         entity_type="employee_portal",
         entity_id=employee_id,
         action="read",
         summary=f"Consulta de portal de empleado {employee_id}",
-        changed_by=user.get("username", "anonymous"),
+        changed_by=current_user.get("username", "system"),
         metadata={"prop_id": prop_id or emp_prop_id, "url": str(request.url)},
     )
     portal_data = EmployeePortalResponse(
@@ -551,7 +551,7 @@ def employee_portal(
 @api_router.get("/portal/{employee_id}/tasks")
 def employee_portal_tasks(
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     """Return the employee's assigned tasks, dirty rooms, and daily duties.
 
@@ -658,7 +658,7 @@ def employee_portal_tasks(
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/my-portal")
-def my_portal(current_user: dict = Depends(require_login)):
+def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
     """Return the employee portal URL for the currently logged-in user.
 
     Also syncs assigned_hotels from the employee record to the user document
@@ -695,7 +695,7 @@ def my_portal(current_user: dict = Depends(require_login)):
 def employee_attendance(
     employee_id: str = Path(...),
     month: str | None = Query(default=None, description="YYYY-MM format, defaults to current month"),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     """Return attendance records for an employee in a given month.
 
@@ -941,7 +941,7 @@ def _enrich_shift(doc: dict) -> dict:
 @api_router.post("/shifts", status_code=201)
 def create_shift(
     payload: EmployeeShiftCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.create")),
 ):
     """Create a new shift for an employee."""
     db = get_database()
@@ -994,7 +994,7 @@ def list_shifts(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     """List shifts with optional filters."""
     from math import ceil
@@ -1050,7 +1050,7 @@ def list_shifts(
 def update_shift(
     shift_id: str = Path(...),
     payload: EmployeeShiftCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.update")),
 ):
     """Update a shift."""
     db = get_database()
@@ -1094,7 +1094,7 @@ def update_shift(
 @api_router.delete("/shifts/{shift_id}", status_code=204)
 def delete_shift(
     shift_id: str = Path(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.delete")),
 ):
     """Delete a shift."""
     db = get_database()
@@ -1122,7 +1122,7 @@ def delete_shift(
 @api_router.post("", status_code=201)
 def create_employee(
     payload: EmployeeCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.create")),
 ):
     """Create a new employee with optional replacement logic."""
     db = get_database()
@@ -1226,6 +1226,7 @@ def list_employees(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     from math import ceil
     db = get_database()
@@ -1253,14 +1254,13 @@ def list_employees(
     )
     items = [_enrich_employee(doc) for doc in cursor]
 
-    user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id or 0,
         entity_type="employee",
         entity_id="list",
         action="read",
         summary=f"Listado de empleados (total={total}, page={page})",
-        changed_by=user.get("username", "anonymous"),
+        changed_by=current_user.get("username", "system"),
         metadata={
             "search": search,
             "department": department,
@@ -1287,7 +1287,7 @@ def list_employees(
 def get_employee(
     request: Request,
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.read")),
 ):
     db = get_database()
     try:
@@ -1307,14 +1307,13 @@ def get_employee(
     enriched["username"] = creds["username"]
     enriched["password"] = creds["password"]
 
-    user = getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=doc.get("prop_id", 0),
         entity_type="employee",
         entity_id=employee_id,
         action="read",
         summary=f"Consulta de empleado {doc.get('full_name', employee_id)}",
-        changed_by=user.get("username", "anonymous"),
+        changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
     return enriched
@@ -1324,7 +1323,7 @@ def get_employee(
 def update_employee(
     employee_id: str = Path(...),
     payload: EmployeeUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.update")),
 ):
     db = get_database()
     try:
@@ -1364,7 +1363,7 @@ def update_employee(
 @api_router.delete("/{employee_id}", status_code=204)
 def delete_employee(
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("hr.delete")),
 ):
     db = get_database()
     try:
