@@ -194,7 +194,7 @@ def complete_check_out(
                 room_docs_co = list(
                     db.hotel_rooms.find(
                         {"hotel_room_id": {"$in": assigned_rooms_co}},
-                        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1},
+                        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
                     )
                 )
                 for r in room_docs_co:
@@ -208,11 +208,19 @@ def complete_check_out(
                         upsert=True,
                     )
                     db.housekeeping_tasks.insert_one({
-                        "prop_id": booking["prop_id"], "room_label": label,
-                        "task_type": "cleaning", "status": "pending",
-                        "assigned_to": "", "priority": "normal",
+                        "prop_id": booking["prop_id"],
+                        "room_id": r.get("hotel_room_id", ""),
+                        "room_label": label,
+                        "room_number": r.get("room_number", ""),
+                        "room_type_id": r.get("room_type_id", ""),
+                        "task_type": "cleaning",
+                        "status": "pending",
+                        "assigned_to": "",
+                        "priority": "normal",
                         "note": f"Limpieza automática post check-out — reserva {booking_id}",
-                        "scheduled_date": "", "created_at": utc_now(), "completed_at": None,
+                        "scheduled_date": "",
+                        "created_at": utc_now(),
+                        "completed_at": None,
                     })
                 logger.info("Rooms marked as dirty + cleaning tasks created for booking %s", booking_id)
         except Exception:

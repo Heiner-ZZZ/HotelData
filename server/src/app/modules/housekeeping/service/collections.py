@@ -31,6 +31,7 @@ ROOM_STATUS_HISTORY_INDEXES = [
 
 HOUSEKEEPING_INDEXES = [
     IndexModel([("prop_id", ASCENDING)], name="idx_hk_prop"),
+    IndexModel([("room_id", ASCENDING)], name="idx_hk_room_id"),
     IndexModel([("status", ASCENDING)], name="idx_hk_status"),
     IndexModel([("assigned_to", ASCENDING)], name="idx_hk_assigned"),
     IndexModel([("created_at", ASCENDING)], name="idx_hk_created"),

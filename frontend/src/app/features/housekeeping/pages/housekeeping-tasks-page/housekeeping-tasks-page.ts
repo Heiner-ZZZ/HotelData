@@ -163,7 +163,7 @@ export class HousekeepingTasksPageComponent {
 
   // ── Create / Edit Form ──
   readonly createForm = this.fb.nonNullable.group({
-    roomLabel: ['', Validators.required],
+    roomId: ['', Validators.required],
     taskType: ['cleaning', Validators.required],
     priority: ['normal'],
     assignedTo: [''],
@@ -271,7 +271,7 @@ export class HousekeepingTasksPageComponent {
     this.editingId.set(null);
     if (this.showCreateForm()) {
       this.createForm.reset({
-        roomLabel: '',
+        roomId: '',
         taskType: 'cleaning',
         priority: 'normal',
         assignedTo: '',
@@ -299,7 +299,7 @@ export class HousekeepingTasksPageComponent {
       } catch { /* fallback to todayLocalIso */ }
     }
     this.createForm.patchValue({
-      roomLabel: item.roomNumber || item.roomLabel || '',
+      roomId: item.roomId || '',
       taskType: item.taskType || 'cleaning',
       priority: item.priority || 'normal',
       assignedTo: item.assignedTo || '',
@@ -327,25 +327,13 @@ export class HousekeepingTasksPageComponent {
     this.editingId.set(null);
   }
 
-  // ── Helper: resolve room metadata from selected roomLabel ──
-  private resolveRoomMeta(label: string): { room_type_id: string; room_number: string } {
-    const room = this.roomItems().find(r => (r.roomNumber || r.roomLabel) === label);
-    return {
-      room_type_id: room?.roomTypeId || '',
-      room_number: room?.roomNumber || '',
-    };
-  }
-
   async submitTask(): Promise<void> {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
-    const roomMeta = this.resolveRoomMeta(val.roomLabel);
     const payload = {
       prop_id: this.selectedPropId() || 0,
-      room_label: val.roomLabel,
-      room_type_id: roomMeta.room_type_id,
-      room_number: roomMeta.room_number,
+      room_id: val.roomId,
       task_type: val.taskType,
       assigned_to: val.assignedTo || undefined,
       priority: val.priority,
@@ -451,7 +439,7 @@ export class HousekeepingTasksPageComponent {
     try {
       await lastValueFrom(this.api.updateTask(item.id, {
         prop_id: item.propId,
-        room_label: item.roomLabel,
+        room_id: item.roomId,
         task_type: item.taskType,
         assigned_to: item.assignedTo || undefined,
         priority: item.priority,

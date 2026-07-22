@@ -17,16 +17,33 @@ from ...schemas import HousekeepingTaskCreate, now_iso
 logger = logging.getLogger(__name__)
 
 
+def _resolve_room_from_id(room_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
+    """Resolve a hotel room document by its business ID (hotel_room_id)."""
+    db = get_database()
+    query: dict[str, Any] = {"hotel_room_id": room_id}
+    if prop_id is not None:
+        query["prop_id"] = prop_id
+    return db.hotel_rooms.find_one(
+        query,
+        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1, "prop_id": 1, "floor": 1},
+    )
+
+
 def create_housekeeping_task(payload: HousekeepingTaskCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
+    room = _resolve_room_from_id(payload.room_id, payload.prop_id)
+    if not room:
+        raise ValueError(f"Habitación no encontrada: {payload.room_id}")
+
     status = payload.status or "pending"
     completed_at = now if status == "completed" else None
     doc = {
-        "prop_id": payload.prop_id,
-        "room_label": payload.room_label,
-        "room_type_id": payload.room_type_id or "",
-        "room_number": payload.room_number or "",
+        "prop_id": room["prop_id"],
+        "room_id": room["hotel_room_id"],
+        "room_label": room.get("room_label") or room.get("room_number") or payload.room_id,
+        "room_type_id": room.get("room_type_id", ""),
+        "room_number": room.get("room_number", ""),
         "task_type": payload.task_type,
         "status": status,
         "assigned_to": payload.assigned_to,
@@ -80,25 +97,36 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
     if doc:
         try:
             prop_id = doc.get("prop_id")
-            room_label = doc.get("room_label", "")
-            if prop_id and room_label:
-                from ..collections import ROOM_STATUS_COLLECTION
-                db[ROOM_STATUS_COLLECTION].update_one(
-                    {"prop_id": prop_id, "$or": [{"room_label": room_label}, {"room_number": room_label}]},
-                    {
-                        "$set": {
-                            "status": "clean",
-                            "note": f"Limpieza completada — tarea {task_id}",
-                            "updated_at": now,
-                        },
-                        "$setOnInsert": {"created_at": now},
+            room_id = doc.get("room_id")
+            if not prop_id or not room_id:
+                logger.warning(
+                    "No se actualiza room_status_log: tarea %s sin prop_id o room_id",
+                    task_id,
+                )
+                return _enrich_hk_task(doc)
+
+            from ..collections import ROOM_STATUS_COLLECTION
+            db[ROOM_STATUS_COLLECTION].update_one(
+                {"prop_id": prop_id, "hotel_room_id": room_id},
+                {
+                    "$set": {
+                        "status": "clean",
+                        "note": f"Limpieza completada — tarea {task_id}",
+                        "updated_at": now,
+                        "prop_id": prop_id,
+                        "hotel_room_id": room_id,
+                        "room_label": doc.get("room_label", ""),
+                        "room_number": doc.get("room_number", ""),
+                        "room_type_id": doc.get("room_type_id", ""),
                     },
-                    upsert=True,
-                )
-                logger.info(
-                    "Room %s (prop %s) auto-transitioned to 'clean' after task %s completed",
-                    room_label, prop_id, task_id,
-                )
+                    "$setOnInsert": {"created_at": now},
+                },
+                upsert=True,
+            )
+            logger.info(
+                "Room %s (prop %s) auto-transitioned to 'clean' after task %s completed",
+                room_id, prop_id, task_id,
+            )
         except Exception:
             logger.exception(
                 "Failed to auto-transition room status to 'clean' for task %s", task_id
@@ -114,16 +142,24 @@ def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> d
     # Fetch task before update to detect status transitions
     old_task = db[HOUSEKEEPING_COLLECTION].find_one(
         {"_id": ObjectId(task_id)},
-        {"_id": 0, "status": 1, "task_type": 1, "room_label": 1, "prop_id": 1},
+        {"_id": 0, "status": 1, "task_type": 1, "room_label": 1, "prop_id": 1, "room_id": 1},
     )
 
     status = payload.status or "pending"
     old_status = (old_task or {}).get("status", "")
 
+    # Resolve room from the provided room_id so denormalized fields stay in sync
+    room = _resolve_room_from_id(payload.room_id, payload.prop_id)
+    if not room:
+        raise ValueError(f"Habitación no encontrada: {payload.room_id}")
+
+    room_label = room.get("room_label") or room.get("room_number") or payload.room_id
     set_data = {
-        "room_label": payload.room_label,
-        "room_type_id": payload.room_type_id or "",
-        "room_number": payload.room_number or "",
+        "room_id": room["hotel_room_id"],
+        "room_label": room_label,
+        "room_type_id": room.get("room_type_id", ""),
+        "room_number": room.get("room_number", ""),
+        "prop_id": room["prop_id"],
         "task_type": payload.task_type,
         "assigned_to": payload.assigned_to or "",
         "priority": payload.priority,
@@ -145,8 +181,8 @@ def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> d
 
     if doc and status == "inspection" and old_status != "inspection":
         task_type_name = payload.task_type or old_task.get("task_type", "")
-        room_label = payload.room_label or old_task.get("room_label", "")
-        prop_id = int(old_task.get("prop_id", 0) or 0)
+        room_label = set_data.get("room_label") or old_task.get("room_label", "")
+        prop_id = int(set_data.get("prop_id") or old_task.get("prop_id", 0) or 0)
 
         # ── Audit log ──
         try:
@@ -211,6 +247,8 @@ def _enrich_hk_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     # camelCase aliases for frontend
     doc["propId"] = doc.get("prop_id", 0)
+    doc["roomId"] = doc.get("room_id", "")
+    doc["roomLabel"] = doc.get("room_label", "")
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["roomNumber"] = doc.get("room_number", "")
     doc["taskType"] = doc.get("task_type", "")
@@ -219,6 +257,8 @@ def _enrich_hk_task(doc: dict) -> dict:
     for f in ("created_at", "completed_at"):
         if f in doc:
             doc[f] = _fmt(doc[f])
+    doc["createdAt"] = doc.get("created_at")
+    doc["completedAt"] = doc.get("completed_at")
     return doc
 
 

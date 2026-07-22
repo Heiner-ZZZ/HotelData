@@ -584,6 +584,7 @@ def employee_portal_tasks(
         hk_tasks.append({
             "id": str(doc["_id"]),
             "type": "cleaning",
+            "room_id": doc.get("room_id", ""),
             "room_label": doc.get("room_label", ""),
             "task_type": doc.get("task_type", ""),
             "status": doc.get("status", "pending"),

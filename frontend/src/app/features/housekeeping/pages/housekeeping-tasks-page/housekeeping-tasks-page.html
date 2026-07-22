@@ -131,11 +131,11 @@
         <form [formGroup]="createForm" (submit)="$event.preventDefault(); submitTask()" class="task-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="roomLabel">Habitación <span class="required">*</span></label>
-              <select id="roomLabel" formControlName="roomLabel">
+              <label for="roomId">Habitación <span class="required">*</span></label>
+              <select id="roomId" formControlName="roomId">
                 <option value="">Seleccionar habitación…</option>
                 @for (r of roomItems(); track r.id) {
-                  <option [value]="r.roomNumber || r.roomLabel">{{ displayRoom(r) }}</option>
+                  <option [value]="r.hotelRoomId">{{ displayRoom(r) }}</option>
                 }
               </select>
             </div>

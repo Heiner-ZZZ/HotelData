@@ -21,6 +21,7 @@ for pid in sorted(prop_ids):
         "floor": 1, "room_type_name": 1
     }))
     total_rooms += len(rooms)
+    room_map = {r["hotel_room_id"]: r for r in rooms}
     
     # Get room type names for this hotel
     rtypes = list(db.room_types.find({"prop_id": pid}, {"name": 1}))
@@ -58,20 +59,26 @@ for pid in sorted(prop_ids):
     else:
         print(f"✅ prop_id={pid} — {len(rooms)} rooms OK")
     
-    # Housekeeping check
-    hk_missing_floor = db.housekeeping_tasks.count_documents(
-        {"prop_id": pid, "$or": [{"floor": {"$exists": False}}, {"floor": None}, {"floor": 0}]}
+    # Housekeeping checks (FK-based via room_id)
+    hk_missing_room_id = db.housekeeping_tasks.count_documents(
+        {"prop_id": pid, "$or": [{"room_id": {"$exists": False}}, {"room_id": None}, {"room_id": ""}]}
     )
-    if hk_missing_floor > 0:
-        print(f"    ⚠️  housekeeping: {hk_missing_floor} tareas sin floor")
-    
-    # Housekeeping rooms with label matching a type name
-    if type_names:
-        hk_bad = list(db.housekeeping_tasks.find({
-            "prop_id": pid, "room_label": {"$in": list(type_names)}
-        }, {"_id": 0, "room_label": 1, "floor": 1}))
-        if hk_bad:
-            print(f"    ⚠️  housekeeping: {len(hk_bad)} tareas con room_label=nombre de tipo: {[h['room_label'] for h in hk_bad]}")
+    if hk_missing_room_id > 0:
+        print(f"    ⚠️  housekeeping: {hk_missing_room_id} tareas sin room_id")
+
+    # Housekeeping tasks where denormalized room_label doesn't match linked hotel_room
+    hk_bad_label = 0
+    for t in db.housekeeping_tasks.find({"prop_id": pid, "room_id": {"$exists": True, "$ne": ""}}):
+        room_id = t.get("room_id")
+        linked = room_map.get(room_id)
+        if not linked:
+            continue
+        expected = str(linked.get("room_label", "") or linked.get("room_number", ""))
+        actual = str(t.get("room_label", ""))
+        if expected and actual and expected != actual:
+            hk_bad_label += 1
+    if hk_bad_label > 0:
+        print(f"    ⚠️  housekeeping: {hk_bad_label} tareas con room_label desactualizado")
 
     print()
 

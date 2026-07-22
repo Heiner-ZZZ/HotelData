@@ -28,6 +28,7 @@ export interface PaginatedResponse<T> {
 export interface HousekeepingTaskItem {
   id: string;
   propId: number;
+  roomId: string;
   roomLabel: string;
   roomTypeId: string;
   roomNumber: string;
@@ -128,6 +129,7 @@ export interface CalendarDayTask {
 }
 
 export interface CalendarRoomDay {
+  room_id: string;
   room_label: string;
   room_number: string;
   status: string;
@@ -209,11 +211,11 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<HousekeepingTaskItem>>('/housekeeping/tasks', { params });
   }
 
-  createTask(payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
+  createTask(payload: { prop_id: number; room_id: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string }) {
     return this.http.post<HousekeepingTaskItem>('/housekeeping/tasks', payload);
   }
 
-  updateTask(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string; status?: string }) {
+  updateTask(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; assigned_to?: string; priority?: string; note?: string; scheduled_date?: string; status?: string }) {
     return this.http.put<HousekeepingTaskItem>(`/housekeeping/tasks/${taskId}`, payload);
   }
 
@@ -235,11 +237,11 @@ export class HousekeepingApiService {
     return this.http.get<PaginatedResponse<MaintenanceTaskItem>>('/housekeeping/maintenance', { params });
   }
 
-  createMaintenance(payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean }) {
+  createMaintenance(payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
     return this.http.post<MaintenanceTaskItem>('/housekeeping/maintenance', payload);
   }
 
-  updateMaintenance(taskId: string, payload: { prop_id: number; room_label: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
+  updateMaintenance(taskId: string, payload: { prop_id: number; room_id: string; task_type: string; title: string; description?: string; priority?: string; scheduled_date?: string; auto_block?: boolean; status?: string }) {
     return this.http.put<MaintenanceTaskItem>(`/housekeeping/maintenance/${taskId}`, payload);
   }
 

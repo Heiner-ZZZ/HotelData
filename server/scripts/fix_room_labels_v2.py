@@ -30,17 +30,32 @@ for s in status_logs:
         db.room_status_log.update_one({"_id": s["_id"]}, {"$set": {"room_label": room_num}})
         print(f"  room_status_log: {old_label:>30} → {room_num}")
 
-# 3. Update housekeeping tasks that reference the old labels
-tasks = list(db.housekeeping_tasks.find({"prop_id": 1}, {"_id": 1, "room_label": 1}))
+# 3. Sync housekeeping_tasks via room_id
+rooms = list(db.hotel_rooms.find({"prop_id": 1}, {
+    "_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
+    "room_type_id": 1, "room_type_name": 1
+}))
+room_by_id = {r["hotel_room_id"]: r for r in rooms}
+room_by_label = {str(r.get("room_label", "") or r.get("room_number", "")): r for r in rooms if r.get("room_label") or r.get("room_number")}
+tasks = list(db.housekeeping_tasks.find({"prop_id": 1}, {"_id": 1, "room_id": 1, "room_label": 1}))
+hk_updated = 0
 for t in tasks:
-    old = t.get("room_label", "")
-    # If the label starts with "Habitación " or "door_front ", extract the number
-    import re
-    m = re.search(r'(\d+)$', old)
-    if m:
-        new_label = m.group(1)
-        if old != new_label:
-            db.housekeeping_tasks.update_one({"_id": t["_id"]}, {"$set": {"room_label": new_label}})
-            print(f"  housekeeping_task: {old:>30} → {new_label}")
+    room = None
+    if t.get("room_id"):
+        room = room_by_id.get(t["room_id"])
+    if room is None and t.get("room_label"):
+        room = room_by_label.get(str(t["room_label"]))
+    if not room:
+        continue
+    new_label = str(room.get("room_label") or room.get("room_number", ""))
+    set_data = {
+        "room_id": room["hotel_room_id"],
+        "room_label": new_label,
+        "room_type_id": room.get("room_type_id"),
+        "room_type_name": room.get("room_type_name"),
+    }
+    if t.get("room_id") != room["hotel_room_id"] or t.get("room_label") != new_label:
+        db.housekeeping_tasks.update_one({"_id": t["_id"]}, {"$set": set_data})
+        hk_updated += 1
 
-print(f"\nDone. Updated {updated} hotel_rooms.")
+print(f"\nDone. Updated {updated} hotel_rooms. Synced {hk_updated} housekeeping_tasks.")

@@ -127,7 +127,7 @@
                 <div class="grid-cell grid-day-cell"
                   [class.has-tasks]="count > 0"
                   [class.is-empty-day]="count === 0"
-                  (click)="count === 0 ? openQuickForm(room.room_label, day) : null"
+                  (click)="count === 0 ? openQuickForm(room.room_id, room.room_label, day) : null"
                   [title]="count > 0 ? count + ' tareas' : 'Hacer clic para agendar'">
                   @if (count > 0) {
                     <div class="day-tasks">

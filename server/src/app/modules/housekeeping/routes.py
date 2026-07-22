@@ -259,7 +259,10 @@ def hk_task_create_api(
     current_user: dict = Depends(require_permission("housekeeping.create")),
 ):
     """Create a new housekeeping task."""
-    result = create_housekeeping_task(payload)
+    try:
+        result = create_housekeeping_task(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     diff = {
         k: {"old": None, "new": v}
         for k, v in result.items()
@@ -270,7 +273,7 @@ def hk_task_create_api(
         entity_type="housekeeping_task",
         entity_id=result.get("id", ""),
         action="create",
-        summary=f"Creación de tarea de limpieza: {payload.task_type} — Hab. {payload.room_label}",
+        summary=f"Creación de tarea de limpieza: {payload.task_type} — Hab. {result.get('roomLabel', '')}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
@@ -356,15 +359,18 @@ def hk_task_update_api(
     try:
         before = db.housekeeping_tasks.find_one(
             {"_id": ObjectId(task_id)},
-            {"prop_id": 1, "room_label": 1, "task_type": 1, "status": 1, "assigned_to": 1, "priority": 1, "note": 1, "scheduled_date": 1},
+            {"prop_id": 1, "room_id": 1, "room_label": 1, "task_type": 1, "status": 1, "assigned_to": 1, "priority": 1, "note": 1, "scheduled_date": 1},
         )
     except (InvalidId, Exception):
         before = None
-    result = update_housekeeping_task(task_id, payload)
+    try:
+        result = update_housekeeping_task(task_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     diff = {}
-    for key in ["room_label", "task_type", "status", "assigned_to", "priority", "note", "scheduled_date"]:
+    for key in ["room_id", "task_type", "status", "assigned_to", "priority", "note", "scheduled_date"]:
         old_val = before.get(key) if before else None
         new_val = getattr(payload, key, None)
         if old_val != new_val:
@@ -424,7 +430,7 @@ def mt_task_create_api(
         entity_type="housekeeping_maintenance",
         entity_id=result.get("id", ""),
         action="create",
-        summary=f"Creación de tarea de mantenimiento: {payload.title} — Hab. {payload.room_label}",
+        summary=f"Creación de tarea de mantenimiento: {payload.title} — Hab. {result.get('roomLabel', '')}",
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
@@ -475,7 +481,7 @@ def mt_task_update_api(
     try:
         before = db.maintenance_tasks.find_one(
             {"_id": ObjectId(task_id)},
-            {"prop_id": 1, "room_label": 1, "title": 1, "status": 1, "priority": 1, "task_type": 1, "scheduled_date": 1},
+            {"prop_id": 1, "room_id": 1, "room_label": 1, "title": 1, "status": 1, "priority": 1, "task_type": 1, "scheduled_date": 1},
         )
     except (InvalidId, Exception):
         before = None
@@ -483,7 +489,7 @@ def mt_task_update_api(
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     diff = {}
-    for key in ["room_label", "title", "status", "priority", "task_type", "scheduled_date"]:
+    for key in ["room_id", "title", "status", "priority", "task_type", "scheduled_date"]:
         old_val = before.get(key) if before else None
         new_val = getattr(payload, key, None)
         if old_val != new_val:

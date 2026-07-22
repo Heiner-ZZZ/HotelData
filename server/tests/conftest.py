@@ -95,6 +95,9 @@ TEST_COLLECTIONS = [
     "room_inventory_calendar",
     "room_availability_blocks",
     "blackout_dates",
+    # --- Housekeeping -----------------------------------------------------
+    "housekeeping_tasks",
+    "maintenance_tasks",
     # --- Tarifas y revenue ----------------------------------------------
     "rate_plans",
     "hotel_rate_calendar",

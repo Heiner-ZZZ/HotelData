@@ -35,7 +35,7 @@ for hk_col in hk_collections:
     hk_data = list(db[hk_col].find({"prop_id": 1}).limit(50))
     print(f"\n  Collection '{hk_col}' — {len(hk_data)} docs (limit 50):")
     for hk in hk_data[:35]:
-        rid = hk.get('hotel_room_id') or hk.get('room_id') or hk.get('room_number') or hk.get('_id', '?')
+        rid = hk.get('room_id') or hk.get('hotel_room_id') or hk.get('room_number') or hk.get('_id', '?')
         floor = hk.get('floor', '?')
         status = hk.get('status') or hk.get('state') or '?'
         label = hk.get('room_label') or hk.get('label') or ''
@@ -47,6 +47,20 @@ for hk_col in hk_collections:
 
 # Check for anomalies
 print("\n=== ANOMALIES ===")
+
+# Missing room_id in housekeeping collections
+for hk_col in hk_collections:
+    missing_room_id = db[hk_col].count_documents({
+        "prop_id": 1,
+        "$or": [
+            {"room_id": {"$exists": False}},
+            {"room_id": None},
+            {"room_id": ""}
+        ]
+    })
+    if missing_room_id:
+        print(f"  WARNING: '{hk_col}' has {missing_room_id} docs missing room_id")
+
 room_type_names = [rt['name'] for rt in rtypes]
 print(f"Room type names: {room_type_names}")
 for r in rooms:

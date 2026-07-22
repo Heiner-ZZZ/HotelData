@@ -144,7 +144,7 @@ export class HousekeepingCalendarPageComponent {
 
   // ── Quick create form ──
   readonly showQuickForm = signal(false);
-  readonly quickFormTarget = signal<{ roomLabel: string; date: string } | null>(null);
+  readonly quickFormTarget = signal<{ roomId: string; roomLabel: string; date: string } | null>(null);
   readonly quickFormBusy = signal(false);
 
   readonly quickForm = this.fb.nonNullable.group({
@@ -196,8 +196,8 @@ export class HousekeepingCalendarPageComponent {
   }
 
   // ── Quick create ──
-  openQuickForm(roomLabel: string, date: string): void {
-    this.quickFormTarget.set({ roomLabel, date });
+  openQuickForm(roomId: string, roomLabel: string, date: string): void {
+    this.quickFormTarget.set({ roomId, roomLabel, date });
     this.quickForm.reset({ taskType: 'cleaning', assignedTo: '', priority: 'normal', note: '' });
     this.showQuickForm.set(true);
   }
@@ -217,7 +217,7 @@ export class HousekeepingCalendarPageComponent {
     try {
       await lastValueFrom(this.api.createTask({
         prop_id: this.selectedPropId(),
-        room_label: target.roomLabel,
+        room_id: target.roomId,
         task_type: val.taskType,
         assigned_to: val.assignedTo || undefined,
         priority: val.priority,

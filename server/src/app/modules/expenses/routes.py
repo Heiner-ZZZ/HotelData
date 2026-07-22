@@ -1157,3 +1157,78 @@ def balance_sheet(
         "total_liabilities_and_equity": rhs,
         "is_balanced": abs(total_assets - rhs) < 0.01,
     }
+
+
+# ═══════════════════════════════════════════════════════════
+# Ledger path-based prop_id aliases (frontend contract)
+# ═══════════════════════════════════════════════════════════
+
+@api_router.get("/ledger/chart-of-accounts")
+def chart_of_accounts_alias():
+    """Alias for the chart of accounts endpoint used by the ledger page."""
+    return list_chart_of_accounts()
+
+
+@api_router.get("/ledger/{prop_id}/summary")
+def ledger_summary_by_prop(prop_id: int = Path(..., ge=1)):
+    """Return ledger summary for a specific property."""
+    return ledger_summary(prop_id=prop_id)
+
+
+@api_router.get("/ledger/{prop_id}/periods")
+def ledger_periods_by_prop(prop_id: int = Path(..., ge=1)):
+    """Return distinct ledger periods for a specific property."""
+    return list_ledger_periods(prop_id=prop_id)
+
+
+@api_router.get("/ledger/{prop_id}/transactions")
+def ledger_transactions_by_prop(
+    prop_id: int = Path(..., ge=1),
+    period: str | None = Query(default=None, description="YYYY-MM"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=200),
+    sort_by: str = Query(default="tx_date"),
+    sort_dir: str = Query(default="desc"),
+    search: str | None = Query(default=None),
+):
+    """Return ledger transactions for a specific property.
+
+    Maps the frontend query parameters (sort_by, sort_dir, period)
+    to the parameters expected by the shared list_ledger service.
+    """
+    return list_ledger(
+        prop_id=prop_id,
+        accounting_period=period,
+        page=page,
+        page_size=page_size,
+        sort_field=sort_by,
+        sort_order=sort_dir,
+        search=search,
+    )
+
+
+@api_router.get("/ledger/{prop_id}/trial-balance")
+def trial_balance_by_prop(
+    prop_id: int = Path(..., ge=1),
+    period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Return trial balance for a specific property."""
+    return trial_balance(prop_id=prop_id, accounting_period=period)
+
+
+@api_router.get("/ledger/{prop_id}/income-statement")
+def income_statement_by_prop(
+    prop_id: int = Path(..., ge=1),
+    period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Return income statement for a specific property."""
+    return income_statement(prop_id=prop_id, accounting_period=period)
+
+
+@api_router.get("/ledger/{prop_id}/balance-sheet")
+def balance_sheet_by_prop(
+    prop_id: int = Path(..., ge=1),
+    period: str | None = Query(default=None, description="YYYY-MM"),
+):
+    """Return balance sheet for a specific property."""
+    return balance_sheet(prop_id=prop_id, accounting_period=period)

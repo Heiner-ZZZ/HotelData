@@ -148,7 +148,7 @@ export class MaintenancePageComponent {
 
   // ── Create/Edit Form ──
   readonly createForm = this.fb.nonNullable.group({
-    roomLabel: ['', Validators.required],
+    roomId: ['', Validators.required],
     taskType: ['preventive'],
     title: ['', Validators.required],
     description: [''],
@@ -222,7 +222,7 @@ export class MaintenancePageComponent {
     this.editingId.set(null);
     if (this.showCreateForm()) {
       this.createForm.reset({
-        roomLabel: '',
+        roomId: '',
         taskType: 'preventive',
         title: '',
         description: '',
@@ -250,7 +250,7 @@ export class MaintenancePageComponent {
         }
       }
       this.createForm.patchValue({
-        roomLabel: item.roomNumber || item.roomLabel || '',
+        roomId: item.roomId || '',
         taskType: item.taskType || 'preventive',
         title: item.title || '',
         description: item.description || '',
@@ -267,24 +267,13 @@ export class MaintenancePageComponent {
     this.editingId.set(null);
   }
 
-  private resolveRoomMeta(label: string): { room_type_id: string; room_number: string } {
-    const room = this.roomItems().find(r => (r.roomNumber || r.roomLabel) === label);
-    return {
-      room_type_id: room?.roomTypeId || '',
-      room_number: room?.roomNumber || '',
-    };
-  }
-
   async submitTask(): Promise<void> {
     if (this.createForm.invalid) return;
     const val = this.createForm.getRawValue();
     const editId = this.editingId();
-    const roomMeta = this.resolveRoomMeta(val.roomLabel);
     const payload = {
       prop_id: this.selectedPropId() || 0,
-      room_label: val.roomLabel,
-      room_type_id: roomMeta.room_type_id,
-      room_number: roomMeta.room_number,
+      room_id: val.roomId,
       task_type: val.taskType,
       title: val.title,
       description: val.description || undefined,
@@ -322,7 +311,7 @@ export class MaintenancePageComponent {
     try {
       await lastValueFrom(this.api.updateMaintenance(item.id, {
         prop_id: item.propId,
-        room_label: item.roomLabel,
+        room_id: item.roomId,
         task_type: item.taskType,
         title: item.title,
         description: item.description || undefined,
@@ -350,7 +339,7 @@ export class MaintenancePageComponent {
     try {
       await lastValueFrom(this.api.updateMaintenance(item.id, {
         prop_id: item.propId,
-        room_label: item.roomLabel,
+        room_id: item.roomId,
         task_type: item.taskType,
         title: item.title,
         description: item.description || undefined,

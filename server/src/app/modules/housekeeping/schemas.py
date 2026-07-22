@@ -95,9 +95,7 @@ class RoomStatusLogResponse(BaseModel):
 
 class HousekeepingTaskCreate(BaseModel):
     prop_id: int
-    room_label: str
-    room_type_id: str = ""
-    room_number: str = ""
+    room_id: str  # hotel_room_id (e.g. HR-1-101)
     task_type: str = "cleaning"  # cleaning, deep_clean, turnover, inspection
     assigned_to: str = ""
     priority: str = "normal"  # low, normal, high, urgent
@@ -106,26 +104,9 @@ class HousekeepingTaskCreate(BaseModel):
     status: str = "pending"
 
 
-class HousekeepingTaskResponse(BaseModel):
-    id: str = Field(alias="_id")
-    prop_id: int
-    room_label: str
-    room_type_id: str = ""
-    room_number: str = ""
-    task_type: str
-    status: str
-    assigned_to: str
-    priority: str
-    note: str
-    created_at: str
-    completed_at: str | None = None
-
-
 class MaintenanceTaskCreate(BaseModel):
     prop_id: int
-    room_label: str
-    room_type_id: str = ""
-    room_number: str = ""
+    room_id: str  # hotel_room_id (e.g. HR-1-101)
     task_type: str  # preventive, corrective, inspection
     title: str
     description: str = ""
@@ -133,22 +114,6 @@ class MaintenanceTaskCreate(BaseModel):
     scheduled_date: str = ""
     status: str = "scheduled"
     auto_block: bool = True  # RF-002: block room availability during maintenance
-
-
-class MaintenanceTaskResponse(BaseModel):
-    id: str = Field(alias="_id")
-    prop_id: int
-    room_label: str
-    room_type_id: str = ""
-    room_number: str = ""
-    task_type: str
-    title: str
-    description: str
-    status: str
-    priority: str
-    scheduled_date: str
-    created_at: str
-    completed_at: str | None = None
 
 
 class AdditionalChargeCreate(BaseModel):

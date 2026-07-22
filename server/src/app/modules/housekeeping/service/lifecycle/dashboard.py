@@ -239,6 +239,7 @@ def get_weekly_calendar(
         status = room.get("status", "")
         days_map: dict[str, list[dict[str, Any]]] = {d: [] for d in week_days}
         calendar[label] = {
+            "room_id": room.get("hotel_room_id", ""),
             "room_label": label,
             "room_number": room.get("room_number", ""),
             "status": status,
