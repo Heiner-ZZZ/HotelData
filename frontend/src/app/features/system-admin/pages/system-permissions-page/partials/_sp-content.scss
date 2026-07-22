@@ -293,3 +293,127 @@
   cursor: pointer;
   transition: all 0.18s ease;
 }
+
+/* ─── CRUD Matrix (Catalog & Role Editor) ─── */
+
+.crud-matrix-wrap {
+  overflow-x: auto;
+  max-height: 55vh;
+  overflow-y: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+
+.crud-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  min-width: 600px;
+
+  th, td {
+    padding: 0.45rem 0.55rem;
+    text-align: center;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  th {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    background: color-mix(in srgb, var(--surface) 98%, var(--app-text));
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  tbody tr:hover {
+    background: color-mix(in srgb, var(--accent) 3%, transparent);
+  }
+}
+
+.crud-resource-th {
+  text-align: left !important;
+  min-width: 120px;
+  padding-left: 0.75rem !important;
+}
+
+.crud-action-th {
+  min-width: 64px;
+}
+
+.action-header {
+  display: inline-block;
+  padding: 0.1rem 0.3rem;
+}
+
+.crud-resource-td {
+  text-align: left !important;
+  padding-left: 0.75rem !important;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.crud-resource-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+
+.crud-check-td {
+  width: 48px;
+}
+
+.crud-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  &--partial {
+    input[type="checkbox"] {
+      accent-color: var(--warning);
+    }
+  }
+}
+
+.crud-check-label {
+  font-size: 0.65rem;
+  color: var(--muted-text);
+  margin-left: 0.3rem;
+}
+
+.crud-row--partial {
+  background: color-mix(in srgb, var(--warning) 4%, transparent);
+}
+
+.crud-code-badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  border-radius: 3px;
+  background: var(--accent-light);
+  color: var(--accent);
+  cursor: default;
+}
+
+.crud-cell-td {
+  width: 48px;
+}
+
+.crud-empty {
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  opacity: 0.5;
+}

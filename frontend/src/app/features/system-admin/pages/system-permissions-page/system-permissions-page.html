@@ -1,4 +1,5 @@
 <div class="permissions-page">
+  <app-confirm-dialog />
   <app-page-header
     eyebrow="Administración del Sistema"
     title="Roles y Permisos"
@@ -64,7 +65,6 @@
         @if (editRoleName(); as editing) {
           @if (roleDetail(); as detail) {
             <section class="role-editor-card">
-              <!-- Editor Header -->
               <div class="editor-head">
                 <div class="editor-title">
                   <span class="editor-badge">{{ detail.role.roleName }}</span>
@@ -77,7 +77,6 @@
               </div>
 
               <div class="editor-body">
-                <!-- Left: Permission checkboxes -->
                 <div class="editor-perms">
                   <div class="field">
                     <label class="field-label">Descripción del rol</label>
@@ -91,26 +90,68 @@
                   </div>
 
                   <div class="editor-perms-header">
-                    <span class="field-label">Permisos disponibles</span>
+                    <span class="field-label">Permisos — Matriz CRUD</span>
                     <span class="perm-count">{{ detail.role.permissionCodes.length }} / {{ detail.permissions.length }} seleccionados</span>
                   </div>
 
-                  <div class="permissions-grid">
-                    @for (perm of detail.permissions; track perm.permissionCode) {
-                      <label
-                        class="perm-item"
-                        [class.selected]="detail.role.permissionCodes.includes(perm.permissionCode)"
-                      >
-                        <input
-                          type="checkbox"
-                          [checked]="detail.role.permissionCodes.includes(perm.permissionCode)"
-                          (change)="togglePermission(perm.permissionCode)"
-                        />
-                        <span class="perm-code">{{ perm.permissionCode }}</span>
-                        <span class="perm-desc">{{ perm.description }}</span>
-                      </label>
-                    }
-                  </div>
+                  <!-- CRUD Matrix Checkboxes -->
+                  @if (crudMatrix(); as matrix) {
+                    <div class="crud-matrix-wrap">
+                      <table class="crud-matrix-table">
+                        <thead>
+                          <tr>
+                            <th class="crud-resource-th">Recurso</th>
+                            @for (action of matrix.actions; track action) {
+                              <th class="crud-action-th">{{ action | titlecase }}</th>
+                            }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (row of matrix.rows; track row.resource) {
+                            <tr class="crud-row" [class.crud-row--partial]="isResourcePartiallySelected(row.resource)">
+                              <td class="crud-resource-td">
+                                <span class="crud-resource-name">{{ row.resource }}</span>
+                              </td>
+                              <!-- Manage column: toggle all actions -->
+                              <td class="crud-check-td">
+                                @if (row.actions.manage) {
+                                  <label class="crud-check" [class.crud-check--partial]="isResourcePartiallySelected(row.resource)">
+                                    <input
+                                      type="checkbox"
+                                      [checked]="isResourceFullySelected(row.resource)"
+                                      [indeterminate]="isResourcePartiallySelected(row.resource)"
+                                      (change)="toggleResourceActions(row.resource)"
+                                    />
+                                    <span class="crud-check-label">manage</span>
+                                  </label>
+                                } @else {
+                                  <span class="crud-empty">—</span>
+                                }
+                              </td>
+                              <!-- Individual action columns -->
+                              @for (action of matrix.actions; track action) {
+                                @if (action !== 'manage') {
+                                  <td class="crud-check-td">
+                                    @if (row.actions[action]; as act) {
+                                      <label class="crud-check">
+                                        <input
+                                          type="checkbox"
+                                          [checked]="detail.role.permissionCodes.includes(act.code)"
+                                          (change)="togglePermission(act.code)"
+                                        />
+                                      </label>
+                                    } @else {
+                                      <span class="crud-empty">—</span>
+                                    }
+                                  </td>
+                                }
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
 
                   <div class="editor-actions">
                     <button class="btn btn-primary" [disabled]="saving()" (click)="saveRole()">
@@ -178,8 +219,8 @@
                 (click)="setTab('catalog')"
               >
                 <span class="material-symbols-outlined">list_alt</span>
-                Catálogo
-                <span class="tab-count">{{ vm.permissions.length }}</span>
+                Catálogo CRUD
+                <span class="tab-count">{{ crudMatrix().resources.length }}</span>
               </button>
             </div>
 
@@ -267,37 +308,49 @@
               </div>
             }
 
-            <!-- ── Tab: Permission Catalog ── -->
+            <!-- ── Tab: CRUD Catalog Matrix ── -->
             @if (activeTab() === 'catalog') {
               <div class="tab-content">
                 <div class="catalog-intro">
-                  <span class="catalog-search-icon material-symbols-outlined">search</span>
-                  <span>{{ vm.permissions.length }} permisos registrados en el sistema</span>
+                  <span class="material-symbols-outlined">info</span>
+                  <span>Catálogo de permisos: recursos (filas) × acciones (columnas).</span>
                 </div>
-                <div class="table-wrap">
-                  <table class="catalog-table">
-                    <thead>
-                      <tr>
-                        <th>Código</th>
-                        <th>Descripción</th>
-                        <th>Categoría</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (permission of vm.permissions; track permission.permissionCode) {
+                @if (crudMatrix(); as matrix) {
+                  <div class="crud-matrix-wrap">
+                    <table class="crud-matrix-table">
+                      <thead>
                         <tr>
-                          <td>
-                            <span class="perm-code-badge">{{ permission.permissionCode }}</span>
-                          </td>
-                          <td class="perm-desc-cell">{{ permission.description }}</td>
-                          <td>
-                            <span class="cat-badge">{{ permissionCategory(permission.permissionCode) }}</span>
-                          </td>
+                          <th class="crud-resource-th">Recurso</th>
+                          @for (action of matrix.actions; track action) {
+                            <th class="crud-action-th">
+                              <span class="action-header">{{ action | titlecase }}</span>
+                            </th>
+                          }
                         </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        @for (row of matrix.rows; track row.resource) {
+                          <tr>
+                            <td class="crud-resource-td">
+                              <span class="crud-resource-name">{{ row.resource }}</span>
+                            </td>
+                            @for (action of matrix.actions; track action) {
+                              <td class="crud-cell-td">
+                                @if (row.actions[action]; as act) {
+                                  <span class="crud-code-badge" [title]="act.description">
+                                    {{ act.code }}
+                                  </span>
+                                } @else {
+                                  <span class="crud-empty">—</span>
+                                }
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
               </div>
             }
           </div>

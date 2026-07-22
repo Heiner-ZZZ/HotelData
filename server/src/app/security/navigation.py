@@ -81,7 +81,48 @@ def get_default_redirect_for_role(role_name: str | None) -> str:
     return ROLE_DEFAULT_REDIRECTS.get(role_name or "", "/search")
 
 
+def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[dict[str, Any]]:
+    """Read ALL navigation items from the ``navigation`` DB collection.
+
+    Each item includes a ``visible`` boolean based on whether the user's
+    permission_codes satisfy the item's required_permission.
+
+    Returns empty list if the collection doesn't exist yet (graceful degradation).
+    """
+    try:
+        from src.database.connection import get_database
+        db = get_database()
+        cursor = db.navigation.find({}).sort("sort_order", 1)
+        items: list[dict[str, Any]] = []
+        for doc in cursor:
+            required = doc.get("required_permission")
+            visible = True
+            if required and permission_codes is not None and "*.*" not in permission_codes:
+                visible = required in permission_codes
+            items.append({
+                "label": doc.get("label", ""),
+                "href": doc.get("href", ""),
+                "icon": doc.get("icon", ""),
+                "visible": visible,
+            })
+        return items
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("navigation.get_all_navigation_items failed", exc_info=True)
+        return []
+
+
 def get_navigation_for_role(role_name: str | None, permission_codes: set[str] | None = None) -> list[dict[str, str]]:
+    # ── Try DB-based navigation first ──
+    db_items = get_all_navigation_items(permission_codes)
+    if db_items:
+        return [
+            {"label": item["label"], "href": item["href"], "icon": item["icon"]}
+            for item in db_items if item.get("visible")
+        ]
+
+    # ── Fallback to hardcoded NAVIGATION_BY_ROLE ──
     items = NAVIGATION_BY_ROLE.get(role_name or "", NAVIGATION_BY_ROLE["cliente"])
     if not permission_codes or role_name == "super_admin":
         return [{"label": item["label"], "href": item["href"], "icon": item["icon"]} for item in items]

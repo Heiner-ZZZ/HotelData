@@ -30,26 +30,12 @@ def update_role_definition(
         {
             "$set": {
                 "description": description.strip(),
+                "permissions": valid_codes,
                 "updated_at": utc_now(),
                 "updated_by": acting_user.get("username"),
             }
         },
     )
-
-    db.role_permissions.delete_many({"role_id": role_id, "permission_code": {"$nin": valid_codes}})
-    for permission in permission_docs:
-        db.role_permissions.update_one(
-            {"role_id": role_id, "permission_id": permission["_id"]},
-            {
-                "$set": {
-                    "role_name": role_name,
-                    "permission_code": permission["permission_code"],
-                    "updated_at": utc_now(),
-                },
-                "$setOnInsert": {"created_at": utc_now()},
-            },
-            upsert=True,
-        )
 
     db.user_activity_logs.insert_one(
         {

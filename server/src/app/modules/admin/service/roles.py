@@ -1,8 +1,11 @@
+"""Role editor payloads with DB-backed navigation catalog."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from src.app.security.navigation import NAVIGATION_BY_ROLE, get_navigation_for_role
+from src.app.security.navigation import get_all_navigation_items, get_navigation_for_role
+from src.app.security.permissions import expand_permissions
 from src.database.connection import get_database
 
 from ._helpers import _clean
@@ -19,16 +22,9 @@ def role_editor_payload(role_name: str) -> dict[str, Any] | None:
     permission_map = role_permission_map()
     selected_codes = permission_map.get(role_name, [])
     role_clean["permission_codes"] = selected_codes
-    role_clean["access_buttons"] = get_navigation_for_role(role_name, set(selected_codes))
-    role_clean["navigation_catalog"] = [
-        {
-            "label": item["label"],
-            "href": item["href"],
-            "icon": item["icon"],
-            "visible": any(nav["href"] == item["href"] for nav in role_clean["access_buttons"]),
-        }
-        for item in NAVIGATION_BY_ROLE.get(role_name, [])
-    ]
+    expanded = expand_permissions(set(selected_codes))
+    role_clean["access_buttons"] = get_navigation_for_role(role_name, expanded)
+    role_clean["navigation_catalog"] = get_all_navigation_items(expanded)
     return {
         "role": role_clean,
         "permissions": permissions,
@@ -48,16 +44,9 @@ def role_editor_payload_api(role_name: str) -> dict[str, Any] | None:
     permission_map = role_permission_map()
     selected_codes = permission_map.get(role_name, [])
     role_clean["permission_codes"] = selected_codes
-    role_clean["access_buttons"] = get_navigation_for_role(role_name, set(selected_codes))
-    role_clean["navigation_catalog"] = [
-        {
-            "label": item["label"],
-            "href": item["href"],
-            "icon": item["icon"],
-            "visible": any(nav["href"] == item["href"] for nav in role_clean["access_buttons"]),
-        }
-        for item in NAVIGATION_BY_ROLE.get(role_name, [])
-    ]
+    expanded = expand_permissions(set(selected_codes))
+    role_clean["access_buttons"] = get_navigation_for_role(role_name, expanded)
+    role_clean["navigation_catalog"] = get_all_navigation_items(expanded)
     return {
         "role": role_clean,
         "permissions": permissions,

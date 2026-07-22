@@ -1,3 +1,17 @@
+"""Permission resolution with wildcard expansion.
+
+Permission codes follow the format ``{resource}.{action}`` where:
+- ``action`` is one of: create, read, update, delete, execute, manage
+- ``manage`` is a wildcard that expands to all CRUD actions for that resource
+- ``execute`` is for ETL/data-pipeline operations (no CRUD expansion)
+
+Expansion example:
+    ``reservations.manage``  →  reservations.create, .read, .update, .delete
+    ``etl.execute``          →  etl.execute  (no expansion)
+
+super_admin always gets a sentinel ``*.*`` that bypasses all checks.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -8,6 +22,28 @@ from pymongo.database import Database
 
 
 logger = logging.getLogger(__name__)
+
+# Actions that ``.manage`` expands into
+_MANAGE_CRUD_ACTIONS = ("create", "read", "update", "delete")
+
+
+def expand_permissions(explicit_codes: set[str]) -> set[str]:
+    """Expand wildcard ``resource.manage`` into individual CRUD permissions.
+
+    - ``*.*`` (super_admin sentinel) is returned as-is.
+    - ``resource.manage`` expands to resource.create, .read, .update, .delete
+    - All other codes pass through unchanged.
+    """
+    if "*.*" in explicit_codes:
+        return {"*.*"}
+    expanded = set(explicit_codes)
+    for code in explicit_codes:
+        if "." not in code:
+            continue
+        resource, action = code.split(".", 1)
+        if action == "manage":
+            expanded.update({f"{resource}.{a}" for a in _MANAGE_CRUD_ACTIONS})
+    return expanded
 
 
 def _normalize_role_ids(user: dict[str, Any]) -> list[ObjectId]:
@@ -24,6 +60,17 @@ def _normalize_role_ids(user: dict[str, Any]) -> list[ObjectId]:
 
 
 def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
+    """Return the expanded set of permission codes for a user.
+
+    Reads from ``role_permissions`` junction table, falling back to
+    ``roles.permissions`` array if the junction table is empty
+    (post-migration path).
+    """
+    if not user:
+        return set()
+    if user.get("primary_role") == "super_admin":
+        return {"*.*"}
+
     role_ids = _normalize_role_ids(user)
     primary_role = user.get("primary_role")
     if primary_role:
@@ -31,11 +78,6 @@ def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
         if role and role["_id"] not in role_ids:
             role_ids.append(role["_id"])
         elif not role:
-            # The user has a `primary_role` but the `roles` collection
-            # does not contain it. This usually means the security seed
-            # (`scripts/init_security_model_ga03.py`) has not been run,
-            # or the role was renamed. Log so the gap is visible in
-            # dev/test without crashing the request.
             logger.debug(
                 "permissions.primary_role_unresolved user=%s primary_role=%s",
                 user.get("username"),
@@ -43,13 +85,31 @@ def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
             )
     if not role_ids:
         return set()
+
+    # ── Try role_permissions junction table first (current path) ──
     cursor = db.role_permissions.find({"role_id": {"$in": role_ids}}, {"permission_code": 1})
-    return {item["permission_code"] for item in cursor if item.get("permission_code")}
+    explicit = {item["permission_code"] for item in cursor if item.get("permission_code")}
+
+    # ── Fallback: roles.permissions embedded array (post-migration path) ──
+    if not explicit:
+        roles = db.roles.find({"_id": {"$in": role_ids}}, {"permissions": 1})
+        for r in roles:
+            explicit.update(r.get("permissions", []))
+
+    return expand_permissions(explicit)
 
 
 def user_has_permission(db: Database, user: dict[str, Any] | None, permission_code: str) -> bool:
+    """Check whether a user has a specific permission.
+
+    ``super_admin`` always returns ``True``.
+    Inactive users always return ``False``.
+    """
     if not user or not user.get("is_active", True):
         return False
     if user.get("primary_role") == "super_admin":
         return True
-    return permission_code in get_user_permission_codes(db, user)
+    codes = get_user_permission_codes(db, user)
+    if "*.*" in codes:
+        return True
+    return permission_code in codes

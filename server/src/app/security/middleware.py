@@ -34,6 +34,7 @@ async def role_access_middleware(request: Request, call_next):
     request.state.current_user = user
     request.state.current_session = session
     permission_codes = get_user_permission_codes(db, user) if user else set()
+    request.state.permission_codes = permission_codes
     request.state.navigation = get_navigation_for_user(user, permission_codes)
 
     if path == "/":

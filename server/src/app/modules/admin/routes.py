@@ -356,3 +356,19 @@ def ownership_hotels_search(
 @api_router.get("/ownership/roles")
 def ownership_roles_list(current_user: dict = Depends(require_permission("users.manage"))):
     return {"roles": get_roles_list()}
+
+
+# ─── Navigation (sidebar menu driven by permissions) ────────────────────
+
+@api_router.get("/navigation")
+def navigation_items_api(request: Request, current_user: dict = Depends(require_login)):
+    """Return all navigation items with a ``visible`` flag based on the
+    current user's expanded permission set."""
+    from src.app.security.navigation import get_all_navigation_items
+    from src.database.connection import get_database
+    from src.app.security.permissions import get_user_permission_codes
+
+    db = get_database()
+    codes = get_user_permission_codes(db, current_user)
+    items = get_all_navigation_items(codes)
+    return {"items": items}
