@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from src.app.core.timezone import local_today, local_now
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 _logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def reception_calendar_api(
     prop_id: int = Query(..., ge=1),
     start_date: str | None = Query(default=None),
     end_date: str | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Return reservations for a property grouped by room type for the reception calendar.
 

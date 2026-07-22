@@ -13,7 +13,7 @@ from src.app.modules.lost_and_found.service import (
     module_status,
     update_lost_item,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/modules/lost-and-found", tags=["modules-lost-and-found"])
 api_router = APIRouter(prefix="/api/lost-and-found", tags=["lost-and-found-api"])
@@ -27,7 +27,7 @@ def lost_and_found_module_status() -> ModuleStatus:
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def create_lost_item_api(
     payload: LostItemCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.create")),
 ):
     """Register a new lost & found item."""
     result = create_lost_item(payload)
@@ -49,7 +49,7 @@ def list_lost_items_api(
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """List lost & found items with optional filters."""
     return list_lost_items(
@@ -65,7 +65,7 @@ def list_lost_items_api(
 @api_router.get("/{item_id}")
 def get_lost_item_api(
     item_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
 ):
     """Get a single lost & found item."""
     result = get_lost_item(item_id)
@@ -78,7 +78,7 @@ def get_lost_item_api(
 def update_lost_item_api(
     item_id: str,
     payload: LostItemUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Update a lost & found item."""
     result = update_lost_item(item_id, payload)
@@ -90,7 +90,7 @@ def update_lost_item_api(
 @api_router.delete("/{item_id}")
 def delete_lost_item_api(
     item_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.delete")),
 ):
     """Permanently delete a lost & found item."""
     result = delete_lost_item(item_id)
@@ -103,7 +103,7 @@ def delete_lost_item_api(
 def claim_lost_item_api(
     item_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Mark a lost item as returned to the guest."""
     result = claim_lost_item(
@@ -127,7 +127,7 @@ def claim_lost_item_api(
 def dispose_lost_item_api(
     item_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("housekeeping.update")),
 ):
     """Mark a lost item as disposed (donated, thrown away, etc.)."""
     result = dispose_lost_item(

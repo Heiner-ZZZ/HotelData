@@ -35,7 +35,7 @@ from src.app.modules.instay.routes_impl._helpers import (
     _iso,
 )
 from src.app.modules.instay.routes_impl._event_manager import StayEventManager
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 guest_router = APIRouter(prefix="/api/stay/guest", tags=["instay-guest"])
@@ -52,7 +52,7 @@ _TOKEN_BYTES = 32
 @staff_router.post("/my-session")
 def get_my_stay_session(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("account.read")),
 ):
     booking_id = (payload.get("booking_id") or "").strip()
     if not booking_id:
@@ -106,7 +106,7 @@ def get_my_stay_session(
 @staff_router.post("/sessions", status_code=201)
 def create_stay_session(
     payload: StaySessionCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.manage")),
 ):
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
@@ -136,7 +136,7 @@ def list_stay_sessions(
     active_only: bool = Query(default=True),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     db = get_database()
     query: dict = {}
@@ -153,7 +153,7 @@ def list_stay_sessions(
 @staff_router.post("/sessions/cleanup-expired")
 def cleanup_expired_stay_sessions(
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.manage")),
 ):
     """Deactivate stay sessions whose check-out date has already passed.
 
@@ -190,7 +190,7 @@ def cleanup_expired_stay_sessions(
 
 
 @staff_router.get("/sessions/{token}")
-def get_stay_session(token: str, current_user: dict = Depends(require_login)):
+def get_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.read"))):
     db = get_database()
     session = db.stay_sessions.find_one({"token": token})
     if not session:
@@ -199,7 +199,7 @@ def get_stay_session(token: str, current_user: dict = Depends(require_login)):
 
 
 @staff_router.post("/sessions/{token}/deactivate")
-def deactivate_stay_session(token: str, current_user: dict = Depends(require_login)):
+def deactivate_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.manage"))):
     db = get_database()
     result = db.stay_sessions.update_one({"token": token}, {"$set": {"active": False, "deactivated_at": utc_now()}})
     if result.matched_count == 0:
@@ -218,7 +218,7 @@ def list_service_requests(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     db = get_database()
     query: dict = {}
@@ -240,7 +240,7 @@ def list_service_requests(
 @staff_router.post("/requests", status_code=201)
 def staff_create_request(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.manage")),
 ):
     """Create a service request from the staff inbox on behalf of a guest."""
     booking_id = (payload.get("booking_id") or "").strip()
@@ -317,7 +317,7 @@ def staff_create_request(
 def update_service_request(
     request_id: str,
     payload: ServiceRequestUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     db = get_database()
     # Fetch the request before updating to get its current state
@@ -363,7 +363,7 @@ def update_service_request(
 @staff_router.get("/conversations")
 def list_conversations(
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     db = get_database()
     match: dict = {}
@@ -400,7 +400,7 @@ def list_conversations(
 
 
 @staff_router.get("/conversations/{room_label}")
-def get_conversation_messages(room_label: str, prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_login)):
+def get_conversation_messages(room_label: str, prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_permission("reservations.read"))):
     db = get_database()
     query: dict = {"room_label": room_label}
     if prop_id:
@@ -421,7 +421,7 @@ def get_conversation_messages(room_label: str, prop_id: int | None = Query(defau
 @staff_router.get("/notifications/stream")
 async def staff_notifications_stream(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Server-Sent Events stream for real-time staff notifications.
 
@@ -462,7 +462,7 @@ async def staff_notifications_stream(
 
 
 @staff_router.post("/conversations/{room_label}/reply")
-def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.manage"))):
     message = payload.get("message", "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío.")

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
 from src.database.connection import get_database
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from .service import (
     get_guest_amenity_catalog,
     list_amenity_stock,
@@ -129,7 +129,7 @@ def guest_amenity_request_api(
 def stock_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     amenity_label: str | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.read")),
 ):
     """List amenity stock records with optional filters."""
     return list_amenity_stock(prop_id=prop_id, amenity_label=amenity_label)
@@ -138,7 +138,7 @@ def stock_list_api(
 @admin_router.put("")
 def stock_set_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.manage")),
 ):
     """Set stock for an amenity (create or reset).
 

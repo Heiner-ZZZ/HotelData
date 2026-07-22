@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 from .shifts import (
     open_shift,
@@ -19,7 +19,7 @@ api_router = APIRouter(prefix="/api/reception", tags=["reception-api"])
 @api_router.get("/shifts/active")
 def shift_active_api(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Return the currently active shift for a property, or null."""
     shift = get_active_shift(prop_id)
@@ -31,7 +31,7 @@ def shift_active_api(
 @api_router.post("/shifts/open")
 def shift_open_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.manage")),
 ):
     """Open a new reception shift."""
     prop_id = payload.get("prop_id")
@@ -62,7 +62,7 @@ def shift_open_api(
 def shift_close_api(
     shift_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.manage")),
 ):
     """Close an active shift with final cash count and optional deposits."""
     cash_final = float(payload.get("cash_final", 0) or 0)
@@ -104,7 +104,7 @@ def shift_close_api(
 @api_router.get("/shifts/{shift_id}")
 def shift_detail_api(
     shift_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Return detailed info for a specific shift."""
     shift = get_shift(shift_id)
@@ -118,7 +118,7 @@ def shift_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """List shifts for a property, newest first."""
     shifts = list_shifts(prop_id=prop_id, status_filter=status_filter, limit=limit)

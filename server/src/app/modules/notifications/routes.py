@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 def my_notifications_api(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("account.read")),
 ):
     """Return notifications for the current user, filtered by their email."""
     db = get_database()

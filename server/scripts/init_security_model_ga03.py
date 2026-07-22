@@ -201,6 +201,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "search.read",
         "account.read", "account.update",
         "reservations.read", "reservations.create",
+        "billing.read", "payments.read",
     ],
 }
 

@@ -20,7 +20,7 @@ from src.app.modules.map.service import (
     list_hotels_with_geo,
     update_destination,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def destinations_list_api(
     page_size: int = Query(default=50, ge=1, le=200),
     search: str | None = Query(default=None),
     has_geo: bool | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """List destinations with optional search and geo filter (CU-O35)."""
     return list_destinations(page=page, page_size=page_size, search=search, has_geo=has_geo)
@@ -47,7 +47,7 @@ def destinations_list_api(
 @router.get("/destinations/{destination_id}")
 def destination_get_api(
     destination_id: int,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """Get a single destination by ID."""
     result = get_destination(destination_id)
@@ -60,7 +60,7 @@ def destination_get_api(
 def destination_update_api(
     destination_id: int,
     payload: DestinationUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.manage")),
 ):
     """Update destination metadata — name, coordinates, country, city, description (CU-O35, CU-O38)."""
     data = payload.model_dump(exclude_unset=True)
@@ -77,7 +77,7 @@ def destination_update_api(
 
 @router.get("/geo/destinations")
 def geo_destinations_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """List destinations with coordinates for map display (CU-O37)."""
     return {"items": list_geo_destinations()}
@@ -85,7 +85,7 @@ def geo_destinations_api(
 
 @router.get("/geo/hotels")
 def geo_hotels_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """List hotels with geo location (via destination) for map display (CU-O37)."""
     return {"items": list_hotels_with_geo()}

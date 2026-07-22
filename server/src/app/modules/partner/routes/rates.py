@@ -43,6 +43,8 @@ def rates_options_api(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     current_user: dict = Depends(require_permission("rates.read")),
+):
+    return get_rates_options(prop_id, q, page, page_size, current_user)
 
 
 @api_router.post("/rates/plans", status_code=201)

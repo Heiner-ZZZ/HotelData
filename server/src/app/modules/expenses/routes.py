@@ -17,7 +17,7 @@ from src.app.modules.expenses.service.collections import (
     ensure_expenses_collections, module_status,
 )
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
@@ -157,7 +157,7 @@ def expenses_dashboard(
 @api_router.post("/invoices", status_code=201)
 def create_invoice(
     payload: InvoiceCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("revenue.manage")),
 ):
     db = get_database()
     now_dt = datetime.now(timezone.utc)
@@ -268,7 +268,7 @@ def get_invoice(
 def update_invoice(
     invoice_id: str = Path(...),
     payload: InvoiceUpdate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("revenue.manage")),
 ):
     db = get_database()
     try:
@@ -311,7 +311,7 @@ def update_invoice(
 @api_router.delete("/invoices/{invoice_id}", status_code=204)
 def delete_invoice(
     invoice_id: str = Path(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("revenue.manage")),
 ):
     db = get_database()
     try:

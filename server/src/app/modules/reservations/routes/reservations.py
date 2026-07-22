@@ -30,7 +30,8 @@ from src.app.modules.reservations.routes.reservations_impl import (
     validate_rate_plan_eligibility,
     export_reservations_csv,
     preview_reservation,
-)from src.app.security.dependencies import require_permission
+)
+from src.app.security.dependencies import require_permission
 
 from src.database.connection import get_database
 
