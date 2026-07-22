@@ -419,14 +419,17 @@ def mt_task_create_api(
     current_user: dict = Depends(require_permission("maintenance.manage")),
 ):
     """Create a new maintenance task."""
-    result = create_maintenance_task(payload)
+    try:
+        result = create_maintenance_task(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     diff = {
         k: {"old": None, "new": v}
         for k, v in result.items()
         if k not in ("id", "created_at", "completed_at") and v is not None
     }
     register_action(
-        prop_id=result.get("prop_id", payload.prop_id),
+        prop_id=result.get("propId", payload.prop_id),
         entity_type="housekeeping_maintenance",
         entity_id=result.get("id", ""),
         action="create",
@@ -485,7 +488,10 @@ def mt_task_update_api(
         )
     except (InvalidId, Exception):
         before = None
-    result = update_maintenance_task(task_id, payload)
+    try:
+        result = update_maintenance_task(task_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if result is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     diff = {}

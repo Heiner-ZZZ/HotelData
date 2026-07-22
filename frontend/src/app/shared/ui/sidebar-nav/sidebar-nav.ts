@@ -146,13 +146,27 @@ export class SidebarNavComponent {
 
     const subSections: SidebarSubSection[] = [];
     for (const [sectionName, group] of subGroups) {
-      if (group.children.length === 0) continue;
+      const children = [...group.children];
+
+      // If the section header itself is a navigable page, surface it as the
+      // first normal item inside the sub-menu so the header can stay as a
+      // non-clickable label.
+      if (group.header?.href && !children.some(i => i.href === group.header!.href)) {
+        children.unshift({
+          label: group.header.label,
+          href: group.header.href,
+          icon: group.header.icon ?? 'folder',
+          visible: true,
+        });
+      }
+
+      if (children.length === 0) continue;
       subSections.push({
         id: `${parentId}:${sectionName}`,
         label: group.header?.label ?? sectionName,
         icon: group.header?.icon ?? 'folder',
         href: group.header?.href,
-        items: group.children,
+        items: children,
       });
     }
 

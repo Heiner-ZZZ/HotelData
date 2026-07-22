@@ -22,6 +22,8 @@ from src.app.security.dependencies import require_permission
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
 
+DEFAULT_LEDGER_PAGE_SIZE = 50
+
 
 def _enrich_invoice(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
@@ -422,7 +424,7 @@ def list_ledger(
     status_filter: str | None = Query(default=None, alias="status"),
     search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=200),
+    page_size: int = Query(default=DEFAULT_LEDGER_PAGE_SIZE, ge=1, le=200),
     sort_field: str = Query(default="tx_date"),
     sort_order: str = Query(default="desc"),
 ):
@@ -1186,7 +1188,7 @@ def ledger_transactions_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=100, ge=1, le=200),
+    page_size: int = Query(default=DEFAULT_LEDGER_PAGE_SIZE, ge=1, le=200),
     sort_by: str = Query(default="tx_date"),
     sort_dir: str = Query(default="desc"),
     search: str | None = Query(default=None),

@@ -41,21 +41,11 @@
 
             <!-- Sub-sections (collapsible groups like RRHH, Housekeeping) -->
             @for (sub of section.subSections; track sub.id) {
-              <div class="sidebar-subsection">
-                <div
-                  class="sub-section-header"
-                  [class.is-open]="openSubSection() === sub.id"
-                >
-                  <a
-                    class="sub-section-label-link"
-                    [routerLink]="sub.href"
-                    [queryParams]="linkParams()"
-                    routerLinkActive="is-active"
-                    [routerLinkActiveOptions]="{ exact: true }"
-                  >
+              <div class="sidebar-subsection">                <div class="sub-section-header" [class.is-open]="openSubSection() === sub.id">
+                  <span class="sub-section-label">
                     <span class="material-symbols-outlined link-icon">{{ sub.icon }}</span>
                     <span class="link-label">{{ sub.label }}</span>
-                  </a>
+                  </span>
                   <button
                     type="button"
                     class="sub-section-toggle"

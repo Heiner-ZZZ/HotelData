@@ -358,26 +358,16 @@
   }
 }
 
-.sub-section-label-link {
+.sub-section-label {
   display: flex;
   align-items: center;
   gap: 0.7rem;
   flex: 1;
   padding: 0.4rem 0 0.4rem 0.75rem;
   color: var(--muted-text);
-  text-decoration: none;
   font-size: 0.84rem;
   font-weight: 500;
-  transition: color 0.12s;
-
-  &:hover {
-    color: var(--app-text);
-  }
-
-  &.is-active {
-    color: var(--accent);
-    font-weight: 600;
-  }
+  user-select: none;
 
   .link-icon {
     font-size: 1.1rem;

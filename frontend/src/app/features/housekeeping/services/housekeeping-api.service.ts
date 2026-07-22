@@ -45,6 +45,7 @@ export interface HousekeepingTaskItem {
 export interface MaintenanceTaskItem {
   id: string;
   propId: number;
+  roomId: string;
   roomLabel: string;
   roomTypeId: string;
   roomNumber: string;

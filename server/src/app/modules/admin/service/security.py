@@ -10,12 +10,20 @@ from ._helpers import _clean, ensure_user_status_field
 
 
 def role_permission_map() -> dict[str, list[str]]:
-    """Return role_name → [permission_code, ...] from the embedded ``roles.permissions`` array."""
+    """Return role_name → [permission_code, ...] from the embedded ``roles.permissions`` array.
+
+    ``super_admin`` is always mapped to every permission in the catalog so it
+    appears with all permissions in the dashboard and role editor.
+    """
     db = get_database()
     mapping: dict[str, list[str]] = {}
+    all_permission_codes = [p["permission_code"] for p in db.permissions.find({}, {"permission_code": 1}).sort("permission_code", 1)]
 
     for role in db.roles.find({}, {"role_name": 1, "permissions": 1}):
         role_name = role.get("role_name")
+        if role_name == "super_admin":
+            mapping[role_name] = all_permission_codes
+            continue
         perms = role.get("permissions", [])
         if role_name and perms:
             mapping[role_name] = perms

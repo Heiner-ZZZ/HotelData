@@ -48,50 +48,54 @@ def migrate_maintenance_room_id(dry_run: bool = False) -> dict:
     cursor = collection.find(query, {"_id": 1, "prop_id": 1, "room_label": 1, "room_number": 1})
 
     for doc in cursor:
-        prop_id = doc.get("prop_id")
-        room_label = doc.get("room_label") or ""
-        room_number = doc.get("room_number") or ""
+        try:
+            prop_id = doc.get("prop_id")
+            room_label = doc.get("room_label") or ""
+            room_number = doc.get("room_number") or ""
 
-        if not prop_id or not room_label:
-            logger.warning("Skipping doc %s: missing prop_id or room_label", doc["_id"])
-            skipped += 1
-            continue
+            if not prop_id or not room_label:
+                logger.warning("Skipping doc %s: missing prop_id or room_label", doc["_id"])
+                skipped += 1
+                continue
 
-        # Try exact room_label match first, then room_number fallback
-        room_query: dict = {"prop_id": prop_id, "$or": []}
-        if room_label:
-            room_query["$or"].append({"room_label": room_label})
-        if room_number:
-            room_query["$or"].append({"room_number": room_number})
+            # Try exact room_label match first, then room_number fallback
+            room_query: dict = {"prop_id": prop_id, "$or": []}
+            if room_label:
+                room_query["$or"].append({"room_label": room_label})
+            if room_number:
+                room_query["$or"].append({"room_number": room_number})
 
-        if not room_query["$or"]:
-            skipped += 1
-            continue
+            if not room_query["$or"]:
+                skipped += 1
+                continue
 
-        room = db["hotel_rooms"].find_one(
-            room_query,
-            {"_id": 0, "hotel_room_id": 1},
-        )
-
-        if not room or not room.get("hotel_room_id"):
-            logger.warning(
-                "Could not resolve hotel_room_id for maintenance_task %s (prop_id=%s, room_label=%s)",
-                doc["_id"], prop_id, room_label,
+            room = db["hotel_rooms"].find_one(
+                room_query,
+                {"_id": 0, "hotel_room_id": 1},
             )
-            skipped += 1
-            continue
 
-        hotel_room_id = room["hotel_room_id"]
-        if dry_run:
-            logger.info("[DRY-RUN] Would update %s with room_id=%s", doc["_id"], hotel_room_id)
+            if not room or not room.get("hotel_room_id"):
+                logger.warning(
+                    "Could not resolve hotel_room_id for maintenance_task %s (prop_id=%s, room_label=%s)",
+                    doc["_id"], prop_id, room_label,
+                )
+                skipped += 1
+                continue
+
+            hotel_room_id = room["hotel_room_id"]
+            if dry_run:
+                logger.info("[DRY-RUN] Would update %s with room_id=%s", doc["_id"], hotel_room_id)
+                updated += 1
+                continue
+
+            collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"room_id": hotel_room_id}},
+            )
             updated += 1
-            continue
-
-        collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"room_id": hotel_room_id}},
-        )
-        updated += 1
+        except Exception as exc:
+            logger.exception("Failed to migrate maintenance_task %s: %s", doc.get("_id"), exc)
+            skipped += 1
 
     return {"total": total, "updated": updated, "skipped": skipped}
 
