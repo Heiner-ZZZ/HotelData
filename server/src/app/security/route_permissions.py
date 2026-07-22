@@ -59,7 +59,7 @@ ROUTE_RULES = [
     ),
     AccessRule("/api/billing/my-invoices", roles=("cliente", "super_admin", "admin_sistema")),
     AccessRule("/api/billing",
-        roles=("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "auditor_datos", "operador_datos"),
+        roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "auditor_datos", "operador_datos"),
     ),
     AccessRule("/api/notifications",
         roles=("cliente", "super_admin", "admin_sistema", "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero", "auditor_datos", "operador_datos"),

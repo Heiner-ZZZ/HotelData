@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query, status as http_status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status as http_status
 
 from src.app.modules.revenue.schemas import ModuleStatus
 from src.app.modules.revenue.services import (
@@ -15,6 +15,8 @@ from src.app.modules.revenue.services import (
     update_promotion_campaign,
 )
 
+from src.app.security.dependencies import require_permission
+
 
 router = APIRouter(prefix="/modules/revenue", tags=["modules-revenue"])
 api_router = APIRouter(prefix="/api/management", tags=["management-revenue-api"])
@@ -26,7 +28,7 @@ def revenue_status() -> ModuleStatus:
 
 
 @api_router.get("/rates")
-def rates_api(prop_id: int = Query(..., ge=1)):
+def rates_api(prop_id: int = Query(..., ge=1), current_user: dict = Depends(require_permission("rates.read"))):
     return hotel_rates_overview(prop_id)
 
 
@@ -36,6 +38,7 @@ def rates_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
+    current_user: dict = Depends(require_permission("rates.read")),
 ):
     from src.app.modules.partner.services import list_partner_hotels
 
@@ -60,7 +63,7 @@ def rates_options_api(
 
 
 @api_router.get("/rates/plans/{plan_id}")
-def get_rate_plan_api(plan_id: str):
+def get_rate_plan_api(plan_id: str, current_user: dict = Depends(require_permission("rates.read"))):
     """Get a single rate plan by its rate_plan_id."""
     result = get_rate_plan(plan_id)
     if result is None:
@@ -69,7 +72,7 @@ def get_rate_plan_api(plan_id: str):
 
 
 @api_router.post("/rates/plans", status_code=http_status.HTTP_201_CREATED)
-def create_rate_plan_api(payload: dict = Body(...)):
+def create_rate_plan_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("rates.manage"))):
     try:
         return create_rate_plan(
             prop_id=payload.get("prop_id"),
@@ -84,7 +87,7 @@ def create_rate_plan_api(payload: dict = Body(...)):
 
 
 @api_router.post("/rates/calendar")
-def save_rate_calendar_api(payload: dict = Body(...)):
+def save_rate_calendar_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("rates.update"))):
     try:
         return save_hotel_rate(
             prop_id=int(payload.get("prop_id") or 0),
@@ -102,7 +105,7 @@ def save_rate_calendar_api(payload: dict = Body(...)):
 
 
 @api_router.get("/promotions")
-def list_promotions_api(prop_id: int = Query(..., ge=1)):
+def list_promotions_api(prop_id: int = Query(..., ge=1), current_user: dict = Depends(require_permission("promotions.read"))):
     """RF-004: Listar campañas promocionales por propiedad."""
     try:
         return list_property_campaigns(prop_id)
@@ -111,7 +114,7 @@ def list_promotions_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.post("/promotions", status_code=http_status.HTTP_201_CREATED)
-def create_promotion_api(payload: dict = Body(...)):
+def create_promotion_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("promotions.manage"))):
     """RF-001/RF-002: Crear campaña con N cupones."""
     try:
         return create_promotion_campaign(
@@ -130,7 +133,7 @@ def create_promotion_api(payload: dict = Body(...)):
 
 
 @api_router.put("/promotions/{campaign_id}")
-def update_promotion_api(campaign_id: str, payload: dict = Body(...)):
+def update_promotion_api(campaign_id: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("promotions.manage"))):
     """RF-006: Editar campaña promocional."""
     try:
         return update_promotion_campaign(
@@ -148,7 +151,7 @@ def update_promotion_api(campaign_id: str, payload: dict = Body(...)):
 
 
 @api_router.post("/promotions/{campaign_id}/toggle")
-def toggle_promotion_api(campaign_id: str):
+def toggle_promotion_api(campaign_id: str, current_user: dict = Depends(require_permission("promotions.manage"))):
     """RF-003: Activar/desactivar campaña."""
     try:
         return toggle_promotion_campaign(campaign_id)

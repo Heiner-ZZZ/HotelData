@@ -61,16 +61,13 @@ def seed(uri: str = "mongodb://localhost:27018", db_name: str = "hoteldata_hub")
         )
     print(f"Seeded {len(PERMISSIONS)} permissions")
 
-    db.role_permissions.delete_many({})
-    db.role_permissions.drop_indexes()
     for role_name, perms in ROLE_PERMISSIONS.items():
-        for perm in perms:
-            db.role_permissions.update_one(
-                {"role_name": role_name, "permission_code": perm},
-                {"$set": {"role_name": role_name, "permission_code": perm}},
-                upsert=True,
-            )
-    print("Seeded role-permission mappings")
+        db.roles.update_one(
+            {"role_name": role_name},
+            {"$set": {"permissions": perms, "updated_at": None}},
+            upsert=True,
+        )
+    print("Seeded role-permission mappings (embedded in roles)")
 
     for u in USERS:
         from datetime import datetime, timezone

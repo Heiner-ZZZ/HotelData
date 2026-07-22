@@ -40,7 +40,7 @@ from src.database.connection import get_database
 #
 # Source of truth: `docs/ga03/diseno_base_datos_ga03.md` (12 active
 # dimensions + 2 legacy), `docs/ga03/modelo_seguridad_implementado.md`
-# (3 security lookups: roles, permissions, role_permissions) and
+# (2 security lookups: roles, permissions) and
 # `docs/modelo_colecciones.md` (control + documentary collections).
 TEST_COLLECTIONS = [
     # --- Security ---------------------------------------------------------
@@ -49,7 +49,6 @@ TEST_COLLECTIONS = [
     "user_activity_logs",
     "roles",
     "permissions",
-    "role_permissions",
     # --- Control ETL ------------------------------------------------------
     "etl_executions",
     "data_quality_reports",

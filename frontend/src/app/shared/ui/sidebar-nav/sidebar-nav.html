@@ -25,6 +25,7 @@
 
         <div class="section-items-wrapper" [class.is-open]="openSection() === section.id">
           <div class="section-items">
+            <!-- Flat items (no sub-section grouping) -->
             @for (item of section.items; track item.href) {
               <a
                 class="section-link"
@@ -36,6 +37,53 @@
                 <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
                 <span class="link-label">{{ item.label }}</span>
               </a>
+            }
+
+            <!-- Sub-sections (collapsible groups like RRHH, Housekeeping) -->
+            @for (sub of section.subSections; track sub.id) {
+              <div class="sidebar-subsection">
+                <div
+                  class="sub-section-header"
+                  [class.is-open]="openSubSection() === sub.id"
+                >
+                  <a
+                    class="sub-section-label-link"
+                    [routerLink]="sub.href"
+                    [queryParams]="linkParams()"
+                    routerLinkActive="is-active"
+                    [routerLinkActiveOptions]="{ exact: true }"
+                  >
+                    <span class="material-symbols-outlined link-icon">{{ sub.icon }}</span>
+                    <span class="link-label">{{ sub.label }}</span>
+                  </a>
+                  <button
+                    type="button"
+                    class="sub-section-toggle"
+                    (click)="toggleSubSection(sub.id)"
+                    aria-expanded="openSubSection() === sub.id"
+                    [attr.aria-label]="openSubSection() === sub.id ? 'Colapsar ' + sub.label : 'Expandir ' + sub.label"
+                  >
+                    <span class="material-symbols-outlined sub-chevron">expand_more</span>
+                  </button>
+                </div>
+
+                <div class="sub-section-items" [class.is-open]="openSubSection() === sub.id">
+                  <div class="section-items">
+                    @for (item of sub.items; track item.href) {
+                      <a
+                        class="section-link sub-link"
+                        routerLinkActive="is-active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        [routerLink]="item.href"
+                        [queryParams]="linkParams()"
+                      >
+                        <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
+                        <span class="link-label">{{ item.label }}</span>
+                      </a>
+                    }
+                  </div>
+                </div>
+              </div>
             }
           </div>
         </div>

@@ -14,6 +14,16 @@ interface SidebarItem {
   href: string;
   icon: string;
   visible: boolean;
+  section?: string | null;
+  is_section_header?: boolean;
+}
+
+interface SidebarSubSection {
+  id: string;
+  label: string;
+  icon: string;
+  href?: string;
+  items: SidebarItem[];
 }
 
 interface SidebarSection {
@@ -21,6 +31,7 @@ interface SidebarSection {
   label: string;
   icon: string;
   items: SidebarItem[];
+  subSections: SidebarSubSection[];
 }
 
 interface NavigationResponse {
@@ -57,7 +68,11 @@ export class SidebarNavComponent {
     defaultValue: { items: [] },
   });
 
-  /** Group navigation items into collapsible sections by href prefix. */
+  /** Open sub-section IDs within each main section. key: "sectionId:subSectionId" */
+  readonly openSubSection = signal<string | null>(null);
+
+  /** Group navigation items into collapsible sections by href prefix,
+   *  with nested sub-sections for items that share a ``section`` field. */
   readonly sections = computed<SidebarSection[]>(() => {
     const items = this.navResource.value()?.items ?? [];
     const visible = items.filter(i => i.visible);
@@ -84,24 +99,71 @@ export class SidebarNavComponent {
 
     for (const item of visible) {
       for (const def of sectionDefs) {
-        if (item.href.startsWith(def.prefix)) {
+        if (this._hrefInSection(item.href, def.prefix)) {
           sectionMap.get(def.id)!.push(item);
           break;
         }
       }
     }
 
-    // Build ordered sections (only include those with items)
+    // Build ordered sections with sub-section grouping
     const orderedIds = ['gestion', 'sistema', 'propietario', 'huesped'];
     return orderedIds
       .filter(id => sectionMap.has(id) && sectionMap.get(id)!.length > 0)
-      .map(id => ({
-        id,
-        label: sectionMeta.get(id)!.label,
-        icon: sectionMeta.get(id)!.icon,
-        items: sectionMap.get(id)!,
-      }));
+      .map(id => {
+        const rawItems = sectionMap.get(id)!;
+        return this._groupIntoSubSections(id, rawItems, sectionMeta.get(id)!);
+      });
   });
+
+  /** Split items into flat links and sub-section groups. */
+  private _groupIntoSubSections(
+    parentId: string,
+    items: SidebarItem[],
+    meta: { label: string; icon: string },
+  ): SidebarSection {
+    const flatItems: SidebarItem[] = [];
+    const subGroups = new Map<string, { header: SidebarItem | null; children: SidebarItem[] }>();
+
+    for (const item of items) {
+      const section = item.section || null;
+      if (!section) {
+        flatItems.push(item);
+        continue;
+      }
+
+      if (!subGroups.has(section)) {
+        subGroups.set(section, { header: null, children: [] });
+      }
+      const group = subGroups.get(section)!;
+
+      if (item.is_section_header) {
+        group.header = item;
+      } else {
+        group.children.push(item);
+      }
+    }
+
+    const subSections: SidebarSubSection[] = [];
+    for (const [sectionName, group] of subGroups) {
+      if (group.children.length === 0) continue;
+      subSections.push({
+        id: `${parentId}:${sectionName}`,
+        label: group.header?.label ?? sectionName,
+        icon: group.header?.icon ?? 'folder',
+        href: group.header?.href,
+        items: group.children,
+      });
+    }
+
+    return {
+      id: parentId,
+      label: meta.label,
+      icon: meta.icon,
+      items: flatItems,
+      subSections,
+    };
+  }
 
   readonly visibleSections = this.sections;
 
@@ -125,17 +187,44 @@ export class SidebarNavComponent {
   private _autoExpandActiveSection(): void {
     const url = this.router.url.split('?')[0];
     for (const section of this.visibleSections()) {
+      // Check flat items
       for (const item of section.items) {
-        if (url === item.href || url.startsWith(item.href + '/')) {
+        if (this._urlMatches(url, item.href)) {
           this.openSection.set(section.id);
           return;
+        }
+      }
+      // Check sub-section items
+      for (const sub of section.subSections) {
+        for (const item of sub.items) {
+          if (this._urlMatches(url, item.href)) {
+            this.openSection.set(section.id);
+            this.openSubSection.set(sub.id);
+            return;
+          }
         }
       }
     }
   }
 
+  private _urlMatches(current: string, target: string): boolean {
+    return current === target || current.startsWith(target + '/');
+  }
+
   toggleSection(id: string) {
     this.openSection.update(v => v === id ? null : id);
+  }
+
+  toggleSubSection(id: string) {
+    this.openSubSection.update(v => v === id ? null : id);
+  }
+
+  /** Match an href against a section prefix. If prefix ends with ``/``,
+   *  also match the exact href without the trailing slash (e.g. ``/management`` vs ``/management/``). */
+  private _hrefInSection(href: string, prefix: string): boolean {
+    if (href.startsWith(prefix)) return true;
+    if (prefix.endsWith('/') && href === prefix.slice(0, -1)) return true;
+    return false;
   }
 
   trackByHref(_index: number, item: SidebarItem): string {

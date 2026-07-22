@@ -3,8 +3,8 @@
 Copies all permission codes from ``role_permissions`` into a ``permissions``
 array directly on each role document. After this migration:
 - ``roles.permissions: [...]`` is the canonical source of truth
-- ``role_permissions`` junction table is preserved as read-only backup (no longer written to)
-- ``permissions.py`` already prefers the embedded array when the junction table is empty
+- ``role_permissions`` collection should be dropped manually after verification
+- ``permissions.py`` reads from the embedded array directly
 
 Usage:
   docker compose -f infra/docker-compose.yml exec -T server python scripts/migrate_role_permissions_embedded.py

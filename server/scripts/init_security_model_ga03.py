@@ -31,7 +31,6 @@ SECURITY_COLLECTIONS = [
     "users",
     "roles",
     "permissions",
-    "role_permissions",  # deprecated — kept for backward compat, no longer written to
     "navigation",
     "user_sessions",
     "user_activity_logs",
@@ -169,6 +168,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "hotels.manage", "properties.read", "rooms.read",
         "reservations.manage",
         "revenue.read",
+        "promotions.read", "promotions.manage",
     ],
     "gerente_hotel": [
         "dashboard.read",
@@ -176,6 +176,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reservations.manage",
         "revenue.read", "rates.read",
         "inventory.read",
+        "promotions.read", "promotions.manage",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -183,11 +184,12 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reservations.read",
         "inventory.read",
         "reports.read",
+        "promotions.read", "promotions.manage",
     ],
     "marketing_hotelero": [
         "dashboard.read",
         "properties.read",
-        "amenities.manage", "promotions.manage",
+        "amenities.manage", "promotions.manage", "promotions.read",
         "revenue.read",
     ],
     "maintenance": [
@@ -223,7 +225,6 @@ def create_indexes(collections: dict[str, Collection]) -> None:
     collections["users"].create_index("username", unique=True)
     collections["roles"].create_index("role_name", unique=True)
     collections["permissions"].create_index("permission_code", unique=True)
-    collections["role_permissions"].create_index([("role_id", 1), ("permission_id", 1)], unique=True)
     collections["user_sessions"].create_index("session_token", unique=True, sparse=True)
     collections["user_sessions"].create_index("user_id")
     collections["user_activity_logs"].create_index("event_key", unique=True, sparse=True)
@@ -277,7 +278,6 @@ def embed_role_permissions(
 ) -> int:
     """Write permissions directly into ``roles.permissions`` embedded array.
 
-    This replaces the deprecated ``role_permissions`` junction table.
     """
     updated = 0
     for role_name, permission_codes in ROLE_PERMISSION_CODES.items():
@@ -301,35 +301,35 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"label": "Notificaciones",  "href": "/system/notifications","icon": "notifications",    "required_permission": "settings.read", "sort_order": 105},
     {"label": "Monedas",        "href": "/system/currencies",   "icon": "payments",         "required_permission": "settings.read", "sort_order": 106},
     {"label": "BSC",            "href": "/system/bsc",          "icon": "bar_chart",        "required_permission": "dashboard.read","sort_order": 107},
-    {"label": "Dashboard",      "href": "/management",           "icon": "dashboard",       "required_permission": "dashboard.read", "sort_order": 201},
-    {"label": "Reservas",       "href": "/management/reservations","icon": "book_online",    "required_permission": "reservations.read", "sort_order": 202},
-    {"label": "Disponibilidad", "href": "/management/availability","icon": "event_available","required_permission": "inventory.read",  "sort_order": 203},
-    {"label": "Tarifas",        "href": "/management/rates",     "icon": "sell",            "required_permission": "rates.read",      "sort_order": 204},
-    {"label": "Propiedades",    "href": "/management/properties","icon": "apartment",       "required_permission": "properties.read", "sort_order": 205},
-    {"label": "Habitaciones",   "href": "/management/rooms",     "icon": "bed",             "required_permission": "rooms.read",      "sort_order": 206},
-    {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "sort_order": 207},
-    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","sort_order": 208},
-    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "sort_order": 209},
-    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","sort_order": 210},
-    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "sort_order": 211},
-    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","sort_order": 212},
-    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "sort_order": 213},
-    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "sort_order": 214},
-    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "sort_order": 215},
-    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "sort_order": 216},
-    {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","sort_order": 301},
-    {"label": "Mantenimiento",  "href": "/management/housekeeping/maintenance","icon": "build","required_permission": "maintenance.read","sort_order": 302},
-    {"label": "Cargos",         "href": "/management/housekeeping/charges","icon": "attach_money","required_permission": "charges.read",  "sort_order": 303},
-    {"label": "RRHH",           "href": "/management/hr",        "icon": "badge",           "required_permission": "hr.read",         "sort_order": 401},
-    {"label": "Mi Portal",      "href": "/management/hr/my-portal","icon": "person",        "required_permission": None,               "sort_order": 402},
-    {"label": "Directorio RRHH","href": "/management/hr/directory","icon": "groups",        "required_permission": "hr.read",         "sort_order": 403},
-    {"label": "Onboarding",     "href": "/management/hr/onboarding","icon": "person_add",    "required_permission": "hr.create",       "sort_order": 404},
-    {"label": "Turnos",         "href": "/management/hr/shifts",  "icon": "schedule",        "required_permission": "hr.read",         "sort_order": 405},
-    {"label": "Revenue",        "href": "/management/revenue",   "icon": "trending_up",     "required_permission": "revenue.read",    "sort_order": 501},
-    {"label": "Reportes",       "href": "/management/reports",   "icon": "description",     "required_permission": "reports.read",    "sort_order": 502},
-    {"label": "Facturación",    "href": "/management/billing",   "icon": "receipt",         "required_permission": "billing.read",    "sort_order": 503},
-    {"label": "Facturas",       "href": "/management/billing/invoices","icon": "description", "required_permission": "billing.read",    "sort_order": 504},
-    {"label": "Finanzas",       "href": "/management/expenses",   "icon": "monetization_on", "required_permission": "revenue.read",    "sort_order": 505},
+    {"label": "Dashboard",      "href": "/management",           "icon": "dashboard",       "required_permission": "dashboard.read", "section": "PMS","is_section_header": True,"sort_order": 201},
+    {"label": "Reservas",       "href": "/management/reservations","icon": "book_online",    "required_permission": "reservations.read","section": "CRS","is_section_header": True,"sort_order": 202},
+    {"label": "Disponibilidad", "href": "/management/availability","icon": "event_available","required_permission": "inventory.read",  "section": "CRS","sort_order": 203},
+    {"label": "Tarifas",        "href": "/management/rates",     "icon": "sell",            "required_permission": "rates.read",      "section": "CRS","sort_order": 204},
+    {"label": "Propiedades",    "href": "/management/properties","icon": "apartment",       "required_permission": "properties.read", "section": "PMS","sort_order": 205},
+    {"label": "Habitaciones",   "href": "/management/rooms",     "icon": "bed",             "required_permission": "rooms.read",      "section": "PMS","sort_order": 206},
+    {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "section": "PMS","sort_order": 207},
+    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","section": "PMS","sort_order": 208},
+    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "section": "CRS","sort_order": 209},
+    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","section": "CRS","sort_order": 210},
+    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "section": "CRS","sort_order": 211},
+    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","section": "CRS","sort_order": 212},
+    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "section": "CRS","sort_order": 213},
+    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "section": "PMS","sort_order": 214},
+    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "section": "PMS","sort_order": 215},
+    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "section": "PMS","sort_order": 216},
+    {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","section": "Housekeeping","is_section_header": True,"sort_order": 301},
+    {"label": "Mantenimiento",  "href": "/management/housekeeping/maintenance","icon": "build","required_permission": "maintenance.read","section": "Housekeeping","sort_order": 302},
+    {"label": "Cargos",         "href": "/management/housekeeping/charges","icon": "attach_money","required_permission": "charges.read","section": "Housekeeping","sort_order": 303},
+    {"label": "RRHH",           "href": "/management/hr",        "icon": "badge",           "required_permission": "hr.read",         "section": "RRHH","is_section_header": True,"sort_order": 401},
+    {"label": "Mi Portal",      "href": "/management/hr/my-portal","icon": "person",        "required_permission": None,               "section": "RRHH","sort_order": 402},
+    {"label": "Directorio RRHH","href": "/management/hr/directory","icon": "groups",        "required_permission": "hr.read",         "section": "RRHH","sort_order": 403},
+    {"label": "Onboarding",     "href": "/management/hr/onboarding","icon": "person_add",    "required_permission": "hr.create",       "section": "RRHH","sort_order": 404},
+    {"label": "Turnos",         "href": "/management/hr/shifts",  "icon": "schedule",        "required_permission": "hr.read",         "section": "RRHH","sort_order": 405},
+    {"label": "Revenue",        "href": "/management/revenue",   "icon": "trending_up",     "required_permission": "revenue.read",    "section": "Revenue","is_section_header": True,"sort_order": 501},
+    {"label": "Reportes",       "href": "/management/reports",   "icon": "description",     "required_permission": "reports.read",    "section": "Revenue","sort_order": 502},
+    {"label": "Facturación",    "href": "/management/billing",   "icon": "receipt",         "required_permission": "billing.read",    "section": "Billing","is_section_header": True,"sort_order": 503},
+    {"label": "Facturas",       "href": "/management/billing/invoices","icon": "description", "required_permission": "billing.read",    "section": "Billing","sort_order": 504},
+    {"label": "Finanzas",       "href": "/management/expenses",   "icon": "monetization_on", "required_permission": "revenue.read",    "section": "PMS","sort_order": 505},
     {"label": "Buscar Hoteles", "href": "/search",               "icon": "search",          "required_permission": "search.read",     "sort_order": 601},
     {"label": "Mis Reservas",   "href": "/account/bookings",     "icon": "confirmation_number","required_permission": "reservations.read","sort_order": 602},
     {"label": "Mi Perfil",      "href": "/account/profile",      "icon": "account_circle",  "required_permission": "account.read",    "sort_order": 603},

@@ -87,6 +87,9 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
     Each item includes a ``visible`` boolean based on whether the user's
     permission_codes satisfy the item's required_permission.
 
+    Items may have an optional ``section`` field that groups them under a
+    collapsible sub-section header in the frontend sidebar.
+
     Returns empty list if the collection doesn't exist yet (graceful degradation).
     """
     try:
@@ -104,6 +107,8 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
                 "href": doc.get("href", ""),
                 "icon": doc.get("icon", ""),
                 "visible": visible,
+                "section": doc.get("section"),
+                "is_section_header": doc.get("is_section_header", False),
             })
         return items
     except Exception:

@@ -62,9 +62,7 @@ def _normalize_role_ids(user: dict[str, Any]) -> list[ObjectId]:
 def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
     """Return the expanded set of permission codes for a user.
 
-    Reads from ``role_permissions`` junction table, falling back to
-    ``roles.permissions`` array if the junction table is empty
-    (post-migration path).
+    Reads from the ``roles.permissions`` embedded array (canonical source).
     """
     if not user:
         return set()
@@ -86,15 +84,10 @@ def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
     if not role_ids:
         return set()
 
-    # ── Try role_permissions junction table first (current path) ──
-    cursor = db.role_permissions.find({"role_id": {"$in": role_ids}}, {"permission_code": 1})
-    explicit = {item["permission_code"] for item in cursor if item.get("permission_code")}
-
-    # ── Fallback: roles.permissions embedded array (post-migration path) ──
-    if not explicit:
-        roles = db.roles.find({"_id": {"$in": role_ids}}, {"permissions": 1})
-        for r in roles:
-            explicit.update(r.get("permissions", []))
+    # ── Read from roles.permissions embedded array (canonical source) ──
+    explicit: set[str] = set()
+    for r in db.roles.find({"_id": {"$in": role_ids}}, {"permissions": 1}):
+        explicit.update(r.get("permissions", []))
 
     return expand_permissions(explicit)
 
