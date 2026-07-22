@@ -17,7 +17,7 @@ from src.app.modules.partner.services import (
     reorder_room_type_images,
     save_partner_hotel_content,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @web_router.post("/hotels/{prop_id}/content/edit")
@@ -65,7 +65,7 @@ def images_submit(
 
 
 @api_router.put("/properties/{prop_id}/content")
-def property_content_update_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def property_content_update_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_permission("properties.update"))):
     saved = save_partner_hotel_content(
         prop_id,
         description=str(payload.get("description") or ""),
@@ -79,7 +79,7 @@ def property_content_update_api(prop_id: int, payload: dict = Body(...), current
 
 
 @api_router.post("/properties/{prop_id}/images")
-def property_image_add_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def property_image_add_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_permission("properties.update"))):
     image_url = str(payload.get("image_url") or "")
     title = str(payload.get("title") or "")
     try:
@@ -92,7 +92,7 @@ def property_image_add_api(prop_id: int, payload: dict = Body(...), current_user
 
 
 @api_router.post("/properties/{prop_id}/images/upload")
-async def property_image_upload_api(prop_id: int, file: UploadFile, current_user: dict = Depends(require_login)):
+async def property_image_upload_api(prop_id: int, file: UploadFile, current_user: dict = Depends(require_permission("properties.update"))):
     """Upload an image file and store it for a property."""
     detail = partner_hotel_detail(prop_id)
     if detail is None:
@@ -120,13 +120,13 @@ async def property_image_upload_api(prop_id: int, file: UploadFile, current_user
 
 
 @api_router.delete("/properties/{prop_id}/images")
-def property_image_delete_api(prop_id: int, image_url: str = Query(...), current_user: dict = Depends(require_login)):
+def property_image_delete_api(prop_id: int, image_url: str = Query(...), current_user: dict = Depends(require_permission("properties.update"))):
     deleted = delete_partner_hotel_image(prop_id, image_url=image_url, changed_by=current_user.get("username", "angular_api"))
     return {"deleted": deleted}
 
 
 @api_router.put("/properties/{prop_id}/images/reorder")
-def property_image_reorder_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_login)):
+def property_image_reorder_api(prop_id: int, payload: dict = Body(...), current_user: dict = Depends(require_permission("properties.update"))):
     """RF-004: Reorder images. First image becomes primary (portada)."""
     image_order = payload.get("image_order")
     if not isinstance(image_order, list) or not image_order:
@@ -150,7 +150,7 @@ async def room_type_image_upload_api(
     prop_id: int,
     file: UploadFile,
     room_type_id: str = Query(..., min_length=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     """Upload an image for a specific room type."""
     detail = partner_hotel_detail(prop_id)
@@ -188,7 +188,7 @@ async def room_type_image_upload_api(
 def room_type_image_delete_api(
     prop_id: int,
     image_url: str = Query(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     deleted = delete_room_type_image(prop_id, image_url=image_url, changed_by=current_user.get("username", "angular_api"))
     return {"deleted": deleted}
@@ -199,7 +199,7 @@ def room_type_image_reorder_api(
     prop_id: int,
     room_type_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     image_order = payload.get("image_order")
     if not isinstance(image_order, list) or not image_order:

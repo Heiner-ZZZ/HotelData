@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -66,7 +66,7 @@ def _generate_transaction_id() -> str:
 @router.post("/process")
 def process_payment(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("payments.manage")),
 ):
     """Process a card payment.
 

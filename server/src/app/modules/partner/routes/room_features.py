@@ -12,12 +12,12 @@ from src.app.modules.partner.services.rooms.features import (
     get_room_type_features,
     update_room_type_features,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @api_router.get("/room-features")
 def room_features_list_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.read")),
 ):
     """Return the master catalog of available features, grouped by category."""
     return {"features": get_all_features()}
@@ -27,7 +27,7 @@ def room_features_list_api(
 def room_features_get_api(
     room_type_id: str,
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.read")),
 ):
     """Return feature tags for a specific room type."""
     features = get_room_type_features(require_prop_id(prop_id), room_type_id)
@@ -39,7 +39,7 @@ def room_features_update_api(
     room_type_id: str,
     prop_id: int = Query(..., ge=1),
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     """Set feature tags for a room type. Accepts a list of strings (legacy) or
     list of objects with ``label`` and optional ``unit_price``."""
@@ -62,7 +62,7 @@ def room_features_update_api(
 @api_router.post("/room-features/custom")
 def room_features_add_custom_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     """Add a custom feature to the master catalog."""
     try:

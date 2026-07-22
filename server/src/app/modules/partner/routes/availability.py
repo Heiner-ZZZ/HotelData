@@ -20,7 +20,7 @@ from src.app.modules.partner.services import (
 from src.app.modules.partner.services.rooms.queries import hotel_rooms_by_type
 from src.app.modules.partner.services.rooms.availability import update_blackout_block
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @web_router.post("/hotels/{prop_id}/inventory")
@@ -126,7 +126,7 @@ def availability_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("inventory.read")),
 ):
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     response: dict[str, object] = {
@@ -183,7 +183,7 @@ def _availability_update(payload: dict, changed_by: str = "system"):
 @api_router.post("/availability")
 def availability_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("inventory.manage")),
 ):
     return _availability_update(payload, changed_by=current_user.get("username", "system"))
 
@@ -191,7 +191,7 @@ def availability_update_api(
 @api_router.patch("/availability")
 def availability_patch_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("inventory.manage")),
 ):
     """Partial update of inventory (used by Angular frontend)."""
     return _availability_update(payload, changed_by=current_user.get("username", "system"))
@@ -311,7 +311,7 @@ def availability_inventory_delete_api(
     prop_id: int = Query(..., ge=1),
     room_type_id: str = Query(...),
     date: str = Query(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("inventory.manage")),
 ):
     """Soft-delete an inventory entry."""
     try:

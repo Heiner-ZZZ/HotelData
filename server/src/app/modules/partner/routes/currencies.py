@@ -10,13 +10,13 @@ from src.app.modules.partner.services.currencies import (
     save_currency,
     toggle_currency_active,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @api_router.get("/currencies")
 def list_currencies_api(
     active_only: bool = Query(default=False),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """Return all configured currencies."""
     return {"currencies": list_currencies(active_only=active_only)}
@@ -25,7 +25,7 @@ def list_currencies_api(
 @api_router.get("/currencies/{code}")
 def get_currency_api(
     code: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.read")),
 ):
     """Get a single currency by code."""
     cur = currency_by_code(code)
@@ -37,7 +37,7 @@ def get_currency_api(
 @api_router.post("/currencies", status_code=status.HTTP_201_CREATED)
 def create_currency_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.manage")),
 ):
     """Create a new currency."""
     code = str(payload.get("code") or "")
@@ -59,7 +59,7 @@ def create_currency_api(
 def update_currency_api(
     code: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.manage")),
 ):
     """Update an existing currency."""
     existing = currency_by_code(code)
@@ -80,7 +80,7 @@ def update_currency_api(
 @api_router.patch("/currencies/{code}/toggle")
 def toggle_currency_api(
     code: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.manage")),
 ):
     """Toggle active/inactive status of a currency."""
     result = toggle_currency_active(code)
@@ -92,7 +92,7 @@ def toggle_currency_api(
 @api_router.delete("/currencies/{code}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_currency_api(
     code: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("settings.manage")),
 ):
     """Delete a currency permanently. Refuses if referenced by properties."""
     try:

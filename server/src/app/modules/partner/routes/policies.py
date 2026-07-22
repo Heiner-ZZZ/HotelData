@@ -14,7 +14,7 @@ from src.app.modules.partner.services import (
     save_partner_hotel_policies,
 )
 from src.app.modules.partner.services.rooms import _room_types_for_prop
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @web_router.get("/hotels/{prop_id}/policies")
@@ -69,7 +69,7 @@ def policies_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     return {
@@ -90,7 +90,7 @@ def policies_options_api(
 @api_router.put("/policies")
 def policies_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.update")),
 ):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:

@@ -16,7 +16,7 @@ from src.app.modules.partner.services import (
     partner_hotel_rooms,
     update_room_type,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @web_router.get("/hotels/{prop_id}/rooms")
@@ -78,7 +78,7 @@ def rooms_api(prop_id: int = Query(..., ge=1)):
 
 
 @api_router.get("/rooms/options")
-def rooms_options_api(current_user: dict = Depends(require_login)):
+def rooms_options_api(current_user: dict = Depends(require_permission("rooms.read"))):
     properties = list_partner_hotels("", page=1, page_size=200, user=current_user)
     return {
         "properties": [
@@ -94,7 +94,7 @@ def rooms_options_api(current_user: dict = Depends(require_login)):
 @api_router.post("/rooms", status_code=201)
 def rooms_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.manage")),
 ):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     try:
@@ -125,7 +125,7 @@ def rooms_create_api(
 def rooms_get_api(
     room_type_id: str,
     prop_id: int = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.read")),
 ):
     """Get a single room type by ID."""
     from src.app.modules.partner.services.rooms.types import _room_type_by_id
@@ -139,7 +139,7 @@ def rooms_get_api(
 def rooms_update_api(
     room_type_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     try:
         saved = update_room_type(
@@ -170,7 +170,7 @@ def rooms_update_api(
 def rooms_create_hotel_room_api(
     room_type_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.manage")),
 ):
     """Create a hotel_room (physical room) linked to an existing room type."""
     from src.app.modules.partner.services.rooms import create_hotel_room_for_type
@@ -195,7 +195,7 @@ def rooms_create_hotel_room_api(
 @api_router.post("/rooms/roh", status_code=201)
 def rooms_roh_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.manage")),
 ):
     """Create or get the Run Of House (ROH) room type for a property."""
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
@@ -216,7 +216,7 @@ def rooms_roh_create_api(
 async def rooms_image_upload_api(
     room_type_id: str,
     file: UploadFile,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.update")),
 ):
     """Upload an image for a room type. Saves to disk and updates the room_type's image_url."""
     from pathlib import Path
@@ -251,7 +251,7 @@ async def rooms_image_upload_api(
 
 def rooms_delete_api(
     room_type_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rooms.manage")),
 ):
     try:
         saved = delete_room_type(room_type_id, changed_by=current_user.get("username", "system"))

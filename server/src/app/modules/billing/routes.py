@@ -25,7 +25,7 @@ from src.app.modules.billing.service import (
 )
 from src.app.modules.billing.service.services import get_billable_services
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
@@ -42,7 +42,7 @@ def billing_module_status():
 @api_router.post("/invoices", status_code=201)
 def create_invoice_api(
     payload: InvoiceCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     result = create_invoice(payload)
     if result is None:
@@ -75,7 +75,7 @@ def list_invoices_api(
     date_to: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     result = list_invoices(
         booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
@@ -104,7 +104,7 @@ def list_invoices_api(
 @api_router.get("/invoices/stats")
 def invoice_stats_api(
     request: Request,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     """Return aggregate counts and totals grouped by invoice status."""
     result = get_invoice_stats()
@@ -124,7 +124,7 @@ def invoice_stats_api(
 def get_invoice_api(
     request: Request,
     invoice_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     result = get_invoice(invoice_id)
     if result is None:
@@ -145,7 +145,7 @@ def get_invoice_api(
 def add_line_item_api(
     invoice_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Add a line item to an invoice (only if status='issued').
 
@@ -198,7 +198,7 @@ def add_line_item_api(
 def remove_line_item_api(
     invoice_id: str,
     item_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Remove a line item from an invoice (only if status='issued').
 
@@ -238,7 +238,7 @@ def remove_line_item_api(
 @api_router.post("/invoices/{invoice_id}/cancel")
 def cancel_invoice_api(
     invoice_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     from bson import ObjectId
     from bson.errors import InvalidId
@@ -268,7 +268,7 @@ def cancel_invoice_api(
 @api_router.post("/invoices/{invoice_id}/pay")
 def pay_invoice_api(
     invoice_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Staff-side: simulate payment for any invoice. No ownership check."""
     from src.app.modules.billing.schemas import PaymentCreate
@@ -314,7 +314,7 @@ def pay_invoice_api(
 @api_router.post("/invoices/{invoice_id}/email")
 def send_invoice_email_api(
     invoice_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Send the invoice to the guest by email."""
     from bson import ObjectId
@@ -372,7 +372,7 @@ def send_invoice_email_api(
 @api_router.post("/payments", status_code=201)
 def create_payment_api(
     payload: PaymentCreate = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("payments.manage")),
 ):
     result = create_payment(payload)
     if result is None:
@@ -401,7 +401,7 @@ def list_payments_api(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("payments.read")),
 ):
     result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
     register_action(
@@ -420,7 +420,7 @@ def list_payments_api(
 def get_payment_api(
     request: Request,
     payment_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("payments.read")),
 ):
     result = get_payment(payment_id)
     if result is None:
@@ -440,7 +440,7 @@ def get_payment_api(
 @api_router.post("/payments/{payment_id}/refund")
 def refund_payment_api(
     payment_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("payments.manage")),
 ):
     before = get_payment(payment_id)
     result = refund_payment(payment_id)
@@ -468,7 +468,7 @@ def my_invoices_api(
     request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("account.read")),
 ):
     """Return invoices associated with the current user's bookings."""
     db = get_database()
@@ -526,7 +526,7 @@ def billing_services_api(
     request: Request,
     prop_id: int = Query(default=0, ge=0),
     booking_id: str | None = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     """Return billable services for the invoice page.
 
@@ -567,7 +567,7 @@ def billing_services_api(
 @api_router.get("/folios/categories")
 def folio_categories_api(
     request: Request,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     """Return the list of available folio posting categories."""
     register_action(
@@ -586,7 +586,7 @@ def folio_categories_api(
 def get_folio_api(
     request: Request,
     booking_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     """Get the folio for a booking."""
     result = get_folio(booking_id)
@@ -608,7 +608,7 @@ def get_folio_api(
 def post_to_folio_api(
     booking_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Post a transaction to the guest's folio.
 
@@ -656,7 +656,7 @@ def post_to_folio_api(
 def close_folio_api(
     booking_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Close a folio at check-out."""
     before = get_folio(booking_id)
@@ -687,7 +687,7 @@ def close_folio_api(
 @api_router.post("/folios/cleanup-expired")
 def cleanup_expired_folios_api(
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.manage")),
 ):
     """Close open folios whose check-out date has already passed.
 
@@ -714,7 +714,7 @@ def list_folios_api(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("billing.read")),
 ):
     """List folios with optional property and status filters."""
     result = list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
@@ -733,7 +733,7 @@ def list_folios_api(
 @api_router.post("/my-invoices/{invoice_id}/pay")
 def my_invoice_pay_api(
     invoice_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("account.update")),
 ):
     """Simulate payment for an invoice (client-facing). Generates a realistic payment record."""
     from src.app.modules.billing.schemas import PaymentCreate

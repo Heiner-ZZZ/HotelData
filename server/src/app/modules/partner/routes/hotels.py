@@ -15,7 +15,7 @@ from src.app.modules.partner.services import (
     properties_dashboard,
     save_partner_hotel_profile,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @web_router.get("/hotels")
@@ -41,13 +41,13 @@ def performance(request: Request, prop_id: int):
 
 
 @api_router.get("/properties")
-def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
+def properties_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_permission("properties.read"))):
     return list_partner_hotels(q, page=page, page_size=10, user=current_user)
 
 
 @api_router.get("/properties/context")
 def properties_context_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     """Return the property context for the current user.
 
@@ -104,7 +104,7 @@ def properties_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     results = list_partner_hotels(q, page=page, page_size=page_size, user=current_user)
     return {
@@ -123,7 +123,7 @@ def properties_options_api(
 
 
 @api_router.get("/properties/dashboard")
-def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_login)):
+def properties_dashboard_api(q: str = "", page: int = Query(default=1, ge=1), current_user: dict = Depends(require_permission("dashboard.read"))):
     return properties_dashboard(q, page=page, page_size=10, user=current_user)
 
 
@@ -147,7 +147,7 @@ def property_profile_api(prop_id: int):
 def property_profile_update_api(
     prop_id: int,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.update")),
 ):
     saved = save_partner_hotel_profile(
         prop_id,
@@ -170,7 +170,7 @@ def property_operational_calendar_api(
     prop_id: int,
     year: int = Query(default=None),
     month: int = Query(default=None),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     from src.app.modules.partner.services.properties.operational_calendar import operational_calendar as _oc
     from src.app.core.timezone import local_now
@@ -181,7 +181,7 @@ def property_operational_calendar_api(
 
 
 @api_router.get("/properties/{prop_id}")
-def property_detail_api(prop_id: int, current_user: dict = Depends(require_login)):
+def property_detail_api(prop_id: int, current_user: dict = Depends(require_permission("properties.read"))):
     detail = partner_hotel_detail(prop_id, user=current_user)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -198,7 +198,7 @@ def property_history_api(
     source: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("audit.read")),
 ):
     return list_hotel_changes(
         prop_id,
@@ -216,7 +216,7 @@ def property_history_api(
 def property_history_detail_api(
     prop_id: int,
     change_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("audit.read")),
 ):
     detail = get_change_detail(prop_id, change_id)
     if detail is None:

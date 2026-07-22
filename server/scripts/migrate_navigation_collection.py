@@ -60,6 +60,15 @@ NAVIGATION_CATALOG = [
     {"label": "Propiedades",    "href": "/management/properties","icon": "apartment",       "required_permission": "properties.read", "sort_order": 205},
     {"label": "Habitaciones",   "href": "/management/rooms",     "icon": "bed",             "required_permission": "rooms.read",      "sort_order": 206},
     {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "sort_order": 207},
+    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","sort_order": 208},
+    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "sort_order": 209},
+    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","sort_order": 210},
+    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "sort_order": 211},
+    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","sort_order": 212},
+    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "sort_order": 213},
+    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "sort_order": 214},
+    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "sort_order": 215},
+    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "sort_order": 216},
 
     # ── Housekeeping & Maintenance (300) ──
     {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","sort_order": 301},
@@ -69,17 +78,24 @@ NAVIGATION_CATALOG = [
     # ── HR (400) ──
     {"label": "RRHH",           "href": "/management/hr",        "icon": "badge",           "required_permission": "hr.read",         "sort_order": 401},
     {"label": "Mi Portal",      "href": "/management/hr/my-portal","icon": "person",        "required_permission": None,               "sort_order": 402},
+    {"label": "Directorio RRHH","href": "/management/hr/directory","icon": "groups",        "required_permission": "hr.read",         "sort_order": 403},
+    {"label": "Onboarding",     "href": "/management/hr/onboarding","icon": "person_add",    "required_permission": "hr.create",       "sort_order": 404},
+    {"label": "Turnos",         "href": "/management/hr/shifts",  "icon": "schedule",        "required_permission": "hr.read",         "sort_order": 405},
 
     # ── Revenue & Reports (500) ──
     {"label": "Revenue",        "href": "/management/revenue",   "icon": "trending_up",     "required_permission": "revenue.read",    "sort_order": 501},
     {"label": "Reportes",       "href": "/management/reports",   "icon": "description",     "required_permission": "reports.read",    "sort_order": 502},
     {"label": "Facturación",    "href": "/management/billing",   "icon": "receipt",         "required_permission": "billing.read",    "sort_order": 503},
+    {"label": "Facturas",       "href": "/management/billing/invoices","icon": "description", "required_permission": "billing.read",    "sort_order": 504},
+    {"label": "Finanzas",       "href": "/management/expenses",   "icon": "monetization_on", "required_permission": "revenue.read",    "sort_order": 505},
 
     # ── Guest-facing (600) ──
     {"label": "Buscar Hoteles", "href": "/search",               "icon": "search",          "required_permission": "search.read",     "sort_order": 601},
     {"label": "Mis Reservas",   "href": "/account/bookings",     "icon": "confirmation_number","required_permission": "reservations.read","sort_order": 602},
     {"label": "Mi Perfil",      "href": "/account/profile",      "icon": "account_circle",  "required_permission": "account.read",    "sort_order": 603},
     {"label": "Configuración",  "href": "/admin/global-settings","icon": "settings",        "required_permission": "settings.read",   "sort_order": 604},
+    {"label": "Geo-Catálogo",   "href": "/admin/geo-catalog",    "icon": "map",             "required_permission": "settings.read",   "sort_order": 605},
+    {"label": "Propietarios",   "href": "/ownership/users",      "icon": "assignment_ind",  "required_permission": "users.manage",    "sort_order": 701},
 ]
 
 

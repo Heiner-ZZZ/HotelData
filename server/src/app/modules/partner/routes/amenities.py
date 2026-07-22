@@ -24,7 +24,7 @@ from src.app.modules.partner.services.content.amenities import (
     _GLOBAL_DEFAULTS_PROP_ID,
     invalidate_price_defaults_cache,
 )
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 
 @api_router.get("/amenities")
@@ -36,7 +36,7 @@ def amenities_api(prop_id: int = Query(..., ge=1), room_type_id: str = Query(def
 
 
 @api_router.get("/amenities/options")
-def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_login)):
+def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_permission("amenities.read"))):
     response: dict[str, object] = {"properties": management_property_options(user=current_user)}
     if prop_id:
         detail = partner_hotel_content(require_prop_id(prop_id))
@@ -50,7 +50,7 @@ def amenities_options_api(prop_id: int | None = Query(default=None, ge=1), curre
 @api_router.put("/amenities")
 def amenities_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.manage")),
 ):
     prop_id = require_prop_id(int(payload.get("prop_id") or 0))
     active_amenities = payload.get("active_amenities") or []
@@ -103,7 +103,7 @@ async def upload_amenity_photo(
     prop_id: int = Query(..., ge=1),
     amenity_label: str = Query(..., min_length=1),
     file: UploadFile = File(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.manage")),
 ):
     """Upload a photo for a specific active amenity. Max 5 per amenity."""
     if file.content_type not in _PHOTO_ALLOWED_TYPES:
@@ -151,7 +151,7 @@ async def upload_amenity_photo(
 @api_router.delete("/amenities/photos/{photo_id}")
 def delete_amenity_photo(
     photo_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.manage")),
 ):
     """Delete an amenity photo by its gridfs_id."""
     db = get_database()
@@ -176,7 +176,7 @@ def delete_amenity_photo(
 
 @api_router.get("/amenities/default-prices")
 def get_amenity_default_prices_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.read")),
 ):
     """Return all global amenity price defaults from MongoDB."""
     defaults = _get_price_defaults()
@@ -190,7 +190,7 @@ def get_amenity_default_prices_api(
 @api_router.put("/amenities/default-prices")
 def update_amenity_default_prices_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.manage")),
 ):
     """Update global amenity price defaults.
 
@@ -263,7 +263,7 @@ def update_amenity_default_prices_api(
 def list_amenity_photos(
     prop_id: int = Query(..., ge=1),
     amenity_label: str = Query(default=""),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("amenities.read")),
 ):
     """List photos for amenities of a property. Optionally filter by amenity_label.
     Returns list of {photo_id, amenity_label, url}."""

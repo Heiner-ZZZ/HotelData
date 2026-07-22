@@ -8,7 +8,7 @@ from fastapi import Depends, Query
 
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.services.guests import list_guests_for_prop
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 from src.database.connection import get_database
 
@@ -19,7 +19,7 @@ def guests_list_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """List guests (deduplicated by email) for a property, with search + pagination."""
     return list_guests_for_prop(prop_id, q=q, page=page, page_size=page_size)
@@ -29,7 +29,7 @@ def guests_list_api(
 def guest_bookings_api(
     guest_email: str,
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     """Return all bookings for a guest (by email) at a specific property."""
     db = get_database()

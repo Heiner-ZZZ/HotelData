@@ -7,7 +7,7 @@ from fastapi import Body, Query
 from fastapi import Depends
 
 from src.app.modules.partner.routes import api_router
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 from src.app.modules.partner.routes.rates_impl import (
     get_hotel_rates_detail,
@@ -42,15 +42,13 @@ def rates_options_api(
     q: str = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(require_login),
-):
-    return get_rates_options(prop_id, q, page, page_size, current_user)
+    current_user: dict = Depends(require_permission("rates.read")),
 
 
 @api_router.post("/rates/plans", status_code=201)
 def rates_plan_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.manage")),
 ):
     return create_plan(payload, current_user)
 
@@ -59,7 +57,7 @@ def rates_plan_create_api(
 def rates_plan_update_api(
     plan_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.update")),
 ):
     return update_plan(plan_id, payload, current_user)
 
@@ -67,7 +65,7 @@ def rates_plan_update_api(
 @api_router.delete("/rates/plans/{plan_id}")
 def rates_plan_delete_api(
     plan_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.manage")),
 ):
     return delete_plan(plan_id, current_user)
 
@@ -98,7 +96,7 @@ def rates_seasonal_rule_delete_api(rule_id: str):
 @api_router.post("/rates/calendar")
 def rates_calendar_update_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.update")),
 ):
     return update_calendar_entry(payload, current_user)
 
@@ -106,7 +104,7 @@ def rates_calendar_update_api(
 @api_router.post("/rates/calendar/batch")
 def rates_calendar_batch_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.update")),
 ):
     """Batch update rate calendar for a date range."""
     return batch_update_calendar(payload, current_user)
@@ -137,7 +135,7 @@ def rates_contracts_list_api(
 @api_router.post("/rates/contracts", status_code=201)
 def rates_contract_create_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.manage")),
 ):
     return create_contract(payload, current_user)
 
@@ -146,7 +144,7 @@ def rates_contract_create_api(
 def rates_contract_update_api(
     contract_id: str,
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.update")),
 ):
     return update_contract(contract_id, payload, current_user)
 
@@ -154,7 +152,7 @@ def rates_contract_update_api(
 @api_router.delete("/rates/contracts/{contract_id}")
 def rates_contract_delete_api(
     contract_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.manage")),
 ):
     return delete_contract(contract_id, current_user)
 
@@ -162,7 +160,7 @@ def rates_contract_delete_api(
 @api_router.post("/rates/contracts/validate")
 def rates_contract_validate_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("rates.read")),
 ):
     """Validate a corporate contract code for a given property and room type."""
     return validate_contract(payload)

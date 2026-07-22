@@ -20,7 +20,7 @@ from src.app.modules.partner.services.hotel_products import (
     remove_booking_line_item,
     update_hotel_product,
 )
-from src.app.security.dependencies import require_login, require_permission
+from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/api/management", tags=["products"])
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/management", tags=["products"])
 @router.get("/products/hotels/{prop_id}")
 def list_products(
     prop_id: int,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.read")),
 ):
     return {"items": list_hotel_products(require_prop_id(prop_id))}
 
@@ -40,7 +40,7 @@ def list_products(
 def create_product(
     prop_id: int,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.update")),
 ):
     try:
         result = create_hotel_product(
@@ -63,7 +63,7 @@ def update_product(
     prop_id: int,
     product_id: str,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.update")),
 ):
     result = update_hotel_product(
         require_prop_id(prop_id),
@@ -85,7 +85,7 @@ def update_product(
 def delete_product(
     prop_id: int,
     product_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("properties.update")),
 ):
     ok = delete_hotel_product(require_prop_id(prop_id), product_id)
     if not ok:
@@ -99,7 +99,7 @@ def delete_product(
 @router.get("/products/bookings/{booking_id}/line-items")
 def get_line_items(
     booking_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     return {"items": list_booking_line_items(booking_id)}
 
@@ -108,7 +108,7 @@ def get_line_items(
 def add_line_item(
     booking_id: str,
     payload: dict[str, Any] = Body(...),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.update")),
 ):
     product_id = str(payload.get("product_id", ""))
     name = str(payload.get("name", ""))
@@ -135,7 +135,7 @@ def add_line_item(
 def remove_line_item(
     booking_id: str,
     item_id: str,
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("reservations.update")),
 ):
     ok = remove_booking_line_item(
         booking_id,

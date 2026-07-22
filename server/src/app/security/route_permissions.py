@@ -102,8 +102,6 @@ ROUTE_RULES = [
     ),
     AccessRule("/ta02/crud", methods=("GET",), permission="crud.read"),
     AccessRule("/ta02/crud", methods=("POST", "PUT", "PATCH", "DELETE"), permission="crud.write"),
-    AccessRule("/api", methods=("GET",), permission="crud.read"),
-    AccessRule("/api", methods=("POST", "PUT", "PATCH", "DELETE"), permission="crud.write"),
     AccessRule("/etl-status/ga03", methods=("POST",), permission="etl.execute"),
     AccessRule("/etl-status/upload", methods=("POST",), permission="etl.execute"),
     AccessRule("/etl-status/seed", methods=("POST",), permission="etl.execute"),
@@ -148,6 +146,12 @@ def get_access_rule(path: str, method: str) -> AccessRule | None:
         if path.startswith(rule.prefix) and method.upper() in rule.methods
     ]
     if not matches:
+        # /api/ paths: no explicit ROUTE_RULE → allow any authenticated user.
+        # The middleware already enforces 401 for unauthenticated requests.
+        # Granular authorization is handled by require_permission() at each endpoint.
+        if path.startswith("/api/"):
+            return None
+        # Non-API paths: restrict to super_admin/admin_sistema as a safety net.
         return AccessRule(path, roles=("super_admin", "admin_sistema"))
     return max(matches, key=lambda rule: len(rule.prefix))
 

@@ -65,7 +65,8 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);
   readonly sessionLoaded = this.sessionLoadedSignal.asReadonly();
 
-  /** Check if the current user has a specific permission code (or *.*). */
+  /** Check if the current user has a specific permission code (or *.*).
+   *  Available for component-level permission checks (e.g. nav menus). */
   readonly hasPermission = computed(() => {
     const codes = this.authStateSignal().permissionCodes;
     if (codes.includes('*.*')) return (_code: string) => true;

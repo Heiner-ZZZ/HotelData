@@ -10,7 +10,7 @@ from fastapi import Depends, Query
 
 from src.app.modules.partner.routes import api_router
 from src.app.modules.partner.services.audit import list_audit_entries, get_audit_stats
-from src.app.security.dependencies import require_login
+from src.app.security.dependencies import require_permission
 
 ENTITY_TYPES = [
     "room_type", "inventory_entry", "rate_plan", "rate_calendar",
@@ -30,7 +30,7 @@ def audit_log_api(
     to_date: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=30, ge=1, le=200),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("audit.read")),
 ):
     """Return paginated, filtered audit log entries, newest first."""
     return list_audit_entries(
@@ -48,7 +48,7 @@ def audit_log_api(
 @api_router.get("/audit-log/stats")
 def audit_log_stats_api(
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("audit.read")),
 ):
     """Return aggregate statistics for the audit log."""
     return get_audit_stats(prop_id=prop_id)
@@ -56,7 +56,7 @@ def audit_log_stats_api(
 
 @api_router.get("/audit-log/entity-types")
 def audit_log_entity_types_api(
-    current_user: dict = Depends(require_login),
+    current_user: dict = Depends(require_permission("audit.read")),
 ):
     """Return the list of tracked entity types for filter dropdowns."""
     return {"entity_types": ENTITY_TYPES, "actions": ACTIONS}
