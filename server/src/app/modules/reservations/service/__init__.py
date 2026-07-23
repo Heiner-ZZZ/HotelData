@@ -8,6 +8,7 @@ from ._hotel_options import reservation_hotel_options
 from .lifecycle import create_booking, get_room_guests, save_room_guests, get_check_in_status, modify_booking, validate_coupon_code
 from ._transitions import confirm_booking, reject_booking
 from .cleanup import auto_cancel_expired_pending, cancel_booking, cleanup_test_booking
+from .no_show import process_no_show, auto_process_no_shows
 from ._view_ops import list_check_ins, list_check_outs, list_check_in_dates, list_check_out_dates
 from ._checkinout import complete_check_in, complete_check_out
 from ._checkin_detail import get_check_in_detail, save_check_in_detail
@@ -43,6 +44,8 @@ __all__ = [
     "auto_cancel_expired_pending",
     "cancel_booking",
     "cleanup_test_booking",
+    "process_no_show",
+    "auto_process_no_shows",
     "list_check_ins",
     "list_check_outs",
     "list_check_in_dates",

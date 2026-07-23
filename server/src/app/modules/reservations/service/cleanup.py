@@ -78,6 +78,39 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
     }
 
 
+def _resolve_penalty_percent(
+    prop_id: int,
+    room_type_id: str = "",
+    rate_plan_id: str = "",
+) -> int:
+    """Read cancellation_penalty_percent from hotel_policies.
+
+    Hierarchy: rate_plan > room_type > hotel-wide.
+    Returns the configured percentage (0-100), defaulting to 100
+    if no policy is found (full penalty).
+    """
+    db = get_database()
+    policy = None
+    if rate_plan_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "rate_plan_id": rate_plan_id},
+            {"_id": 0, "cancellation_penalty_percent": 1},
+        )
+    if not policy and room_type_id:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": room_type_id, "rate_plan_id": {"$in": ["", None]}},
+            {"_id": 0, "cancellation_penalty_percent": 1},
+        )
+    if not policy:
+        policy = db.hotel_policies.find_one(
+            {"prop_id": prop_id, "room_type_id": {"$in": ["", None]}, "rate_plan_id": {"$in": ["", None]}},
+            {"_id": 0, "cancellation_penalty_percent": 1},
+        )
+    if not policy:
+        return 100
+    return int(policy.get("cancellation_penalty_percent", 100) or 100)
+
+
 def _calculate_cancellation_penalty(
     prop_id: int,
     check_in_date: str,

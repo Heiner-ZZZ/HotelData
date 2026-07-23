@@ -230,12 +230,14 @@ def complete_check_out(
     if booking and not booking.get("is_test"):
         try:
             from src.app.modules.reception import register_transaction
-            total_paid = float(booking.get("total_price", 0) or 0)
+            # Use folio total_due (room + charges - discounts - payments) instead of
+            # booking.total_price which only reflects the original room rate.
+            total_due = round(float(folio.get("total_due", 0) or 0), 2) if folio else float(booking.get("total_price", 0) or 0)
             register_transaction(
                 prop_id=int(booking.get("prop_id", 0)),
                 txn_type="check_out", booking_id=booking_id,
-                amount=total_paid, payment_method=payment_method or "",
-                description=f"Check-out: {booking.get('guest_name', '')} — ${total_paid:.2f}",
+                amount=total_due, payment_method=payment_method or "",
+                description=f"Check-out: {booking.get('guest_name', '')} — ${total_due:.2f}",
             )
         except Exception:
             logger.exception("Failed to register shift transaction for check-out %s", booking_id)

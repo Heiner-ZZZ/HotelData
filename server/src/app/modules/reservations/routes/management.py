@@ -477,6 +477,47 @@ def user_search_api(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# No-show — mark booking as no-show when guest never arrived
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@management_api_router.post("/bookings/{booking_id}/no-show")
+def booking_no_show_api(
+    booking_id: str,
+    current_user: dict = Depends(require_permission("reservations.update")),
+):
+    """Mark a confirmed booking as no-show with first-night penalty."""
+    from src.app.modules.reservations.service.no_show import process_no_show
+
+    db = get_database()
+    before = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"prop_id": 1, "status": 1, "stay_status": 1, "guest_name": 1},
+    )
+    try:
+        result = process_no_show(
+            booking_id,
+            changed_by=current_user.get("username", "web"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    diff = {
+        "stay_status": {"old": before.get("stay_status") if before else None, "new": "no_show"},
+    }
+    register_action(
+        prop_id=(before.get("prop_id") or 0) if before else 0,
+        entity_type="reservation",
+        entity_id=booking_id,
+        action="no_show",
+        summary=f"No-show manual — {before.get('guest_name', booking_id) if before else booking_id}",
+        changed_by=current_user.get("username", "system"),
+        diff=diff,
+    )
+    return result
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Room assignment — list available rooms and assign to booking
 # ──────────────────────────────────────────────────────────────────────────────
 

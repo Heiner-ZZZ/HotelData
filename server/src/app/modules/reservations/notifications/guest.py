@@ -96,6 +96,17 @@ def notify_guest_status_change(
         badge_html = status_badge("CHECK-OUT", bg_color="#f0fdf4", text_color="#166534")
         headline = "Tu check-out ha sido completado"
         body_intro = 'Tu <strong>check-out</strong> ha sido procesado. Esperamos que hayas tenido una excelente estancia.'
+    elif new_status == "no_show":
+        subject = f"No-show registrado — {booking_id}"
+        badge_html = status_badge("NO-SHOW", bg_color="#fee2e2", text_color="#991b1b")
+        headline = "No te presentaste en el check-in"
+        body_intro = (
+            'Lamentamos informarte que tu reserva ha sido marcada como <strong>no-show</strong> '
+            'porque no te presentaste en la fecha de check-in ni notificaste una cancelación. '
+            'Se ha aplicado un cargo de penalización equivalente a la primera noche.'
+        )
+        if reason:
+            body_intro += f"<br><br>Detalle: {reason}."
     else:
         logger.warning("Unsupported status '%s' for guest notification — skipping", new_status)
         return
@@ -137,7 +148,7 @@ def notify_guest_status_change(
         logger.exception("Error sending guest notification to %s for booking %s", guest_email, booking_id)
         error_msg = str(exc)
 
-    notification_type = f"guest_{new_status}" if new_status in ("confirmed", "rejected", "cancelled", "checked_in", "checked_out", "modified") else "guest_other"
+    notification_type = f"guest_{new_status}" if new_status in ("confirmed", "rejected", "cancelled", "checked_in", "checked_out", "modified", "no_show") else "guest_other"
     _log_notification(
         notification_type=notification_type, recipient_email=guest_email,
         recipient_name=guest_name, booking_id=booking_id, prop_id=prop_id,
