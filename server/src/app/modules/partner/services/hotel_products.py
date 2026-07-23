@@ -131,24 +131,42 @@ def add_booking_line_item(
     quantity: int = 1,
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
-    """Add a product as a line item to an active booking."""
+    """Add a product as a line item to an active booking.
+
+    Validates that the product exists, checks the booking is in an active
+    status (confirmed or checked_in), updates total_charges on the booking,
+    and decrements quantity_available on the product (if stock-tracked).
+    """
     db = get_database()
+
+    # Validate booking is active (status, not stay_status — consistent with frontend)
     booking = db.booking_orders.find_one(
-        {"booking_id": booking_id, "stay_status": {"$in": ["checked_in", "confirmed"]}},
-        {"_id": 0, "stay_status": 1, "prop_id": 1},
+        {"booking_id": booking_id, "status": {"$in": ["confirmed", "checked_in"]}},
+        {"_id": 0, "status": 1, "prop_id": 1},
     )
     if not booking:
         return None
 
-    total = round(float(unit_price) * int(quantity), 2)
+    # Validate product exists for this hotel — use DB values, not frontend input
+    product = db.hotel_products.find_one(
+        {"product_id": product_id, "prop_id": booking["prop_id"]},
+        {"_id": 0, "name": 1, "unit_price": 1, "quantity_available": 1},
+    )
+    if not product:
+        return None
+
+    # Use DB values for name and price (don't trust frontend)
+    safe_name = product.get("name", name)
+    safe_price = product.get("unit_price", unit_price)
+    total = round(float(safe_price) * int(quantity), 2)
     import secrets
     item_id = f"LI-{secrets.token_hex(4).upper()}"
     line_item = {
         "item_id": item_id,
         "product_id": product_id,
-        "name": name,
+        "name": safe_name,
         "quantity": int(quantity),
-        "unit_price": round(float(unit_price), 2),
+        "unit_price": round(float(safe_price), 2),
         "total": total,
         "added_at": now_utc(),
         "added_by": changed_by,
@@ -158,19 +176,96 @@ def add_booking_line_item(
         {"booking_id": booking_id},
         {
             "$push": {"line_items": line_item},
+            "$inc": {"total_charges": total},
             "$set": {"updated_at": now_utc()},
         },
     )
 
+    # Decrement product inventory (only if stock is tracked and sufficient)
+    qty_avail = product.get("quantity_available", 0)
+    if qty_avail > 0:
+        if qty_avail >= quantity:
+            db.hotel_products.update_one(
+                {"product_id": product_id},
+                {"$inc": {"quantity_available": -quantity}},
+            )
+        else:
+            # Stock insufficient — decrement what's available to avoid negative
+            db.hotel_products.update_one(
+                {"product_id": product_id},
+                {"$set": {"quantity_available": 0}},
+            )
+
     # Also log in status history
     db.booking_status_history.insert_one({
         "booking_id": booking_id,
-        "status": booking.get("stay_status", "confirmed"),
+        "status": booking.get("status", "confirmed"),
         "changed_at": now_utc(),
-        "reason": f"add_on: {name} x{quantity} = ${total}",
+        "reason": f"add_on: {safe_name} x{quantity} = ${total}",
         "changed_by": changed_by,
         "is_test": False,
     })
+
+    # ── Post to guest folio (same pattern as create_additional_charge) ──
+    try:
+        from src.app.modules.billing.service.folio import post_to_folio
+        post_to_folio(
+            booking_id,
+            posting_type="charge",
+            category="Productos",
+            concept=f"{safe_name} x{quantity}",
+            amount=total,
+            quantity=quantity,
+            reference_id=item_id,
+            reference_type="hotel_product",
+        )
+    except Exception:
+        logger.exception(
+            "Failed to auto-post product to folio for booking %s", booking_id
+        )
+
+    # ── Sync with active invoice (if one exists) ──
+    try:
+        inv = db.reservation_invoices.find_one(
+            {"booking_id": booking_id, "status": "issued"},
+            {"line_items": 1, "room_subtotal": 1, "extras_total": 1, "subtotal": 1, "taxes": 1, "total": 1},
+        )
+        if inv:
+            invoice_item = {
+                "item_id": item_id,
+                "type": "hotel_product",
+                "name": safe_name,
+                "quantity": int(quantity),
+                "unit_price": round(float(safe_price), 2),
+                "total": total,
+                "category": "Productos",
+                "created_at": now_utc(),
+            }
+            combined = (inv.get("line_items") or []) + [invoice_item]
+            extras_total = round(
+                sum(float(it.get("total", 0)) for it in combined if it.get("type") != "room"), 2
+            )
+            room_subtotal = inv.get("room_subtotal", 0) or 0
+            new_subtotal = round(room_subtotal + extras_total, 2)
+            new_taxes = round(new_subtotal * 0.16, 2)
+            new_total = round(new_subtotal + new_taxes, 2)
+
+            inv_update = {
+                "$set": {
+                    "line_items": combined,
+                    "extras_total": extras_total,
+                    "subtotal": new_subtotal,
+                    "taxes": new_taxes,
+                    "total": new_total,
+                    "updated_at": now_utc(),
+                }
+            }
+            db.reservation_invoices.update_one({"_id": inv["_id"]}, inv_update)
+            db.fact_reservation_invoices.update_one({"_id": inv["_id"]}, inv_update)
+    except Exception:
+        logger.exception(
+            "Failed to sync product to invoice for booking %s", booking_id
+        )
 
     return line_item
 
@@ -181,16 +276,46 @@ def remove_booking_line_item(
     *,
     changed_by: str = "system",
 ) -> bool:
-    """Remove a line item from a booking."""
+    """Remove a line item from a booking, restoring total_charges and inventory."""
     db = get_database()
+
+    # Read the line item first to get its total and product_id
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id, "line_items.item_id": item_id},
+        {"_id": 0, "line_items": 1},
+    )
+    item = None
+    if booking:
+        for li in booking.get("line_items", []):
+            if li.get("item_id") == item_id:
+                item = li
+                break
+
+    # Build atomic update: $pull + $inc + $set in one operation
+    item_total = item.get("total", 0) if item else 0
+    update_op: dict[str, Any] = {
+        "$pull": {"line_items": {"item_id": item_id}},
+        "$set": {"updated_at": now_utc()},
+    }
+    if item_total:
+        update_op["$inc"] = {"total_charges": -item_total}
+
     result = db.booking_orders.update_one(
         {"booking_id": booking_id},
-        {
-            "$pull": {"line_items": {"item_id": item_id}},
-            "$set": {"updated_at": now_utc()},
-        },
+        update_op,
     )
+
     if result.modified_count > 0:
+        # Restore inventory (separate collection — can't be atomic with booking update)
+        if item:
+            pid = item.get("product_id", "")
+            if pid:
+                qty = item.get("quantity", 1)
+                db.hotel_products.update_one(
+                    {"product_id": pid, "quantity_available": {"$gt": 0}},
+                    {"$inc": {"quantity_available": qty}},
+                )
+
         db.booking_status_history.insert_one({
             "booking_id": booking_id,
             "status": "modified",

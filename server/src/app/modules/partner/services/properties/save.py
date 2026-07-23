@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pymongo import ReturnDocument
@@ -82,11 +83,27 @@ def save_partner_hotel_profile(
     if not generated_name:
         generated_name = hotel_display_name(hotel, prop_id)
 
+    # Re-resolve geo_country_code + geo_catalog_id when country label changes
+    geo_set: dict[str, Any] = {}
+    prev_label = clean_text(hotel.get("display_country_label"))
+    if clean_country_label and clean_country_label != prev_label:
+        geo = db.geo_catalog.find_one(
+            {"type": "country", "name": {"$regex": f"^{re.escape(clean_country_label.strip())}$", "$options": "i"}},
+            {"code": 1},
+        )
+        if geo:
+            geo_set["geo_country_code"] = geo.get("code")
+            geo_set["geo_catalog_id"] = geo["_id"]
+        else:
+            geo_set["geo_country_code"] = None
+            geo_set["geo_catalog_id"] = None
+
     db.dim_hotels.update_one(
         {"_id": hotel["_id"]},
         {
             "$set": {
                 **new_values,
+                **geo_set,
                 "manual_override": True,
                 "name_source": "manual",
                 "updated_by": changed_by,

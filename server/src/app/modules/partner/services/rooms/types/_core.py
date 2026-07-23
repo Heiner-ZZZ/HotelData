@@ -30,6 +30,15 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
     return result
 
 
+def _derive_floor(room_number: str, floor: str) -> str:
+    """Auto-derive floor from room_number (e.g. '301' → '3') if floor not set."""
+    if floor:
+        return floor
+    if room_number and room_number.isdigit():
+        return str(int(room_number) // 100)
+    return ""
+
+
 def _room_type_by_id(room_type_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
     """Get a single room type by ID."""
     db = get_database()
@@ -133,7 +142,7 @@ def create_room_type(
         "base_capacity": safe_positive_int(base_capacity, safe_positive_int(max_adults, 1) or 1),
         "base_rate": float(base_rate) if base_rate is not None and float(base_rate) > 0 else None,
         "is_active": safe_bool(is_active), "room_number": clean_room_number,
-        "floor": clean_text(floor), "view": clean_text(view),
+        "floor": _derive_floor(clean_room_number, clean_text(floor)), "view": clean_text(view),
         "smoking": safe_bool(smoking), "accessible": safe_bool(accessible),
         "is_roh": safe_bool(is_roh), "image_url": clean_text(image_url),
         "updated_at": now_utc(),
@@ -196,7 +205,7 @@ def update_room_type(
         "base_capacity": safe_positive_int(base_capacity, safe_positive_int(max_adults, 1) or 1),
         "base_rate": float(base_rate) if base_rate is not None and float(base_rate) > 0 else None,
         "is_active": safe_bool(is_active), "room_number": clean_room_number,
-        "floor": clean_text(floor), "view": clean_text(view),
+        "floor": _derive_floor(clean_room_number, clean_text(floor)), "view": clean_text(view),
         "smoking": safe_bool(smoking), "accessible": safe_bool(accessible),
         "is_roh": safe_bool(is_roh), "image_url": clean_text(image_url),
         "updated_at": now_utc(),
@@ -275,7 +284,7 @@ def create_hotel_room_for_type(
         "prop_id": prop_id,
         "room_type_id": room_type_id,
         "room_number": clean_room_number,
-        "floor": clean_text(floor),
+        "floor": _derive_floor(clean_room_number, clean_text(floor)),
         "room_label": clean_room_number,
         "view": clean_text(view),
         "smoking": safe_bool(smoking),
