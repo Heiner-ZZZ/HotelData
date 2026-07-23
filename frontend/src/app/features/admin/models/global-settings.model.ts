@@ -13,7 +13,7 @@ export interface HotelGlobalItem {
   city: string;
   province: string;
   hotelGroup: string;
-  propCountryId: number | null;
+  propCountryId: number | string | null;
 }
 
 export interface HotelGlobalList {

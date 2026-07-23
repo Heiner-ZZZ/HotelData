@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -195,6 +196,18 @@ def update_hotel_global_data(
     set_doc: dict[str, Any] = {}
     if country_name is not None:
         set_doc["country_name"] = country_name
+        # Re-resolve geo_country_code + geo_catalog_id from geo_catalog
+        geo = db.geo_catalog.find_one(
+            {"type": "country", "name": {"$regex": f"^{re.escape(country_name.strip())}$", "$options": "i"}},
+            {"code": 1},
+        )
+        if geo:
+            set_doc["geo_country_code"] = geo.get("code")
+            set_doc["geo_catalog_id"] = geo["_id"]
+        else:
+            # Country not in geo_catalog — clear geo references to avoid stale data
+            set_doc["geo_country_code"] = None
+            set_doc["geo_catalog_id"] = None
     if city is not None:
         set_doc["city"] = city
     if province is not None:

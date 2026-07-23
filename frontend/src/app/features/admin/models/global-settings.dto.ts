@@ -13,7 +13,7 @@ export interface HotelGlobalItemDto {
   city: string;
   province: string;
   hotel_group: string;
-  prop_country_id: number | null;
+  prop_country_id: number | string | null;
   prop_starrating?: number | null;
 }
 
