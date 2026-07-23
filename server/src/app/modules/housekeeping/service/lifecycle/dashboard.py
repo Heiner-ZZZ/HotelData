@@ -96,12 +96,16 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
         doc["statusColor"] = ROOM_STATUS_COLORS.get(doc.get("status", ""), "#6f797d")
         rooms_list.append(doc)
 
-        # Read floor directly from room_status_log (populated by sync or upsert)
+        # Read floor; fall back to room_number-derived floor (e.g. '301' → '3')
         floor = doc.get("floor")
         if floor is not None and str(floor):
             floor = str(floor)
         else:
-            floor = FLOOR_UNKNOWN
+            rn = str(doc.get("room_number", "") or doc.get("roomNumber", ""))
+            if rn.isdigit():
+                floor = str(int(rn) // 100)
+            else:
+                floor = FLOOR_UNKNOWN
         if floor not in floors_map:
             floors_map[floor] = []
         floors_map[floor].append(doc)

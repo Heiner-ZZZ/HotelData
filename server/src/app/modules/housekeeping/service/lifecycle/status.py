@@ -204,6 +204,11 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
         room_label = room.get("room_label", "")
         room_number = room.get("room_number", "")
         floor = room.get("floor")
+        # Auto-derive floor from room_number if missing (e.g. '301' → '3')
+        if not floor:
+            rn = room.get("room_number", "")
+            if rn and rn.isdigit():
+                floor = str(int(rn) // 100)
         if not hotel_room_id:
             continue
 

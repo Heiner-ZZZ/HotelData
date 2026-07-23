@@ -23,6 +23,7 @@ ROOM_STATUS_INDEXES = [
 
 ROOM_STATUS_HISTORY_INDEXES = [
     IndexModel([("prop_id", ASCENDING)], name="idx_rsh_prop"),
+    IndexModel([("hotel_room_id", ASCENDING)], name="idx_rsh_hotel_room_id"),
     IndexModel([("room_label", ASCENDING)], name="idx_rsh_room"),
     IndexModel([("booking_id", ASCENDING)], name="idx_rsh_booking"),
     IndexModel([("created_at", -1)], name="idx_rsh_created_desc"),

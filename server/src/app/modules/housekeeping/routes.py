@@ -131,6 +131,7 @@ def room_status_history_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
     room_label: str | None = Query(default=None),
+    room_id: str | None = Query(default=None, description="hotel_room_id FK filter"),
     booking_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
@@ -140,6 +141,7 @@ def room_status_history_api(
     result = list_room_status_history(
         prop_id=prop_id,
         room_label=room_label,
+        room_id=room_id,
         booking_id=booking_id,
         page=page,
         page_size=page_size,
