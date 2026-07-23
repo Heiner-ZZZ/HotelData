@@ -16,7 +16,6 @@ from fastapi.responses import StreamingResponse
 from src.app.modules.instay.schemas import (
     SERVICE_REQUEST_TYPES,
     CompendiumInfo,
-    ServiceRequestUpdate,
     StaySessionCreate,
     utc_now,
 )
@@ -28,6 +27,7 @@ from src.app.modules.instay.routes_impl._helpers import (
     notify_staff_new_message,
     notify_staff_new_request,
     notify_staff_request_updated,
+    resolve_hotel_room_id,
     serialize_session,
     session_expiry,
     status_label,
@@ -84,7 +84,19 @@ def get_my_stay_session(
     room_label = ""
     if assigned_rooms:
         first_room = assigned_rooms[0]
-        room_label = first_room.get("room_label", "") or first_room.get("room_number", "") if isinstance(first_room, dict) else str(first_room)
+        if isinstance(first_room, dict):
+            # Legacy: dict with room_label/room_number keys
+            room_label = first_room.get("room_label", "") or first_room.get("room_number", "")
+        elif isinstance(first_room, str):
+            # Current: hotel_room_id string — resolve to room_label from hotel_rooms
+            hotel_room = db.hotel_rooms.find_one(
+                {"hotel_room_id": first_room},
+                {"_id": 0, "room_label": 1, "room_number": 1},
+            )
+            if hotel_room:
+                room_label = hotel_room.get("room_label", "") or hotel_room.get("room_number", "")
+            else:
+                room_label = first_room
 
     doc = {
         "token": token, "booking_id": booking_id,
@@ -216,6 +228,7 @@ def deactivate_stay_session(token: str, current_user: dict = Depends(require_per
 def list_service_requests(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
+    room_id: str | None = Query(default=None, description="hotel_room_id FK filter"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_permission("reservations.read")),
@@ -226,6 +239,8 @@ def list_service_requests(
         query["prop_id"] = prop_id
     if status_filter:
         query["status"] = status_filter
+    if room_id:
+        query["hotel_room_id"] = room_id
     total = db.stay_service_requests.count_documents(query)
     items = list(db.stay_service_requests.find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size))
     return {
@@ -298,6 +313,7 @@ def staff_create_request(
         "booking_id": booking_id,
         "prop_id": session.get("prop_id", 0),
         "room_label": session.get("room_label", ""),
+        "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
         "request_type": request_type,
         "request_type_label": type_label(request_type),
         "description": description,
@@ -316,7 +332,7 @@ def staff_create_request(
 @staff_router.put("/requests/{request_id}")
 def update_service_request(
     request_id: str,
-    payload: ServiceRequestUpdate = Body(...),
+    payload: dict = Body(...),
     current_user: dict = Depends(require_permission("reservations.read")),
 ):
     db = get_database()
@@ -329,10 +345,53 @@ def update_service_request(
     if not existing:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
 
-    update: dict = {"status": payload.status, "staff_responded_at": utc_now()}
-    if payload.staff_response:
-        update["staff_response"] = payload.staff_response
-    if payload.status == "completed":
+    new_status = (payload.get("status") or "").strip()
+    staff_response = (payload.get("staff_response") or "").strip()
+    new_check_out_date = (payload.get("new_check_out_date") or "").strip()
+
+    if not new_status:
+        raise HTTPException(status_code=400, detail="status es requerido.")
+
+    # ── Mid-stay operations: execute real action BEFORE marking as completed ──
+    mid_stay_result = None
+    request_type = existing.get("request_type", "")
+    booking_id = existing.get("booking_id", "")
+    staff_name = current_user.get("display_name") or current_user.get("username", "staff")
+
+    if new_status == "completed" and request_type in ("extend_stay", "early_checkout"):
+        try:
+            from src.app.modules.instay.routes_impl._midstay_handler import (
+                process_extend_stay, process_early_checkout,
+            )
+            if request_type == "extend_stay":
+                if not new_check_out_date:
+                    mid_stay_result = {"ok": False, "error": "new_check_out_date requerido para extender estancia."}
+                else:
+                    mid_stay_result = process_extend_stay(
+                        booking_id,
+                        new_check_out_date=new_check_out_date,
+                        changed_by=staff_name,
+                    )
+            elif request_type == "early_checkout":
+                mid_stay_result = process_early_checkout(
+                    booking_id,
+                    changed_by=staff_name,
+                )
+        except ValueError as e:
+            mid_stay_result = {"ok": False, "error": str(e)}
+        except Exception:
+            logger = __import__("logging").getLogger(__name__)
+            logger.exception("Mid-stay operation failed for request %s", request_id)
+            mid_stay_result = {"ok": False, "error": "Error interno al procesar la operación."}
+
+        # If the mid-stay operation failed, don't mark the request as completed
+        if mid_stay_result and not mid_stay_result.get("ok"):
+            return {"ok": False, "message": "Operación fallida.", "mid_stay": mid_stay_result}
+
+    update: dict = {"status": new_status, "staff_responded_at": utc_now()}
+    if staff_response:
+        update["staff_response"] = staff_response
+    if new_status == "completed":
         update["resolved_at"] = utc_now()
     result = db.stay_service_requests.update_one({"_id": oid}, {"$set": update})
     if result.matched_count == 0:
@@ -340,7 +399,7 @@ def update_service_request(
 
     # Push SSE event for real-time notification to all staff
     try:
-        notify_staff_request_updated(db, existing, payload.status)
+        notify_staff_request_updated(db, existing, new_status)
     except Exception:
         pass
 
@@ -348,11 +407,14 @@ def update_service_request(
     import threading
     threading.Thread(
         target=notify_guest_request_completed,
-        args=(db, existing, payload.status),
+        args=(db, existing, new_status),
         daemon=True,
     ).start()
 
-    return {"ok": True, "message": "Solicitud actualizada."}
+    response: dict = {"ok": True, "message": "Solicitud actualizada."}
+    if mid_stay_result:
+        response["mid_stay"] = mid_stay_result
+    return response
 
 
 # ═══════════════════════════════════════════════════════════
@@ -722,7 +784,9 @@ def guest_create_request(payload: dict = Body(...)):
 
     doc = {
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
-        "room_label": session["room_label"], "request_type": request_type,
+        "room_label": session["room_label"],
+        "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
+        "request_type": request_type,
         "request_type_label": type_label(request_type), "description": description,
         "status": "pending", "status_label": "Pendiente", "staff_response": "",
         "created_at": utc_now(), "resolved_at": None,
@@ -742,7 +806,8 @@ def guest_list_requests(token: str = Query(..., min_length=1)):
     booking_id = session["booking_id"]
     items = list(db.stay_service_requests.find({"booking_id": booking_id}).sort("created_at", -1))
     return {"items": [{"_id": str(r["_id"]), "booking_id": r.get("booking_id", ""), "prop_id": r.get("prop_id", 0),
-                       "room_label": r.get("room_label", ""), "request_type": r.get("request_type", ""),
+                       "room_label": r.get("room_label", ""), "hotel_room_id": r.get("hotel_room_id", ""),
+                       "request_type": r.get("request_type", ""),
                        "request_type_label": type_label(r.get("request_type", "")),
                        "description": r.get("description", ""), "status": r.get("status", ""),
                        "status_label": status_label(r.get("status", "")),

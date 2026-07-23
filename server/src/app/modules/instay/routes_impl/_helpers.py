@@ -17,6 +17,30 @@ _TOKEN_BYTES = 32
 _SESSION_DAYS = 31
 
 
+def resolve_hotel_room_id(prop_id: int, room_label: str) -> str:
+    """Resolve hotel_room_id FK from room_label + prop_id.
+
+    Looks up hotel_rooms first, then room_status_log as fallback.
+    Returns "" if no match found.
+    """
+    if not prop_id or not room_label:
+        return ""
+    db = get_database()
+    room = db.hotel_rooms.find_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"hotel_room_id": 1},
+    )
+    if room and room.get("hotel_room_id"):
+        return room["hotel_room_id"]
+    status_doc = db.room_status_log.find_one(
+        {"prop_id": prop_id, "room_label": room_label},
+        {"hotel_room_id": 1},
+    )
+    if status_doc and status_doc.get("hotel_room_id"):
+        return status_doc["hotel_room_id"]
+    return ""
+
+
 def session_expiry() -> datetime:
     return utc_now() + timedelta(days=_SESSION_DAYS)
 
@@ -451,4 +475,5 @@ def ensure_stay_collections():
         db.create_collection("stay_service_requests")
     db.stay_service_requests.create_index("booking_id")
     db.stay_service_requests.create_index([("prop_id", 1), ("status", 1)])
+    db.stay_service_requests.create_index("hotel_room_id")
     db.stay_service_requests.create_index("created_at")

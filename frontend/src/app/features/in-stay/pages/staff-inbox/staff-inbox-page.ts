@@ -120,6 +120,26 @@ export class StaffInboxPageComponent implements OnDestroy {
   // Staff response input
   readonly staffResponseInput = signal('');
 
+  // Extend stay date (only shown when completing an extend_stay request)
+  readonly newCheckOutDate = signal('');
+
+  /** Whether the confirm modal should show a date picker for extend_stay. */
+  readonly showExtendDateField = computed(() => {
+    const req = this.confirmTarget();
+    return this.confirmActionType() === 'complete' && req?.request_type === 'extend_stay';
+  });
+
+  /** Disable confirm button when extend_stay date is required but empty. */
+  readonly confirmDisabled = computed(() => {
+    if (this.showExtendDateField() && !this.newCheckOutDate()) return true;
+    return false;
+  });
+
+  /** Today's date for min attribute on date inputs. */
+  get todayDate(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
   // Confirm modal
   readonly showConfirmModal = signal(false);
   readonly confirmTitle = signal('');
@@ -494,6 +514,7 @@ export class StaffInboxPageComponent implements OnDestroy {
     this.confirmTitle.set(titles[action]);
     this.confirmMessage.set(`${req.request_type_label} — Hab. ${req.room_label}`);
     this.staffResponseInput.set('');
+    this.newCheckOutDate.set('');
     this.showConfirmModal.set(true);
   }
 
@@ -515,8 +536,11 @@ export class StaffInboxPageComponent implements OnDestroy {
     };
     const newStatus = statusMap[action];
     const response = this.staffResponseInput().trim();
+    const newDate = action === 'complete' && req.request_type === 'extend_stay'
+      ? this.newCheckOutDate()
+      : undefined;
 
-    this.api.updateRequest(req._id, newStatus, response).subscribe({
+    this.api.updateRequest(req._id, newStatus, response, newDate).subscribe({
       next: () => {
         this.closeConfirmModal();
         const propId = this.selectedPropId() ?? undefined;

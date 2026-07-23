@@ -67,6 +67,7 @@ export class GuestPortalPageComponent implements OnInit {
     { value: 'spa', label: 'Spa & Bienestar' },
     { value: 'restaurant', label: 'Reserva en restaurante' },
     { value: 'extend_stay', label: 'Extender estancia' },
+    { value: 'early_checkout', label: 'Salida anticipada' },
     { value: 'other', label: 'Otro' },
   ];
 

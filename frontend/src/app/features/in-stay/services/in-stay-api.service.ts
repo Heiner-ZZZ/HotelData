@@ -62,8 +62,10 @@ export class InStayApiService {
     return this.http.get<PaginatedResponse<ServiceRequest>>('/api/stay/requests', { params });
   }
 
-  updateRequest(requestId: string, status: string, staffResponse = ''): Observable<{ ok: boolean }> {
-    return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, { status, staff_response: staffResponse });
+  updateRequest(requestId: string, status: string, staffResponse = '', newCheckOutDate?: string): Observable<{ ok: boolean }> {
+    const body: Record<string, string> = { status, staff_response: staffResponse };
+    if (newCheckOutDate) body['new_check_out_date'] = newCheckOutDate;
+    return this.http.put<{ ok: boolean }>(`/api/stay/requests/${requestId}`, body);
   }
 
   staffCreateRequest(bookingId: string, requestType: string, description = ''): Observable<{ ok: boolean; request_id: string }> {

@@ -149,13 +149,13 @@ def process_early_checkout(
     booking_id: str,
     *,
     changed_by: str = "staff",
-    penalty_pct: float = 50.0,
 ) -> dict[str, Any]:
     """Process an early check-out (understay) with penalty.
 
-    Calculates remaining nights, applies a penalty percentage on the
-    remaining room rate, posts the penalty to the folio, updates the
-    booking, and restores inventory for the unused nights.
+    Reads the cancellation_penalty_percent from hotel_policies (hierarchy:
+    rate_plan > room_type > hotel-wide, default 100%). Calculates the
+    penalty on remaining nights, posts to folio, updates booking, restores
+    inventory, marks rooms dirty, creates cleaning tasks, and closes folio.
 
     Returns {"ok": True, "remaining_nights": N, "penalty_amount": X.XX}
     or raises ValueError.
@@ -182,6 +182,14 @@ def process_early_checkout(
             f"(check-out: {check_out_str}, hoy: {today})."
         )
 
+    # Resolve penalty percent from hotel_policies (hierarchy: rate_plan > room_type > hotel-wide)
+    from src.app.modules.reservations.service.cleanup import _resolve_penalty_percent
+    penalty_pct = _resolve_penalty_percent(
+        prop_id=int(booking.get("prop_id", 0)),
+        room_type_id=str(booking.get("room_type_id", "")),
+        rate_plan_id=str(booking.get("rate_plan_id", "")),
+    )
+
     rate_per_night = _room_rate_per_night(booking)
     remaining_value = round(rate_per_night * remaining_nights, 2)
     penalty_amount = round(remaining_value * penalty_pct / 100, 2)
@@ -201,6 +209,7 @@ def process_early_checkout(
                 "check_out_early_checkout": True,
                 "check_out_early_penalty": penalty_amount,
                 "check_out_early_remaining_nights": remaining_nights,
+                "check_out_early_penalty_percent": penalty_pct,
                 "updated_at": now,
             }
         },
@@ -259,6 +268,53 @@ def process_early_checkout(
         )
     except Exception:
         logger.exception("Failed to deactivate stay session for %s", booking_id)
+
+    # Settle additional charges
+    try:
+        from src.app.modules.billing.service import update_invoice_additional_charges
+        update_invoice_additional_charges(booking_id, changed_by=changed_by)
+    except Exception:
+        logger.exception("Failed to settle charges on early checkout %s", booking_id)
+
+    # Mark rooms as dirty + create cleaning tasks
+    try:
+        assigned_rooms: list[str] = booking.get("assigned_rooms") or []
+        prop_id = int(booking.get("prop_id", 0))
+        if assigned_rooms:
+            room_docs = list(
+                db.hotel_rooms.find(
+                    {"hotel_room_id": {"$in": assigned_rooms}},
+                    {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+                )
+            )
+            for r in room_docs:
+                label = r.get("room_label", "") or r.get("room_number", "")
+                if not label:
+                    continue
+                db.room_status_log.update_one(
+                    {"prop_id": prop_id, "room_label": label},
+                    {"$set": {"status": "vacant_dirty", "note": f"Early check-out: {booking_id}", "updated_at": now},
+                     "$setOnInsert": {"created_at": now}},
+                    upsert=True,
+                )
+                db.housekeeping_tasks.insert_one({
+                    "prop_id": prop_id,
+                    "room_id": r.get("hotel_room_id", ""),
+                    "room_label": label,
+                    "room_number": r.get("room_number", ""),
+                    "room_type_id": r.get("room_type_id", ""),
+                    "task_type": "cleaning",
+                    "status": "pending",
+                    "assigned_to": "",
+                    "priority": "normal",
+                    "note": f"Limpieza automática post early check-out — reserva {booking_id}",
+                    "scheduled_date": "",
+                    "created_at": now,
+                    "completed_at": None,
+                })
+            logger.info("Rooms marked as dirty + cleaning tasks for early checkout %s", booking_id)
+    except Exception:
+        logger.exception("Failed to mark rooms dirty for early checkout %s", booking_id)
 
     # Close folio
     try:

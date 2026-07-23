@@ -54,6 +54,7 @@ SERVICE_REQUEST_TYPES = {
     "spa": "Spa & Bienestar",
     "restaurant": "Reserva en restaurante",
     "extend_stay": "Extender estancia",
+    "early_checkout": "Salida anticipada",
     "other": "Otro",
 }
 

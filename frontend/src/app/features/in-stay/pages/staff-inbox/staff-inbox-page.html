@@ -127,7 +127,7 @@
                       @if (item.type === 'message') {
                         <span class="si-tl-guest">{{ item.guestName || 'Huésped' }}</span>
                       } @else {
-                        <span class="si-tl-req-type">{{ item.requestType || item.request?.request_type_label }}</span>
+                        <span class="si-tl-req-type">{{ item.request?.request_type_label }}</span>
                       }
                     </div>
                     <p class="si-tl-preview">{{ item.preview }}</p>
@@ -680,6 +680,19 @@
       </div>
       <div class="si-modal-body">
         <p class="si-modal-message">{{ confirmMessage() }}</p>
+        @if (showExtendDateField()) {
+          <label class="si-modal-label">
+            Nueva fecha de salida
+            <span class="si-modal-required">*</span>
+          </label>
+          <input
+            type="date"
+            class="si-modal-date-input"
+            [ngModel]="newCheckOutDate()"
+            (ngModelChange)="newCheckOutDate.set($event)"
+            [min]="todayDate"
+          />
+        }
         <label class="si-modal-label">Respuesta para el huésped (opcional)</label>
         <textarea
           class="si-modal-textarea"
@@ -691,7 +704,7 @@
       </div>
       <div class="si-modal-actions">
         <button class="si-modal-btn si-modal-btn-cancel" (click)="closeConfirmModal()">Cancelar</button>
-        <button class="si-modal-btn si-modal-btn-confirm" (click)="confirmAction()">Confirmar</button>
+        <button class="si-modal-btn si-modal-btn-confirm" (click)="confirmAction()" [disabled]="confirmDisabled()">Confirmar</button>
       </div>
     </div>
   </div>

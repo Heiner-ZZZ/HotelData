@@ -53,6 +53,10 @@
       &:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
       .material-symbols-outlined { font-size: 1rem; }
     }
+    .gp-btn-outline-danger {
+      border-color: rgba(255, 180, 140, 0.45);
+      &:hover { background: rgba(255, 180, 140, 0.12); border-color: rgba(255, 180, 140, 0.6); }
+    }
   }
 }
 
