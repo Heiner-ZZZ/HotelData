@@ -261,44 +261,45 @@ def post_to_folio(
         "posted_at": now,
     }
 
-    # Build the atomic update
+    # Build atomic $inc fields — total_due is incremented atomically
+    # alongside its component fields, eliminating the TOCTOU race.
     inc_fields: dict[str, float] = {}
     if posting_type == "charge":
         inc_fields["total_charges"] = amount
+        inc_fields["total_due"] = amount
     elif posting_type == "discount":
-        # Discounts are negative amounts
         inc_fields["total_discounts"] = abs(amount)
+        inc_fields["total_due"] = -abs(amount)
     elif posting_type == "payment":
         inc_fields["total_payments"] = amount
+        inc_fields["total_due"] = -amount
     elif posting_type == "adjustment":
-        # Adjustments can be positive or negative
+        # Adjustments can be positive or negative — total_due follows the sign
         if amount >= 0:
             inc_fields["total_charges"] = amount
         else:
             inc_fields["total_discounts"] = abs(amount)
-
-    # Calculate new total_due: room + charges - discounts - payments
-    folio = db[FOLIO_COLLECTION].find_one({"booking_id": booking_id})
-    if not folio:
-        return None
-
-    new_total_due = (
-        folio.get("total_room", 0)
-        + folio.get("total_charges", 0) + inc_fields.get("total_charges", 0)
-        - folio.get("total_discounts", 0) - inc_fields.get("total_discounts", 0)
-        - folio.get("total_payments", 0) - inc_fields.get("total_payments", 0)
-    )
-    new_total_due = round(max(new_total_due, 0), 2)
+        inc_fields["total_due"] = amount
 
     result = db[FOLIO_COLLECTION].find_one_and_update(
         {"booking_id": booking_id},
         {
             "$push": {"postings": posting},
             "$inc": {**inc_fields, "posting_count": 1},
-            "$set": {"total_due": new_total_due, "updated_at": now},
+            "$set": {"updated_at": now},
         },
         return_document=ReturnDocument.AFTER,
     )
+    if result is None:
+        return None
+
+    # Floor total_due at 0 in the rare case $inc drove it negative
+    if result.get("total_due", 0) < 0:
+        db[FOLIO_COLLECTION].update_one(
+            {"booking_id": booking_id},
+            {"$set": {"total_due": 0}},
+        )
+        result["total_due"] = 0
     return _enrich_folio(result) if result else None
 
 

@@ -557,13 +557,23 @@ def update_invoice_additional_charges(
         "updated_at": _now(),
     }
 
+    new_charges_sum = round(sum(item["total"] for item in new_items), 2)
+
     db[INVOICES].update_one({"_id": inv_id}, {"$set": update_doc})
     db[FACT_INVOICES].update_one({"_id": inv_id}, {"$set": update_doc})
 
-    db.booking_orders.update_one(
-        {"booking_id": booking_id},
-        {"$set": {"total_charges": charges_sum, "total_price": new_total, "updated_at": _now()}},
-    )
+    # $inc only the NEW charges — preserves product line-item charges already on the booking
+    if new_charges_sum > 0:
+        db.booking_orders.update_one(
+            {"booking_id": booking_id},
+            {"$inc": {"total_charges": new_charges_sum},
+             "$set": {"updated_at": _now()}},
+        )
+    else:
+        db.booking_orders.update_one(
+            {"booking_id": booking_id},
+            {"$set": {"updated_at": _now()}},
+        )
 
     db.booking_status_history.insert_one({
         "booking_id": booking_id,
@@ -665,7 +675,8 @@ def create_split_charges_invoice(
 
     db.booking_orders.update_one(
         {"booking_id": booking_id},
-        {"$set": {"total_charges": charges_sum, "split_invoice": True, "updated_at": _now()}},
+        {"$inc": {"total_charges": charges_sum},
+         "$set": {"split_invoice": True, "updated_at": _now()}},
     )
 
     db.booking_status_history.insert_one({
