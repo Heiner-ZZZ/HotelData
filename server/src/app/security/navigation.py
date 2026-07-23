@@ -102,6 +102,7 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
             visible = True
             if required and permission_codes is not None and "*.*" not in permission_codes:
                 visible = required in permission_codes
+            pid = doc.get("permission_id")
             items.append({
                 "label": doc.get("label", ""),
                 "href": doc.get("href", ""),
@@ -109,6 +110,7 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
                 "visible": visible,
                 "section": doc.get("section"),
                 "is_section_header": doc.get("is_section_header", False),
+                "permissionId": str(pid) if pid else None,
             })
         return items
     except Exception:

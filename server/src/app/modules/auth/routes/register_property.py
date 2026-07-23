@@ -183,6 +183,25 @@ def _country_label(country: dict, country_id: int) -> str:
     )
 
 
+def _resolve_geo_country(db, country: dict, country_id: int) -> tuple[str | None, object | None]:
+    """Resolve geo_country_code and geo_catalog_id from a dim_visitor_countries doc.
+
+    Matches the country's display name against geo_catalog.type=country entries
+    by name (case-insensitive). Returns (geo_country_code, geo_catalog_id) or
+    (None, None) if no match found.
+    """
+    country_name = _country_label(country, country_id).strip().lower()
+    if not country_name:
+        return None, None
+    geo_doc = db.geo_catalog.find_one(
+        {"type": "country", "name": {"$regex": f"^{re.escape(country_name)}$", "$options": "i"}},
+        {"code": 1},
+    )
+    if geo_doc:
+        return geo_doc.get("code"), geo_doc["_id"]
+    return None, None
+
+
 def _next_prop_id(db) -> int:
     """Allocate the next prop_id atomically with high-water-mark sync.
 
@@ -337,6 +356,7 @@ def confirm_property_registration_code(
         db, pending_property["country_id"], pending_property["currency"]
     )
     country_label = _country_label(country, pending_property["country_id"])
+    geo_country_code, geo_catalog_id = _resolve_geo_country(db, country, pending_property["country_id"])
     now = _now()
     prop_id = _next_prop_id(db)
 
@@ -372,6 +392,8 @@ def confirm_property_registration_code(
         "description": pending_property.get("description", ""),
         "display_country_label": country_label,
         "prop_country_id": pending_property["country_id"],
+        "geo_country_code": geo_country_code,
+        "geo_catalog_id": geo_catalog_id,
         "currency": pending_property["currency"],
         "accepted_currencies": [pending_property["currency"]],
         "manual_override": True,

@@ -17,6 +17,7 @@ CHART_OF_ACCOUNTS = "chart_of_accounts"
 INVOICES_INDEXES = [
     IndexModel([("vendor_name", ASCENDING)], name="idx_inv_vendor"),
     IndexModel([("category", ASCENDING)], name="idx_inv_category"),
+    IndexModel([("category_id", ASCENDING)], name="idx_inv_category_id"),
     IndexModel([("status", ASCENDING)], name="idx_inv_status"),
     IndexModel([("created_at", DESCENDING)], name="idx_inv_created"),
     IndexModel([("prop_id", ASCENDING)], name="idx_inv_prop"),

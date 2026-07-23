@@ -23,11 +23,22 @@ from src.app.security.dependencies import require_permission
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
 
+def _resolve_category_id(category_name: str) -> ObjectId | None:
+    """Resolve a category name to its ObjectId from expense_categories."""
+    if not category_name:
+        return None
+    db = get_database()
+    cat = db[CATEGORIES_COLLECTION].find_one({"name": category_name}, {"_id": 1})
+    return cat["_id"] if cat else None
+
+
 def _enrich_invoice(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     doc["total"] = (doc.get("amount") or 0) + (doc.get("tax_amount") or 0)
     if doc.get("prop_id"):
         doc["prop_id"] = int(doc["prop_id"])
+    if doc.get("category_id"):
+        doc["category_id"] = str(doc["category_id"])
     for f in ("created_at", "updated_at", "approved_at"):
         if isinstance(doc.get(f), datetime):
             doc[f] = doc[f].isoformat()
@@ -162,8 +173,10 @@ def create_invoice(
     db = get_database()
     now_dt = datetime.now(timezone.utc)
     total_amount = payload.amount + payload.tax_amount
+    category_id = _resolve_category_id(payload.category)
     doc = {
         "vendor_name": payload.vendor_name, "category": payload.category,
+        "category_id": category_id,
         "description": payload.description, "amount": payload.amount,
         "tax_amount": payload.tax_amount, "total": total_amount,
         "status": "pending", "invoice_date": payload.invoice_date,
@@ -196,6 +209,7 @@ def list_invoices(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
+    category_id: str | None = Query(default=None),
     vendor: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
@@ -207,6 +221,11 @@ def list_invoices(
         query["status"] = status_filter
     if category:
         query["category"] = category
+    if category_id:
+        try:
+            query["category_id"] = ObjectId(category_id)
+        except Exception:
+            pass
     if vendor:
         query["vendor_name"] = {"$regex": vendor, "$options": "i"}
     if prop_id is not None:
@@ -282,6 +301,11 @@ def update_invoice(
     if not update:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     update["updated_at"] = datetime.now(timezone.utc)
+    if "category" in update:
+        if update["category"]:
+            update["category_id"] = _resolve_category_id(update["category"])
+        else:
+            update["category_id"] = None
     if "amount" in update or "tax_amount" in update:
         amt = update.get("amount", before["amount"])
         tax = update.get("tax_amount", before["tax_amount"])
@@ -349,10 +373,14 @@ def list_categories(
     db = get_database()
     cursor = db[CATEGORIES_COLLECTION].find().sort("name", 1)
     result = []
-    for cat in cursor:
-        cat = _enrich_category(cat)
+    for cat_doc in cursor:
+        cat_oid = cat_doc["_id"]
+        cat = _enrich_category(cat_doc)
+        or_filter: list = [{"category": cat["name"]}]
+        if cat_oid:
+            or_filter.insert(0, {"category_id": cat_oid})
         spent_agg = db[INVOICES_COLLECTION].aggregate([
-            {"$match": {"category": cat["name"], "status": {"$in": ["approved", "paid"]}}},
+            {"$match": {"$or": or_filter, "status": {"$in": ["approved", "paid"]}}},
             {"$group": {"_id": None, "total": {"$sum": "$total"}}},
         ])
         spent_list = list(spent_agg)

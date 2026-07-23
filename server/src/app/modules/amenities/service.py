@@ -305,9 +305,14 @@ def request_amenities(
         if not label:
             continue
 
-        # Reserve stock (best-effort; stock was pre-checked)
+        # Reserve stock (best-effort; stock was pre-checked but could have changed)
         try:
-            _reserve_amenity(prop_id, room_type_id, label, qty)
+            reserved = _reserve_amenity(prop_id, room_type_id, label, qty)
+            if not reserved:
+                logger.warning(
+                    "Stock reservation failed for '%s' on booking %s — stock may have been depleted between pre-check and reserve.",
+                    label, booking_id,
+                )
         except Exception:
             logger.exception("Failed to reserve stock for %s", label)
 
