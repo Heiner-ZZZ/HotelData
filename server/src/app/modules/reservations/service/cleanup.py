@@ -78,6 +78,13 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
     }
 
 
+def room_rate_per_night(booking: dict) -> float:
+    """Calculate the room rate per night from a booking document."""
+    total_price = float(booking.get("total_price", 0) or 0)
+    total_nights = int(booking.get("total_nights", 1)) or 1
+    return round(total_price / total_nights, 2)
+
+
 def resolve_penalty_percent(
     prop_id: int,
     room_type_id: str = "",

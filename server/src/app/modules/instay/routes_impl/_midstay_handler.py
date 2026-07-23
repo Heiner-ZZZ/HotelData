@@ -22,13 +22,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _room_rate_per_night(booking: dict) -> float:
-    """Calculate the room rate per night from the booking."""
-    total_price = float(booking.get("total_price", 0) or 0)
-    total_nights = int(booking.get("total_nights", 1)) or 1
-    return round(total_price / total_nights, 2)
-
-
 # ── Extend Stay ─────────────────────────────────────────────────
 
 
@@ -72,7 +65,8 @@ def process_extend_stay(
     if extra_nights <= 0:
         raise ValueError("La extensión debe ser de al menos 1 noche adicional.")
 
-    rate_per_night = _room_rate_per_night(booking)
+    from src.app.modules.reservations.service import room_rate_per_night
+    rate_per_night = room_rate_per_night(booking)
     additional_charge = round(rate_per_night * extra_nights, 2)
 
     now = _now()
@@ -183,14 +177,14 @@ def process_early_checkout(
         )
 
     # Resolve penalty percent from hotel_policies (hierarchy: rate_plan > room_type > hotel-wide)
-    from src.app.modules.reservations.service.cleanup import resolve_penalty_percent
+    from src.app.modules.reservations.service import resolve_penalty_percent, room_rate_per_night
     penalty_pct = resolve_penalty_percent(
         prop_id=int(booking.get("prop_id", 0)),
         room_type_id=str(booking.get("room_type_id", "")),
         rate_plan_id=str(booking.get("rate_plan_id", "")),
     )
 
-    rate_per_night = _room_rate_per_night(booking)
+    rate_per_night = room_rate_per_night(booking)
     remaining_value = round(rate_per_night * remaining_nights, 2)
     penalty_amount = round(remaining_value * penalty_pct / 100, 2)
 

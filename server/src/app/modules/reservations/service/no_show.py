@@ -28,13 +28,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _room_rate_per_night(booking: dict) -> float:
-    """Calculate the room rate per night from the booking."""
-    total_price = float(booking.get("total_price", 0) or 0)
-    total_nights = int(booking.get("total_nights", 1)) or 1
-    return round(total_price / total_nights, 2)
-
-
 def process_no_show(
     booking_id: str,
     *,
@@ -69,13 +62,13 @@ def process_no_show(
         )
 
     # Calculate first night penalty — read penalty % from hotel_policies
-    from src.app.modules.reservations.service.cleanup import resolve_penalty_percent
+    from src.app.modules.reservations.service import resolve_penalty_percent, room_rate_per_night
     penalty_pct = resolve_penalty_percent(
         prop_id=int(booking.get("prop_id", 0)),
         room_type_id=str(booking.get("room_type_id", "")),
         rate_plan_id=str(booking.get("rate_plan_id", "")),
     )
-    rate_per_night = _room_rate_per_night(booking)
+    rate_per_night = room_rate_per_night(booking)
     penalty_amount = round(rate_per_night * penalty_pct / 100, 2)
 
     # If penalty_pct > 0 but rate is so low it rounds to zero, charge at least the full night
