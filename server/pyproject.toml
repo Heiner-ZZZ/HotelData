@@ -3,3 +3,6 @@ cache-dir = "../.cache/ruff"
 
 [tool.mypy]
 cache_dir = "../.cache/mypy"
+
+[tool.pytest.ini_options]
+cache_dir = "../.cache/pytest"

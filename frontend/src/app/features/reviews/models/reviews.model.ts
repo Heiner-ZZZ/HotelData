@@ -84,12 +84,3 @@ export interface DailyCount {
   date: string;
   count: number;
 }
-
-export interface ReviewModerateInput {
-  status: string;
-  reason: string;
-}
-
-export interface ReviewRespondInput {
-  response: string;
-}

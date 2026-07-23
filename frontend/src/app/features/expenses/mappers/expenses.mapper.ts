@@ -1,7 +1,7 @@
 import type { ExpenseDashboardDto, InvoiceDetailDto, InvoiceItemDto, InvoiceListDto } from '../models/expenses.dto';
-import type { LedgerTransactionDto, LedgerListDto, LedgerFolioDto, LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, TrialBalanceRowDto, StatementLineDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingDto, FolioPostingsDto } from '../models/ledger.dto';
+import type { LedgerFolioDto, LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, TrialBalanceRowDto, StatementLineDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingDto, FolioPostingsDto } from '../models/ledger.dto';
 import type { ExpenseDashboard, InvoiceDetail, InvoiceListItem } from '../models/expenses.model';
-import type { LedgerTransaction, LedgerFolio, LedgerListResponse, LedgerSummary, TrialBalance, TrialBalanceRow, StatementLine, IncomeStatement, BalanceSheet, ChartAccount, FolioPosting, FolioPostingsResponse } from '../models/ledger.model';
+import type { LedgerFolio, LedgerSummary, TrialBalance, TrialBalanceRow, StatementLine, IncomeStatement, BalanceSheet, ChartAccount, FolioPosting, FolioPostingsResponse } from '../models/ledger.model';
 
 function mapInvoiceItem(dto: InvoiceItemDto): InvoiceListItem {
   return {
@@ -67,44 +67,6 @@ export function mapExpenseDashboard(dto: ExpenseDashboardDto): ExpenseDashboard 
 }
 
 // ─── Ledger mappers ───
-
-function mapLedgerTransaction(dto: LedgerTransactionDto): LedgerTransaction {
-  return {
-    id: dto.id,
-    journalEntryId: dto.journal_entry_id,
-    entryType: dto.entry_type as LedgerTransaction['entryType'],
-    txDate: dto.tx_date,
-    accountCode: dto.account_code,
-    accountName: dto.account_name,
-    description: dto.description,
-    debit: dto.debit,
-    credit: dto.credit,
-    balance: dto.balance,
-    costCenter: dto.cost_center,
-    folioRef: dto.folio_ref,
-    bookingId: dto.booking_id,
-    propId: dto.prop_id,
-    guestName: dto.guest_name,
-    source: dto.source,
-    sourceId: dto.source_id,
-    accountingPeriod: dto.accounting_period,
-    status: dto.status as LedgerTransaction['status'],
-    notes: dto.notes,
-    createdAt: dto.created_at,
-  };
-}
-
-export function mapLedgerList(dto: LedgerListDto): LedgerListResponse {
-  return {
-    items: dto.items.map(mapLedgerTransaction),
-    total: dto.total,
-    page: dto.page,
-    pageSize: dto.page_size,
-    totalPages: dto.total_pages,
-    hasNext: dto.has_next,
-    hasPrev: dto.has_prev,
-  };
-}
 
 export function mapLedgerFolios(dto: LedgerFoliosDto) {
   return {

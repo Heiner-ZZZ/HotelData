@@ -1,5 +1,5 @@
-import type { EarningsSummaryDto, EarningsListDto, EarningsItemDto, WeeklyEarningPointDto } from '../models/earnings.dto';
-import type { EarningsSummary, EarningsList, EarningsItem, WeeklyEarningPoint } from '../models/earnings.model';
+import type { EarningsSummaryDto, EarningsListDto, EarningsItemDto } from '../models/earnings.dto';
+import type { EarningsSummary, EarningsList, EarningsItem } from '../models/earnings.model';
 
 export function mapSummary(dto: EarningsSummaryDto): EarningsSummary {
   return {
@@ -31,15 +31,5 @@ export function mapList(dto: EarningsListDto): EarningsList {
     page: dto.page,
     pageSize: dto.page_size,
     totalPages: dto.total_pages,
-  };
-}
-
-export function mapWeeklyEarningPoint(dto: WeeklyEarningPointDto): WeeklyEarningPoint {
-  return {
-    label: dto.label,
-    totalCommission: dto.total_commission,
-    totalBookings: dto.total_bookings,
-    paidCount: dto.paid_count,
-    pendingCount: dto.pending_count,
   };
 }

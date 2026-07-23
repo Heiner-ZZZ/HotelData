@@ -132,7 +132,6 @@ def complete_cleaning(
             damage_description=damage_description,
             needs_maintenance=needs_maintenance,
             maintenance_description=maintenance_description,
-            reported_by=assigned_to or "housekeeper",
         )
     else:
         new_status = "cleaning_completed"
@@ -217,7 +216,6 @@ def _auto_create_maintenance(
     damage_description: str = "",
     needs_maintenance: bool = False,
     maintenance_description: str = "",
-    reported_by: str = "housekeeper",
 ) -> None:
     """Create a maintenance task and block the room automatically."""
     from src.app.modules.housekeeping.service.lifecycle.maintenance import create_maintenance_task

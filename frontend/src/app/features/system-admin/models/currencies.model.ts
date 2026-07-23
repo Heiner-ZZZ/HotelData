@@ -5,7 +5,3 @@ export interface Currency {
   decimals: number;
   active: boolean;
 }
-
-export interface CurrencyListViewModel {
-  currencies: Currency[];
-}

@@ -52,12 +52,3 @@ export interface ExpenseDashboardDto {
   monthly_breakdown: { month: string; total: number }[];
   by_category: { category: string; total: number; count: number }[];
 }
-
-export interface ExpenseCategoryDto {
-  _id: string;
-  name: string;
-  description: string;
-  budget: number;
-  spent: number;
-  remaining: number;
-}

@@ -1,6 +1,5 @@
 import type { AvailabilityInventoryItem, CalendarMonth, CalendarRoomTypeCell } from './models/availability.model';
 
-export type ViewMode = 'month' | 'week';
 
 export const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

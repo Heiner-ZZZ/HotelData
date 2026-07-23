@@ -19,10 +19,3 @@ export interface BookingLineItem {
   addedAt: string;
   addedBy: string;
 }
-
-export interface AddLineItemRequest {
-  product_id: string;
-  name: string;
-  unit_price: number;
-  quantity: number;
-}

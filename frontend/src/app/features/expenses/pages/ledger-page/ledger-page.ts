@@ -17,7 +17,7 @@ import {
   buildTable,
   fmtUsd,
 } from '../../../../shared/utils/report-html-templates';
-import { ExpensesApiService } from '../../services/expenses-api.service';
+import { ExpensesApiService, DEFAULT_LEDGER_PAGE_SIZE } from '../../services/expenses-api.service';
 import type { LedgerTransaction, LedgerSummary, TrialBalance, IncomeStatement, BalanceSheet, ChartAccount } from '../../models/ledger.model';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
@@ -94,7 +94,7 @@ export class LedgerPageComponent {
     const propId = this.selectedPropId();
     if (!propId) return undefined;
     const period = this.selectedPeriod() || undefined;
-    let url = `/api/expenses/ledger/${propId}/transactions?page=1&page_size=100&sort_by=tx_date&sort_dir=desc`;
+    let url = `/api/expenses/ledger/${propId}/transactions?page=1&page_size=${DEFAULT_LEDGER_PAGE_SIZE}&sort_by=tx_date&sort_dir=desc`;
     if (period) url += `&period=${period}`;
     return url;
   });

@@ -2,7 +2,6 @@ import type {
   DashboardArrivalDto,
   DashboardQuickStatsDto,
   DashboardRevenuePointDto,
-  EditPropertyResponseDto,
   PropertyProfileResponseDto,
   PropertiesDashboardResponseDto,
   PropertyDetailResponseDto,
@@ -153,53 +152,6 @@ function mapArrival(dto: DashboardArrivalDto): DashboardArrival {
     nights: dto.nights,
     arrivalTime: dto.arrival_time,
     statusTag: dto.status_tag
-  };
-}
-
-export function mapEditPropertyResponse(dto: EditPropertyResponseDto): EditPropertyViewModel {
-  const cp = dto.content_page ?? {};
-  const pol = dto.policies ?? {};
-  const profile = dto.profile ?? {
-    prop_id: dto.hotel.prop_id,
-    hotel_name: dto.hotel.hotel_name || dto.hotel.display_name,
-    display_name: dto.hotel.display_name,
-    display_country_label: dto.hotel.country_display_name,
-    description: dto.hotel.description ?? cp.description ?? '',
-    original_generated_name: dto.hotel.original_generated_name ?? dto.hotel.display_name,
-    manual_override: dto.hotel.manual_override ?? false,
-    name_source: dto.hotel.name_source ?? 'generated_from_id',
-    profile_badge: dto.hotel.profile_badge ?? (dto.hotel.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
-    updated_by: '',
-    updated_at: ''
-  };
-  return {
-    propId: dto.hotel.prop_id,
-    hotelName: profile.hotel_name,
-    displayName: profile.display_name,
-    countryDisplayName: profile.display_country_label || dto.hotel.country_display_name,
-    originalGeneratedName: profile.original_generated_name || dto.hotel.display_name || `Hotel Partner ${dto.hotel.prop_id}`,
-    manualOverride: profile.manual_override ?? false,
-    nameSource: profile.name_source ?? 'generated_from_id',
-    profileBadge: profile.profile_badge || (profile.manual_override ? 'Nombre editado manualmente' : 'Nombre generado'),
-    updatedBy: profile.updated_by ?? '',
-    updatedAt: profile.updated_at ?? '',
-    description: profile.description ?? cp.description ?? dto.hotel.description ?? '',
-    highlights: cp.highlights ?? '',
-    policies: {
-      checkInTime: pol['check_in_time'] ?? '',
-      checkOutTime: pol['check_out_time'] ?? '',
-      cancellationPolicy: pol['cancellation_policy'] ?? '',
-      petPolicy: pol['pet_policy'] ?? 'false',
-      childrenPolicy: pol['children_policy'] ?? '',
-      extraBedPolicy: pol['extra_bed_policy'] ?? '',
-      paymentPolicy: pol['payment_policy'] ?? '',
-      houseRules: pol['house_rules'] ?? '',
-    },
-    images: (dto.images ?? []).map((i: { image_url: string; title: string }) => ({ imageUrl: i.image_url, title: i.title })),
-    amenities: dto.amenities?.active_amenities ?? [],
-    amenityCatalog: dto.amenities?.catalog ?? [],
-    currency: (dto as any).currency || 'USD',
-    acceptedCurrencies: (dto as any).accepted_currencies || ['USD'],
   };
 }
 

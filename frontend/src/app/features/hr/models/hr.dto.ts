@@ -143,18 +143,6 @@ export interface AttendanceResponseDto {
   summary: AttendanceSummaryDto;
 }
 
-export interface ShiftCheckInDto {
-  employee_id: string;
-  timestamp?: string;
-  notes?: string;
-}
-
-export interface ShiftCheckOutDto {
-  employee_id: string;
-  timestamp?: string;
-  notes?: string;
-}
-
 export interface ShiftItemDto {
   id: string;
   employee_id: string;

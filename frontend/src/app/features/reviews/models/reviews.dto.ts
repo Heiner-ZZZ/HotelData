@@ -55,12 +55,3 @@ export interface ReviewDetailDto {
   created_at: string;
   updated_at: string;
 }
-
-export interface ReviewModerateDto {
-  status: string;
-  reason: string;
-}
-
-export interface ReviewRespondDto {
-  response: string;
-}

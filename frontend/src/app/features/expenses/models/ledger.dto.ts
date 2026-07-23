@@ -1,37 +1,3 @@
-export interface LedgerTransactionDto {
-  id: string;
-  journal_entry_id: string;
-  entry_type: string;
-  tx_date: string;
-  account_code: string;
-  account_name: string;
-  description: string;
-  debit: number;
-  credit: number;
-  balance: number;
-  cost_center: string;
-  folio_ref: string;
-  booking_id: string;
-  prop_id: number | null;
-  guest_name: string;
-  source: string;
-  source_id: string;
-  accounting_period: string;
-  status: string;
-  notes: string;
-  created_at: string;
-}
-
-export interface LedgerListDto {
-  items: LedgerTransactionDto[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-  has_next: boolean;
-  has_prev: boolean;
-}
-
 export interface LedgerFolioDto {
   folio_id: string;
   folio_ref: string;

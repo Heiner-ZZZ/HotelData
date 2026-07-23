@@ -328,11 +328,6 @@ export function fmtUsd(n: number, opts: { showZero?: boolean } = {}): string {
   return sign + '$' + Math.abs(n).toFixed(2);
 }
 
-export function fmtNumber(n: number): string {
-  if (!isFinite(n)) return '—';
-  return String(n);
-}
-
 export interface SummaryCardInput {
   label: string;
   value: string;

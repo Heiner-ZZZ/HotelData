@@ -3,9 +3,19 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapExpenseDashboard, mapInvoiceDetail, mapInvoiceList, mapLedgerFolios, mapLedgerList, mapLedgerSummary, mapTrialBalance, mapIncomeStatement, mapBalanceSheet, mapChartAccounts, mapFolioPostings } from '../mappers/expenses.mapper';
+import { mapExpenseDashboard, mapInvoiceDetail, mapInvoiceList, mapLedgerFolios, mapLedgerSummary, mapTrialBalance, mapIncomeStatement, mapBalanceSheet, mapChartAccounts, mapFolioPostings } from '../mappers/expenses.mapper';
 import type { InvoiceDetailDto, InvoiceListDto } from '../models/expenses.dto';
-import type { LedgerListDto, LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingsDto } from '../models/ledger.dto';
+import type { LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingsDto } from '../models/ledger.dto';
+
+/**
+ * Page size for ledger transaction lists (both the service method and the
+ * httpResource in ledger-page.ts).
+ *
+ * Deliberately set to 100 (vs. backend default 50) because the AG Grid
+ * ledger view benefits from higher row density to reduce pagination.
+ * The backend ceiling is 200, so this is well within bounds.
+ */
+export const DEFAULT_LEDGER_PAGE_SIZE = 100;
 
 @Injectable({ providedIn: 'root' })
 export class ExpensesApiService {
@@ -48,18 +58,6 @@ export class ExpensesApiService {
   }
 
   // ─── Ledger ───
-
-  getLedgerTransactions(propId: number, page = 1, pageSize = 50, sortField = 'tx_date', sortOrder = 'desc', period?: string) {
-    let params = new HttpParams()
-      .set('prop_id', String(propId))
-      .set('page', String(page))
-      .set('page_size', String(pageSize))
-      .set('sort_field', sortField)
-      .set('sort_order', sortOrder);
-    if (period) params = params.set('accounting_period', period);
-    return this.http.get<LedgerListDto>(`${this.apiConfig.baseUrl}/expenses/ledger`, { params, withCredentials: true })
-      .pipe(map(dto => mapLedgerList(dto)));
-  }
 
   getLedgerPeriods(propId: number) {
     const params = new HttpParams().set('prop_id', String(propId));

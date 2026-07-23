@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
+from src.app.modules.billing.constants import DEFAULT_BILLING_PAGE_SIZE
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
 from src.app.modules.billing.service import (
     add_line_item,
@@ -30,6 +31,7 @@ from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
+
 
 
 @router.get("/status", response_model=ModuleStatus)
@@ -74,7 +76,7 @@ def list_invoices_api(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("billing.read")),
 ):
     result = list_invoices(
@@ -400,7 +402,7 @@ def list_payments_api(
     booking_id: str | None = Query(default=None),
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("payments.read")),
 ):
     result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
@@ -467,7 +469,7 @@ def refund_payment_api(
 def my_invoices_api(
     request: Request,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("account.read")),
 ):
     """Return invoices associated with the current user's bookings."""
@@ -713,7 +715,7 @@ def list_folios_api(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
     current_user: dict = Depends(require_permission("billing.read")),
 ):
     """List folios with optional property and status filters."""

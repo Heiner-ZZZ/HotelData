@@ -36,12 +36,3 @@ export interface HotelSearchItemDto {
   total_estimated_label: string | null;
   available_room_types_count: number;
 }
-
-export interface HotelSearchFiltersDto {
-  destination: string;
-  check_in: string;
-  check_out: string;
-  adults: number;
-  children: number;
-  rooms: number;
-}

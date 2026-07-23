@@ -104,10 +104,7 @@ def update_destination(destination_id: int, data: dict[str, Any]) -> dict[str, A
             update[db_field] = data[key]
 
     if not update:
-        return get_destination(destination_id)        # If coordinates are provided, also update display enrichment
-        if "latitude" in update and "longitude" in update:
-            update["geo_enriched"] = True
-            update["geo_updated_at"] = datetime.now(timezone.utc).isoformat()
+        return get_destination(destination_id)
 
     db[DESTINATIONS_COLLECTION].update_one(
         {"srch_destination_id": destination_id},

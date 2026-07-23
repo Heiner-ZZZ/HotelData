@@ -7,6 +7,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 
 from src.database.connection import get_database
+from src.app.core.constants import DEFAULT_LEDGER_PAGE_SIZE
 from src.app.modules.expenses.schemas import (
     BudgetCreate, ExpenseCategoryCreate, InvoiceCreate, InvoiceUpdate,
     ModuleStatus,
@@ -21,9 +22,6 @@ from src.app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
-
-DEFAULT_LEDGER_PAGE_SIZE = 50
-
 
 def _enrich_invoice(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))

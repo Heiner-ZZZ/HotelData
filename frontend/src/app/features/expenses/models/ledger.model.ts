@@ -45,16 +45,6 @@ export interface LedgerSummary {
   revenueBreakdown: { accountCode: string; total: number }[];
 }
 
-export interface LedgerListResponse {
-  items: LedgerTransaction[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
 export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;

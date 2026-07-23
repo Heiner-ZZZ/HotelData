@@ -33,8 +33,6 @@ export interface BlackoutEdit {
 }
 
 export type ViewMode = 'month' | 'week';
-export type LayoutMode = 'scroll' | 'wrap';
-
 export interface HotelRoomItem {
   hotel_room_id: string;
   room_number: string;

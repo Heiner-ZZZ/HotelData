@@ -45,14 +45,3 @@ export interface ReceptionCalendarDay {
   isToday: boolean;
   isWeekend: boolean;
 }
-
-/** Computed bar segment positioned inside a day cell. */
-export interface ReceptionBarSegment {
-  reservation: ReceptionCalendarReservation;
-  /** Left offset within the cell (0–1). */
-  leftPct: number;
-  /** Width of the bar within the cell (0–1). */
-  widthPct: number;
-  /** Visual colour class. */
-  colorClass: string;
-}

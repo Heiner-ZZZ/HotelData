@@ -11,19 +11,6 @@ export interface LostItemCreateDto {
   notes?: string;
 }
 
-export interface LostItemUpdateDto {
-  item_name?: string;
-  description?: string;
-  found_location?: string;
-  found_by?: string;
-  status?: string;
-  notes?: string;
-  guest_name?: string;
-  guest_contact?: string;
-  returned_to?: string;
-  returned_at?: string;
-}
-
 export interface LostItemResponseDto {
   id: string;
   prop_id: number;

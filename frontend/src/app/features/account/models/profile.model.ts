@@ -64,13 +64,6 @@ export const ROLE_LABELS: Record<string, string> = {
   cliente: 'Cliente / Viajero',
 };
 
-export const LANGUAGE_OPTIONS = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'English' },
-  { value: 'pt', label: 'Português' },
-  { value: 'fr', label: 'Français' },
-];
-
 export const DOCUMENT_TYPES = [
   { value: '', label: 'Seleccionar…' },
   { value: 'passport', label: 'Pasaporte' },
