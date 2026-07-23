@@ -78,7 +78,7 @@ def auto_cancel_expired_pending() -> dict[str, Any]:
     }
 
 
-def _resolve_penalty_percent(
+def resolve_penalty_percent(
     prop_id: int,
     room_type_id: str = "",
     rate_plan_id: str = "",

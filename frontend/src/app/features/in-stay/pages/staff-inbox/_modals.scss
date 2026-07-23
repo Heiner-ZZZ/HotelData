@@ -104,6 +104,30 @@
   }
 }
 
+.si-modal-date-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid t.$si-border;
+  border-radius: t.$si-radius-sm;
+  font-size: 0.83rem;
+  font-family: inherit;
+  background: t.$si-surface;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  color: t.$si-text;
+
+  &:focus {
+    outline: none;
+    border-color: t.$si-accent;
+  }
+}
+
+.si-modal-required {
+  color: t.$si-error;
+  margin-left: 2px;
+}
+
 .si-modal-actions {
   display: flex;
   gap: 0.5rem;

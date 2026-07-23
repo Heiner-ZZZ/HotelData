@@ -183,8 +183,8 @@ def process_early_checkout(
         )
 
     # Resolve penalty percent from hotel_policies (hierarchy: rate_plan > room_type > hotel-wide)
-    from src.app.modules.reservations.service.cleanup import _resolve_penalty_percent
-    penalty_pct = _resolve_penalty_percent(
+    from src.app.modules.reservations.service.cleanup import resolve_penalty_percent
+    penalty_pct = resolve_penalty_percent(
         prop_id=int(booking.get("prop_id", 0)),
         room_type_id=str(booking.get("room_type_id", "")),
         rate_plan_id=str(booking.get("rate_plan_id", "")),
