@@ -1,0 +1,5 @@
+[tool.ruff]
+cache-dir = "../.cache/ruff"
+
+[tool.mypy]
+cache_dir = "../.cache/mypy"

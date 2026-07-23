@@ -206,6 +206,11 @@ Thumbs.db
 desktop.ini
 
 # --------------------------
+# Cache directories
+# --------------------------
+.cache/
+
+# --------------------------
 # Temporary / rescue / generated
 # --------------------------
 cookies.txt

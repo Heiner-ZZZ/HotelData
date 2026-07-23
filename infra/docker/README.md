@@ -1,18 +1,18 @@
 # Docker local en Windows
 
-Este entorno permite levantar `HotelData Analytics` desde Docker Desktop en Windows, sin depender de WSL.
+Este entorno permite levantar `HotelData` desde Docker Desktop en Windows, sin depender de WSL.
 
 ## Servicios incluidos
 
-- `app`: FastAPI + Jinja2
-- `mongo`: MongoDB para `hoteldata_hub`
+- `app`: FastAPI + Angular
+- `mongo`: MongoDB para `hoteldata`
 - `redis`: cache opcional pero habilitado en Docker
 - `pocketbase`: fuente operacional para pruebas y preparacion de GA03
 
 ## Compose con Mongo local (Windows)
 
 Si usas `docker-compose.local-mongo.yml`, ese compose **no** define servicio `mongo`.
-La app se conecta al MongoDB local de Windows via `host.docker.internal:27017`.
+La app se conecta al MongoDB local de Windows via `host.docker.internal:27018`.
 
 ```powershell
 docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d redis app
