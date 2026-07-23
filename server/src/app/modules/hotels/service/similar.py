@@ -10,7 +10,7 @@ from src.app.modules.hotels.service._helpers import (
     _format_number,
     _hotel_display_name,
 )
-from src.app.modules.hotels.service.lookups import _country_lookup
+from src.app.modules.hotels.service.lookups import _country_lookup, _geo_country_lookup
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,10 @@ def _prefilter_candidates(
     match: dict[str, Any] = {"prop_id": {"$ne": prop_id}}
 
     country_id = source.get("prop_country_id")
-    if country_id is not None:
+    geo_code = source.get("geo_country_code")
+    if geo_code:
+        match["geo_country_code"] = geo_code
+    elif country_id is not None:
         match["prop_country_id"] = int(country_id)
 
     star = source.get("prop_starrating")
@@ -131,6 +134,9 @@ def _prefilter_candidates(
         c["description"] = ct.get("description") or ""
         c["amenities_text"] = ct.get("amenities_text") or ""
         c["image_url"] = images_map.get(pid, "")
+        # Store raw country key for batched lookup later (no per-candidate DB query)
+        c["_country_key"] = c.get("geo_country_code") or c.get("prop_country_id")
+        c["_country_doc"] = {}
 
     return candidates
 
@@ -205,7 +211,13 @@ def _fallback(
         if (
             c.get("prop_country_id") is not None
             and source.get("prop_country_id") is not None
-            and int(c["prop_country_id"]) == int(source["prop_country_id"])
+            and c["prop_country_id"] == source["prop_country_id"]
+        ):
+            score += 25
+        elif (
+            c.get("geo_country_code") is not None
+            and source.get("geo_country_code") is not None
+            and c["geo_country_code"] == source["geo_country_code"]
         ):
             score += 25
         scored.append({
@@ -223,14 +235,17 @@ def _build_response(
     candidates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     candidate_map = {int(c["prop_id"]): c for c in candidates}
-    country_ids = sorted(
-        {
-            int(c.get("prop_country_id", 0))
-            for c in candidates
-            if c.get("prop_country_id") is not None
-        }
-    )
-    cl = _country_lookup(country_ids) if country_ids else {}
+    # Use geo_country_code when available, fallback to prop_country_id
+    all_country_keys: list[Any] = []
+    for c in candidates:
+        key = c.get("_country_key")
+        if key is not None:
+            all_country_keys.append(key)
+    # Separate legacy int keys from geo string keys
+    legacy_keys = [k for k in all_country_keys if isinstance(k, int)]
+    geo_keys = [k for k in all_country_keys if isinstance(k, str)]
+    cl = _country_lookup(legacy_keys) if legacy_keys else {}
+    gl = _geo_country_lookup(geo_keys) if geo_keys else {}
 
     results: list[dict[str, Any]] = []
     for item in ranked:
@@ -241,10 +256,15 @@ def _build_response(
         c = candidate_map.get(pid)
         if not c:
             continue
-        country_id = c.get("prop_country_id")
+        country_key = c.get("_country_key")
+        country_doc = c.get("_country_doc", {})
+        if isinstance(country_key, int):
+            country_doc = cl.get(country_key, {})
+        elif isinstance(country_key, str):
+            country_doc = gl.get(country_key, {})
         country_name = (
-            _country_display_name(cl.get(int(country_id), {}), int(country_id))
-            if country_id is not None
+            _country_display_name(country_doc, country_key)
+            if country_key is not None
             else "N/D"
         )
         results.append({

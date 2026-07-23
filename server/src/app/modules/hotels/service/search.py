@@ -17,19 +17,29 @@ from .lookups import (
     _build_match,
     _country_lookup,
     _destination_lookup,
+    _geo_country_lookup,
     _hotel_lookup,
 )
 
 
 def _enrich_hotel_metrics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     hotel_lookup = _hotel_lookup([int(item["prop_id"]) for item in items if item.get("prop_id") is not None])
-    country_ids = sorted(
-        {
-            int(hotel.get("prop_country_id"))
-            for hotel in hotel_lookup.values()
-            if hotel.get("prop_country_id") is not None
-        }
-    )
+
+    # Collect country keys from hotels (both legacy int and geo string)
+    legacy_country_ids: list[int] = []
+    geo_country_codes: list[str] = []
+    for hotel in hotel_lookup.values():
+        geo_code = hotel.get("geo_country_code")
+        if geo_code:
+            geo_country_codes.append(geo_code)
+            continue
+        cid = hotel.get("prop_country_id")
+        if cid is not None:
+            legacy_country_ids.append(int(cid))
+
+    country_lookup = _country_lookup(legacy_country_ids)
+    geo_lookup = _geo_country_lookup(geo_country_codes)
+
     destination_ids = sorted(
         {
             int(destination_id)
@@ -38,14 +48,22 @@ def _enrich_hotel_metrics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if destination_id is not None
         }
     )
-    country_lookup = _country_lookup(country_ids)
     destination_lookup = _destination_lookup(destination_ids)
     enriched: list[dict[str, Any]] = []
     for item in items:
         prop_id = int(item["prop_id"])
         hotel = hotel_lookup.get(prop_id, {})
-        country_id = hotel.get("prop_country_id") or item.get("prop_country_id")
-        country = country_lookup.get(int(country_id), {}) if country_id is not None else {}
+
+        # Resolve country info preferring geo_country_code
+        geo_code = hotel.get("geo_country_code")
+        if geo_code:
+            country_key = geo_code
+            country = geo_lookup.get(geo_code, {})
+        else:
+            country_id = hotel.get("prop_country_id") or item.get("prop_country_id")
+            country_key = int(country_id) if country_id is not None else None
+            country = country_lookup.get(country_key, {}) if country_key is not None else {}
+
         destination_labels = [
             _destination_display_name(destination_lookup.get(int(destination_id), {}), int(destination_id))
             for destination_id in item.get("destinations", [])[:3]
@@ -61,8 +79,9 @@ def _enrich_hotel_metrics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "prop_id": prop_id,
                 "hotel_label": hotel_label,
                 "hotel_display_label": hotel.get("display_label") or hotel_label,
-                "prop_country_id": country_id,
-                "country_display_name": _country_display_name(country, int(country_id)) if country_id is not None else "N/D",
+                "prop_country_id": country_key,
+                "geo_country_code": geo_code or None,
+                "country_display_name": _country_display_name(country, country_key) if country_key is not None else "N/D",
                 "prop_starrating": hotel.get("prop_starrating") or item.get("prop_starrating"),
                 "prop_review_score": hotel.get("prop_review_score") or item.get("prop_review_score"),
                 "destination_labels": destination_labels,

@@ -50,6 +50,18 @@ def _country_lookup(country_ids: list[int]) -> dict[int, dict[str, Any]]:
     return {int(item["visitor_location_country_id"]): item for item in docs if item.get("visitor_location_country_id") is not None}
 
 
+def _geo_country_lookup(country_codes: list[str]) -> dict[str, dict[str, Any]]:
+    """Resolve geo_catalog country codes to their geo_catalog documents."""
+    if not country_codes:
+        return {}
+    db = get_database()
+    docs = db.geo_catalog.find(
+        {"type": "country", "code": {"$in": country_codes}},
+        {"_id": 1, "code": 1, "name": 1},
+    )
+    return {item["code"]: item for item in docs if item.get("code")}
+
+
 def _site_lookup(site_ids: list[int]) -> dict[int, dict[str, Any]]:
     if not site_ids:
         return {}
