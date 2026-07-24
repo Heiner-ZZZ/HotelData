@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
-import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, DepositRecord, PaymentBreakdown } from '../../services/shifts-api.service';
+import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
 
 @Component({
   selector: 'app-control-turnos-caja',
@@ -25,18 +25,21 @@ export class ControlTurnosCajaPageComponent {
   readonly loading = signal(true);
   readonly shift = signal<ShiftInfo | null>(null);
   readonly shiftTypeLabels = signal<Record<string, string>>({});
+  readonly lastClosedShift = signal<ShiftInfo | null>(null);
 
   // Shift open form
   readonly showOpenForm = signal(false);
   readonly openShiftType = signal('morning');
   readonly openEmployee = signal('');
-  readonly openCashInitial = signal(0);
+  readonly openCashInitial = signal<number | null>(null);
 
   // Close shift
   readonly showCloseModal = signal(false);
-  readonly closeCashFinal = signal(0);
+  readonly closeCashCounted = signal(0);
+  readonly closeCashLeft = signal(0);
   readonly closeDeposits = signal<DepositRecord[]>([]);
   readonly closingShift = signal(false);
+  readonly closeClosingNotes = signal('');
 
   // Deposit modal
   readonly showDepositModal = signal(false);
@@ -91,6 +94,23 @@ export class ControlTurnosCajaPageComponent {
   readonly totalEsperado = computed(() => {
     const ci = this.shift()?.cash_initial ?? 0;
     return +(ci + this.paymentBreakdown().cash).toFixed(2);
+  });
+
+  /** Total de depósitos del cierre */
+  readonly depositTotal = computed(() => {
+    return this.closeDeposits().reduce((sum, d) => sum + (d.amount || 0), 0);
+  });
+
+  /** Total de depósitos en efectivo (solo estos reducen la caja física) */
+  readonly cashDepositTotal = computed(() => {
+    return this.closeDeposits()
+      .filter(d => CASH_DEPOSIT_METHODS.includes(String(d.method || '').toLowerCase()))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  });
+
+  /** Efectivo que quedará en caja (contado - depósitos en efectivo) */
+  readonly computedCashLeft = computed(() => {
+    return +(this.closeCashCounted() - this.cashDepositTotal()).toFixed(2);
   });
 
   readonly saldoReal = signal(0);
@@ -155,26 +175,44 @@ export class ControlTurnosCajaPageComponent {
   // ── Open shift ──
 
   openOpenForm(): void {
+    const propId = this.selectedPropId();
+    if (!propId) return;
+
     this.showOpenForm.set(true);
     this.openShiftType.set('morning');
     this.openEmployee.set('');
-    this.openCashInitial.set(0);
+    this.openCashInitial.set(null);
+
+    // Fetch last closed shift to show carry-over suggestion
+    this.api.listShifts(propId, 'closed', 1).subscribe({
+      next: (res) => {
+        const last = res.items[0] ?? null;
+        this.lastClosedShift.set(last);
+        if (last && last.cash_left !== null && last.cash_left !== undefined) {
+          this.openCashInitial.set(last.cash_left);
+        }
+      },
+      error: () => this.lastClosedShift.set(null),
+    });
   }
 
   cancelOpenForm(): void {
     this.showOpenForm.set(false);
+    this.lastClosedShift.set(null);
   }
 
   confirmOpenShift(): void {
     const propId = this.selectedPropId();
     if (!propId || !this.openEmployee().trim()) return;
 
-    this.api.openShift(propId, this.openShiftType(), this.openEmployee().trim(), this.openCashInitial()).subscribe({
+    const cashInitial = this.openCashInitial();
+    this.api.openShift(propId, this.openShiftType(), this.openEmployee().trim(), cashInitial ?? undefined).subscribe({
       next: (res: { message: string; shift: ShiftInfo }) => {
         this.toast.success(res.message);
         this.showOpenForm.set(false);
         this.shift.set(res.shift);
         this.saldoReal.set(res.shift.cash_initial || 0);
+        this.lastClosedShift.set(null);
       },
       error: (err: any) => {
         this.toast.error(err?.error?.detail || 'Error al abrir turno');
@@ -186,9 +224,13 @@ export class ControlTurnosCajaPageComponent {
 
   openCloseModal(): void {
     this.showCloseModal.set(true);
-    this.closeCashFinal.set(this.saldoReal());
+    this.closeCashCounted.set(0);
     this.closeDeposits.set([]);
+    this.closeClosingNotes.set('');
     this.closingShift.set(false);
+    // Default cash_left to the computed suggestion (will be updated after
+    // deposits change via the computedCashLeft signal).
+    this.closeCashLeft.set(this.computedCashLeft());
   }
 
   cancelClose(): void {
@@ -201,7 +243,13 @@ export class ControlTurnosCajaPageComponent {
     if (!s) return;
 
     this.closingShift.set(true);
-    this.api.closeShift(s.id, this.closeCashFinal(), this.closeDeposits().length > 0 ? this.closeDeposits() : undefined).subscribe({
+    this.api.closeShift(
+      s.id,
+      this.closeCashCounted(),
+      this.closeCashLeft() || this.computedCashLeft(),
+      this.closeDeposits().length > 0 ? this.closeDeposits() : undefined,
+      this.closeClosingNotes(),
+    ).subscribe({
       next: (res: { message: string; summary: ShiftCloseSummary }) => {
         this.closingShift.set(false);
         this.closeSummary.set(res.summary);

@@ -41,20 +41,26 @@
       @if (showOpenForm()) {
         <div class="sc-open-form">
           <div class="sc-form-group">
-            <label>Tipo de Turno</label>
-            <select [ngModel]="openShiftType()" (ngModelChange)="openShiftType.set($event)">
+            <label for="sc-shift-type">Tipo de Turno</label>
+            <select id="sc-shift-type" name="shift_type" [ngModel]="openShiftType()" (ngModelChange)="openShiftType.set($event)">
               <option value="morning">Matutino (08:00-16:00)</option>
               <option value="afternoon">Vespertino (16:00-00:00)</option>
               <option value="evening">Nocturno (00:00-08:00)</option>
             </select>
           </div>
           <div class="sc-form-group">
-            <label>Empleado</label>
-            <input type="text" placeholder="Nombre del recepcionista" [ngModel]="openEmployee()" (ngModelChange)="openEmployee.set($event)" />
+            <label for="sc-shift-employee">Empleado</label>
+            <input id="sc-shift-employee" name="employee" type="text" placeholder="Nombre del recepcionista" [ngModel]="openEmployee()" (ngModelChange)="openEmployee.set($event)" />
           </div>
           <div class="sc-form-group">
-            <label>Fondo Inicial de Caja ($)</label>
-            <input type="number" step="0.01" placeholder="0.00" [ngModel]="openCashInitial()" (ngModelChange)="openCashInitial.set($event)" />
+            <label for="sc-cash-initial">Fondo Inicial de Caja ($)</label>
+            <input id="sc-cash-initial" name="cash_initial" type="number" step="0.01" placeholder="0.00" [ngModel]="openCashInitial()" (ngModelChange)="openCashInitial.set($event)" />
+            @if (lastClosedShift(); as last) {
+              <span class="sc-carry-over-hint">
+                Arrastre del turno anterior:
+                <strong>{{ last.cash_left | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </span>
+            }
           </div>
           <div class="sc-form-actions">
             <button class="sc-btn-outline" (click)="cancelOpenForm()">Cancelar</button>
@@ -139,10 +145,12 @@
 
           <!-- Input: Saldo Real -->
           <div class="sc-arqueo-manual">
-            <label class="sc-ar-label">Saldo Real en Caja (Efectivo)</label>
+            <label class="sc-ar-label" for="sc-real-cash">Saldo Real en Caja (Efectivo)</label>
             <div class="sc-ar-input-wrap">
               <span class="sc-ar-currency">$</span>
               <input
+                id="sc-real-cash"
+                name="real_cash"
                 type="number"
                 step="0.01"
                 class="sc-ar-input"
@@ -233,8 +241,8 @@
        CLOSE SHIFT MODAL
        ══════════════════════════════════════════════ -->
   @if (showCloseModal()) {
-    <div class="sc-modal-overlay" (click)="cancelClose()">
-      <div class="sc-modal" (click)="$event.stopPropagation()">
+    <div class="sc-modal-overlay" role="button" tabindex="0" aria-label="Cerrar modal" (keydown.enter)="cancelClose()" (click)="$event.target === $event.currentTarget ? cancelClose() : null">
+      <div class="sc-modal">
 
         @if (!closeSummary()) {
           <!-- Close Form -->
@@ -263,8 +271,22 @@
             </div>
 
             <div class="sc-form-group">
-              <label>Saldo Final en Caja ($)</label>
-              <input type="number" step="0.01" placeholder="0.00" [ngModel]="closeCashFinal()" (ngModelChange)="closeCashFinal.set($event)" />
+              <label for="sc-close-cash-counted">Efectivo Físico Contado ($)</label>
+              <input id="sc-close-cash-counted" name="cash_counted" type="number" step="0.01" placeholder="0.00" [ngModel]="closeCashCounted()" (ngModelChange)="closeCashCounted.set($event)" />
+            </div>
+
+            <div class="sc-form-group">
+              <label for="sc-close-cash-left">Efectivo a Dejar para el Siguiente Turno ($)</label>
+              <input id="sc-close-cash-left" name="cash_left" type="number" step="0.01" placeholder="0.00" [ngModel]="closeCashLeft()" (ngModelChange)="closeCashLeft.set($event)" />
+              <span class="sc-carry-over-hint">
+                Sugerido: <strong>{{ computedCashLeft() | currency:'USD':'symbol':'1.2-2' }}</strong>
+                (contado - depósitos)
+              </span>
+            </div>
+
+            <div class="sc-form-group">
+              <label for="sc-close-notes">Notas de Cierre</label>
+              <textarea id="sc-close-notes" name="closing_notes" rows="3" placeholder="Observaciones del cierre..." [ngModel]="closeClosingNotes()" (ngModelChange)="closeClosingNotes.set($event)"></textarea>
             </div>
 
             <!-- Deposits -->
@@ -342,8 +364,12 @@
                 </div>
               }
               <div class="sc-cs-row divider">
-                <span>Saldo Final (Caja)</span>
-                <strong>{{ cs.cash_final | currency:'USD':'symbol':'1.2-2' }}</strong>
+                <span>Efectivo Contado</span>
+                <strong>{{ cs.cash_counted | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="sc-cs-row">
+                <span>Efectivo a Dejar</span>
+                <strong>{{ cs.cash_left | currency:'USD':'symbol':'1.2-2' }}</strong>
               </div>
               <div class="sc-cs-row">
                 <span>Diferencia</span>
@@ -351,9 +377,19 @@
                   {{ cs.cash_difference | currency:'USD':'symbol':'1.2-2' }}
                 </strong>
               </div>
+              <div class="sc-cs-row">
+                <span>Sobrante / Faltante</span>
+                <strong [class.negative]="cs.cash_over_short < 0" [class.positive]="cs.cash_over_short > 0">
+                  {{ cs.cash_over_short | currency:'USD':'symbol':'1.2-2' }}
+                </strong>
+              </div>
               <div class="sc-cs-row sc-cs-count">
                 <span>Transacciones</span>
                 <strong>{{ cs.transaction_count }}</strong>
+              </div>
+              <div class="sc-cs-row sc-cs-count">
+                <span>Vínculos del Turno</span>
+                <strong>{{ cs.payment_count }} pagos · {{ cs.folio_count }} folios · {{ cs.booking_count }} reservas</strong>
               </div>
             </div>
           </div>
@@ -369,28 +405,28 @@
        DEPOSIT MODAL (inside close flow)
        ══════════════════════════════════════════════ -->
   @if (showDepositModal()) {
-    <div class="sc-modal-overlay" (click)="cancelDeposit()">
-      <div class="sc-modal sc-modal-sm" (click)="$event.stopPropagation()">
+    <div class="sc-modal-overlay" role="button" tabindex="0" aria-label="Cancelar depósito" (keydown.enter)="cancelDeposit()" (click)="$event.target === $event.currentTarget ? cancelDeposit() : null">
+      <div class="sc-modal sc-modal-sm">
         <div class="sc-modal-header">
           <span class="material-symbols-outlined sc-modal-icon">account_balance</span>
           <h2>Registrar Depósito</h2>
         </div>
         <div class="sc-modal-body">
           <div class="sc-form-group">
-            <label>Monto ($)</label>
-            <input type="number" step="0.01" placeholder="0.00" [ngModel]="depositAmount()" (ngModelChange)="depositAmount.set($event)" />
+            <label for="sc-deposit-amount">Monto ($)</label>
+            <input id="sc-deposit-amount" name="deposit_amount" type="number" step="0.01" placeholder="0.00" [ngModel]="depositAmount()" (ngModelChange)="depositAmount.set($event)" />
           </div>
           <div class="sc-form-group">
-            <label>Método de Depósito</label>
-            <select [ngModel]="depositMethod()" (ngModelChange)="depositMethod.set($event)">
+            <label for="sc-deposit-method">Método de Depósito</label>
+            <select id="sc-deposit-method" name="deposit_method" [ngModel]="depositMethod()" (ngModelChange)="depositMethod.set($event)">
               <option value="bank">Depósito Bancario</option>
               <option value="cash">Retiro de Efectivo</option>
               <option value="card">Pago con Tarjeta</option>
             </select>
           </div>
           <div class="sc-form-group">
-            <label>Notas (opcional)</label>
-            <input type="text" placeholder="Ej: Banco BBVA, 14:30 hrs" [ngModel]="depositNotes()" (ngModelChange)="depositNotes.set($event)" />
+            <label for="sc-deposit-notes">Notas (opcional)</label>
+            <input id="sc-deposit-notes" name="deposit_notes" type="text" placeholder="Ej: Banco BBVA, 14:30 hrs" [ngModel]="depositNotes()" (ngModelChange)="depositNotes.set($event)" />
           </div>
         </div>
         <div class="sc-modal-footer">

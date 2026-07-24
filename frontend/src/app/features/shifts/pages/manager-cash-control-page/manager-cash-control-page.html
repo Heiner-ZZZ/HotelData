@@ -1,0 +1,160 @@
+<div class="mcc-container">
+  <header class="mcc-header">
+    <div>
+      <h1 class="mcc-title">Control de Cajas</h1>
+      <p class="mcc-subtitle">Vista gerencial de cierres de turno, sobrantes y faltantes.</p>
+    </div>
+    <div class="mcc-header-actions">
+      <app-property-selector
+        [selectedPropId]="selectedPropId()"
+        [selectedLabel]="selectedLabel()"
+        (propIdChange)="onPropSelected($event)"
+      />
+    </div>
+  </header>
+
+  <section class="mcc-filters">
+    <div class="mcc-filter-group">
+      <label for="mcc-start-date">Desde</label>
+      <input id="mcc-start-date" name="start_date" type="date" [ngModel]="startDate()" (ngModelChange)="startDate.set($event); onDateChange()" />
+    </div>
+    <div class="mcc-filter-group">
+      <label for="mcc-end-date">Hasta</label>
+      <input id="mcc-end-date" name="end_date" type="date" [ngModel]="endDate()" (ngModelChange)="endDate.set($event); onDateChange()" />
+    </div>
+    <button class="mcc-btn-primary" (click)="loadShifts()">
+      <span class="material-symbols-outlined">refresh</span>
+      Actualizar
+    </button>
+  </section>
+
+  @if (loading()) {
+    <div class="mcc-loading">Cargando cierres de caja...</div>
+  } @else if (shifts().length === 0) {
+    <div class="mcc-empty">
+      <span class="material-symbols-outlined mcc-empty-icon">account_balance_wallet</span>
+      <h2>No hay cierres de caja en este rango</h2>
+      <p>Selecciona otro rango de fechas o propiedad.</p>
+    </div>
+  } @else {
+    <section class="mcc-kpis">
+      <div class="mcc-kpi-card">
+        <span class="mcc-kpi-label">Efectivo Contado</span>
+        <span class="mcc-kpi-value">{{ totalCounted() | currency:'USD':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="mcc-kpi-card">
+        <span class="mcc-kpi-label">Efectivo Esperado</span>
+        <span class="mcc-kpi-value">{{ totalExpected() | currency:'USD':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="mcc-kpi-card" [class.negative]="totalOverShort() < 0" [class.positive]="totalOverShort() > 0">
+        <span class="mcc-kpi-label">Sobrante / Faltante Total</span>
+        <span class="mcc-kpi-value">{{ totalOverShort() | currency:'USD':'symbol':'1.2-2' }}</span>
+      </div>
+    </section>
+
+    <div class="mcc-table-card">
+      <table class="mcc-table">
+        <thead>
+          <tr>
+            <th>Fecha Cierre</th>
+            <th>Empleado</th>
+            <th>Turno</th>
+            <th class="text-right">Inicial</th>
+            <th class="text-right">Contado</th>
+            <th class="text-right">Esperado</th>
+            <th class="text-right">Sobrante/Faltante</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of shifts(); track s.id) {
+            <tr class="mcc-row" [class.negative]="(s.cash_over_short ?? 0) < 0" [class.positive]="(s.cash_over_short ?? 0) > 0">
+              <td>{{ s.closed_at | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ s.employee }}</td>
+              <td>{{ shiftTypeLabel(s.shift_type) }}</td>
+              <td class="text-right mono">{{ s.cash_initial | currency:'USD':'symbol':'1.2-2' }}</td>
+              <td class="text-right mono">{{ (s.cash_counted ?? 0) | currency:'USD':'symbol':'1.2-2' }}</td>
+              <td class="text-right mono">{{ (s.cash_expected ?? s.cash_initial) | currency:'USD':'symbol':'1.2-2' }}</td>
+              <td class="text-right mono">
+                <span class="mcc-os-badge" [class.negative]="(s.cash_over_short ?? 0) < 0" [class.positive]="(s.cash_over_short ?? 0) > 0">
+                  {{ (s.cash_over_short ?? 0) | currency:'USD':'symbol':'1.2-2' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <button class="mcc-btn-icon" (click)="selectShift(s)" aria-label="Ver detalle del cierre">
+                  <span class="material-symbols-outlined">visibility</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (selectedShift(); as s) {
+    <div class="mcc-modal-overlay" role="button" tabindex="0" aria-label="Cerrar detalle" (keydown.enter)="closeDetail()" (click)="$event.target === $event.currentTarget ? closeDetail() : null">
+      <div class="mcc-modal">
+        <div class="mcc-modal-header">
+          <span class="material-symbols-outlined mcc-modal-icon">receipt_long</span>
+          <h2>Detalle del Cierre</h2>
+        </div>
+        <div class="mcc-modal-body">
+          <div class="mcc-detail-grid">
+            <div class="mcc-detail-row">
+              <span>Empleado</span>
+              <strong>{{ s.employee }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Turno</span>
+              <strong>{{ shiftTypeLabel(s.shift_type) }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Inicio</span>
+              <strong>{{ s.start_time | date:'dd/MM/yyyy HH:mm' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Cierre</span>
+              <strong>{{ s.closed_at | date:'dd/MM/yyyy HH:mm' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Fondo Inicial</span>
+              <strong>{{ s.cash_initial | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Efectivo Contado</span>
+              <strong>{{ (s.cash_counted ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Efectivo Esperado</span>
+              <strong>{{ (s.cash_expected ?? s.cash_initial) | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
+              <span>Efectivo a Dejar</span>
+              <strong>{{ (s.cash_left ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div class="mcc-detail-row divider">
+              <span>Sobrante / Faltante</span>
+              <strong [class.negative]="(s.cash_over_short ?? 0) < 0" [class.positive]="(s.cash_over_short ?? 0) > 0">
+                {{ (s.cash_over_short ?? 0) | currency:'USD':'symbol':'1.2-2' }}
+              </strong>
+            </div>
+            @if (s.closing_notes) {
+              <div class="mcc-detail-row notes">
+                <span>Notas</span>
+                <p>{{ s.closing_notes }}</p>
+              </div>
+            }
+            <div class="mcc-detail-row">
+              <span>Vínculos del Turno</span>
+              <strong>{{ (s.payment_ids?.length ?? 0) }} pagos · {{ (s.folio_ids?.length ?? 0) }} folios · {{ (s.booking_ids?.length ?? 0) }} reservas</strong>
+            </div>
+          </div>
+        </div>
+        <div class="mcc-modal-footer">
+          <button class="mcc-btn-primary" (click)="closeDetail()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

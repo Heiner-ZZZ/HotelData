@@ -11,4 +11,9 @@ export const SHIFTS_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/control-turnos-caja-page/control-turnos-caja-page').then(m => m.ControlTurnosCajaPageComponent),
   },
+  {
+    path: 'manager-control',
+    loadComponent: () =>
+      import('./pages/manager-cash-control-page/manager-cash-control-page').then(m => m.ManagerCashControlPageComponent),
+  },
 ];
