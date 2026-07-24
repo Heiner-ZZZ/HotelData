@@ -16,6 +16,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
 from src.app.core.resolvers import resolve_hotel_id
@@ -55,7 +56,7 @@ def _find_booking(booking_id: str) -> dict | None:
     if not booking:
         try:
             booking = db.booking_orders.find_one({"_id": ObjectId(booking_id)})
-        except Exception:
+        except InvalidId:
             pass
     return booking
 

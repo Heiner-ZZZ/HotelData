@@ -7,11 +7,14 @@ Staff endpoints use standard JWT authentication.
 from __future__ import annotations
 
 import asyncio
+import logging
 import secrets
 
 from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 from src.app.modules.instay.schemas import (
     SERVICE_REQUEST_TYPES,
@@ -312,7 +315,7 @@ def staff_create_request(
             try:
                 notify_staff_dnd_toggled(db, session, False)
             except Exception:
-                pass
+                logger.exception("Failed to notify staff DND toggled for prop_id=%s", prop_id)
             # Log the auto-deactivation
             try:
                 db.stay_messages.insert_one({
@@ -326,7 +329,7 @@ def staff_create_request(
                     "read": True,
                 })
             except Exception:
-                pass
+                logger.exception("Failed to insert DND deactivation message for prop_id=%s room=%s", prop_id, room_label)
 
     doc = {
         "booking_id": booking_id,
@@ -398,7 +401,6 @@ def update_service_request(
         except ValueError as e:
             mid_stay_result = {"ok": False, "error": str(e)}
         except Exception:
-            logger = __import__("logging").getLogger(__name__)
             logger.exception("Mid-stay operation failed for request %s", request_id)
             mid_stay_result = {"ok": False, "error": "Error interno al procesar la operación."}
 
@@ -419,7 +421,7 @@ def update_service_request(
     try:
         notify_staff_request_updated(db, existing, new_status)
     except Exception:
-        pass
+        logger.exception("Failed to push SSE notification for request %s status=%s", request_id, new_status)
 
     # Send email to guest when request is completed or cancelled (fire-and-forget in background)
     import threading
@@ -568,7 +570,7 @@ def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict =
                 daemon=True,
             ).start()
     except Exception:
-        pass
+        logger.exception("Failed to notify guest reply for room %s", room_label)
     return {"ok": True, "message": "Respuesta enviada."}
 
 
@@ -713,7 +715,7 @@ def guest_send_message(payload: dict = Body(...)):
     try:
         notify_staff_new_message(db, session)
     except Exception:
-        pass
+        logger.exception("Failed to notify staff new message for room %s", session.get("room_label", ""))
     return {"ok": True, "message": "Mensaje enviado."}
 
 
@@ -745,7 +747,7 @@ def guest_toggle_dnd(payload: dict = Body(...)):
     try:
         notify_staff_dnd_toggled(db, session, new_dnd)
     except Exception:
-        pass
+        logger.exception("Failed to notify staff DND toggled for room %s", room_label)
 
     return {"ok": True, "dnd_active": new_dnd, "message": "DND " + ("activado" if new_dnd else "desactivado")}
 
@@ -797,7 +799,7 @@ def guest_create_request(payload: dict = Body(...)):
             try:
                 notify_staff_dnd_toggled(db, session, False)
             except Exception:
-                pass
+                logger.exception("Failed to notify staff DND auto-deactivated for room %s", room_label)
 
     doc = {
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
@@ -812,7 +814,7 @@ def guest_create_request(payload: dict = Body(...)):
     try:
         notify_staff_new_request(db, session, request_type)
     except Exception:
-        pass
+        logger.exception("Failed to notify staff new request '%s' for room %s", request_type, room_label)
     return {"ok": True, "request_id": str(result.inserted_id), "dnd_was_active": dnd_was_active, "message": "Solicitud enviada."}
 
 

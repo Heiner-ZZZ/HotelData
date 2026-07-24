@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 
 from config.settings import get_settings
 from src.app.email.service import send_email
@@ -53,7 +54,7 @@ def terminate_session(session_id: str, acting_user: dict[str, Any]) -> dict:
     db = get_database()
     try:
         oid = ObjectId(session_id)
-    except Exception:
+    except InvalidId:
         return {"ok": False, "message": "ID de sesión inválido."}
 
     session = db.user_sessions.find_one({"_id": oid, "is_active": True})
@@ -85,7 +86,7 @@ def terminate_user_sessions(user_id_str: str, acting_user: dict[str, Any]) -> di
     db = get_database()
     try:
         uid = ObjectId(user_id_str)
-    except Exception:
+    except InvalidId:
         return {"ok": False, "message": "ID de usuario inválido."}
 
     acting_uid = acting_user.get("_id")

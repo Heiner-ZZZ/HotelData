@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from passlib.context import CryptContext
 from pymongo import ASCENDING
 
@@ -88,7 +89,7 @@ def get_ownership_user(user_id: str) -> dict[str, Any] | None:
     db = get_database()
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         return None
     user = db.users.find_one({"_id": oid}, {"password_hash": 0})
     if not user:
@@ -159,7 +160,7 @@ def update_assigned_hotels(user_id: str, assigned_hotels: list[int]) -> dict[str
     db = get_database()
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         return {"ok": False, "message": "ID de usuario inválido."}
 
     user = db.users.find_one({"_id": oid})

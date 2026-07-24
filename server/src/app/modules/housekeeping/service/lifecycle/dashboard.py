@@ -8,6 +8,7 @@ Returns:
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from src.database.connection import get_database
@@ -16,6 +17,8 @@ from ..collections import (
     MAINTENANCE_COLLECTION, CHARGES_COLLECTION,
 )
 from ...schemas import now_iso, ROOM_STATUSES, ROOM_STATUS_COLORS
+
+logger = logging.getLogger(__name__)
 
 # Label for rooms whose hotel_rooms record has no floor set
 FLOOR_UNKNOWN = "Sin asignar"
@@ -209,6 +212,7 @@ def get_weekly_calendar(
             week_days.append(cur.strftime("%Y-%m-%d"))
             cur += timedelta(days=1)
     except Exception:
+        logger.exception("Failed to build week_days from start_date=%s, falling back", week_start)
         week_days = [week_start]
 
     # 1. Fetch all rooms for this property

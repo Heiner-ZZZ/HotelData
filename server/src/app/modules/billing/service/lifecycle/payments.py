@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 
 from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
 from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.state_machine import payment_sm
 from src.app.modules.billing.schemas import PaymentCreate
@@ -53,7 +56,7 @@ def create_payment(payload: PaymentCreate) -> dict | None:
         from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_payment
         generate_ledger_from_payment(doc)
     except Exception:
-        pass
+        logger.exception("Failed to generate ledger entries for payment %s", doc.get("reference", ""))
 
     if invoice_id:
         upd = {"$set": {"status": "paid", "paid_at": _now()}}

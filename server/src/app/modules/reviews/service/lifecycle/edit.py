@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
@@ -25,7 +26,11 @@ def update_review(
 ) -> dict | None:
     """Update a review if the user is the author and the review is still pending moderation."""
     db = get_database()
-    doc_id = ObjectId(review_id)
+    try:
+        doc_id = ObjectId(review_id)
+    except InvalidId:
+        logger.warning("Invalid review_id for update: %s", review_id)
+        return None
 
     # Fetch existing review
     existing = db[COLLECTION].find_one({"_id": doc_id})

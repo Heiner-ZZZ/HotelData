@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 
 from src.database.connection import get_database
 
@@ -17,7 +18,7 @@ def toggle_user_active(target_user_id: str, acting_user: dict[str, Any]) -> dict
 
     try:
         object_id = ObjectId(target_user_id)
-    except Exception:
+    except InvalidId:
         return {"ok": False, "message": "Identificador de usuario inválido."}
 
     target_user = db.users.find_one({"_id": object_id})
@@ -77,7 +78,7 @@ def delete_user(target_user_id: str, acting_user: dict[str, Any]) -> dict[str, A
 
     try:
         object_id = ObjectId(target_user_id)
-    except Exception:
+    except InvalidId:
         return {"ok": False, "message": "Identificador de usuario inválido."}
 
     target_user = db.users.find_one({"_id": object_id})

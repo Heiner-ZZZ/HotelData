@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
@@ -30,7 +31,11 @@ def moderate_review(review_id: str, payload: ReviewModeration, current_user: dic
     db = get_database()
     if payload.status not in ("approved", "rejected"):
         return None
-    doc_id = ObjectId(review_id)
+    try:
+        doc_id = ObjectId(review_id)
+    except InvalidId:
+        logger.warning("Invalid review_id for moderate: %s", review_id)
+        return None
     existing = db[COLLECTION].find_one({"_id": doc_id})
     if not existing:
         return None
@@ -67,7 +72,11 @@ def moderate_review(review_id: str, payload: ReviewModeration, current_user: dic
 
 def respond_to_review(review_id: str, payload: ReviewStaffResponse) -> dict | None:
     db = get_database()
-    doc_id = ObjectId(review_id)
+    try:
+        doc_id = ObjectId(review_id)
+    except InvalidId:
+        logger.warning("Invalid review_id for respond: %s", review_id)
+        return None
     existing = db[COLLECTION].find_one({"_id": doc_id})
     if not existing:
         return None

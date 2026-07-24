@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from math import ceil
 from typing import Any
 
@@ -12,6 +13,8 @@ from pymongo import ReturnDocument
 from src.database.connection import get_database
 from ..collections import MAINTENANCE_COLLECTION
 from ...schemas import MaintenanceTaskCreate, now_iso
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_room_from_id(room_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
@@ -148,8 +151,7 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
         try:
             _auto_block_room(db, room["prop_id"], room["hotel_room_id"], room_label, payload.scheduled_date)
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception("Failed to auto-block room for maintenance task")
+            logger.exception("Failed to auto-block room for maintenance task")
     return _enrich_mt_task(doc)
 
 
@@ -258,8 +260,7 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
                 doc.get("scheduled_date", ""),
             )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception("Failed to unblock room on maintenance completion")
+            logger.exception("Failed to unblock room on maintenance completion")
     return _enrich_mt_task(doc) if doc else None
 
 
@@ -281,8 +282,7 @@ def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
                 doc.get("scheduled_date", ""),
             )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception("Failed to unblock room on maintenance deletion")
+            logger.exception("Failed to unblock room on maintenance deletion")
     return _enrich_mt_task(doc) if doc else None
 
 

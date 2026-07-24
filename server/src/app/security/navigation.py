@@ -15,6 +15,9 @@ ROLE_DEFAULT_REDIRECTS = {
     "revenue_manager": "/management/rates",
     "marketing_hotelero": "/management/amenities",
     "maintenance": "/management/hr/my-portal",
+    "recepcionista": "/management/reservations",
+    "housekeeping": "/management/housekeeping",
+    "concierge": "/management/reservations",
     "cliente": "/search",
 }
 
@@ -68,8 +71,26 @@ NAVIGATION_BY_ROLE: dict[str, list[dict[str, Any]]] = {
         {"label": "Reportes", "href": "/management/reports", "icon": "icon-analytics", "permission": "revenue.read"},
     ],
     "maintenance": [
-        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard"},
+        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard", "permission": "hr.read"},
         {"label": "Housekeeping", "href": "/management/housekeeping", "icon": "icon-cleaning"},
+    ],
+    "recepcionista": [
+        {"label": "Reservas", "href": "/management/reservations", "icon": "icon-booking", "permission": "reservations.manage"},
+        {"label": "Check-ins", "href": "/management/check-ins", "icon": "icon-dashboard", "permission": "check-ins.manage"},
+        {"label": "Check-outs", "href": "/management/check-outs", "icon": "icon-dashboard", "permission": "check-outs.manage"},
+        {"label": "Recepción", "href": "/management/recepcion", "icon": "icon-booking", "permission": "reservations.read"},
+        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard", "permission": "hr.read"},
+    ],
+    "housekeeping": [
+        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard", "permission": "hr.read"},
+        {"label": "Housekeeping", "href": "/management/housekeeping", "icon": "icon-cleaning", "permission": "housekeeping.read"},
+        {"label": "Mantenimiento", "href": "/management/housekeeping/maintenance", "icon": "icon-dashboard", "permission": "maintenance.read"},
+    ],
+    "concierge": [
+        {"label": "Reservas", "href": "/management/reservations", "icon": "icon-booking", "permission": "reservations.read"},
+        {"label": "Huéspedes", "href": "/management/guests", "icon": "icon-admin", "permission": "reservations.read"},
+        {"label": "Amenities", "href": "/management/amenities", "icon": "icon-dashboard", "permission": "amenities.read"},
+        {"label": "Mi Portal", "href": "/management/hr/my-portal", "icon": "icon-dashboard", "permission": "hr.read"},
     ],
     "cliente": [
         {"label": "Hoteles", "href": "/search", "icon": "icon-hotels"},

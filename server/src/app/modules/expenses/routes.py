@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from math import ceil
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 
 from src.database.connection import get_database
@@ -224,7 +225,7 @@ def list_invoices(
     if category_id:
         try:
             query["category_id"] = ObjectId(category_id)
-        except Exception:
+        except InvalidId:
             pass
     if vendor:
         query["vendor_name"] = {"$regex": vendor, "$options": "i"}

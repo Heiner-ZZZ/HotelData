@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,8 @@ from src.app.security.role_helpers import get_role_name
 from src.app.security.session import log_user_activity
 from src.database.connection import get_database
 from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 api_router = APIRouter(prefix="/api/account", tags=["account-api"])
@@ -164,7 +167,7 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
         try:
             _send_email_change_verification(current_user, old_email, new_email)
         except Exception:
-            pass
+            logger.exception("Failed to send email change verification for user %s", current_user.get("username"))
         if old_email:
             try:
                 from src.app.email.templates import base_layout
@@ -182,7 +185,7 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
                 )
                 send_email(old_email, "Tu correo fue cambiado — HotelData", html)
             except Exception:
-                pass
+                logger.exception("Failed to send old-email notification to %s", old_email)
 
     log_user_activity(
         db,
@@ -226,7 +229,7 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
             if fs.exists(old_id):
                 fs.delete(old_id)
         except Exception:
-            pass
+            logger.exception("Failed to delete old avatar from GridFS for user %s", current_user.get("username"))
 
     # Store in GridFS
     unique_name = f"{current_user.get('username', str(user_id))}_{uuid.uuid4().hex[:8]}"
@@ -407,7 +410,7 @@ def _send_email_change_verification(user: dict, old_email: str, new_email: str) 
     try:
         send_email(new_email, "Verifica tu nuevo correo — HotelData", html)
     except Exception:
-        pass
+        logger.exception("Failed to send verification email to %s", new_email)
 
 
 def verify_email_change(token: str) -> bool:

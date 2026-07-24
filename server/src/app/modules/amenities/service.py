@@ -217,7 +217,7 @@ def get_guest_amenity_catalog(booking_id: str) -> dict[str, Any] | None:
             if hotel:
                 hotel_label = hotel.get("display_name") or hotel.get("hotel_name", "") or str(prop_id)
         except Exception:
-            pass
+            logger.exception("Failed to resolve hotel_label for prop_id=%s", prop_id)
 
     return {
         "booking": {
@@ -380,7 +380,7 @@ def request_amenities(
                     if hotel:
                         hotel_label = hotel.get("display_name") or hotel.get("hotel_name", "") or str(prop_id)
                 except Exception:
-                    pass
+                    logger.exception("Failed to resolve hotel_label for guest notification prop_id=%s", prop_id)
 
                 notify_guest_amenity_request(
                     guest_email=guest_email,

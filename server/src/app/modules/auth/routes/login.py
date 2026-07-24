@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
@@ -175,7 +176,7 @@ def terminate_own_session(request: Request, session_id: str):
         raise HTTPException(status_code=401, detail="No autenticado.")
     try:
         oid = ObjectId(session_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="ID de sesión inválido.")
     if oid == current_session["_id"]:
         raise HTTPException(status_code=400, detail="No puedes terminar tu sesión actual. Usa cerrar sesión.")
@@ -280,7 +281,7 @@ def admin_terminate_session(request: Request, session_id: str):
 
     try:
         oid = ObjectId(session_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="ID de sesión inválido.")
 
     target = db.user_sessions.find_one({"_id": oid})

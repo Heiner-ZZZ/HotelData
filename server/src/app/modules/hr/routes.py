@@ -4,6 +4,7 @@ import calendar as _cal
 from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
 from passlib.context import CryptContext
@@ -74,7 +75,7 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
             user = db.users.find_one({"_id": ObjectId(user_id)})
             if user:
                 return {"username": user.get("username", ""), "password": None}
-        except Exception:
+        except InvalidId:
             pass
 
     import secrets
@@ -139,19 +140,29 @@ router = APIRouter(prefix="/modules/hr", tags=["modules-hr"])
 api_router = APIRouter(prefix="/api/hr", tags=["hr-api"])
 
 
+def _serialize_value(value: object) -> object:
+    """Recursively convert ObjectId and datetime values for JSON serialization."""
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _serialize_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_serialize_value(v) for v in value]
+    return value
+
+
 def _enrich_employee(doc: dict) -> dict:
+    doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))
-    for f in ("created_at", "updated_at"):
-        if isinstance(doc.get(f), datetime):
-            doc[f] = doc[f].isoformat()
-    return doc
+    return _serialize_value(doc)
 
 
 def _enrich_department(doc: dict) -> dict:
+    doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))
-    if isinstance(doc.get("created_at"), datetime):
-        doc["created_at"] = doc["created_at"].isoformat()
-    return doc
+    return _serialize_value(doc)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -274,7 +285,7 @@ def shift_check_in(
     db = get_database()
     try:
         shift_oid = ObjectId(shift_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
     now = datetime.now(timezone.utc)
@@ -324,7 +335,7 @@ def shift_check_out(
     db = get_database()
     try:
         shift_oid = ObjectId(shift_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
     now = datetime.now(timezone.utc)
@@ -385,7 +396,7 @@ def employee_portal(
     db = get_database()
     try:
         emp_oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True})
@@ -591,7 +602,7 @@ def employee_portal_tasks(
     db = get_database()
     try:
         emp_oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True})
@@ -612,7 +623,7 @@ def employee_portal_tasks(
 
     hk_tasks = []
     for doc in db["housekeeping_tasks"].find(hk_query).sort("created_at", -1).limit(20):
-        hk_tasks.append({
+        hk_tasks.append(_serialize_value({
             "id": str(doc["_id"]),
             "type": "cleaning",
             "room_id": doc.get("room_id", ""),
@@ -622,8 +633,8 @@ def employee_portal_tasks(
             "priority": doc.get("priority", "normal"),
             "note": doc.get("note", ""),
             "scheduled_date": doc.get("scheduled_date", ""),
-            "created_at": doc["created_at"].isoformat() if isinstance(doc.get("created_at"), datetime) else str(doc.get("created_at", "")),
-        })
+            "created_at": doc.get("created_at"),
+        }))
 
     # ── Maintenance tasks for the property (not completed/deleted) ──
     mt_tasks = []
@@ -633,7 +644,7 @@ def employee_portal_tasks(
             "status": {"$nin": ["completed", "deleted"]},
         }
         for doc in db["maintenance_tasks"].find(mt_query).sort("scheduled_date", -1).limit(20):
-            mt_tasks.append({
+            mt_tasks.append(_serialize_value({
                 "id": str(doc["_id"]),
                 "type": "maintenance",
                 "room_label": doc.get("room_label", ""),
@@ -642,8 +653,8 @@ def employee_portal_tasks(
                 "status": doc.get("status", "scheduled"),
                 "priority": doc.get("priority", "normal"),
                 "scheduled_date": doc.get("scheduled_date", ""),
-                "created_at": doc["created_at"].isoformat() if isinstance(doc.get("created_at"), datetime) else str(doc.get("created_at", "")),
-            })
+                "created_at": doc.get("created_at"),
+            }))
 
     # ── Dirty rooms in the employee's property ──
     dirty_rooms = []
@@ -653,13 +664,13 @@ def employee_portal_tasks(
             "status": {"$in": ["vacant_dirty", "occupied_dirty", "dirty"]},
         }
         for doc in db["room_status_log"].find(dirty_query).sort("room_label", 1).limit(20):
-            dirty_rooms.append({
+            dirty_rooms.append(_serialize_value({
                 "room_label": doc.get("room_label", ""),
                 "room_number": doc.get("room_label", ""),
                 "status": doc.get("status", ""),
                 "floor": doc.get("floor", ""),
                 "note": doc.get("note", ""),
-            })
+            }))
 
     # ── Daily duties from employee record (with department fallback) ──
     daily_duties = emp.get("daily_duties")
@@ -737,7 +748,7 @@ def employee_attendance(
     db = get_database()
     try:
         emp_oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True}, {"full_name": 1, "prop_id": 1})
@@ -959,15 +970,9 @@ def _default_duties_for_dept(department: str) -> list[dict]:
 
 
 def _enrich_shift(doc: dict) -> dict:
+    doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))
-    for f in ("created_at", "updated_at"):
-        if isinstance(doc.get(f), datetime):
-            doc[f] = doc[f].isoformat()
-    if isinstance(doc.get("actual_check_in"), datetime):
-        doc["actual_check_in"] = doc["actual_check_in"].isoformat()
-    if isinstance(doc.get("actual_check_out"), datetime):
-        doc["actual_check_out"] = doc["actual_check_out"].isoformat()
-    return doc
+    return _serialize_value(doc)
 
 
 @api_router.post("/shifts", status_code=201)
@@ -985,7 +990,7 @@ def create_shift(
         emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid}, {"full_name": 1})
         if not emp:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID de empleado inválido")
 
     doc = {
@@ -1026,7 +1031,7 @@ def list_shifts(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.manage")),
 ):
     """List shifts with optional filters."""
     from math import ceil
@@ -1088,7 +1093,7 @@ def update_shift(
     db = get_database()
     try:
         oid = ObjectId(shift_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
 
     before = db[SHIFTS_COLLECTION].find_one({"_id": oid})
@@ -1132,7 +1137,7 @@ def delete_shift(
     db = get_database()
     try:
         oid = ObjectId(shift_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado")
     result = db[SHIFTS_COLLECTION].delete_one({"_id": oid})
     if result.deleted_count == 0:
@@ -1148,14 +1153,9 @@ def delete_shift(
 
 
 def _enrich_document(doc: dict) -> dict:
+    doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))
-    for f in ("created_at", "updated_at"):
-        if isinstance(doc.get(f), datetime):
-            doc[f] = doc[f].isoformat()
-    # Convert ObjectId FKs to strings for JSON
-    if isinstance(doc.get("employee_id"), ObjectId):
-        doc["employee_id"] = str(doc["employee_id"])
-    return doc
+    return _serialize_value(doc)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1174,7 +1174,7 @@ def list_employee_documents(
     if employee_id:
         try:
             query["employee_id"] = ObjectId(employee_id)
-        except Exception:
+        except InvalidId:
             return {"items": [], "total": 0}
     if doc_type:
         query["doc_type"] = doc_type
@@ -1204,7 +1204,7 @@ def create_employee_document(
     employee_id = payload.get("employee_id", "")
     try:
         emp_oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="employee_id inválido")
 
     # Verify employee exists
@@ -1258,7 +1258,7 @@ def get_employee_document(
     db = get_database()
     try:
         oid = ObjectId(document_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     doc = db[DOCUMENTS_COLLECTION].find_one({"_id": oid})
@@ -1276,7 +1276,7 @@ def delete_employee_document(
     db = get_database()
     try:
         oid = ObjectId(document_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     before = db[DOCUMENTS_COLLECTION].find_one({"_id": oid})
@@ -1391,7 +1391,7 @@ def create_employee(
                         {"employee_id": str(old_id)},
                         {"$set": {"employee_id": str(result.inserted_id), "transferred_from": str(old_id)}},
                     )
-        except Exception:
+        except InvalidId:
             pass  # non-critical: old employee may not exist
 
     return enriched
@@ -1406,7 +1406,7 @@ def list_employees(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.manage")),
 ):
     from math import ceil
     db = get_database()
@@ -1475,7 +1475,7 @@ def get_employee(
     db = get_database()
     try:
         oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
     doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
     if not doc:
@@ -1511,7 +1511,7 @@ def update_employee(
     db = get_database()
     try:
         oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
 
     before = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
@@ -1568,7 +1568,7 @@ def delete_employee(
     db = get_database()
     try:
         oid = ObjectId(employee_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empleado no encontrado")
     before = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
     if not before:

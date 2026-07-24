@@ -114,7 +114,7 @@ def notify_staff_new_message(db, session: dict):
             "guest_name": guest_name,
         })
     except Exception:
-        pass
+        logger.exception("Failed to push SSE event 'new_message' for prop_id=%s", prop_id)
 
 
 def notify_staff_new_request(db, session: dict, request_type: str):
@@ -148,7 +148,7 @@ def notify_staff_new_request(db, session: dict, request_type: str):
             "request_type": type_label_str,
         })
     except Exception:
-        pass
+        logger.exception("Failed to push SSE event 'new_request' for prop_id=%s", prop_id)
 
 
 def notify_staff_dnd_toggled(db, session: dict, dnd_active: bool):
@@ -174,7 +174,7 @@ def notify_staff_dnd_toggled(db, session: dict, dnd_active: bool):
             },
         })
     except Exception:
-        pass
+        logger.exception("Failed to insert DND notification log for prop_id=%s room=%s", prop_id, room_label)
 
     # Push SSE event
     try:
@@ -185,7 +185,7 @@ def notify_staff_dnd_toggled(db, session: dict, dnd_active: bool):
             "dnd_active": dnd_active,
         })
     except Exception:
-        pass
+        logger.exception("Failed to push SSE event 'dnd_toggled' for prop_id=%s", prop_id)
 
 
 def notify_staff_request_updated(db, request_doc: dict, new_status: str):
@@ -225,7 +225,7 @@ def notify_staff_request_updated(db, request_doc: dict, new_status: str):
             "status_label": new_status_label_str,
         })
     except Exception:
-        pass
+        logger.exception("Failed to push SSE event 'request_updated' for prop_id=%s", prop_id)
 
 
 def notify_guest_new_message(db, session: dict):
@@ -323,7 +323,7 @@ def notify_guest_new_message(db, session: dict):
             },
         })
     except Exception:
-        pass
+        logger.exception("Failed to insert chat reply notification log for booking %s", booking_id)
 
 
 def notify_guest_request_completed(db, request_doc: dict, new_status: str) -> None:
@@ -448,7 +448,7 @@ def notify_guest_request_completed(db, request_doc: dict, new_status: str) -> No
             },
         })
     except Exception:
-        pass
+        logger.exception("Failed to insert request notification log for booking %s", booking_id)
 
 
 def ensure_stay_collections():

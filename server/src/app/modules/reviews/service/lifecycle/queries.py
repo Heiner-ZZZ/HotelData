@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 
 from bson import ObjectId
+from bson.errors import InvalidId
 
 from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
 from ._helpers import _enrich
 
 COLLECTION = "reviews"
@@ -26,7 +30,10 @@ def list_reviews(
     if prop_id:
         query["prop_id"] = prop_id
     if user_id:
-        query["user_id"] = ObjectId(user_id)
+        try:
+            query["user_id"] = ObjectId(user_id)
+        except InvalidId:
+            logger.warning("Invalid user_id received: %s", user_id)
     if moderation_status:
         query["moderation_status"] = moderation_status
 
@@ -42,7 +49,12 @@ def list_reviews(
 
 def get_review(review_id: str) -> dict | None:
     db = get_database()
-    doc = db[COLLECTION].find_one({"_id": ObjectId(review_id)})
+    try:
+        oid = ObjectId(review_id)
+    except InvalidId:
+        logger.warning("Invalid review_id received: %s", review_id)
+        return None
+    doc = db[COLLECTION].find_one({"_id": oid})
     return _enrich(doc) if doc else None
 
 
@@ -70,5 +82,10 @@ def get_hotel_reviews(prop_id: int, page: int = 1, page_size: int = 5) -> dict:
 
 def delete_review(review_id: str) -> bool:
     db = get_database()
-    result = db[COLLECTION].delete_one({"_id": ObjectId(review_id)})
+    try:
+        oid = ObjectId(review_id)
+    except InvalidId:
+        logger.warning("Invalid review_id for delete: %s", review_id)
+        return False
+    result = db[COLLECTION].delete_one({"_id": oid})
     return result.deleted_count > 0

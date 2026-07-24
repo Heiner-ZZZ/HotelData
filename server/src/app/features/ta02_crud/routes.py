@@ -14,7 +14,7 @@ from src.app.features.ta02_crud.service import (
 )
 
 
-router = APIRouter(prefix="/api", tags=["ta02-crud"])
+router = APIRouter(prefix="/api/ta02", tags=["ta02-crud"])
 
 
 def _guard_collection(collection_name: str) -> None:

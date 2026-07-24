@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from bson import ObjectId
+from pydantic import BaseModel
 
 # ── Global ObjectId → str serialization — patched BEFORE FastAPI routing ──
 import fastapi.encoders as _encoders_module
@@ -12,15 +13,32 @@ import fastapi.routing as _routing_module
 _original_je = _encoders_module.jsonable_encoder
 
 def _patched_jsonable_encoder(obj, **kwargs):
-    """Patched jsonable_encoder that converts ObjectId to str recursively."""
+    """Patched jsonable_encoder that converts ObjectId to str recursively.
+
+    Also handles Pydantic BaseModel instances whose dict/list fields contain
+    ObjectId values. Pydantic v2's model_dump(mode="json") bypasses custom
+    encoders for untyped nested data, so we pre-convert models to plain
+    dictionaries using model_dump()/dict() and then walk the result.
+    """
     def _walk(o):
         if isinstance(o, ObjectId):
             return str(o)
         if isinstance(o, dict):
             return {k: _walk(v) for k, v in o.items()}
         if isinstance(o, (list, tuple)):
-            return [_walk(v) for v in o]
+            return type(o)(_walk(v) for v in o)
+        if isinstance(o, BaseModel):
+            valid_keys = {"include", "exclude", "by_alias", "exclude_unset", "exclude_defaults", "exclude_none"}
+            dump_kwargs = {k: v for k, v in kwargs.items() if k in valid_keys}
+            dump_method = getattr(o, "model_dump", getattr(o, "dict", None))
+            d = dump_method(**dump_kwargs) if dump_method else o
+            return _walk(d)
         return o
+
+    custom_encoder = kwargs.pop("custom_encoder", {}) or {}
+    custom_encoder[ObjectId] = str
+    kwargs["custom_encoder"] = custom_encoder
+
     return _original_je(_walk(obj), **kwargs)
 
 _encoders_module.jsonable_encoder = _patched_jsonable_encoder

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 
 from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+
+logger = logging.getLogger(__name__)
 from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.state_machine import invoice_sm
 from src.app.modules.billing.schemas import InvoiceCreate
@@ -109,12 +112,12 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
         from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_invoice
         generate_ledger_from_invoice(doc)
     except Exception:
-        pass
+        logger.exception("Failed to generate ledger entries for invoice %s", doc.get("invoice_number", ""))
 
     try:
         _record_earnings(booking, total)
     except Exception:
-        pass
+        logger.exception("Failed to record earnings for booking %s", payload.booking_id)
 
     doc["_id"] = doc.pop("_id", None)
     return _enrich_invoice(doc)
@@ -188,6 +191,7 @@ def list_invoices(
             )
             total_paid = round(sum(float(p.get("amount", 0)) for p in payments_cursor), 2)
         except Exception:
+            logger.warning("Failed to fetch payments for invoice %s", inv_id)
             total_paid = 0.0
         enriched["total_paid_amount"] = total_paid
         enriched["total_pending_amount"] = round(max(enriched.get("total", 0) - total_paid, 0), 2)
@@ -331,7 +335,7 @@ def get_invoice(invoice_id: str) -> dict | None:
             enriched["folio_id"] = str(folio["_id"])
             enriched["folio_number"] = folio.get("folio_number")
     except Exception:
-        pass
+        logger.exception("Failed to fetch folio for booking %s", booking_id)
 
     return enriched
 
@@ -485,7 +489,7 @@ def cancel_invoice(invoice_id: str) -> dict | None:
             from src.app.modules.expenses.service.ledger_hooks import generate_reversal_from_invoice
             generate_reversal_from_invoice(doc)
         except Exception:
-            pass
+            logger.exception("Failed to generate ledger reversal for invoice %s", invoice_id)
 
     return _enrich_invoice(doc) if doc else None
 

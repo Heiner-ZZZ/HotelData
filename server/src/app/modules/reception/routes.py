@@ -10,6 +10,7 @@ from .shifts import (
     get_active_shift,
     get_shift,
     list_shifts,
+    list_shifts_for_cash_control,
     SHIFT_TYPE_LABELS,
 )
 
@@ -19,7 +20,7 @@ api_router = APIRouter(prefix="/api/reception", tags=["reception-api"])
 @api_router.get("/shifts/active")
 def shift_active_api(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_permission("shifts.read")),
 ):
     """Return the currently active shift for a property, or null."""
     shift = get_active_shift(prop_id)
@@ -31,13 +32,18 @@ def shift_active_api(
 @api_router.post("/shifts/open")
 def shift_open_api(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("reservations.manage")),
+    current_user: dict = Depends(require_permission("shifts.create")),
 ):
-    """Open a new reception shift."""
+    """Open a new reception shift.
+
+    If ``cash_initial`` is omitted, the system carries over the
+    ``cash_left`` from the previous closed shift for the same property.
+    """
     prop_id = payload.get("prop_id")
     shift_type = payload.get("shift_type", "morning")
     employee = payload.get("employee", "")
-    cash_initial = float(payload.get("cash_initial", 0) or 0)
+    raw_cash_initial = payload.get("cash_initial")
+    cash_initial = float(raw_cash_initial) if raw_cash_initial is not None else None
 
     if not prop_id:
         raise HTTPException(status_code=400, detail="prop_id es requerido")
@@ -62,19 +68,32 @@ def shift_open_api(
 def shift_close_api(
     shift_id: str,
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("reservations.manage")),
+    current_user: dict = Depends(require_permission("shifts.update")),
 ):
-    """Close an active shift with final cash count and optional deposits."""
-    cash_final = float(payload.get("cash_final", 0) or 0)
+    """Close an active shift with full cash register data.
+
+    Payload fields:
+        - cash_counted: physical cash counted in the drawer (required)
+        - cash_left: cash left in drawer for next shift (optional)
+        - deposits: list of deposit/drop records
+        - closing_notes: free-text observations
+    """
+    cash_counted = float(payload.get("cash_counted", 0) or 0)
+    cash_left = payload.get("cash_left")
+    if cash_left is not None:
+        cash_left = float(cash_left)
     closed_by = payload.get("closed_by") or current_user.get("username", "web")
     deposits = payload.get("deposits") or None
+    closing_notes = payload.get("closing_notes", "")
 
     try:
         result = close_shift(
             shift_id=shift_id,
-            cash_final=cash_final,
-            closed_by=closed_by,
+            cash_counted=cash_counted,
+            cash_left=cash_left,
             deposits=deposits,
+            closing_notes=closing_notes,
+            closed_by=closed_by,
         )
         pbreak = result.get("payment_breakdown", {})
         return {
@@ -83,9 +102,12 @@ def shift_close_api(
             "summary": {
                 "cash_initial": result.get("cash_initial", 0),
                 "cash_final": result.get("cash_final", 0),
+                "cash_counted": result.get("cash_counted", 0),
+                "cash_left": result.get("cash_left", 0),
+                "cash_expected": result.get("cash_expected", 0),
+                "cash_over_short": result.get("cash_over_short", 0),
                 "total_collected": result.get("total_collected", 0),
                 "cash_difference": result.get("cash_difference", 0),
-                "cash_expected": result.get("cash_expected", 0),
                 "transaction_count": len(result.get("transactions", [])),
                 "payment_breakdown": {
                     "cash": pbreak.get("cash", 0),
@@ -95,16 +117,38 @@ def shift_close_api(
                     "total": pbreak.get("total", 0),
                 },
                 "deposit_total": result.get("deposit_total", 0),
+                "closing_notes": result.get("closing_notes", ""),
+                "payment_count": len(result.get("payment_ids", [])),
+                "folio_count": len(result.get("folio_ids", [])),
+                "booking_count": len(result.get("booking_ids", [])),
             },
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@api_router.get("/shifts/manager-control")
+def shift_manager_control_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    start_date: str | None = Query(default=None, alias="start_date"),
+    end_date: str | None = Query(default=None, alias="end_date"),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: dict = Depends(require_permission("shifts.manage")),
+):
+    """Manager cash-control view: closed shifts with over/short details."""
+    shifts = list_shifts_for_cash_control(
+        prop_id=prop_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
+    return {"items": shifts, "total": len(shifts)}
+
+
 @api_router.get("/shifts/{shift_id}")
 def shift_detail_api(
     shift_id: str,
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_permission("shifts.read")),
 ):
     """Return detailed info for a specific shift."""
     shift = get_shift(shift_id)
@@ -118,7 +162,7 @@ def shift_list_api(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("reservations.read")),
+    current_user: dict = Depends(require_permission("shifts.read")),
 ):
     """List shifts for a property, newest first."""
     shifts = list_shifts(prop_id=prop_id, status_filter=status_filter, limit=limit)

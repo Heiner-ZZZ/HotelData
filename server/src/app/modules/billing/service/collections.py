@@ -23,6 +23,7 @@ INDEXES_PAYMENTS = [
     IndexModel([("booking_id", ASCENDING)], name="idx_pay_booking"),
     IndexModel([("invoice_id", ASCENDING)], name="idx_pay_invoice"),
     IndexModel([("status", ASCENDING)], name="idx_pay_status"),
+    IndexModel([("prop_id", ASCENDING), ("paid_at", -1)], name="idx_pay_prop_paid_at"),
 ]
 INDEXES_FOLIOS = [
     IndexModel([("booking_id", ASCENDING)], name="idx_fl_booking", unique=True),
@@ -30,6 +31,7 @@ INDEXES_FOLIOS = [
     IndexModel([("prop_id", ASCENDING)], name="idx_fl_prop"),
     IndexModel([("status", ASCENDING)], name="idx_fl_status"),
     IndexModel([("created_at", -1)], name="idx_fl_created_desc"),
+    IndexModel([("prop_id", ASCENDING), ("created_at", -1)], name="idx_fl_prop_created_desc"),
 ]
 
 

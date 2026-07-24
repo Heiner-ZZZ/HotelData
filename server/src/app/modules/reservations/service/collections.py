@@ -16,6 +16,7 @@ BOOKING_COLLECTIONS: dict[str, list[IndexModel]] = {
         IndexModel([("prop_id", ASCENDING)], name="prop_id_1"),
         IndexModel([("status", ASCENDING)], name="status_1"),
         IndexModel([("created_at", DESCENDING)], name="created_at_-1"),
+        IndexModel([("prop_id", ASCENDING), ("created_at", DESCENDING)], name="prop_id_created_at_-1"),
     ],
     "booking_guests": [
         IndexModel([("booking_id", ASCENDING)], name="booking_id_1"),
