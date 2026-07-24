@@ -10,6 +10,10 @@ from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Aggressive timeout — the NVIDIA API is unreachable in this environment,
+# so we fail fast (3s) and let callers fall back gracefully instead of
+# hanging for 30-300s.
+_CLIENT_TIMEOUT = httpx.Timeout(3.0, connect=3.0)
 
 _client: OpenAI | None = None
 
@@ -24,8 +28,8 @@ def get_client() -> OpenAI:
     _client = OpenAI(
         base_url=settings.nvidia_api_base,
         api_key=settings.nvidia_api_key,
-        max_retries=1,
-        timeout=httpx.Timeout(180.0, connect=30.0),
+        max_retries=0,
+        timeout=_CLIENT_TIMEOUT,
     )
     return _client
 
@@ -41,7 +45,10 @@ def chat(
     thinking: bool = False,
 ) -> str:
     settings = get_settings()
-    client = get_client()
+    try:
+        client = get_client()
+    except RuntimeError:
+        return ""
     kwargs: dict[str, Any] = {
         "model": model or settings.nvidia_chat_model,
         "messages": messages,
