@@ -88,7 +88,6 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20, use
                     haystacks = [
                         hotel_display_name(hotel, prop_id),
                         clean_text(hotel.get("hotel_name")),
-                        clean_text(hotel.get("hotel_label")),
                         clean_text(hotel.get("display_country_label")),
                     ]
                     if any(query_lower in value.lower() for value in haystacks if value):
@@ -113,7 +112,6 @@ def list_partner_hotels(query: str = "", page: int = 1, page_size: int = 20, use
         # Combine query with user filter using $and if user_filter exists
         query_or = [
             {"display_name": {"$regex": query, "$options": "i"}},
-            {"hotel_label": {"$regex": query, "$options": "i"}},
             {"hotel_name": {"$regex": query, "$options": "i"}},
         ]
         if query_as_id is not None:

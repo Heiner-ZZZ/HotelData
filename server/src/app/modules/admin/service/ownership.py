@@ -48,7 +48,7 @@ def _resolve_hotel_names(prop_ids: list[int]) -> list[dict[str, Any]]:
     hotels = list(
         db.dim_hotels.find(
             {"prop_id": {"$in": prop_ids}},
-            {"_id": 0, "prop_id": 1, "display_name": 1, "hotel_name": 1, "hotel_label": 1, "prop_country_id": 1},
+            {"_id": 0, "prop_id": 1, "display_name": 1, "hotel_name": 1, "prop_country_id": 1},
         )
     )
     lookup = {int(h["prop_id"]): h for h in hotels if h.get("prop_id") is not None}
@@ -56,7 +56,7 @@ def _resolve_hotel_names(prop_ids: list[int]) -> list[dict[str, Any]]:
     for pid in prop_ids:
         h = lookup.get(pid)
         if h:
-            label = h.get("display_name") or h.get("hotel_name") or h.get("hotel_label") or f"Hotel {pid}"
+            label = h.get("display_name") or h.get("hotel_name") or f"Hotel {pid}"
             result.append({"prop_id": pid, "label": label, "country_id": h.get("prop_country_id")})
         else:
             result.append({"prop_id": pid, "label": f"Hotel {pid} (sin nombre)", "country_id": None})
@@ -195,7 +195,6 @@ def search_hotels(query: str = "", page: int = 1, page_size: int = 20) -> dict[s
 
         filters["$or"] = [
             {"display_name": {"$regex": query, "$options": "i"}},
-            {"hotel_label": {"$regex": query, "$options": "i"}},
             {"hotel_name": {"$regex": query, "$options": "i"}},
             {"display_country_label": {"$regex": query, "$options": "i"}},
         ]
@@ -217,7 +216,7 @@ def search_hotels(query: str = "", page: int = 1, page_size: int = 20) -> dict[s
         prop_id = hotel.get("prop_id")
         label = (
             hotel.get("display_name")
-            or hotel.get("hotel_label")
+            or hotel.get("display_name")
             or hotel.get("hotel_name")
             or f"Hotel {prop_id}"
         )

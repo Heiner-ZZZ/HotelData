@@ -113,11 +113,11 @@ def create_folio(booking_id: str) -> dict | None:
     prop_id = int(booking.get("prop_id", 0))
     hotel_label = ""
     if prop_id:
-        ctx = db.hotel_booking_context.find_one(
-            {"prop_id": prop_id}, {"_id": 0, "hotel_label": 1}
+        ctx = db.dim_hotels.find_one(
+            {"prop_id": prop_id}, {"_id": 0, "display_name": 1}
         )
         if ctx:
-            hotel_label = ctx.get("hotel_label", "")
+            hotel_label = ctx.get("display_name", "")
 
     # Calculate room charge from booking total_price
     total_price = float(booking.get("total_price", 0) or 0)

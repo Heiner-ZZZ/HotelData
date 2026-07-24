@@ -78,7 +78,7 @@ def _enrich_hotel_metrics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 **item,
                 "prop_id": prop_id,
                 "hotel_label": hotel_label,
-                "hotel_display_label": hotel.get("display_label") or hotel_label,
+                "hotel_display_label": hotel_label,
                 "prop_country_id": country_key,
                 "geo_country_code": geo_code or None,
                 "country_display_name": _country_display_name(country, country_key) if country_key is not None else "N/D",

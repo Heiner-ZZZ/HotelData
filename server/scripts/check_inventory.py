@@ -30,7 +30,7 @@ for t in types:
 print("\n=== hotel_rooms (prop_id=1) ===")
 rooms = list(db.hotel_rooms.find(
     {"prop_id": 1},
-    {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_id": 1, "room_type_name": 1}
-).sort("room_number", 1))
+    {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1, "room_type_name": 1}
+).sort("room_label", 1))
 for r in rooms:
-    print(f'{r.get("hotel_room_id",""):>30}  N.{r.get("room_number",""):>4}  label={r.get("room_label",""):>20}  type_id={str(r.get("room_type_id","")):>30}  type_name={r.get("room_type_name","")}')
+    print(f'{r.get("hotel_room_id",""):>30}  N.{r.get("room_label",""):>4}  type_id={str(r.get("room_type_id","")):>30}  type_name={r.get("room_type_name","")}')

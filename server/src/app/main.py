@@ -4,6 +4,29 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from bson import ObjectId
+
+# ── Global ObjectId → str serialization — patched BEFORE FastAPI routing ──
+import fastapi.encoders as _encoders_module
+import fastapi.routing as _routing_module
+_original_je = _encoders_module.jsonable_encoder
+
+def _patched_jsonable_encoder(obj, **kwargs):
+    """Patched jsonable_encoder that converts ObjectId to str recursively."""
+    def _walk(o):
+        if isinstance(o, ObjectId):
+            return str(o)
+        if isinstance(o, dict):
+            return {k: _walk(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [_walk(v) for v in o]
+        return o
+    return _original_je(_walk(obj), **kwargs)
+
+_encoders_module.jsonable_encoder = _patched_jsonable_encoder
+_routing_module.jsonable_encoder = _patched_jsonable_encoder
+# ──────────────────────────────────────────────────────────
+
 from src.app.features.dashboard.kpi_service import refresh_kpis_background
 
 from fastapi import FastAPI

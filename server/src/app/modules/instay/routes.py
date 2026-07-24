@@ -586,11 +586,10 @@ def get_portal_data(token: str = Query(..., min_length=1)):
     # Resolve display name from dim_hotels (canonical source), fall back to hotel_profile
     dim_hotel = db.dim_hotels.find_one(
         {"prop_id": prop_id},
-        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+        {"_id": 0, "display_name": 1, "hotel_name": 1},
     )
     hotel_label = (
-        (dim_hotel or {}).get("display_label")
-        or (dim_hotel or {}).get("display_name")
+        (dim_hotel or {}).get("display_name")
         or (dim_hotel or {}).get("hotel_name")
         or (hotel or {}).get("display_name")
         or (hotel or {}).get("hotel_name", "")

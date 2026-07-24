@@ -29,7 +29,6 @@ def build_fact_backed_hotel(prop_id: int) -> dict[str, Any] | None:
         "prop_id": prop_id,
         "hotel_name": "Hotel no especificado",
         "display_name": generated_name,
-        "hotel_label": generated_name,
         "display_country_label": _resolve_country_name(sample.get("prop_country_id")),
         "prop_country_id": sample.get("prop_country_id"),
         "prop_starrating": sample.get("prop_starrating"),

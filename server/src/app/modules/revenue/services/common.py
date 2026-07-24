@@ -125,10 +125,10 @@ def _slugify(value: str) -> str:
 
 def _hotel_label(prop_id: int) -> str:
     db = get_database()
-    hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0, "display_name": 1, "hotel_name": 1, "hotel_label": 1})
+    hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0, "display_name": 1, "hotel_name": 1})
     if not hotel:
         return f"Hotel Partner {prop_id}"
-    return hotel.get("display_name") or hotel.get("hotel_name") or hotel.get("hotel_label") or f"Hotel Partner {prop_id}"
+    return hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel Partner {prop_id}"
 
 
 def _lookup_map(collection_name: str, id_field: str, label_fields: list[str], ids: list[Any]) -> dict[Any, str]:

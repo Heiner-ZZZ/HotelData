@@ -90,7 +90,6 @@ def hotel_display_name(hotel: dict[str, Any] | None, prop_id: int) -> str:
     return (
         hotel.get("display_name")
         or hotel.get("hotel_name")
-        or hotel.get("hotel_label")
         or f"Hotel Partner {prop_id}"
     )
 
@@ -99,9 +98,7 @@ def destination_display_name(destination: dict[str, Any] | None, destination_id:
     if not destination:
         return f"Destino {destination_id}"
     return (
-        destination.get("destination_display_name")
-        or destination.get("destination_name")
-        or destination.get("destination_label")
+        destination.get("destination_name")
         or f"Destino {destination_id}"
     )
 
@@ -118,13 +115,11 @@ def _resolve_country_name(country_id: int | None) -> str:
     db = get_database()
     country = db.dim_visitor_countries.find_one(
         {"visitor_location_country_id": country_id},
-        {"_id": 0, "country_display_name": 1, "country_name": 1, "visitor_country_label": 1},
+        {"_id": 0, "country_name": 1},
     )
     if country:
         return (
-            country.get("country_display_name")
-            or country.get("country_name")
-            or country.get("visitor_country_label")
+            country.get("country_name")
             or f"Mercado hotelero {country_id}"
         )
     return f"Mercado hotelero {country_id}"

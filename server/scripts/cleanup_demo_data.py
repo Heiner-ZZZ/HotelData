@@ -61,11 +61,11 @@ def main() -> int:
         label = s.get("room_label", "")
         hr_id = s.get("hotel_room_id", "")
         if label and not label.isdigit() and "Demo" not in label:
-            # Try to find the hotel_room to get its proper room_number
+            # Try to find the hotel_room to get its proper room_label
             if hr_id:
-                hr = db.hotel_rooms.find_one({"hotel_room_id": hr_id}, {"_id": 0, "room_number": 1, "room_label": 1})
+                hr = db.hotel_rooms.find_one({"hotel_room_id": hr_id}, {"_id": 0, "room_label": 1})
                 if hr:
-                    new_label = hr.get("room_number") or hr.get("room_label") or label
+                    new_label = hr.get("room_label") or label
                     if new_label != label:
                         db.room_status_log.update_one(
                             {"hotel_room_id": hr_id},
@@ -127,7 +127,6 @@ def main() -> int:
                         "hotel_room_id": hotel_room_id,
                         "prop_id": prop_id,
                         "room_type_id": room_type_id,
-                        "room_number": str(room_num),
                         "room_label": str(room_num),
                         "floor": str(room_num // 100),
                         "is_active": True,
@@ -145,7 +144,6 @@ def main() -> int:
                         "hotel_room_id": hotel_room_id,
                         "room_type_id": room_type_id,
                         "room_label": str(room_num),
-                        "room_number": str(room_num),
                         "status": "vacant_clean",
                         "note": "Disponible",
                         "updated_at": utc_now(),

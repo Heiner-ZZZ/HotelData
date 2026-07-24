@@ -17,7 +17,7 @@ total_rooms = 0
 
 for pid in sorted(prop_ids):
     rooms = list(db.hotel_rooms.find({"prop_id": pid}, {
-        "_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
+        "_id": 0, "hotel_room_id": 1, "room_label": 1,
         "floor": 1, "room_type_name": 1
     }))
     total_rooms += len(rooms)
@@ -30,7 +30,7 @@ for pid in sorted(prop_ids):
     issues = []
     for r in rooms:
         label = str(r.get('room_label', ''))
-        rn = str(r.get('room_number', ''))
+        rn = str(r.get('room_label', ''))
         floor = r.get('floor')
         type_name = r.get('room_type_name', '')
         
@@ -38,9 +38,7 @@ for pid in sorted(prop_ids):
         # Label is a room type name (not a number)
         if label and not label.isdigit():
             problems.append(f"label='{label}' (no es número)")
-        # Label doesn't match room_number
-        if label and rn and label.isdigit() and label != rn:
-            problems.append(f"label={label} != room_number={rn}")
+        # Label is a room type name (not a number)
         # Missing or empty room_type_name
         if not type_name or type_name == '?':
             problems.append(f"type_name vacío")
@@ -73,7 +71,7 @@ for pid in sorted(prop_ids):
         linked = room_map.get(room_id)
         if not linked:
             continue
-        expected = str(linked.get("room_label", "") or linked.get("room_number", ""))
+        expected = str(linked.get("room_label", ""))
         actual = str(t.get("room_label", ""))
         if expected and actual and expected != actual:
             hk_bad_label += 1

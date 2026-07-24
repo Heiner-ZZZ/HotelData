@@ -14,7 +14,7 @@ INSERT_BATCH_SIZE = int(os.getenv("GA03_INSERT_BATCH_SIZE", "5000"))
 # Fields that the ETL manages for dim_hotels — geo fields are preserved across runs
 ETL_HOTEL_FIELDS = {
     "prop_id", "prop_country_id", "prop_starrating", "prop_review_score",
-    "prop_brand_bool", "prop_location_score1", "hotel_label", "loaded_at",
+    "prop_brand_bool", "prop_location_score1", "display_name", "loaded_at",
 }
 
 

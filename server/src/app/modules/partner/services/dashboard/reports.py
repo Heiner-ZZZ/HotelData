@@ -64,7 +64,7 @@ def management_reports_summary(user: dict[str, Any] | None = None) -> dict[str, 
     }
     country_lookup = {
         item["visitor_location_country_id"]: item
-        for item in db.dim_visitor_countries.find({}, {"_id": 0, "visitor_location_country_id": 1, "country_display_name": 1, "country_name": 1})
+        for item in db.dim_visitor_countries.find({}, {"_id": 0, "visitor_location_country_id": 1, "country_name": 1})
         if item.get("visitor_location_country_id") is not None
     }
 
@@ -127,8 +127,7 @@ def management_reports_summary(user: dict[str, Any] | None = None) -> dict[str, 
         "top_visitor_countries": [
             {
                 "visitor_location_country_id": int(item["_id"]),
-                "label": country_lookup.get(int(item["_id"]), {}).get("country_display_name")
-                or country_lookup.get(int(item["_id"]), {}).get("country_name")
+                "label": country_lookup.get(int(item["_id"]), {}).get("country_name")
                 or f"Mercado visitante {int(item['_id'])}",
                 "events": int(item.get("events") or 0),
                 "reservations": int(item.get("reservations") or 0),

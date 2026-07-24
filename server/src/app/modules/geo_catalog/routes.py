@@ -107,7 +107,7 @@ def list_visitor_countries(
     for doc in cursor:
         items.append({
             "visitor_location_country_id": doc["visitor_location_country_id"],
-            "country_display_name": doc.get("visitor_country_label") or doc.get("country_display_name") or f"País {doc['visitor_location_country_id']}"
+            "country_display_name": doc.get("country_name") or f"País {doc['visitor_location_country_id']}"
         })
     return {"items": items}
 
@@ -130,9 +130,7 @@ def update_visitor_country(
         {"visitor_location_country_id": country_id},
         {
             "$set": {
-                "country_display_name": new_name,
                 "country_name": new_name,
-                "visitor_country_label": new_name,
             }
         },
     )
@@ -155,7 +153,7 @@ def list_visitor_destinations(
     for doc in cursor:
         items.append({
             "srch_destination_id": doc["srch_destination_id"],
-            "destination_display_name": doc.get("destination_label") or doc.get("destination_display_name") or f"Destino {doc['srch_destination_id']}"
+            "destination_display_name": doc.get("destination_name") or f"Destino {doc['srch_destination_id']}"
         })
     return {"items": items}
 
@@ -178,9 +176,7 @@ def update_visitor_destination(
         {"srch_destination_id": dest_id},
         {
             "$set": {
-                "destination_display_name": new_name,
                 "destination_name": new_name,
-                "destination_label": new_name,
             }
         },
     )
@@ -203,7 +199,7 @@ def list_visitor_sites(
     for doc in cursor:
         items.append({
             "site_id": doc["site_id"],
-            "site_display_name": doc.get("site_label") or doc.get("site_display_name") or f"Sitio {doc['site_id']}"
+            "site_display_name": doc.get("site_name") or f"Sitio {doc['site_id']}"
         })
     return {"items": items}
 
@@ -226,9 +222,7 @@ def update_visitor_site(
         {"site_id": site_id},
         {
             "$set": {
-                "site_display_name": new_name,
                 "site_name": new_name,
-                "site_label": new_name,
             }
         },
     )
@@ -251,7 +245,7 @@ def list_visitor_hotels(
     for doc in cursor:
         items.append({
             "prop_id": doc["prop_id"],
-            "hotel_name": doc.get("display_name") or doc.get("hotel_name") or doc.get("hotel_label") or f"Hotel {doc['prop_id']}"
+            "hotel_name": doc.get("display_name") or doc.get("hotel_name") or f"Hotel {doc['prop_id']}"
         })
     return {"items": items}
 
@@ -275,7 +269,6 @@ def update_visitor_hotel(
         {
             "$set": {
                 "hotel_name": new_name,
-                "hotel_label": new_name,
                 "display_name": new_name,
             }
         },

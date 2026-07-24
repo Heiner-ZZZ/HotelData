@@ -16,8 +16,6 @@ def _destination_ids(destination: str) -> list[int]:
     docs = db.dim_destinations.find(
         {
             "$or": [
-                {"destination_display_name": {"$regex": destination, "$options": "i"}},
-                {"destination_label": {"$regex": destination, "$options": "i"}},
                 {"destination_name": {"$regex": destination, "$options": "i"}},
             ]
         },
@@ -88,8 +86,7 @@ def _suggest_alternative_destinations(
         return []
 
     db = get_database()
-    terms = [{"destination_display_name": {"$regex": w, "$options": "i"}} for w in words]
-    terms += [{"destination_name": {"$regex": w, "$options": "i"}} for w in words]
+    terms = [{"destination_name": {"$regex": w, "$options": "i"}} for w in words]
 
     match: dict[str, Any] = {"$or": terms}
     if exclude_ids:
@@ -97,7 +94,7 @@ def _suggest_alternative_destinations(
 
     docs = db.dim_destinations.find(
         match,
-        {"_id": 0, "srch_destination_id": 1, "destination_display_name": 1, "destination_name": 1},
+        {"_id": 0, "srch_destination_id": 1, "destination_name": 1},
     ).limit(limit * 3)
 
     seen: set[int] = set()
@@ -109,7 +106,7 @@ def _suggest_alternative_destinations(
         seen.add(did)
         suggestions.append({
             "id": did,
-            "display_name": doc.get("destination_display_name") or doc.get("destination_name") or f"Destino {did}",
+            "display_name": doc.get("destination_name") or f"Destino {did}",
         })
         if len(suggestions) >= limit:
             break

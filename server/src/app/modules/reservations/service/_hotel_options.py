@@ -36,8 +36,7 @@ def reservation_hotel_options(limit: int = 100, user: dict[str, Any] | None = No
         hotel = dim_lookup.get(prop_id)
         if hotel:
             label = (
-                hotel.get("display_label")
-                or hotel.get("display_name")
+                hotel.get("display_name")
                 or hotel.get("hotel_name")
                 or f"Hotel {prop_id}"
             )

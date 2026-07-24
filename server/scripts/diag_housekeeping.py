@@ -10,11 +10,11 @@ db = c[db_name]
 
 print("=== HOTEL_ROOMS for prop_id=1 ===")
 rooms = list(db.hotel_rooms.find({"prop_id": 1}, {
-    "_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
+    "_id": 0, "hotel_room_id": 1, "room_label": 1,
     "floor": 1, "room_type_name": 1, "room_type_id": 1, "status": 1
 }))
 for r in rooms:
-    print(f"  room_number={r.get('room_number','?')} | floor={r.get('floor')} | label={r.get('room_label','?')} | type={r.get('room_type_name','?')} | id={r.get('hotel_room_id','?')} | status={r.get('status')}")
+    print(f"  room_label={r.get('room_label','?')} | floor={r.get('floor')} | type={r.get('room_type_name','?')} | id={r.get('hotel_room_id','?')} | status={r.get('status')}")
 
 print(f"\nTotal hotel_rooms: {len(rooms)}")
 
@@ -35,7 +35,7 @@ for hk_col in hk_collections:
     hk_data = list(db[hk_col].find({"prop_id": 1}).limit(50))
     print(f"\n  Collection '{hk_col}' — {len(hk_data)} docs (limit 50):")
     for hk in hk_data[:35]:
-        rid = hk.get('room_id') or hk.get('hotel_room_id') or hk.get('room_number') or hk.get('_id', '?')
+        rid = hk.get('room_id') or hk.get('hotel_room_id') or hk.get('room_label') or hk.get('_id', '?')
         floor = hk.get('floor', '?')
         status = hk.get('status') or hk.get('state') or '?'
         label = hk.get('room_label') or hk.get('label') or ''
@@ -64,21 +64,21 @@ for hk_col in hk_collections:
 room_type_names = [rt['name'] for rt in rtypes]
 print(f"Room type names: {room_type_names}")
 for r in rooms:
-    rn = r.get('room_number', '')
+    rn = r.get('room_label', '')
     if rn in room_type_names:
-        print(f"  WARNING: room_number '{rn}' matches room_type name! Room id={r.get('hotel_room_id')}")
+        print(f"  WARNING: room_label '{rn}' matches room_type name! Room id={r.get('hotel_room_id')}")
 
-room_numbers = [r.get('room_number', '') for r in rooms]
-dupes = {k: v for k, v in Counter(room_numbers).items() if v > 1}
+room_labels = [r.get('room_label', '') for r in rooms]
+dupes = {k: v for k, v in Counter(room_labels).items() if v > 1}
 if dupes:
-    print(f"  DUPLICATE room_numbers in hotel_rooms: {dupes}")
+    print(f"  DUPLICATE room_labels in hotel_rooms: {dupes}")
 else:
-    print("  No duplicate room_numbers in hotel_rooms.")
+    print("  No duplicate room_labels in hotel_rooms.")
 
 for r in rooms:
-    rn = str(r.get('room_number', ''))
+    rn = str(r.get('room_label', ''))
     if 'HR-' in rn or 'hr-' in rn.lower():
-        print(f"  HR- anomaly: id={r.get('hotel_room_id')} room_number={rn}")
+        print(f"  HR- anomaly: id={r.get('hotel_room_id')} room_label={rn}")
 
 # Check if any housekeeping entries reference non-existent rooms
 if hk_collections:

@@ -87,7 +87,7 @@ def build_ta02_dimensions(valid_facts: pd.DataFrame, loaded_at: str) -> dict[str
                 "prop_review_score": _first_not_null(group["prop_review_score"]),
                 "prop_brand_bool": bool(_first_not_null(group["prop_brand_bool"])) if _first_not_null(group["prop_brand_bool"]) is not None else None,
                 "prop_location_score1": _first_not_null(group["prop_location_score1"]),
-                "hotel_label": f"Hotel {int(prop_id)}",
+                "display_name": f"Hotel {int(prop_id)}",
                 "loaded_at": loaded_at,
             }
         )
@@ -95,7 +95,7 @@ def build_ta02_dimensions(valid_facts: pd.DataFrame, loaded_at: str) -> dict[str
     destinations = [
         {
             "srch_destination_id": int(value),
-            "destination_label": f"Destino {int(value)}",
+            "destination_name": f"Destino {int(value)}",
             "loaded_at": loaded_at,
         }
         for value in sorted(valid_facts["srch_destination_id"].dropna().unique())
@@ -104,7 +104,7 @@ def build_ta02_dimensions(valid_facts: pd.DataFrame, loaded_at: str) -> dict[str
     countries = [
         {
             "visitor_location_country_id": int(value),
-            "visitor_country_label": f"Pais visitante {int(value)}",
+            "country_name": f"Pais visitante {int(value)}",
             "loaded_at": loaded_at,
         }
         for value in sorted(valid_facts["visitor_location_country_id"].dropna().unique())
@@ -113,7 +113,7 @@ def build_ta02_dimensions(valid_facts: pd.DataFrame, loaded_at: str) -> dict[str
     sites = [
         {
             "site_id": int(value),
-            "site_label": f"Sitio {int(value)}",
+            "site_name": f"Sitio {int(value)}",
             "loaded_at": loaded_at,
         }
         for value in sorted(valid_facts["site_id"].dropna().unique())

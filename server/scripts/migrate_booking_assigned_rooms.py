@@ -44,18 +44,15 @@ if total == 0:
 print("Building hotel_rooms lookup...")
 label_to_hrid: dict[str, str] = {}
 number_to_hrid: dict[str, str] = {}
-for room in db.hotel_rooms.find({}, {"hotel_room_id": 1, "room_label": 1, "room_number": 1, "prop_id": 1}):
+for room in db.hotel_rooms.find({}, {"hotel_room_id": 1, "room_label": 1, "prop_id": 1}):
     hrid = room.get("hotel_room_id", "")
     if hrid:
         label = room.get("room_label", "")
-        number = room.get("room_number", "")
         prop_id = room.get("prop_id", 0)
         if label:
             label_to_hrid[f"{prop_id}:{label}"] = hrid
-        if number:
-            number_to_hrid[f"{prop_id}:{number}"] = hrid
 
-print(f"  → {len(label_to_hrid)} label→hrid, {len(number_to_hrid)} number→hrid mappings.")
+print(f"  → {len(label_to_hrid)} label→hrid mappings.")
 
 updated = 0
 skipped = 0
@@ -72,9 +69,9 @@ for doc in db.booking_orders.find(query, {"assigned_rooms": 1, "prop_id": 1}):
 
     for entry in assigned:
         if isinstance(entry, dict):
-            # Legacy dict format: {"room_label": "101", "room_number": "101"}
+            # Legacy dict format: {"room_label": "101"}
             label = entry.get("room_label", "") or entry.get("room_number", "")
-            hrid = label_to_hrid.get(f"{prop_id}:{label}") or number_to_hrid.get(f"{prop_id}:{label}")
+            hrid = label_to_hrid.get(f"{prop_id}:{label}")
             if hrid:
                 new_ids.append(hrid)
                 needs_update = True
@@ -88,7 +85,7 @@ for doc in db.booking_orders.find(query, {"assigned_rooms": 1, "prop_id": 1}):
                 new_ids.append(entry)
             else:
                 # Legacy label string
-                hrid = label_to_hrid.get(f"{prop_id}:{entry}") or number_to_hrid.get(f"{prop_id}:{entry}")
+                hrid = label_to_hrid.get(f"{prop_id}:{entry}")
                 if hrid:
                     new_ids.append(hrid)
                     needs_update = True

@@ -30,22 +30,19 @@ def migrate() -> None:
         ]
     }
 
-    tasks = list(collection.find(query, {"_id": 1, "prop_id": 1, "room_label": 1, "room_number": 1, "room_id": 1}))
+    tasks = list(collection.find(query, {"_id": 1, "prop_id": 1, "room_label": 1, "room_id": 1}))
     updated = 0
     not_found: list[tuple[str, int, str]] = []
 
     for task in tasks:
         task_id = task["_id"]
         prop_id = task.get("prop_id")
-        label = task.get("room_label") or task.get("room_number") or ""
+        label = task.get("room_label") or ""
 
         # Build room query — try label first, then existing room_id string
         room_query: dict = {"prop_id": prop_id, "$or": []}
         if label:
-            room_query["$or"].extend([
-                {"room_label": label},
-                {"room_number": label},
-            ])
+            room_query["$or"].append({"room_label": label})
         existing_room_id = task.get("room_id")
         if existing_room_id and isinstance(existing_room_id, str) and existing_room_id:
             room_query["$or"].append({"hotel_room_id": existing_room_id})
@@ -56,7 +53,7 @@ def migrate() -> None:
 
         room = db["hotel_rooms"].find_one(
             room_query,
-            {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+            {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
         )
 
         if not room:
@@ -68,7 +65,7 @@ def migrate() -> None:
             {"$set": {
                 "room_id": room["_id"],
                 "hotel_room_id": room["hotel_room_id"],
-                "room_label": room.get("room_label") or room.get("room_number") or label,
+                "room_label": room.get("room_label") or label,
                 "room_type_id": room.get("room_type_id", ""),
             }},
         )

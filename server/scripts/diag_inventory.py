@@ -7,9 +7,9 @@ db = get_database()
 prop_id = 1
 
 print("=== HOTEL ROOMS ===")
-rooms = list(db.hotel_rooms.find({"prop_id": prop_id}, {"_id": 0}).sort("room_number", 1))
+rooms = list(db.hotel_rooms.find({"prop_id": prop_id}, {"_id": 0}).sort("room_label", 1))
 for r in rooms:
-    print(f"  room#{r.get('room_number','')}  type_id={r.get('room_type_id','')}  type_name={r.get('room_type_name','')}")
+    print(f"  room#{r.get('room_label','')}  type_id={r.get('room_type_id','')}  type_name={r.get('room_type_name','')}")
 
 print()
 print("=== ROOM TYPES ===")

@@ -29,7 +29,7 @@ def find_orphan_rooms(prop_id: int | None = None) -> list[dict[str, Any]]:
     query: dict[str, Any] = {"hotel_room_id": {"$regex": r"^HR-RT-"}}
     if prop_id:
         query["prop_id"] = prop_id
-    return list(db.hotel_rooms.find(query, {"_id": 0}).sort([("room_number", 1)]))
+    return list(db.hotel_rooms.find(query, {"_id": 0}).sort([("room_label", 1)]))
 
 
 def delete_orphan_rooms(prop_id: int | None = None) -> int:
@@ -69,7 +69,7 @@ def main():
     for room in orphans:
         print(
             f"  {room.get('hotel_room_id',''):<45} "
-            f"{room.get('room_number',''):<6} "
+            f"{room.get('room_label',''):<6} "
             f"{(room.get('room_label') or ''):<25} "
             f"{room.get('room_type_id',''):<30}"
         )

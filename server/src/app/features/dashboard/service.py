@@ -70,13 +70,12 @@ def _country_breakdown() -> list[dict[str, Any]]:
         item["visitor_location_country_id"]: item
         for item in db.dim_visitor_countries.find(
             {"visitor_location_country_id": {"$in": ids}},
-            {"_id": 0, "visitor_location_country_id": 1, "country_name": 1, "country_display_name": 1},
+            {"_id": 0, "visitor_location_country_id": 1, "country_name": 1},
         )
     }
     return [
         {
-            "label": lookup.get(item["key"], {}).get("country_display_name")
-            or lookup.get(item["key"], {}).get("country_name")
+            "label": lookup.get(item["key"], {}).get("country_name")
             or f"Mercado visitante {item['key']}",
             "count": item["count"],
         }

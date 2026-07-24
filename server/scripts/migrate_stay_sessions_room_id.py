@@ -45,36 +45,30 @@ def migrate() -> None:
 
         room_id: str | None = None
         room_label: str | None = None
-        room_number: str | None = None
 
         # Case 1: label is already a hotel_room_id (e.g. "HR-1-110")
         if label.startswith("HR-"):
             room = db["hotel_rooms"].find_one(
                 {"hotel_room_id": label},
-                {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+                {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
             )
             if room:
                 room_id = room["_id"]
                 hotel_room_id_val = room["hotel_room_id"]
-                room_label = room.get("room_label") or room.get("room_number") or label
-                room_number = room.get("room_number", "")
+                room_label = room.get("room_label") or label
         else:
             # Case 2: plain number → resolve via lookup
             room = db["hotel_rooms"].find_one(
                 {
                     "prop_id": prop_id,
-                    "$or": [
-                        {"room_label": label},
-                        {"room_number": label},
-                    ],
+                    "room_label": label,
                 },
-                {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+                {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
             )
             if room:
                 room_id = room["_id"]
                 hotel_room_id_val = room["hotel_room_id"]
-                room_label = room.get("room_label") or room.get("room_number") or label
-                room_number = room.get("room_number", "")
+                room_label = room.get("room_label") or label
 
         if not room_id:
             not_found.append((str(sid), prop_id, label))

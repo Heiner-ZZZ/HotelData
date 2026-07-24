@@ -163,8 +163,6 @@ def _validate_country_and_currency(db, country_id: int, currency: str) -> tuple[
         {
             "_id": 0,
             "country_name": 1,
-            "country_display_name": 1,
-            "visitor_country_label": 1,
         },
     )
     if not country:
@@ -177,9 +175,7 @@ def _validate_country_and_currency(db, country_id: int, currency: str) -> tuple[
 
 def _country_label(country: dict, country_id: int) -> str:
     return (
-        country.get("country_display_name")
-        or country.get("country_name")
-        or country.get("visitor_country_label")
+        country.get("country_name")
         or f"País {country_id}"
     )
 

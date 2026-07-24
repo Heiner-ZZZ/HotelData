@@ -41,10 +41,7 @@ def migrate() -> None:
             "$or": [],
         }
         if label:
-            room_query["$or"].extend([
-                {"room_label": label},
-                {"room_number": label},
-            ])
+            room_query["$or"].append({"room_label": label})
         existing_room_id = folio.get("room_id")
         if existing_room_id and isinstance(existing_room_id, str) and existing_room_id:
             room_query["$or"].append({"hotel_room_id": existing_room_id})
@@ -68,7 +65,7 @@ def migrate() -> None:
 
         room = db["hotel_rooms"].find_one(
             room_query,
-            {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+            {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
         )
 
         if not room:
@@ -80,7 +77,7 @@ def migrate() -> None:
             {"$set": {
                 "room_id": room["_id"],
                 "hotel_room_id": room["hotel_room_id"],
-                "room_label": room.get("room_label") or room.get("room_number") or label,
+                "room_label": room.get("room_label") or label,
             }},
         )
         updated += 1

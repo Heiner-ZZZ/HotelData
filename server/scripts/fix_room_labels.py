@@ -1,6 +1,11 @@
 """
-Fix room_label in hotel_rooms collection for prop_id=1.
-Changes "door_front 110" -> "Habitación 110 - Standard" (combining room_number + room_type_name).
+[DEPRECATED] Fix room_label in hotel_rooms collection for prop_id=1.
+
+Previously combined room_number + room_type_name (e.g., "Habitacion 110 - Standard").
+room_number was $unset from hotel_rooms — this script is no longer effective
+since it reads room_label as input to produce room_label.
+
+Kept for reference. Use fix_room_labels_v2.py or cleanup_housekeeping.py instead.
 """
 import sys
 sys.path.insert(0, '/app')
@@ -10,15 +15,15 @@ from src.database.connection import get_database
 db = get_database()
 rooms = list(db.hotel_rooms.find(
     {"prop_id": 1},
-    {"_id": 1, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_name": 1}
-).sort("room_number", 1))
+    {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_name": 1}
+).sort("room_label", 1))
 
 print(f"Found {len(rooms)} rooms for prop_id=1\n")
 
 updated = 0
 for r in rooms:
     old_label = r.get("room_label", "")
-    room_num = r.get("room_number", "")
+    room_num = r.get("room_label", "")
     type_name = r.get("room_type_name", "")
     
     # Build a meaningful label: "Habitación {number} - {room_type}"

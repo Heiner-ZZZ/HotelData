@@ -40,25 +40,22 @@ def migrate_maintenance_room_id(dry_run: bool = False) -> dict:
 
     updated = 0
     skipped = 0
-    cursor = collection.find(query, {"_id": 1, "prop_id": 1, "room_label": 1, "room_number": 1})
+    cursor = collection.find(query, {"_id": 1, "prop_id": 1, "room_label": 1})
 
     for doc in cursor:
         try:
             prop_id = doc.get("prop_id")
             room_label = doc.get("room_label") or ""
-            room_number = doc.get("room_number") or ""
 
             if not prop_id or not room_label:
                 logger.warning("Skipping doc %s: missing prop_id or room_label", doc["_id"])
                 skipped += 1
                 continue
 
-            # Try exact room_label match first, then room_number fallback
+            # Try exact room_label match
             room_query: dict = {"prop_id": prop_id, "$or": []}
             if room_label:
                 room_query["$or"].append({"room_label": room_label})
-            if room_number:
-                room_query["$or"].append({"room_number": room_number})
 
             if not room_query["$or"]:
                 skipped += 1

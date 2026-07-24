@@ -44,22 +44,20 @@ def public_list_countries_api(
                 "_id": 0,
                 "visitor_location_country_id": 1,
                 "country_name": 1,
-                "country_display_name": 1,
-                "visitor_country_label": 1,
             },
-        ).sort("country_display_name", 1)
+        ).sort("country_name", 1)
     )
 
     if not raw:
         # Self-heal fallback so the wizard dropdown never renders empty.
         fallback = [
-            {"visitor_location_country_id": 1, "country_display_name": "México"},
-            {"visitor_location_country_id": 2, "country_display_name": "Colombia"},
-            {"visitor_location_country_id": 3, "country_display_name": "Argentina"},
-            {"visitor_location_country_id": 4, "country_display_name": "Perú"},
-            {"visitor_location_country_id": 5, "country_display_name": "Chile"},
-            {"visitor_location_country_id": 6, "country_display_name": "Brasil"},
-            {"visitor_location_country_id": 7, "country_display_name": "España"},
+            {"visitor_location_country_id": 1, "country_name": "México"},
+            {"visitor_location_country_id": 2, "country_name": "Colombia"},
+            {"visitor_location_country_id": 3, "country_name": "Argentina"},
+            {"visitor_location_country_id": 4, "country_name": "Perú"},
+            {"visitor_location_country_id": 5, "country_name": "Chile"},
+            {"visitor_location_country_id": 6, "country_name": "Brasil"},
+            {"visitor_location_country_id": 7, "country_name": "España"},
         ]
         return {"countries": fallback, "fallback": True}
 
@@ -67,9 +65,7 @@ def public_list_countries_api(
         {
             "visitor_location_country_id": row["visitor_location_country_id"],
             "country_name": (
-                row.get("country_display_name")
-                or row.get("country_name")
-                or row.get("visitor_country_label")
+                row.get("country_name")
                 or f"País {row['visitor_location_country_id']}"
             ),
         }

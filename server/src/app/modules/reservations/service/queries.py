@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from src.app.security.hotel_filter import hotel_filter_from_user
@@ -15,12 +16,23 @@ from src.app.modules.partner.services import partner_hotel_detail, partner_hotel
 logger = logging.getLogger(__name__)
 
 
+def _json_safe(obj: Any) -> Any:
+    """Recursively convert ObjectIds to strings for JSON serialization."""
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    return obj
+
+
 def hotel_booking_context(prop_id: int) -> dict[str, Any]:
     detail = hotel_detail(prop_id)
     if detail:
         return {
             "prop_id": prop_id,
-            "hotel_label": detail.get("hotel_label") or f"Hotel {prop_id}",
+            "hotel_label": detail.get("display_name") or detail.get("hotel_name") or f"Hotel {prop_id}",
             "country": detail.get("prop_country_id"),
             "review_label": detail.get("review_label"),
             "avg_price_label": detail.get("avg_price_label"),
@@ -120,6 +132,9 @@ def list_bookings(
     for item in items:
         item["hotel"] = contexts.get(item["booking_id"])
         item["cedula"] = cedula_map.get(item.get("booking_id", ""), "")
+        # Serialize ObjectId FK fields for JSON
+        if isinstance(item.get("coupon_id"), ObjectId):
+            item["coupon_id"] = str(item["coupon_id"])
     return {
         "items": items,
         "page": page,
@@ -379,7 +394,7 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
     # Cancellation policy
     cancellation_policy = _get_cancellation_policy(db, int(booking.get("prop_id", 0)))
 
-    return {
+    return _json_safe({
         "booking": booking,
         "guest": guest,
         "history": history,
@@ -394,4 +409,4 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         "amenities_count": amenities_count,
         "amenities_total": amenities_total,
         "can_cancel": booking.get("status") in {"pending", "confirmed"},
-    }
+    })

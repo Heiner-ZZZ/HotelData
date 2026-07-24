@@ -114,11 +114,10 @@ def notify_guest_status_change(
     db = get_database()
     hotel = db.dim_hotels.find_one(
         {"prop_id": prop_id},
-        {"_id": 0, "display_name": 1, "display_label": 1, "hotel_name": 1},
+        {"_id": 0, "display_name": 1, "hotel_name": 1},
     )
     hotel_label = (
-        (hotel or {}).get("display_label")
-        or (hotel or {}).get("display_name")
+        (hotel or {}).get("display_name")
         or (hotel or {}).get("hotel_name")
         or f"Propiedad #{prop_id}"
     )

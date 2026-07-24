@@ -90,17 +90,17 @@ def _format_number(value: Any, decimals: int = 1) -> str:
     return f"{float(value):,.{decimals}f}"
 
 def _hotel_display_name(hotel: dict[str, Any], prop_id: int) -> str:
-    return hotel.get("display_name") or hotel.get("hotel_name") or hotel.get("hotel_label") or f"Hotel Partner {prop_id}"
+    return hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel Partner {prop_id}"
 
 def _destination_display_name(destination: dict[str, Any], destination_id: int) -> str:
-    return destination.get("destination_display_name") or destination.get("destination_name") or destination.get("destination_label") or f"Destino {destination_id}"
+    return destination.get("destination_name") or f"Destino {destination_id}"
 
 def _country_display_name(country: dict[str, Any], country_id: Any) -> str:
     """Resolve country display name from dim_visitor_countries (int id) or geo_catalog (str code)."""
-    return country.get("country_display_name") or country.get("country_name") or country.get("visitor_country_label") or country.get("name") or f"Mercado visitante {country_id}"
+    return country.get("country_name") or country.get("name") or f"Mercado visitante {country_id}"
 
 def _site_display_name(site: dict[str, Any], site_id: int) -> str:
-    return site.get("site_display_name") or site.get("site_name") or site.get("site_label") or f"Canal Expedia {site_id}"
+    return site.get("site_name") or f"Canal Expedia {site_id}"
 
 def _empty_search(filters: dict[str, Any], page_size: int, source_collection: str) -> dict[str, Any]:
     return {
