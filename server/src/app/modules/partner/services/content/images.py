@@ -4,6 +4,7 @@ from typing import Any
 
 from pymongo import ReturnDocument
 
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import clean_text, now_utc, register_content_change
 from src.app.modules.partner.services.properties import partner_hotel_detail
 from src.database.connection import get_database
@@ -43,8 +44,11 @@ def add_partner_hotel_image(
         raise ValueError("Máximo 10 imágenes por propiedad.")
 
     sort_order = _next_sort_order(prop_id)
+    hotel_id = resolve_hotel_id(prop_id)
+
     payload = {
         "prop_id": prop_id,
+        "hotel_id": hotel_id,
         "image_url": image_url,
         "title": title,
         "sort_order": sort_order,

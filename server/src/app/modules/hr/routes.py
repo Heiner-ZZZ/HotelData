@@ -21,6 +21,7 @@ from src.app.modules.hr.schemas import (
 )
 from src.app.modules.hr.service.collections import (
     DEPARTMENTS_COLLECTION,
+    DOCUMENTS_COLLECTION,
     EMPLOYEES_COLLECTION,
     SHIFTS_COLLECTION,
     ensure_hr_collections,
@@ -1146,9 +1147,154 @@ def delete_shift(
     )
 
 
+def _enrich_document(doc: dict) -> dict:
+    doc["id"] = str(doc.pop("_id"))
+    for f in ("created_at", "updated_at"):
+        if isinstance(doc.get(f), datetime):
+            doc[f] = doc[f].isoformat()
+    # Convert ObjectId FKs to strings for JSON
+    if isinstance(doc.get("employee_id"), ObjectId):
+        doc["employee_id"] = str(doc["employee_id"])
+    return doc
+
+
 # ═══════════════════════════════════════════════════════════
-# Employee CRUD  (/{employee_id} MUST be last in its group)
+# Employee Documents  (MUST be before /{employee_id} catch-all)
 # ═══════════════════════════════════════════════════════════
+
+@api_router.get("/documents")
+def list_employee_documents(
+    employee_id: str | None = Query(default=None),
+    doc_type: str | None = Query(default=None),
+    current_user: dict = Depends(require_permission("hr.read")),
+):
+    """List documents for a specific employee, optionally filtered by type."""
+    db = get_database()
+    query: dict = {}
+    if employee_id:
+        try:
+            query["employee_id"] = ObjectId(employee_id)
+        except Exception:
+            return {"items": [], "total": 0}
+    if doc_type:
+        query["doc_type"] = doc_type
+
+    cursor = db[DOCUMENTS_COLLECTION].find(query).sort("created_at", -1)
+    items = [_enrich_document(doc) for doc in cursor]
+    return {"items": items, "total": len(items)}
+
+
+@api_router.post("/documents", status_code=201)
+def create_employee_document(
+    payload: dict = Body(...),
+    current_user: dict = Depends(require_permission("hr.create")),
+):
+    """Upload/register a document for an employee.
+
+    Expected body:
+        - employee_id (str): ObjectId of the employee
+        - doc_type (str): e.g. "contract", "id_card", "certificate", "other"
+        - title (str): Display title for the document
+        - file_url (str): URL or base64 data of the file
+        - notes (str, optional): Additional notes
+    """
+    db = get_database()
+    now = datetime.now(timezone.utc)
+
+    employee_id = payload.get("employee_id", "")
+    try:
+        emp_oid = ObjectId(employee_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="employee_id inválido")
+
+    # Verify employee exists
+    emp = db[EMPLOYEES_COLLECTION].find_one({"_id": emp_oid, "is_active": True}, {"full_name": 1})
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado o inactivo")
+
+    doc_type = (payload.get("doc_type") or "other").strip()
+    valid_types = ("contract", "id_card", "certificate", "medical", "training", "other")
+    if doc_type not in valid_types:
+        doc_type = "other"
+
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title es requerido")
+
+    file_url = (payload.get("file_url") or "").strip()
+    if not file_url:
+        raise HTTPException(status_code=400, detail="file_url es requerido")
+
+    doc = {
+        "employee_id": emp_oid,
+        "doc_type": doc_type,
+        "title": title,
+        "file_url": file_url,
+        "notes": (payload.get("notes") or "").strip(),
+        "created_by": current_user.get("username", "system"),
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = db[DOCUMENTS_COLLECTION].insert_one(doc)
+    doc["_id"] = result.inserted_id
+
+    register_action(
+        prop_id=emp.get("prop_id", 0),
+        entity_type="employee_document",
+        entity_id=str(result.inserted_id),
+        action="create",
+        summary=f"Documento '{title}' ({doc_type}) subido para {emp.get('full_name', employee_id)}",
+        changed_by=current_user.get("username", "system"),
+    )
+    return _enrich_document(doc)
+
+
+@api_router.get("/documents/{document_id}")
+def get_employee_document(
+    document_id: str = Path(...),
+    current_user: dict = Depends(require_permission("hr.read")),
+):
+    """Get a single employee document by ID."""
+    db = get_database()
+    try:
+        oid = ObjectId(document_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    doc = db[DOCUMENTS_COLLECTION].find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    return _enrich_document(doc)
+
+
+@api_router.delete("/documents/{document_id}", status_code=204)
+def delete_employee_document(
+    document_id: str = Path(...),
+    current_user: dict = Depends(require_permission("hr.delete")),
+):
+    """Delete an employee document permanently."""
+    db = get_database()
+    try:
+        oid = ObjectId(document_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    before = db[DOCUMENTS_COLLECTION].find_one({"_id": oid})
+    if not before:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    result = db[DOCUMENTS_COLLECTION].delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    register_action(
+        prop_id=0,
+        entity_type="employee_document",
+        entity_id=document_id,
+        action="delete",
+        summary=f"Documento '{before.get('title', document_id)}' eliminado",
+        changed_by=current_user.get("username", "system"),
+    )
 
 @api_router.post("", status_code=201)
 def create_employee(

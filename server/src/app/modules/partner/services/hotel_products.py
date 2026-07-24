@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import clean_text, now_utc
 from src.database.connection import get_database
 
@@ -46,8 +47,11 @@ def create_hotel_product(
     db = get_database()
     import secrets
     product_id = f"PROD-{secrets.token_hex(4).upper()}"
+    hotel_id = resolve_hotel_id(prop_id)
+
     doc = {
         "prop_id": prop_id,
+        "hotel_id": hotel_id,
         "product_id": product_id,
         "name": clean_text(name),
         "description": clean_text(description),

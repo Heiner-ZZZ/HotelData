@@ -7,6 +7,7 @@ from typing import Any
 
 from pymongo import ReturnDocument
 
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import clean_text, now_utc, safe_positive_int
 from src.app.modules.partner.services.audit import register_action
 from src.app.modules.partner.services.properties import partner_hotel_detail
@@ -172,7 +173,7 @@ def save_inventory_entry(
         room_name = room_doc.get("name", "")
     result = db.room_inventory_calendar.find_one_and_update(
         {"prop_id": prop_id, "room_type_id": clean_room_type_id, "date": clean_date},
-        {"$set": payload, "$unset": {"deleted_at": ""}, "$setOnInsert": {"created_at": now}},
+        {"$set": payload, "$unset": {"deleted_at": ""}, "$setOnInsert": {"created_at": now, "hotel_id": resolve_hotel_id(prop_id)}},
         upsert=True, return_document=ReturnDocument.AFTER, projection={"_id": 0},
     )
     diff = _build_inventory_diff(before_doc, result)

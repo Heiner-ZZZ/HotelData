@@ -24,6 +24,7 @@ from . import (
     currencies,
     guests,
     hotels,
+    manual_reservations,
     policies,
     public_currencies,
     rates,

@@ -8,6 +8,7 @@ from typing import Any
 from pymongo import ReturnDocument
 
 from src.app.core.timezone import local_today
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import (
     clean_text, now_utc, safe_bool, safe_positive_int, slugify,
 )
@@ -136,6 +137,7 @@ def create_room_type(
 
     payload = {
         "room_type_id": room_type_id, "prop_id": prop_id,
+        "hotel_id": resolve_hotel_id(prop_id),
         "name": clean_name, "description": clean_text(description),
         "max_adults": safe_positive_int(max_adults, 1),
         "max_children": safe_positive_int(max_children, 0),
@@ -158,6 +160,7 @@ def create_room_type(
             {
                 "$set": {
                     "hotel_room_id": f"HR-{room_type_id}", "prop_id": prop_id,
+                    "hotel_id": resolve_hotel_id(prop_id),
                     "room_type_id": room_type_id, "room_label": clean_room_number,
                     "is_active": payload["is_active"], "is_roh": payload["is_roh"],
                     "floor": payload["floor"],
@@ -282,6 +285,7 @@ def create_hotel_room_for_type(
     doc = {
         "hotel_room_id": hr_id,
         "prop_id": prop_id,
+        "hotel_id": resolve_hotel_id(prop_id),
         "room_type_id": room_type_id,
         "floor": _derive_floor(clean_room_number, clean_text(floor)),
         "room_label": clean_room_number,

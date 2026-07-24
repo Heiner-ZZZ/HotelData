@@ -8,6 +8,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.state_machine import invoice_sm
 from src.app.modules.billing.schemas import InvoiceCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
@@ -88,6 +89,7 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
         "invoice_number": _generate_invoice_number(),
         "subtotal": total_subtotal,
         "room_subtotal": room_subtotal,
@@ -629,6 +631,7 @@ def create_split_charges_invoice(
     inv_doc = {
         "booking_id": booking.get("booking_id") or booking_id,
         "prop_id": booking.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
         "invoice_number": _generate_invoice_number(),
         "subtotal": subtotal,
         "room_subtotal": 0,

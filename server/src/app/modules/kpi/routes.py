@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pymongo import ASCENDING
 
 from src.app.core.timezone import local_now, local_today
+from src.app.security.dependencies import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/kpi", tags=["kpi"])
 
 
 @router.get("/top-hotels/rooms")
-def top_hotels_by_rooms(limit: int = Query(default=5, ge=1, le=20)):
+def top_hotels_by_rooms(limit: int = Query(default=5, ge=1, le=20), current_user: dict = Depends(require_permission("dashboard.read"))):
     """Top N hotels with the most room types and physical rooms."""
     db = get_database()
 
@@ -61,7 +62,7 @@ def top_hotels_by_rooms(limit: int = Query(default=5, ge=1, le=20)):
 
 
 @router.get("/rate-trend")
-def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20)):
+def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20), current_user: dict = Depends(require_permission("dashboard.read"))):
     """Average daily rate per rate plan over the last 7 days (line chart data)."""
     db = get_database()
 
@@ -114,7 +115,7 @@ def rate_trend_7d(limit_plans: int = Query(default=5, ge=1, le=20)):
 
 
 @router.get("/occupancy-trend")
-def occupancy_trend(days: int = Query(default=14, ge=7, le=90)):
+def occupancy_trend(days: int = Query(default=14, ge=7, le=90), current_user: dict = Depends(require_permission("dashboard.read"))):
     """Daily check-in / check-out counts for the last N days (line chart data)."""
     db = get_database()
 
@@ -139,7 +140,7 @@ def occupancy_trend(days: int = Query(default=14, ge=7, le=90)):
 
 
 @router.get("/bsc")
-def balanced_scorecard():
+def balanced_scorecard(current_user: dict = Depends(require_permission("dashboard.read"))):
     """Balanced Scorecard with 4 perspectives, semáforos, and temporal comparison."""
     try:
         return build_bsc()
@@ -149,7 +150,7 @@ def balanced_scorecard():
 
 
 @router.get("/operational-stats")
-def operational_stats():
+def operational_stats(current_user: dict = Depends(require_permission("dashboard.read"))):
     """Global operational counts for policies, check-ins, check-outs, and hotels."""
     db = get_database()
 

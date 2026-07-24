@@ -8,6 +8,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from src.database.connection import get_database
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.state_machine import payment_sm
 from src.app.modules.billing.schemas import PaymentCreate
 from src.app.modules.billing.service.lifecycle._helpers import (
@@ -37,6 +38,7 @@ def create_payment(payload: PaymentCreate) -> dict | None:
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
         "method": payload.method,

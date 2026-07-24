@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from bson import ObjectId
 from pymongo import ReturnDocument
 
+from src.app.core.resolvers import resolve_hotel_id
 from src.database.connection import get_database
 
 FOLIO_COLLECTION = "guest_folios"
@@ -145,6 +146,7 @@ def create_folio(booking_id: str) -> dict | None:
         "folio_number": folio_number,
         "booking_id": booking.get("booking_id") or booking_id,
         "prop_id": prop_id,
+        "hotel_id": resolve_hotel_id(prop_id),
         "guest_name": booking.get("guest_name", ""),
         "guest_email": booking.get("guest_email", ""),
         "room_label": room_label,

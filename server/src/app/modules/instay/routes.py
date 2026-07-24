@@ -35,6 +35,7 @@ from src.app.modules.instay.routes_impl._helpers import (
     _iso,
 )
 from src.app.modules.instay.routes_impl._event_manager import StayEventManager
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
@@ -109,7 +110,9 @@ def get_my_stay_session(
 
     doc = {
         "token": token, "booking_id": booking_id,
-        "prop_id": booking.get("prop_id", 0), "room_label": room_label,
+        "prop_id": booking.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
+        "room_label": room_label,
         "hotel_room_id": hotel_room_id,
         "guest_name": booking.get("guest_name", ""),
         "check_in": str(booking.get("check_in_date", "")),
@@ -146,7 +149,9 @@ def create_stay_session(
 
     doc = {
         "token": token, "booking_id": payload.booking_id,
-        "prop_id": payload.prop_id, "room_label": payload.room_label,
+        "prop_id": payload.prop_id,
+        "hotel_id": resolve_hotel_id(payload.prop_id),
+        "room_label": payload.room_label,
         "hotel_room_id": hotel_room_id,
         "guest_name": payload.guest_name, "check_in": payload.check_in,
         "check_out": payload.check_out, "created_at": now,
@@ -326,6 +331,7 @@ def staff_create_request(
     doc = {
         "booking_id": booking_id,
         "prop_id": session.get("prop_id", 0),
+        "hotel_id": resolve_hotel_id(session.get("prop_id", 0)),
         "room_label": session.get("room_label", ""),
         "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
         "request_type": request_type,
@@ -795,6 +801,7 @@ def guest_create_request(payload: dict = Body(...)):
 
     doc = {
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
+        "hotel_id": resolve_hotel_id(session.get("prop_id", 0)),
         "room_label": session["room_label"],
         "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
         "request_type": request_type, "description": description,

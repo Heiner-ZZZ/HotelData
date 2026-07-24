@@ -5,6 +5,7 @@ from typing import Any
 
 from bson import ObjectId
 
+from src.app.core.resolvers import resolve_hotel_id, resolve_employee_id
 from src.database.connection import get_database
 
 from ..schemas import LostItemCreate, LostItemUpdate, now_iso
@@ -24,8 +25,13 @@ def create_lost_item(payload: LostItemCreate) -> dict[str, Any]:
     db = get_database()
     now = now_iso()
 
+    # Resolve ObjectId FKs for referential integrity
+    hotel_id = resolve_hotel_id(payload.prop_id)
+    found_by_id = resolve_employee_id(payload.found_by) if payload.found_by else None
+
     doc = {
         "prop_id": payload.prop_id,
+        "hotel_id": hotel_id,
         "booking_id": payload.booking_id or "",
         "guest_name": payload.guest_name or "",
         "guest_contact": payload.guest_contact or "",
@@ -33,6 +39,7 @@ def create_lost_item(payload: LostItemCreate) -> dict[str, Any]:
         "description": payload.description.strip(),
         "found_location": payload.found_location.strip(),
         "found_by": payload.found_by.strip(),
+        "found_by_id": found_by_id,
         "status": payload.status if payload.status in ("pending", "claimed", "disposed", "returned") else "pending",
         "notes": payload.notes.strip(),
         "returned_to": "",

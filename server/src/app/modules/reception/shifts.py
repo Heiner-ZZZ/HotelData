@@ -7,6 +7,8 @@ from typing import Any
 
 from bson import ObjectId
 
+from src.app.core.resolvers import resolve_hotel_id, resolve_employee_id
+
 from .collections import RECEPTION_SHIFTS_COLLECTION
 from src.database.connection import get_database
 
@@ -76,10 +78,15 @@ def open_shift(
             logger.exception("Failed to auto-close previous shift for prop_id %s", prop_id)
 
     now = _now_iso()
+    hotel_id = resolve_hotel_id(prop_id)
+    employee_id = resolve_employee_id(employee)
+
     doc = {
         "prop_id": prop_id,
+        "hotel_id": hotel_id,
         "shift_type": shift_type,
         "employee": employee,
+        "employee_id": employee_id,
         "start_time": now,
         "end_time": None,
         "cash_initial": round(float(cash_initial), 2),

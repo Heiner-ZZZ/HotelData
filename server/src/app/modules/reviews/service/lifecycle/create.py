@@ -22,7 +22,7 @@ def _validate_booking(payload: ReviewCreate) -> tuple[dict, ObjectId, str] | Non
     booking = db.booking_orders.find_one({"booking_id": payload.booking_id})
     if not booking:
         return None
-    if booking.get("status") != "checked_out":
+    if booking.get("stay_status") != "checked_out":
         return None
     existing = db[COLLECTION].find_one({"booking_id": payload.booking_id})
     if existing:
@@ -30,6 +30,9 @@ def _validate_booking(payload: ReviewCreate) -> tuple[dict, ObjectId, str] | Non
     user_id_obj = booking.get("user_id")
     if not user_id_obj:
         return None
+    # Normalize to ObjectId — legacy bookings may store user_id as string
+    if isinstance(user_id_obj, str):
+        user_id_obj = ObjectId(user_id_obj)
     return booking, user_id_obj, str(user_id_obj)
 
 
@@ -73,8 +76,9 @@ def create_review(user_id: str, payload: ReviewCreate) -> dict | None:
     validated = _validate_booking(payload)
     if not validated:
         return None
-    booking, user_id_obj, _ = validated
-    if booking.get("user_id") != ObjectId(user_id):
+    _, user_id_obj, _ = validated
+    # Compare normalized ObjectId (not raw booking field which could be string)
+    if str(user_id_obj) != user_id:
         return None
 
     from src.app.ai.sentiment import analyze_review_sentiment

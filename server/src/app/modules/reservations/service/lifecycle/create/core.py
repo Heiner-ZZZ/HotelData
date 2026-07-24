@@ -14,6 +14,7 @@ from ...validation import validate_reservation_input
 from src.app.modules.reservations.service.lifecycle.create._availability import _check_availability
 from src.app.modules.reservations.service.lifecycle.create._pricing import _calculate_total_price, _resolve_season_id
 from src.app.modules.reservations.service.lifecycle.create._validation import _validate_deposit, validate_coupon_code
+from src.app.core.resolvers import resolve_hotel_id
 from src.app.core.timezone import local_today
 from src.app.modules.reservations.service.lifecycle.create._amenities import _generate_amenity_charges
 
@@ -107,7 +108,8 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         payment_status = "paid"
     booking_document = {
         "booking_id": booking_id, "user_id": payload.user_id,
-        "prop_id": payload.prop_id, "status": booking_status,
+        "prop_id": payload.prop_id, "hotel_id": resolve_hotel_id(payload.prop_id),
+        "status": booking_status,
         "booking_source": payload.source, "guest_name": payload.guest_name,
         "guest_email": payload.guest_email, "guest_phone": payload.guest_phone,
         "room_type_id": payload.room_type_id,

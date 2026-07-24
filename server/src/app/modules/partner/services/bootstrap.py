@@ -141,6 +141,14 @@ ROOM_FEATURES_COLLECTIONS: dict[str, list[IndexModel]] = {
 
 def ensure_room_features_collections() -> dict[str, list[str]]:
     reports = [_ensure_with_report(name, idxs) for name, idxs in ROOM_FEATURES_COLLECTIONS.items()]
+    # Seed default feature catalog into room_features collection (idempotent)
+    try:
+        from src.app.modules.partner.services.rooms.features import seed_default_features
+        seeded = seed_default_features()
+        if seeded:
+            logger.info("Seeded %d default room features into room_features collection.", seeded)
+    except Exception:
+        logger.exception("Failed to seed default room features.")
     return _merge_reports(reports)
 
 
