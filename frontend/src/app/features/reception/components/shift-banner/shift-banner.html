@@ -4,19 +4,20 @@
       <span class="material-symbols-outlined spinning">sync</span>
       Cargando turno...
     </div>
-  } @else if (hasActiveShift(); let shift = shift()!) {
+  } @else if (hasActiveShift()) {
+    @let activeShift = shift()!;
     <!-- ═══ Active Shift Banner ═══ -->
     <div class="shift-active">
       <div class="shift-info">
         <span class="shift-dot shift-dot--open"></span>
         <span class="shift-label">Turno {{ shiftLabel() }}</span>
-        <span class="shift-employee">{{ shift.employee }}</span>
+        <span class="shift-employee">{{ activeShift.employee }}</span>
         <span class="shift-sep">|</span>
         <span class="shift-duration">{{ shiftDuration() }}</span>
         <span class="shift-sep">|</span>
         <span class="shift-txns">{{ txnCount() }} transacciones</span>
         <span class="shift-sep">|</span>
-        <span class="shift-cash">Caja inicial: <strong>${{ shift.cash_initial.toFixed(2) }}</strong></span>
+        <span class="shift-cash">Caja inicial: <strong>${{ activeShift.cash_initial.toFixed(2) }}</strong></span>
         @if (totalCollected() > 0) {
           <span class="shift-sep">|</span>
           <span class="shift-cash collected">Cobrado: <strong>${{ totalCollected().toFixed(2) }}</strong></span>
@@ -49,14 +50,14 @@
 
   <!-- ═══ Open Shift Form Modal ═══ -->
   @if (showOpenForm()) {
-    <div class="shift-overlay" (click)="cancelOpen()">
-      <div class="shift-modal" (click)="$event.stopPropagation()">
+    <div class="shift-overlay" role="button" tabindex="0" aria-label="Cancelar apertura de turno" (keydown.enter)="cancelOpen()" (click)="$event.target === $event.currentTarget ? cancelOpen() : null">
+      <div class="shift-modal">
         <h3 class="shift-modal-title">Abrir Turno de Recepción</h3>
 
         <div class="shift-form">
           <div class="form-group">
-            <label class="form-label">Tipo de Turno</label>
-            <select class="form-select"
+            <label class="form-label" for="sb-shift-type">Tipo de Turno</label>
+            <select id="sb-shift-type" name="shift_type" class="form-select"
               [ngModel]="openForm().shift_type"
               (ngModelChange)="openForm.set({ ...openForm(), shift_type: $event })">
               <option value="morning">Matutino (08:00-16:00)</option>
@@ -66,16 +67,16 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Empleado / Recepcionista</label>
-            <input class="form-input" type="text"
+            <label class="form-label" for="sb-employee">Empleado / Recepcionista</label>
+            <input id="sb-employee" name="employee" class="form-input" type="text"
               placeholder="Ej: Recepcion_norte"
               [ngModel]="openForm().employee"
               (ngModelChange)="openForm.set({ ...openForm(), employee: $event })" />
           </div>
 
           <div class="form-group">
-            <label class="form-label">Caja Inicial ($)</label>
-            <input class="form-input" type="number" step="0.01" min="0"
+            <label class="form-label" for="sb-cash-initial">Caja Inicial ($)</label>
+            <input id="sb-cash-initial" name="cash_initial" class="form-input" type="number" step="0.01" min="0"
               [ngModel]="openForm().cash_initial"
               (ngModelChange)="openForm.set({ ...openForm(), cash_initial: Number($event) || 0 })" />
           </div>
@@ -107,8 +108,8 @@
 
   <!-- ═══ Close Shift Form Modal ═══ -->
   @if (showCloseForm() && !closeSummary()) {
-    <div class="shift-overlay" (click)="cancelClose()">
-      <div class="shift-modal" (click)="$event.stopPropagation()">
+    <div class="shift-overlay" role="button" tabindex="0" aria-label="Cancelar cierre de turno" (keydown.enter)="cancelClose()" (click)="$event.target === $event.currentTarget ? cancelClose() : null">
+      <div class="shift-modal">
         <h3 class="shift-modal-title">Cerrar Turno</h3>
 
         @let cf = closeForm();
@@ -143,8 +144,8 @@
 
         <div class="shift-form">
           <div class="form-group">
-            <label class="form-label">Caja Final ($)</label>
-            <input class="form-input form-input-lg" type="number" step="0.01" min="0"
+            <label class="form-label" for="sb-cash-final">Caja Final ($)</label>
+            <input id="sb-cash-final" name="cash_final" class="form-input form-input-lg" type="number" step="0.01" min="0"
               [ngModel]="closeForm().cash_final"
               (ngModelChange)="closeForm.set({ ...closeForm(), cash_final: Number($event) || 0 }); previewClose();" />
           </div>
@@ -185,8 +186,8 @@
 
   <!-- ═══ Close Summary ═══ -->
   @if (closeSummary(); as summary) {
-    <div class="shift-overlay" (click)="dismissSummary()">
-      <div class="shift-modal shift-modal-success" (click)="$event.stopPropagation()">
+    <div class="shift-overlay" role="button" tabindex="0" aria-label="Cerrar resumen" (keydown.enter)="dismissSummary()" (click)="$event.target === $event.currentTarget ? dismissSummary() : null">
+      <div class="shift-modal shift-modal-success">
         <div class="success-icon">
           <span class="material-symbols-outlined">check_circle</span>
         </div>

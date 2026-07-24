@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { filter, map, switchMap } from 'rxjs';
+import { filter, map } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -14,7 +14,6 @@ import {
   buildReportShell,
   buildSummaryGrid,
   buildTable,
-  esc,
 } from '../../../../shared/utils/report-html-templates';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ChangeRecordDto, PropertyHistoryResponseDto } from '../../models/properties.dto';

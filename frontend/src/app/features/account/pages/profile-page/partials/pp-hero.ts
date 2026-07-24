@@ -1,5 +1,5 @@
 import { DatePipe, NgOptimizedImage } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-pp-hero',
@@ -8,7 +8,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="profile-hero">
-      <div class="avatar-ring">
+      <div class="avatar-ring" (click)="onAvatarClick()" [class.avatar-ring--clickable]="vm()?.avatarUrl">
         @if (vm()?.avatarUrl; as url) {
           <img [ngSrc]="url" width="72" height="72" alt="Avatar" class="avatar-img" />
         } @else {
@@ -33,4 +33,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 })
 export class PpHeroComponent {
   readonly vm = input<any>(null);
+  readonly avatarClick = output<void>();
+
+  protected onAvatarClick(): void {
+    if (this.vm()?.avatarUrl) {
+      this.avatarClick.emit();
+    }
+  }
 }

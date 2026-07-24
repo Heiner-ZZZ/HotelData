@@ -14,7 +14,6 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ApiError } from '../../../../core/api/api-error.model';
-import type { PaymentsListViewModel } from '../../models/billing.model';
 import { BillingApiService } from '../../services/billing-api.service';
 
 @Component({

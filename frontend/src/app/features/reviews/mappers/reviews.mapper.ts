@@ -1,6 +1,6 @@
 import { formatDateTime } from '../../../shared/utils/date-format.util';
 import type { ReviewDetailDto, ReviewItemDto, ReviewsListDto, ServiceRatingsDto } from '../models/reviews.dto';
-import type { ReviewDetailViewModel, ReviewListItem, ReviewsListViewModel, ServiceRatings, ReputationDashboard, DepartmentalSentiment, RecentFeedbackItem, DailyCount } from '../models/reviews.model';
+import type { ReviewDetailViewModel, ReviewListItem, ReviewsListViewModel, ServiceRatings, ReputationDashboard } from '../models/reviews.model';
 
 function mapServiceRatings(sr?: ServiceRatingsDto | null): ServiceRatings | null {
   if (!sr) return null;
@@ -13,7 +13,7 @@ function mapServiceRatings(sr?: ServiceRatingsDto | null): ServiceRatings | null
 
 function mapReviewItem(item: ReviewItemDto): ReviewListItem {
   return {
-    id: item._id,
+    id: item.id,
     bookingId: item.booking_id,
     propId: item.prop_id,
     userName: item.user_display_name || item.user_id,
@@ -43,7 +43,7 @@ export function mapReviewsList(dto: ReviewsListDto): ReviewsListViewModel {
 
 export function mapReviewDetail(dto: ReviewDetailDto): ReviewDetailViewModel {
   return {
-    id: dto._id,
+    id: dto.id,
     bookingId: dto.booking_id,
     propId: dto.prop_id,
     userId: dto.user_id,

@@ -80,7 +80,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (['super_admin', 'admin_sistema', 'operador_datos', 'auditor_datos'].includes(role)) {
       items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
-    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'].includes(role)) {
+    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'].includes(role)) {
       items.push({ label: 'Gestión', href: '/management', icon: 'dashboard' });
     }
     if (role === 'cliente') {

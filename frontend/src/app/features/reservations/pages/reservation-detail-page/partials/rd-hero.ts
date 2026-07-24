@@ -1,10 +1,10 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import {
   canAssignRooms as _canAssignRooms, canShowMiEstancia, effectiveStayStatus,
-  getBookingStatusIcon, getBookingStatusLabel, getBookingStatusCss,
+  getBookingStatusIcon, getBookingStatusLabel,
 } from '../../../utils/reservation-status.util';
 
 @Component({

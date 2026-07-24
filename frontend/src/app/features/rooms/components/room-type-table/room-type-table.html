@@ -47,7 +47,7 @@
           <td class="desc-cell">
             @if (room.description) {
               <app-info-tooltip [text]="room.description"></app-info-tooltip>
-              {{ room.description }}
+              <span class="desc-text">{{ room.description }}</span>
             } @else {
               —
             }

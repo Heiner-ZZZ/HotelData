@@ -10,7 +10,6 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ManagementReportsViewModel } from '../../models/management-reports.model';
 import type { ManagementReportsDto } from '../../models/management-reports.dto';
-import { ManagementReportsApiService } from '../../services/management-reports-api.service';
 import { mapManagementReports } from '../../mappers/management-reports.mapper';
 import { exportToExcel, exportToPdf, exportToDocx } from '../../utils/export-reports.utils';
 

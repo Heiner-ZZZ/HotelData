@@ -24,7 +24,7 @@ export function mapFeaturedHotels(raw: { items?: FeaturedHotelDto[] }): Featured
     id: h.prop_id,
     name: h.display_name,
     location: (h.destination_labels ?? [])[0] ?? '',
-    stars: h.prop_starrating,
+    stars: h.prop_starrating ?? 0,
     score: h.prop_review_score,
     imageUrl: hotelImageUrl(h.prop_id, 'hotel'),
     rateLabel: h.min_nightly_rate_label,

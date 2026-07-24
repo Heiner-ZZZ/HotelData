@@ -3,7 +3,7 @@ import { DecimalPipe, NgStyle } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { httpResource } from '@angular/common/http';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
-import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../../models/reception-calendar.model';
+import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation } from '../../models/reception-calendar.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { mapReceptionCalendar, type ReceptionCalendarDto } from '../../services/reservations-api.service';
 
@@ -90,7 +90,7 @@ export class ReceptionCalendarComponent {
   readonly selectedBookingId = signal('');
   readonly detailResource = httpResource<any>(() => {
     const id = this.selectedBookingId();
-    return id ? `/management/reception/reservations/${id}` : undefined;
+    return id ? `/api/reservations/${id}` : undefined;
   });
 
   /** Drag-and-drop state. */

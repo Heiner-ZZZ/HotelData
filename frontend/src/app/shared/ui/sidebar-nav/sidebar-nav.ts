@@ -7,7 +7,7 @@ import type { Params } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
-import { PropertyContextService } from '../../../shared/services/property-context.service';
+import { PropertyContextService, isGlobalManagementPath } from '../../../shared/services/property-context.service';
 
 interface SidebarItem {
   label: string;
@@ -57,11 +57,14 @@ export class SidebarNavComponent {
   readonly sidebarCollapsed = signal(false);
   readonly openSection = signal<string | null>(null);
 
-  /** Query params that preserve the current prop_id for management links. */
-  readonly linkParams = computed<Params>(() => {
+  /** Query params that preserve the current prop_id for hotel-scoped management links. */
+  getLinkParams(href: string): Params {
     const pid = this.propCtx.currentPropId();
-    return pid ? { prop_id: pid } : {};
-  });
+    if (!pid) return {};
+    if (!href.startsWith('/management')) return {};
+    if (isGlobalManagementPath(href)) return {};
+    return { prop_id: pid };
+  }
 
   /** Navigation items from the backend, filtered by user permissions. */
   readonly navResource = httpResource<NavigationResponse>(() => '/api/admin/navigation', {
@@ -200,24 +203,34 @@ export class SidebarNavComponent {
 
   private _autoExpandActiveSection(): void {
     const url = this.router.url.split('?')[0];
+    let best:
+      | { sectionId: string; subSectionId: string | null; target: string }
+      | null = null;
+
     for (const section of this.visibleSections()) {
       // Check flat items
       for (const item of section.items) {
         if (this._urlMatches(url, item.href)) {
-          this.openSection.set(section.id);
-          return;
+          if (!best || item.href.length > best.target.length) {
+            best = { sectionId: section.id, subSectionId: null, target: item.href };
+          }
         }
       }
       // Check sub-section items
       for (const sub of section.subSections) {
         for (const item of sub.items) {
           if (this._urlMatches(url, item.href)) {
-            this.openSection.set(section.id);
-            this.openSubSection.set(sub.id);
-            return;
+            if (!best || item.href.length > best.target.length) {
+              best = { sectionId: section.id, subSectionId: sub.id, target: item.href };
+            }
           }
         }
       }
+    }
+
+    if (best) {
+      this.openSection.set(best.sectionId);
+      this.openSubSection.set(best.subSectionId);
     }
   }
 

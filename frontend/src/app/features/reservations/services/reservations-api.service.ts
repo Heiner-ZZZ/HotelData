@@ -26,8 +26,8 @@ import type {
   ReservationStatsDto,
   ReservationsListDto
 } from '../models/reservations.dto';
-import type { RatePlanOption, ReservationCreateInput, ReservationCreateResult, ReservationStats } from '../models/reservations.model';
-import type { ReceptionCalendarData, ReceptionCalendarReservation, ReceptionCalendarRoom } from '../models/reception-calendar.model';
+import type { ReservationCreateInput, ReservationCreateResult } from '../models/reservations.model';
+import type { ReceptionCalendarData, ReceptionCalendarReservation } from '../models/reception-calendar.model';
 
 /** Raw API response (snake_case) for reception calendar — rooms instead of types. */
 export interface ReceptionCalendarDto {

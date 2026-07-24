@@ -14,9 +14,11 @@ export const ROLE_LABELS: Record<string, string> = {
   marketing_hotelero: 'Marketing Hotelero',
   auditor_datos: 'Auditor de Datos',
   operador_datos: 'Operador de Datos',
-  cliente: 'Cliente',
-  mantenimiento: 'Mantenimiento',
+  maintenance: 'Mantenimiento',
+  recepcionista: 'Recepcionista',
   housekeeping: 'Housekeeping',
+  concierge: 'Concierge',
+  cliente: 'Cliente',
 };
 
 /**

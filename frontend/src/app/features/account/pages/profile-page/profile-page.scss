@@ -1,7 +1,6 @@
 @use 'scss/profile-variables';
 @use 'scss/profile-hero';
 @use 'scss/profile-tabs';
-@use 'scss/profile-toast';
 @use 'scss/profile-form';
 @use 'scss/profile-select';
 @use 'scss/profile-avatar';
@@ -15,4 +14,16 @@
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
+}
+
+// ── Avatar click affordance ─────────────────────────────────────────────
+.avatar-ring--clickable,
+.avatar-img--clickable {
+  cursor: zoom-in;
+}
+
+.avatar-ring--clickable {
+  &:hover {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
 }

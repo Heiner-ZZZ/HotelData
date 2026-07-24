@@ -9,7 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { Currency } from '../../models/currencies.model';
-import type { CurrencyDto, CurrencyListDto } from '../../models/currencies.dto';
+import type { CurrencyListDto } from '../../models/currencies.dto';
 import { CurrenciesApiService } from '../../services/currencies-api.service';
 import { mapCurrency } from '../../mappers/currencies.mapper';
 

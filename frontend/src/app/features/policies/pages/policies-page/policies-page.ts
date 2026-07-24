@@ -15,7 +15,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { mapPolicies, mapPoliciesPayload } from '../../mappers/policies.mapper';
-import type { PoliciesViewModel, PolicyRoomTypeOption } from '../../models/policies.model';
+import type { PoliciesViewModel } from '../../models/policies.model';
 import type { PoliciesDto } from '../../models/policies.dto';
 import { PoliciesApiService } from '../../services/policies-api.service';
 import { KpiApiService, type OccupancyTrendResponse, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';

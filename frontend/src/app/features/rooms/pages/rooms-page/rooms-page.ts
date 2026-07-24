@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, Destro
 import { httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
@@ -19,8 +19,6 @@ import type { FeatureCategory, RoomTypeItem, RoomsViewModel } from '../../models
 import type { FeatureCatalogDto, RoomsDto } from '../../models/rooms.dto';
 import { RoomsApiService } from '../../services/rooms-api.service';
 import { mapFeatureCatalog, mapRoomsResponse } from '../../mappers/rooms.mapper';
-import { RoomTypeTableComponent } from '../../components/room-type-table/room-type-table';
-import { AiSuggestDirective } from '../../../../core/directives/ai-suggest.directive';
 import type { TopHotelRoomsItem } from '../../../../shared/services/kpi-api.service';
 import { RpKpiGridComponent } from './partials/rp-kpi-grid';
 import { RpCreateFormComponent } from './partials/rp-create-form';

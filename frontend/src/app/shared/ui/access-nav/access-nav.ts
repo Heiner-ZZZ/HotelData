@@ -112,7 +112,7 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       items.push({ label: 'Sistema', href: '/system/users', icon: 'admin_panel_settings' });
     }
 
-    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'].includes(role)) {
+    if (['hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'].includes(role)) {
       items.push({ label: 'Gestión', href: '/management', icon: 'dashboard' });
     }
 
@@ -124,7 +124,7 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
     }
 
     if (role !== 'cliente') {
-      const canAccessManagement = ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'].includes(role);
+      const canAccessManagement = ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'].includes(role);
       if (canAccessManagement) {
         items.push({ label: 'Perfil', href: '/management/profile', icon: 'person' });
       }
@@ -149,18 +149,18 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       id: 'gestion',
       label: 'Gestión',
       icon: 'dashboard',
-      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos'],
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'recepcionista', 'housekeeping', 'concierge'],
       items: [
         { label: 'Panel hotelero', href: '/management', icon: 'dashboard', exact: true } as NavMenuItem,
         {
           label: 'Operación',
           icon: 'assignment',
-          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'],
+          allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'recepcionista', 'concierge'],
           items: [
             { label: 'Recepción', href: '/management/recepcion', icon: 'calendar_month' },
             { label: 'Disponibilidad', href: '/management/availability', icon: 'event_available', allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager'] },
-            { label: 'Check-ins', href: '/management/check-ins', icon: 'login', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] },
-            { label: 'Check-outs', href: '/management/check-outs', icon: 'logout', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel'] }
+            { label: 'Check-ins', href: '/management/check-ins', icon: 'login', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel', 'recepcionista', 'concierge'] },
+            { label: 'Check-outs', href: '/management/check-outs', icon: 'logout', allowedRoles: ['super_admin', 'admin_sistema', 'gerente_hotel', 'recepcionista', 'concierge'] }
           ]
         } as NavSubGroup,
         {

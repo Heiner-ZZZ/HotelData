@@ -8,19 +8,6 @@
   </div>
 
   <div class="security-section">
-    @if (sessionsError()) {
-      <div class="toast toast-error">
-        <span class="material-symbols-outlined">error</span>
-        {{ sessionsError() }}
-      </div>
-    }
-    @if (sessionsMessage()) {
-      <div class="toast toast-success">
-        <span class="material-symbols-outlined">check_circle</span>
-        {{ sessionsMessage() }}
-      </div>
-    }
-
     <div class="session-info">
       <div class="session-info-row">
         <span class="material-symbols-outlined session-icon">devices</span>

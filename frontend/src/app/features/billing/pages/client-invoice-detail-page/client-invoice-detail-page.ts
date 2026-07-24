@@ -7,7 +7,6 @@ import { map } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { InvoiceDetailViewModel } from '../../models/billing.model';

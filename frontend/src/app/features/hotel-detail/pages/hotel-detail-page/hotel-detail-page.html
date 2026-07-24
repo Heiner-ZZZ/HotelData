@@ -515,19 +515,13 @@
           </div>
         }
 
-        <!-- ═══════════════════════════════════════════════════
-             GALLERY MODAL
-             ═══════════════════════════════════════════════════ -->
-        @if (selectedGalleryImage(); as imgUrl) {
-          <div class="gallery-modal-overlay" (click)="closeGalleryModal()" (window:keydown.escape)="closeGalleryModal()">
-            <div class="gallery-modal-content" (click)="$event.stopPropagation()">
-              <button type="button" class="gallery-modal-close" (click)="closeGalleryModal()" aria-label="Cerrar">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-              <img [src]="imgUrl" [alt]="vm.name" class="gallery-modal-img" />
-            </div>
-          </div>
-        }
+        <app-image-lightbox
+          [imageUrl]="selectedGalleryImage() ?? ''"
+          [altText]="vm.name"
+          [isOpen]="lightboxOpen()"
+          [ariaLabel]="'Galería de ' + vm.name"
+          (closed)="onLightboxClosed()"
+        />
 
         <footer class="page-footer page-footer--minimal">
           <div class="footer-bottom">

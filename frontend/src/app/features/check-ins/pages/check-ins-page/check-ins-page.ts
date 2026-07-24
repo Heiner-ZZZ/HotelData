@@ -15,7 +15,7 @@ import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import type { CheckInRowViewModel, CheckInsViewModel } from '../../models/check-ins.model';
 import type { CheckInsDto } from '../../models/check-ins.dto';
 import { CheckInsApiService, type DateHistoryEntry } from '../../services/check-ins-api.service';
-import { KpiApiService, type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
+import { type OperationalStatsResponse } from '../../../../shared/services/kpi-api.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { mapCheckIns } from '../../mappers/check-ins.mapper';
 

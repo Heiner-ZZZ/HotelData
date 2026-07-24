@@ -8,7 +8,6 @@ import { PropertyContextService } from '../../../../shared/services/property-con
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge';
 import { HrApiService } from '../../services/hr-api.service';
 
 @Component({

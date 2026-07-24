@@ -4,22 +4,9 @@
   <app-error-state title="Error de perfil" [description]="errorMessage()" />
 } @else if (profile(); as vm) {
   <div class="profile-page">
-    <app-pp-hero [vm]="vm" />
+    <app-pp-hero [vm]="vm" (avatarClick)="openAvatarLightbox()" />
 
     <app-pp-tab-bar [tabs]="tabs()" [activeTab]="activeTab()" (setTab)="handleSetTab($event)" />
-
-    @if (successMessage()) {
-      <div class="toast toast-success">
-        <span class="material-symbols-outlined">check_circle</span>
-        {{ successMessage() }}
-      </div>
-    }
-    @if (errorMessage()) {
-      <div class="toast toast-error">
-        <span class="material-symbols-outlined">error</span>
-        {{ errorMessage() }}
-      </div>
-    }
 
     <form class="profile-form" [formGroup]="form" (ngSubmit)="save()">
       @if (activeTab() === 'personal') {
@@ -34,6 +21,7 @@
           (onDragOver)="onDragOver($event)"
           (onDragLeave)="onDragLeave($event)"
           (onDrop)="onDrop($event)"
+          (avatarClick)="openAvatarLightbox()"
         />
 
         <app-pp-personal-form [form]="form" [documentTypes]="documentTypes" />
@@ -70,5 +58,13 @@
         </button>
       </div>
     </form>
+
+    <app-image-lightbox
+      [imageUrl]="lightboxImageUrl()"
+      [altText]="'Foto de perfil de ' + (profile()?.displayName ?? '')"
+      [isOpen]="lightboxOpen()"
+      [ariaLabel]="'Vista ampliada del avatar'"
+      (closed)="closeAvatarLightbox()"
+    />
   </div>
 }

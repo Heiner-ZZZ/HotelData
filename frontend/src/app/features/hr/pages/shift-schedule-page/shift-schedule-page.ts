@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
-import { switchMap, map, BehaviorSubject } from 'rxjs';
+import { switchMap, BehaviorSubject } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -12,7 +11,7 @@ import type { EmployeeListItem, ShiftItem, ShiftCreatePayload } from '../../mode
 @Component({
   selector: 'app-shift-schedule-page',
   standalone: true,
-  imports: [DatePipe],
+  imports: [],
   templateUrl: './shift-schedule-page.html',
   styleUrl: './shift-schedule-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

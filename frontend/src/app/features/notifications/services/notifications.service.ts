@@ -5,7 +5,6 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapMyNotifications } from '../mappers/notifications.mapper';
 import type { MyNotificationsDto } from '../models/notifications.dto';
-import type { MyNotifications } from '../models/notifications.model';
 
 @Injectable({ providedIn: 'root' })
 export class ClientNotificationsService {

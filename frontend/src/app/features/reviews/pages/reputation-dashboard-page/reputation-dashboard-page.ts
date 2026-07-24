@@ -1,4 +1,3 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +11,6 @@ import {
   buildReportShell,
   buildSummaryGrid,
   buildTable,
-  esc,
 } from '../../../../shared/utils/report-html-templates';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ReputationDashboard } from '../../models/reviews.model';

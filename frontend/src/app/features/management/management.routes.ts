@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 export const MANAGEMENT_ROUTES: Routes = [
   {
     path: '',
+    pathMatch: 'full',
     loadComponent: () =>
       import('./pages/dashboard-page/dashboard-page').then((m) => m.ManagementDashboardPageComponent)
   },
@@ -89,6 +90,10 @@ export const MANAGEMENT_ROUTES: Routes = [
     path: 'expenses',
     loadChildren: () =>
       import('../expenses/expenses.routes').then((m) => m.EXPENSES_ROUTES)
+  },
+  {
+    path: 'revenue',
+    redirectTo: 'reports'
   },
   {
     path: 'reports',

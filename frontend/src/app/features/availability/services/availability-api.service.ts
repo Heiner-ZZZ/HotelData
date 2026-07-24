@@ -11,7 +11,6 @@ import type {
   AvailabilitySaveInventoryDto,
   ManagementPropertiesDto
 } from '../models/availability.dto';
-import type { PropertyOptionsPage } from '../models/availability.model';
 
 @Injectable({
   providedIn: 'root'

@@ -1,4 +1,4 @@
-import { CurrencyPipe, KeyValuePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 

@@ -5,6 +5,14 @@
     description="Modera, responde y consulta las reseñas registradas por los huéspedes después de su estancia."
   />
 
+  <div class="property-selector-bar">
+    <app-property-selector
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropertySelected($event)"
+    />
+  </div>
+
   <div class="filter-bar">
     <button type="button" class="filter-btn" [class.active]="!filterStatus()" (click)="setFilter('')">
       Todas

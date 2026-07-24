@@ -1,5 +1,5 @@
 import type { AmenitiesDto, AmenitiesOptionsDto, AmenitiesSaveDto } from '../models/amenities.dto';
-import type { AmenityCategoryViewModel, AmenitiesPropertyOption, AmenitiesViewModel, RoomTypeOption } from '../models/amenities.model';
+import type { AmenityCategoryViewModel, AmenitiesPropertyOption, AmenitiesViewModel } from '../models/amenities.model';
 
 export function mapAmenities(dto: AmenitiesDto): AmenitiesViewModel {
   const roomAmenities: Record<string, string[]> = {};

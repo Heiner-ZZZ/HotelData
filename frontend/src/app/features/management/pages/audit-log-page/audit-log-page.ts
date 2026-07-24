@@ -23,7 +23,6 @@ import {
   buildReportShell,
   buildSummaryGrid,
   buildTable,
-  esc,
 } from '../../../../shared/utils/report-html-templates';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 

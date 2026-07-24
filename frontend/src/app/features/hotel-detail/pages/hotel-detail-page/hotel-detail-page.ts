@@ -2,14 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { distinctUntilChanged, map } from 'rxjs';
 
-import type { ApiError } from '../../../../core/api/api-error.model';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { ImageLightboxComponent } from '../../../../shared/ui/image-lightbox/image-lightbox';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { HotelDetailViewModel, SimilarHotel } from '../../models/hotel-detail.model';
 import type { HotelDetailDto, SimilarHotelsResponseDto } from '../../models/hotel-detail.dto';
@@ -18,7 +18,7 @@ import { mapHotelDetailResponse } from '../../mappers/hotel-detail.mapper';
 
 @Component({
   selector: 'app-hotel-detail-page',
-  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink],
+  imports: [DatePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, RouterLink, ImageLightboxComponent],
   templateUrl: './hotel-detail-page.html',
   styleUrl: './hotel-detail-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -63,6 +63,7 @@ export class HotelDetailPageComponent {
   readonly activeTab = signal<string>('overview');
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly selectedGalleryImage = signal<string | null>(null);
+  readonly lightboxOpen = signal(false);
   readonly showSimilarInfo = signal(false);
   readonly showBooking = signal(false);
 
@@ -72,9 +73,15 @@ export class HotelDetailPageComponent {
 
   openGalleryModal(url: string) {
     this.selectedGalleryImage.set(url);
+    this.lightboxOpen.set(true);
   }
 
   closeGalleryModal() {
+    this.lightboxOpen.set(false);
+  }
+
+  onLightboxClosed(): void {
+    this.lightboxOpen.set(false);
     this.selectedGalleryImage.set(null);
   }
 

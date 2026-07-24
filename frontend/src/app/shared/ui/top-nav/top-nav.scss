@@ -3,7 +3,7 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
-  padding: 0.55rem 1.25rem;
+  padding: 0.25rem 1.25rem;
   border: 1px solid color-mix(in srgb, var(--app-border) 22%, transparent);
   border-radius: 0 0 16px 16px;
   background: color-mix(in srgb, var(--surface) 82%, transparent);
@@ -39,8 +39,8 @@
 }
 
 .brand-logo {
-  width: 88px;
-  max-width: min(18vw, 88px);
+  width: 72px;
+  max-width: min(16vw, 72px);
   height: auto;
   display: block;
   object-fit: contain;
@@ -401,8 +401,8 @@
   }
 
   .brand-logo {
-    width: 120px;
-    max-width: 38vw;
+    width: 96px;
+    max-width: 34vw;
   }
 
   .dropdown {

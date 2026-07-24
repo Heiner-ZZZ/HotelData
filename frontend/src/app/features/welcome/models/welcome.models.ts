@@ -3,7 +3,7 @@ export interface FeaturedHotel {
   readonly id: number;
   readonly name: string;
   readonly location: string;
-  readonly stars: number | null;
+  readonly stars: number;
   readonly score: number | null;
   readonly imageUrl: string;
   readonly rateLabel: string | null;

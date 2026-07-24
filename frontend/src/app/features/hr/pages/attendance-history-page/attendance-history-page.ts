@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
 import { switchMap, map, BehaviorSubject } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
@@ -12,7 +11,7 @@ type TabType = 'all' | 'present' | 'absent' | 'late';
 @Component({
   selector: 'app-attendance-history-page',
   standalone: true,
-  imports: [DatePipe],
+  imports: [],
   templateUrl: './attendance-history-page.html',
   styleUrl: './attendance-history-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

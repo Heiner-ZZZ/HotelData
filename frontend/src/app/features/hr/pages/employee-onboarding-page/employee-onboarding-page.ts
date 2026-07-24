@@ -532,6 +532,9 @@ export class EmployeeOnboardingPageComponent {
     { value: 'revenue_manager', label: 'Revenue Manager' },
     { value: 'marketing_hotelero', label: 'Marketing Hotelero' },
     { value: 'maintenance', label: 'Mantenimiento' },
+    { value: 'recepcionista', label: 'Recepcionista' },
+    { value: 'housekeeping', label: 'Housekeeping' },
+    { value: 'concierge', label: 'Concierge' },
   ];
 
   readonly newUserForm = {

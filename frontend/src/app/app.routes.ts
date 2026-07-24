@@ -77,7 +77,7 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: {
       requiredPermission: 'account.read',
-      allowedRoles: ['super_admin', 'admin_sistema', 'cliente', 'recepcionista', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
+      allowedRoles: ['super_admin', 'admin_sistema', 'cliente', 'recepcionista', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance', 'housekeeping', 'concierge']
     },
     children: [
       {
@@ -93,7 +93,7 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: {
       requiredPermission: 'dashboard.read',
-      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance']
+      allowedRoles: ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel', 'revenue_manager', 'marketing_hotelero', 'operador_datos', 'auditor_datos', 'maintenance', 'recepcionista', 'housekeeping', 'concierge']
     },
     children: [
       {

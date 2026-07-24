@@ -14,6 +14,19 @@ export interface PropertyContextDto {
   default_prop_id: number;
 }
 
+/** Management paths that are global and should never carry a `prop_id` query param. */
+export const GLOBAL_MANAGEMENT_PATHS = [
+  '/management/profile',
+  '/management/settings',
+  '/management/audit-log',
+  '/management/reports',
+] as const;
+
+/** Check if a path (or any of its sub-paths) belongs to the global management section. */
+export function isGlobalManagementPath(path: string): boolean {
+  return GLOBAL_MANAGEMENT_PATHS.some((global) => path === global || path.startsWith(`${global}/`));
+}
+
 @Injectable({ providedIn: 'root' })
 export class PropertyContextService {
   private readonly http = inject(HttpClient);
@@ -83,8 +96,11 @@ export class PropertyContextService {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
-        if (this.ready() && this.singleHotelMode()) {
+        if (!this.ready()) return;
+        if (this.singleHotelMode()) {
           this._ensurePropIdInUrl(this.defaultPropId());
+        } else {
+          this._syncCurrentPropIdFromUrl();
         }
       });
   }
@@ -170,6 +186,44 @@ export class PropertyContextService {
     }
 
     this.ready.set(true);
+
+    // In 'all'/'multi' mode the URL is the source of truth for the active property.
+    // Sync currentPropId from the query string after context is ready so management
+    // pages respect ?prop_id=1 even for superadmins.
+    this._syncCurrentPropIdFromUrl();
+  }
+
+  /** Read ?prop_id from the current URL and update currentPropId accordingly. */
+  private _syncCurrentPropIdFromUrl(): void {
+    try {
+      const url = this.router.url;
+      const qs = new URLSearchParams(url.split('?')[1] || '');
+      const propIdParam = qs.get('prop_id');
+      if (!propIdParam) return;
+      const propId = Number(propIdParam);
+      if (Number.isNaN(propId) || propId <= 0) return;
+
+      const mode = this.mode();
+      if (mode === 'single') {
+        // Single mode ignores URL prop_id unless it matches the assigned property
+        if (propId !== this.defaultPropId()) return;
+      }
+      if (mode === 'multi') {
+        // Multi mode only allows assigned properties
+        const allowed = this.assignedProperties().some((p) => p.propId === propId);
+        if (!allowed) return;
+      }
+      // 'all' mode accepts any positive prop_id from the URL
+      this.currentPropId.set(propId);
+      const assigned = this.assignedProperties().find((p) => p.propId === propId);
+      if (assigned) {
+        this.currentPropLabel.set(assigned.label);
+        const short = assigned.label.length > 18 ? assigned.label.slice(0, 16) + '\u2026' : assigned.label;
+        this.currentPropLabelShort.set(short);
+      }
+    } catch {
+      // Router may not be ready during bootstrap — safe to ignore
+    }
   }
 
   private resetState(): void {
@@ -202,7 +256,7 @@ export class PropertyContextService {
     try {
       const url = this.router.url;
       const path = url.split('?')[0];
-      if (!path.startsWith('/management') || url.includes('prop_id=')) return;
+      if (!path.startsWith('/management') || isGlobalManagementPath(path) || url.includes('prop_id=')) return;
 
       const qs = new URLSearchParams(url.split('?')[1] || '');
       qs.set('prop_id', String(propId));

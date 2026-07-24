@@ -94,11 +94,11 @@ export class WelcomePageComponent {
   readonly featuredHotelsResource = httpResource<{ items: FeaturedHotel[] }>(
     () => `${this.apiConfig.baseUrl}/hotels/availability?sort_by=rating&page_size=3&content_only=true`,
     {
-      parse: (dto) => ({ items: mapFeaturedHotels(dto as { items?: Array<{
+      parse: (dto) => ({ items: mapFeaturedHotels(dto as { items?: {
         prop_id: number; display_name: string; prop_starrating: number | null;
         prop_review_score: number | null; image_url: string | null;
         destination_labels: string[]; min_nightly_rate_label: string | null;
-      }> }) }),
+      }[] }) }),
     },
   );
 

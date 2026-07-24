@@ -15,11 +15,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 
+import { AuthService } from '../../../../core/auth/auth.service';
+import { ToastService } from '../../../../shared/services/toast.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { PpHeroComponent } from './partials/pp-hero';
 import { PpTabBarComponent } from './partials/pp-tab-bar';
 import { PpPersonalFormComponent } from './partials/pp-personal-form';
@@ -27,6 +29,7 @@ import { PpContactFormComponent } from './partials/pp-contact-form';
 import { PpPreferencesFormComponent } from './partials/pp-preferences-form';
 import { PpAvatarSectionComponent } from './partials/pp-avatar-section';
 import { PpTravelSectionComponent } from './partials/pp-travel-section';
+import { ImageLightboxComponent } from '../../../../shared/ui/image-lightbox/image-lightbox';
 import type { ProfileViewModel } from '../../models/profile.model';
 import type { SelectOption } from '../../models/profile.model';
 import {
@@ -43,11 +46,55 @@ import { ProfileApiService } from '../../services/profile-api.service';
 import type { ProfileDto } from '../../models/profile.dto';
 import { mapProfileDtoToViewModel } from '../../mappers/profile.mapper';
 
+/** CamelCase form keys → snake_case API keys. */
+const FORM_TO_PAYLOAD: Record<string, string> = {
+  displayName: 'display_name',
+  dateOfBirth: 'date_of_birth',
+  nationality: 'nationality',
+  idDocumentType: 'id_document_type',
+  idDocumentNumber: 'id_document_number',
+  phone: 'phone',
+  notificationEmail: 'notification_email',
+  addressStreet: 'address_street',
+  addressCity: 'address_city',
+  addressState: 'address_state',
+  addressCountry: 'address_country',
+  addressPostalCode: 'address_postal_code',
+  preferredLanguage: 'preferred_language',
+  marketingOptIn: 'marketing_opt_in',
+  notificationEmailEnabled: 'notification_email_enabled',
+  notificationSmsEnabled: 'notification_sms_enabled',
+  avatarUrl: 'avatar_url',
+  socialInstagram: 'social_instagram',
+  socialFacebook: 'social_facebook',
+  socialTwitter: 'social_twitter',
+  socialLinkedin: 'social_linkedin',
+  travelPurpose: 'travel_purpose',
+  travelBudget: 'travel_budget',
+  travelCompanions: 'travel_companions',
+  travelAccommodation: 'travel_accommodation',
+  travelDestinationType: 'travel_destination_type',
+  travelInterests: 'travel_interests',
+  travelFrequentFlyer: 'travel_frequent_flyer',
+  travelLoyaltyPrograms: 'travel_loyalty_programs',
+  travelNotes: 'travel_notes',
+};
+
+function formToPayload(formValue: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  for (const [camel, snake] of Object.entries(FORM_TO_PAYLOAD)) {
+    if (camel in formValue) {
+      payload[snake] = formValue[camel];
+    }
+  }
+  return payload;
+}
+
 @Component({
   selector: 'app-profile-page',
   imports: [ErrorStateComponent, LoadingStateComponent, ReactiveFormsModule,
     PpHeroComponent, PpTabBarComponent, PpPersonalFormComponent, PpContactFormComponent,
-    PpPreferencesFormComponent, PpAvatarSectionComponent, PpTravelSectionComponent],
+    PpPreferencesFormComponent, PpAvatarSectionComponent, ImageLightboxComponent, PpTravelSectionComponent],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,6 +104,10 @@ export class ProfilePageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly profileApi = inject(ProfileApiService);
+  private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly Math = Math;
 
@@ -66,12 +117,13 @@ export class ProfilePageComponent {
   readonly saving = signal(false);
   readonly uploading = signal(false);
   readonly uploadProgress = signal(0);
-  readonly successMessage = signal('');
-  readonly errorMessage = signal('');
+  readonly errorMessage = signal<string>('');
   readonly profile = signal<ProfileViewModel | null>(null);
   readonly previewUrl = signal<string | null>(null);
   readonly dragOver = signal(false);
   readonly activeTab = signal<'personal' | 'contact' | 'preferences' | 'social'>('personal');
+  readonly lightboxOpen = signal(false);
+  readonly lightboxImageUrl = signal<string>('');
 
   // ═══ Data loading — httpResource (replaces manual GET + subscribe) ═══
   readonly profileResource = httpResource<ProfileViewModel>(() => '/account/profile', {
@@ -192,13 +244,27 @@ export class ProfilePageComponent {
     effect(() => {
       const err = this.profileResource.error();
       if (err) {
-        this.errorMessage.set('No fue posible cargar tu perfil.');
+        const message = err.message || 'No fue posible cargar tu perfil.';
+        this.errorMessage.set(message);
+        this.toast.error(message);
       }
     });
-  }
 
-  private loadProfile(): void {
-    this.profileResource.reload();
+    // ── Tab → URL sync (reads query param on load, writes on change) ──
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam === 'contact' || tabParam === 'preferences' || tabParam === 'social') {
+      this.activeTab.set(tabParam);
+    }
+
+    effect(() => {
+      const tab = this.activeTab();
+      const current = this.route.snapshot.queryParamMap.get('tab');
+      if (tab !== 'personal' && tab !== current) {
+        void this.router.navigate([], { queryParams: { tab }, queryParamsHandling: 'merge', replaceUrl: true });
+      } else if (tab === 'personal' && current) {
+        void this.router.navigate([], { queryParams: { tab: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      }
+    });
   }
 
   private patchForm(profile: ProfileViewModel): void {
@@ -241,6 +307,23 @@ export class ProfilePageComponent {
     this.activeTab.set(tab as 'personal' | 'contact' | 'preferences' | 'social');
   }
 
+  openAvatarLightbox(): void {
+    const current = this.profile();
+    const preview = this.previewUrl();
+    if (preview) {
+      this.lightboxImageUrl.set(preview);
+    } else if (current?.avatarUrl) {
+      this.lightboxImageUrl.set(current.avatarUrl);
+    } else {
+      return;
+    }
+    this.lightboxOpen.set(true);
+  }
+
+  closeAvatarLightbox(): void {
+    this.lightboxOpen.set(false);
+  }
+
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
@@ -280,21 +363,24 @@ export class ProfilePageComponent {
     }
 
     this.saving.set(true);
-    this.successMessage.set('');
-    this.errorMessage.set('');
+
+    const rawForm = this.form.getRawValue();
+    const payload = formToPayload(rawForm);
 
     this.profileApi
-      .updateProfile(this.form.getRawValue())
+      .updateProfile(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated: ProfileViewModel) => {
           this.profile.set(updated);
-          this.successMessage.set('Perfil actualizado correctamente.');
+          this.patchForm(updated);
+          // Sync avatar to auth service so top-nav refreshes
+          this.authService.updateAvatar(updated.avatarUrl);
+          this.toast.success('Perfil actualizado correctamente.');
           this.saving.set(false);
-          setTimeout(() => this.successMessage.set(''), 3000);
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'No fue posible guardar los cambios.');
+          this.toast.error(error.message || 'No fue posible guardar los cambios.');
           this.saving.set(false);
         },
       });
@@ -309,14 +395,14 @@ export class ProfilePageComponent {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
     if (!allowedTypes.includes(file.type)) {
-      this.errorMessage.set('Formato no permitido. Usa JPG, PNG, WebP, GIF o AVIF.');
+      this.toast.error('Formato no permitido. Usa JPG, PNG, WebP, GIF o AVIF.');
       input.value = '';
       return;
     }
 
     // Validate file size (2 MB)
     if (file.size > 2 * 1024 * 1024) {
-      this.errorMessage.set('La imagen no puede superar los 2 MB.');
+      this.toast.error('La imagen no puede superar los 2 MB.');
       input.value = '';
       return;
     }
@@ -331,8 +417,6 @@ export class ProfilePageComponent {
     // Upload to backend
     this.uploading.set(true);
     this.uploadProgress.set(0);
-    this.errorMessage.set('');
-    this.successMessage.set('');
 
     this.profileApi
       .uploadAvatar(file)
@@ -345,16 +429,23 @@ export class ProfilePageComponent {
             const body = event.body as AvatarUploadResponse;
             if (body.ok) {
               this.form.patchValue({ avatarUrl: body.avatar_url });
-              this.successMessage.set('Foto de perfil actualizada.');
+              // Immediately update the profile signal so the hero avatar refreshes
+              const current = this.profile();
+              if (current) {
+                this.profile.set({ ...current, avatarUrl: body.avatar_url });
+              }
+              // Also sync to auth service so the top-nav avatar refreshes
+              this.authService.updateAvatar(body.avatar_url);
+              this.toast.success('Foto de perfil actualizada.');
               this.previewUrl.set(null);
             } else {
-              this.errorMessage.set(body.message || 'Error al subir la imagen.');
+              this.toast.error(body.message || 'Error al subir la imagen.');
             }
             this.uploading.set(false);
           }
         },
         error: (error: ApiError) => {
-          this.errorMessage.set(error.message || 'Error al subir la imagen.');
+          this.toast.error(error.message || 'Error al subir la imagen.');
           this.uploading.set(false);
           this.previewUrl.set(null);
         },

@@ -15,7 +15,7 @@ export interface ServiceRatingsDto {
 }
 
 export interface ReviewItemDto {
-  _id: string;
+  id: string;
   booking_id: string;
   prop_id: number;
   user_id: string;
@@ -36,7 +36,7 @@ export interface ReviewItemDto {
 }
 
 export interface ReviewDetailDto {
-  _id: string;
+  id: string;
   booking_id: string;
   prop_id: number;
   user_id: string;

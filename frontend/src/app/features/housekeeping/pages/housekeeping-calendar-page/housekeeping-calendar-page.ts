@@ -1,4 +1,4 @@
-import { DatePipe, KeyValuePipe, TitleCasePipe } from '@angular/common';
+import { KeyValuePipe, TitleCasePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy, Component, computed, inject, signal,
 } from '@angular/core';
@@ -17,7 +17,6 @@ import {
   HousekeepingApiService,
   type CalendarDayTask,
   type CalendarRoomDay,
-  type WeeklyCalendarData,
 } from '../../services/housekeeping-api.service';
 
 /** Generate ISO date string for today (local timezone-aware). */

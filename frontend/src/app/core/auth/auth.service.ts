@@ -65,6 +65,17 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.authStateSignal().authenticated);
   readonly sessionLoaded = this.sessionLoadedSignal.asReadonly();
 
+  /** Update the current user's avatar URL in the auth state so the
+   *  top-nav and other components that read currentUser react immediately. */
+  updateAvatar(avatarUrl: string): void {
+    const state = this.authStateSignal();
+    if (!state.user) return;
+    this.authStateSignal.set({
+      ...state,
+      user: { ...state.user, avatarUrl },
+    });
+  }
+
   /** Check if the current user has a specific permission code (or *.*).
    *  Available for component-level permission checks (e.g. nav menus). */
   readonly hasPermission = computed(() => {

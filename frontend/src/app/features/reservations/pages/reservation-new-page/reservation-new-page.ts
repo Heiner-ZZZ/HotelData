@@ -8,14 +8,13 @@ import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'r
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
-import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
 import { RnReviewSectionComponent } from './partials/rn-review-section';
 import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
-import type { GuestAmenityCategoryDto, GuestAmenityItemDto } from '../../../amenities/models/guest-amenity.dto';
+import type { GuestAmenityCategoryDto } from '../../../amenities/models/guest-amenity.dto';
 
 @Component({
   selector: 'app-reservation-new-page',

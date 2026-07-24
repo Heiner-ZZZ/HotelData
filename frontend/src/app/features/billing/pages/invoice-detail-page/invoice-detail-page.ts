@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -10,7 +10,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import type { BillableServiceItem, BillableServices, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
+import type { BillableServices, InvoiceDetailViewModel, LineItem } from '../../models/billing.model';
 import type { BillableServicesDto, InvoiceDetailDto } from '../../models/billing.dto';
 import { mapBillableServices, mapInvoiceDetail } from '../../mappers/billing.mapper';
 import { BillingApiService } from '../../services/billing-api.service';

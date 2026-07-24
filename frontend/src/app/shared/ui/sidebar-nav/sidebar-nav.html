@@ -32,7 +32,7 @@
                 routerLinkActive="is-active"
                 [routerLinkActiveOptions]="{ exact: true }"
                 [routerLink]="item.href"
-                [queryParams]="linkParams()"
+                [queryParams]="getLinkParams(item.href)"
               >
                 <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
                 <span class="link-label">{{ item.label }}</span>
@@ -65,7 +65,7 @@
                         routerLinkActive="is-active"
                         [routerLinkActiveOptions]="{ exact: true }"
                         [routerLink]="item.href"
-                        [queryParams]="linkParams()"
+                        [queryParams]="getLinkParams(item.href)"
                       >
                         <span class="material-symbols-outlined link-icon">{{ item.icon }}</span>
                         <span class="link-label">{{ item.label }}</span>
@@ -88,7 +88,6 @@
     routerLinkActive="is-active"
     [routerLinkActiveOptions]="{ exact: true }"
     routerLink="/management/settings"
-    [queryParams]="linkParams()"
   >
     <span class="material-symbols-outlined link-icon">tune</span>
     <span class="link-label">Configuración</span>

@@ -8,7 +8,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { ClientNotificationsService } from '../../services/notifications.service';
-import type { MyNotifications, ClientNotification } from '../../models/notifications.model';
+import type { MyNotifications } from '../../models/notifications.model';
 
 @Component({
   selector: 'app-notifications-page',

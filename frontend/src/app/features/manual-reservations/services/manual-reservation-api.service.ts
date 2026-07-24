@@ -5,7 +5,7 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapHotelOption, mapListItem, mapPayload, mapResult, mapRoomTypeOption } from '../mappers/manual-reservation.mapper';
 import type { ManualReservationListItemDto, ManualReservationResultDto } from '../models/manual-reservation.dto';
-import type { HotelOption, ManualReservationInput, ManualReservationListItem, RoomTypeOption } from '../models/manual-reservation.model';
+import type { ManualReservationInput } from '../models/manual-reservation.model';
 
 interface AvailabilityOptionsResponse {
   properties: { prop_id: number; display_name: string }[];

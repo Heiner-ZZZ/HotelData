@@ -1,4 +1,4 @@
-import type { HotelCompareItem, ComparisonFlags } from '../../models/hotel-compare.model';
+import type { HotelCompareItem } from '../../models/hotel-compare.model';
 
 /** Map amenity keywords to Material Symbols icons. */
 export const AMENITY_ICONS: Record<string, string> = {

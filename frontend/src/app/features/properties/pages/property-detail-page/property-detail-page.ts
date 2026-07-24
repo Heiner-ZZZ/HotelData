@@ -14,7 +14,6 @@ import type { OperationalCalendarData } from '../../components/operational-calen
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { PropertyDetailViewModel } from '../../models/properties.model';
 import type { PropertyDetailResponseDto } from '../../models/properties.dto';
-import { PropertiesApiService } from '../../services/properties-api.service';
 import { ReviewsApiService } from '../../../reviews/services/reviews-api.service';
 import type { ReviewsListDto } from '../../../reviews/models/reviews.dto';
 import { mapPropertyDetailResponse } from '../../mappers/properties.mapper';
@@ -122,7 +121,7 @@ export class PropertyDetailPageComponent {
     },
   });
   readonly reviews = computed(() => (this.reviewsResource.value()?.items ?? []).map(r => ({
-    id: r._id,
+    id: r.id,
     rating: r.rating,
     title: r.title,
     comment: r.comment,
@@ -146,7 +145,7 @@ export class PropertyDetailPageComponent {
   constructor() {
     // Reset reviews page when the route property changes
     effect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+       
       this.propId();
       this.reviewsPage.set(1);
     });

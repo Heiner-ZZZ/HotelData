@@ -5,7 +5,6 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapBillableServices, mapInvoiceDetail, mapInvoicesList, mapPaymentsList } from '../mappers/billing.mapper';
 import type { BillableServicesDto, InvoiceDetailDto, InvoiceStatsDto, InvoicesListDto, PaymentsListDto } from '../models/billing.dto';
-import type { BillableServices, InvoiceStats } from '../models/billing.model';
 
 @Injectable({ providedIn: 'root' })
 export class BillingApiService {

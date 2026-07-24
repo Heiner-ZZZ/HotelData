@@ -5,16 +5,16 @@ import { map } from 'rxjs';
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapReviewDetail, mapReviewsList, mapReputationDashboard } from '../mappers/reviews.mapper';
 import type { ReviewDetailDto, ReviewsListDto } from '../models/reviews.dto';
-import type { ReputationDashboard } from '../models/reviews.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReviewsApiService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
 
-  getReviews(page: number, moderationStatus?: string) {
+  getReviews(page: number, moderationStatus?: string, propId?: number) {
     let params = new HttpParams().set('page', String(page));
     if (moderationStatus) params = params.set('moderation_status', moderationStatus);
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http
       .get<ReviewsListDto>(`${this.apiConfig.baseUrl}/reviews`, { params, withCredentials: true })
       .pipe(map(dto => mapReviewsList(dto)));

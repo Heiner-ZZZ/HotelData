@@ -21,7 +21,7 @@
 /* Header */
 .sidebar-header {
   position: relative;
-  padding: 0.85rem 2.6rem 0.85rem 1rem;
+  padding: 0.25rem 2.6rem 0.25rem .25rem;
   border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
@@ -74,14 +74,14 @@
 }
 
 .sidebar-logo {
-  width: 180px;
+  width: 140px;
   height: auto;
   display: block;
   object-fit: contain;
 }
 
 .is-collapsed .sidebar-logo {
-  width: 36px;
+  width: 32px;
 }
 
 /* Body - scrollable nav */
@@ -302,8 +302,8 @@
 }
 
 .is-collapsed .sidebar-header {
-  min-height: 80px;
-  padding: 0.5rem 2.4rem 0.5rem 0.5rem;
+  min-height: 48px;
+  padding: 0.25rem 2.4rem 0.25rem .25rem;
   justify-content: center;
 }
 
