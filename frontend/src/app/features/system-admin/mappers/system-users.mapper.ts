@@ -24,6 +24,7 @@ function mapUser(item: SystemUsersResponseDto['users'][number]): SystemUserListI
     email: item.email,
     displayName: item.display_name,
     primaryRole: item.primary_role,
+    primaryRoleId: item.primary_role_id || '',
     roleNamesLabel: item.role_names.length ? item.role_names.join(', ') : 'Sin roles',
     isActive: item.is_active,
     createdAtLabel: formatDate(item.created_at),

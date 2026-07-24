@@ -106,7 +106,7 @@
             <div class="input-wrap">
               <span class="material-symbols-outlined input-icon">dashboard</span>
               <select id="defaultDashboard" formControlName="defaultDashboard">
-                @for (opt of dashboardOptions; track opt.value) {
+                @for (opt of dashboardOptions(); track opt.value) {
                   <option [value]="opt.value">{{ opt.label }}</option>
                 }
               </select>

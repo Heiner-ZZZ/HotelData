@@ -16,6 +16,7 @@ import type { SystemUserListItem, SystemUsersViewModel } from '../../models/syst
 import type { SystemUsersResponseDto } from '../../models/system-users.dto';
 import { SystemUsersApiService } from '../../services/system-users-api.service';
 import { mapSystemUsersResponse } from '../../mappers/system-users.mapper';
+import { roleLabel } from '../../../../core/auth/role-labels';
 
 type ColumnKey = 'username' | 'email' | 'primaryRole' | 'roles' | 'isActive';
 
@@ -58,6 +59,8 @@ export class SystemUsersPageComponent {
     if (!vm) return 'loading';
     return vm.items.length ? 'success' : 'empty';
   });
+
+  readonly roleLabel = roleLabel;
 
   readonly loadErrorMessage = computed(() => {
     const err = this.usersResource.error();

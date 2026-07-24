@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { roleLabel } from '../../../../core/auth/role-labels';
+
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -36,6 +38,7 @@ export class OwnershipListPageComponent {
   readonly loadErrorMessage = signal('');
   readonly message = signal('');
   readonly errorMessage = signal('');
+  readonly roleLabel = roleLabel;
 
   readonly roleMap = computed(() => {
     const map = new Map<string, string>();

@@ -3,6 +3,7 @@ export interface OwnershipUserDto {
   username: string;
   email: string;
   display_name: string;
+  primary_role_id?: string;
   primary_role: string;
   is_active: boolean;
   assigned_hotels: number[];
@@ -31,6 +32,7 @@ export interface OwnershipUserDetailDto {
   username: string;
   email: string;
   display_name: string;
+  primary_role_id?: string;
   primary_role: string;
   is_active: boolean;
   assigned_hotels: number[];

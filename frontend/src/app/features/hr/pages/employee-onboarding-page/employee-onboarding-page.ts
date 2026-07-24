@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { HrApiService } from '../../services/hr-api.service';
 import { API_CONFIG } from '../../../../core/api/api.config';
+import { roleLabel } from '../../../../core/auth/role-labels';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
@@ -158,7 +159,7 @@ import { PropertyContextService } from '../../../../shared/services/property-con
                   <div>
                     <span style="font-size: 13px; font-weight: 500; color: var(--success-strong);">{{ user.display_name || user.username }}</span>
                     <span style="font-size: 11px; color: var(--success); display: block;">{{ user.email }}</span>
-                    <span style="font-size: 10px; color: var(--success);">{{ user.primary_role }}</span>
+                    <span style="font-size: 10px; color: var(--success);">{{ roleLabel(user.primary_role) }}</span>
                   </div>
                 </div>
                 <button type="button" (click)="clearUser()"
@@ -189,7 +190,7 @@ import { PropertyContextService } from '../../../../shared/services/property-con
                         (mouseenter)="userHovered.set(u.user_id)" (mouseleave)="userHovered.set(null)"
                         [style.background]="userHovered() === u.user_id ? 'var(--surface-hover)' : ''">
                         <span style="font-weight: 500; color: var(--app-text);">{{ u.display_name || u.username }}</span>
-                        <span style="font-size: 11px; color: var(--muted-text);">{{ u.email }} · {{ u.primary_role }}</span>
+                        <span style="font-size: 11px; color: var(--muted-text);">{{ u.email }} · {{ roleLabel(u.primary_role) }}</span>
                       </li>
                     } @empty {
                       <li style="padding: 10px 14px; font-size: 12px; color: var(--muted-text); text-align: center;">
@@ -484,6 +485,8 @@ export class EmployeeOnboardingPageComponent {
     const email = u.email || '';
     return email ? `${name} (${email})` : name;
   });
+
+  readonly roleLabel = roleLabel;
 
   searchUsers(): void {
     // Cache: skip API call if we already have results

@@ -171,7 +171,7 @@
               <select id="assignedTo" formControlName="assignedTo">
                 <option value="">Sin asignar</option>
                 @for (u of staffUsers(); track u.username) {
-                  <option [value]="displayStaff(u)">{{ displayStaff(u) }} ({{ u.primary_role }})</option>
+                  <option [value]="displayStaff(u)">{{ displayStaff(u) }} ({{ roleLabel(u.primary_role) }})</option>
                 }
               </select>
             </div>

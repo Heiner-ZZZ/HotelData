@@ -4,6 +4,7 @@ export interface ProfileViewModel {
   email: string;
   displayName: string;
   primaryRole: string;
+  primaryRoleId: string;
   primaryRoleLabel: string;
   isActive: boolean;
   createdAt: string;

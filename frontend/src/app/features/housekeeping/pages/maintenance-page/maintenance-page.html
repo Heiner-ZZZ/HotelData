@@ -117,7 +117,7 @@
               <select id="roomId" formControlName="roomId">
                 <option value="">Seleccionar habitación…</option>
                 @for (r of roomItems(); track r.id) {
-                  <option [value]="r.roomId">{{ r.roomNumber || r.roomLabel }}{{ r.roomTypeId ? ' (' + r.roomTypeId + ')' : '' }}</option>
+                  <option [value]="r.id">{{ r.roomNumber || r.roomLabel }}{{ r.roomTypeId ? ' (' + r.roomTypeId + ')' : '' }}</option>
                 }
               </select>
             </div>

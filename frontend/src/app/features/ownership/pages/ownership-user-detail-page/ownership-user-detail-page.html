@@ -34,7 +34,7 @@
             <span class="material-symbols-outlined info-avatar">account_circle</span>
             <div>
               <h2>{{ u.displayName }}</h2>
-              <p>{{ u.email }} · <strong>{{ u.primaryRole.replace(/_/g, ' ') }}</strong></p>
+              <p>{{ u.email }} · <strong>{{ roleLabel(u.primaryRole) }}</strong></p>
             </div>
             <app-status-badge
               [tone]="u.isActive ? 'success' : 'warning'"

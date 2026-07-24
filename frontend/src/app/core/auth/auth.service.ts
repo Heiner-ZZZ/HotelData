@@ -176,6 +176,7 @@ export class AuthService {
             email: dto.user.email,
             displayName: dto.user.display_name || dto.user.username,
             primaryRole: dto.user.primary_role,
+            primaryRoleId: dto.user.primary_role_id || '',
             isActive: dto.user.is_active ?? true,
             avatarUrl: dto.user.avatar_url ?? ''
           }

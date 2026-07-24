@@ -1,16 +1,25 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { httpResource } from '@angular/common/http';
 
 import { SettingsApiService } from '../../settings/services/settings-api.service';
 import type { SettingsViewModel } from '../../settings/models/settings.model';
 import {
   DASHBOARD_OPTIONS,
   THEME_OPTIONS,
+  type SelectOption,
 } from '../../settings/models/settings.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: string;
+  visible: boolean;
+}
 
 @Component({
   selector: 'app-settings-page',
@@ -38,8 +47,30 @@ export class SettingsPageComponent {
     { key: 'preferences' as const, label: 'Preferencias', icon: 'tune' },
   ];
 
-  readonly dashboardOptions = DASHBOARD_OPTIONS;
   readonly themeOptions = THEME_OPTIONS;
+
+  /** Navigation items from backend, filtered by user permissions. */
+  private readonly navResource = httpResource<{ items: NavItem[] }>(() => '/api/admin/navigation', {
+    defaultValue: { items: [] },
+  });
+
+  /** User-accessible hrefs from the navigation API. */
+  private readonly accessibleHrefs = computed(() => {
+    const items = this.navResource.value()?.items ?? [];
+    return new Set(items.filter(i => i.visible).map(i => i.href));
+  });
+
+  /** Dashboard options filtered to only routes the user can access.
+   *  Falls back to the hardcoded list if the navigation API hasn't loaded yet. */
+  readonly dashboardOptions = computed<SelectOption[]>(() => {
+    // Still loading navigation — show all options temporarily
+    if (this.navResource.isLoading()) return DASHBOARD_OPTIONS;
+    const allowed = this.accessibleHrefs();
+    if (allowed.size === 0) return DASHBOARD_OPTIONS;
+    const filtered = DASHBOARD_OPTIONS.filter(opt => allowed.has(opt.value));
+    // Always ensure at least one option is available
+    return filtered.length > 0 ? filtered : DASHBOARD_OPTIONS;
+  });
 
   readonly form = this.formBuilder.nonNullable.group({
     defaultDashboard: ['/management'],

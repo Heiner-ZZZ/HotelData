@@ -4,6 +4,7 @@ export interface SystemUserListItem {
   email: string;
   displayName: string;
   primaryRole: string;
+  primaryRoleId: string;
   roleNamesLabel: string;
   isActive: boolean;
   createdAtLabel: string;

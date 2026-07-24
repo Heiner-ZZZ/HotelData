@@ -5,6 +5,7 @@ export interface SystemUsersResponseDto {
   };
   current_user: {
     username: string;
+    primary_role_id?: string;
     primary_role: string;
   };
   users: {
@@ -13,6 +14,7 @@ export interface SystemUsersResponseDto {
     email: string;
     display_name: string;
     primary_role: string;
+    primary_role_id?: string;
     role_names: string[];
     is_active: boolean;
     created_at: string | null;

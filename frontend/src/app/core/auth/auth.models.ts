@@ -3,6 +3,7 @@ export interface AuthUser {
   email: string;
   displayName: string;
   primaryRole: string;
+  primaryRoleId: string;
   isActive: boolean;
   avatarUrl: string;
 }
@@ -28,6 +29,7 @@ export interface AuthMeDto {
     username: string;
     email: string;
     display_name?: string;
+    primary_role_id?: string;
     primary_role: string;
     is_active?: boolean;
     avatar_url?: string;

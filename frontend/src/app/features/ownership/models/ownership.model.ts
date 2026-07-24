@@ -4,6 +4,7 @@ export interface OwnershipUserListItem {
   email: string;
   displayName: string;
   primaryRole: string;
+  primaryRoleId: string;
   isActive: boolean;
   hotelCount: number;
   hotelPreview: string[];
@@ -33,6 +34,7 @@ export interface OwnershipUserDetail {
   email: string;
   displayName: string;
   primaryRole: string;
+  primaryRoleId: string;
   isActive: boolean;
   assignedHotels: number[];
   hotels: OwnershipHotel[];

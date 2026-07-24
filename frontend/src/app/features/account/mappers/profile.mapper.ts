@@ -9,6 +9,7 @@ export function mapProfileDtoToViewModel(dto: ProfileDto): ProfileViewModel {
     email: dto.email,
     displayName: dto.display_name || dto.username,
     primaryRole: dto.primary_role,
+    primaryRoleId: dto.primary_role_id || '',
     primaryRoleLabel: ROLE_LABELS[dto.primary_role] || dto.primary_role,
     isActive: dto.is_active,
     createdAt: dto.created_at,

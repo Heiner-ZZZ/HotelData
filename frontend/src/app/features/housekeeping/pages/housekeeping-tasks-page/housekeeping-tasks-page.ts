@@ -16,6 +16,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { HousekeepingApiService, type HousekeepingTaskItem, type RoomStatusItem, type StaffUser } from '../../services/housekeeping-api.service';
+import { roleLabel } from '../../../../core/auth/role-labels';
 
 function todayLocalIso(): string {
   const now = new Date();
@@ -191,6 +192,7 @@ export class HousekeepingTasksPageComponent {
   readonly priorityLabels = PRIORITY_LABELS;
   readonly taskTypeIcons = TASK_TYPE_ICONS;
   readonly taskTypeLabels = TASK_TYPE_LABELS;
+  readonly roleLabel = roleLabel;
   // ── Staff resource (real users instead of hardcoded) ──
   readonly staffResource = rxResource<any, any>({
     params: () => this.selectedPropId() || undefined,

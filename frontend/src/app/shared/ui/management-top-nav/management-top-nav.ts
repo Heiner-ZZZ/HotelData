@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { roleLabel } from '../../../core/auth/role-labels';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
 import { PropertyContextService } from '../../services/property-context.service';
 
@@ -76,21 +77,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
 
   readonly displayName = computed(() => this.currentUser()?.displayName || this.currentUser()?.username || 'Usuario');
 
-  readonly roleLabel = computed(() => {
-    const role = this.currentUser()?.primaryRole || '';
-    const labels: Record<string, string> = {
-      super_admin: 'Super Administrador',
-      admin_sistema: 'Administrador',
-      hotel_partner: 'Partner Hotelero',
-      gerente_hotel: 'Gerente de Hotel',
-      revenue_manager: 'Revenue Manager',
-      marketing_hotelero: 'Marketing Hotelero',
-      operador_datos: 'Operador de Datos',
-      auditor_datos: 'Auditor de Datos',
-      cliente: 'Cliente',
-    };
-    return labels[role] || role.replace(/_/g, ' ');
-  });
+  readonly roleLabel = computed(() => roleLabel(this.currentUser()?.primaryRole));
 
   readonly singleHotelMode = computed(() => this.propertyCtx.singleHotelMode());
   readonly hotelLabel = computed(() => this.propertyCtx.currentPropLabel());

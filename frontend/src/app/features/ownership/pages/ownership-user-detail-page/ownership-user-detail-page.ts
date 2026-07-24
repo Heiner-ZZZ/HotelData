@@ -12,6 +12,7 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { OwnershipApiService } from '../../services/ownership-api.service';
 import type { OwnershipUserDetail, HotelSearchResult } from '../../models/ownership.model';
+import { roleLabel } from '../../../../core/auth/role-labels';
 
 @Component({
   selector: 'app-ownership-user-detail-page',
@@ -37,6 +38,7 @@ export class OwnershipUserDetailPageComponent {
   readonly message = signal('');
   readonly errorMessage = signal('');
   readonly saving = signal(false);
+  readonly roleLabel = roleLabel;
 
   readonly searchControl = new FormControl('');
   readonly searching = signal(false);

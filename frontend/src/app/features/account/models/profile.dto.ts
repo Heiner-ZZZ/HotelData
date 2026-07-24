@@ -3,6 +3,7 @@ export interface ProfileDto {
   username: string;
   email: string;
   display_name: string;
+  primary_role_id?: string;
   primary_role: string;
   is_active: boolean;
   created_at: string;

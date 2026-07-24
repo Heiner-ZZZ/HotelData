@@ -14,6 +14,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { roleLabel } from '../../../core/auth/role-labels';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
@@ -52,6 +53,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   readonly theme = this.themeService;
   readonly authState = this.authService.authState;
   readonly currentUser = this.authService.currentUser;
+  readonly roleLabel = roleLabel;
   readonly activeMenu = signal<string | null>(null);
   readonly showNotifications = signal(false);
   readonly notifications = signal<{ id: number; title: string; description: string; time: string; unread: boolean; bookingId: string; propId: number }[]>([]);
