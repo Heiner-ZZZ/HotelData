@@ -69,7 +69,6 @@ def migrate() -> None:
                 "room_id": room["_id"],
                 "hotel_room_id": room["hotel_room_id"],
                 "room_label": room.get("room_label") or room.get("room_number") or label,
-                "room_number": room.get("room_number", ""),
             }},
         )
         updated += 1

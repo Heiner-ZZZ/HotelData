@@ -64,7 +64,6 @@ def migrate() -> None:
             {"_id": eid},
             {"$set": {
                 "position_id": position_id,
-                "position_name": position,
             }},
         )
         updated += 1

@@ -32,7 +32,7 @@ for s in status_logs:
 
 # 3. Sync housekeeping_tasks via room_id
 rooms = list(db.hotel_rooms.find({"prop_id": 1}, {
-    "_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
+    "_id": 1, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
     "room_type_id": 1, "room_type_name": 1
 }))
 room_by_id = {r["hotel_room_id"]: r for r in rooms}
@@ -49,7 +49,8 @@ for t in tasks:
         continue
     new_label = str(room.get("room_label") or room.get("room_number", ""))
     set_data = {
-        "room_id": room["hotel_room_id"],
+        "room_id": room["_id"],
+        "hotel_room_id": room["hotel_room_id"],
         "room_label": new_label,
         "room_type_id": room.get("room_type_id"),
         "room_type_name": room.get("room_type_name"),

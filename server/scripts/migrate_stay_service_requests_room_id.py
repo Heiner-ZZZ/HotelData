@@ -16,7 +16,7 @@ from src.database.connection import get_database
 
 db = get_database()
 
-query = {"hotel_room_id": {"$exists": False}}
+query = {"$or": [{"hotel_room_id": {"$exists": False}}, {"room_id": {"$type": "string"}}, {"room_id": None}, {"room_id": {"$exists": False}}]}
 total_missing = db.stay_service_requests.count_documents(query)
 print(f"Found {total_missing} stay_service_requests docs without hotel_room_id")
 
@@ -38,10 +38,12 @@ for doc in db.stay_service_requests.find(query):
 
     room = db.hotel_rooms.find_one(
         {"prop_id": prop_id, "room_label": room_label},
-        {"hotel_room_id": 1},
+        {"_id": 1, "hotel_room_id": 1},
     )
+    room_object_id = None
     if room and room.get("hotel_room_id"):
         hotel_room_id = room["hotel_room_id"]
+        room_object_id = room["_id"]
     else:
         status_doc = db.room_status_log.find_one(
             {"prop_id": prop_id, "room_label": room_label},
@@ -54,16 +56,20 @@ for doc in db.stay_service_requests.find(query):
     if not hotel_room_id and room_label.startswith("HR-"):
         exists = db.hotel_rooms.find_one(
             {"prop_id": prop_id, "hotel_room_id": room_label},
-            {"_id": 1},
+            {"_id": 1, "hotel_room_id": 1},
         )
         if exists:
-            hotel_room_id = room_label
+            hotel_room_id = exists["hotel_room_id"]
+            room_object_id = exists["_id"]
 
     if hotel_room_id:
         try:
+            set_doc: dict = {"hotel_room_id": hotel_room_id}
+            if room_object_id:
+                set_doc["room_id"] = room_object_id
             db.stay_service_requests.update_one(
                 {"_id": doc["_id"]},
-                {"$set": {"hotel_room_id": hotel_room_id}},
+                {"$set": set_doc},
             )
             updated += 1
         except Exception as e:

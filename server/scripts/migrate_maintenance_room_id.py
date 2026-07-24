@@ -1,15 +1,8 @@
-"""Backfill room_id (hotel_room_id) on legacy maintenance_tasks documents.
+"""Backfill room_id (ObjectId FK) and hotel_room_id on legacy maintenance_tasks.
 
-Usage (inside server container):
-    python scripts/migrate_maintenance_room_id.py
-
-The script iterates over maintenance_tasks that either:
-  - don't have a room_id field, or
-  - have a room_id equal to "" (empty string).
-
-For each document, it looks up the corresponding hotel_rooms record by
-prop_id + room_label (or room_number fallback) and sets room_id to the
-hotel_room_id value.
+Idempotent: resolves room_label/room_number against hotel_rooms and sets:
+  - room_id       → hotel_rooms._id (ObjectId FK)
+  - hotel_room_id → hotel_rooms.hotel_room_id (string, denormalized)
 """
 
 from __future__ import annotations
@@ -32,11 +25,13 @@ def migrate_maintenance_room_id(dry_run: bool = False) -> dict:
     db = get_database()
     collection = db["maintenance_tasks"]
 
+    # Catch docs missing hotel_room_id (regardless of room_id content)
     query = {
         "$or": [
-            {"room_id": {"$exists": False}},
-            {"room_id": None},
-            {"room_id": ""},
+            {"hotel_room_id": {"$exists": False}},
+            {"hotel_room_id": None},
+            {"hotel_room_id": ""},
+            {"room_id": {"$type": "string"}},
         ]
     }
 
@@ -69,9 +64,14 @@ def migrate_maintenance_room_id(dry_run: bool = False) -> dict:
                 skipped += 1
                 continue
 
+            # Also try resolving by existing room_id string (e.g. "HR-1-101")
+            existing_room_id = doc.get("room_id")
+            if existing_room_id and isinstance(existing_room_id, str) and existing_room_id:
+                room_query["$or"].append({"hotel_room_id": existing_room_id})
+
             room = db["hotel_rooms"].find_one(
                 room_query,
-                {"_id": 0, "hotel_room_id": 1},
+                {"_id": 1, "hotel_room_id": 1},
             )
 
             if not room or not room.get("hotel_room_id"):
@@ -83,14 +83,15 @@ def migrate_maintenance_room_id(dry_run: bool = False) -> dict:
                 continue
 
             hotel_room_id = room["hotel_room_id"]
+            room_object_id = room["_id"]
             if dry_run:
-                logger.info("[DRY-RUN] Would update %s with room_id=%s", doc["_id"], hotel_room_id)
+                logger.info("[DRY-RUN] Would update %s with room_id=%s, hotel_room_id=%s", doc["_id"], room_object_id, hotel_room_id)
                 updated += 1
                 continue
 
             collection.update_one(
                 {"_id": doc["_id"]},
-                {"$set": {"room_id": hotel_room_id}},
+                {"$set": {"room_id": room_object_id, "hotel_room_id": hotel_room_id}},
             )
             updated += 1
         except Exception as exc:

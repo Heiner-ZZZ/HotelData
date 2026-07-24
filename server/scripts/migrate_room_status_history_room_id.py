@@ -18,7 +18,7 @@ from src.app.modules.housekeeping.service.collections import ROOM_STATUS_HISTORY
 db = get_database()
 
 # Find all history docs missing hotel_room_id
-query = {"hotel_room_id": {"$exists": False}}
+query = {"$or": [{"hotel_room_id": {"$exists": False}}, {"room_id": {"$type": "string"}}, {"room_id": None}, {"room_id": {"$exists": False}}]}
 total_missing = db[ROOM_STATUS_HISTORY_COLLECTION].count_documents(query)
 print(f"Found {total_missing} room_status_history docs without hotel_room_id")
 
@@ -41,10 +41,12 @@ for doc in db[ROOM_STATUS_HISTORY_COLLECTION].find(query):
     # Try hotel_rooms (canonical source)
     room = db.hotel_rooms.find_one(
         {"prop_id": prop_id, "room_label": room_label},
-        {"hotel_room_id": 1},
+        {"_id": 1, "hotel_room_id": 1},
     )
+    room_object_id = None
     if room and room.get("hotel_room_id"):
         hotel_room_id = room["hotel_room_id"]
+        room_object_id = room["_id"]
     else:
         # Fallback to room_status_log
         status_doc = db.room_status_log.find_one(
@@ -56,9 +58,12 @@ for doc in db[ROOM_STATUS_HISTORY_COLLECTION].find(query):
 
     if hotel_room_id:
         try:
+            set_doc: dict = {"hotel_room_id": hotel_room_id}
+            if room_object_id:
+                set_doc["room_id"] = room_object_id
             db[ROOM_STATUS_HISTORY_COLLECTION].update_one(
                 {"_id": doc["_id"]},
-                {"$set": {"hotel_room_id": hotel_room_id}},
+                {"$set": set_doc},
             )
             updated += 1
         except Exception as e:

@@ -86,7 +86,6 @@ def migrate() -> None:
                 "room_id": room_id,
                 "hotel_room_id": hotel_room_id_val,
                 "room_label": room_label or label,
-                "room_number": room_number or "",
             }},
         )
         updated += 1

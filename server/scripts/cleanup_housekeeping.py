@@ -78,7 +78,7 @@ print(f"Housekeeping tasks with floor fixed (was 0/empty): {hk_result2.modified_
 # 3b. Backfill room_id and sync denormalized room_label/type in housekeeping_tasks
 print("\n=== Sync housekeeping_tasks room_id/room_label ===")
 rooms_for_hk = list(db.hotel_rooms.find({"prop_id": 1}, {
-    "_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
+    "_id": 1, "hotel_room_id": 1, "room_number": 1, "room_label": 1,
     "room_type_id": 1, "room_type_name": 1
 }))
 room_by_id = {r["hotel_room_id"]: r for r in rooms_for_hk}
@@ -100,7 +100,8 @@ for t in db.housekeeping_tasks.find({"prop_id": 1}):
         continue
     updates: dict[str, Any] = {}
     if t.get("room_id") != room["hotel_room_id"]:
-        updates["room_id"] = room["hotel_room_id"]
+        updates["room_id"] = room["_id"]
+        updates["hotel_room_id"] = room["hotel_room_id"]
         updates["room_type_id"] = room.get("room_type_id")
         updates["room_type_name"] = room.get("room_type_name")
         hk_fk_updates += 1
