@@ -289,11 +289,11 @@ def get_invoice(invoice_id: str) -> dict | None:
             room_docs = list(
                 db.hotel_rooms.find(
                     {"hotel_room_id": {"$in": assigned_ids}},
-                    {"_id": 0, "room_label": 1, "room_number": 1},
+                    {"_id": 0, "room_label": 1},
                 )
             )
             for r in room_docs:
-                room_labels.append(r.get("room_label", "") or r.get("room_number", ""))
+                room_labels.append(r.get("room_label", ""))
         enriched["room_labels"] = room_labels
 
     if prop_id:

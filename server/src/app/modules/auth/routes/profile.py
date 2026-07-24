@@ -8,6 +8,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.app.security.dependencies import require_login
+from src.app.security.role_helpers import get_role_name
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
     create_user_session,
@@ -93,7 +94,7 @@ def me_api(request: Request):
         }
     from src.app.security.navigation import get_default_redirect_for_role
     from src.app.security.permissions import get_user_permission_codes
-    home_href = get_default_redirect_for_role(user.get("primary_role"))
+    home_href = get_default_redirect_for_role(get_role_name(user))
     codes = get_user_permission_codes(db, user)
     return _auth_payload(user, session, home_href, codes)
 
@@ -101,7 +102,7 @@ def me_api(request: Request):
 @web_router.get("/me")
 def me(request: Request, current_user: dict = Depends(require_login)):
     from src.app.security.navigation import get_default_redirect_for_role
-    redirect_url = get_default_redirect_for_role(current_user.get("primary_role"))
+    redirect_url = get_default_redirect_for_role(get_role_name(current_user))
     return RedirectResponse(redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -138,7 +139,7 @@ def refresh_session(request: Request, payload: dict = Body(...)):
     _, session = get_current_user(db, new_token)
     from src.app.security.navigation import get_default_redirect_for_role
     from src.app.security.permissions import get_user_permission_codes
-    home_href = get_default_redirect_for_role(user.get("primary_role"))
+    home_href = get_default_redirect_for_role(get_role_name(user))
     codes = get_user_permission_codes(db, user)
 
     new_refresh = _create_refresh_token(db, user)

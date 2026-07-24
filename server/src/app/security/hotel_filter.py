@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.app.security.role_helpers import get_role_name, is_unfiltered_role
 from src.app.security.session import get_current_user, SESSION_COOKIE_NAME
 from src.database.connection import get_database
 from starlette.requests import Request
 
 
-UNFILTERED_ROLES = {"super_admin", "admin_sistema", "cliente"}
+# UNFILTERED_ROLES is now defined in src.app.security.role_helpers
+# Use is_unfiltered_role() for role-based hotel access checks.
 
 
 def assigned_hotels_for_user(user: dict[str, Any] | None) -> list[int]:
@@ -19,8 +21,7 @@ def assigned_hotels_for_user(user: dict[str, Any] | None) -> list[int]:
     """
     if not user:
         return []
-    role = user.get("primary_role", "")
-    if role in UNFILTERED_ROLES:
+    if is_unfiltered_role(user):
         return []
     assigned = user.get("assigned_hotels")
     if isinstance(assigned, list) and len(assigned) > 0:
@@ -47,8 +48,7 @@ def user_can_access_hotel(user: dict[str, Any] | None, prop_id: int) -> bool:
     """
     if not user:
         return True
-    role = user.get("primary_role", "")
-    if role in UNFILTERED_ROLES:
+    if is_unfiltered_role(user):
         return True
     assigned = user.get("assigned_hotels")
     if isinstance(assigned, list) and len(assigned) > 0:

@@ -7,6 +7,7 @@ from typing import Any
 from pymongo import ASCENDING, DESCENDING
 
 from src.app.security.hotel_filter import hotel_filter_from_user
+from src.app.security.role_helpers import get_role_name
 from src.database.connection import get_database
 from src.app.modules.hotels.service import hotel_detail
 from src.app.modules.partner.services import partner_hotel_detail, partner_hotel_policies
@@ -58,7 +59,7 @@ def list_bookings(
     if user_filter:
         filters.update(user_filter)
     # Client role: filter by user_id so they only see their own bookings
-    if user and user.get("primary_role") == "cliente":
+    if user and get_role_name(user) == "cliente":
         uid = user.get("_id")
         if uid:
             filters["user_id"] = str(uid)
@@ -352,11 +353,11 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         room_docs = list(
             db.hotel_rooms.find(
                 {"hotel_room_id": {"$in": raw_ids}},
-                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "floor": 1},
+                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "floor": 1},
             )
         )
         # Fetch status for each room
-        labels = [r.get("room_label", "") or r.get("room_number", "") for r in room_docs if r.get("room_label") or r.get("room_number")]
+        labels = [r.get("room_label", "") for r in room_docs if r.get("room_label")]
         status_map: dict[str, str] = {}
         if labels:
             for doc in db.room_status_log.find(
@@ -366,10 +367,10 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
                 status_map[doc["room_label"]] = doc["status"]
 
         for r in room_docs:
-            label = r.get("room_label", "") or r.get("room_number", "")
+            label = r.get("room_label", "")
             assigned_rooms.append({
                 "hotel_room_id": r["hotel_room_id"],
-                "room_number": r.get("room_number", ""),
+                "room_number": r.get("room_label", ""),
                 "room_label": r.get("room_label", ""),
                 "floor": r.get("floor", ""),
                 "room_status": status_map.get(label, "unknown"),

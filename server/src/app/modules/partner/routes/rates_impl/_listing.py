@@ -12,6 +12,7 @@ from src.app.modules.partner.services import (
     list_partner_hotels,
     partner_hotel_rates,
 )
+from src.app.security.role_helpers import get_role_name
 
 
 def get_hotel_rates_detail(prop_id: int) -> dict:
@@ -61,7 +62,7 @@ def get_rates_options(
         detail = partner_hotel_rates(prop_id)
         if detail is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-        user_role = current_user.get("primary_role", "")
+        user_role = get_role_name(current_user)
         eligible_plans = filter_eligible_plans(detail.get("rate_plans", []), user_role=user_role)
         response["rate_plans"] = [
             {

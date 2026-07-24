@@ -32,6 +32,7 @@ from src.app.modules.reservations.routes.reservations_impl import (
     preview_reservation,
 )
 from src.app.security.dependencies import require_permission
+from src.app.security.role_helpers import get_role_name
 
 from src.database.connection import get_database
 
@@ -109,7 +110,7 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
 @api_router.post("", status_code=status.HTTP_201_CREATED)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.create"))):
     try:
-        user_role = current_user.get("primary_role", "")
+        user_role = get_role_name(current_user)
         elig_error = validate_rate_plan_eligibility(payload, user_role)
         if elig_error:
             raise ValueError(elig_error)
@@ -117,7 +118,7 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
             payload["created_by"] = current_user.get("username", "web")
         if not payload.get("user_id"):
             payload["user_id"] = str(current_user.get("_id", ""))
-        reservation_input = build_reservation_input(payload, source=current_user.get("primary_role", "staff"))
+        reservation_input = build_reservation_input(payload, source=get_role_name(current_user))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
         return create_booking(reservation_input)
@@ -133,7 +134,7 @@ def validate_coupon_api(payload: dict = Body(...), current_user: dict = Depends(
         raise HTTPException(status_code=400, detail="coupon_code is required")
     if not prop_id:
         raise HTTPException(status_code=400, detail="prop_id is required")
-    error, discount = validate_coupon_code(coupon_code, int(prop_id))
+    error, discount, _ = validate_coupon_code(coupon_code, int(prop_id))
     return {"valid": error is None, "message": error or "Código válido", "discount_percent": discount or 0}
 
 
@@ -220,7 +221,7 @@ def reservation_cancel_api(booking_id: str, payload: dict = Body(default={}), cu
 
 @api_router.post("/{booking_id}/confirm")
 def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
-    role = current_user.get("primary_role", "")
+    role = get_role_name(current_user)
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede confirmar reservas.")
     try:
@@ -232,7 +233,7 @@ def reservation_confirm_api(booking_id: str, payload: dict = Body(default={}), c
 
 @api_router.post("/{booking_id}/reject")
 def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
-    role = current_user.get("primary_role", "")
+    role = get_role_name(current_user)
     if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el staff del hotel puede rechazar reservas.")
     try:

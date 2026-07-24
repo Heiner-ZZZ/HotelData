@@ -89,7 +89,7 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
             if f in doc and hasattr(doc[f], "isoformat"):
                 doc[f] = doc[f].isoformat()
         doc["roomLabel"] = doc.get("room_label", "")
-        doc["roomNumber"] = doc.get("room_number", "")
+        doc["roomNumber"] = doc.get("room_label", "")
         doc["propId"] = doc.get("prop_id", 0)
         doc["hotelRoomId"] = doc.get("hotel_room_id", "")
         doc["statusLabel"] = ROOM_STATUSES.get(doc.get("status", ""), doc.get("status", ""))
@@ -101,7 +101,7 @@ def get_housekeeping_dashboard(prop_id: int | None = None) -> dict[str, Any]:
         if floor is not None and str(floor):
             floor = str(floor)
         else:
-            rn = str(doc.get("room_number", "") or doc.get("roomNumber", ""))
+            rn = str(doc.get("roomNumber", ""))
             if rn.isdigit():
                 floor = str(int(rn) // 100)
             else:
@@ -245,7 +245,7 @@ def get_weekly_calendar(
         calendar[label] = {
             "room_id": room.get("hotel_room_id", ""),
             "room_label": label,
-            "room_number": room.get("room_number", ""),
+            "room_number": room.get("room_label", ""),
             "status": status,
             "status_color": ROOM_STATUS_COLORS.get(status, "#6f797d"),
             "status_label": ROOM_STATUSES.get(status, status),

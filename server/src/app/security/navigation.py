@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.app.security.role_helpers import get_role_name, is_super_admin
+
 
 ROLE_DEFAULT_REDIRECTS = {
     "super_admin": "/system/users",
@@ -149,4 +151,4 @@ def get_navigation_for_role(role_name: str | None, permission_codes: set[str] | 
 def get_navigation_for_user(user: dict[str, Any] | None, permission_codes: set[str] | None = None) -> list[dict[str, str]]:
     if not user:
         return [{"label": "Login", "href": "/auth/login", "icon": "icon-auth"}]
-    return get_navigation_for_role(user.get("primary_role"), permission_codes)
+    return get_navigation_for_role(get_role_name(user), permission_codes)

@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 
 from config.settings import get_settings
 from src.app.email.service import send_email
+from src.app.security.role_helpers import get_role_name
 from src.app.security.session import (
     ensure_utc,
     find_user_by_identifier,
@@ -37,7 +38,8 @@ def _auth_payload(user: dict, session: dict | None, home_href: str, permission_c
             "username": user.get("username") or "",
             "email": user.get("email") or "",
             "display_name": user.get("display_name") or user.get("full_name") or user.get("username") or "",
-            "primary_role": user.get("primary_role") or "",
+            "primary_role_id": str(user.get("primary_role_id", "")),
+            "primary_role": get_role_name(user),
             "is_active": bool(user.get("is_active", True)),
             "avatar_url": user.get("avatar_url") or "",
         },

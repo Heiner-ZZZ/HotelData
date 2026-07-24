@@ -17,9 +17,11 @@ def hotel_rooms_by_type(prop_id: int, room_type_id: str) -> list[dict[str, Any]]
             {"prop_id": prop_id, "room_type_id": room_type_id, "is_deleted": {"$ne": True}},
             {"_id": 0},
         )
-        .sort([("room_number", 1)])
+        .sort([("room_label", 1)])
     )
-    return items
+    # Add room_number derived from room_label for frontend compatibility
+    for item in items:
+        item["room_number"] = item.get("room_label", "")
 
 
 def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]:
@@ -66,6 +68,7 @@ def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]
         item["room_type_name"] = room_lookup.get(item.get("room_type_id"), item.get("room_type_id"))
         item["is_roh"] = bool(item.get("is_roh", False))
         item["room_label"] = item.get("room_label") or item.get("room_type_name") or item.get("hotel_room_id")
+        item["room_number"] = item.get("room_label", "")
         # Attach upcoming occupancy
         room_id = item.get("hotel_room_id")
         item["upcoming_bookings"] = room_occupancy.get(room_id, [])

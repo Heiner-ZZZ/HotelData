@@ -20,6 +20,8 @@ from typing import Any
 from bson import ObjectId
 from pymongo.database import Database
 
+from src.app.security.role_helpers import get_role_name, is_super_admin
+
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +68,11 @@ def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
     """
     if not user:
         return set()
-    if user.get("primary_role") == "super_admin":
+    if is_super_admin(user):
         return {"*.*"}
 
     role_ids = _normalize_role_ids(user)
-    primary_role = user.get("primary_role")
+    primary_role = get_role_name(user)
     if primary_role:
         role = db.roles.find_one({"role_name": primary_role})
         if role and role["_id"] not in role_ids:
@@ -100,7 +102,7 @@ def user_has_permission(db: Database, user: dict[str, Any] | None, permission_co
     """
     if not user or not user.get("is_active", True):
         return False
-    if user.get("primary_role") == "super_admin":
+    if is_super_admin(user):
         return True
     codes = get_user_permission_codes(db, user)
     if "*.*" in codes:

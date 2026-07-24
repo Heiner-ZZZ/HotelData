@@ -194,11 +194,11 @@ def complete_check_out(
                 room_docs_co = list(
                     db.hotel_rooms.find(
                         {"hotel_room_id": {"$in": assigned_rooms_co}},
-                        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1},
+                        {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
                     )
                 )
                 for r in room_docs_co:
-                    label = r.get("room_label", "") or r.get("room_number", "")
+                    label = r.get("room_label", "")
                     if not label:
                         continue
                     db.room_status_log.update_one(
@@ -209,9 +209,9 @@ def complete_check_out(
                     )
                     db.housekeeping_tasks.insert_one({
                         "prop_id": booking["prop_id"],
-                        "room_id": r.get("hotel_room_id", ""),
+                        "room_id": r["_id"],
+                        "hotel_room_id": r.get("hotel_room_id", ""),
                         "room_label": label,
-                        "room_number": r.get("room_number", ""),
                         "room_type_id": r.get("room_type_id", ""),
                         "task_type": "cleaning",
                         "status": "pending",

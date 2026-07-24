@@ -20,6 +20,8 @@ from ._helpers import (
     _send_verification_code,
 )
 
+from src.app.security.role_helpers import resolve_role_id
+
 api_router = APIRouter(prefix="/api/auth", tags=["auth-register"])
 
 
@@ -91,7 +93,7 @@ def register(
             "email": email,
             "password_hash": password_context.hash(password),
             "display_name": display_name,
-            "primary_role": "cliente",
+            "primary_role_id": resolve_role_id("cliente"),
             "is_active": True,
             "email_verified": True,
             "failed_login_attempts": 0,
@@ -191,6 +193,7 @@ def confirm_code(
         "password_hash": user_password_hash,
         "display_name": user_display_name or user_username,
         "primary_role": "cliente",
+        "primary_role_id": resolve_role_id("cliente"),
         "is_active": True,
         "email_verified": True,
         "failed_login_attempts": 0,

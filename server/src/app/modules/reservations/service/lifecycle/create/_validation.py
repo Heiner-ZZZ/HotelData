@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+from bson import ObjectId
+
 from src.database.connection import get_database
 
 
@@ -59,23 +61,27 @@ def _validate_deposit(
     )
 
 
-def validate_coupon_code(coupon_code: str, prop_id: int) -> tuple[str | None, int | None]:
+def validate_coupon_code(coupon_code: str, prop_id: int) -> tuple[str | None, int | None, ObjectId | None]:
+    """Validate a coupon code and return (error, discount_percent, coupon_id).
+
+    coupon_id is the ObjectId FK to coupon_codes._id, or None if invalid.
+    """
     if not coupon_code:
-        return None, None
+        return None, None, None
     db = get_database()
     code = coupon_code.strip().upper()
     coupon = db.coupon_codes.find_one({"coupon_code": code, "prop_id": prop_id, "is_active": True})
     if not coupon:
         coupon = db.coupon_codes.find_one({"coupon_code": code, "is_active": True})
         if not coupon:
-            return f"Código promocional '{coupon_code}' no válido.", None
+            return f"Código promocional '{coupon_code}' no válido.", None, None
         campaign = db.promotion_campaigns.find_one({"campaign_id": coupon.get("campaign_id")})
         if campaign:
             campaign_prop = campaign.get("prop_id")
             if campaign_prop and int(campaign_prop) != prop_id:
-                return "Este código no aplica para este hotel.", None
+                return "Este código no aplica para este hotel.", None, None
 
     discount_percent = coupon.get("discount_percent", 0)
     if not discount_percent or discount_percent <= 0:
-        return "El código promocional no tiene un descuento válido.", None
-    return None, int(discount_percent)
+        return "El código promocional no tiene un descuento válido.", None, None
+    return None, int(discount_percent), coupon["_id"]

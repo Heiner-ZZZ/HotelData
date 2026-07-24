@@ -8,6 +8,7 @@ from typing import Any
 
 from config.settings import get_settings
 from src.app.email.service import send_email
+from src.app.security.role_helpers import build_role_query, get_role_name
 from src.database.connection import get_database
 from ..email_templates import staff_check_event_html, staff_new_booking_html
 
@@ -71,14 +72,14 @@ def notify_staff_new_booking(
     db = get_database()
     candidates = list(
         db.users.find(
-            {"primary_role": {"$in": STAFF_ROLES + ADMIN_ROLES}, "is_active": True},
-            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role": 1, "assigned_hotels": 1},
+            {**build_role_query(list(STAFF_ROLES + ADMIN_ROLES)), "is_active": True},
+            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role_id": 1, "assigned_hotels": 1},
         )
     )
 
     recipients: list[tuple[str, str]] = []
     for user in candidates:
-        role = user.get("primary_role", "")
+        role = get_role_name(user)
         email = user.get("email", "").strip()
         if not email:
             continue
@@ -161,14 +162,14 @@ def notify_staff_check_event(
     db = get_database()
     candidates = list(
         db.users.find(
-            {"primary_role": {"$in": STAFF_ROLES + ADMIN_ROLES}, "is_active": True},
-            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role": 1, "assigned_hotels": 1},
+            {**build_role_query(list(STAFF_ROLES + ADMIN_ROLES)), "is_active": True},
+            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role_id": 1, "assigned_hotels": 1},
         )
     )
 
     recipients: list[tuple[str, str]] = []
     for user in candidates:
-        role = user.get("primary_role", "")
+        role = get_role_name(user)
         email = user.get("email", "").strip()
         if not email:
             continue

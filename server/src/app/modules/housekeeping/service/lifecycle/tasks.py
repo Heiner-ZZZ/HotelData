@@ -18,14 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_room_from_id(room_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
-    """Resolve a hotel room document by its business ID (hotel_room_id)."""
+    """Resolve a hotel room document by its business ID (hotel_room_id).
+
+    Returns the full document including ``_id`` (ObjectId FK) and
+    ``hotel_room_id`` (string business key).
+    """
     db = get_database()
     query: dict[str, Any] = {"hotel_room_id": room_id}
     if prop_id is not None:
         query["prop_id"] = prop_id
     return db.hotel_rooms.find_one(
         query,
-        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1, "prop_id": 1, "floor": 1},
+        {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1, "prop_id": 1, "floor": 1},
     )
 
 
@@ -40,10 +44,10 @@ def create_housekeeping_task(payload: HousekeepingTaskCreate) -> dict[str, Any]:
     completed_at = now if status == "completed" else None
     doc = {
         "prop_id": room["prop_id"],
-        "room_id": room["hotel_room_id"],
-        "room_label": room.get("room_label") or room.get("room_number") or payload.room_id,
+        "room_id": room["_id"],
+        "hotel_room_id": room["hotel_room_id"],
+        "room_label": room.get("room_label") or payload.room_id,
         "room_type_id": room.get("room_type_id", ""),
-        "room_number": room.get("room_number", ""),
         "task_type": payload.task_type,
         "status": status,
         "assigned_to": payload.assigned_to,
@@ -97,26 +101,33 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
     if doc:
         try:
             prop_id = doc.get("prop_id")
-            room_id = doc.get("room_id")
-            if not prop_id or not room_id:
+            hotel_room_id = doc.get("hotel_room_id")
+            room_label = doc.get("room_label")
+            if not prop_id or (not hotel_room_id and not room_label):
                 logger.warning(
-                    "No se actualiza room_status_log: tarea %s sin prop_id o room_id",
+                    "No se actualiza room_status_log: tarea %s sin prop_id ni hotel_room_id/room_label",
                     task_id,
                 )
                 return _enrich_hk_task(doc)
 
+            # Build query: prefer hotel_room_id, fall back to room_label
+            room_match: dict[str, Any] = {"prop_id": prop_id}
+            if hotel_room_id:
+                room_match["hotel_room_id"] = hotel_room_id
+            else:
+                room_match["$or"] = [{"room_label": room_label}]
+
             from ..collections import ROOM_STATUS_COLLECTION
             db[ROOM_STATUS_COLLECTION].update_one(
-                {"prop_id": prop_id, "hotel_room_id": room_id},
+                room_match,
                 {
                     "$set": {
                         "status": "clean",
                         "note": f"Limpieza completada — tarea {task_id}",
                         "updated_at": now,
                         "prop_id": prop_id,
-                        "hotel_room_id": room_id,
+                        "hotel_room_id": hotel_room_id or "",
                         "room_label": doc.get("room_label", ""),
-                        "room_number": doc.get("room_number", ""),
                         "room_type_id": doc.get("room_type_id", ""),
                     },
                     "$setOnInsert": {"created_at": now},
@@ -125,7 +136,7 @@ def complete_housekeeping_task(task_id: str, note: str = "") -> dict[str, Any] |
             )
             logger.info(
                 "Room %s (prop %s) auto-transitioned to 'clean' after task %s completed",
-                room_id, prop_id, task_id,
+                hotel_room_id, prop_id, task_id,
             )
         except Exception:
             logger.exception(
@@ -153,12 +164,12 @@ def update_housekeeping_task(task_id: str, payload: HousekeepingTaskCreate) -> d
     if not room:
         raise ValueError(f"Habitación no encontrada: {payload.room_id}")
 
-    room_label = room.get("room_label") or room.get("room_number") or payload.room_id
+    room_label = room.get("room_label") or payload.room_id
     set_data = {
-        "room_id": room["hotel_room_id"],
+        "room_id": room["_id"],
+        "hotel_room_id": room["hotel_room_id"],
         "room_label": room_label,
         "room_type_id": room.get("room_type_id", ""),
-        "room_number": room.get("room_number", ""),
         "prop_id": room["prop_id"],
         "task_type": payload.task_type,
         "assigned_to": payload.assigned_to or "",
@@ -250,7 +261,7 @@ def _enrich_hk_task(doc: dict) -> dict:
     doc["roomId"] = doc.get("room_id", "")
     doc["roomLabel"] = doc.get("room_label", "")
     doc["roomTypeId"] = doc.get("room_type_id", "")
-    doc["roomNumber"] = doc.get("room_number", "")
+    doc["roomNumber"] = doc.get("room_label", "")
     doc["taskType"] = doc.get("task_type", "")
     doc["assignedTo"] = doc.get("assigned_to", "")
     doc["scheduledDate"] = doc.get("scheduled_date", "")

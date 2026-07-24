@@ -26,6 +26,7 @@ from src.app.modules.admin.service import (
     users_overview,
 )
 from src.app.security.dependencies import require_permission, require_login
+from src.app.security.role_helpers import get_role_name
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -41,7 +42,7 @@ def _serialize_users_overview(current_user: dict) -> dict:
     for user in overview["users"]:
         user_id = str(user.get("_id") or "")
         is_current_user = user.get("username") == current_username or user_id == current_user_id
-        is_protected = user.get("primary_role") == "super_admin"
+        is_protected = get_role_name(user) == "super_admin"
         can_toggle = not is_current_user and not is_protected
 
         users.append(
@@ -49,7 +50,7 @@ def _serialize_users_overview(current_user: dict) -> dict:
                 "user_id": user_id,
                 "username": user.get("username") or "",
                 "email": user.get("email") or "",
-                "primary_role": user.get("primary_role") or "",
+                "primary_role": get_role_name(user),
                 "role_names": user.get("role_names", []),
                 "is_active": bool(user.get("is_active", True)),
                 "created_at": user.get("created_at"),
@@ -67,7 +68,7 @@ def _serialize_users_overview(current_user: dict) -> dict:
         "users": users,
         "current_user": {
             "username": current_username,
-            "primary_role": current_user.get("primary_role") or "",
+            "primary_role": get_role_name(current_user),
         },
     }
 

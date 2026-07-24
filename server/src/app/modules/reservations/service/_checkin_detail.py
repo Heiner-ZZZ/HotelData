@@ -70,10 +70,10 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
         room_docs = list(
             db.hotel_rooms.find(
                 {"hotel_room_id": {"$in": raw_ids}},
-                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "floor": 1},
+                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "floor": 1},
             )
         )
-        labels = [r.get("room_label", "") or r.get("room_number", "") for r in room_docs if r.get("room_label") or r.get("room_number")]
+        labels = [r.get("room_label", "") for r in room_docs if r.get("room_label")]
         status_map = {}
         if labels:
             for doc in db.room_status_log.find(
@@ -82,10 +82,10 @@ def get_check_in_detail(booking_id: str) -> dict[str, Any]:
             ):
                 status_map[doc["room_label"]] = doc["status"]
         for r in room_docs:
-            label = r.get("room_label", "") or r.get("room_number", "")
+            label = r.get("room_label", "")
             assigned_rooms.append({
                 "hotel_room_id": r["hotel_room_id"],
-                "room_number": r.get("room_number", ""),
+                "room_number": r.get("room_label", ""),
                 "room_label": r.get("room_label", ""),
                 "floor": r.get("floor", ""),
                 "room_status": status_map.get(label, "unknown"),

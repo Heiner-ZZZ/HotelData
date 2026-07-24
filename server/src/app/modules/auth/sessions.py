@@ -7,6 +7,7 @@ from bson import ObjectId
 
 from config.settings import get_settings
 from src.app.email.service import send_email
+from src.app.security.role_helpers import get_role_name
 from src.database.connection import get_database
 
 
@@ -26,14 +27,14 @@ def list_active_sessions(page: int = 1, page_size: int = 50) -> dict:
     )
     items = []
     for s in cursor:
-        user = db.users.find_one({"_id": s.get("user_id")}, {"username": 1, "email": 1, "display_name": 1, "primary_role": 1})
+        user = db.users.find_one({"_id": s.get("user_id")}, {"username": 1, "email": 1, "display_name": 1, "primary_role_id": 1})
         items.append({
             "session_id": str(s["_id"]),
             "user_id": str(s.get("user_id", "")),
             "username": s.get("username", ""),
             "email": s.get("email", ""),
             "display_name": (user or {}).get("display_name", ""),
-            "primary_role": (user or {}).get("primary_role", ""),
+            "primary_role": get_role_name(user or {}),
             "created_at": _fmt(s.get("created_at")),
             "expires_at": _fmt(s.get("expires_at")),
             "ip_address": s.get("ip_address"),

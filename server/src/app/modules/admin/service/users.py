@@ -7,6 +7,7 @@ from bson import ObjectId
 from src.database.connection import get_database
 
 from ._helpers import utc_now
+from src.app.security.role_helpers import is_super_admin
 
 
 def toggle_user_active(target_user_id: str, acting_user: dict[str, Any]) -> dict[str, Any]:
@@ -26,7 +27,7 @@ def toggle_user_active(target_user_id: str, acting_user: dict[str, Any]) -> dict
     if acting_user.get("_id") == target_user.get("_id"):
         return {"ok": False, "message": "No puede desactivar su propia cuenta desde esta vista."}
 
-    if target_user.get("primary_role") == "super_admin":
+    if is_super_admin(target_user):
         return {"ok": False, "message": "No se permite desactivar la cuenta super_admin."}
 
     new_state = not bool(target_user.get("is_active", True))
@@ -86,7 +87,7 @@ def delete_user(target_user_id: str, acting_user: dict[str, Any]) -> dict[str, A
     if acting_user.get("_id") == target_user.get("_id"):
         return {"ok": False, "message": "No puede eliminar su propia cuenta."}
 
-    if target_user.get("primary_role") == "super_admin":
+    if is_super_admin(target_user):
         return {"ok": False, "message": "No se permite eliminar la cuenta super_admin."}
 
     now = utc_now()

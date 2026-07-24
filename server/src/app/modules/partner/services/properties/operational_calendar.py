@@ -26,12 +26,12 @@ def operational_calendar(prop_id: int, year: int, month: int) -> dict[str, Any]:
     # ── Hotel rooms (individual room numbers per room type) ──
     hotel_rooms = list(db.hotel_rooms.find(
         {"prop_id": prop_id, "is_active": True},
-        {"_id": 0, "room_type_id": 1, "room_number": 1},
+        {"_id": 0, "room_type_id": 1, "room_label": 1},
     ))
     rooms_by_rt: dict[str, list[str]] = {}
     for hr in hotel_rooms:
         rt_id = hr["room_type_id"]
-        rooms_by_rt.setdefault(rt_id, []).append(str(hr["room_number"]))
+        rooms_by_rt.setdefault(rt_id, []).append(str(hr.get("room_label", "")))
 
     # ── Room types ──
     room_types = list(db.room_types.find(

@@ -96,16 +96,18 @@ def create_folio(booking_id: str) -> dict | None:
     if existing:
         return _enrich_folio(existing)
 
-    # Resolve room label
+    # Resolve room label and hotel_room_id
     assigned_rooms: list[str] = booking.get("assigned_rooms") or []
     room_label = ""
+    hotel_room_id = ""
     if assigned_rooms:
         room_doc = db.hotel_rooms.find_one(
             {"hotel_room_id": assigned_rooms[0]},
-            {"_id": 0, "room_label": 1, "room_number": 1},
+            {"_id": 0, "hotel_room_id": 1, "room_label": 1},
         )
         if room_doc:
-            room_label = room_doc.get("room_label", "") or room_doc.get("room_number", "")
+            room_label = room_doc.get("room_label", "")
+            hotel_room_id = room_doc.get("hotel_room_id", "")
 
     # Resolve hotel label
     prop_id = int(booking.get("prop_id", 0))
@@ -146,6 +148,7 @@ def create_folio(booking_id: str) -> dict | None:
         "guest_name": booking.get("guest_name", ""),
         "guest_email": booking.get("guest_email", ""),
         "room_label": room_label,
+        "hotel_room_id": hotel_room_id,
         "hotel_label": hotel_label,
         "check_in_date": booking.get("check_in_date", ""),
         "check_out_date": booking.get("check_out_date", ""),

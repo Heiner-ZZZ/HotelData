@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Reques
 
 from src.app.security.dependencies import require_login, require_permission
 from src.app.security.hotel_filter import hotel_filter_from_user
+from src.app.security.role_helpers import get_role_name
 from src.app.modules.reviews.schemas import (
     ModuleStatus, ReviewCreate, ReviewModeration,
     ReviewReportCreate, ReviewStaffResponse, ReviewUpdate,
@@ -135,7 +136,7 @@ def respond_review_api(
 ):
     """RF-006: Respond to an approved review. Only hotel_partner of that hotel can respond."""
     # Verify the user is a hotel_partner or super_admin
-    role = current_user.get("primary_role", "")
+    role = get_role_name(current_user)
     if role not in ("hotel_partner", "super_admin", "admin_sistema"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

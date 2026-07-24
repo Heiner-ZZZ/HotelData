@@ -27,9 +27,39 @@ from src.app.modules.hr.service.collections import (
     module_status,
 )
 from src.app.modules.partner.services.audit import register_action
+from src.app.security.role_helpers import resolve_role_id
 from src.app.security.dependencies import require_login, require_permission
 
 _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Legacy department name overrides (employees.department → catalog name)
+_DEPT_RENAMES = {"Limpieza": "Housekeeping"}
+
+
+def _resolve_position_id(position: str) -> object | None:
+    """Resolve a position string to its ObjectId from employee_positions."""
+    canonical = (position or "").strip()
+    if not canonical:
+        return None
+    db = get_database()
+    pos = db.employee_positions.find_one({"name": canonical}, {"_id": 1})
+    return pos["_id"] if pos else None
+
+
+def _resolve_department_name(department: str) -> str:
+    """Resolve a department string to its canonical catalog name."""
+    dept = (department or "").strip()
+    return _DEPT_RENAMES.get(dept, dept)
+
+
+def _resolve_department_id(department: str) -> object | None:
+    """Resolve a department string to its ObjectId from employee_departments."""
+    canonical = _resolve_department_name(department)
+    if not canonical:
+        return None
+    db = get_database()
+    dept = db.employee_departments.find_one({"name": canonical}, {"_id": 1})
+    return dept["_id"] if dept else None
 
 
 def _ensure_user_account(db, employee_doc: dict) -> dict:
@@ -71,7 +101,7 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
         "revenue": "revenue_manager",
         "marketing": "marketing_hotelero",
     }
-    dept = (employee_doc.get("department") or "").strip().lower()
+    dept = (employee_doc.get("department_name") or employee_doc.get("department") or "").strip().lower()
     role = role_map.get(dept, "operador_datos")
 
     password = secrets.token_urlsafe(10)
@@ -86,7 +116,7 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
         "email": user_email,
         "password_hash": password_hash,
         "display_name": employee_doc.get("full_name", username),
-        "primary_role": role,
+        "primary_role_id": resolve_role_id(role),
         "prop_id": emp_prop_id,
         "assigned_hotels": assigned_hotels,
         "is_active": True,
@@ -569,7 +599,7 @@ def employee_portal_tasks(
 
     emp_name = emp.get("full_name", "")
     emp_prop_id = emp.get("prop_id")
-    emp_dept = (emp.get("department") or "").strip().lower()
+    emp_dept = (emp.get("department_name") or emp.get("department") or "").strip().lower()
 
     # ── Assigned housekeeping tasks (not completed/deleted) ──
     hk_query: dict = {
@@ -624,7 +654,7 @@ def employee_portal_tasks(
         for doc in db["room_status_log"].find(dirty_query).sort("room_label", 1).limit(20):
             dirty_rooms.append({
                 "room_label": doc.get("room_label", ""),
-                "room_number": doc.get("room_number", ""),
+                "room_number": doc.get("room_label", ""),
                 "status": doc.get("status", ""),
                 "floor": doc.get("floor", ""),
                 "note": doc.get("note", ""),
@@ -1144,7 +1174,10 @@ def create_employee(
         "email": payload.email,
         "address": payload.address,
         "position": payload.position,
+        "position_id": _resolve_position_id(payload.position),
         "department": payload.department,
+        "department_name": _resolve_department_name(payload.department),
+        "department_id": _resolve_department_id(payload.department),
         "hire_date": payload.hire_date,
         "salary": payload.salary,
         "emergency_contact": payload.emergency_contact,
@@ -1239,7 +1272,10 @@ def list_employees(
             {"email": {"$regex": search, "$options": "i"}},
         ]
     if department:
-        query["department"] = department
+        query["$or"] = [
+            {"department": department},
+            {"department_name": department},
+        ]
     if is_active is not None:
         query["is_active"] = is_active
     if prop_id is not None:
@@ -1342,6 +1378,23 @@ def update_employee(
 
     update["updated_at"] = datetime.now(timezone.utc)
     db[EMPLOYEES_COLLECTION].update_one({"_id": oid}, {"$set": update})
+
+    # Keep department FK in sync when department changes
+    if "department" in update:
+        canonical = _resolve_department_name(update["department"])
+        dept_id = _resolve_department_id(update["department"])
+        db[EMPLOYEES_COLLECTION].update_one(
+            {"_id": oid},
+            {"$set": {"department_name": canonical, "department_id": dept_id}},
+        )
+
+    # Keep position FK in sync when position changes
+    if "position" in update:
+        pos_id = _resolve_position_id(update["position"])
+        db[EMPLOYEES_COLLECTION].update_one(
+            {"_id": oid},
+            {"$set": {"position_id": pos_id}},
+        )
 
     doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
     diff = {

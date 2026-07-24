@@ -48,16 +48,16 @@ def get_available_rooms(
     available_rooms = list(
         db.hotel_rooms.find(
             room_filter,
-            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "floor": 1},
+            {"_id": 0, "hotel_room_id": 1, "room_label": 1, "floor": 1},
         )
-        .sort([("room_number", ASCENDING)])
+        .sort([("room_label", ASCENDING)])
     )
 
     # Enrich with current status from room_status_log
     room_labels = [
-        r.get("room_label", "") or r.get("room_number", "")
+        r.get("room_label", "")
         for r in available_rooms
-        if r.get("room_label") or r.get("room_number")
+        if r.get("room_label")
     ]
     status_map: dict[str, str] = {}
     if room_labels:
@@ -68,7 +68,7 @@ def get_available_rooms(
             status_map[doc["room_label"]] = doc["status"]
 
     for room in available_rooms:
-        label = room.get("room_label", "") or room.get("room_number", "")
+        label = room.get("room_label", "")
         room["room_status"] = status_map.get(label, "unknown")
 
     assigned_rooms = []

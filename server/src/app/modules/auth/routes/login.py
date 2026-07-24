@@ -8,6 +8,7 @@ from fastapi import APIRouter, Body, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.app.security.rate_limit import limiter
+from src.app.security.role_helpers import get_role_name
 from src.app.security.route_permissions import is_safe_internal_next
 from src.app.security.session import (
     SESSION_COOKIE_NAME,
@@ -46,7 +47,7 @@ def login_form(request: Request):
     next_url = request.query_params.get("next", "")
     if user:
         from src.app.security.navigation import get_default_redirect_for_role
-        redirect_url = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(user.get("primary_role"))
+        redirect_url = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(get_role_name(user))
         return RedirectResponse(redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
 
@@ -74,7 +75,7 @@ def login_submit(
     token = create_user_session(db, user, request)
     log_user_activity(db, action="auth.login_success", request=request, user=user)
     from src.app.security.navigation import get_default_redirect_for_role
-    redirect_url = next if is_safe_internal_next(next) else get_default_redirect_for_role(user.get("primary_role"))
+    redirect_url = next if is_safe_internal_next(next) else get_default_redirect_for_role(get_role_name(user))
     response = RedirectResponse(redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         SESSION_COOKIE_NAME, token,
@@ -115,7 +116,7 @@ def login_api(
     _, session = get_current_user(db, token)
     from src.app.security.navigation import get_default_redirect_for_role
     from src.app.security.permissions import get_user_permission_codes
-    home_href = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(user.get("primary_role"))
+    home_href = next_url if is_safe_internal_next(next_url) else get_default_redirect_for_role(get_role_name(user))
 
     max_age = 365 * 24 * 60 * 60  # sessions only expire on explicit logout
     codes = get_user_permission_codes(db, user)
@@ -238,7 +239,7 @@ ADMIN_ROLES = {"super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"}
 def _require_admin(user: dict | None) -> None:
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado.")
-    role = user.get("primary_role", "")
+    role = get_role_name(user)
     if role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Acceso restringido a administradores.")
 

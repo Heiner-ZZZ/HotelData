@@ -86,21 +86,31 @@ def get_my_stay_session(
         first_room = assigned_rooms[0]
         if isinstance(first_room, dict):
             # Legacy: dict with room_label/room_number keys
-            room_label = first_room.get("room_label", "") or first_room.get("room_number", "")
+            room_label = first_room.get("room_label", "")
         elif isinstance(first_room, str):
             # Current: hotel_room_id string — resolve to room_label from hotel_rooms
             hotel_room = db.hotel_rooms.find_one(
                 {"hotel_room_id": first_room},
-                {"_id": 0, "room_label": 1, "room_number": 1},
+                {"_id": 0, "room_label": 1},
             )
             if hotel_room:
-                room_label = hotel_room.get("room_label", "") or hotel_room.get("room_number", "")
+                room_label = hotel_room.get("room_label", "")
             else:
                 room_label = first_room
+
+    # Resolve hotel_room_id from assigned_rooms for FK
+    hotel_room_id = ""
+    if assigned_rooms:
+        first_room = assigned_rooms[0]
+        if isinstance(first_room, str):
+            hotel_room_id = first_room
+        elif isinstance(first_room, dict):
+            hotel_room_id = first_room.get("hotel_room_id", "")
 
     doc = {
         "token": token, "booking_id": booking_id,
         "prop_id": booking.get("prop_id", 0), "room_label": room_label,
+        "hotel_room_id": hotel_room_id,
         "guest_name": booking.get("guest_name", ""),
         "check_in": str(booking.get("check_in_date", "")),
         "check_out": str(booking.get("check_out_date", "")),
@@ -131,9 +141,13 @@ def create_stay_session(
 
     token = secrets.token_urlsafe(_TOKEN_BYTES)
     now = utc_now()
+    # Resolve hotel_room_id from room_label for FK
+    hotel_room_id = resolve_hotel_room_id(payload.prop_id, payload.room_label)
+
     doc = {
         "token": token, "booking_id": payload.booking_id,
         "prop_id": payload.prop_id, "room_label": payload.room_label,
+        "hotel_room_id": hotel_room_id,
         "guest_name": payload.guest_name, "check_in": payload.check_in,
         "check_out": payload.check_out, "created_at": now,
         "expires_at": payload.expires_at or session_expiry(), "active": True,
@@ -315,10 +329,8 @@ def staff_create_request(
         "room_label": session.get("room_label", ""),
         "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
         "request_type": request_type,
-        "request_type_label": type_label(request_type),
         "description": description,
         "status": "pending",
-        "status_label": "Pendiente",
         "staff_response": "",
         "created_by": "staff",
         "staff_name": current_user.get("display_name") or current_user.get("username", "Staff"),
@@ -786,9 +798,8 @@ def guest_create_request(payload: dict = Body(...)):
         "booking_id": session["booking_id"], "prop_id": session["prop_id"],
         "room_label": session["room_label"],
         "hotel_room_id": resolve_hotel_room_id(session.get("prop_id", 0), session.get("room_label", "")),
-        "request_type": request_type,
-        "request_type_label": type_label(request_type), "description": description,
-        "status": "pending", "status_label": "Pendiente", "staff_response": "",
+        "request_type": request_type, "description": description,
+        "status": "pending", "staff_response": "",
         "created_at": utc_now(), "resolved_at": None,
     }
     result = db.stay_service_requests.insert_one(doc)
@@ -837,7 +848,7 @@ def guest_cancel_request(request_id: str, payload: dict = Body(...)):
 
     db.stay_service_requests.update_one(
         {"_id": oid},
-        {"$set": {"status": "cancelled", "status_label": "Cancelado", "resolved_at": utc_now()}},
+        {"$set": {"status": "cancelled", "resolved_at": utc_now()}},
     )
     return {"ok": True, "message": "Solicitud cancelada."}
 

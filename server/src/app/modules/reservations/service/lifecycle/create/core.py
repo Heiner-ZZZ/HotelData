@@ -52,7 +52,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     if avail_error:
         raise ValueError(f"Cannot create booking: {avail_error}")
 
-    coupon_error, discount_percent = validate_coupon_code(payload.coupon_code, payload.prop_id)
+    coupon_error, discount_percent, coupon_id = validate_coupon_code(payload.coupon_code, payload.prop_id)
     if coupon_error:
         raise ValueError(coupon_error)
 
@@ -117,6 +117,7 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
         "comment": payload.comment, "special_requests": payload.special_requests,
         "total_price": total_price, "currency": currency, "total_nights": total_nights,
         "coupon_code": payload.coupon_code.strip().upper() if payload.coupon_code else "",
+        "coupon_id": coupon_id,
         "discount_percent": discount_percent,
         "contract_code": payload.contract_code.strip().upper() if payload.contract_code else "",
         "contract_id": contract_id,

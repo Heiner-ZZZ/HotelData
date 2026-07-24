@@ -30,12 +30,12 @@ def _normalize_features(raw: Any) -> list[dict[str, Any]]:
     return result
 
 
-def _derive_floor(room_number: str, floor: str) -> str:
-    """Auto-derive floor from room_number (e.g. '301' → '3') if floor not set."""
+def _derive_floor(room_label: str, floor: str) -> str:
+    """Auto-derive floor from room_label (e.g. '301' → '3') if floor not set."""
     if floor:
         return floor
-    if room_number and room_number.isdigit():
-        return str(int(room_number) // 100)
+    if room_label and room_label.isdigit():
+        return str(int(room_label) // 100)
     return ""
 
 
@@ -158,9 +158,9 @@ def create_room_type(
             {
                 "$set": {
                     "hotel_room_id": f"HR-{room_type_id}", "prop_id": prop_id,
-                    "room_type_id": room_type_id, "room_label": clean_room_number or clean_name,
+                    "room_type_id": room_type_id, "room_label": clean_room_number,
                     "is_active": payload["is_active"], "is_roh": payload["is_roh"],
-                    "room_number": clean_room_number, "floor": payload["floor"],
+                    "floor": payload["floor"],
                     "view": payload["view"], "smoking": payload["smoking"],
                     "accessible": payload["accessible"], "updated_at": now_utc(),
                 },
@@ -274,7 +274,7 @@ def create_hotel_room_for_type(
         raise ValueError("Debe ingresar el número de habitación.")
 
     # Check room_number uniqueness across hotel_rooms for this prop
-    dup = db.hotel_rooms.find_one({"prop_id": prop_id, "room_number": clean_room_number})
+    dup = db.hotel_rooms.find_one({"prop_id": prop_id, "room_label": clean_room_number})
     if dup is not None:
         raise ValueError(f"El número de habitación '{clean_room_number}' ya existe en esta propiedad.")
 
@@ -283,7 +283,6 @@ def create_hotel_room_for_type(
         "hotel_room_id": hr_id,
         "prop_id": prop_id,
         "room_type_id": room_type_id,
-        "room_number": clean_room_number,
         "floor": _derive_floor(clean_room_number, clean_text(floor)),
         "room_label": clean_room_number,
         "view": clean_text(view),

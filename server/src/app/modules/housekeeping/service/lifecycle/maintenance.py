@@ -15,14 +15,18 @@ from ...schemas import MaintenanceTaskCreate, now_iso
 
 
 def _resolve_room_from_id(room_id: str, prop_id: int | None = None) -> dict[str, Any] | None:
-    """Resolve a hotel room document by its business ID (hotel_room_id)."""
+    """Resolve a hotel room document by its business ID (hotel_room_id).
+
+    Returns the full document including ``_id`` (ObjectId FK) and
+    ``hotel_room_id`` (string business key).
+    """
     db = get_database()
     query: dict[str, Any] = {"hotel_room_id": room_id}
     if prop_id is not None:
         query["prop_id"] = prop_id
     return db.hotel_rooms.find_one(
         query,
-        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1, "room_type_id": 1, "prop_id": 1, "floor": 1},
+        {"_id": 1, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1, "prop_id": 1, "floor": 1},
     )
 
 
@@ -32,7 +36,7 @@ def _room_match(prop_id: int, room_id: str | None = None, room_label: str | None
     if room_id:
         query["hotel_room_id"] = room_id
     elif room_label:
-        query["$or"] = [{"room_label": room_label}, {"room_number": room_label}]
+        query["$or"] = [{"room_label": room_label}]
     return query
 
 
@@ -63,7 +67,7 @@ def _auto_block_room(db: Any, prop_id: int, room_id: str, room_label: str, sched
     if scheduled_date:
         existing = db.blackout_dates.find_one({
             "prop_id": prop_id,
-            "room_label": room_label,
+            "hotel_room_id": room_id,
             "start_date": scheduled_date,
             "end_date": scheduled_date,
             "source": "maintenance",
@@ -72,6 +76,7 @@ def _auto_block_room(db: Any, prop_id: int, room_id: str, room_label: str, sched
             db.blackout_dates.insert_one({
                 "prop_id": prop_id,
                 "room_label": room_label,
+                "hotel_room_id": room_id,
                 "start_date": scheduled_date,
                 "end_date": scheduled_date,
                 "source": "maintenance",
@@ -100,7 +105,10 @@ def _unblock_room(db: Any, prop_id: int, room_id: str, room_label: str, schedule
     if scheduled_date:
         db.blackout_dates.delete_many({
             "prop_id": prop_id,
-            "room_label": room_label,
+            "$or": [
+                {"hotel_room_id": room_id},
+                {"room_label": room_label},
+            ],
             "start_date": scheduled_date,
             "end_date": scheduled_date,
             "source": "maintenance",
@@ -116,13 +124,13 @@ def create_maintenance_task(payload: MaintenanceTaskCreate) -> dict[str, Any]:
 
     status = payload.status or "scheduled"
     completed_at = now if status == "completed" else None
-    room_label = room.get("room_label") or room.get("room_number") or payload.room_id
+    room_label = room.get("room_label") or payload.room_id
     doc = {
         "prop_id": room["prop_id"],
-        "room_id": room["hotel_room_id"],
+        "room_id": room["_id"],
+        "hotel_room_id": room["hotel_room_id"],
         "room_label": room_label,
         "room_type_id": room.get("room_type_id", ""),
-        "room_number": room.get("room_number", ""),
         "task_type": payload.task_type,
         "title": payload.title,
         "description": payload.description,
@@ -179,14 +187,14 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
 
     # Fetch previous state to know if we need to unblock old room
     prev = db[MAINTENANCE_COLLECTION].find_one({"_id": ObjectId(task_id)})
-    room_label = room.get("room_label") or room.get("room_number") or payload.room_id
+    room_label = room.get("room_label") or payload.room_id
 
     set_data = {
         "prop_id": room["prop_id"],
-        "room_id": room["hotel_room_id"],
+        "room_id": room["_id"],
+        "hotel_room_id": room["hotel_room_id"],
         "room_label": room_label,
         "room_type_id": room.get("room_type_id", ""),
-        "room_number": room.get("room_number", ""),
         "task_type": payload.task_type,
         "title": payload.title,
         "description": payload.description or "",
@@ -212,7 +220,7 @@ def update_maintenance_task(task_id: str, payload: MaintenanceTaskCreate) -> dic
             _unblock_room(
                 db,
                 prev.get("prop_id", 0),
-                prev.get("room_id", ""),
+                prev.get("hotel_room_id", "") or str(prev.get("room_id", "")),
                 prev.get("room_label", ""),
                 prev.get("scheduled_date", ""),
             )
@@ -245,7 +253,7 @@ def complete_maintenance_task(task_id: str, note: str = "") -> dict[str, Any] | 
             _unblock_room(
                 db,
                 doc.get("prop_id", 0),
-                doc.get("room_id", ""),
+                doc.get("hotel_room_id", "") or str(doc.get("room_id", "")),
                 doc.get("room_label", ""),
                 doc.get("scheduled_date", ""),
             )
@@ -268,7 +276,7 @@ def delete_maintenance_task(task_id: str) -> dict[str, Any] | None:
             _unblock_room(
                 db,
                 doc.get("prop_id", 0),
-                doc.get("room_id", ""),
+                doc.get("hotel_room_id", "") or str(doc.get("room_id", "")),
                 doc.get("room_label", ""),
                 doc.get("scheduled_date", ""),
             )

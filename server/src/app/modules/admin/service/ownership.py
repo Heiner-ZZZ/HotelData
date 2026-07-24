@@ -7,6 +7,7 @@ from bson import ObjectId
 from passlib.context import CryptContext
 from pymongo import ASCENDING
 
+from src.app.security.role_helpers import resolve_role_id, build_role_query
 from src.database.connection import get_database
 
 from ._helpers import utc_now
@@ -66,7 +67,7 @@ def list_ownership_users() -> list[dict[str, Any]]:
     db = get_database()
     users = (
         db.users.find(
-            {"primary_role": {"$in": list(HOTEL_ROLES)}},
+            build_role_query(list(HOTEL_ROLES)),
             {"password_hash": 0},
         )
         .sort("created_at", -1)
@@ -124,7 +125,7 @@ def create_ownership_user(
         "email": email,
         "password_hash": password_context.hash(password),
         "display_name": display_name or username,
-        "primary_role": primary_role,
+        "primary_role_id": resolve_role_id(primary_role),
         "is_active": True,
         "assigned_hotels": assigned_hotels or [],
         "failed_login_attempts": 0,

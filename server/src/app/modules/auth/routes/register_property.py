@@ -37,6 +37,7 @@ from src.app.modules.auth.routes._helpers import (
     _now,
     _send_property_verification_code,
 )
+from src.app.security.role_helpers import resolve_role_id
 from src.app.security.session import log_user_activity, password_context
 from src.database.connection import get_database
 
@@ -365,7 +366,7 @@ def confirm_property_registration_code(
         "email": pending["email"],
         "password_hash": pending["password_hash"],
         "display_name": pending["display_name"] or pending["username"],
-        "primary_role": "hotel_partner",
+        "primary_role_id": resolve_role_id("hotel_partner"),
         "is_active": True,
         "email_verified": True,
         "failed_login_attempts": 0,

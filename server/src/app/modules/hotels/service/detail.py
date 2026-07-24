@@ -124,9 +124,9 @@ def _hotel_rooms_for_detail(prop_id: int) -> list[dict[str, Any]]:
     return list(
         db.hotel_rooms.find(
             {"prop_id": prop_id},
-            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_id": 1, "floor": 1, "is_active": 1},
+            {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1, "floor": 1, "is_active": 1},
         )
-        .sort([("room_number", 1)])
+        .sort([("room_label", 1)])
     )
 
 

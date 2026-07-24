@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 
 from src.app.security.navigation import get_default_redirect_for_role, get_navigation_for_user
 from src.app.security.permissions import get_user_permission_codes, user_has_permission
+from src.app.security.role_helpers import get_role_name
 from src.app.security.route_permissions import get_access_rule, is_public_path, role_allowed
 from src.app.security.session import SESSION_COOKIE_NAME, get_current_user
 from src.database.connection import get_database
@@ -40,7 +41,7 @@ async def role_access_middleware(request: Request, call_next):
     if path == "/":
         if not user:
             return RedirectResponse("/login", status_code=303)
-        return RedirectResponse(get_default_redirect_for_role(user.get("primary_role")), status_code=303)
+        return RedirectResponse(get_default_redirect_for_role(get_role_name(user)), status_code=303)
 
     if not user:
         if is_api_request:

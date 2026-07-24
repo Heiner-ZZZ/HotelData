@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, Response
 
 from src.app.email.service import send_email
 from src.app.security.dependencies import require_login
+from src.app.security.role_helpers import get_role_name
 from src.app.security.session import log_user_activity
 from src.database.connection import get_database
 from config.settings import get_settings
@@ -75,7 +76,7 @@ def _serialize_profile(user: dict[str, Any]) -> dict[str, Any]:
         "username": user.get("username", ""),
         "email": user.get("email", ""),
         "display_name": user.get("display_name") or user.get("username") or "",
-        "primary_role": user.get("primary_role", ""),
+        "primary_role": get_role_name(user),
         "is_active": bool(user.get("is_active", True)),
         "created_at": user.get("created_at").isoformat() if hasattr(user.get("created_at"), "isoformat") else str(user.get("created_at", "")),
         **{k: user.get(k, v) for k, v in _PROFILE_FIELDS.items()},

@@ -31,8 +31,8 @@ def _auto_assign_rooms(
     all_rooms = list(
         db.hotel_rooms.find(
             {"prop_id": prop_id, "room_type_id": room_type_id, "is_active": True},
-            {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1},
-        ).sort([("room_number", ASCENDING)])
+            {"_id": 0, "hotel_room_id": 1, "room_label": 1},
+        ).sort([("room_label", ASCENDING)])
     )
     if not all_rooms:
         logger.info("No physical rooms found for prop_id=%s room_type=%s — skipping auto-assign", prop_id, room_type_id)
@@ -77,8 +77,7 @@ def _auto_assign_rooms(
                     {
                         "$set": {"status": "occupied", "note": f"Auto-asignada desde reserva {booking_id}", "updated_at": now_iso},
                         "$setOnInsert": {"created_at": now_iso, "prop_id": prop_id, "room_type_id": room_type_id,
-                                         "room_label": room_label, "hotel_room_id": room["hotel_room_id"],
-                                         "room_number": room.get("room_number", "")},
+                                         "room_label": room_label, "hotel_room_id": room["hotel_room_id"]},
                     },
                     upsert=True,
                 )

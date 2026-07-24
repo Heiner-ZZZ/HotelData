@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.app.security.role_helpers import get_role_name, is_super_admin
+
 
 @dataclass(frozen=True)
 class AccessRule:
@@ -157,5 +159,7 @@ def get_access_rule(path: str, method: str) -> AccessRule | None:
 
 
 def role_allowed(user: dict[str, Any], allowed_roles: tuple[str, ...]) -> bool:
-    primary_role = user.get("primary_role")
-    return primary_role == "super_admin" or primary_role in allowed_roles
+    if is_super_admin(user):
+        return True
+    primary_role = get_role_name(user)
+    return primary_role in allowed_roles

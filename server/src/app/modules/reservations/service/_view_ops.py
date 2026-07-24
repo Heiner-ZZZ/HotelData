@@ -39,10 +39,10 @@ def _operational_item(
         room_docs = list(
             db.hotel_rooms.find(
                 {"hotel_room_id": {"$in": assigned}},
-                {"_id": 0, "room_number": 1}
-            ).sort([("room_number", ASCENDING)])
+                {"_id": 0, "hotel_room_id": 1, "room_label": 1}
+            ).sort([("room_label", ASCENDING)])
         )
-        assigned_room_numbers = [r.get("room_number", "?") for r in room_docs]
+        assigned_room_numbers = [r.get("room_label", "?") for r in room_docs]
     room_label = (
         f"{', '.join(assigned_room_numbers)}" if assigned_room_numbers
         else f"{rooms} habitacion(es)" if rooms > 0

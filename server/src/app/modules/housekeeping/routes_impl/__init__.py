@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
+from src.app.security.role_helpers import build_role_query
 from src.database.connection import get_database
 
 
@@ -83,12 +84,12 @@ def query_housekeeping_staff(prop_id: int | None = None) -> list[dict]:
     """Query staff users with maintenance/housekeeping roles."""
     db = get_database()
     roles = ["maintenance", "housekeeping"]
-    query: dict = {"primary_role": {"$in": roles}, "is_active": True}
+    query: dict = {**build_role_query(roles), "is_active": True}
     if prop_id:
         query["assigned_hotels"] = prop_id
     return list(
         db.users.find(
             query,
-            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role": 1, "assigned_hotels": 1},
+            {"_id": 0, "username": 1, "display_name": 1, "email": 1, "primary_role_id": 1, "assigned_hotels": 1},
         ).sort("display_name", 1)
     )

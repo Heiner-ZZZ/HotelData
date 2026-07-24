@@ -107,10 +107,10 @@ def complete_check_in(
         _room_docs = list(
             db.hotel_rooms.find(
                 {"hotel_room_id": {"$in": assigned_rooms}},
-                {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_number": 1},
+                {"_id": 0, "hotel_room_id": 1, "room_label": 1},
             )
         )
-        room_labels = {r["hotel_room_id"]: r.get("room_label", "") or r.get("room_number", "") for r in _room_docs}
+        room_labels = {r["hotel_room_id"]: r.get("room_label", "") for r in _room_docs}
         status_query_labels = [v for v in room_labels.values() if v]
         if status_query_labels:
             status_docs = list(
@@ -237,7 +237,7 @@ def complete_check_in(
     if assigned_rooms and booking:
         try:
             for r in _room_docs:
-                label = r.get("room_label", "") or r.get("room_number", "")
+                label = r.get("room_label", "")
                 if label:
                     db.room_status_log.update_one(
                         {"prop_id": booking["prop_id"], "room_label": label},
@@ -253,7 +253,7 @@ def complete_check_in(
     if assigned_rooms and booking and not booking.get("is_test"):
         try:
             room_labels_str = ", ".join(
-                r.get("room_label", "") or r.get("room_number", "") for r in _room_docs
+                r.get("room_label", "") for r in _room_docs
             ) or str(len(assigned_rooms))
             db.notification_log.insert_one({
                 "notification_type": "housekeeping_check_in",

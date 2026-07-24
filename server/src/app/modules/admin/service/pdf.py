@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.app.security.role_helpers import get_role_name
+
 from ._pdf_gen import _build_table_pdf
 from .security import security_overview, users_overview
 
@@ -57,7 +59,7 @@ def build_security_section_pdf(section: str) -> tuple[bytes, str] | None:
             [
                 item.get("username", "N/D"),
                 item.get("email", "N/D"),
-                item.get("primary_role", "N/D"),
+                get_role_name(item) or "N/D",
                 "Activo" if item.get("is_active") else "Inactivo",
             ]
             for item in users

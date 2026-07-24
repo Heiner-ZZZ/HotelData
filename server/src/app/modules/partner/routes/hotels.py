@@ -15,6 +15,7 @@ from src.app.modules.partner.services import (
     properties_dashboard,
     save_partner_hotel_profile,
 )
+from src.app.security.role_helpers import get_role_name, UNFILTERED_ROLES
 from src.app.security.dependencies import require_permission
 
 
@@ -56,10 +57,10 @@ def properties_context_api(
     - "single": user has exactly 1 assigned hotel → auto-select
     - "multi": user has 2+ assigned hotels → show limited selector
     """
-    from src.app.security.hotel_filter import assigned_hotels_for_user, UNFILTERED_ROLES
+    from src.app.security.hotel_filter import assigned_hotels_for_user
     from src.app.modules.partner.services.properties.listing import list_partner_hotels
 
-    role = (current_user or {}).get("primary_role", "")
+    role = get_role_name(current_user or {})
 
     # Roles sin restricción (super_admin, admin_sistema, cliente)
     if role in UNFILTERED_ROLES:

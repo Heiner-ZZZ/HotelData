@@ -192,7 +192,7 @@ def notify_staff_request_updated(db, request_doc: dict, new_status: str):
     """Log a notification for staff when a service request status changes + push SSE event."""
     prop_id = request_doc.get("prop_id", 0)
     room_label = request_doc.get("room_label", "")
-    request_type = request_doc.get("request_type_label", request_doc.get("request_type", ""))
+    request_type = type_label(request_doc.get("request_type", ""))
     old_status = request_doc.get("status", "")
     new_status_label_str = status_label(new_status)
 
@@ -347,7 +347,7 @@ def notify_guest_request_completed(db, request_doc: dict, new_status: str) -> No
         return
 
     prop_id = request_doc.get("prop_id", 0)
-    request_type = request_doc.get("request_type_label", request_doc.get("request_type", ""))
+    request_type = type_label(request_doc.get("request_type", ""))
     room_label = request_doc.get("room_label", "")
     description = request_doc.get("description", "")
     staff_response = request_doc.get("staff_response", "")

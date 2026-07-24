@@ -106,8 +106,8 @@ def reception_calendar_api(
     hotel_rooms_docs = list(
         db.hotel_rooms.find(
             {"prop_id": prop_id, "is_active": True},
-            {"_id": 0, "hotel_room_id": 1, "room_number": 1, "room_label": 1, "room_type_id": 1, "room_type_name": 1},
-        ).sort([("room_number", 1)])
+            {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1, "room_type_name": 1},
+        ).sort([("room_label", 1)])
     )
 
     # Resolve room type names
@@ -160,7 +160,7 @@ def reception_calendar_api(
             if hrid not in bookings_by_room:
                 continue
             hr = next((hr for hr in hotel_rooms_docs if hr["hotel_room_id"] == hrid), None)
-            room_num = hr.get("room_label") or hr.get("room_number") or hrid if hr else hrid
+            room_num = hr.get("room_label") or hrid if hr else hrid
 
             bookings_by_room[hrid].append({
                 "booking_id": b.get("booking_id", ""),
@@ -186,7 +186,7 @@ def reception_calendar_api(
     # Build response: one entry per physical room (even if empty)
     result_rooms = [
         {
-            "room_number": hr.get("room_label") or hr.get("room_number") or hr["hotel_room_id"],
+            "room_number": hr.get("room_label") or hr["hotel_room_id"],
             "hotel_room_id": hr["hotel_room_id"],
             "room_type_name": hr.get("room_type_name") or rt_name_lookup.get(hr.get("room_type_id", ""), ""),
             "room_type_id": hr.get("room_type_id", ""),

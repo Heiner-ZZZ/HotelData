@@ -194,7 +194,7 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
     now = now_iso()
     rooms = list(db[HOTEL_ROOMS_COLLECTION].find(
         {"prop_id": prop_id},
-        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "room_number": 1, "floor": 1, "is_active": 1},
+        {"hotel_room_id": 1, "room_type_id": 1, "room_label": 1, "floor": 1, "is_active": 1},
     ))
 
     created = 0
@@ -202,11 +202,10 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
         hotel_room_id = room.get("hotel_room_id", "")
         room_type_id = room.get("room_type_id", "")
         room_label = room.get("room_label", "")
-        room_number = room.get("room_number", "")
         floor = room.get("floor")
-        # Auto-derive floor from room_number if missing (e.g. '301' → '3')
+        # Auto-derive floor from room_label if missing (e.g. '301' → '3')
         if not floor:
-            rn = room.get("room_number", "")
+            rn = room.get("room_label", "")
             if rn and rn.isdigit():
                 floor = str(int(rn) // 100)
         if not hotel_room_id:
@@ -231,7 +230,6 @@ def sync_room_status_from_hotel_rooms(prop_id: int) -> dict[str, Any]:
             "hotel_room_id": hotel_room_id,
             "room_type_id": room_type_id,
             "room_label": room_label,
-            "room_number": room_number,
             "status": "vacant_clean",
             "note": "",
             "created_at": now,
@@ -363,7 +361,7 @@ def _enrich_room_status(doc: dict) -> dict:
             doc[f] = _fmt(doc[f])
     # camelCase aliases for frontend
     doc["roomLabel"] = doc.get("room_label", "")
-    doc["roomNumber"] = doc.get("room_number", "")
+    doc["roomNumber"] = doc.get("room_label", "")
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["propId"] = doc.get("prop_id", 0)
     doc["hotelRoomId"] = doc.get("hotel_room_id", "")
