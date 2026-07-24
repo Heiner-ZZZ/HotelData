@@ -14,8 +14,28 @@ from typing import Any
 
 from bson import ObjectId
 
-# Stable role _id for super_admin (never changes)
-SUPER_ADMIN_ROLE_ID = ObjectId("6a3b607b914644ec8536df0f")
+# ── Super-admin role resolution (cached, DB-backed) ────────────────────
+# The ObjectId is resolved at runtime from the roles collection to avoid
+# hardcoding an ID that changes across environments (dev/staging/prod).
+
+_super_admin_role_id: ObjectId | None = None
+_super_admin_looked_up: bool = False
+
+
+def _get_super_admin_role_id() -> ObjectId | None:
+    """Resolve and cache the super_admin ObjectId from the DB."""
+    global _super_admin_role_id, _super_admin_looked_up
+    if _super_admin_looked_up:
+        return _super_admin_role_id
+    from src.database.connection import get_database
+    try:
+        db = get_database()
+        role = db.roles.find_one({"role_name": "super_admin"}, {"_id": 1})
+        _super_admin_role_id = role["_id"] if role else None
+    except Exception:
+        _super_admin_role_id = None
+    _super_admin_looked_up = True
+    return _super_admin_role_id
 
 # Role names that bypass hotel filtering
 UNFILTERED_ROLES = {"super_admin", "admin_sistema", "cliente"}
@@ -44,11 +64,17 @@ def get_role_name(user: dict[str, Any] | None) -> str:
 def is_super_admin(user: dict[str, Any] | None) -> bool:
     """Check whether a user has the super_admin role.
 
-    Checks the ObjectId FK first, falling back to the legacy string.
+    Resolves the super_admin ObjectId from the roles collection at
+    runtime (cached) so the check works across environments without
+    hardcoding an ID that may drift.
+
+    Falls back to the legacy ``primary_role`` string for backward
+    compatibility with any docs that still lack the FK.
     """
     if not user:
         return False
-    if user.get("primary_role_id") == SUPER_ADMIN_ROLE_ID:
+    sa_id = _get_super_admin_role_id()
+    if sa_id and user.get("primary_role_id") == sa_id:
         return True
     return user.get("primary_role") == "super_admin"
 
