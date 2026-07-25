@@ -22,6 +22,7 @@ from src.app.modules.housekeeping.service import (
     delete_additional_charge,
     delete_housekeeping_task,
     delete_maintenance_task,
+    get_additional_charge,
     get_housekeeping_dashboard,
     get_room_status,
     get_weekly_calendar,
@@ -623,6 +624,30 @@ def charge_list_api(
         summary=f"Listado de cargos adicionales (total={result.get('total', 0)}, page={page})",
         changed_by=current_user.get("username", "system"),
         metadata={"booking_id": booking_id, "prop_id": prop_id, "url": str(request.url)},
+    )
+    return result
+
+
+@api_router.get("/charges/{charge_id}")
+def charge_get_api(
+    charge_id: str,
+    current_user: dict = Depends(require_permission("charges.read")),
+):
+    """Retrieve a single additional charge by its ObjectId.
+
+    Returns 404 if the id is not a valid ObjectId or the charge has been
+    deleted. Logs a read action in the audit log for traceability.
+    """
+    result = get_additional_charge(charge_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Cargo no encontrado")
+    register_action(
+        prop_id=result.get("prop_id", 0),
+        entity_type="housekeeping_charge",
+        entity_id=charge_id,
+        action="read",
+        summary=f"Consulta de cargo adicional {charge_id} — {result.get('concept', '')}",
+        changed_by=current_user.get("username", "system"),
     )
     return result
 

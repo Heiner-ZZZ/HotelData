@@ -33,6 +33,7 @@ from .maintenance import (
 from .charges import (
     create_additional_charge,
     delete_additional_charge,
+    get_additional_charge,
     list_additional_charges,
     update_additional_charge,
 )
@@ -64,6 +65,7 @@ __all__ = [
     "delete_maintenance_task",
     "create_additional_charge",
     "delete_additional_charge",
+    "get_additional_charge",
     "list_additional_charges",
     "update_additional_charge",
     "get_housekeeping_dashboard",

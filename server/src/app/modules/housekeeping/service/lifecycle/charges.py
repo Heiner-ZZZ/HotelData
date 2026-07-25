@@ -232,13 +232,45 @@ def delete_additional_charge(charge_id: str) -> dict | None:
 
 
 def _enrich_charge(doc: dict) -> dict:
+    """Normalize charge doc for API responses.
+
+    Adds camelCase aliases for fields the frontend reads (bookingId,
+    propId, createdAt, chargeDate) while keeping the original snake_case
+    keys intact so existing API consumers (e.g. instay handlers) are not
+    broken.
+    """
     doc["id"] = str(doc.pop("_id"))
     if "created_at" in doc:
-        doc["created_at"] = _fmt(doc["created_at"])
+        formatted = _fmt(doc["created_at"])
+        doc["created_at"] = formatted
+        doc["createdAt"] = formatted  # camelCase alias for frontend
     if "charge_date" in doc:
-        doc["charge_date"] = _fmt(doc["charge_date"])
-        doc["chargeDate"] = doc["charge_date"]  # camelCase alias
+        formatted = _fmt(doc["charge_date"])
+        doc["charge_date"] = formatted
+        doc["chargeDate"] = formatted  # camelCase alias for frontend
+    if "booking_id" in doc:
+        doc["bookingId"] = str(doc["booking_id"])  # camelCase alias for frontend
+    if "prop_id" in doc:
+        doc["propId"] = doc["prop_id"]  # camelCase alias for frontend
     return doc
+
+
+def get_additional_charge(charge_id: str) -> dict[str, Any] | None:
+    """Retrieve a single additional charge by its ObjectId.
+
+    Returns the enriched charge dict, or None if the charge does not
+    exist or the supplied id is not a valid ObjectId.
+    """
+    db = get_database()
+    try:
+        from bson import ObjectId
+        obj_id = ObjectId(charge_id)
+    except Exception:
+        return None
+    doc = db[CHARGES_COLLECTION].find_one({"_id": obj_id})
+    if not doc:
+        return None
+    return _enrich_charge(doc)
 
 
 def _fmt(val):
