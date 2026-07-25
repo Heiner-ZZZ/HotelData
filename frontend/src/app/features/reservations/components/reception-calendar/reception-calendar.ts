@@ -34,6 +34,12 @@ export class ReceptionCalendarComponent {
   constructor() {
     this._resetToThisWeek();
 
+    // Live now-line ticker: refreshes the dot position every 30 s.
+    effect((onCleanup) => {
+      const intervalId = setInterval(() => this._now.set(new Date()), 30_000);
+      onCleanup(() => clearInterval(intervalId));
+    });
+
     // Sync detailResource to detailData/detailLoading signals
     effect(() => {
       const data = this.detailResource.value();
@@ -79,6 +85,29 @@ export class ReceptionCalendarComponent {
     return query ? `/management/reception/calendar?${query}` : '/management/reception/calendar';
   }, {
     parse: (dto) => mapReceptionCalendar(dto as ReceptionCalendarDto),
+  });
+
+  /** Live "now" line tracker ────────────────────────────────────────
+   *  Re-renders the now-line every 30 s without forcing a grid refresh.
+   *  Cheap (a single signal update) and battery-friendly. */
+  private readonly _now = signal(new Date());
+
+  /** Index of today's column in the visible range, or -1 when out of view. */
+  readonly todayIndex = computed(() => this.dayIndexMap().get(this.today()) ?? -1);
+
+  /** True when today is on-screen — gates rendering the now-line. */
+  readonly showNowLine = computed(() => this.totalDays() > 0 && this.todayIndex() >= 0);
+
+  /** Fraction of today's day elapsed: 0 = 00:00, 1 = 24:00. */
+  readonly nowFraction = computed(() => {
+    const n = this._now();
+    return (n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds()) / 86_400;
+  });
+
+  /** Localised HH:MM label for the dot. */
+  readonly nowLineTimeLabel = computed(() => {
+    const n = this._now();
+    return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
   });
 
   /** Detail modal state. */

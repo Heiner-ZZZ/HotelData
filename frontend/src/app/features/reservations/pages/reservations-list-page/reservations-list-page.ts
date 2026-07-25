@@ -3,10 +3,10 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
-import type { GridReadyEvent, GridApi } from 'ag-grid-community';
+import type { GridReadyEvent, GridApi, SelectionChangedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
 import { HttpClient, httpResource } from '@angular/common/http';
-import { distinctUntilChanged, map } from 'rxjs';
+import { distinctUntilChanged, firstValueFrom, map } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -74,6 +74,7 @@ export class ReservationsListPageComponent {
         folio: params.get('folio') || '',
         stayStatus: params.get('stay_status') || '',
         bookingSource: params.get('booking_source') || '',
+        view: (params.get('view') === 'calendar' ? 'calendar' : 'list') as 'list' | 'calendar',
       })),
       distinctUntilChanged(
         (a, b) =>
@@ -83,7 +84,8 @@ export class ReservationsListPageComponent {
           a.propId === b.propId &&
           a.folio === b.folio &&
           a.stayStatus === b.stayStatus &&
-          a.bookingSource === b.bookingSource
+          a.bookingSource === b.bookingSource &&
+          a.view === b.view
       )
     ),
     {
@@ -95,6 +97,7 @@ export class ReservationsListPageComponent {
         folio: '',
         stayStatus: '',
         bookingSource: '',
+        view: 'list' as 'list' | 'calendar',
       },
     }
   );
@@ -173,8 +176,134 @@ export class ReservationsListPageComponent {
     }
   }
 
-  /** View toggle: 'calendar' (default for staff) or 'list' (default for clients). */
+  /** View toggle: 'list' (default) or 'calendar' (alternative). */
   readonly viewMode = signal<'list' | 'calendar'>('list');
+
+  /** URL ↔ view two-way sync. Bidirectional so back/forward buttons work. */
+  constructor() {
+    // Sync date form with URL query params reactively
+    effect(() => {
+      const date = this.currentDateFilter();
+      this.dateForm.controls.createdDate.setValue(date, { emitEvent: false });
+    });
+
+    // Sync viewMode from URL (?view=list|calendar). When URL changes
+    // externally (link, back button) we mirror into the page signal.
+    effect(() => {
+      const view = this.queryParams().view;
+      if (this.viewMode() !== view) {
+        this.viewMode.set(view);
+      }
+    });
+  }
+
+  // URL is the single source of truth for viewMode. The sync effect in the
+  // constructor reflects the URL change into the page signal reactively.
+  // Writing to viewMode.set(mode) here would race with that effect and
+  // briefly revert the toggle before the URL catches up ("flash bug").
+  setViewMode(mode: 'list' | 'calendar') {
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { view: mode },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  // ─── Bulk check-in (multi-row selection) ───
+  /** Selected reservations from the ag-grid selection model. */
+  readonly selectedRows = signal<any[]>([]);
+  readonly bulkActionLoading = signal(false);
+  readonly bulkActionProgress = signal<{ done: number; total: number; failures: string[] }>({
+    done: 0,
+    total: 0,
+    failures: [],
+  });
+
+  readonly selectedRowCount = computed(() => this.selectedRows().length);
+
+  /** Every selected row must have status='confirmed' to bulk-check-in. */
+  readonly canBulkCheckIn = computed(() => {
+    const rows = this.selectedRows();
+    if (rows.length === 0) return false;
+    return rows.every((r: any) => r?.status === 'confirmed');
+  });
+
+  onSelectionChanged(event: SelectionChangedEvent) {
+    // Freeze selection updates while a bulk action is in-flight so the
+    // user can't add rows mid-loop, which would cause drift between
+    // visible checkboxes and the in-flight payload.
+    if (this.bulkActionLoading()) return;
+    this.selectedRows.set(event.api.getSelectedRows() ?? []);
+  }
+
+  async onBulkCheckIn(): Promise<void> {
+    if (!this.canBulkCheckIn() || this.bulkActionLoading()) return;
+
+    const rows = this.selectedRows();
+    const total = rows.length;
+    if (total === 0) return;
+
+    const ok = await this.confirmDialog.open({
+      title: 'Check-in masivo',
+      message: `Vas a registrar el check-in de ${total} reserva${total === 1 ? '' : 's'}. La operación se aplicará secuencialmente y registrará una fila en la auditoría.`,
+      confirmLabel: 'Iniciar check-in',
+      cancelLabel: 'Cancelar',
+      variant: 'default',
+    });
+    if (!ok) return;
+
+    this.bulkActionLoading.set(true);
+    this.bulkActionProgress.set({ done: 0, total, failures: [] });
+    this.warningMessage.set('');
+
+    const failures: string[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row: any = rows[i];
+      const bookingId: string = row?.bookingId;
+      if (!bookingId) {
+        failures.push(`Fila sin bookingId`);
+        continue;
+      }
+      try {
+        await firstValueFrom(
+          this.http.post(`/api/management/check-ins/${bookingId}/complete`, {
+            payment_method: '',
+          })
+        );
+      } catch (err: any) {
+        const msg = err?.error?.detail || err?.message || 'Error al registrar check-in';
+        failures.push(`${row.guestName || bookingId}: ${msg}`);
+      } finally {
+        // Single signal.set call replaces the previous update-with-slice
+        // pattern. O(1) per iteration (was O(N²) for N rows) and gives
+        // OnPush a stable reference for change detection.
+        this.bulkActionProgress.set({ done: i + 1, total, failures });
+      }
+    }
+
+    this.bulkActionLoading.set(false);
+    if (failures.length === 0) {
+      this.successMessage.set(`Check-in masivo completado · ${total} reservas`);
+    } else {
+      this.successMessage.set(
+        `Check-in masivo: ${total - failures.length} ok, ${failures.length} con error`
+      );
+      this.warningMessage.set(
+        `Fallaron ${failures.length} de ${total}: ${failures.slice(0, 3).join(' · ')}${failures.length > 3 ? ' \u2026' : ''}`
+      );
+    }
+    this.reservationsResource.reload();
+    this.statsResource.reload();
+    this.clearSelection();
+    setTimeout(() => this.successMessage.set(''), 5000);
+    setTimeout(() => this.warningMessage.set(''), 8000);
+  }
+
+  clearSelection() {
+    const api = this.gridApi();
+    if (api) api.deselectAll();
+    this.selectedRows.set([]);
+  }
   /** Property ID for hotel selection (required before showing any view). */
   readonly calendarPropId = computed(() => this.queryParams().propId || this.propertyCtx.currentPropId() || 0);
   readonly calendarPropLabel = signal('');
@@ -226,24 +355,14 @@ export class ReservationsListPageComponent {
   readonly confirmingId = signal<string | null>(null);
   readonly rejectingId = signal<string | null>(null);
   readonly successMessage = signal('');
+  /** Warning toast for partial-failure scenarios (e.g. bulk ops with errors). */
+  readonly warningMessage = signal('');
 
   // More menu (⋮)
   readonly showMenu = signal(false);
   readonly showHistory = signal(false);
 
   readonly exporting = signal(false);
-
-  constructor() {
-    // Sync date form with URL query params reactively
-    effect(() => {
-      const date = this.currentDateFilter();
-      this.dateForm.controls.createdDate.setValue(date, { emitEvent: false });
-    });
-  }
-
-  setViewMode(mode: 'list' | 'calendar') {
-    this.viewMode.set(mode);
-  }
 
   onCalendarPropSelected(event: { propId: number; label: string }) {
     this.calendarPropLabel.set(event.label);

@@ -163,6 +163,16 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.toast-warning {
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+}
+
 /* ─── List header ─── */
 .list-header {
   display: flex;
@@ -402,5 +412,122 @@
 
 .spin {
   animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FLOATING BULK-ACTION BAR
+   Visible above the ag-grid whenever 1+ rows are selected.
+   Surfaces the most common front-desk workflow: bulk check-in.
+   ═══════════════════════════════════════════════════════════════ */
+.bulk-action-bar {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.95rem;
+  border-radius: 12px;
+  background: var(--surface-strong, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 25%, var(--app-border));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent, #2563eb) 8%, transparent),
+              0 2px 6px rgba(0, 0, 0, 0.06);
+  animation: bulk-bar-slide 180ms ease-out;
+}
+
+@keyframes bulk-bar-slide {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.bulk-action-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--app-text);
+
+  strong {
+    font-weight: 700;
+    color: var(--accent, #2563eb);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.2rem;
+    color: var(--accent, #2563eb);
+    --icon-wght: 500;
+  }
+}
+
+.bulk-action-hint {
+  margin-left: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--warning, #b45309);
+}
+
+.bulk-action-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+  padding: 0 0.95rem;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms, transform 80ms;
+
+  .material-symbols-outlined {
+    font-size: 1.05rem;
+    --icon-wght: 500;
+  }
+
+  &:hover:not(:disabled) { transform: translateY(-1px); }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+.bulk-btn-secondary {
+  &:hover:not(:disabled) {
+    background: var(--surface-soft);
+    border-color: var(--app-border);
+  }
+}
+
+.bulk-btn-primary {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: var(--on-accent, #ffffff);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent, #2563eb) 88%, #000000);
+    border-color: color-mix(in srgb, var(--accent, #2563eb) 88%, #000000);
+  }
+}
+
+/* ── Dark theme tuning ── */
+[data-theme='dark'] .bulk-action-bar {
+  background: var(--surface-strong, var(--surface));
+  border-color: color-mix(in srgb, var(--accent, #2563eb) 35%, var(--app-border));
 }
 

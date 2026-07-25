@@ -84,6 +84,12 @@
         {{ successMessage() }}
       </div>
     }
+    @if (warningMessage()) {
+      <div class="toast toast-warning" role="alert" aria-live="assertive">
+        <span class="material-symbols-outlined">warning</span>
+        {{ warningMessage() }}
+      </div>
+    }
 
     <!-- Stats bar -->
     <app-reservations-stats-bar
@@ -158,13 +164,54 @@
           [headerHeight]="40"
           [rowHeight]="56"
           [domLayout]="'autoHeight'"
-          [rowSelection]="{ mode: 'singleRow' }"
+          [rowSelection]="{ mode: 'multiRow', checkboxes: true, headerCheckbox: true, enableClickSelection: false }"
           [rowClassRules]="rowClassRules"
           style="width: 100%;"
           (gridReady)="onGridReady($event)"
           (rowClicked)="onRowClicked($event)"
           (cellKeyDown)="onCellKeyDown($event)"
+          (selectionChanged)="onSelectionChanged($event)"
         />
+
+        <!-- ═══ Floating bulk-action bar (visible only when rows are selected) ═══ -->
+        @if (selectedRowCount() > 0) {
+          <div class="bulk-action-bar" role="region" aria-label="Acciones en lote">
+            <div class="bulk-action-info">
+              <span class="material-symbols-outlined">checklist</span>
+              <strong>{{ selectedRowCount() }}</strong>
+              reserva{{ selectedRowCount() === 1 ? '' : 's' }} seleccionada{{ selectedRowCount() === 1 ? '' : 's' }}
+              @if (!canBulkCheckIn()) {
+                <span class="bulk-action-hint" aria-live="polite">
+                  · sólo las confirmadas admiten check-in masivo
+                </span>
+              }
+            </div>
+            <div class="bulk-action-controls">
+              <button type="button"
+                      class="bulk-btn bulk-btn-secondary"
+                      (click)="clearSelection()"
+                      [disabled]="bulkActionLoading()"
+                      aria-label="Cancelar selección">
+                <span class="material-symbols-outlined">close</span>
+                Limpiar
+              </button>
+              <button type="button"
+                      class="bulk-btn bulk-btn-primary"
+                      (click)="onBulkCheckIn()"
+                      [disabled]="!canBulkCheckIn() || bulkActionLoading()"
+                      [attr.aria-label]="'Registrar check-in masivo para ' + selectedRowCount() + ' reservas'">
+                <span class="material-symbols-outlined" [class.spin]="bulkActionLoading()">
+                  {{ bulkActionLoading() ? 'progress_activity' : 'login' }}
+                </span>
+                @if (bulkActionLoading()) {
+                  {{ bulkActionProgress().done }} / {{ bulkActionProgress().total }}
+                } @else {
+                  Check-in Masivo
+                }
+              </button>
+            </div>
+          </div>
+        }
       }
     }
   }

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
-import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
+import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, ActiveShiftConflict, ScheduleMismatchDetail, ScheduleBypassForbiddenDetail, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
 
 @Component({
   selector: 'app-control-turnos-caja',
@@ -49,6 +49,18 @@ export class ControlTurnosCajaPageComponent {
 
   // Close summary (after successful close)
   readonly closeSummary = signal<ShiftCloseSummary | null>(null);
+
+  // ── Force-open confirmation (active shift conflict, HTTP 409) ──
+  readonly showForceOpenModal = signal<ActiveShiftConflict | null>(null);
+  readonly forceOpening = signal(false);
+
+  // ── Schedule mismatch modal (HTTP 422) ──
+  // Triggered when ``openShift`` fails because the requested shift_type
+  // doesn't match the EXPECTED block for NOW. Only users with
+  // ``shifts.manage`` can flip ``scheduleBypassChecked`` and re-submit.
+  readonly showScheduleMismatchModal = signal<ScheduleMismatchDetail | null>(null);
+  readonly scheduleBypassChecked = signal(false);
+  readonly scheduleBypassSubmitting = signal(false);
 
   // ── Computed: payment method totals for display ──
   readonly paymentBreakdown = computed<PaymentBreakdown>(() => {
@@ -213,12 +225,184 @@ export class ControlTurnosCajaPageComponent {
         this.shift.set(res.shift);
         this.saldoReal.set(res.shift.cash_initial || 0);
         this.lastClosedShift.set(null);
+        this.showForceOpenModal.set(null);
       },
-      error: (err: any) => {
-        this.toast.error(err?.error?.detail || 'Error al abrir turno');
+      error: (err: { status?: number; error?: { detail?: unknown } }) => {
+        // 422 means the requested shift_type doesn't match the current
+        // schedule window. Surface the override modal (if permitted) so
+        // a gerente can authorize a bypass, or the receptionist can
+        // re-open the form choosing the correct shift_type.
+        if (err?.status === 422) {
+          const detail = err?.error?.detail as ScheduleMismatchDetail | undefined;
+          if (detail && detail.error === 'schedule_mismatch') {
+            this.showScheduleMismatchModal.set(detail);
+            this.scheduleBypassChecked.set(false);
+            return;
+          }
+        }
+        // 403 happens when a non-gerente tries to send bypass_schedule_check=true
+        if (err?.status === 403) {
+          const detail = err?.error?.detail as ScheduleBypassForbiddenDetail | undefined;
+          if (detail && detail.error === 'schedule_bypass_forbidden') {
+            this.toast.error(detail.message);
+            return;
+          }
+        }
+        // 409 = conflicting active shift — existing UX path
+        if (err?.status === 409) {
+          const detail = err?.error?.detail as ActiveShiftConflict | undefined;
+          if (detail && detail.error === 'active_shift_exists') {
+            this.showForceOpenModal.set(detail);
+            this.toast.warning(
+              detail.force_blocked_by_over_short
+                ? 'Hay un turno activo con un sobrante/faltante previo sin cerrar. Primero ciérrelo manualmente.'
+                : 'Hay un turno activo. Confirma cómo proceder.',
+            );
+            return;
+          }
+        }
+        const fallback =
+          (err?.error?.detail as string | undefined) ||
+          'Error al abrir turno';
+        this.toast.error(fallback);
       },
     });
   }
+
+  // ── Schedule-mismatch modal handlers ──
+
+  cancelScheduleMismatch(): void {
+    if (this.scheduleBypassSubmitting()) return;
+    this.showScheduleMismatchModal.set(null);
+    this.scheduleBypassChecked.set(false);
+  }
+
+  /** Re-open the form pre-selecting the EXPECTED shift_type so the user
+   *  can just confirm. Closes the mismatch modal. */
+  pickExpectedShiftFromMismatch(): void {
+    const m = this.showScheduleMismatchModal();
+    if (!m) return;
+    this.openShiftType.set(m.expected);
+    this.showScheduleMismatchModal.set(null);
+    this.scheduleBypassChecked.set(false);
+    this.toast.info(`Cambiaste el turno al bloque correcto (${m.expected}). Confirma de nuevo.`);
+  }
+
+  /** Override: re-submit open_shift with bypass_schedule_check=true.
+   *  The server enforces shifts.manage imperatively, so a frontend without
+   *  the permission will simply 403 with schedule_bypass_forbidden. */
+  confirmScheduleMismatchOverride(): void {
+    const propId = this.selectedPropId();
+    const m = this.showScheduleMismatchModal();
+    if (!propId || !this.openEmployee().trim() || !m) return;
+    if (!this.scheduleBypassChecked()) {
+      this.toast.warning('Marca la casilla de override del gerente antes de continuar.');
+      return;
+    }
+    this.scheduleBypassSubmitting.set(true);
+    const cashInitial = this.openCashInitial();
+    this.api
+      .openShift(
+        propId,
+        this.openShiftType(),
+        this.openEmployee().trim(),
+        cashInitial ?? undefined,
+        { bypassScheduleCheck: true },
+      )
+      .subscribe({
+        next: (res: { message: string; shift: ShiftInfo }) => {
+          this.scheduleBypassSubmitting.set(false);
+          this.toast.warning(res.message + ' (horario fuera de bloque — autorizado por gerente).');
+          this.showScheduleMismatchModal.set(null);
+          this.scheduleBypassChecked.set(false);
+          this.showOpenForm.set(false);
+          this.lastClosedShift.set(null);
+          this.shift.set(res.shift);
+          this.saldoReal.set(res.shift.cash_initial || 0);
+        },
+        error: (subErr: { status?: number; error?: { detail?: unknown } }) => {
+          this.scheduleBypassSubmitting.set(false);
+          if (subErr?.status === 403) {
+            const detail = subErr?.error?.detail as ScheduleBypassForbiddenDetail | undefined;
+            this.toast.error(detail?.message ?? 'No tienes permiso para hacer override del horario.');
+            // Server says no — keep the modal so the user can pick the expected shift instead.
+            return;
+          }
+          this.toast.error((subErr?.error?.detail as string | undefined) ?? 'Error al autorizar override');
+        },
+      });
+  }
+
+  // ── Force-open confirmation handlers ──
+
+  cancelForceOpen(): void {
+    if (this.forceOpening()) return;
+    this.showForceOpenModal.set(null);
+  }
+
+  forceOpenAnyway(): void {
+    const propId = this.selectedPropId();
+    const conflict = this.showForceOpenModal();
+    if (!propId || !this.openEmployee().trim() || !conflict) return;
+    if (conflict.force_blocked_by_over_short) {
+      this.toast.error(
+        'No se puede forzar el cierre: el último turno cerrado tuvo un sobrante/faltante. Ciérrelo manualmente.',
+      );
+      return;
+    }
+
+    this.forceOpening.set(true);
+    const cashInitial = this.openCashInitial();
+    this.api
+      .openShift(propId, this.openShiftType(), this.openEmployee().trim(), cashInitial ?? undefined, { force: true })
+      .subscribe({
+        next: (res: { message: string; shift: ShiftInfo }) => {
+          this.forceOpening.set(false);
+          this.toast.warning(
+            res.message + ' (cierre forzado del turno anterior sin reconciliación).',
+          );
+          this.showForceOpenModal.set(null);
+          this.showOpenForm.set(false);
+          this.lastClosedShift.set(null);
+          this.shift.set(res.shift);
+          this.saldoReal.set(res.shift.cash_initial || 0);
+        },
+        error: (err: { error?: { detail?: string | ActiveShiftConflict } }) => {
+          this.forceOpening.set(false);
+          const detail = err?.error?.detail;
+          if (typeof detail === 'object' && detail !== null && 'message' in detail) {
+            this.toast.error((detail as ActiveShiftConflict).message);
+          } else {
+            this.toast.error(typeof detail === 'string' ? detail : 'Error al forzar apertura');
+          }
+        },
+      });
+  }
+
+  /**
+   * Close the force modal and pre-fill the close-shift modal with the
+   * active shift so the receptionist can properly reconcile it first.
+   */
+  goCloseInstead(): void {
+    const conflict = this.showForceOpenModal();
+    if (!conflict) return;
+    // The conflict snapshot becomes our active shift signal so the
+    // existing close-shift flow renders with the right data.
+    this.shift.set(conflict.active_shift);
+    this.saldoReal.set(conflict.active_shift.cash_initial || 0);
+    this.showForceOpenModal.set(null);
+    this.showOpenForm.set(false);
+    this.toast.info('Cierra el turno activo con tu arqueo antes de abrir el nuevo.');
+  }
+
+  /** Computed: can the force-close button be enabled? */
+  readonly canForceOpen = computed(() => {
+    const c = this.showForceOpenModal();
+    if (!c) return false;
+    if (c.force_blocked_by_over_short) return false;
+    if (this.forceOpening()) return false;
+    return true;
+  });
 
   // ── Close shift ──
 

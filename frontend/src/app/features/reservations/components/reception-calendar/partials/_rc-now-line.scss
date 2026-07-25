@@ -1,0 +1,69 @@
+// ═══════════════════════════════════════════════════════════════
+//   LIVE NOW-LINE
+//   1px blue vertical line + HH:MM dot marking the current time.
+//   The line is rendered in each today cell at the horizontal
+//   position proportional to (currentSeconds / 86400). The dot
+//   appears only once per view (header today cell).
+// ═══════════════════════════════════════════════════════════════
+
+.rc-cell-bg {
+  position: relative; // anchor for absolute-positioned now-line
+}
+
+.rc-now-line {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--accent, #2563eb);
+  pointer-events: none;
+  z-index: 4;
+  // Subtle 30% halo to soften the line on dark cells without losing crispness
+  box-shadow: 0 0 6px 0 color-mix(in srgb, var(--accent, #2563eb) 35%, transparent);
+  // Smooth tick-by-tick repositioning (matches the 30s signal tick)
+  transition: left 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  animation: rc-now-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes rc-now-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.78; }
+}
+
+.rc-cell-day { // header today cell — anchor for the dot
+  position: relative;
+}
+
+.rc-now-dot {
+  position: absolute;
+  top: 14px; // sits over the day-number badge
+  z-index: 6;
+  pointer-events: none;
+  // Smooth tick-by-tick repositioning (matches the 30s signal tick)
+  transition: left 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rc-now-label {
+  position: relative;
+  display: inline-block;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent, #2563eb);
+  color: var(--on-accent, #fff);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent, #2563eb) 40%, transparent);
+}
+
+// ── Dark theme tuning ──
+[data-theme='dark'] .rc-now-line {
+  background: color-mix(in srgb, var(--accent, #2563eb) 85%, #ffffff);
+}
+
+[data-theme='dark'] .rc-now-label {
+  background: color-mix(in srgb, var(--accent, #2563eb) 90%, #ffffff);
+  color: #ffffff;
+}

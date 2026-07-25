@@ -5,7 +5,14 @@ export interface ShiftInfo {
   id: string;
   prop_id: number;
   shift_type: string;
+  /** Visual label of the recepcionista (free text typed by the user). */
   employee: string;
+  /** ObjectId FK to `employees` collection resolved from `employee` name. May be null. */
+  employee_id?: string | null;
+  /** Audit-grade: server-controlled authenticated user that OPENED the shift. */
+  opened_by?: string;
+  /** ObjectId FK to `users` collection — the actual IAM principal who opened the shift. */
+  opened_by_id?: string | null;
   start_time: string;
   end_time: string | null;
   cash_initial: number;
@@ -16,7 +23,10 @@ export interface ShiftInfo {
   closing_notes: string | null;
   total_collected: number;
   status: string;
+  /** Audit-grade: server-controlled authenticated user that CLOSED the shift. */
   closed_by: string | null;
+  /** ObjectId FK to `users` collection — the actual IAM principal who closed the shift. */
+  closed_by_id?: string | null;
   closed_at: string | null;
   transactions: ShiftTransaction[];
   payment_breakdown?: PaymentBreakdown;
@@ -74,6 +84,49 @@ export interface ShiftCloseSummary {
   booking_count: number;
 }
 
+/** Returned in the error.detail when POST /shifts/open hits an active shift. */
+export interface ActiveShiftConflict {
+  error: 'active_shift_exists';
+  message: string;
+  active_shift: ShiftInfo;
+  transactions_count: number;
+  total_collected: number;
+  last_closed_over_short: number | null;
+  force_blocked_by_over_short: boolean;
+}
+
+/** Returned in the error.detail (HTTP 422) when the opener requested a
+ *  shift_type that doesn't match the expected cash-window for NOW.
+ *  The frontend uses ``opener_can_override`` to decide whether to show
+ *  the gerente-only override checkbox; the bypass still requires
+ *  ``shifts.manage`` server-side. */
+export interface ScheduleMismatchDetail {
+  error: 'schedule_mismatch';
+  requested: string;
+  expected: string;
+  /** Human-friendly range like '08:00-16:00' or '16:00-00:00'. */
+  expected_window: string;
+  /** 'schedule' (HR lookup) or 'time_of_day' (clock fallback). */
+  source: 'schedule' | 'time_of_day';
+  /** ISO 8601 UTC timestamp of the moment the server resolved 'now'. */
+  now_utc: string;
+  /** Username that opened the shift (server-derived, not client-derived). */
+  opener: string;
+  message: string;
+  /** Permission code the opener must hold to invoke bypass_schedule_check. */
+  bypass_requires: 'shifts.manage';
+  /** Whether the current authenticated user is ALLOWED to bypass. */
+  opener_can_override: boolean;
+}
+
+/** Returned in the error.detail (HTTP 403) when bypass_schedule_check was
+ *  sent without ``shifts.manage``. */
+export interface ScheduleBypassForbiddenDetail {
+  error: 'schedule_bypass_forbidden';
+  message: string;
+  bypass_requires: 'shifts.manage';
+}
+
 @Injectable({ providedIn: 'root' })
 export class ShiftsApiService {
   private readonly http = inject(HttpClient);
@@ -87,11 +140,41 @@ export class ShiftsApiService {
     );
   }
 
-  /** Open a new shift */
-  openShift(propId: number, shiftType: string, employee: string, cashInitial = 0) {
+  /**
+   * Open a new shift.
+   *
+   * Set ``force: true`` to auto-close a currently-active shift without
+   * reconciliation. The server still rejects force when the most recent
+   * closed shift had a non-zero ``cash_over_short`` — the modal in the
+   * UI surfaces this via ``force_blocked_by_over_short``.
+   *
+   * Set ``bypassScheduleCheck: true`` to override the schedule validation
+   * (server requires ``shifts.manage`` permission; otherwise HTTP 403).
+   */
+  openShift(
+    propId: number,
+    shiftType: string,
+    employee: string,
+    cashInitial: number | null = null,
+    options: { force?: boolean; bypassScheduleCheck?: boolean } = {},
+  ) {
+    const body: Record<string, unknown> = {
+      prop_id: propId,
+      shift_type: shiftType,
+      employee,
+    };
+    if (cashInitial !== null && cashInitial !== undefined) {
+      body.cash_initial = cashInitial;
+    }
+    if (options.force) {
+      body.force = true;
+    }
+    if (options.bypassScheduleCheck) {
+      body.bypass_schedule_check = true;
+    }
     return this.http.post<{ shift: ShiftInfo; message: string }>(
       '/api/reception/shifts/open',
-      { prop_id: propId, shift_type: shiftType, employee, cash_initial: cashInitial },
+      body,
       { withCredentials: true },
     );
   }

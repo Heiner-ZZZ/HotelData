@@ -67,6 +67,11 @@
                  [class.rc-cell-weekend]="day.isWeekend">
               <span class="rc-day-name">{{ day.dayName }}</span>
               <span class="rc-day-num">{{ day.day }}</span>
+              @if (day.isToday && showNowLine()) {
+                <span class="rc-now-dot" [style.left]="(nowFraction() * 100) + '%'">
+                  <span class="rc-now-label" [attr.aria-label]="'Hora actual ' + nowLineTimeLabel()">{{ nowLineTimeLabel() }}</span>
+                </span>
+              }
             </div>
           }
         </div>
@@ -90,6 +95,9 @@
                    [class.rc-cell-today]="day.isToday"
                    [class.rc-cell-weekend]="day.isWeekend"
                    [class.rc-cell-occupied]="rm.reservations.length > 0">
+                @if (day.isToday && showNowLine()) {
+                  <span class="rc-now-line" [style.left]="(nowFraction() * 100) + '%'" aria-hidden="true"></span>
+                }
               </div>
             }
 
