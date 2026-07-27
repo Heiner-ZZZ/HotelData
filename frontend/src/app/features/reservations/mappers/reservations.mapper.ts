@@ -176,31 +176,92 @@ export function mapReservationStats(dto: ReservationStatsDto): ReservationStats 
 }
 
 export function mapReservationDetail(dto: ReservationDetailDto): ReservationDetailViewModel {
+  // Backend wire-shape tolerance: `GET /reservations/{id}` historically returned a
+  // nested envelope (`{ booking, guest, hotel, ... }`), but the live endpoint
+  // (after the booking_orders collection flattening) emits top-level snake_case
+  // fields directly — e.g. `{ booking_id, prop_id, status, ... }`. Old `backend/
+  // /reservations/{id}/cancel-preview` accidentally fed DTOs declared flat into
+  // the same mapper. Reading `dto.booking.booking_id` against a flat wire throws
+  // TypeError, which surfaced as "No fue posible cargar la reserva".
+  //
+  // Bilingual: read nested first; fall back to flat top-level. Same shape for
+  // the optional `guest` doc. Single source of truth for downstream consumers.
+  const wire = dto as unknown as {
+    booking_id?: string;
+    prop_id?: number;
+    status?: string;
+    booking_source?: string;
+    guest_name?: string;
+    guest_email?: string;
+    guest_phone?: string;
+    room_type_id?: string;
+    check_in_date?: string;
+    check_out_date?: string;
+    check_in_time?: string;
+    check_out_time?: string;
+    adults?: number;
+    children?: number;
+    rooms?: number;
+    comment?: string;
+    total_price?: number | null;
+    currency?: string;
+    total_nights?: number;
+    created_at?: string;
+    hotel_id?: string;
+    rate_plan_id?: string;
+    stay_status?: string | null;
+    coupon_code?: string;
+    special_requests?: string[] | string;
+    discount_percent?: number | null;
+    original_total_price?: number | null;
+    transaction_id?: string;
+    card_last4?: string;
+    payment_status?: string;
+    cancellation_free?: boolean;
+    cancellation_penalty_percent?: number;
+    cancellation_penalty_amount?: number;
+    cedula?: string;
+    can_cancel?: boolean;
+    amenities_count?: number;
+    amenities_total?: number;
+  };
+  const booking = dto.booking ?? wire;
+  const guest = dto.guest ?? wire;
+  /** Backend splits `special_requests` with `|` when flattening from flat wire,
+   *  whereas nested wire keeps it as a `string[]`. Normalise to string[]. */
+  const specialRequests = (() => {
+    const raw = booking.special_requests;
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string' && raw.length > 0) {
+      return raw.split('|').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  })();
   return {
-    bookingId: dto.booking.booking_id,
-    status: dto.booking.status,
-    bookingSource: dto.booking.booking_source,
-    hotelLabel: dto.hotel?.hotel_label || `Hotel ${dto.booking.prop_id}`,
-    propId: dto.booking.prop_id,
-    checkInDate: dto.booking.check_in_date,
-    checkOutDate: dto.booking.check_out_date,
-    occupancyLabel: `${dto.booking.adults} adultos · ${dto.booking.children} niños · ${dto.booking.rooms} habitaciones`,
-    rooms: dto.booking.rooms,
-    comment: dto.booking.comment || 'N/D',
-    createdAt: formatDateTime(dto.booking.created_at),
-    guestName: dto.guest?.guest_name || dto.booking.guest_name,
-    guestEmail: dto.guest?.guest_email || dto.booking.guest_email,
-    guestPhone: dto.guest?.guest_phone || dto.booking.guest_phone || '',
-    guestCedula: dto.guest?.cedula || '',
-    totalPrice: dto.booking.total_price ?? null,
-    currency: dto.booking.currency || 'USD',
-    totalNights: dto.booking.total_nights || 0,
-    discountPercent: dto.booking.discount_percent,
-    originalTotalPrice: dto.booking.original_total_price,
-    specialRequests: dto.booking.special_requests || [],
+    bookingId: booking.booking_id ?? '',
+    status: booking.status ?? '',
+    bookingSource: booking.booking_source ?? '',
+    hotelLabel: dto.hotel?.hotel_label || `Hotel ${booking.prop_id ?? 0}`,
+    propId: booking.prop_id ?? 0,
+    checkInDate: booking.check_in_date ?? '',
+    checkOutDate: booking.check_out_date ?? '',
+    occupancyLabel: `${booking.adults ?? 0} adultos · ${booking.children ?? 0} niños · ${booking.rooms ?? 0} habitaciones`,
+    rooms: booking.rooms ?? 0,
+    comment: booking.comment || 'N/D',
+    createdAt: formatDateTime(booking.created_at ?? ''),
+    guestName: guest.guest_name ?? '',
+    guestEmail: guest.guest_email ?? '',
+    guestPhone: guest.guest_phone ?? '',
+    guestCedula: guest.cedula ?? '',
+    totalPrice: booking.total_price ?? null,
+    currency: booking.currency || 'USD',
+    totalNights: booking.total_nights ?? 0,
+    discountPercent: booking.discount_percent,
+    originalTotalPrice: booking.original_total_price,
+    specialRequests,
     isManual: Boolean(dto.manual),
-    manualReservationId: dto.manual?.manual_reservation_id || null,
-    canCancel: dto.can_cancel,
+    manualReservationId: dto.manual?.manual_reservation_id ?? null,
+    canCancel: wire.can_cancel ?? false,
     canConfirm: false,
     canReject: false,
     invoice: dto.invoice ? {
@@ -231,14 +292,14 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       currency: dto.price_breakdown.currency,
       source: dto.price_breakdown.source,
     } : null,
-    cancellationPolicy: dto.cancellation_policy || null,
-    transactionId: dto.booking.transaction_id,
-    cardLast4: dto.booking.card_last4,
-    paymentStatus: dto.booking.payment_status,
-    cancellationFree: dto.booking.cancellation_free,
-    cancellationPenaltyPercent: dto.booking.cancellation_penalty_percent,
-    cancellationPenaltyAmount: dto.booking.cancellation_penalty_amount,
-    additionalCharges: (dto.additional_charges || []).map(c => ({
+    cancellationPolicy: dto.cancellation_policy ?? null,
+    transactionId: booking.transaction_id,
+    cardLast4: booking.card_last4,
+    paymentStatus: booking.payment_status,
+    cancellationFree: booking.cancellation_free,
+    cancellationPenaltyPercent: booking.cancellation_penalty_percent,
+    cancellationPenaltyAmount: booking.cancellation_penalty_amount,
+    additionalCharges: (dto.additional_charges ?? []).map(c => ({
       concept: c.concept,
       amount: c.amount,
       quantity: c.quantity,
@@ -246,26 +307,26 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       note: c.note || '',
       createdAt: c.created_at,
     })),
-    assignedRooms: (dto.assigned_rooms || []).map(r => ({
+    assignedRooms: (dto.assigned_rooms ?? []).map(r => ({
       hotelRoomId: r.hotel_room_id,
       roomNumber: r.room_number,
       roomLabel: r.room_label,
       floor: r.floor,
       roomStatus: r.room_status,
     })),
-    totalCharges: (dto.additional_charges || []).reduce((sum, c) => sum + (c.total || 0), 0),
-    amenitiesCount: dto.amenities_count || 0,
-    amenitiesTotal: dto.amenities_total || 0,
-    history: dto.history.map((item) => ({
+    totalCharges: (dto.additional_charges ?? []).reduce((sum, c) => sum + (c.total ?? 0), 0),
+    amenitiesCount: wire.amenities_count ?? 0,
+    amenitiesTotal: wire.amenities_total ?? 0,
+    history: (dto.history ?? []).map((item) => ({
       status: item.status,
       changedAt: formatDateTime(item.changed_at),
       reason: item.reason,
-      changedBy: item.changed_by
+      changedBy: item.changed_by,
     })),
     // stay_status is the operational stay phase (checked_in, checked_out, etc.)
     // It is NOT a fallback for booking.status. If undefined, leave undefined.
     // The frontend should use `effectiveStayStatus()` from reservation-status.util
     // when it needs a combined fallback value.
-    stayStatus: dto.booking.stay_status ?? undefined,
+    stayStatus: booking.stay_status ?? undefined,
   };
 }
