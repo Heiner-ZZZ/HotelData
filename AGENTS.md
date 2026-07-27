@@ -12,6 +12,34 @@ migration scripts, feature auth services, qué NO hacer — ObjectIdStr
 helper revertido) están en `knowledge.md` y deben leerse **antes** de
 tocar el código o proponer refactors.
 
+## 🔧 Backend Conventions (mirror del cache-clear ritual)
+
+Se mirrora aquí el único patrón de **`knowledge.md → Backend Conventions`**
+que se rompe recurrentemente cuando un agente lee solo `AGENTS.md` y se
+salta `knowledge.md`. **Mismo wording canónico que `knowledge.md`** —
+si la fuente y este mirror divergen, corregir ambos y usar
+`diff knowledge.md AGENTS.md` después.
+
+### Cache-clear ritual after `*Response` deletes or alias changes
+
+Pydantic v2 + FastAPI + Docker source mount + `from __future__ import annotations` = stale bytecode risk. After **deleting** any `*Response` Pydantic class (or modifying a field's `validation_alias` / `serialization_alias`), stale `.pyc` files inside `__pycache__/` can still be loaded by the running Python interpreter, surfacing as `ImportError: cannot import name 'XResponse' from …` for symbols that were already removed.
+
+**Required cleanup** (mandatory after every delete or alias mutation; skipping it leaves the running server carrying deleted-class ghosts from cached bytecode):
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T server find /app/server -name __pycache__ -exec rm -rf {} + && docker compose -f infra/docker-compose.yml restart server
+```
+
+The first command clears every `__pycache__/` directory under the server tree so the next interpreter boot reads source from disk. The `docker compose restart server` cold-restarts the uvicorn process — required because Python already loaded the stale `.pyc` at boot and is now holding the deleted symbol in `sys.modules`. The `&&` ensures the restart only runs if the cache clear succeeds — if `find` errors out (e.g. permission denied), halt the ritual and investigate instead of restarting with stale bytecode still on disk.
+
+This is mandatory even when `py_compile` reports OK: the static check reads from `.py` source and does not exercise the import cache of a running interpreter. A model that compiles cleanly can still fail at runtime if its `.pyc` from a previous boot is cached on disk.
+
+**Wrapper script** for both shells (preferred over pasting two commands):
+- POSIX: `bash server/scripts/clear_pydantic_cache.sh`
+- Windows: `powershell -File server/scripts/clear_pydantic_cache.ps1`
+
+If you skip this ritual and the server starts returning 500s referencing symbols you already deleted, the failure mode is loud but the source of the leak is not obvious — check `docker compose exec server ls /app/server/src/app/modules/<your_module>/__pycache__/` and confirm the deleted class names.
+
 ## Skills disponibles
 
 El proyecto tiene skills de dominio ubicadas en `.opencode/skills/`:
