@@ -53,6 +53,22 @@ interface FilterOptions {
   actions: string[];
 }
 
+/** Helper: extract a runtime error message without relying on `any`.
+ *
+ * Handles: `Error` instances, plain strings, and duck-typed objects with a
+ * string `message` field (covers Angular's `HttpErrorResponse`, XHR errors,
+ * and any other framework-neutrally typed error).
+ */
+function toErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+}
+
 @Component({
   selector: 'app-audit-log-page',
   imports: [
@@ -324,9 +340,9 @@ export class AuditLogPageComponent {
       const d = this.data();
       if (!d || !d.items.length) return;
       const fv = this.filterForm.getRawValue();
-      const entityTypes = [...new Set(d.items.map((i) => i.entity_type))];
-      const actions = [...new Set(d.items.map((i) => i.action))];
-      const users = [...new Set(d.items.map((i) => i.changed_by))];
+      const entityTypes = [...new Set(d.items.map((i: AuditEntry) => i.entity_type))];
+      const actions = [...new Set(d.items.map((i: AuditEntry) => i.action))];
+      const users = [...new Set(d.items.map((i: AuditEntry) => i.changed_by))];
 
       const grid = buildSummaryGrid([
         { label: 'Total de registros', value: String(d.total), tone: 'neutral' },
@@ -337,7 +353,7 @@ export class AuditLogPageComponent {
         { label: 'Usuarios', value: String(users.length), tone: 'neutral' },
       ]);
 
-      const metaRows = [
+      const metaRows: { label: string; value: string }[] = [
         { label: 'Total', value: String(d.total) },
         { label: 'Página', value: `${d.page} de ${d.pages || 1}` },
       ];
@@ -355,7 +371,7 @@ export class AuditLogPageComponent {
           { label: 'Usuario', align: 'left' },
           { label: 'Fecha', align: 'right' },
         ],
-        d.items.map((entry) => [
+        d.items.map((entry: AuditEntry) => [
           this.getEntityLabel(entry.entity_type),
           this.getActionLabel(entry.action),
           (entry.summary || '').substring(0, 100),
@@ -385,8 +401,8 @@ export class AuditLogPageComponent {
       });
 
       await this.reports.exportPdf(html, `auditoria-sistema-${new Date().toISOString().slice(0, 10)}`);
-    } catch (err) {
-      console.error('[Audit] PDF export failed', err);
+    } catch (err: unknown) {
+      console.error('[Audit] PDF export failed', toErrorMessage(err, 'unknown error'));
     } finally {
       this.exportingPdf.set(false);
     }
@@ -398,9 +414,9 @@ export class AuditLogPageComponent {
       const d = this.data();
       if (!d || !d.items.length) return;
       const fv = this.filterForm.getRawValue();
-      const entityTypes = [...new Set(d.items.map((i) => i.entity_type))];
-      const actions = [...new Set(d.items.map((i) => i.action))];
-      const users = [...new Set(d.items.map((i) => i.changed_by))];
+      const entityTypes = [...new Set(d.items.map((i: AuditEntry) => i.entity_type))];
+      const actions = [...new Set(d.items.map((i: AuditEntry) => i.action))];
+      const users = [...new Set(d.items.map((i: AuditEntry) => i.changed_by))];
 
       await this.reports.exportXlsx({
         filename: `auditoria-sistema-${new Date().toISOString().slice(0, 10)}`,
@@ -410,17 +426,17 @@ export class AuditLogPageComponent {
             name: 'Resumen',
             headers: [{ label: 'Métrica' }, { label: 'Valor' }],
             rows: [
-              ['Total de registros', d.total] as any,
-              ['Registros en página', d.items.length] as any,
-              ['Página actual', `${d.page} de ${d.pages || 1}`] as any,
-              ['Entidades únicas', entityTypes.length] as any,
-              ['Acciones únicas', actions.length] as any,
-              ['Usuarios únicos', users.length] as any,
-              ['Filtro Entidad', fv.entityType ? this.getEntityLabel(fv.entityType) : '—'] as any,
-              ['Filtro Acción', fv.action ? this.getActionLabel(fv.action) : '—'] as any,
-              ['Filtro Propiedad', fv.propId ? `#${fv.propId}` : '—'] as any,
-              ['Desde', fv.fromDate || '—'] as any,
-              ['Hasta', fv.toDate || '—'] as any,
+              ['Total de registros', d.total],
+              ['Registros en página', d.items.length],
+              ['Página actual', `${d.page} de ${d.pages || 1}`],
+              ['Entidades únicas', entityTypes.length],
+              ['Acciones únicas', actions.length],
+              ['Usuarios únicos', users.length],
+              ['Filtro Entidad', fv.entityType ? this.getEntityLabel(fv.entityType) : '—'],
+              ['Filtro Acción', fv.action ? this.getActionLabel(fv.action) : '—'],
+              ['Filtro Propiedad', fv.propId ? `#${fv.propId}` : '—'],
+              ['Desde', fv.fromDate || '—'],
+              ['Hasta', fv.toDate || '—'],
             ],
             column_widths: { A: 32, B: 36 },
           },
@@ -435,7 +451,7 @@ export class AuditLogPageComponent {
               { label: 'Usuario' },
               { label: 'Propiedad' },
             ],
-            rows: d.items.map((entry) => [
+            rows: d.items.map((entry: AuditEntry) => [
               new Date(entry.timestamp).toLocaleString('es-MX'),
               this.getEntityLabel(entry.entity_type),
               this.getActionLabel(entry.action),
@@ -443,13 +459,13 @@ export class AuditLogPageComponent {
               entry.summary || '',
               entry.changed_by,
               entry.prop_id,
-            ]) as any[],
+            ]),
             column_widths: { A: 22, B: 24, C: 22, D: 22, E: 50, F: 22, G: 14 },
           },
         ],
       });
-    } catch (err) {
-      console.error('[Audit] XLSX export failed', err);
+    } catch (err: unknown) {
+      console.error('[Audit] XLSX export failed', toErrorMessage(err, 'unknown error'));
     } finally {
       this.exportingXlsx.set(false);
     }
