@@ -1,0 +1,146 @@
+@use 'styles' as *;
+
+.report-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  &--primary {
+    border-color: var(--color-primary);
+
+    .kpi-card__value {
+      color: var(--color-primary);
+    }
+  }
+}
+
+.data-section {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  th {
+    background: var(--surface-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  td.num, th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.product-name {
+  display: block;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.product-id {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  &--neutral {
+    background: var(--surface-muted);
+    color: var(--text-secondary);
+  }
+}
+
+.margin-bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.margin-bar {
+  height: 0.5rem;
+  width: 60px;
+  background: var(--color-success);
+  border-radius: 0.25rem;
+  transition: width 0.2s ease;
+
+  &.is-negative {
+    background: var(--color-danger, #dc2626);
+  }
+}
+
+.margin-bar-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 4rem;
+  text-align: right;
+
+  &.is-negative {
+    color: var(--color-danger, #dc2626);
+  }
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem !important;
+  font-style: italic;
+}

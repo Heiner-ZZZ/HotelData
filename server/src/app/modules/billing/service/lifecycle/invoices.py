@@ -518,7 +518,7 @@ def update_invoice_additional_charges(
     for c in charges:
         charge_items.append({
             "type": "additional_charge",
-            "charge_id": str(c.get("_id")),
+            "charge_id": str(c.get("_id", "")),
             "concept": c.get("concept", ""),
             "amount": c.get("amount", 0),
             "quantity": c.get("quantity", 1),
@@ -552,7 +552,7 @@ def update_invoice_additional_charges(
         "line_items": combined_line_items,
         "additional_charges": [
             {
-                "charge_id": str(c.get("_id")),
+                "charge_id": str(c.get("_id", "")),
                 "concept": c.get("concept", ""),
                 "amount": c.get("amount", 0),
                 "quantity": c.get("quantity", 1),
@@ -619,7 +619,7 @@ def create_split_charges_invoice(
     for c in charges:
         charge_items.append({
             "type": "additional_charge",
-            "charge_id": str(c.get("_id")),
+            "charge_id": str(c.get("_id", "")),
             "concept": c.get("concept", "") or c.get("item_name", ""),
             "amount": c.get("amount", 0),
             "quantity": c.get("quantity", 1),
@@ -649,7 +649,7 @@ def create_split_charges_invoice(
         "notes": f"Factura de consumos — {len(charges)} cargo(s) adicional(es) por ${charges_sum:.2f}",
         "additional_charges": [
             {
-                "charge_id": str(c.get("_id")),
+                "charge_id": str(c.get("_id", "")),
                 "concept": c.get("concept", "") or c.get("item_name", ""),
                 "amount": c.get("amount", 0),
                 "quantity": c.get("quantity", 1),

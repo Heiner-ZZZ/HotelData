@@ -134,7 +134,11 @@ from src.app.modules.expenses.service.collections import ensure_expenses_collect
 from src.app.modules.expenses.routes import api_router as expenses_api_router
 from src.app.modules.expenses.routes import router as expenses_module_router
 from src.app.modules.reports.routes import router as reports_router
-from src.app.core.outbox import ensure_outbox_collection, process_pending_outbox
+from src.app.core.outbox import (
+    ensure_outbox_collection,
+    process_pending_outbox,
+    process_pending_outbox_forever,
+)
 import logging
 
 from config.settings import get_settings
@@ -247,6 +251,14 @@ async def lifespan(app: FastAPI):
     ensure_audit_indexes()
     ensure_outbox_collection()
     process_pending_outbox(get_database())
+    # Periodic outbox drainer: catches up on ``audit_log`` writes that failed
+    # inline (rare; e.g. transient mongo blip). Daemon thread so uvicorn
+    # shutdown tears down naturally without hanging.
+    threading.Thread(
+        target=process_pending_outbox_forever,
+        args=(get_database(),),
+        daemon=True,
+    ).start()
     threading.Thread(target=refresh_kpis_background, daemon=True).start()
     yield
 

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { distinctUntilChanged, map, Observable, switchMap } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -12,6 +12,27 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { GeoCatalogApiService, type GeoEntry, type GeoListResponse } from '../../services/geo-catalog-api.service';
+
+// ─── Local wire types for visitor-dataset endpoints ───────────────────────
+// Each /visitor-* endpoint returns `{ items: T[] }` of a different shape.
+interface VisitorCountryItem {
+  visitor_location_country_id: number;
+  country_display_name: string;
+}
+interface VisitorDestinationItem {
+  srch_destination_id: number;
+  destination_display_name: string;
+}
+interface VisitorSiteItem {
+  site_id: number;
+  site_display_name: string;
+}
+interface VisitorHotelItem {
+  prop_id: number;
+  hotel_name: string;
+}
+type VisitorListResponse<T> = { items: T[] };
+// ──────────────────────────────────────────────────────────────────────────
 
 const ENTRY_TYPES = [
   { value: 'visitor-country', label: 'Países del Dataset (IDs)', icon: 'dataset' },
@@ -69,11 +90,11 @@ export class GeoCatalogPageComponent {
           this.viewState.set('loading');
           this.activeType.set(type);
 
-          let obs: any;
+          let obs: Observable<GeoListResponse>;
           if (type === 'visitor-country') {
             obs = this.api.listVisitorCountries().pipe(
-              map((res: any) => {
-                const items = res.items.map((item: any) => ({
+              map((res: VisitorListResponse<VisitorCountryItem>) => {
+                const items: GeoEntry[] = res.items.map((item) => ({
                   id: String(item.visitor_location_country_id),
                   type: 'visitor-country',
                   code: String(item.visitor_location_country_id),
@@ -93,8 +114,8 @@ export class GeoCatalogPageComponent {
             );
           } else if (type === 'visitor-destination') {
             obs = this.api.listVisitorDestinations().pipe(
-              map((res: any) => {
-                const items = res.items.map((item: any) => ({
+              map((res: VisitorListResponse<VisitorDestinationItem>) => {
+                const items: GeoEntry[] = res.items.map((item) => ({
                   id: String(item.srch_destination_id),
                   type: 'visitor-destination',
                   code: String(item.srch_destination_id),
@@ -114,8 +135,8 @@ export class GeoCatalogPageComponent {
             );
           } else if (type === 'visitor-site') {
             obs = this.api.listVisitorSites().pipe(
-              map((res: any) => {
-                const items = res.items.map((item: any) => ({
+              map((res: VisitorListResponse<VisitorSiteItem>) => {
+                const items: GeoEntry[] = res.items.map((item) => ({
                   id: String(item.site_id),
                   type: 'visitor-site',
                   code: String(item.site_id),
@@ -135,8 +156,8 @@ export class GeoCatalogPageComponent {
             );
           } else if (type === 'visitor-hotel') {
             obs = this.api.listVisitorHotels().pipe(
-              map((res: any) => {
-                const items = res.items.map((item: any) => ({
+              map((res: VisitorListResponse<VisitorHotelItem>) => {
+                const items: GeoEntry[] = res.items.map((item) => ({
                   id: String(item.prop_id),
                   type: 'visitor-hotel',
                   code: String(item.prop_id),
@@ -162,7 +183,7 @@ export class GeoCatalogPageComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (data: any) => {
+        next: (data: GeoListResponse) => {
           this.data.set(data);
           this.viewState.set(data.items.length ? 'success' : 'empty');
         },
@@ -170,7 +191,7 @@ export class GeoCatalogPageComponent {
       });
   }
 
-  private applyLocalFilters(items: any[], q: string, page: number): GeoListResponse {
+  private applyLocalFilters(items: GeoEntry[], q: string, page: number): GeoListResponse {
     if (q) {
       const pattern = q.toLowerCase();
       items = items.filter(
@@ -244,7 +265,7 @@ export class GeoCatalogPageComponent {
     const editId = this.editingId();
     if (!editId) return;
 
-    let obs: any;
+    let obs: Observable<unknown>;
     if (this.activeType() === 'visitor-country') {
       obs = this.api.updateVisitorCountry(Number(editId), val.name);
     } else if (this.activeType() === 'visitor-destination') {
@@ -264,8 +285,11 @@ export class GeoCatalogPageComponent {
         this.editingId.set(null);
         this.refresh();
       },
-      error: (err: any) => {
-        this.toast.error(err.error?.detail || err.message || 'Error al guardar');
+      error: (err: unknown) => {
+        const detail = (err as { error?: { detail?: string }; message?: string })?.error?.detail
+          ?? (err as { message?: string })?.message
+          ?? 'Error al guardar';
+        this.toast.error(detail);
       },
     });
   }
@@ -279,7 +303,7 @@ export class GeoCatalogPageComponent {
     if (!current) return;
     this.viewState.set('loading');
     
-    let listObs: any;
+    let listObs: Observable<unknown>;
     if (this.activeType() === 'visitor-country') {
       listObs = this.api.listVisitorCountries();
     } else if (this.activeType() === 'visitor-destination') {
@@ -293,24 +317,27 @@ export class GeoCatalogPageComponent {
     }
 
     listObs.pipe(
-      map((res: any) => {
-        const items = res.items.map((item: any) => {
+      map((raw: unknown): GeoListResponse => {
+        const items: GeoEntry[] = [];
+        const visitList = (raw as { items: unknown[] }).items ?? [];
+        for (const itemUnknown of visitList) {
+          const item = itemUnknown as Record<string, unknown>;
           let id = '';
           let name = '';
           if (this.activeType() === 'visitor-country') {
-            id = String(item.visitor_location_country_id);
-            name = item.country_display_name;
+            id = String(item['visitor_location_country_id']);
+            name = String(item['country_display_name'] ?? '');
           } else if (this.activeType() === 'visitor-destination') {
-            id = String(item.srch_destination_id);
-            name = item.destination_display_name;
+            id = String(item['srch_destination_id']);
+            name = String(item['destination_display_name'] ?? '');
           } else if (this.activeType() === 'visitor-site') {
-            id = String(item.site_id);
-            name = item.site_display_name;
+            id = String(item['site_id']);
+            name = String(item['site_display_name'] ?? '');
           } else if (this.activeType() === 'visitor-hotel') {
-            id = String(item.prop_id);
-            name = item.hotel_name;
+            id = String(item['prop_id']);
+            name = String(item['hotel_name'] ?? '');
           }
-          return {
+          items.push({
             id,
             type: this.activeType(),
             code: id,
@@ -324,14 +351,14 @@ export class GeoCatalogPageComponent {
             isActive: true,
             createdAt: '',
             updatedAt: null,
-          };
-        });
+          });
+        }
         const q = this.route.snapshot.queryParams['q'] || '';
         return this.applyLocalFilters(items, q, current.page);
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (data: any) => {
+      next: (data: GeoListResponse) => {
         this.data.set(data);
         this.viewState.set(data.items.length ? 'success' : 'empty');
       },

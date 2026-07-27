@@ -269,6 +269,18 @@
 
 /* ─── AG Grid theme overrides ─── */
 .reservations-grid {
+  --ag-background-color: var(--surface);
+  --ag-foreground-color: var(--app-text);
+  --ag-header-background-color: var(--surface);
+  --ag-header-foreground-color: var(--muted-text);
+  --ag-odd-row-background-color: var(--surface);
+  --ag-even-row-background-color: var(--surface);
+  --ag-row-hover-color: color-mix(in srgb, var(--accent) 3%, transparent);
+  --ag-border-color: var(--app-border);
+  --ag-secondary-border-color: var(--app-border);
+  --ag-input-focus-border-color: var(--accent);
+  --ag-selected-row-background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+
   border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow: hidden;
@@ -303,6 +315,9 @@
   /* No borders between cells */
   .ag-cell-focus { border: none !important; }
   .ag-center-cols-container { border: none !important; }
+
+  /* Root wrapper background */
+  .ag-root-wrapper { background: var(--surface); }
 }
 
 /* Shared folio tag styles (used in cellRenderers) */

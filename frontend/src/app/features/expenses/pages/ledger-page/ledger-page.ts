@@ -3,7 +3,15 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AgGridAngular } from 'ag-grid-angular';
-import type { ColDef, GridReadyEvent, GridApi, ColumnHeaderClickedEvent } from 'ag-grid-community';
+import type {
+  ColDef,
+  GridReadyEvent,
+  GridApi,
+  ColumnHeaderClickedEvent,
+  RowClassParams,
+  GetRowIdParams,
+  ICellRendererParams,
+} from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
 import { ActivatedRoute } from '@angular/router';
 
@@ -139,15 +147,22 @@ export class LedgerPageComponent {
     suppressSizeToFit: false,
   };
   readonly rowClassRules = {
-    'row-credit': (p: any) => p.data?.credit > 0,
-    'je-group-row': (p: any) => p.data?.__groupRow === true,
-    'je-child-row': (p: any) => p.data?.__isChild === true,
+    'row-credit': (p: RowClassParams<LedgerTransaction>) => (p.data?.credit ?? 0) > 0,
+    'je-group-row': (p: RowClassParams<TreeRow>) => p.data?.__groupRow === true,
+    'je-child-row': (p: RowClassParams<TreeRow>) => p.data?.__isChild === true,
   };
 
-  getRowId = (params: any) => {
-    if (params.data?.id) return String(params.data.id);
-    if (params.data?._id) return String(params.data._id);
-    return 'row-' + String(params.rowIndex ?? 0);
+  // Stable monotonic counter for fallback IDs when data has no `id`/`_id`.
+  // Required: ag-grid uses getRowId to reconcile nodes across renders;
+  // a non-deterministic fallback leaks nodes and breaks tree-group state.
+  private fallbackIdCounter = 0;
+
+  getRowId = (params: GetRowIdParams<TreeRow>) => {
+    const d = params.data;
+    if (d && d.__groupRow === true) return d.id;
+    if (d && d.id !== undefined && d.id !== null && d.id !== '') return String(d.id);
+    if (d && d._id) return String(d._id);
+    return `row-fallback-${++this.fallbackIdCounter}`;
   };
 
   constructor() {
@@ -277,7 +292,7 @@ export class LedgerPageComponent {
       {
         field: 'journalEntryId', headerName: 'Asiento', minWidth: 420, sortable: true,
         headerClass: 'col-odd', cellClass: 'cell-mono cell-journal col-odd',
-        cellRenderer: (p: any) => this.renderJournalCell(p),
+        cellRenderer: (p: ICellRendererParams<LedgerTransaction>) => this.renderJournalCell(p),
       },
       {
         field: 'accountCode', headerName: 'Cuenta', minWidth: 80, sortable: true, filter: true,
@@ -287,8 +302,8 @@ export class LedgerPageComponent {
         field: 'description', headerName: 'Descripción', minWidth: 220,
         sortable: true, filter: true,
         headerClass: 'col-odd',
-        cellRenderer: (p: any) => {
-          if (p.data?.__groupRow) return '';
+        cellRenderer: (p: ICellRendererParams<TreeRow>) => {
+          if (p.data?.__groupRow === true) return '';
           const wrapper = document.createElement('div');
           wrapper.className = 'cell-desc col-odd';
           const label = document.createElement('span');
@@ -335,9 +350,9 @@ export class LedgerPageComponent {
     ];
   }
 
-  private renderJournalCell(p: any): HTMLElement {
-    if (p.data?.__groupRow) return this.renderGroupRowCell(p.data as JournalEntryGroupRow);
-    return this.renderLeafRowCell(p);
+  private renderJournalCell(p: ICellRendererParams<TreeRow>): HTMLElement {
+    if (p.data?.__groupRow === true) return this.renderGroupRowCell(p.data as JournalEntryGroupRow);
+    return this.renderLeafRowCell(p as ICellRendererParams<LedgerTransaction>);
   }
 
   private renderGroupRowCell(data: JournalEntryGroupRow): HTMLElement {
@@ -385,8 +400,8 @@ export class LedgerPageComponent {
     return wrapper;
   }
 
-  private renderLeafRowCell(p: any): HTMLElement {
-    const isDebit = p.data?.debit > 0;
+  private renderLeafRowCell(p: ICellRendererParams<LedgerTransaction>): HTMLElement {
+    const isDebit = (p.data?.debit ?? 0) > 0;
     const container = document.createElement('span');
     const tag = document.createElement('span');
     tag.className = 'je-tag ' + (isDebit ? 'je-debit' : 'je-credit');
@@ -548,7 +563,7 @@ export class LedgerPageComponent {
     const header = ['Fecha', 'DC', 'Asiento', 'Cuenta', 'Descripción', 'Huésped', 'Ctro. Costo', 'Débito', 'Crédito', 'Balance', 'Período', 'Folio / Factura'];
     rows.push(header);
 
-    const fmtDate = (v: any): string => {
+    const fmtDate = (v: string | number | Date | null | undefined): string => {
       if (!v) return '';
       const d = new Date(v);
       if (isNaN(d.getTime())) return String(v).slice(0, 10);
@@ -557,7 +572,7 @@ export class LedgerPageComponent {
       return `${day}-${month} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
     const usd = (n: number) => '$' + n.toFixed(2);
-    const esc = (v: any) => {
+    const esc = (v: string | number | null | undefined) => {
       if (v === null || v === undefined) return '';
       const s = String(v);
       return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
@@ -656,7 +671,7 @@ export class LedgerPageComponent {
         __childCount: groupBuffer.length,
         __groupDebit: groupBuffer.reduce((s, r) => s + (r.debit || 0), 0),
         __groupCredit: groupBuffer.reduce((s, r) => s + (r.credit || 0), 0),
-        id: ('__ledger_grp__' + jeId) as any,
+        id: '__ledger_grp__' + jeId,
         accountCode: '',
         description: '',
         debit: 0,
@@ -668,7 +683,7 @@ export class LedgerPageComponent {
       } as JournalEntryGroupRow);
       if (expanded.has(jeId)) {
         for (const child of groupBuffer) {
-          visible.push({ ...child, __isChild: true } as any);
+          visible.push({ ...child, __isChild: true } as LedgerTransaction & { __isChild: true });
         }
       }
       groupBuffer = [];
@@ -833,21 +848,22 @@ export class LedgerPageComponent {
     const period = inc.period || this.selectedPeriod() || 'Todos los períodos';
     const propLabel = this.selectedLabel() || `Propiedad #${inc.propId}`;
     const filename = `estado-resultados_${propLabel.replace(/\s+/g, '_')}_${period.replace(/\s+/g, '_')}`.toLowerCase();
-    const head = [
+    type HeaderCell = { label: string; align?: 'left' | 'right' | 'center' };
+    const head: HeaderCell[] = [
       { label: 'Cuenta' },
       { label: 'Nombre de la cuenta' },
-      { label: 'Débitos', align: 'right' } as any,
-      { label: 'Créditos', align: 'right' } as any,
-      { label: 'Neto', align: 'right' } as any,
+      { label: 'Débitos', align: 'right' },
+      { label: 'Créditos', align: 'right' },
+      { label: 'Neto', align: 'right' },
     ];
-    const summary = [
-      { label: 'Ingresos brutos' },
-      { label: 'Descuentos' },
-      { label: 'Ingresos netos' },
-      { label: 'Costos y gastos' },
-      { label: 'Resultado del período' },
+    type Row = (string | number | null)[];
+    const summaryItems = [
+      { label: 'Ingresos brutos', val: inc.revenue.total },
+      { label: 'Descuentos', val: -inc.discounts.total },
+      { label: 'Ingresos netos', val: inc.netRevenue },
+      { label: 'Costos y gastos', val: -inc.costs.total },
+      { label: 'Resultado del período', val: inc.netIncome },
     ];
-    const totals = [inc.revenue.total, -inc.discounts.total, inc.netRevenue, -inc.costs.total, inc.netIncome];
     await this.reports.exportXlsx({
       filename,
       sheet_title: `${propLabel} · Estado de Resultados · ${period}`,
@@ -855,15 +871,15 @@ export class LedgerPageComponent {
         {
           name: 'Resumen',
           headers: [{ label: 'Métrica' }, { label: 'Total' }],
-          rows: summary.map((s, i) => [s.label, totals[i]]),
+          rows: summaryItems.map<Row>((s) => [s.label, s.val]),
           column_widths: { A: 36, B: 22 },
         },
         {
           name: 'Ingresos (4xxx)',
           headers: head,
           rows: [
-            ...inc.revenue.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-            ['Total Ingresos', '', '', '', inc.revenue.total] as any,
+            ...inc.revenue.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+            ['Total Ingresos', '', '', '', inc.revenue.total],
           ],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },
         },
@@ -872,8 +888,8 @@ export class LedgerPageComponent {
           headers: head,
           rows: inc.discounts.lines.length
             ? [
-                ...inc.discounts.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-                ['Total Descuentos', '', '', '', inc.discounts.total] as any,
+                ...inc.discounts.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+                ['Total Descuentos', '', '', '', inc.discounts.total],
               ]
             : [],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },
@@ -882,8 +898,8 @@ export class LedgerPageComponent {
           name: 'Costos (5xxx)',
           headers: head,
           rows: [
-            ...inc.costs.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-            ['Total Costos', '', '', '', inc.costs.total] as any,
+            ...inc.costs.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+            ['Total Costos', '', '', '', inc.costs.total],
           ],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },
         },
@@ -991,12 +1007,14 @@ export class LedgerPageComponent {
     const period = bs.period || this.selectedPeriod() || 'Todos los períodos';
     const propLabel = this.selectedLabel() || `Propiedad #${bs.propId}`;
     const filename = `balance-general_${propLabel.replace(/\s+/g, '_')}_${period.replace(/\s+/g, '_')}`.toLowerCase();
-    const head = [
+    type HeaderCell = { label: string; align?: 'left' | 'right' | 'center' };
+    type Row = (string | number | null)[];
+    const head: HeaderCell[] = [
       { label: 'Cuenta' },
       { label: 'Nombre de la cuenta' },
-      { label: 'Débitos', align: 'right' } as any,
-      { label: 'Créditos', align: 'right' } as any,
-      { label: 'Neto', align: 'right' } as any,
+      { label: 'Débitos', align: 'right' },
+      { label: 'Créditos', align: 'right' },
+      { label: 'Neto', align: 'right' },
     ];
     await this.reports.exportXlsx({
       filename,
@@ -1004,14 +1022,14 @@ export class LedgerPageComponent {
       sheets: [
         {
           name: 'Resumen',
-          headers: [{ label: 'Métrica' }, { label: 'Total', align: 'right' } as any],
+          headers: [{ label: 'Métrica' }, { label: 'Total', align: 'right' }],
           rows: [
-            ['Total activos', bs.assets.total] as any,
-            ['Total pasivos', bs.liabilities.total] as any,
-            ['Patrimonio', bs.equity.total] as any,
-            ['Resultado del período', bs.netIncome] as any,
-            ['Pasivos + Patrimonio + Resultado', bs.totalLiabilitiesAndEquity] as any,
-            ['Estado', (bs.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO')] as any,
+            ['Total activos', bs.assets.total],
+            ['Total pasivos', bs.liabilities.total],
+            ['Patrimonio', bs.equity.total],
+            ['Resultado del período', bs.netIncome],
+            ['Pasivos + Patrimonio + Resultado', bs.totalLiabilitiesAndEquity],
+            ['Estado', bs.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO'],
           ],
           column_widths: { A: 38, B: 22 },
         },
@@ -1019,8 +1037,8 @@ export class LedgerPageComponent {
           name: 'Activos (1xxx)',
           headers: head,
           rows: [
-            ...bs.assets.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-            ['Total', '', '', '', bs.assets.total] as any,
+            ...bs.assets.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+            ['Total', '', '', '', bs.assets.total],
           ],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },
         },
@@ -1028,8 +1046,8 @@ export class LedgerPageComponent {
           name: 'Pasivos (2xxx)',
           headers: head,
           rows: [
-            ...bs.liabilities.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-            ['Total', '', '', '', bs.liabilities.total] as any,
+            ...bs.liabilities.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+            ['Total', '', '', '', bs.liabilities.total],
           ],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },
         },
@@ -1038,8 +1056,8 @@ export class LedgerPageComponent {
           headers: head,
           rows: bs.equity.lines.length
             ? [
-                ...bs.equity.lines.map((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net] as any),
-                ['Total', '', '', '', bs.equity.total] as any,
+                ...bs.equity.lines.map<Row>((r) => [r.accountCode, r.accountName, r.debits, r.credits, r.net]),
+                ['Total', '', '', '', bs.equity.total],
               ]
             : [],
           column_widths: { A: 14, B: 40, C: 18, D: 18, E: 18 },

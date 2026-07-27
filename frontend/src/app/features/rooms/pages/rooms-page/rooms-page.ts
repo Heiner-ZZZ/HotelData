@@ -59,7 +59,16 @@ export class RoomsPageComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   // ── KPI data (top 5 hotels by rooms) ──
-  readonly topHotelsResource = httpResource<{ items: TopHotelRoomsItem[] }>(() => '/api/kpi/top-hotels/rooms?limit=5');
+  readonly topHotelsResource = httpResource<{ items: TopHotelRoomsItem[] }>(() => '/api/kpi/top-hotels/rooms?limit=5', {
+    /**
+     * Tolerant passthrough mapper. The wire `/api/kpi/top-hotels/rooms`
+     * envelope is `{ items: [...] }`; each item shape is verified upstream
+     * by `kpi-api.service` (`TopHotelRoomsItem` is the camelCase view-model).
+     * If a future refactor factors `TopHotelRoomsItem` into a snake DTO,
+     * replace this passthrough with an explicit snake→camel mapper.
+     */
+    parse: (dto) => dto as { items: TopHotelRoomsItem[] },
+  });
   readonly topHotels = computed(() => this.topHotelsResource.value()?.items ?? []);
 
   readonly selectedPropId = signal(0);

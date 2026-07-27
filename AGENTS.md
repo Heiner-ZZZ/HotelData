@@ -3,6 +3,15 @@ For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
 <!-- SPECKIT END -->
 
+## 📚 Convenciones de código (canonical reference)
+
+**Las convenciones estables del proyecto viven en `knowledge.md`** (raíz).
+Las reglas de abajo (stack, Docker, credenciales, ETL) son operativas.
+Las convenciones de código (Pydantic `*Response`, atomic-write pattern,
+migration scripts, feature auth services, qué NO hacer — ObjectIdStr
+helper revertido) están en `knowledge.md` y deben leerse **antes** de
+tocar el código o proponer refactors.
+
 ## Skills disponibles
 
 El proyecto tiene skills de dominio ubicadas en `.opencode/skills/`:

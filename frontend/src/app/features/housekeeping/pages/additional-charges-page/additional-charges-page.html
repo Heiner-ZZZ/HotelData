@@ -173,13 +173,16 @@
               </thead>
               <tbody>
                 @for (item of d.items; track item.id) {
-                  <tr>
-                    <td class="cell-reserva">
-                      <div class="cell-reserva-inner">
-                        <code>{{ item.bookingId | slice:0:12 }}...</code>
-                        <app-info-tooltip [text]="'<strong>Reserva completa:</strong> ' + item.bookingId" [small]="true"></app-info-tooltip>
-                      </div>
-                    </td>
+                  <tr><td class="cell-reserva">
+  <div class="cell-reserva-inner">
+    @if (item.bookingId) {
+      <code>{{ item.bookingId | slice:0:12 }}...</code>
+      <app-info-tooltip [text]="'<strong>Reserva completa:</strong> ' + item.bookingId" [small]="true"></app-info-tooltip>
+    } @else {
+      <span class="text-muted">—</span>
+    }
+  </div>
+</td>
                     <td><strong>{{ item.concept }}</strong></td>
                     <td>${{ item.amount.toFixed(2) }}</td>
                     <td>{{ item.quantity }}</td>

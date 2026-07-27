@@ -1,7 +1,16 @@
 """Seed hotel products (billable add-ons) for all properties.
 
 Creates a catalog of products across categories: Minibar, Spa, Restaurante,
-Lavandería, Parking, Mascotas, Room Service, Daños, Late Checkout.
+Lavandería, Parking, Mascotas, Room Service, Daños, Late Checkout, Extras.
+
+Each product is seeded with inventory traceability fields:
+  - cost_price           (~30% of unit_price; 0 for compensation/penalty items)
+  - type                 ("retail" — default for all billable add-ons)
+  - default_supplier     ("Proveedor Demo" — placeholder for the demo)
+  - supplier_sku         None (per-item SKU not provided in demo)
+  - par_level            None (no reorder rule in MVP)
+  - last_purchase_*      None (filled on first restock via /restock endpoint)
+  - archived_at/by       None, updated_by None (audit fields, defaults to null)
 
 Run: python /app/scripts/seed_hotel_products.py
 """
@@ -17,6 +26,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.database.connection import get_database
+
+
+# Default cost ratio used to estimate cost_price from retail unit_price.
+# Adjustable per category via CATEGORIES_WITHOUT_COST below.
+DEFAULT_COST_RATIO = 0.30
+
+# Categories where cost_price must be 0 (charges / penalties, not physical
+# products purchased from a supplier): damage fees and late-checkout fees.
+CATEGORIES_WITHOUT_COST: frozenset[str] = frozenset({"Daños", "Late Checkout"})
+
+# Default supplier string used in the demo (one supplier for all seeded items).
+DEFAULT_SUPPLIER = "Proveedor Demo"
 
 
 PRODUCT_CATEGORIES = {
@@ -90,6 +111,15 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def cost_for(category: str, unit_price: float) -> float:
+    """Return estimated cost_price for a product given its category + retail price.
+    Compensation/penalty categories (Daños, Late Checkout) return 0.
+    """
+    if category in CATEGORIES_WITHOUT_COST:
+        return 0.0
+    return round(unit_price * DEFAULT_COST_RATIO, 2)
+
+
 def main() -> int:
     db = get_database()
 
@@ -107,20 +137,40 @@ def main() -> int:
     for prop_id in prop_ids:
         for category, items in PRODUCT_CATEGORIES.items():
             for name, price in items:
+                unit_price = round(price, 2)
+                cost_price = cost_for(category, unit_price)
                 product_id = f"PROD-{secrets.token_hex(4).upper()}"
                 doc = {
                     "prop_id": prop_id,
                     "product_id": product_id,
                     "name": name,
                     "description": f"{name} — categoría {category}",
-                    "unit_price": round(price, 2),
-                    "quantity_available": 50,
                     "category": category,
+                    # Discriminator (default retail for all billable add-ons).
+                    "type": "retail",
+                    # Inventory cost (estimated from retail or 0 for compensation).
+                    "cost_price": cost_price,
+                    # Supplier + optional cost-center attributes (MVP defaults).
+                    "default_supplier": DEFAULT_SUPPLIER,
+                    "supplier_sku": None,
+                    "par_level": None,
+                    # Last-purchase trace (filled on first restock via /restock).
+                    "last_purchase_invoice_ref": None,
+                    "last_purchase_at": None,
+                    "last_purchase_qty": None,
+                    # Retail + stock (existing fields maintained).
+                    "unit_price": unit_price,
+                    "quantity_available": 50,
                     "is_active": True,
-                    "seed_source": "seed_hotel_products",
+                    # Soft-delete pattern (mirrors housekeeping_tasks).
+                    "archived_at": None,
+                    "archived_by": None,
+                    # Audit fields.
                     "created_by": "system",
                     "created_at": utc_now(),
                     "updated_at": utc_now(),
+                    "updated_by": None,
+                    "seed_source": "seed_hotel_products",
                 }
                 db.hotel_products.insert_one(doc)
                 total_created += 1
@@ -130,6 +180,11 @@ def main() -> int:
         "products_per_prop": sum(len(v) for v in PRODUCT_CATEGORIES.values()),
         "total_created": total_created,
         "categories": list(PRODUCT_CATEGORIES.keys()),
+        "inventory_fields_added": [
+            "type", "cost_price", "default_supplier", "supplier_sku",
+            "par_level", "last_purchase_*", "archived_at", "archived_by",
+            "updated_by",
+        ],
     }
     print(json.dumps(summary, indent=2, ensure_ascii=False, default=str))
     print(f"✅ {total_created} productos creados para {len(prop_ids)} propiedad(es)")

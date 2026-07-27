@@ -1,0 +1,208 @@
+<div class="products-page">
+  <app-page-header
+    title="Productos"
+    subtitle="Catálogo de productos y amenities que se venden a huéspedes"
+    icon="inventory_2"
+  >
+    @if (canCreate()) {
+      <button type="button" class="btn-primary" (click)="create()">
+        <span class="material-symbols-outlined">add</span>
+        <span>Nuevo producto</span>
+      </button>
+    }
+
+    @if (canSeeCost()) {
+      <a routerLink="reports/margin" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
+        <span class="material-symbols-outlined">trending_up</span>
+        <span>Margen</span>
+      </a>
+      <a routerLink="reports/cogs" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
+        <span class="material-symbols-outlined">receipt_long</span>
+        <span>COGS</span>
+      </a>
+      <a routerLink="reports/stock-value" [queryParams]="{ prop_id: currentPropId() }" class="btn-secondary">
+        <span class="material-symbols-outlined">warehouse</span>
+        <span>Valor stock</span>
+      </a>
+    }
+  </app-page-header>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-input">
+      <span class="material-symbols-outlined">search</span>
+      <input
+        type="text"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchInput($event)"
+        placeholder="Buscar por nombre, categoría o ID…"
+        aria-label="Buscar productos"
+      />
+      @if (searchTerm()) {
+        <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Limpiar búsqueda">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      }
+    </div>
+
+    <div class="filter-chips">
+      @for (filter of typeFilters(); track filter.key) {
+        <button
+          type="button"
+          class="chip"
+          [class.is-active]="typeFilter() === filter.key"
+          (click)="onTypeChange(filter.key)"
+        >
+          {{ filter.label }}
+          <span class="chip-count">{{ filter.count }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- View states -->
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando productos…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="Error al cargar productos"
+        message="Verifica tu conexión e intenta de nuevo."
+        (retry)="reload()"
+      />
+    }
+    @case ('empty') {
+      <app-empty-state
+        title="No hay productos"
+        message="Crea tu primer producto para empezar a vender amenities."
+        icon="inventory_2"
+      >
+        @if (canCreate()) {
+          <button type="button" class="btn-primary" (click)="create()">
+            <span class="material-symbols-outlined">add</span>
+            <span>Crear producto</span>
+          </button>
+        }
+      </app-empty-state>
+    }
+    @case ('success') {
+      <div class="table-wrapper">
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Tipo</th>
+              @if (canSeeCost()) {
+                <th class="numeric">Costo</th>
+                <th class="numeric">Margen</th>
+              }
+              <th class="numeric">Retail</th>
+              <th class="numeric">Stock</th>
+              <th>Estado</th>
+              <th class="actions-col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of filteredProducts(); track trackByProductId($index, p)) {
+              <tr [class.is-archived]="!!p.archivedAt">
+                <td>
+                  <div class="cell-product">
+                    <span class="product-name">{{ p.name }}</span>
+                    <span class="product-id">{{ p.productId }}</span>
+                    @if (p.defaultSupplier) {
+                      <span class="product-supplier">
+                        <span class="material-symbols-outlined">local_shipping</span>
+                        {{ p.defaultSupplier }}
+                      </span>
+                    }
+                  </div>
+                </td>
+                <td>{{ p.category }}</td>
+                <td>
+                  <span class="type-badge type-{{ p.type }}">{{ PRODUCT_TYPE_LABELS[p.type] }}</span>
+                </td>
+                @if (canSeeCost()) {
+                  <td class="numeric">${{ p.costPrice.toFixed(2) }}</td>
+                  <td class="numeric">
+                    <div class="margin-cell">
+                      <span>${{ margin(p).toFixed(2) }}</span>
+                      <span class="margin-pct" [class.is-negative]="margin(p) < 0">
+                        {{ marginPct(p).toFixed(0) }}%
+                      </span>
+                    </div>
+                  </td>
+                }
+                <td class="numeric">${{ p.unitPrice.toFixed(2) }}</td>
+                <td class="numeric">
+                  <span class="stock" [class.is-low]="p.quantityAvailable > 0 && p.quantityAvailable < (p.parLevel ?? 10)" [class.is-empty]="p.quantityAvailable <= 0">
+                    {{ p.quantityAvailable }}
+                  </span>
+                  @if (p.parLevel && p.quantityAvailable < p.parLevel) {
+                    <span class="par-warning" title="Bajo par level">
+                      <span class="material-symbols-outlined">warning</span>
+                    </span>
+                  }
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="statusClass(p)">{{ statusLabel(p) }}</span>
+                </td>
+                <td class="actions-col">
+                  <div class="action-buttons">
+                    @if (canRestock()) {
+                      <button
+                        type="button"
+                        class="btn-icon"
+                        title="Reponer stock"
+                        [disabled]="!!p.archivedAt"
+                        (click)="openRestock(p)"
+                      >
+                        <span class="material-symbols-outlined">inventory</span>
+                      </button>
+                    }
+                    @if (canEdit()) {
+                      <button
+                        type="button"
+                        class="btn-icon"
+                        title="Editar producto"
+                        [disabled]="!!p.archivedAt"
+                        (click)="edit(p)"
+                      >
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-icon"
+                        [title]="p.isActive ? 'Desactivar' : 'Activar'"
+                        [disabled]="!!p.archivedAt"
+                        (click)="toggleActive(p)"
+                      >
+                        <span class="material-symbols-outlined">{{ p.isActive ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (filteredProducts().length === 0) {
+          <div class="no-results">
+            <span class="material-symbols-outlined">filter_alt</span>
+            <p>Ningún producto coincide con la búsqueda o filtros.</p>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>
+
+@if (showRestockModal() && restockProduct(); as product) {
+  <app-products-restock-modal
+    [product]="product"
+    (close)="closeRestock()"
+    (success)="onRestockSuccess()"
+  />
+}

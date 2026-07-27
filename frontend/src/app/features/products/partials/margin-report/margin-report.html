@@ -1,0 +1,90 @@
+<div class="report-page">
+  <app-page-header
+    title="Reporte de Márgenes"
+    subtitle="Análisis de rentabilidad por producto (costo vs precio)"
+  ></app-page-header>
+
+  @if (!canSeeCost()) {
+    <app-empty-state
+      icon="lock"
+      title="Sin permisos"
+      message="Necesitas permiso inventory.products.cost.read para ver márgenes."
+    ></app-empty-state>
+  } @else if (report.isLoading()) {
+    <app-loading-state label="Cargando reporte de márgenes..."></app-loading-state>
+  } @else if (report.error()) {
+    <app-error-state
+      title="Error al cargar el reporte"
+      message="Inténtalo de nuevo en unos segundos."
+      (retry)="report.reload()"
+    ></app-error-state>
+  } @else if (!report.value() || report.value()!.items.length === 0) {
+    <app-empty-state
+      icon="inventory_2"
+      title="Sin productos activos"
+      message="Crea productos en /management/products para ver el reporte."
+    ></app-empty-state>
+  } @else {
+    @let data = report.value()!;
+
+    <section class="kpi-grid">
+      <article class="kpi-card kpi-card--primary">
+        <span class="kpi-card__label">Margen Global</span>
+        <span class="kpi-card__value">{{ formatPct(data.summary.global_margin_pct) }}</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-card__label">Ganancia Proyectada</span>
+        <span class="kpi-card__value">{{ data.summary.total_margin_abs | currency }}</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-card__label">Productos Analizados</span>
+        <span class="kpi-card__value">{{ data.summary.total_products }}</span>
+      </article>
+    </section>
+
+    <section class="data-section">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th class="num">Costo</th>
+            <th class="num">Precio</th>
+            <th class="num">Margen $</th>
+            <th class="num">Margen %</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of data.items; track item.id) {
+            <tr>
+              <td>
+                <span class="product-name">{{ item.name }}</span>
+                <span class="product-id">{{ item.product_id }}</span>
+              </td>
+              <td>
+                <span class="chip chip--neutral">{{ item.category }}</span>
+              </td>
+              <td class="num">{{ item.cost_price | currency }}</td>
+              <td class="num">{{ item.unit_price | currency }}</td>
+              <td class="num">{{ item.margin_abs | currency }}</td>
+              <td class="num">
+                <div class="margin-bar-cell">
+                  <div
+                    class="margin-bar"
+                    [class.is-negative]="isNegativeMargin(item.margin_pct)"
+                    [style.width.%]="barWidth(item.margin_pct)"
+                  ></div>
+                  <span class="margin-bar-label" [class.is-negative]="isNegativeMargin(item.margin_pct)">
+                    {{ formatPct(item.margin_pct) }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-row">Sin productos activos</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</div>

@@ -8,7 +8,7 @@ import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } fro
 import { HttpClient, httpResource } from '@angular/common/http';
 import { distinctUntilChanged, firstValueFrom, map } from 'rxjs';
 
-import { AuthService } from '../../../../core/auth/auth.service';
+import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { ReservationActionService } from '../../services/reservation-action.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -54,7 +54,7 @@ ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 })
 export class ReservationsListPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly authService = inject(AuthService);
+  private readonly reservationsAuth = inject(ReservationsAuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly http = inject(HttpClient);
   private readonly formBuilder = inject(FormBuilder);
@@ -108,15 +108,8 @@ export class ReservationsListPageComponent {
   readonly currentStayStatusFilter = computed(() => this.queryParams().stayStatus);
   readonly currentSourceFilter = computed(() => this.queryParams().bookingSource);
 
-  readonly isStaff = computed(() => {
-    const role = this.authService.currentUser()?.primaryRole;
-    return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
-  });
-
-  readonly isClient = computed(() => {
-    const role = this.authService.currentUser()?.primaryRole;
-    return !role || role === 'cliente';
-  });
+  readonly isStaff = this.reservationsAuth.isStaff;
+  readonly isClient = this.reservationsAuth.isClient;
 
   // ─── AG Grid ───
   readonly theme = themeQuartz;

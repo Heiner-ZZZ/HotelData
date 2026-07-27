@@ -116,6 +116,11 @@ TEST_COLLECTIONS = [
     "fact_reservation_payments",
     # --- Reviews --------------------------------------------------------
     "reviews",
+    # --- Hotel products + inventory (Fase 4 + Fase 6) ------------------
+    "hotel_products",
+    "fact_inventory",
+    "chart_of_accounts",
+    "journal_entries",
 ]
 
 

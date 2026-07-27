@@ -9,6 +9,11 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from src.app.security.session import ensure_utc
 
+from src.app.modules.admin.schemas import (
+    PermissionsOverviewResponse,
+    UsersOverviewResponse,
+)
+
 from src.app.modules.admin.service import (
     build_security_section_pdf,
     create_ownership_user,
@@ -119,16 +124,16 @@ def users_dashboard(request: Request, current_user: dict = Depends(require_permi
     return _serialize_users_overview(current_user)
 
 
-@api_router.get("/users")
+@api_router.get("/users", response_model=UsersOverviewResponse)
 def users_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
     ensure_user_status_field()
-    return _serialize_users_overview(current_user)
+    return UsersOverviewResponse.model_validate(_serialize_users_overview(current_user))
 
 
-@api_router.get("/permissions")
+@api_router.get("/permissions", response_model=PermissionsOverviewResponse)
 def permissions_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
     ensure_user_status_field()
-    return _serialize_permissions_overview()
+    return PermissionsOverviewResponse.model_validate(_serialize_permissions_overview())
 
 
 @api_router.get("/permissions/roles/{role_name}")

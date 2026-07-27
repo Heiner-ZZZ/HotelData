@@ -59,17 +59,17 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
         </label>
         <label class="field">
           <span class="field-label">
-            <span class="material-symbols-outlined field-icon">description</span>
-            Descripción
-          </span>
-          <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
-        </label>
-        <label class="field">
-          <span class="field-label">
             <span class="material-symbols-outlined field-icon">tag</span>
             N° Habitación
           </span>
           <input formControlName="roomNumber" placeholder="Ej: 101">
+        </label>
+        <label class="field" style="grid-column: 1 / -1">
+          <span class="field-label">
+            <span class="material-symbols-outlined field-icon">description</span>
+            Descripción
+          </span>
+          <textarea rows="3" formControlName="description" placeholder="Opcional" appAiSuggest="descripcion_habitacion"></textarea>
         </label>
         <label class="field">
           <span class="field-label">

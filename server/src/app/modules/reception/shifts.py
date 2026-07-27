@@ -79,7 +79,7 @@ class ScheduleMismatchError(Exception):
     """Raised when ``open_shift`` is called with a ``shift_type`` that does
     not match the EXPECTED shift_type for the current moment.
 
-    The expectation is resolved by ``_resolve_expected_shift_type`` which
+    The expectation is resolved by ``resolve_expected_shift_type`` which
     prefers HR's ``employee_shifts.scheduled_start``/``scheduled_end``
     windows for the authenticated opener, and falls back to a clock-hour
     heuristic when no HR record exists for today.
@@ -171,7 +171,7 @@ def _shift_type_for_window(start_hhmm: str, end_hhmm: str) -> tuple[str, str] | 
     return bucket, f"{start_hhmm}-{end_hhmm}"
 
 
-def _resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, str]:
+def resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, str]:
     """Resolve the EXPECTED ``shift_type`` for ``opened_by`` at ``at_dt``.
 
     Returns ``(expected_shift_type, source)`` where ``source`` is one of:
@@ -429,7 +429,7 @@ def open_shift(
     #    warning behind a schedule-hour error. ──
     now_dt = _now_dt()
     if not bypass_schedule_check:
-        expected, source = _resolve_expected_shift_type(opened_by, now_dt)
+        expected, source = resolve_expected_shift_type(opened_by, now_dt)
         if expected != shift_type:
             logger.info(
                 "Schedule validation REJECTED — prop_id=%s opener=%s requested=%s "

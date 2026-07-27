@@ -4,10 +4,13 @@ from __future__ import annotations
 
 
 from bson import ObjectId
+
 from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, ConfigDict, Field
 
+from src.app.core.types import ObjectIdStr
 from src.app.security.rate_limit import limiter
 from src.app.security.role_helpers import get_role_name
 from src.app.security.route_permissions import is_safe_internal_next
@@ -30,6 +33,102 @@ from ._helpers import (
     _record_failed_attempt,
     _reset_failed_attempts,
 )
+
+
+# ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ───
+# All class declarations BELOW this banner must be on their OWN line.
+# The COGS 500 bug taught us: collapsing ``# ─── … ───`` banners onto the
+# class declaration line makes Python treat the entire class as comment.
+#
+# Each model uses ``id: ObjectIdStr = Field(validation_alias=...,
+# serialization_alias=...)`` for Mongo ``_id`` coercion. Frontend sees a
+# plain string ``session_id`` / ``id`` field — never ``{"$oid": "..."}``.
+
+
+class UserSessionResponse(BaseModel):
+    """One row for ``GET /api/auth/sessions``.
+
+    Wire fields (camelCase-style kept from the legacy dict):
+      - ``session_id``     Mongo ``_id`` → plain str (24-char hex)
+      - ``is_current``     computed in the route; True if this session
+                           matches the requester's ``current_session``
+                           ObjectId.
+      - ``created_at``     ISO 8601 string (route pre-formats via
+                           ``.isoformat()`` for backward compat with the
+                           previous dict; Pydantic ``str`` keeps the
+                           wire shape stable).
+      - ``expires_at``     ISO 8601 string (same convention).
+      - ``ip_address``     nullable
+      - ``user_agent``     nullable
+      - ``remember_me``    bool default False
+    """
+
+    session_id: ObjectIdStr = Field(validation_alias="_id", serialization_alias="session_id")
+    is_current: bool = False
+    created_at: str = ""
+    expires_at: str = ""
+    ip_address: str | None = None
+    user_agent: str | None = None
+    remember_me: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class UserSessionListEnvelope(BaseModel):
+    items: list[UserSessionResponse]
+    total: int
+
+
+class TerminateSessionResponse(BaseModel):
+    """Returned by DELETE /api/auth/sessions/{session_id}."""
+
+    ok: bool
+    message: str
+
+
+class TerminateOthersResponse(BaseModel):
+    """Returned by POST /api/auth/sessions/terminate-others."""
+
+    ok: bool
+    message: str
+    terminated_count: int
+
+
+class AdminSessionResponse(BaseModel):
+    """One row for ``GET /api/auth/admin/sessions``.
+
+    Adds ``username`` + ``email`` on top of ``UserSessionResponse``
+    because admin users see all sessions across all users.
+    """
+
+    session_id: ObjectIdStr = Field(validation_alias="_id", serialization_alias="session_id")
+    username: str = ""
+    email: str = ""
+    created_at: str = ""
+    expires_at: str = ""
+    ip_address: str | None = None
+    user_agent: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdminSessionListEnvelope(BaseModel):
+    items: list[AdminSessionResponse]
+    total: int
+
+
+# Rebuild Pydantic v2 models to resolve string-lazy annotations from
+# ``from __future__ import annotations``. Without this explicit rebuild,
+# FastAPI's ``TypeAdapter`` binding at ``response_model=...`` raises
+# ``pydantic.errors.PydanticUserError`` (``TypeAdapter[… is not fully
+# defined``) on the first request to ANY of these endpoints.
+UserSessionResponse.model_rebuild()
+UserSessionListEnvelope.model_rebuild()
+TerminateSessionResponse.model_rebuild()
+TerminateOthersResponse.model_rebuild()
+AdminSessionResponse.model_rebuild()
+AdminSessionListEnvelope.model_rebuild()
+
 
 router = APIRouter(prefix="/modules/auth", tags=["modules-auth"])
 
@@ -138,8 +237,8 @@ def login_api(
     return response
 
 
-@api_router.get("/sessions")
-def list_own_sessions(request: Request):
+@api_router.get("/sessions", response_model=UserSessionListEnvelope)
+def list_own_sessions(request: Request) -> UserSessionListEnvelope:
     db = get_database()
     user, current_session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
     if not user or not current_session:
@@ -151,25 +250,25 @@ def list_own_sessions(request: Request):
             {"user_id": user_id, "is_active": True},
         ).sort("created_at", -1)
     )
-    return {
-        "items": [
-            {
-                "session_id": str(s["_id"]),
-                "is_current": s["_id"] == current_id,
-                "created_at": s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at", "")),
-                "expires_at": s.get("expires_at").isoformat() if hasattr(s.get("expires_at"), "isoformat") else str(s.get("expires_at", "")),
-                "ip_address": s.get("ip_address"),
-                "user_agent": s.get("user_agent"),
-                "remember_me": bool(s.get("remember_me", False)),
-            }
+    return UserSessionListEnvelope(
+        items=[
+            UserSessionResponse(
+                _id=s["_id"],
+                is_current=s["_id"] == current_id,
+                created_at=s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at", "")),
+                expires_at=s.get("expires_at").isoformat() if hasattr(s.get("expires_at"), "isoformat") else str(s.get("expires_at", "")),
+                ip_address=s.get("ip_address"),
+                user_agent=s.get("user_agent"),
+                remember_me=bool(s.get("remember_me", False)),
+            )
             for s in sessions
         ],
-        "total": len(sessions),
-    }
+        total=len(sessions),
+    )
 
 
-@api_router.delete("/sessions/{session_id}")
-def terminate_own_session(request: Request, session_id: str):
+@api_router.delete("/sessions/{session_id}", response_model=TerminateSessionResponse)
+def terminate_own_session(request: Request, session_id: str) -> TerminateSessionResponse:
     db = get_database()
     user, current_session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
     if not user or not current_session:
@@ -187,11 +286,11 @@ def terminate_own_session(request: Request, session_id: str):
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Sesión no encontrada o ya inactiva.")
     log_user_activity(db, action="auth.session_terminated", request=request, user=user, details={"session_id": session_id})
-    return {"ok": True, "message": "Sesión terminada."}
+    return TerminateSessionResponse(ok=True, message="Sesión terminada.")
 
 
-@api_router.post("/sessions/terminate-others")
-def terminate_other_sessions(request: Request):
+@api_router.post("/sessions/terminate-others", response_model=TerminateOthersResponse)
+def terminate_other_sessions(request: Request) -> TerminateOthersResponse:
     db = get_database()
     user, current_session = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
     if not user or not current_session:
@@ -210,11 +309,11 @@ def terminate_other_sessions(request: Request):
         db, action="auth.sessions_terminated_others", request=request, user=user,
         details={"terminated_count": count}
     )
-    return {
-        "ok": True,
-        "message": f"Se cerraron {count} sesión(es) en otros dispositivos.",
-        "terminated_count": count
-    }
+    return TerminateOthersResponse(
+        ok=True,
+        message=f"Se cerraron {count} sesión(es) en otros dispositivos.",
+        terminated_count=count,
+    )
 
 
 @web_router.get("/logout")
@@ -245,8 +344,8 @@ def _require_admin(user: dict | None) -> None:
         raise HTTPException(status_code=403, detail="Acceso restringido a administradores.")
 
 
-@api_router.get("/admin/sessions")
-def admin_list_sessions(request: Request):
+@api_router.get("/admin/sessions", response_model=AdminSessionListEnvelope)
+def admin_list_sessions(request: Request) -> AdminSessionListEnvelope:
     """List all active sessions across all users (admin only)."""
     db = get_database()
     user, _ = get_current_user(db, request.cookies.get(SESSION_COOKIE_NAME))
@@ -255,21 +354,21 @@ def admin_list_sessions(request: Request):
     sessions = list(
         db.user_sessions.find({"is_active": True}).sort("created_at", -1)
     )
-    return {
-        "items": [
-            {
-                "session_id": str(s["_id"]),
-                "username": s.get("username", ""),
-                "email": s.get("email", ""),
-                "created_at": s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at", "")),
-                "expires_at": s.get("expires_at").isoformat() if hasattr(s.get("expires_at"), "isoformat") else str(s.get("expires_at", "")),
-                "ip_address": s.get("ip_address"),
-                "user_agent": s.get("user_agent"),
-            }
+    return AdminSessionListEnvelope(
+        items=[
+            AdminSessionResponse(
+                _id=s["_id"],
+                username=s.get("username", ""),
+                email=s.get("email", ""),
+                created_at=s.get("created_at").isoformat() if hasattr(s.get("created_at"), "isoformat") else str(s.get("created_at", "")),
+                expires_at=s.get("expires_at").isoformat() if hasattr(s.get("expires_at"), "isoformat") else str(s.get("expires_at", "")),
+                ip_address=s.get("ip_address"),
+                user_agent=s.get("user_agent"),
+            )
             for s in sessions
         ],
-        "total": len(sessions),
-    }
+        total=len(sessions),
+    )
 
 
 @api_router.post("/admin/sessions/{session_id}/terminate")

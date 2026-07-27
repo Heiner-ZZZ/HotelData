@@ -10,6 +10,7 @@ from typing import Any
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.collection import Collection
+from pymongo.errors import OperationFailure
 
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
@@ -111,6 +112,9 @@ PERMISSION_CATALOG = [
     # Inventory
     ("inventory.manage", "Administrar inventario — acceso total"),
     ("inventory.read", "Ver inventario y disponibilidad"),
+    # Inventory — granular cost (manager-only; recepcionista no ve cost_price)
+    ("inventory.products.cost.read", "Ver costo unitario de productos en inventario (manager-only)"),
+    ("inventory.products.cost.manage", "Editar costo unitario y registrar restock de productos (manager-only)"),
     # HR
     ("hr.manage", "Administrar RRHH — acceso total"),
     ("hr.create", "Crear empleados (onboarding)"),
@@ -186,6 +190,8 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reservations.manage",
         "revenue.read", "rates.read",
         "inventory.read",
+        "inventory.products.cost.read",
+        "inventory.products.cost.manage",
         "promotions.read", "promotions.manage",
         "shifts.manage", "shifts.read",
         "hr.manage",
@@ -264,14 +270,28 @@ def get_database():
 
 
 def create_indexes(collections: dict[str, Collection]) -> None:
-    collections["users"].create_index("email", unique=True)
-    collections["users"].create_index("username", unique=True)
-    collections["roles"].create_index("role_name", unique=True)
-    collections["permissions"].create_index("permission_code", unique=True)
-    collections["user_sessions"].create_index("session_token", unique=True, sparse=True)
-    collections["user_sessions"].create_index("user_id")
-    collections["user_activity_logs"].create_index("event_key", unique=True, sparse=True)
-    collections["user_activity_logs"].create_index([("created_at", -1)])
+    """Idempotently create required indexes. Tolerates MongoDB code 85 (IndexOptionsConflict)
+    and 86 (IndexKeySpecsConflict): when an equivalent key spec already exists under a
+    different name (e.g., custom-named indexes from prior runs), skip silently instead
+    of failing the whole script. Re-runs of this script are safe.
+    """
+
+    def _safe_create(coll: Collection, key, **opts) -> None:
+        try:
+            coll.create_index(key, **opts)
+        except OperationFailure as exc:
+            if exc.code in (85, 86):  # benign: equivalent index already exists
+                return
+            raise
+
+    _safe_create(collections["users"], "email", unique=True)
+    _safe_create(collections["users"], "username", unique=True)
+    _safe_create(collections["roles"], "role_name", unique=True)
+    _safe_create(collections["permissions"], "permission_code", unique=True)
+    _safe_create(collections["user_sessions"], "session_token", unique=True, sparse=True)
+    _safe_create(collections["user_sessions"], "user_id")
+    _safe_create(collections["user_activity_logs"], "event_key", unique=True, sparse=True)
+    _safe_create(collections["user_activity_logs"], [("created_at", -1)])
 
 
 def upsert_roles(roles: Collection) -> dict[str, Any]:
@@ -350,17 +370,18 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"label": "Tarifas",        "href": "/management/rates",     "icon": "sell",            "required_permission": "rates.read",      "section": "CRS","sort_order": 204},
     {"label": "Propiedades",    "href": "/management/properties","icon": "apartment",       "required_permission": "properties.read", "section": "PMS","sort_order": 205},
     {"label": "Habitaciones",   "href": "/management/rooms",     "icon": "bed",             "required_permission": "rooms.read",      "section": "PMS","sort_order": 206},
-    {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "section": "PMS","sort_order": 207},
-    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","section": "PMS","sort_order": 208},
-    {"label": "Cajas y Turnos", "href": "/management/shifts",     "icon": "point_of_sale",  "required_permission": "shifts.read",     "section": "PMS","sort_order": 209},
-    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "section": "CRS","sort_order": 209},
-    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","section": "CRS","sort_order": 210},
-    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "section": "CRS","sort_order": 211},
-    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","section": "CRS","sort_order": 212},
-    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "section": "CRS","sort_order": 213},
-    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "section": "PMS","sort_order": 214},
-    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "section": "PMS","sort_order": 215},
-    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "section": "PMS","sort_order": 216},
+    {"label": "Productos",      "href": "/management/products",  "icon": "inventory_2",     "required_permission": "properties.read", "section": "PMS","sort_order": 207},
+    {"label": "Amenities",      "href": "/management/amenities", "icon": "spa",             "required_permission": "amenities.read",  "section": "PMS","sort_order": 208},
+    {"label": "Recepción",      "href": "/management/recepcion",  "icon": "calendar_month",  "required_permission": "reservations.read","section": "PMS","sort_order": 209},
+    {"label": "Cajas y Turnos", "href": "/management/shifts",     "icon": "point_of_sale",  "required_permission": "shifts.read",     "section": "PMS","sort_order": 210},
+    {"label": "Check-ins",      "href": "/management/check-ins",  "icon": "login",           "required_permission": "check-ins.read",  "section": "CRS","sort_order": 211},
+    {"label": "Estancias Activas","href": "/management/stay-inbox","icon": "meeting_room",   "required_permission": "reservations.read","section": "CRS","sort_order": 212},
+    {"label": "Check-outs",     "href": "/management/check-outs", "icon": "logout",          "required_permission": "check-outs.read", "section": "CRS","sort_order": 213},
+    {"label": "Huéspedes",      "href": "/management/guests",     "icon": "people",          "required_permission": "reservations.read","section": "CRS","sort_order": 214},
+    {"label": "Políticas",      "href": "/management/policies",   "icon": "policy",          "required_permission": "properties.read", "section": "CRS","sort_order": 215},
+    {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "section": "PMS","sort_order": 216},
+    {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "section": "PMS","sort_order": 217},
+    {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "section": "PMS","sort_order": 218},
     {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","section": "Housekeeping","is_section_header": True,"sort_order": 301},
     {"label": "Mantenimiento",  "href": "/management/housekeeping/maintenance","icon": "build","required_permission": "maintenance.read","section": "Housekeeping","sort_order": 302},
     {"label": "Cargos",         "href": "/management/housekeeping/charges","icon": "attach_money","required_permission": "charges.read","section": "Housekeeping","sort_order": 303},

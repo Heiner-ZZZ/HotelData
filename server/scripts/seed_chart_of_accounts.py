@@ -1,7 +1,19 @@
 """
 Seed chart_of_accounts with standard hotel accounting chart.
-Run: docker compose exec server python -m scripts.seed_chart_of_accounts
+
+Idempotent per account: uses upsert with $setOnInsert keyed by account_code,
+so adding new accounts to ACCOUNTS (e.g., 5110 Costo de Amenities Consumidos)
+is safe to re-run without duplicating existing rows.
+
+Run: docker compose exec server python scripts/seed_chart_of_accounts.py
 """
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from src.database.connection import get_database
 
 COLLECTION = "chart_of_accounts"
@@ -35,6 +47,10 @@ ACCOUNTS = [
     {"account_code": "5030", "account_name": "Gastos Operativos", "account_type": "expense", "normal_balance": "debit", "parent_code": "5000", "level": 2, "description": "Servicios públicos, mantenimiento, limpieza, lavandería externa"},
     {"account_code": "5040", "account_name": "Gastos de Marketing", "account_type": "expense", "normal_balance": "debit", "parent_code": "5000", "level": 2, "description": "Publicidad, comisiones OTAs, campañas"},
     {"account_code": "5050", "account_name": "Gastos Administrativos", "account_type": "expense", "normal_balance": "debit", "parent_code": "5000", "level": 2, "description": "Papelería, licencias, honorarios, seguros"},
+    # 5110 — Costo de Amenities Consumidos (paired with 1050 Inventario en consume COGS).
+    # DR 5110 / CR 1050 cuando se vende un line_item con cost_price > 0 en
+    # add_booking_line_item, y reverso DR 1050 / CR 5110 al remover.
+    {"account_code": "5110", "account_name": "Costo de Amenities Consumidos", "account_type": "expense", "normal_balance": "debit", "parent_code": "5000", "level": 2, "description": "Costo de los productos/amenities consumidos por el huésped (COGS) — contrapartida de 1050 Inventario"},
 
     # 6xxx — Descuentos y Ajustes (cuentas de contrapartida)
     {"account_code": "6010", "account_name": "Descuentos por Promoción", "account_type": "contra_revenue", "normal_balance": "debit", "parent_code": "6000", "level": 2, "description": "Descuentos comerciales y promociones aplicadas"},
@@ -44,14 +60,27 @@ ACCOUNTS = [
 
 
 def seed():
-    db = get_database()
-    existing = db[COLLECTION].count_documents({})
-    if existing > 0:
-        print(f"[SKIP] {existing} chart of accounts already exist")
-        return
+    """Upsert each account by account_code. Idempotent per-account.
 
-    db[COLLECTION].insert_many(ACCOUNTS)
-    print(f"[OK] Inserted {len(ACCOUNTS)} chart of accounts")
+    Adding new accounts to ACCOUNTS (e.g., 5110) is safe to re-run: existing
+    rows are left untouched, missing rows are inserted.
+    """
+    db = get_database()
+    inserted = 0
+    skipped = 0
+    for account in ACCOUNTS:
+        result = db[COLLECTION].update_one(
+            {"account_code": account["account_code"]},
+            {"$setOnInsert": account},
+            upsert=True,
+        )
+        if result.upserted_id is not None:
+            inserted += 1
+        else:
+            skipped += 1
+
+    total = db[COLLECTION].count_documents({})
+    print(f"[OK] chart_of_accounts: {inserted} new, {skipped} already present, total={total}")
 
 
 if __name__ == "__main__":

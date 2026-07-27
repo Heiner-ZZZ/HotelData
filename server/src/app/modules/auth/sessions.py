@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
+
 from bson.errors import InvalidId
 
 from config.settings import get_settings
@@ -30,7 +31,7 @@ def list_active_sessions(page: int = 1, page_size: int = 50) -> dict:
     for s in cursor:
         user = db.users.find_one({"_id": s.get("user_id")}, {"username": 1, "email": 1, "display_name": 1, "primary_role_id": 1})
         items.append({
-            "session_id": str(s["_id"]),
+                "session_id": str(s["_id"]),
             "user_id": str(s.get("user_id", "")),
             "username": s.get("username", ""),
             "email": s.get("email", ""),

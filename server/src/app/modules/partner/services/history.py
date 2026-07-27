@@ -4,11 +4,19 @@ Provides paginated listing and detail lookup for changes recorded in
 `hotel_profile_changes` (profile edits) and `hotel_content_changes`
 (content edits). Both collections are written automatically by the
 respective save functions — this module only reads them.
+
+Note (Fase 5 reports migration): this service returns raw Mongo
+documents (``_id`` as ObjectId, ``changed_at`` as datetime). The Pydantic
+``*Response`` models in ``routes/hotels.py`` own the wire-shape contract
+— they coerce ObjectId → str via ``ObjectIdStr`` and serialize datetime
+as ISO 8601 automatically. Don't pre-format here.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
+from bson import ObjectId
 from pymongo.collection import Collection
 from pymongo.database import Database
 
@@ -27,21 +35,6 @@ def _paginate(page: int, per_page: int, total: int) -> dict[str, Any]:
     }
 
 
-def _normalize_change(doc: dict[str, Any]) -> dict[str, Any]:
-    """Shape a raw MongoDB document into the API response format."""
-    changed_at = doc.get("changed_at")
-    return {
-        "id": str(doc.get("_id", "")),
-        "field": doc.get("field", ""),
-        "old_value": doc.get("old_value", ""),
-        "new_value": doc.get("new_value", ""),
-        "changed_by": doc.get("changed_by", ""),
-        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),  # type: ignore[union-attr]
-        "source": doc.get("source", ""),
-        "reason": doc.get("reason", ""),
-    }
-
-
 def list_hotel_changes(
     prop_id: int,
     *,
@@ -55,6 +48,9 @@ def list_hotel_changes(
 ) -> dict[str, Any]:
     """Return paginated changes for a property, merged from both audit collections.
 
+    Returns raw Mongo documents (with ``_id`` as ObjectId and
+    ``changed_at`` as datetime) — wire-shape coercion happens in the
+    Pydantic ``PropertyHistoryListResponse`` model in ``routes/hotels.py``.
     Supports filtering by date range, field, user (changed_by), and source.
     Results are sorted by changed_at descending (most recent first).
     """
@@ -62,7 +58,6 @@ def list_hotel_changes(
     page = max(page, 1)
     per_page = min(max(per_page, 1), 200)
 
-    # Build base filter
     base_filter: dict[str, Any] = {"prop_id": prop_id}
     if from_date:
         base_filter["changed_at"] = {"$gte": from_date}
@@ -75,58 +70,64 @@ def list_hotel_changes(
     if user:
         base_filter["changed_by"] = user
 
-    # Query both collections
     profile_coll: Collection = db.hotel_profile_changes
     content_coll: Collection = db.hotel_content_changes
 
     profile_total = profile_coll.count_documents(base_filter)
     content_total = content_coll.count_documents({**base_filter, "entity_type": {"$exists": True}})
 
-    # Fetch profile changes
-    profile_cursor = (
-        profile_coll.find(base_filter, {"_id": 1, "field": 1, "old_value": 1, "new_value": 1,
-                                        "changed_by": 1, "changed_at": 1, "source": 1, "reason": 1})
+    # Fetch RAW docs (no normalization). Pydantic owns serialization.
+    profile_docs = list(
+        profile_coll
+        .find(base_filter, {"_id": 1, "field": 1, "old_value": 1, "new_value": 1,
+                            "changed_by": 1, "changed_at": 1, "source": 1, "reason": 1})
         .sort([("changed_at", -1)])
         .skip((page - 1) * per_page)
         .limit(per_page)
     )
-    profile_items = [_normalize_change(doc) for doc in profile_cursor]
 
-    # Fetch content changes (if they exist for this prop)
-    content_cursor = (
-        content_coll.find({**base_filter, "entity_type": {"$exists": True}},
-                          {"_id": 1, "field": 1, "old_value": 1, "new_value": 1,
-                           "changed_by": 1, "changed_at": 1, "source": 1, "reason": 1})
+    content_docs = list(
+        content_coll
+        .find({**base_filter, "entity_type": {"$exists": True}},
+              {"_id": 1, "field": 1, "old_value": 1, "new_value": 1,
+               "changed_by": 1, "changed_at": 1, "source": 1, "reason": 1})
         .sort([("changed_at", -1)])
         .limit(per_page)
     )
-    content_items = [_normalize_change(doc) for doc in content_cursor]
 
-    # Merge & sort
-    merged = sorted(profile_items + content_items, key=lambda x: x.get("changed_at", ""), reverse=True)
+    # OPT-A: sort by datetime objects directly (previously string ISO).
+    # Robust to None (legacy rows that lack changed_at); they sort last.
+    merged = sorted(
+        profile_docs + content_docs,
+        key=lambda d: d.get("changed_at") or datetime.min,
+        reverse=True,
+    )
     merged = merged[:per_page]
 
     total = profile_total + content_total
     pagination = _paginate(page, per_page, total)
 
-    # Collect unique field names and user names for filter dropdowns
-    field_facets = profile_coll.distinct("field", {"prop_id": prop_id})
-    user_facets = profile_coll.distinct("changed_by", {"prop_id": prop_id})
+    field_facets = sorted(profile_coll.distinct("field", {"prop_id": prop_id}))
+    user_facets = sorted(profile_coll.distinct("changed_by", {"prop_id": prop_id}))
 
     return {
         "data": merged,
         "pagination": pagination,
         "filters": {
-            "fields": sorted(field_facets),
-            "users": sorted(user_facets),
+            "fields": field_facets,
+            "users": user_facets,
         },
     }
 
 
 def get_change_detail(prop_id: int, change_id: str) -> dict[str, Any] | None:
-    """Return the full detail of a single change record (profile or content)."""
-    from bson.objectid import ObjectId
+    """Return the full detail of a SINGLE change record.
 
+    Returns the raw Mongo document (``_id`` as ObjectId, ``changed_at`` as
+    datetime) when found, or ``None`` to trigger a 404 in the route.
+    Document is enriched with ``entity_type`` defaulting to "profile"
+    so the wire response carries an explicit discriminator.
+    """
     db: Database = get_database()
     try:
         oid = ObjectId(change_id)
@@ -135,23 +136,16 @@ def get_change_detail(prop_id: int, change_id: str) -> dict[str, Any] | None:
 
     # Try profile changes first
     doc = db.hotel_profile_changes.find_one({"_id": oid, "prop_id": prop_id})
+    source_collection = "profile"
     if doc is None:
         # Fallback to content changes
         doc = db.hotel_content_changes.find_one({"_id": oid, "prop_id": prop_id})
+        source_collection = "content"
 
     if doc is None:
         return None
 
-    changed_at = doc.get("changed_at")
-    return {
-        "id": str(doc["_id"]),
-        "prop_id": doc.get("prop_id"),
-        "field": doc.get("field", ""),
-        "old_value": doc.get("old_value", ""),
-        "new_value": doc.get("new_value", ""),
-        "changed_by": doc.get("changed_by", ""),
-        "changed_at": changed_at.isoformat() if hasattr(changed_at, "isoformat") else str(changed_at or ""),  # type: ignore[union-attr]
-        "source": doc.get("source", ""),
-        "reason": doc.get("reason", ""),
-        "entity_type": doc.get("entity_type", "profile"),
-    }
+    # The Mongo doc may lack entity_type (profile docs). Set the
+    # discriminator so the wire response carries it explicitly.
+    doc.setdefault("entity_type", source_collection)
+    return doc

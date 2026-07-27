@@ -1,0 +1,207 @@
+@use 'styles' as *;
+
+.report-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.hero-card {
+  background: var(--surface-card, var(--surface-default));
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  background-image: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    color-mix(in srgb, var(--color-primary), transparent 70%) 100%
+  );
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-on-primary, #fff);
+    opacity: 0.85;
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: 2.75rem;
+    font-weight: 700;
+    color: var(--color-on-primary, #fff);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__meta {
+    font-size: 0.875rem;
+    color: var(--color-on-primary, #fff);
+    opacity: 0.75;
+  }
+
+  &__timestamp {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-on-primary, #fff);
+    opacity: 0.7;
+  }
+}
+
+.data-section {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  overflow: hidden;
+
+  &__header {
+    padding: 1rem 1.25rem 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  }
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.375rem;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  &__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  &__value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__bar-cell {
+    height: 0.5rem;
+    background: var(--border-subtle);
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+}
+
+.category-bar {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.2s ease;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  th {
+    background: var(--surface-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  td.num, th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td { border-bottom: none; }
+}
+
+.product-name { display: block; font-weight: 500; color: var(--text-primary); }
+.product-id   { display: block; font-size: 0.75rem; color: var(--text-secondary); font-family: monospace; }
+
+.chip {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+}
+
+.share-bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.share-bar {
+  height: 0.5rem;
+  width: 80px;
+  background: var(--color-primary);
+  border-radius: 0.25rem;
+  transition: width 0.2s ease;
+}
+
+.share-bar-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem !important;
+  font-style: italic;
+}

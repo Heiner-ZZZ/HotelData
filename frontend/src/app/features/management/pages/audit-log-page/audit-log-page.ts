@@ -133,6 +133,10 @@ export class AuditLogPageComponent {
     check_out: 'logout',
     reassign_room: 'swap_horiz',
     document_change: 'description',
+    read: 'visibility',
+    access_denied: 'block',
+    restock: 'inventory_2',
+    open: 'door_open',
   };
 
   constructor() {
@@ -275,7 +279,14 @@ export class AuditLogPageComponent {
         return 'var(--danger)';
       case 'restore':
       case 'reassign_room':
+      case 'open':
         return 'var(--warning)';
+      case 'restock':
+        return 'var(--success)';
+      case 'read':
+        return 'var(--muted-text)';
+      case 'access_denied':
+        return 'var(--danger)';
       default:
         return 'var(--muted-text)';
     }

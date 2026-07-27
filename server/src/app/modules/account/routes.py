@@ -12,6 +12,7 @@ from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.email.service import send_email
 from src.app.security.dependencies import require_login
@@ -19,8 +20,88 @@ from src.app.security.role_helpers import get_role_name
 from src.app.security.session import log_user_activity
 from src.database.connection import get_database
 from config.settings import get_settings
+from src.app.core.types import ObjectIdStr
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ───
+# All class declarations BELOW this banner must be on their OWN line.
+# The COGS 500 bug taught us: collapsing ``# ─── … ───`` banners onto the
+# class declaration line makes Python treat the entire class as comment.
+#
+# Each model uses ``user_id: ObjectIdStr = Field(validation_alias="_id",
+# serialization_alias="user_id")`` so Mongo ``_id`` is coerced to plain
+# string. Frontend sees ``user_id`` as a 24-char hex string.
+
+
+class ProfileResponse(BaseModel):
+    """Wire-shape contract for ``GET /api/account/profile`` and ``PUT``.
+
+    Mirrors the dict built by ``_serialize_profile()``. All field defaults
+    match ``_PROFILE_FIELDS`` defaults so a partial Mongo doc (e.g. user
+    with no ``social_instagram``) still serializes cleanly.
+
+    Frontend mirror: ``frontend/src/app/features/account/models/account-profile.dto.ts``
+    — keep in sync.
+    """
+
+    user_id: ObjectIdStr = Field(validation_alias="_id", serialization_alias="user_id")
+    username: str = ""
+    email: str = ""
+    display_name: str = ""
+    primary_role: str = ""
+    is_active: bool = True
+    created_at: str = ""
+
+    # Profile fields (defaults mirror _PROFILE_FIELDS in routes body)
+    phone: str = ""
+    notification_email: str = ""
+    address_street: str = ""
+    address_city: str = ""
+    address_state: str = ""
+    address_country: str = ""
+    address_postal_code: str = ""
+    date_of_birth: str = ""
+    nationality: str = ""
+    id_document_type: str = ""
+    id_document_number: str = ""
+    preferred_language: str = "es"
+    marketing_opt_in: bool = False
+    notification_email_enabled: bool = True
+    notification_sms_enabled: bool = False
+    avatar_url: str = ""
+    social_instagram: str = ""
+    social_facebook: str = ""
+    social_twitter: str = ""
+    social_linkedin: str = ""
+    travel_purpose: str = ""
+    travel_budget: str = ""
+    travel_companions: str = ""
+    travel_accommodation: str = ""
+    travel_destination_type: str = ""
+    travel_interests: str = ""
+    travel_frequent_flyer: str = ""
+    travel_loyalty_programs: str = ""
+    travel_notes: str = ""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AvatarUploadResponse(BaseModel):
+    """Returned by ``POST /api/account/profile/avatar``."""
+
+    ok: bool
+    avatar_url: str
+    message: str
+
+
+# Rebuild Pydantic v2 models to resolve string-lazy annotations from
+# ``from __future__ import annotations``. Without this explicit rebuild,
+# FastAPI's ``TypeAdapter`` binding at ``response_model=...`` raises
+# ``pydantic.errors.PydanticUserError`` on the first request.
+ProfileResponse.model_rebuild()
+AvatarUploadResponse.model_rebuild()
 
 
 api_router = APIRouter(prefix="/api/account", tags=["account-api"])
@@ -75,7 +156,7 @@ def utc_now() -> datetime:
 def _serialize_profile(user: dict[str, Any]) -> dict[str, Any]:
     """Build a profile dict from a MongoDB user document, filling defaults."""
     return {
-        "user_id": str(user.get("_id")),
+        "user_id": str(user.get("_id", "")),
         "username": user.get("username", ""),
         "email": user.get("email", ""),
         "display_name": user.get("display_name") or user.get("username") or "",
@@ -86,8 +167,8 @@ def _serialize_profile(user: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@api_router.get("/profile")
-def get_profile(request: Request):
+@api_router.get("/profile", response_model=ProfileResponse)
+def get_profile(request: Request) -> ProfileResponse:
     """Return the current user's full profile, ensuring default fields exist."""
     db = get_database()
     current_user = require_login(request)
@@ -109,11 +190,11 @@ def get_profile(request: Request):
         current_user.update(updates)
 
     log_user_activity(db, action="account.profile_read", request=request, user=current_user)
-    return _serialize_profile(current_user)
+    return ProfileResponse(**_serialize_profile(current_user))
 
 
-@api_router.put("/profile")
-def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
+@api_router.put("/profile", response_model=ProfileResponse)
+def update_profile(request: Request, payload: dict[str, Any] = Body(...)) -> ProfileResponse:
     """Update the current user's profile fields. Returns full updated profile."""
     db = get_database()
     current_user = require_login(request)
@@ -197,11 +278,11 @@ def update_profile(request: Request, payload: dict[str, Any] = Body(...)):
 
     # Re-fetch the updated document
     updated_user = db.users.find_one({"_id": user_id}, {"password_hash": 0})
-    return _serialize_profile(updated_user or current_user)
+    return ProfileResponse(**_serialize_profile(updated_user or current_user))
 
 
-@api_router.post("/profile/avatar")
-async def upload_avatar(request: Request, file: UploadFile = File(...)):
+@api_router.post("/profile/avatar", response_model=AvatarUploadResponse)
+async def upload_avatar(request: Request, file: UploadFile = File(...)) -> AvatarUploadResponse:
     db = get_database()
     current_user = require_login(request)
     user_id = current_user["_id"]
@@ -256,7 +337,11 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
         details={"avatar_url": avatar_url},
     )
 
-    return {"ok": True, "avatar_url": avatar_url, "message": "Foto de perfil actualizada."}
+    return AvatarUploadResponse(
+        ok=True,
+        avatar_url=avatar_url,
+        message="Foto de perfil actualizada.",
+    )
 
 
 @api_router.get("/avatar/{file_id}")

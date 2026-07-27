@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from src.app.modules.billing.constants import DEFAULT_BILLING_PAGE_SIZE
 from src.app.modules.billing.schemas import InvoiceCreate, ModuleStatus, PaymentCreate
@@ -25,12 +28,170 @@ from src.app.modules.billing.service import (
     FOLIO_CATEGORIES,
 )
 from src.app.modules.billing.service.services import get_billable_services
+from src.app.core.types import ObjectIdStr
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
 api_router = APIRouter(prefix="/api/billing", tags=["billing-api"])
+
+
+
+# ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ────────────
+# All class declarations BELOW this banner must be on their OWN line.
+# See knowledge.md → "Anti-pattern: from __future__ + Pydantic + response_model"
+# for the failure modes this layout prevents.
+
+
+class InvoiceResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    booking_id: str | None = None
+    parent_invoice_id: ObjectIdStr | None = Field(default=None, validation_alias="parent_invoice_id", serialization_alias="parent_invoice_id")
+    prop_id: int | None = None
+    invoice_number: str | None = None
+    status: str | None = None
+    currency: str | None = None
+    subtotal: float | None = None
+    taxes: float | None = None
+    total: float | None = None
+    total_paid_amount: float | None = None
+    guest_name: str | None = None
+    guest_email: str | None = None
+    notes: str | None = None
+    source: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    issued_at: str | None = None
+    paid_at: str | None = None
+    cancelled_at: str | None = None
+    line_items: list[Any] = Field(default_factory=list)
+
+
+class InvoiceListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[InvoiceResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+
+
+class InvoiceStatsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    by_status: dict[str, Any] | None = None
+    total_invoices: int | None = None
+    total_amount: float | None = None
+    issued: dict[str, Any] | None = None
+    paid: dict[str, Any] | None = None
+    cancelled: dict[str, Any] | None = None
+
+
+# NOTE for future maintainers:
+# `id` uses `AliasChoices("_id", "id")` (correct — primary key accepts both
+# Mongo `_id` and pre-stringified `id` from legacy callers).
+# `invoice_id` is now a strict SINGLE-alias FK (`validation_alias="invoice_id"`)
+# so Pydantic v2 cannot ambiguity-match it against `id`'s `_id` chain. This
+# closes the alias-collision class that previously caused `invoice_id` to
+# inherit the primary key's value through `populate_by_name` fallback.
+# Locked-in by the regression test in `tests/test_billing_responses.py`
+# (`test_nested_payment_object_id_is_coerced_to_str`).
+class PaymentResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    booking_id: str | None = None
+    invoice_id: ObjectIdStr | None = Field(default=None, validation_alias="invoice_id", serialization_alias="invoice_id")
+    prop_id: int | None = None
+    amount: float | None = None
+    currency: str | None = None
+    method: str | None = None
+    status: str | None = None
+    reference: str | None = None
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    paid_at: str | None = None
+    refunded_at: str | None = None
+
+
+class PaymentListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[PaymentResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+
+
+class FolioResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    booking_id: str | None = None
+    prop_id: int | None = None
+    folio_number: str | None = None
+    status: str | None = None
+    currency: str | None = None
+    total_charges: float | None = None
+    total_payments: float | None = None
+    total_due: float | None = None
+    posting_count: int | None = None
+    closed_by: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    closed_at: str | None = None
+    invoices: list[Any] = Field(default_factory=list)
+    postings: list[Any] = Field(default_factory=list)
+
+
+class FolioListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[FolioResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+
+
+class BillableServicesResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    categories: list[Any] = Field(default_factory=list)
+    chargeable: list[Any] = Field(default_factory=list)
+    all_items: list[Any] = Field(default_factory=list)
+
+
+class CleanupFoliosResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    closed: int = 0
+
+
+class ActionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    ok: bool = True
+    message: str = ""
+    payment: PaymentResponse | None = None
+    closed: int | None = None
+
+
+# Explicit rebuild — `from __future__ import annotations` makes Pydantic resolve
+# ObjectIdStr + nested forward refs lazily. Force eager resolution before the
+# first @router decorator binds a TypeAdapter.
+InvoiceResponse.model_rebuild()
+InvoiceListResponse.model_rebuild()
+InvoiceStatsResponse.model_rebuild()
+PaymentResponse.model_rebuild()
+PaymentListResponse.model_rebuild()
+FolioResponse.model_rebuild()
+FolioListResponse.model_rebuild()
+BillableServicesResponse.model_rebuild()
+CleanupFoliosResponse.model_rebuild()
+ActionResponse.model_rebuild()
 
 
 
@@ -41,7 +202,7 @@ def billing_module_status():
 
 # --- Invoices (admin/staff) ---
 
-@api_router.post("/invoices", status_code=201)
+@api_router.post("/invoices", status_code=201, response_model=InvoiceResponse)
 def create_invoice_api(
     payload: InvoiceCreate = Body(...),
     current_user: dict = Depends(require_permission("billing.manage")),
@@ -63,10 +224,10 @@ def create_invoice_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return InvoiceResponse.model_validate(result)
 
 
-@api_router.get("/invoices")
+@api_router.get("/invoices", response_model=InvoiceListResponse)
 def list_invoices_api(
     request: Request,
     booking_id: str | None = Query(default=None),
@@ -100,10 +261,10 @@ def list_invoices_api(
             "url": str(request.url),
         },
     )
-    return result
+    return InvoiceListResponse.model_validate(result)
 
 
-@api_router.get("/invoices/stats")
+@api_router.get("/invoices/stats", response_model=InvoiceStatsResponse)
 def invoice_stats_api(
     request: Request,
     current_user: dict = Depends(require_permission("billing.read")),
@@ -119,10 +280,10 @@ def invoice_stats_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
-    return result
+    return InvoiceStatsResponse.model_validate(result)
 
 
-@api_router.get("/invoices/{invoice_id}")
+@api_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
 def get_invoice_api(
     request: Request,
     invoice_id: str,
@@ -140,10 +301,10 @@ def get_invoice_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
-    return result
+    return InvoiceResponse.model_validate(result)
 
 
-@api_router.post("/invoices/{invoice_id}/items", status_code=201)
+@api_router.post("/invoices/{invoice_id}/items", status_code=201, response_model=InvoiceResponse)
 def add_line_item_api(
     invoice_id: str,
     payload: dict = Body(...),
@@ -193,10 +354,10 @@ def add_line_item_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return InvoiceResponse.model_validate(result)
 
 
-@api_router.delete("/invoices/{invoice_id}/items/{item_id}")
+@api_router.delete("/invoices/{invoice_id}/items/{item_id}", response_model=InvoiceResponse)
 def remove_line_item_api(
     invoice_id: str,
     item_id: str,
@@ -234,10 +395,10 @@ def remove_line_item_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return InvoiceResponse.model_validate(result)
 
 
-@api_router.post("/invoices/{invoice_id}/cancel")
+@api_router.post("/invoices/{invoice_id}/cancel", response_model=InvoiceResponse)
 def cancel_invoice_api(
     invoice_id: str,
     current_user: dict = Depends(require_permission("billing.manage")),
@@ -264,10 +425,10 @@ def cancel_invoice_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return InvoiceResponse.model_validate(result)
 
 
-@api_router.post("/invoices/{invoice_id}/pay")
+@api_router.post("/invoices/{invoice_id}/pay", response_model=ActionResponse)
 def pay_invoice_api(
     invoice_id: str,
     current_user: dict = Depends(require_permission("billing.manage")),
@@ -310,10 +471,14 @@ def pay_invoice_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}
+    return ActionResponse.model_validate({
+        "ok": True,
+        "message": "Pago procesado exitosamente",
+        "payment": result,
+    })
 
 
-@api_router.post("/invoices/{invoice_id}/email")
+@api_router.post("/invoices/{invoice_id}/email", response_model=ActionResponse)
 def send_invoice_email_api(
     invoice_id: str,
     current_user: dict = Depends(require_permission("billing.manage")),
@@ -366,12 +531,15 @@ def send_invoice_email_api(
         changed_by=current_user.get("username", "system"),
         metadata={"guest_email": guest_email},
     )
-    return {"ok": True, "message": f"Factura enviada a {guest_email}"}
+    return ActionResponse.model_validate({
+        "ok": True,
+        "message": f"Factura enviada a {guest_email}",
+    })
 
 
 # --- Payments (admin/staff) ---
 
-@api_router.post("/payments", status_code=201)
+@api_router.post("/payments", status_code=201, response_model=PaymentResponse)
 def create_payment_api(
     payload: PaymentCreate = Body(...),
     current_user: dict = Depends(require_permission("payments.manage")),
@@ -393,10 +561,10 @@ def create_payment_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return PaymentResponse.model_validate(result)
 
 
-@api_router.get("/payments")
+@api_router.get("/payments", response_model=PaymentListResponse)
 def list_payments_api(
     request: Request,
     booking_id: str | None = Query(default=None),
@@ -415,10 +583,10 @@ def list_payments_api(
         changed_by=current_user.get("username", "system"),
         metadata={"booking_id": booking_id, "prop_id": prop_id, "page": page, "url": str(request.url)},
     )
-    return result
+    return PaymentListResponse.model_validate(result)
 
 
-@api_router.get("/payments/{payment_id}")
+@api_router.get("/payments/{payment_id}", response_model=PaymentResponse)
 def get_payment_api(
     request: Request,
     payment_id: str,
@@ -436,10 +604,10 @@ def get_payment_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
-    return result
+    return PaymentResponse.model_validate(result)
 
 
-@api_router.post("/payments/{payment_id}/refund")
+@api_router.post("/payments/{payment_id}/refund", response_model=PaymentResponse)
 def refund_payment_api(
     payment_id: str,
     current_user: dict = Depends(require_permission("payments.manage")),
@@ -460,12 +628,12 @@ def refund_payment_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return PaymentResponse.model_validate(result)
 
 
 # --- Client-facing billing endpoints ---
 
-@api_router.get("/my-invoices")
+@api_router.get("/my-invoices", response_model=InvoiceListResponse)
 def my_invoices_api(
     request: Request,
     page: int = Query(default=1, ge=1),
@@ -486,7 +654,10 @@ def my_invoices_api(
         )
     ]
     if not booking_ids:
-        return {"items": [], "total": 0, "page": page, "page_size": page_size, "has_next": False, "has_prev": False}
+        return InvoiceListResponse.model_validate({
+            "items": [], "total": 0, "page": page, "page_size": page_size,
+            "has_next": False, "has_prev": False, "total_pages": 1,
+        })
 
     from src.app.modules.billing.service.lifecycle import _enrich_invoice
     query = {"booking_id": {"$in": booking_ids}}
@@ -509,7 +680,7 @@ def my_invoices_api(
         changed_by=current_user.get("username", "system"),
         metadata={"user_id": str(user_id), "page": page, "url": str(request.url)},
     )
-    return {
+    return InvoiceListResponse.model_validate({
         "items": items,
         "total": total,
         "page": page,
@@ -517,13 +688,13 @@ def my_invoices_api(
         "total_pages": max(1, math.ceil(total / page_size)),
         "has_next": page * page_size < total,
         "has_prev": page > 1,
-    }
+    })
 
 
 # ── Billable Services (from amenities catalog) ──
 
 
-@api_router.get("/services")
+@api_router.get("/services", response_model=BillableServicesResponse)
 def billing_services_api(
     request: Request,
     prop_id: int = Query(default=0, ge=0),
@@ -548,7 +719,7 @@ def billing_services_api(
             if booking:
                 prop_id = int(booking.get("prop_id", 0))
     if not prop_id:
-        return {"categories": [], "chargeable": [], "all_items": []}
+        return BillableServicesResponse.model_validate({"categories": [], "chargeable": [], "all_items": []})
 
     result = get_billable_services(prop_id, booking_id)
     register_action(
@@ -560,12 +731,15 @@ def billing_services_api(
         changed_by=current_user.get("username", "system"),
         metadata={"prop_id": prop_id, "booking_id": booking_id, "url": str(request.url)},
     )
-    return result
+    return BillableServicesResponse.model_validate(result)
 
 
-# ── Fólios (Guest Folio / Cuenta de Huésped) ──
+# ── Fólios (Guest Folio / Cuenta de Huésped) ──
 
 
+# Intentional: returns the static `FOLIO_CATEGORIES` constant (Python list), NOT a
+# Mongo doc. Future API-boundary sweeps MUST skip this endpoint — wrap a *Response
+# here would force a Pydantic enum class for what is a stable, code-defined catalog.
 @api_router.get("/folios/categories")
 def folio_categories_api(
     request: Request,
@@ -584,7 +758,7 @@ def folio_categories_api(
     return FOLIO_CATEGORIES
 
 
-@api_router.get("/folios/{booking_id}")
+@api_router.get("/folios/{booking_id}", response_model=FolioResponse)
 def get_folio_api(
     request: Request,
     booking_id: str,
@@ -603,10 +777,10 @@ def get_folio_api(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
-    return result
+    return FolioResponse.model_validate(result)
 
 
-@api_router.post("/folios/{booking_id}/post")
+@api_router.post("/folios/{booking_id}/post", response_model=FolioResponse)
 def post_to_folio_api(
     booking_id: str,
     payload: dict = Body(...),
@@ -651,10 +825,10 @@ def post_to_folio_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return FolioResponse.model_validate(result)
 
 
-@api_router.post("/folios/{booking_id}/close")
+@api_router.post("/folios/{booking_id}/close", response_model=FolioResponse)
 def close_folio_api(
     booking_id: str,
     payload: dict = Body(default={}),
@@ -683,10 +857,10 @@ def close_folio_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return result
+    return FolioResponse.model_validate(result)
 
 
-@api_router.post("/folios/cleanup-expired")
+@api_router.post("/folios/cleanup-expired", response_model=CleanupFoliosResponse)
 def cleanup_expired_folios_api(
     payload: dict = Body(default={}),
     current_user: dict = Depends(require_permission("billing.manage")),
@@ -706,10 +880,10 @@ def cleanup_expired_folios_api(
         changed_by=current_user.get("username", "system"),
         diff={"closed": {"old": None, "new": result.get("closed", 0)}},
     )
-    return result
+    return CleanupFoliosResponse.model_validate(result)
 
 
-@api_router.get("/folios")
+@api_router.get("/folios", response_model=FolioListResponse)
 def list_folios_api(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
@@ -729,10 +903,10 @@ def list_folios_api(
         changed_by=current_user.get("username", "system"),
         metadata={"prop_id": prop_id, "status": status_filter, "page": page, "url": str(request.url)},
     )
-    return result
+    return FolioListResponse.model_validate(result)
 
 
-@api_router.post("/my-invoices/{invoice_id}/pay")
+@api_router.post("/my-invoices/{invoice_id}/pay", response_model=ActionResponse)
 def my_invoice_pay_api(
     invoice_id: str,
     current_user: dict = Depends(require_permission("account.update")),
@@ -781,4 +955,8 @@ def my_invoice_pay_api(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return {"ok": True, "message": "Pago procesado exitosamente", "payment": result}
+    return ActionResponse.model_validate({
+        "ok": True,
+        "message": "Pago procesado exitosamente",
+        "payment": result,
+    })

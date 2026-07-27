@@ -2,16 +2,39 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from math import ceil
+from typing import Any
 
 from bson import ObjectId
+
 from bson.errors import InvalidId
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 
-from src.database.connection import get_database
 from src.app.core.constants import DEFAULT_LEDGER_PAGE_SIZE
+from src.database.connection import get_database
 from src.app.modules.expenses.schemas import (
-    BudgetCreate, ExpenseCategoryCreate, InvoiceCreate, InvoiceUpdate,
+    BalanceSheetResponse,
+    BudgetCreate,
+    BudgetListResponse,
+    BudgetResponse,
+    ChartOfAccountsResponse,
+    DashboardResponse,
+    ExpenseCategoryCreate,
+    ExpenseCategoryResponse,
+    FolioPaymentResponse,
+    FolioPostingsResponse,
+    FolioTransferResponse,
+    IncomeStatementResponse,
+    InvoiceCreate,
+    InvoiceListResponse,
+    InvoiceResponse,
+    InvoiceUpdate,
+    LedgerFolioListResponse,
+    LedgerFolioResponse,
+    LedgerListResponse,
+    LedgerSummaryResponse,
+    LedgerTransactionResponse,
     ModuleStatus,
+    TrialBalanceResponse,
 )
 from src.app.modules.billing.schemas import InvoiceCreate as BillingInvoiceCreate, PaymentCreate
 from src.app.modules.expenses.service.collections import (
@@ -24,6 +47,32 @@ from src.app.security.dependencies import require_permission
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
 
+
+# ─── Pydantic *Response models rebuild (Fase 5/6) ────────────────────────────
+# Imports above + explicit rebuild below. `from __future__ import annotations`
+# defers ALL type hints as forward-ref strings, so Pydantic v2 needs an eager
+# rebuild to resolve ObjectIdStr (Annotated[str, BeforeValidator(...)]).
+
+ExpenseCategoryResponse.model_rebuild()
+InvoiceResponse.model_rebuild()
+InvoiceListResponse.model_rebuild()
+BudgetResponse.model_rebuild()
+BudgetListResponse.model_rebuild()
+LedgerTransactionResponse.model_rebuild()
+LedgerListResponse.model_rebuild()
+LedgerFolioResponse.model_rebuild()
+LedgerFolioListResponse.model_rebuild()
+FolioPostingsResponse.model_rebuild()
+LedgerSummaryResponse.model_rebuild()
+FolioPaymentResponse.model_rebuild()
+FolioTransferResponse.model_rebuild()
+TrialBalanceResponse.model_rebuild()
+IncomeStatementResponse.model_rebuild()
+BalanceSheetResponse.model_rebuild()
+DashboardResponse.model_rebuild()
+ChartOfAccountsResponse.model_rebuild()
+
+
 def _resolve_category_id(category_name: str) -> ObjectId | None:
     """Resolve a category name to its ObjectId from expense_categories."""
     if not category_name:
@@ -34,12 +83,10 @@ def _resolve_category_id(category_name: str) -> ObjectId | None:
 
 
 def _enrich_invoice(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
+    """Strip _id conversion (Pydantic ObjectIdStr handles it); keep totals and datetime ISO."""
     doc["total"] = (doc.get("amount") or 0) + (doc.get("tax_amount") or 0)
     if doc.get("prop_id"):
         doc["prop_id"] = int(doc["prop_id"])
-    if doc.get("category_id"):
-        doc["category_id"] = str(doc["category_id"])
     for f in ("created_at", "updated_at", "approved_at"):
         if isinstance(doc.get(f), datetime):
             doc[f] = doc[f].isoformat()
@@ -49,21 +96,21 @@ def _enrich_invoice(doc: dict) -> dict:
 
 
 def _enrich_category(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
+    """Strip _id conversion (Pydantic ObjectIdStr handles it); keep datetime ISO."""
     if isinstance(doc.get("created_at"), datetime):
         doc["created_at"] = doc["created_at"].isoformat()
     return doc
 
 
 def _enrich_budget(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
+    """Strip _id conversion (Pydantic ObjectIdStr handles it); keep datetime ISO."""
     if isinstance(doc.get("created_at"), datetime):
         doc["created_at"] = doc["created_at"].isoformat()
     return doc
 
 
 def _enrich_ledger(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
+    """Strip _id conversion (Pydantic ObjectIdStr handles it); keep datetime ISO + prop_id cast."""
     if doc.get("prop_id"):
         doc["prop_id"] = int(doc["prop_id"])
     for f in ("tx_date", "created_at"):
@@ -82,7 +129,7 @@ def expenses_module_status():
 
 # ─── Dashboard ───
 
-@api_router.get("/dashboard")
+@api_router.get("/dashboard", response_model=DashboardResponse)
 def expenses_dashboard(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
@@ -148,7 +195,7 @@ def expenses_dashboard(
         changed_by=user.get("username", "anonymous"),
         metadata={"prop_id": prop_id, "url": str(request.url)},
     )
-    return {
+    return DashboardResponse.model_validate({
         "month_total": round(month_total, 2),
         "pending_count": pending,
         "pending_value": round(pending_value, 2),
@@ -161,12 +208,12 @@ def expenses_dashboard(
             {"category": c["_id"], "total": round(c["total"], 2), "count": c["count"]}
             for c in by_category
         ],
-    }
+    })
 
 
 # ─── Invoice CRUD ───
 
-@api_router.post("/invoices", status_code=201)
+@api_router.post("/invoices", status_code=201, response_model=InvoiceResponse)
 def create_invoice(
     payload: InvoiceCreate = Body(...),
     current_user: dict = Depends(require_permission("revenue.manage")),
@@ -196,16 +243,16 @@ def create_invoice(
     register_action(
         prop_id=payload.prop_id or 0,
         entity_type="expense_invoice",
-        entity_id=enriched["id"],
+        entity_id=str(result.inserted_id),
         action="create",
         summary=f"Creación de factura de gasto: {payload.vendor_name} (${total_amount:,.2f})",
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return enriched
+    return InvoiceResponse.model_validate(enriched)
 
 
-@api_router.get("/invoices")
+@api_router.get("/invoices", response_model=InvoiceListResponse)
 def list_invoices(
     request: Request,
     status_filter: str | None = Query(default=None, alias="status"),
@@ -252,14 +299,14 @@ def list_invoices(
             "url": str(request.url),
         },
     )
-    return {
+    return InvoiceListResponse.model_validate({
         "items": items, "total": total, "page": page, "page_size": page_size,
         "total_pages": max(1, ceil(total / page_size)) if total else 1,
         "has_next": page * page_size < total, "has_prev": page > 1,
-    }
+    })
 
 
-@api_router.get("/invoices/{invoice_id}")
+@api_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
 def get_invoice(
     request: Request,
     invoice_id: str = Path(...),
@@ -281,10 +328,10 @@ def get_invoice(
         changed_by=user.get("username", "anonymous"),
         metadata={"url": str(request.url)},
     )
-    return _enrich_invoice(doc)
+    return InvoiceResponse.model_validate(_enrich_invoice(doc))
 
 
-@api_router.put("/invoices/{invoice_id}")
+@api_router.put("/invoices/{invoice_id}", response_model=InvoiceResponse)
 def update_invoice(
     invoice_id: str = Path(...),
     payload: InvoiceUpdate = Body(...),
@@ -330,7 +377,7 @@ def update_invoice(
         changed_by=current_user.get("username", "system"),
         diff=diff if diff else None,
     )
-    return _enrich_invoice(doc)
+    return InvoiceResponse.model_validate(_enrich_invoice(doc))
 
 
 @api_router.delete("/invoices/{invoice_id}", status_code=204)
@@ -338,6 +385,7 @@ def delete_invoice(
     invoice_id: str = Path(...),
     current_user: dict = Depends(require_permission("revenue.manage")),
 ):
+    """Returns 204 No Content — no response body; do NOT add response_model=."""
     db = get_database()
     try:
         oid = ObjectId(invoice_id)
@@ -366,14 +414,14 @@ def delete_invoice(
 
 # ─── Categories / Budget ───
 
-@api_router.get("/categories")
+@api_router.get("/categories", response_model=list[ExpenseCategoryResponse])
 def list_categories(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
 ):
     db = get_database()
     cursor = db[CATEGORIES_COLLECTION].find().sort("name", 1)
-    result = []
+    result: list[dict[str, Any]] = []
     for cat_doc in cursor:
         cat_oid = cat_doc["_id"]
         cat = _enrich_category(cat_doc)
@@ -398,10 +446,10 @@ def list_categories(
         changed_by=user.get("username", "anonymous"),
         metadata={"prop_id": prop_id, "count": len(result), "url": str(request.url)},
     )
-    return result
+    return [ExpenseCategoryResponse.model_validate(c) for c in result]
 
 
-@api_router.post("/categories", status_code=201)
+@api_router.post("/categories", status_code=201, response_model=ExpenseCategoryResponse)
 def create_category(payload: ExpenseCategoryCreate = Body(...)):
     db = get_database()
     existing = db[CATEGORIES_COLLECTION].find_one({"name": payload.name})
@@ -411,10 +459,10 @@ def create_category(payload: ExpenseCategoryCreate = Body(...)):
            "spent": 0, "remaining": payload.budget, "created_at": datetime.now(timezone.utc)}
     result = db[CATEGORIES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _enrich_category(doc)
+    return ExpenseCategoryResponse.model_validate(_enrich_category(doc))
 
 
-@api_router.post("/budget", status_code=201)
+@api_router.post("/budget", status_code=201, response_model=BudgetResponse)
 def create_budget(payload: BudgetCreate = Body(...)):
     db = get_database()
     existing = db[BUDGET_COLLECTION].find_one({"department": payload.department, "period": payload.period})
@@ -425,24 +473,25 @@ def create_budget(payload: BudgetCreate = Body(...)):
            "created_at": datetime.now(timezone.utc)}
     result = db[BUDGET_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _enrich_budget(doc)
+    return BudgetResponse.model_validate(_enrich_budget(doc))
 
 
-@api_router.get("/budget")
+@api_router.get("/budget", response_model=BudgetListResponse)
 def list_budget(period: str | None = Query(default=None)):
     db = get_database()
     query = {}
     if period:
         query["period"] = period
     cursor = db[BUDGET_COLLECTION].find(query).sort("period", -1)
-    return [_enrich_budget(doc) for doc in cursor]
+    items = [BudgetResponse.model_validate(_enrich_budget(doc)) for doc in cursor]
+    return BudgetListResponse.model_validate({"items": items})
 
 
 # ═══════════════════════════════════════════════════════════
 # Libro Mayor / Ledger  (AG Grid-powered)
 # ═══════════════════════════════════════════════════════════
 
-@api_router.get("/ledger")
+@api_router.get("/ledger", response_model=LedgerListResponse)
 def list_ledger(
     prop_id: int = Query(default=0, ge=0),
     folio_ref: str | None = Query(default=None),
@@ -509,21 +558,22 @@ def list_ledger(
         .skip(skip)
         .limit(page_size)
     )
-    items = [_enrich_ledger(doc) for doc in cursor]
+    items_raw = [_enrich_ledger(doc) for doc in cursor]
 
     # Running balance accounting for prior pages
     if sort_dir == -1:
         cumulative = total_balance - prior_balance
-        for item in items:
+        for item in items_raw:
             item["balance"] = round(cumulative, 2)
-            cumulative -= item["debit"] - item["credit"]
+            cumulative -= item.get("debit", 0) - item.get("credit", 0)
     else:
         cumulative = prior_balance
-        for item in items:
-            cumulative += item["debit"] - item["credit"]
+        for item in items_raw:
+            cumulative += item.get("debit", 0) - item.get("credit", 0)
             item["balance"] = round(cumulative, 2)
 
-    return {
+    items = [LedgerTransactionResponse.model_validate(it) for it in items_raw]
+    return LedgerListResponse.model_validate({
         "items": items,
         "total": total,
         "page": page,
@@ -531,10 +581,11 @@ def list_ledger(
         "total_pages": max(1, ceil(total / page_size)) if total else 1,
         "has_next": page * page_size < total,
         "has_prev": page > 1,
-    }
+        "total_balance": total_balance,
+    })
 
 
-@api_router.get("/ledger/folios")
+@api_router.get("/ledger/folios", response_model=LedgerFolioListResponse)
 def list_active_folios(
     prop_id: int = Query(default=0, ge=0),
     page: int = Query(default=1, ge=1),
@@ -564,9 +615,9 @@ def list_active_folios(
         .limit(page_size)
     )
 
-    result = []
+    items_raw: list[dict[str, Any]] = []
     for f in cursor:
-        result.append({
+        items_raw.append({
             "folio_id": str(f["_id"]),
             "folio_ref": f.get("folio_number", ""),
             "guest_name": f.get("guest_name", ""),
@@ -579,15 +630,16 @@ def list_active_folios(
             "status": f.get("status", ""),
         })
 
-    return {
-        "items": result,
+    items = [LedgerFolioResponse.model_validate(it) for it in items_raw]
+    return LedgerFolioListResponse.model_validate({
+        "items": items,
         "page": page,
         "page_size": page_size,
         "total": total,
-    }
+    })
 
 
-@api_router.get("/ledger/folios/{folio_id}/postings")
+@api_router.get("/ledger/folios/{folio_id}/postings", response_model=FolioPostingsResponse)
 def get_folio_postings(folio_id: str = Path(...)):
     """Return the posting history for a guest folio."""
     from src.app.modules.billing.service.folio import get_folio_by_id
@@ -597,7 +649,7 @@ def get_folio_postings(folio_id: str = Path(...)):
         raise HTTPException(status_code=404, detail="Folio no encontrado")
 
     postings = folio.get("postings", [])
-    result = []
+    result: list[dict[str, Any]] = []
     for p in postings:
         posted = p.get("posted_at")
         if isinstance(posted, datetime):
@@ -615,15 +667,15 @@ def get_folio_postings(folio_id: str = Path(...)):
             "posted_at": posted or "",
         })
 
-    return {
+    return FolioPostingsResponse.model_validate({
         "folio_id": folio_id,
         "folio_ref": folio.get("folio_number", ""),
         "guest_name": folio.get("guest_name", ""),
         "postings": sorted(result, key=lambda x: x.get("posted_at", ""), reverse=True),
-    }
+    })
 
 
-@api_router.get("/ledger/summary")
+@api_router.get("/ledger/summary", response_model=LedgerSummaryResponse)
 def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
     """Return trial balance + KPI summary for the ledger header."""
     db = get_database()
@@ -643,7 +695,6 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
     agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
     data = agg[0] if agg else {"total_debits": 0, "total_credits": 0, "count": 0}
 
-    # Revenue breakdown by account type
     revenue_pipeline = [
         {"$match": {**match, "account_code": {"$regex": "^4"}}},
         {"$group": {"_id": "$account_code", "total": {"$sum": "$credit"}}},
@@ -651,7 +702,6 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
     ]
     revenue = list(db[LEDGER_COLLECTION].aggregate(revenue_pipeline))
 
-    # Journal entry count
     journal_pipeline = [
         {"$match": match},
         {"$group": {"_id": "$journal_entry_id"}},
@@ -662,7 +712,7 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
 
     diff = round(data["total_debits"] - data["total_credits"], 2)
 
-    return {
+    return LedgerSummaryResponse.model_validate({
         "total_debits": round(data["total_debits"], 2),
         "total_credits": round(data["total_credits"], 2),
         "trial_balance_diff": diff,
@@ -673,10 +723,10 @@ def ledger_summary(prop_id: int | None = Query(default=None, ge=1)):
             {"account_code": r["_id"], "total": round(r["total"], 2)}
             for r in revenue
         ],
-    }
+    })
 
 
-@api_router.post("/ledger/folios/{folio_id}/payment")
+@api_router.post("/ledger/folios/{folio_id}/payment", response_model=FolioPaymentResponse)
 def register_folio_payment(
     folio_id: str = Path(...),
     amount: float = Body(..., gt=0),
@@ -684,16 +734,7 @@ def register_folio_payment(
     notes: str = Body(default=""),
     paid_by: str = Body(default="staff"),
 ):
-    """Register a payment against a guest folio.
-
-    Posts a 'payment' transaction to the folio, creates a reservation_invoice
-    if one doesn't exist for this booking, and records the payment in the
-    billing module — which generates double-entry ledger entries automatically.
-
-    This connects the Folio (PMS operational) ↔ Invoice (billing/fiscal) ↔ Payment
-    lifecycle, ensuring every folio payment has a corresponding invoice + payment
-    record + ledger entries.
-    """
+    """Register a payment against a guest folio."""
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
     from src.app.modules.billing.service.lifecycle.invoices import create_invoice as create_billing_invoice
     from src.app.modules.billing.service.lifecycle.payments import create_payment as create_billing_payment
@@ -727,7 +768,6 @@ def register_folio_payment(
     invoice = db.reservation_invoices.find_one({"booking_id": booking_id})
 
     if not invoice:
-        # Calculate invoice from folio totals (room + charges - discounts)
         invoice_total = round(
             folio.get("total_room", 0)
             + folio.get("total_charges", 0)
@@ -747,7 +787,7 @@ def register_folio_payment(
     else:
         invoice_id = str(invoice["_id"])
 
-    # 3. Record the payment in reservation_payments (generates ledger entries automatically)
+    # 3. Record the payment (generates ledger entries automatically)
     payment_result = create_billing_payment(PaymentCreate(
         booking_id=booking_id,
         invoice_id=invoice_id,
@@ -755,7 +795,7 @@ def register_folio_payment(
         method=method,
     ))
 
-    return {
+    return FolioPaymentResponse.model_validate({
         "folio_id": folio_id,
         "folio_number": folio.get("folio_number", ""),
         "new_balance": round(updated.get("total_due", 0), 2),
@@ -764,22 +804,18 @@ def register_folio_payment(
         "invoice_id": invoice_id,
         "invoice_created": invoice is None,
         "payment_reference": (payment_result or {}).get("reference", ""),
-        "payment_id": (payment_result or {}).get("id", ""),
-    }
+        "payment_id": str((payment_result or {}).get("id", "") or ""),
+    })
 
 
-@api_router.post("/ledger/folios/{folio_id}/transfer")
+@api_router.post("/ledger/folios/{folio_id}/transfer", response_model=FolioTransferResponse)
 def transfer_folio_charges(
     folio_id: str = Path(...),
     target_folio_id: str = Body(...),
     amount: float = Body(..., gt=0),
     notes: str = Body(default=""),
 ):
-    """Transfer charges from one folio to another.
-
-    Debits the source folio (reducing its balance) and credits
-    the target folio (increasing its balance).
-    """
+    """Transfer charges from one folio to another."""
     from src.app.modules.billing.service.folio import get_folio_by_id, post_to_folio
 
     source = get_folio_by_id(folio_id)
@@ -804,66 +840,61 @@ def transfer_folio_charges(
         posting_type="adjustment",
         category="Transferencia",
         concept=concept,
-        amount=-amount,  # negative = reduce balance
+        amount=-amount,
         reference_id=f"XFR-OUT-{source.get('folio_number', '')}",
         reference_type="folio_transfer_out",
     )
     if not src_result:
         raise HTTPException(status_code=500, detail="Error al debitar folio origen")
 
-    # Credit target (increase balance): post a charge
+    # Credit target (increase balance)
     concept2 = f"Transferencia de {source.get('folio_number', '')}" + (f" — {notes}" if notes else "")
     tgt_result = post_to_folio(
         target.get("booking_id", ""),
         posting_type="adjustment",
         category="Transferencia",
         concept=concept2,
-        amount=amount,  # positive = increase balance
+        amount=amount,
         reference_id=f"XFR-IN-{source.get('folio_number', '')}",
         reference_type="folio_transfer_in",
     )
     if not tgt_result:
-        # Rollback: undo the source debit by posting a compensating charge
         post_to_folio(
             source.get("booking_id", ""),
             posting_type="adjustment",
             category="Transferencia",
             concept=f"REVERSIÓN: {concept}",
-            amount=amount,  # positive to undo the negative
+            amount=amount,
             reference_id=f"REV-{source.get('folio_number', '')}",
             reference_type="folio_reversal",
         )
         raise HTTPException(status_code=500, detail="Error al acreditar folio destino — operación revertida")
 
-    # Refresh both folios to get updated balances
     src_updated = get_folio_by_id(folio_id)
     tgt_updated = get_folio_by_id(target_folio_id)
 
-    return {
+    return FolioTransferResponse.model_validate({
         "source_folio_id": folio_id,
         "source_new_balance": round(src_updated.get("total_due", 0), 2) if src_updated else 0,
         "target_folio_id": target_folio_id,
         "target_new_balance": round(tgt_updated.get("total_due", 0), 2) if tgt_updated else 0,
         "amount": amount,
-    }
+    })
 
 
-
-
-
-@api_router.get("/ledger/accounts")
+@api_router.get("/ledger/accounts", response_model=list[dict[str, Any]])
 def list_chart_of_accounts():
     """Return the full chart of accounts for the accounting ledger."""
     db = get_database()
     cursor = db[CHART_OF_ACCOUNTS].find().sort("account_code", 1)
-    result = []
+    result: list[dict[str, Any]] = []
     for doc in cursor:
         doc["id"] = str(doc.pop("_id"))
         result.append(doc)
     return result
 
 
-@api_router.get("/ledger/periods")
+@api_router.get("/ledger/periods", response_model=list[str])
 def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
     """Return distinct accounting periods available in the ledger."""
     db = get_database()
@@ -874,7 +905,7 @@ def list_ledger_periods(prop_id: int = Query(default=0, ge=0)):
     return sorted([p for p in periods if p], reverse=True)
 
 
-@api_router.get("/ledger/trial-balance")
+@api_router.get("/ledger/trial-balance", response_model=TrialBalanceResponse)
 def trial_balance(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
@@ -882,8 +913,6 @@ def trial_balance(
     """Balance de Sumas y Saldos: agrupa débitos y créditos por cuenta contable.
 
     Returns every account with its total debits, total credits, and net balance.
-    Includes a totals row and a flag indicating whether the trial balance is
-    balanced (total debits == total credits).
     """
     db = get_database()
     match: dict = {}
@@ -892,7 +921,6 @@ def trial_balance(
     if accounting_period:
         match["accounting_period"] = accounting_period
 
-    # Aggregate ledger by account_code
     pipeline = [
         {"$match": match},
         {"$group": {
@@ -905,12 +933,11 @@ def trial_balance(
     ]
     ledger_agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
 
-    # Build lookup from chart_of_accounts
-    chart = {}
+    chart: dict[str, Any] = {}
     for doc in db[CHART_OF_ACCOUNTS].find():
         chart[doc["account_code"]] = doc
 
-    rows = []
+    rows: list[dict[str, Any]] = []
     total_debits = 0.0
     total_credits = 0.0
 
@@ -939,7 +966,7 @@ def trial_balance(
     total_credits = round(total_credits, 2)
     diff = round(total_debits - total_credits, 2)
 
-    return {
+    return TrialBalanceResponse.model_validate({
         "rows": rows,
         "totals": {
             "total_debits": total_debits,
@@ -952,24 +979,15 @@ def trial_balance(
             "accounting_period": accounting_period,
         },
         "account_count": len(rows),
-    }
+    })
 
 
-@api_router.get("/ledger/income-statement")
+@api_router.get("/ledger/income-statement", response_model=IncomeStatementResponse)
 def income_statement(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
 ):
-    """Estado de Resultados (P&L): Ingresos - Costos - Descuentos = Resultado Neto.
-
-    Groups ledger entries by account class:
-      - 4xxx = Revenue  (net = credits - debits)
-      - 5xxx = Costs    (net = debits - credits)
-      - 6xxx = Discounts (contra-revenue, net = debits)
-
-    Returns each account with its gross and net amounts, plus subtotals
-    per class and a final net income figure.
-    """
+    """Estado de Resultados (P&L): Ingresos - Costos - Descuentos = Resultado Neto."""
     db = get_database()
     match: dict = {}
     if prop_id:
@@ -977,7 +995,6 @@ def income_statement(
     if accounting_period:
         match["accounting_period"] = accounting_period
 
-    # Aggregate ALL ledger entries by account_code
     pipeline = [
         {"$match": match},
         {"$group": {
@@ -990,14 +1007,13 @@ def income_statement(
     ]
     agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
 
-    # Build lookup from chart_of_accounts for account_type
-    chart = {}
+    chart: dict[str, Any] = {}
     for doc in db[CHART_OF_ACCOUNTS].find():
         chart[doc["account_code"]] = doc
 
-    revenue_lines = []
-    cost_lines = []
-    discount_lines = []
+    revenue_lines: list[dict[str, Any]] = []
+    cost_lines: list[dict[str, Any]] = []
+    discount_lines: list[dict[str, Any]] = []
 
     total_revenue = 0.0
     total_costs = 0.0
@@ -1047,42 +1063,23 @@ def income_statement(
     gross_profit = round(total_revenue - total_discounts, 2)
     net_income = round(gross_profit - total_costs, 2)
 
-    return {
+    return IncomeStatementResponse.model_validate({
         "period": accounting_period,
         "prop_id": prop_id,
-        "revenue": {
-            "lines": revenue_lines,
-            "total": total_revenue,
-        },
-        "discounts": {
-            "lines": discount_lines,
-            "total": total_discounts,
-        },
+        "revenue": {"lines": revenue_lines, "total": total_revenue},
+        "discounts": {"lines": discount_lines, "total": total_discounts},
         "net_revenue": gross_profit,
-        "costs": {
-            "lines": cost_lines,
-            "total": total_costs,
-        },
+        "costs": {"lines": cost_lines, "total": total_costs},
         "net_income": net_income,
-    }
+    })
 
 
-@api_router.get("/ledger/balance-sheet")
+@api_router.get("/ledger/balance-sheet", response_model=BalanceSheetResponse)
 def balance_sheet(
     prop_id: int = Query(default=0, ge=0),
     accounting_period: str | None = Query(default=None, description="YYYY-MM"),
 ):
-    """Balance General: Activos = Pasivos + Patrimonio + Resultado del Período.
-
-    Groups ledger entries by account class:
-      - 1xxx = Assets      (net = debits - credits)
-      - 2xxx = Liabilities  (net = credits - debits)
-      - 3xxx = Equity       (net = credits - debits)
-
-    Also computes net income from the same period (via the P&L formula)
-    and verifies the accounting equation:
-      Total Assets == Total Liabilities + Total Equity + Net Income
-    """
+    """Balance General: Activos = Pasivos + Patrimonio + Resultado del Período."""
     db = get_database()
     match: dict = {}
     if prop_id:
@@ -1090,7 +1087,6 @@ def balance_sheet(
     if accounting_period:
         match["accounting_period"] = accounting_period
 
-    # Aggregate ALL ledger entries by account_code
     pipeline = [
         {"$match": match},
         {"$group": {
@@ -1103,14 +1099,13 @@ def balance_sheet(
     ]
     agg = list(db[LEDGER_COLLECTION].aggregate(pipeline))
 
-    # Build lookup from chart_of_accounts
-    chart = {}
+    chart: dict[str, Any] = {}
     for doc in db[CHART_OF_ACCOUNTS].find():
         chart[doc["account_code"]] = doc
 
-    asset_lines = []
-    liability_lines = []
-    equity_lines = []
+    asset_lines: list[dict[str, Any]] = []
+    liability_lines: list[dict[str, Any]] = []
+    equity_lines: list[dict[str, Any]] = []
 
     total_assets = 0.0
     total_liabilities = 0.0
@@ -1167,50 +1162,41 @@ def balance_sheet(
     net_income = round(net_income, 2)
     rhs = round(total_liabilities + total_equity + net_income, 2)
 
-    return {
+    return BalanceSheetResponse.model_validate({
         "period": accounting_period,
         "prop_id": prop_id,
-        "assets": {
-            "lines": asset_lines,
-            "total": total_assets,
-        },
-        "liabilities": {
-            "lines": liability_lines,
-            "total": total_liabilities,
-        },
-        "equity": {
-            "lines": equity_lines,
-            "total": total_equity,
-        },
+        "assets": {"lines": asset_lines, "total": total_assets},
+        "liabilities": {"lines": liability_lines, "total": total_liabilities},
+        "equity": {"lines": equity_lines, "total": total_equity},
         "net_income": net_income,
         "total_liabilities_and_equity": rhs,
         "is_balanced": abs(total_assets - rhs) < 0.01,
-    }
+    })
 
 
 # ═══════════════════════════════════════════════════════════
 # Ledger path-based prop_id aliases (frontend contract)
 # ═══════════════════════════════════════════════════════════
 
-@api_router.get("/ledger/chart-of-accounts")
+@api_router.get("/ledger/chart-of-accounts", response_model=list[dict[str, Any]])
 def chart_of_accounts_alias():
     """Alias for the chart of accounts endpoint used by the ledger page."""
     return list_chart_of_accounts()
 
 
-@api_router.get("/ledger/{prop_id}/summary")
+@api_router.get("/ledger/{prop_id}/summary", response_model=LedgerSummaryResponse)
 def ledger_summary_by_prop(prop_id: int = Path(..., ge=1)):
     """Return ledger summary for a specific property."""
     return ledger_summary(prop_id=prop_id)
 
 
-@api_router.get("/ledger/{prop_id}/periods")
+@api_router.get("/ledger/{prop_id}/periods", response_model=list[str])
 def ledger_periods_by_prop(prop_id: int = Path(..., ge=1)):
     """Return distinct ledger periods for a specific property."""
     return list_ledger_periods(prop_id=prop_id)
 
 
-@api_router.get("/ledger/{prop_id}/transactions")
+@api_router.get("/ledger/{prop_id}/transactions", response_model=LedgerListResponse)
 def ledger_transactions_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
@@ -1220,11 +1206,7 @@ def ledger_transactions_by_prop(
     sort_dir: str = Query(default="desc"),
     search: str | None = Query(default=None),
 ):
-    """Return ledger transactions for a specific property.
-
-    Maps the frontend query parameters (sort_by, sort_dir, period)
-    to the parameters expected by the shared list_ledger service.
-    """
+    """Return ledger transactions for a specific property."""
     return list_ledger(
         prop_id=prop_id,
         accounting_period=period,
@@ -1236,7 +1218,7 @@ def ledger_transactions_by_prop(
     )
 
 
-@api_router.get("/ledger/{prop_id}/trial-balance")
+@api_router.get("/ledger/{prop_id}/trial-balance", response_model=TrialBalanceResponse)
 def trial_balance_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
@@ -1245,7 +1227,7 @@ def trial_balance_by_prop(
     return trial_balance(prop_id=prop_id, accounting_period=period)
 
 
-@api_router.get("/ledger/{prop_id}/income-statement")
+@api_router.get("/ledger/{prop_id}/income-statement", response_model=IncomeStatementResponse)
 def income_statement_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),
@@ -1254,7 +1236,7 @@ def income_statement_by_prop(
     return income_statement(prop_id=prop_id, accounting_period=period)
 
 
-@api_router.get("/ledger/{prop_id}/balance-sheet")
+@api_router.get("/ledger/{prop_id}/balance-sheet", response_model=BalanceSheetResponse)
 def balance_sheet_by_prop(
     prop_id: int = Path(..., ge=1),
     period: str | None = Query(default=None, description="YYYY-MM"),

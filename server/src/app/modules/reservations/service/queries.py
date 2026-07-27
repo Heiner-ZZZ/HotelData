@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from bson import ObjectId
+
 from pymongo import ASCENDING, DESCENDING
 
 from src.app.security.hotel_filter import hotel_filter_from_user

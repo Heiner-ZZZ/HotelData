@@ -227,6 +227,16 @@ def _process_one(db, collection_name: str, fact_collection_name: str, event: Out
             update = event["update"]
             db[fact_collection_name].update_one({"_id": doc_id}, update)
 
+        elif event_type == "audit_log_insert":
+            # Audit log uses pre-generated _id (see enqueue_audit_log) so the
+            # upsert is idempotent across retries and avoids double-row insert.
+            doc = event["document"]
+            db[fact_collection_name].update_one(
+                {"_id": doc["_id"]},
+                {"$set": doc},
+                upsert=True,
+            )
+
         else:
             logger.warning("Unknown outbox event_type=%s for event=%s", event_type, event_id)
             db[OUTBOX_COLLECTION].update_one(
@@ -257,3 +267,73 @@ def _process_one(db, collection_name: str, fact_collection_name: str, event: Out
             },
         )
         return False
+
+
+# ── Audit-log short-circuit ────────────────────────────────────────────
+# Specialized outbox writer for ``audit_log``: pre-generates ``_id`` so the
+# processor's upsert is idempotent across retries. Keeps the inline-then-
+# drain pattern but with a tighter event_type branch (``audit_log_insert``)
+# that does ``update_one(_id, $setOnInsert)`` directly without the dual
+# fact-collection walk-through that reviews/billing need.
+
+
+def enqueue_audit_log(db, entry: dict) -> None:
+    """Write an audit_log row through the outbox pattern.
+
+    Persists the entry to the ``outbox`` collection (~1-2 ms) and immediately
+    drains to ``audit_log`` via ``_process_one``. Pre-generating ``_id``
+    makes the processor's upsert idempotent across retries. Transient
+    inline failures are caught here so audit_log writes are best-effort
+    vs the user-facing request — the outbox drainer picks them up.
+    """
+    if "_id" not in entry:
+        entry = {**entry, "_id": ObjectId()}
+    now = _now()
+    event: OutboxEvent = {
+        "event_type": "audit_log_insert",
+        "target_collection": "audit_log",
+        "fact_collection": "audit_log",
+        "document": entry,
+        "status": OUTBOX_STATUS_PENDING,
+        "retries": 0,
+        "created_at": now,
+    }
+    db[OUTBOX_COLLECTION].insert_one(event)
+    try:
+        _process_one(db, "audit_log", "audit_log", event)
+    except Exception:
+        logger.exception(
+            "Failed inline outbox processing for audit_log (will retry via drainer)"
+        )
+
+
+def process_pending_outbox_forever(db, *, interval_seconds: int = 60) -> None:
+    """Periodic background drainer for outbox events.
+
+    Daemon thread that catches up on any ``audit_log`` writes that failed
+    inline (e.g. transient mongo blip). Sleeps ``interval_seconds``
+    between sweeps; interruptible via threading.Event so SIGTERM tears
+    down cleanly without hanging.
+    """
+    import threading
+
+    def worker() -> None:
+        logger.info(
+            "Starting outbox drainer thread (interval=%ss)", interval_seconds
+        )
+        while True:
+            try:
+                processed = process_pending_outbox(db)
+                if processed:
+                    logger.debug(
+                        "Outbox drainer processed %d pending events", processed
+                    )
+            except Exception:
+                logger.exception(
+                    "Outbox drainer sweep failed; will retry on next interval"
+                )
+            threading.Event().wait(interval_seconds)
+
+    t = threading.Thread(target=worker, daemon=True, name="OutboxDrainer")
+    t.start()
+

@@ -1,3 +1,10 @@
+/* ── Contain and center the form panel ── */
+.rooms-page .form-panel {
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Create Form ── */
 .rooms-page .form-grid {
   display: grid;
@@ -15,8 +22,7 @@
     max-width: 160px;
   }
 
-  /* Full-width name, image URL, and textareas */
-  input[formControlName="name"],
+  /* Full-width image URL and textareas */
   input[formControlName="imageUrl"],
   textarea {
     max-width: none;
@@ -26,6 +32,38 @@
   /* Compact dropdowns */
   select {
     max-width: 180px;
+  }
+}
+
+/* ── Subir archivo button ── */
+.rooms-page .form-grid .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 140ms ease;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
@@ -46,6 +84,12 @@
   min-height: auto;
   padding: 0;
   accent-color: var(--accent);
+}
+
+/* Image URL input: keep it compact so the image row stays centered */
+.image-url-input-wrap {
+  max-width: 340px;
+  flex: 1 1 auto;
 }
 
 .form-actions {

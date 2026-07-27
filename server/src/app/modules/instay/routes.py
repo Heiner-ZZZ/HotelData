@@ -2,6 +2,13 @@
 
 Guest endpoints use a session token (embedded in QR code).
 Staff endpoints use standard JWT authentication.
+
+Fase #7 — Pydantic v2 *Response convention: every endpoint declares a
+``response_model=`` and returns ``XResponse.model_validate(raw_dict)`` so
+the wire shape is locked by Pydantic, not by ad-hoc dict construction.
+
+Endpoints with ``response_model=StreamingResponse`` (SSE) are explicitly
+excluded — they don't have a JSON wire shape.
 """
 
 from __future__ import annotations
@@ -11,6 +18,7 @@ import logging
 import secrets
 
 from bson import ObjectId
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -18,8 +26,21 @@ logger = logging.getLogger(__name__)
 
 from src.app.modules.instay.schemas import (
     SERVICE_REQUEST_TYPES,
+    ActionResponse,
+    ChatMessageListResponse,
+    CleanupSessionActionResponse,
     CompendiumInfo,
+    ConversationListResponse,
+    CreateRequestResponse,
+    LostItemListResponse,
+    ModuleStatusResponse,
+    PortalDataResponse,
+    ServiceRequestListResponse,
+    ServiceRequestUpdateResponse,
     StaySessionCreate,
+    StaySessionListResponse,
+    StaySessionResponse,
+    ToggleDndResponse,
     utc_now,
 )
 from src.app.modules.instay.routes_impl._helpers import (
@@ -53,7 +74,7 @@ _TOKEN_BYTES = 32
 # ═══════════════════════════════════════════════════════════
 
 
-@staff_router.post("/my-session")
+@staff_router.post("/my-session", response_model=StaySessionResponse)
 def get_my_stay_session(
     payload: dict = Body(...),
     current_user: dict = Depends(require_permission("account.read")),
@@ -80,7 +101,7 @@ def get_my_stay_session(
 
     existing = db.stay_sessions.find_one({"booking_id": booking_id, "active": True})
     if existing:
-        return serialize_session(existing)
+        return StaySessionResponse.model_validate(serialize_session(existing))
 
     token = secrets.token_urlsafe(_TOKEN_BYTES)
     now = utc_now()
@@ -123,7 +144,7 @@ def get_my_stay_session(
         "created_at": now, "expires_at": session_expiry(), "active": True,
     }
     db.stay_sessions.insert_one(doc)
-    return serialize_session(doc)
+    return StaySessionResponse.model_validate(serialize_session(doc))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -131,7 +152,7 @@ def get_my_stay_session(
 # ═══════════════════════════════════════════════════════════
 
 
-@staff_router.post("/sessions", status_code=201)
+@staff_router.post("/sessions", status_code=201, response_model=StaySessionResponse)
 def create_stay_session(
     payload: StaySessionCreate = Body(...),
     current_user: dict = Depends(require_permission("reservations.manage")),
@@ -143,7 +164,7 @@ def create_stay_session(
 
     existing = db.stay_sessions.find_one({"booking_id": payload.booking_id, "active": True})
     if existing:
-        return serialize_session(existing)
+        return StaySessionResponse.model_validate(serialize_session(existing))
 
     token = secrets.token_urlsafe(_TOKEN_BYTES)
     now = utc_now()
@@ -161,10 +182,10 @@ def create_stay_session(
         "expires_at": payload.expires_at or session_expiry(), "active": True,
     }
     db.stay_sessions.insert_one(doc)
-    return serialize_session(doc)
+    return StaySessionResponse.model_validate(serialize_session(doc))
 
 
-@staff_router.get("/sessions")
+@staff_router.get("/sessions", response_model=StaySessionListResponse)
 def list_stay_sessions(
     prop_id: int | None = Query(default=None, ge=1),
     active_only: bool = Query(default=True),
@@ -180,11 +201,14 @@ def list_stay_sessions(
         query["active"] = True
     total = db.stay_sessions.count_documents(query)
     items = list(db.stay_sessions.find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size))
-    return {"items": [serialize_session(s) for s in items], "total": total, "page": page, "page_size": page_size,
-            "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1}
+    return StaySessionListResponse.model_validate({
+        "items": [serialize_session(s) for s in items],
+        "total": total, "page": page, "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
+    })
 
 
-@staff_router.post("/sessions/cleanup-expired")
+@staff_router.post("/sessions/cleanup-expired", response_model=CleanupSessionActionResponse)
 def cleanup_expired_stay_sessions(
     payload: dict = Body(default={}),
     current_user: dict = Depends(require_permission("reservations.manage")),
@@ -220,25 +244,28 @@ def cleanup_expired_stay_sessions(
         )
         deactivated = result.modified_count
 
-    return {"ok": True, "deactivated": deactivated, "total": len(sessions), "prop_id": prop_id}
+    return CleanupSessionActionResponse.model_validate({
+        "ok": True, "deactivated": deactivated, "total": len(sessions),
+        "prop_id": prop_id, "message": f"Deactivadas {deactivated} sesiones.",
+    })
 
 
-@staff_router.get("/sessions/{token}")
+@staff_router.get("/sessions/{token}", response_model=StaySessionResponse)
 def get_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.read"))):
     db = get_database()
     session = db.stay_sessions.find_one({"token": token})
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada.")
-    return serialize_session(session)
+    return StaySessionResponse.model_validate(serialize_session(session))
 
 
-@staff_router.post("/sessions/{token}/deactivate")
+@staff_router.post("/sessions/{token}/deactivate", response_model=ActionResponse)
 def deactivate_stay_session(token: str, current_user: dict = Depends(require_permission("reservations.manage"))):
     db = get_database()
     result = db.stay_sessions.update_one({"token": token}, {"$set": {"active": False, "deactivated_at": utc_now()}})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Sesión no encontrada.")
-    return {"ok": True, "message": "Sesión desactivada."}
+    return ActionResponse.model_validate({"ok": True, "message": "Sesión desactivada."})
 
 
 # ═══════════════════════════════════════════════════════════
@@ -246,7 +273,7 @@ def deactivate_stay_session(token: str, current_user: dict = Depends(require_per
 # ═══════════════════════════════════════════════════════════
 
 
-@staff_router.get("/requests")
+@staff_router.get("/requests", response_model=ServiceRequestListResponse)
 def list_service_requests(
     prop_id: int | None = Query(default=None, ge=1),
     status_filter: str | None = Query(default=None, alias="status"),
@@ -265,16 +292,33 @@ def list_service_requests(
         query["hotel_room_id"] = room_id
     total = db.stay_service_requests.count_documents(query)
     items = list(db.stay_service_requests.find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size))
-    return {
-        "items": [{**r, "_id": str(r["_id"]), "request_type_label": type_label(r.get("request_type", "")),
-                   "status_label": status_label(r.get("status", "")),
-                   "created_at": _iso(r.get("created_at")), "resolved_at": _iso(r.get("resolved_at"))} for r in items],
-        "total": total, "page": page, "page_size": page_size,
+    return ServiceRequestListResponse.model_validate({
+        "items": [{
+            "_id": r.get("_id"),
+            "booking_id": r.get("booking_id", ""),
+            "prop_id": r.get("prop_id", 0),
+            "hotel_id": r.get("hotel_id"),
+            "room_label": r.get("room_label", ""),
+            "hotel_room_id": r.get("hotel_room_id", ""),
+            "request_type": r.get("request_type", ""),
+            "request_type_label": type_label(r.get("request_type", "")),
+            "description": r.get("description", ""),
+            "status": r.get("status", ""),
+            "status_label": status_label(r.get("status", "")),
+            "staff_response": r.get("staff_response", ""),
+            "staff_name": r.get("staff_name", ""),
+            "created_by": r.get("created_by", ""),
+            "created_at": _iso(r.get("created_at")),
+            "resolved_at": _iso(r.get("resolved_at")),
+        } for r in items],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
-    }
+    })
 
 
-@staff_router.post("/requests", status_code=201)
+@staff_router.post("/requests", status_code=201, response_model=CreateRequestResponse)
 def staff_create_request(
     payload: dict = Body(...),
     current_user: dict = Depends(require_permission("reservations.manage")),
@@ -347,10 +391,15 @@ def staff_create_request(
         "resolved_at": None,
     }
     result = db.stay_service_requests.insert_one(doc)
-    return {"ok": True, "request_id": str(result.inserted_id), "message": "Solicitud creada."}
+    return CreateRequestResponse.model_validate({
+        "ok": True,
+        "request_id": str(result.inserted_id),
+        "message": "Solicitud creada.",
+        "dnd_was_active": None,
+    })
 
 
-@staff_router.put("/requests/{request_id}")
+@staff_router.put("/requests/{request_id}", response_model=ServiceRequestUpdateResponse)
 def update_service_request(
     request_id: str,
     payload: dict = Body(...),
@@ -406,7 +455,12 @@ def update_service_request(
 
         # If the mid-stay operation failed, don't mark the request as completed
         if mid_stay_result and not mid_stay_result.get("ok"):
-            return {"ok": False, "message": "Operación fallida.", "mid_stay": mid_stay_result}
+            return ServiceRequestUpdateResponse.model_validate({
+                "ok": False,
+                "request_id": request_id,
+                "message": "Operación fallida.",
+                "mid_stay": mid_stay_result,
+            })
 
     update: dict = {"status": new_status, "staff_responded_at": utc_now()}
     if staff_response:
@@ -431,10 +485,12 @@ def update_service_request(
         daemon=True,
     ).start()
 
-    response: dict = {"ok": True, "message": "Solicitud actualizada."}
-    if mid_stay_result:
-        response["mid_stay"] = mid_stay_result
-    return response
+    return ServiceRequestUpdateResponse.model_validate({
+        "ok": True,
+        "request_id": request_id,
+        "message": "Solicitud actualizada.",
+        "mid_stay": mid_stay_result,
+    })
 
 
 # ═══════════════════════════════════════════════════════════
@@ -442,7 +498,7 @@ def update_service_request(
 # ═══════════════════════════════════════════════════════════
 
 
-@staff_router.get("/conversations")
+@staff_router.get("/conversations", response_model=ConversationListResponse)
 def list_conversations(
     prop_id: int | None = Query(default=None, ge=1),
     current_user: dict = Depends(require_permission("reservations.read")),
@@ -478,25 +534,47 @@ def list_conversations(
     for c in conversations:
         c["dnd"] = dnd_map.get(c["_id"], False)
 
-    return {"conversations": conversations}
+    return ConversationListResponse.model_validate({
+        "conversations": [{
+            "room_label": c.get("_id", ""),
+            "booking_id": c.get("booking_id", ""),
+            "prop_id": c.get("prop_id", 0),
+            "last_message": c.get("last_message", ""),
+            "last_sender": c.get("last_sender", ""),
+            "last_time": c.get("last_time", ""),
+            "message_count": c.get("message_count", 0),
+            "unread": c.get("unread", 0),
+            "guest_name": c.get("guest_name", ""),
+            "dnd": c.get("dnd", False),
+        } for c in conversations],
+    })
 
 
-@staff_router.get("/conversations/{room_label}")
+@staff_router.get("/conversations/{room_label}", response_model=ChatMessageListResponse)
 def get_conversation_messages(room_label: str, prop_id: int | None = Query(default=None, ge=1), current_user: dict = Depends(require_permission("reservations.read"))):
     db = get_database()
     query: dict = {"room_label": room_label}
     if prop_id:
         query["prop_id"] = prop_id
     messages = list(db.stay_messages.find(query).sort("created_at", 1))
-    for m in messages:
-        m["_id"] = str(m["_id"])
-        m["created_at"] = _iso(m.get("created_at"))
     db.stay_messages.update_many({"room_label": room_label, "sender": "guest", "read": False}, {"$set": {"read": True}})
-    return {"messages": messages}
+    return ChatMessageListResponse.model_validate({
+        "messages": [{
+            "_id": m.get("_id"),
+            "booking_id": m.get("booking_id", ""),
+            "prop_id": m.get("prop_id", 0),
+            "room_label": m.get("room_label", ""),
+            "sender": m.get("sender", ""),
+            "staff_name": m.get("staff_name", ""),
+            "message": m.get("message", ""),
+            "created_at": _iso(m.get("created_at")),
+            "read": bool(m.get("read", False)),
+        } for m in messages],
+    })
 
 
 # ═══════════════════════════════════════════════════════════
-# STAFF — Real-time Notifications (SSE)
+# STAFF — Real-time Notifications (SSE — StreamingResponse, no response_model)
 # ═══════════════════════════════════════════════════════════
 
 
@@ -543,9 +621,9 @@ async def staff_notifications_stream(
     )
 
 
-@staff_router.post("/conversations/{room_label}/reply")
+@staff_router.post("/conversations/{room_label}/reply", response_model=ActionResponse)
 def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.manage"))):
-    message = payload.get("message", "").strip()
+    message = (payload.get("message") or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío.")
     db = get_database()
@@ -571,7 +649,7 @@ def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict =
             ).start()
     except Exception:
         logger.exception("Failed to notify guest reply for room %s", room_label)
-    return {"ok": True, "message": "Respuesta enviada."}
+    return ActionResponse.model_validate({"ok": True, "message": "Respuesta enviada."})
 
 
 # ═══════════════════════════════════════════════════════════
@@ -579,12 +657,12 @@ def staff_reply(room_label: str, payload: dict = Body(...), current_user: dict =
 # ═══════════════════════════════════════════════════════════
 
 
-@guest_router.get("/ping")
+@guest_router.get("/ping", response_model=ModuleStatusResponse)
 def stay_ping():
-    return {"ok": True, "module": "instay"}
+    return ModuleStatusResponse.model_validate({"ok": True, "module": "instay"})
 
 
-@guest_router.get("/portal")
+@guest_router.get("/portal", response_model=PortalDataResponse)
 def get_portal_data(token: str = Query(..., min_length=1)):
     session = get_session_or_404(token)
     db = get_database()
@@ -626,8 +704,17 @@ def get_portal_data(token: str = Query(..., min_length=1)):
     charges = list(db.additional_charges.find({"booking_id": booking_id},
         {"_id": 0, "concept": 1, "amount": 1, "quantity": 1, "total": 1, "category": 1, "note": 1, "created_at": 1}
     ).sort("created_at", -1))
+    folio_charges_payload: list[dict] = []
     for c in charges:
-        c["created_at"] = _iso(c.get("created_at"))
+        folio_charges_payload.append({
+            "concept": c.get("concept", ""),
+            "amount": round(float(c.get("amount", 0)), 2),
+            "quantity": float(c.get("quantity", 1)),
+            "total": round(float(c.get("total", 0)), 2),
+            "category": c.get("category", ""),
+            "note": c.get("note", ""),
+            "created_at": _iso(c.get("created_at")),
+        })
 
     unread = db.stay_messages.count_documents({"booking_id": booking_id, "sender": "staff", "read": False})
     pending = db.stay_service_requests.count_documents({"booking_id": booking_id, "status": {"$in": ["pending", "in_progress"]}})
@@ -682,20 +769,20 @@ def get_portal_data(token: str = Query(..., min_length=1)):
         if dnd_doc and dnd_doc.get("dnd"):
             dnd_active = True
 
-    return {
+    return PortalDataResponse.model_validate({
         "session": serialize_session(session),
         "compendium": compendium.model_dump(),
-        "charges": charges,
+        "charges": folio_charges_payload,
         "folio_balance": folio_balance,
         "folio_postings": folio_postings,
         "nights_remaining": nights_remaining,
         "dnd_active": dnd_active,
         "unread_messages": unread,
         "pending_requests": pending,
-    }
+    })
 
 
-@guest_router.post("/chat")
+@guest_router.post("/chat", response_model=ActionResponse)
 def guest_send_message(payload: dict = Body(...)):
     token = (payload.get("token") or "").strip()
     message = (payload.get("message") or "").strip()
@@ -716,10 +803,10 @@ def guest_send_message(payload: dict = Body(...)):
         notify_staff_new_message(db, session)
     except Exception:
         logger.exception("Failed to notify staff new message for room %s", session.get("room_label", ""))
-    return {"ok": True, "message": "Mensaje enviado."}
+    return ActionResponse.model_validate({"ok": True, "message": "Mensaje enviado."})
 
 
-@guest_router.post("/dnd/toggle")
+@guest_router.post("/dnd/toggle", response_model=ToggleDndResponse)
 def guest_toggle_dnd(payload: dict = Body(...)):
     """Toggle Do Not Disturb for the guest's room."""
     token = (payload.get("token") or "").strip()
@@ -749,23 +836,35 @@ def guest_toggle_dnd(payload: dict = Body(...)):
     except Exception:
         logger.exception("Failed to notify staff DND toggled for room %s", room_label)
 
-    return {"ok": True, "dnd_active": new_dnd, "message": "DND " + ("activado" if new_dnd else "desactivado")}
+    return ToggleDndResponse.model_validate({
+        "ok": True, "dnd_active": new_dnd,
+        "message": "DND " + ("activado" if new_dnd else "desactivado"),
+    })
 
 
-@guest_router.get("/chat")
+@guest_router.get("/chat", response_model=ChatMessageListResponse)
 def guest_get_messages(token: str = Query(..., min_length=1)):
     session = get_session_or_404(token)
     db = get_database()
     booking_id = session["booking_id"]
     messages = list(db.stay_messages.find({"booking_id": booking_id}).sort("created_at", 1))
-    for m in messages:
-        m["_id"] = str(m["_id"])
-        m["created_at"] = _iso(m.get("created_at"))
     db.stay_messages.update_many({"booking_id": booking_id, "sender": "staff", "read": False}, {"$set": {"read": True}})
-    return {"messages": messages}
+    return ChatMessageListResponse.model_validate({
+        "messages": [{
+            "_id": m.get("_id"),
+            "booking_id": m.get("booking_id", ""),
+            "prop_id": m.get("prop_id", 0),
+            "room_label": m.get("room_label", ""),
+            "sender": m.get("sender", ""),
+            "staff_name": m.get("staff_name", ""),
+            "message": m.get("message", ""),
+            "created_at": _iso(m.get("created_at")),
+            "read": bool(m.get("read", False)),
+        } for m in messages],
+    })
 
 
-@guest_router.post("/requests")
+@guest_router.post("/requests", response_model=CreateRequestResponse)
 def guest_create_request(payload: dict = Body(...)):
     token = (payload.get("token") or "").strip()
     request_type = (payload.get("request_type") or "").strip()
@@ -815,26 +914,43 @@ def guest_create_request(payload: dict = Body(...)):
         notify_staff_new_request(db, session, request_type)
     except Exception:
         logger.exception("Failed to notify staff new request '%s' for room %s", request_type, room_label)
-    return {"ok": True, "request_id": str(result.inserted_id), "dnd_was_active": dnd_was_active, "message": "Solicitud enviada."}
+    return CreateRequestResponse.model_validate({
+        "ok": True, "request_id": str(result.inserted_id),
+        "dnd_was_active": dnd_was_active,
+        "message": "Solicitud enviada.",
+    })
 
 
-@guest_router.get("/requests")
+@guest_router.get("/requests", response_model=ServiceRequestListResponse)
 def guest_list_requests(token: str = Query(..., min_length=1)):
     session = get_session_or_404(token)
     db = get_database()
     booking_id = session["booking_id"]
     items = list(db.stay_service_requests.find({"booking_id": booking_id}).sort("created_at", -1))
-    return {"items": [{"_id": str(r["_id"]), "booking_id": r.get("booking_id", ""), "prop_id": r.get("prop_id", 0),
-                       "room_label": r.get("room_label", ""), "hotel_room_id": r.get("hotel_room_id", ""),
-                       "request_type": r.get("request_type", ""),
-                       "request_type_label": type_label(r.get("request_type", "")),
-                       "description": r.get("description", ""), "status": r.get("status", ""),
-                       "status_label": status_label(r.get("status", "")),
-                       "staff_response": r.get("staff_response", ""),
-                       "created_at": _iso(r.get("created_at")), "resolved_at": _iso(r.get("resolved_at"))} for r in items]}
+    return ServiceRequestListResponse.model_validate({
+        "items": [{
+            "_id": r.get("_id"),
+            "booking_id": r.get("booking_id", ""),
+            "prop_id": r.get("prop_id", 0),
+            "hotel_id": r.get("hotel_id"),
+            "room_label": r.get("room_label", ""),
+            "hotel_room_id": r.get("hotel_room_id", ""),
+            "request_type": r.get("request_type", ""),
+            "request_type_label": type_label(r.get("request_type", "")),
+            "description": r.get("description", ""),
+            "status": r.get("status", ""),
+            "status_label": status_label(r.get("status", "")),
+            "staff_response": r.get("staff_response", ""),
+            "staff_name": r.get("staff_name", ""),
+            "created_by": r.get("created_by", ""),
+            "created_at": _iso(r.get("created_at")),
+            "resolved_at": _iso(r.get("resolved_at")),
+        } for r in items],
+        "total": len(items), "page": 1, "page_size": len(items), "total_pages": 1,
+    })
 
 
-@guest_router.post("/requests/{request_id}/cancel")
+@guest_router.post("/requests/{request_id}/cancel", response_model=ActionResponse)
 def guest_cancel_request(request_id: str, payload: dict = Body(...)):
     """Cancel a pending service request."""
     token = (payload.get("token") or "").strip()
@@ -858,7 +974,7 @@ def guest_cancel_request(request_id: str, payload: dict = Body(...)):
         {"_id": oid},
         {"$set": {"status": "cancelled", "resolved_at": utc_now()}},
     )
-    return {"ok": True, "message": "Solicitud cancelada."}
+    return ActionResponse.model_validate({"ok": True, "message": "Solicitud cancelada."})
 
 
 # ═══════════════════════════════════════════════════════════
@@ -866,7 +982,7 @@ def guest_cancel_request(request_id: str, payload: dict = Body(...)):
 # ═══════════════════════════════════════════════════════════
 
 
-@guest_router.get("/lost-items")
+@guest_router.get("/lost-items", response_model=LostItemListResponse)
 def guest_list_lost_items(token: str = Query(..., min_length=1)):
     """List lost & found items for the guest's booking."""
     session = get_session_or_404(token)
@@ -876,15 +992,17 @@ def guest_list_lost_items(token: str = Query(..., min_length=1)):
         {"booking_id": booking_id},
         {"description": 1, "status": 1, "location_found": 1, "reported_by": 1, "created_at": 1, "returned_to": 1}
     ).sort("created_at", -1))
-    return {"items": [{
-        "_id": str(item["_id"]),
-        "description": item.get("description", ""),
-        "status": item.get("status", "found"),
-        "location_found": item.get("location_found", ""),
-        "reported_by": item.get("reported_by", ""),
-        "returned_to": item.get("returned_to", ""),
-        "created_at": _iso(item.get("created_at")),
-    } for item in items]}
+    return LostItemListResponse.model_validate({
+        "items": [{
+            "_id": item.get("_id"),
+            "description": item.get("description", ""),
+            "status": item.get("status", "found"),
+            "location_found": item.get("location_found", ""),
+            "reported_by": item.get("reported_by", ""),
+            "returned_to": item.get("returned_to", ""),
+            "created_at": _iso(item.get("created_at")),
+        } for item in items],
+    })
 
 
 # ── Re-export ensure_stay_collections so callers can import it from

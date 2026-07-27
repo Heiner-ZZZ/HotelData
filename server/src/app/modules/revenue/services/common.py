@@ -145,5 +145,5 @@ def _lookup_map(collection_name: str, id_field: str, label_fields: list[str], id
             label = item.get(field)
             if label:
                 break
-        lookup[item.get(id_field)] = label or str(item.get(id_field))
+        lookup[item.get(id_field, "")] = label or str(item.get(id_field, ""))
     return lookup

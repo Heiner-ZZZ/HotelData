@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from src.app.core.types import ObjectIdStr
 
 
 class ModuleStatus(BaseModel):
@@ -11,20 +14,13 @@ class ModuleStatus(BaseModel):
     description: str
 
 
+# ─── Input DTOs (unchanged) ──────────────────────────────────────────────────
+
+
 class ExpenseCategoryCreate(BaseModel):
     name: str
     description: str = ""
     budget: float = 0
-
-
-class ExpenseCategoryResponse(BaseModel):
-    id: str = Field(alias="_id")
-    name: str
-    description: str
-    budget: float
-    spent: float
-    remaining: float
-    created_at: str
 
 
 class InvoiceCreate(BaseModel):
@@ -48,43 +44,12 @@ class InvoiceUpdate(BaseModel):
     notes: str | None = None
 
 
-class InvoiceResponse(BaseModel):
-    id: str = Field(alias="_id")
-    vendor_name: str
-    category: str
-    description: str
-    amount: float
-    tax_amount: float
-    total: float
-    status: str
-    invoice_date: str
-    due_date: str
-    approved_by: str | None
-    approved_at: str | None
-    notes: str
-    prop_id: int | None
-    created_at: str
-    updated_at: str
-
-
 class BudgetCreate(BaseModel):
     department: str
     period: str  # Q1-2026, Q2-2026, etc.
     amount: float = Field(gt=0)
     description: str = ""
 
-
-class BudgetResponse(BaseModel):
-    id: str = Field(alias="_id")
-    department: str
-    period: str
-    amount: float
-    spent: float
-    remaining: float
-    created_at: str
-
-
-# ─── Ledger ───
 
 class LedgerTransactionCreate(BaseModel):
     tx_date: str
@@ -100,31 +65,216 @@ class LedgerTransactionCreate(BaseModel):
     notes: str = ""
 
 
-class LedgerTransactionResponse(BaseModel):
-    id: str = Field(alias="_id")
-    tx_date: str
-    folio_ref: str
+# ─── Pydantic *Response models (Fase 5/6 API-boundary convention) ────────────
+# All class declarations BELOW this banner must be on their OWN line.
+# See knowledge.md → "Anti-pattern: from __future__ + Pydantic + response_model"
+# for the failure modes this layout prevents.
+
+
+class ExpenseCategoryResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    name: str
     description: str
-    account_code: str
-    account_name: str
-    debit: float
-    credit: float
-    balance: float
-    status: str
-    prop_id: int | None
-    user: str
-    notes: str
-    created_at: str
+    budget: float
+    spent: float
+    remaining: float
+    created_at: str | None = None
+
+
+class InvoiceResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    vendor_name: str | None = None
+    category: str | None = None
+    category_id: ObjectIdStr | None = Field(default=None, validation_alias="category_id", serialization_alias="category_id")
+    description: str | None = None
+    amount: float | None = None
+    tax_amount: float | None = None
+    total: float | None = None
+    status: str | None = None
+    invoice_date: str | None = None
+    due_date: str | None = None
+    approved_by: str | None = None
+    approved_at: str | None = None
+    notes: str | None = None
+    prop_id: int | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class InvoiceListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[InvoiceResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+
+
+class BudgetResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    department: str | None = None
+    period: str | None = None
+    amount: float | None = None
+    spent: float | None = None
+    remaining: float | None = None
+    description: str | None = None
+    created_at: str | None = None
+
+
+class BudgetListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[BudgetResponse] = Field(default_factory=list)
+
+
+class LedgerTransactionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
+    tx_date: str | None = None
+    folio_ref: str | None = None
+    description: str | None = None
+    account_code: str | None = None
+    account_name: str | None = None
+    debit: float | None = None
+    credit: float | None = None
+    balance: float | None = None
+    status: str | None = None
+    prop_id: int | None = None
+    user: str | None = None
+    notes: str | None = None
+    created_at: str | None = None
+    accounting_period: str | None = None
+
+
+class LedgerListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[LedgerTransactionResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
+    total_balance: float | None = None
 
 
 class LedgerFolioResponse(BaseModel):
-    folio_ref: str
-    guest_name: str
-    room: str
-    check_in: str
-    check_out: str
-    balance: float
-    transaction_count: int
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    folio_id: str | None = None
+    folio_ref: str | None = None
+    guest_name: str | None = None
+    room: str | None = None
+    check_in: str | None = None
+    check_out: str | None = None
+    balance: float | None = None
+    transaction_count: int | None = None
+    booking_id: str | None = None
+    status: str | None = None
+
+
+class LedgerFolioListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[LedgerFolioResponse] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 0
+
+
+class FolioPostingsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    folio_id: str | None = None
+    folio_ref: str | None = None
+    guest_name: str | None = None
+    postings: list[Any] = Field(default_factory=list)
+
+
+class LedgerSummaryResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    total_debits: float | None = None
+    total_credits: float | None = None
+    trial_balance_diff: float | None = None
+    is_balanced: bool | None = None
+    transaction_count: int | None = None
+    journal_entry_count: int | None = None
+    revenue_breakdown: list[Any] = Field(default_factory=list)
+
+
+class FolioPaymentResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    folio_id: str | None = None
+    folio_number: str | None = None
+    new_balance: float | None = None
+    payment_amount: float | None = None
+    method: str | None = None
+    invoice_id: str | None = None
+    invoice_created: bool | None = None
+    payment_reference: str | None = None
+    payment_id: str | None = None
+
+
+class FolioTransferResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    source_folio_id: str | None = None
+    source_new_balance: float | None = None
+    target_folio_id: str | None = None
+    target_new_balance: float | None = None
+    amount: float | None = None
+
+
+class TrialBalanceResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    rows: list[Any] = Field(default_factory=list)
+    totals: dict[str, Any] | None = None
+    filters: dict[str, Any] | None = None
+    account_count: int = 0
+
+
+class IncomeStatementResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    period: str | None = None
+    prop_id: int | None = None
+    revenue: dict[str, Any] | None = None
+    discounts: dict[str, Any] | None = None
+    net_revenue: float | None = None
+    costs: dict[str, Any] | None = None
+    net_income: float | None = None
+
+
+class BalanceSheetResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    period: str | None = None
+    prop_id: int | None = None
+    assets: dict[str, Any] | None = None
+    liabilities: dict[str, Any] | None = None
+    equity: dict[str, Any] | None = None
+    net_income: float | None = None
+    total_liabilities_and_equity: float | None = None
+    is_balanced: bool | None = None
+
+
+class DashboardResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    month_total: float | None = None
+    pending_count: int | None = None
+    pending_value: float | None = None
+    total_budget: float | None = None
+    total_spent: float | None = None
+    budget_execution_pct: float | None = None
+    budget_remaining: float | None = None
+    monthly_breakdown: list[Any] = Field(default_factory=list)
+    by_category: list[Any] = Field(default_factory=list)
+
+
+class ChartOfAccountsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
 def now_iso() -> str:

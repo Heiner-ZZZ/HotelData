@@ -27,8 +27,8 @@ def _fmt(val):
 
 def _enrich_report(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
-    doc["review_id"] = str(doc.get("review_id", ""))
-    doc["reported_by"] = str(doc.get("reported_by", ""))
+    doc["review_id"] = str(doc.get("review_id") or "")
+    doc["reported_by"] = str(doc.get("reported_by") or "")
     if "created_at" in doc:
         doc["created_at"] = _fmt(doc["created_at"])
     return doc

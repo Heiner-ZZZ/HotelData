@@ -11,7 +11,7 @@ from src.database.connection import get_database
 from .shifts import (
     ActiveShiftExistsError,
     ScheduleMismatchError,
-    _resolve_expected_shift_type as resolve_expected_shift_type,
+    resolve_expected_shift_type as resolve_expected_shift_type,
     _now_dt,
     open_shift,
     close_shift,

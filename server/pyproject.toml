@@ -1,3 +1,15 @@
+[project]
+name = "hoteldata-server"
+version = "0.1.0"
+description = "HotelData FastAPI backend (PMS + CRS + Booking Engine)."
+requires-python = ">=3.12,<3.13"
+# Dependencies are pinned in `requirements.txt` (Dockerfile uses
+# `pip install -r requirements.txt`). This empty list is just to make
+# the [project] table PEP 621-compliant so mypy/ruff tooling that reads
+# pyproject.toml can resolve metadata. The runtime pip install does
+# NOT use this section.
+dependencies = []
+
 [tool.ruff]
 cache-dir = "../.cache/ruff"
 

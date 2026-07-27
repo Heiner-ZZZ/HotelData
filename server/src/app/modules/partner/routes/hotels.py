@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 
+from src.app.core.types import ObjectIdStr
 from src.app.modules.partner.routes import api_router, legacy_admin_api_router, web_router
 from src.app.modules.partner.services import (
     list_hotel_changes,
@@ -17,6 +21,77 @@ from src.app.modules.partner.services import (
 )
 from src.app.security.role_helpers import get_role_name, UNFILTERED_ROLES
 from src.app.security.dependencies import require_permission
+
+
+# ─── History: PropertyHistoryListResponse envelope ──────────────────
+
+
+class ChangeRecordResponse(BaseModel):
+    """Single change record (list item). Mirrors
+    ``compute/list_hotel_changes()`` + Pydantic owns wire shape.
+
+    - ``_id`` from Mongo is mapped to JSON ``id`` via
+      ``ObjectIdStr`` + alias pair (FastAPI's jsonable_encoder uses
+      by_alias=True by default, so we set ``serialization_alias``).
+    - ``changed_at`` accepts datetime OR None and serializes to ISO 8601
+      automatically. Legacy rows that lack ``changed_at`` become ``null``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: ObjectIdStr = Field(validation_alias="_id", serialization_alias="id")
+    field: str = ""
+    old_value: str = ""
+    new_value: str = ""
+    changed_by: str = ""
+    changed_at: datetime | None = None
+    source: str = ""
+    reason: str = ""
+
+
+class PaginationResponse(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    pages: int
+    has_prev: bool
+    has_next: bool
+
+
+class FilterOptionsResponse(BaseModel):
+    fields: list[str]
+    users: list[str]
+
+
+class PropertyHistoryListResponse(BaseModel):
+    data: list[ChangeRecordResponse]
+    pagination: PaginationResponse
+    filters: FilterOptionsResponse
+
+
+class ChangeDetailResponse(BaseModel):
+    """Single change record (full detail). Superset of
+    ``ChangeRecordResponse`` + ``prop_id`` + ``entity_type``.
+
+    ``prop_id`` is Optional because content_changes documents don't
+    carry ``prop_id`` directly (filtered via ``entity_type`` instead),
+    but the lookup key is ``prop_id`` so we can echo it back.
+    ``entity_type`` discriminates "profile" vs "content" for frontend
+    rendering.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: ObjectIdStr = Field(validation_alias="_id", serialization_alias="id")
+    prop_id: int | None = None
+    field: str = ""
+    old_value: str = ""
+    new_value: str = ""
+    changed_by: str = ""
+    changed_at: datetime | None = None
+    source: str = ""
+    reason: str = ""
+    entity_type: str = "profile"
 
 
 @web_router.get("/hotels")
@@ -189,7 +264,10 @@ def property_detail_api(prop_id: int, current_user: dict = Depends(require_permi
     return detail
 
 
-@api_router.get("/properties/{prop_id}/history")
+@api_router.get(
+    "/properties/{prop_id}/history",
+    response_model=PropertyHistoryListResponse,
+)
 def property_history_api(
     prop_id: int,
     from_date: str | None = Query(default=None, alias="from"),
@@ -213,7 +291,10 @@ def property_history_api(
     )
 
 
-@api_router.get("/properties/{prop_id}/history/{change_id}")
+@api_router.get(
+    "/properties/{prop_id}/history/{change_id}",
+    response_model=ChangeDetailResponse,
+)
 def property_history_detail_api(
     prop_id: int,
     change_id: str,

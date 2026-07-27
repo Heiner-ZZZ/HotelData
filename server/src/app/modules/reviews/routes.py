@@ -6,8 +6,8 @@ from src.app.security.dependencies import require_login, require_permission
 from src.app.security.hotel_filter import hotel_filter_from_user
 from src.app.security.role_helpers import get_role_name
 from src.app.modules.reviews.schemas import (
-    ModuleStatus, ReviewCreate, ReviewModeration,
-    ReviewReportCreate, ReviewStaffResponse, ReviewUpdate,
+    ModuleStatus, ReviewCreate, ReviewListResponse, ReviewModeration,
+    ReviewReportCreate, ReviewResponse, ReviewStaffResponse, ReviewUpdate,
 )
 from src.app.modules.reviews.service import (
     create_review,
@@ -50,14 +50,14 @@ def hotel_reviews_api(
     return get_hotel_reviews(prop_id, page=page, page_size=page_size)
 
 
-@api_router.post("", status_code=201)
+@api_router.post("", status_code=201, response_model=ReviewResponse)
 def create_review_api(payload: dict = Body(...), current_user: dict = Depends(require_login)):
     user_id = str(current_user.get("_id", ""))
     parsed = ReviewCreate(**payload)
     result = create_review(user_id, parsed)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la reseña (booking inválido o ya reseñado)")
-    return result
+    return ReviewResponse.model_validate(result)
 
 
 @api_router.post("/staff", status_code=201)
@@ -82,7 +82,7 @@ def create_review_guest_api(payload: dict = Body(...)):
     return result
 
 
-@api_router.get("")
+@api_router.get("", response_model=ReviewListResponse)
 def list_reviews_api(
     request: Request,
     prop_id: int | None = Query(default=None),
@@ -97,14 +97,14 @@ def list_reviews_api(
     # If the user explicitly passed a prop_id that doesn't match their filter, override
     if prop_id is not None:
         hotel_filter = {"prop_id": prop_id}
-    return list_reviews(
+    return ReviewListResponse.model_validate(list_reviews(
         hotel_filter=hotel_filter,
         prop_id=prop_id,
         user_id=user_id,
         moderation_status=moderation_status,
         page=page,
         page_size=page_size,
-    )
+    ))
 
 
 @api_router.get("/{review_id}")

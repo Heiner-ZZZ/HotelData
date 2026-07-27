@@ -8,7 +8,7 @@ import { EmptyStateComponent } from '../../../../../shared/ui/empty-state/empty-
   imports: [RoomTypeTableComponent, EmptyStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="surface-card data-panel">
+    <section class="surface-card data-panel" style="margin-bottom: 1.25rem">
       <div class="panel-head">
         <span class="material-symbols-outlined panel-head-icon">table</span>
         <div>

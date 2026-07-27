@@ -7,6 +7,7 @@ import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'r
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
@@ -28,6 +29,7 @@ import type { GuestAmenityCategoryDto } from '../../../amenities/models/guest-am
 export class ReservationNewPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
+  private readonly reservationsAuth = inject(ReservationsAuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly reservationsApi = inject(ReservationsApiService);
@@ -77,15 +79,8 @@ export class ReservationNewPageComponent {
   readonly ratePlansLoading = signal(false);
   readonly selectedRatePlanId = signal('');
 
-  readonly isStaff = computed(() => {
-    const role = this.authService.currentUser()?.primaryRole;
-    return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
-  });
-
-  readonly isClient = computed(() => {
-    const role = this.authService.currentUser()?.primaryRole;
-    return !role || role === 'cliente';
-  });
+  readonly isStaff = this.reservationsAuth.isStaff;
+  readonly isClient = this.reservationsAuth.isClient;
 
   readonly selectedHotel = computed(() => {
     const selectedId = this.form.controls.propId.value;

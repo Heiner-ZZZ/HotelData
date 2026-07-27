@@ -1,5 +1,11 @@
 export interface LedgerTransaction {
   id: string;
+  /** Raw Mongo ObjectId (string form). Optional — present in API responses. */
+  _id?: string;
+  /** Runtime marker set by `rebuildTreeData` when a journal-entry group is expanded. */
+  __isChild?: boolean;
+  /** Runtime marker set by `rebuildTreeData` for synthetic journal-entry group rows. */
+  __groupRow?: boolean;
   journalEntryId: string;
   entryType: 'auto' | 'manual';
   txDate: string;

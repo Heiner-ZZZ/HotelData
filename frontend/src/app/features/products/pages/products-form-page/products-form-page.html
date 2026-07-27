@@ -1,0 +1,180 @@
+<div class="form-page">
+  <app-page-header
+    [title]="pageTitle()"
+    [subtitle]="pageSubtitle()"
+    icon="inventory_2"
+  >
+    <button type="button" class="btn-secondary" (click)="cancel()">
+      <span class="material-symbols-outlined">arrow_back</span>
+      <span>Volver</span>
+    </button>
+  </app-page-header>
+
+  @if (loading()) {
+    <app-loading-state message="Cargando producto…" />
+  } @else if (loadError(); as err) {
+    <app-error-state [title]="err" />
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" class="product-form">
+      <!-- Identity section -->
+      <section class="form-section">
+        <header>
+          <span class="material-symbols-outlined">badge</span>
+          <h2>Identidad</h2>
+        </header>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="name">Nombre <span class="req">*</span></label>
+            <input id="name" type="text" formControlName="name" autocomplete="off" />
+            @if (fieldError('name'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+
+          <div class="field field-wide">
+            <label for="description">Descripción</label>
+            <textarea id="description" formControlName="description" rows="2"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="category">Categoría <span class="req">*</span></label>
+            <select id="category" formControlName="category">
+              @for (cat of CATEGORY_OPTIONS; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+            @if (fieldError('category'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="type">Tipo <span class="req">*</span></label>
+            <select id="type" formControlName="type">
+              @for (t of PRODUCT_TYPES; track t) {
+                <option [value]="t">{{ PRODUCT_TYPE_LABELS[t] }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pricing section -->
+      <section class="form-section">
+        <header>
+          <span class="material-symbols-outlined">payments</span>
+          <h2>Precios y margen</h2>
+        </header>
+        <div class="form-grid">
+          <div class="field">
+            <label for="cost_price">
+              Costo unitario <span class="req">*</span>
+              <span class="hint">$ que le cuesta al hotel</span>
+            </label>
+            <input id="cost_price" type="number" step="0.01" min="0" formControlName="cost_price" />
+            @if (fieldError('cost_price'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="unit_price">
+              Precio retail <span class="req">*</span>
+              <span class="hint">$ que se cobra al huésped</span>
+            </label>
+            <input id="unit_price" type="number" step="0.01" min="0" formControlName="unit_price" />
+            @if (fieldError('unit_price'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+
+          <div class="field margin-preview">
+            <label>Margen calculado</label>
+            <div class="margin-display">
+              <span class="margin-amount" [class.is-negative]="marginPreview() < 0">
+                ${{ marginPreview().toFixed(2) }}
+              </span>
+              <span class="margin-pct" [class.is-negative]="marginPctPreview() < 0">
+                {{ marginPctPreview().toFixed(0) }}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stock section -->
+      <section class="form-section">
+        <header>
+          <span class="material-symbols-outlined">inventory_2</span>
+          <h2>Inventario</h2>
+        </header>
+        <div class="form-grid">
+          <div class="field">
+            <label for="quantity_available">
+              Stock inicial <span class="req">*</span>
+            </label>
+            <input id="quantity_available" type="number" min="0" formControlName="quantity_available" />
+            @if (fieldError('quantity_available'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="par_level">
+              Par level
+              <span class="hint">alerta de reorder (opcional)</span>
+            </label>
+            <input id="par_level" type="number" min="0" formControlName="par_level" />
+          </div>
+
+          <div class="field">
+            <label for="is_active">Estado</label>
+            <label class="toggle">
+              <input id="is_active" type="checkbox" formControlName="is_active" />
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">{{ form.controls['is_active'].value ? 'Activo' : 'Inactivo' }}</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Supplier section -->
+      <section class="form-section">
+        <header>
+          <span class="material-symbols-outlined">local_shipping</span>
+          <h2>Proveedor</h2>
+        </header>
+        <div class="form-grid">
+          <div class="field">
+            <label for="default_supplier">Proveedor por defecto</label>
+            <input id="default_supplier" type="text" formControlName="default_supplier" placeholder="ej. Proveedor Demo" />
+          </div>
+
+          <div class="field">
+            <label for="supplier_sku">SKU del proveedor</label>
+            <input id="supplier_sku" type="text" formControlName="supplier_sku" />
+          </div>
+        </div>
+      </section>
+
+      @if (submitError(); as err) {
+        <div class="submit-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ err }}
+        </div>
+      }
+
+      <footer class="form-footer">
+        <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn-primary" [disabled]="saving() || form.invalid">
+          <span class="material-symbols-outlined">save</span>
+          <span>{{ saving() ? 'Guardando…' : (isEditMode() ? 'Guardar cambios' : 'Crear producto') }}</span>
+        </button>
+      </footer>
+    </form>
+  }
+</div>

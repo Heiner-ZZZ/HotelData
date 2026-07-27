@@ -1,0 +1,189 @@
+<div class="report-page">
+  <app-page-header
+    title="Costo de Mercancía Vendida (COGS)"
+    subtitle="Análisis de costo por unidades vendidas en el período"
+  ></app-page-header>
+
+  @if (!canSeeCost()) {
+    <app-empty-state
+      icon="lock"
+      title="Sin permisos"
+      message="Necesitas permiso inventory.products.cost.read para ver COGS."
+    ></app-empty-state>
+  } @else {
+    <section class="period-selector">
+      <span class="period-selector__label">Período:</span>
+      @for (opt of PERIOD_OPTIONS; track opt.key) {
+        <button
+          type="button"
+          class="chip-button"
+          [class.is-active]="period() === opt.key"
+          (click)="selectPeriod(opt.key)"
+        >
+          {{ opt.label }}
+        </button>
+      }
+    </section>
+
+    <section class="method-selector" aria-label="Método de valuación de inventario (Fase 6)">
+      <span class="method-selector__label">Método:</span>
+      @for (m of COGS_METHODS; track m.key) {
+        <button
+          type="button"
+          class="chip-button"
+          [class.is-active]="method() === m.key"
+          (click)="selectMethod(m.key)"
+          [attr.aria-pressed]="method() === m.key"
+        >
+          {{ m.label }}
+        </button>
+      }
+      <span class="method-selector__hint">
+        @switch (method()) {
+          @case ('fifo') { Drenado de capas más antiguas primero (GAAP). }
+          @case ('lifo') { Drenado de capas más nuevas primero. }
+          @case ('approx') {
+            Multiplica ventas × costo actual del catálogo (Fase 5; sin capas).
+          }
+        }
+      </span>
+    </section>
+
+    @if (report.isLoading()) {
+      <app-loading-state label="Cargando COGS..."></app-loading-state>
+    } @else if (report.error()) {
+      <app-error-state
+        title="Error al cargar COGS"
+        message="Inténtalo de nuevo en unos segundos."
+        (retry)="report.reload()"
+      ></app-error-state>
+    } @else if (!report.value() || report.value()!.items.length === 0) {
+      <app-empty-state
+        icon="receipt_long"
+        title="Sin ventas en el período"
+        message="No se vendieron productos con costo asignado en {{ periodLabel(period()) }}."
+      ></app-empty-state>
+    } @else {
+      @let data = report.value()!;
+
+      <section class="kpi-grid">
+        <article class="kpi-card kpi-card--primary">
+          <span class="kpi-card__label">COGS Total</span>
+          <span class="kpi-card__value">{{ data.summary.total_cogs | currency }}</span>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-card__label">Unidades Vendidas</span>
+          <span class="kpi-card__value">{{ data.summary.units_sold | number }}</span>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-card__label">Productos Distintos</span>
+          <span class="kpi-card__value">{{ data.summary.distinct_products_sold }}</span>
+        </article>
+      </section>
+
+      <section class="meta-row">
+        <span class="meta-row__label">Período:</span>
+        <span class="meta-row__period">
+          {{ data.period_start | date:'short' }} → {{ data.period_end | date:'short' }}
+        </span>
+        <span class="meta-row__sep">·</span>
+        <span class="meta-row__label">Método:</span>
+        <span class="meta-row__method">{{ methodLabel(data.method) }}</span>
+        @if ((data.summary?.fallback_units_across_products ?? 0) > 0) {
+          <span class="meta-row__sep">·</span>
+          <span class="meta-row__warn-chip" title="Capas faltantes: ejecute migrate_inventory_layers o verifique sobrestock vs historial de adquisición.">
+            {{ data.summary!.fallback_units_across_products }} ud sin capa
+          </span>
+        }
+      </section>
+
+      <section class="data-section">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th class="num">Unidades</th>
+              <th class="num">Costo Unit.</th>
+              <th class="num">COGS</th>
+              <th>Participación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of data.items; track item.product_id) {
+              <tr>
+                <td>
+                  <span class="product-name">{{ item.name }}</span>
+                  <span class="product-id">{{ item.product_id }}</span>
+                </td>
+                <td><span class="chip chip--neutral">{{ item.category }}</span></td>
+                <td class="num">{{ item.units_sold }}</td>
+                <td class="num">{{ item.avg_unit_cost | currency }}</td>
+                <td class="num">{{ item.cogs | currency }}</td>
+                <td>
+                  <div class="share-bar-cell">
+                    <div
+                      class="share-bar"
+                      [style.width.%]="itemSharePct(item.cogs, data.summary.total_cogs)"
+                    ></div>
+                    <span class="share-bar-label">
+                      {{ formatPct(item.cogs, data.summary.total_cogs) }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+              <!-- Fase 6 layer breakdown row (visible only when there are entries). -->
+              @if (layersFor(item).length > 0) {
+                <tr class="layer-breakdown-row">
+                  <td colspan="6">
+                    <details class="layer-breakdown-details">
+                      <summary class="layer-breakdown-summary">
+                        Desglose por capas ({{ layersFor(item).length }} entrada(s))
+                      </summary>
+                      <table class="layer-breakdown-table">
+                        <thead>
+                          <tr>
+                            <th>Capa</th>
+                            <th>Origen</th>
+                            <th class="num">Unidades</th>
+                            <th class="num">Costo Unit.</th>
+                            <th class="num">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (layer of layersFor(item); track $index) {
+                            <tr>
+                              <td>
+                                @if (layer.layer_id) {
+                                  <code class="layer-id">{{ layer.layer_id }}</code>
+                                } @else {
+                                  <span class="layer-id layer-id--muted">—</span>
+                                }
+                              </td>
+                              <td>
+                                <span class="chip chip--source" [attr.data-source]="layer.source">
+                                  {{ layerSourceTag(layer.source) }}
+                                </span>
+                              </td>
+                              <td class="num">{{ layer.units_consumed }}</td>
+                              <td class="num">{{ layer.cost_per_unit | currency }}</td>
+                              <td class="num">
+                                {{ layer.cost_per_unit * layer.units_consumed | currency }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </details>
+                  </td>
+                </tr>
+              }
+            } @empty {
+              <tr><td colspan="6" class="empty-row">Sin datos para este período</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+  }
+</div>

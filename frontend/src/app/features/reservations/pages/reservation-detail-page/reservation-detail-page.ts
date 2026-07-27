@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, injec
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { AuthService } from '../../../../core/auth/auth.service';
+import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -27,8 +27,8 @@ import type { ReservationDetailDto } from '../../models/reservations.dto';
 import { mapReservationDetail } from '../../mappers/reservations.mapper';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { ReservationActionService } from '../../services/reservation-action.service';
-import { ProductsApiService, mapProduct, mapLineItem } from '../../../admin/services/products-api.service';
-import type { BookingLineItem, HotelProduct } from '../../../admin/models/products.model';
+import { ProductsApiService, mapProduct, mapLineItem } from '../../../products/services/products-api.service';
+import type { BookingLineItem, HotelProduct } from '../../../products/models/products.model';
 import { InStayApiService } from '../../../in-stay/services/in-stay-api.service';
 import { canAssignRooms, canEditBooking } from '../../utils/reservation-status.util';
 
@@ -61,7 +61,7 @@ interface AvailableRoomsResponse {
 })
 export class ReservationDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly authService = inject(AuthService);
+  private readonly reservationsAuth = inject(ReservationsAuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly productsApi = inject(ProductsApiService);
@@ -197,10 +197,7 @@ export class ReservationDetailPageComponent {
   readonly roomAssignmentMessage = signal('');
   readonly roomsRequired = signal(0);
 
-  readonly isStaff = computed(() => {
-    const role = this.authService.currentUser()?.primaryRole;
-    return role ? ['super_admin', 'admin_sistema', 'hotel_partner', 'gerente_hotel'].includes(role) : false;
-  });
+  readonly isStaff = this.reservationsAuth.isStaff;
 
   readonly canConfirm = computed(() => {
     const vm = this.detailResource.value();

@@ -1,0 +1,118 @@
+<div class="report-page">
+  <app-page-header
+    title="Valor de Stock"
+    subtitle="Capital inmovilizado en inventario (qty × costo unitario)"
+    [eyebrow]="asOfEyebrow()"
+  ></app-page-header>
+
+  @if (!canSeeCost()) {
+    <app-empty-state
+      icon="lock"
+      title="Sin permisos"
+      message="Necesitas permiso inventory.products.cost.read para ver valores de stock."
+    ></app-empty-state>
+  } @else if (report.isLoading()) {
+    <app-loading-state label="Cargando valor de stock..."></app-loading-state>
+  } @else if (report.error()) {
+    <app-error-state
+      title="Error al cargar el reporte"
+      message="Inténtalo de nuevo en unos segundos."
+      (retry)="report.reload()"
+    ></app-error-state>
+  } @else if (!report.value() || report.value()!.items.length === 0) {
+    <app-empty-state
+      icon="inventory_2"
+      title="Sin productos en stock"
+      message="No hay productos activos. Crea algunos en /management/products para ver el valor del inventario."
+    ></app-empty-state>
+  } @else {
+    @let data = report.value()!;
+
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__label">Valor Total del Inventario</span>
+        <span class="hero-card__value">{{ data.summary.total_stock_value | currency }}</span>
+        <span class="hero-card__meta">
+          {{ data.summary.total_units | number }} unidades en {{ data.summary.distinct_products }} productos
+        </span>
+      </div>
+      <div class="hero-card__timestamp">
+        <span class="material-symbols-outlined">schedule</span>
+        <span>Actualizado {{ data.as_of | date:'short' }}</span>
+      </div>
+    </section>
+
+    <section class="data-section">
+      <header class="data-section__header">
+        <h3>Por categoría</h3>
+      </header>
+      <div class="category-grid">
+        @for (cat of data.by_category; track cat.category) {
+          <article class="category-card">
+            <header class="category-card__header">
+              <span class="category-card__name">{{ cat.category }}</span>
+              <span class="category-card__value">{{ cat.total_value | currency }}</span>
+            </header>
+            <div class="category-card__bar-cell">
+              <div
+                class="category-bar"
+                [style.width.%]="categorySharePct(cat.total_value, data.summary.total_stock_value)"
+              ></div>
+            </div>
+            <footer class="category-card__footer">
+              <span>{{ cat.units | number }} uds</span>
+              <span>{{ cat.products }} productos</span>
+            </footer>
+          </article>
+        } @empty {
+          <p class="empty-row">Sin datos por categoría</p>
+        }
+      </div>
+    </section>
+
+    <section class="data-section">
+      <header class="data-section__header">
+        <h3>Por producto</h3>
+      </header>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th class="num">Cantidad</th>
+            <th class="num">Costo Unit.</th>
+            <th class="num">Valor Stock</th>
+            <th>Participación</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of data.items; track trackByProductId($index, item)) {
+            <tr>
+              <td>
+                <span class="product-name">{{ item.name }}</span>
+                <span class="product-id">{{ item.product_id }}</span>
+              </td>
+              <td><span class="chip chip--neutral">{{ item.category }}</span></td>
+              <td class="num">{{ item.quantity_available }}</td>
+              <td class="num">{{ item.cost_price | currency }}</td>
+              <td class="num">{{ item.stock_value | currency }}</td>
+              <td>
+                <div class="share-bar-cell">
+                  <div
+                    class="share-bar"
+                    [style.width.%]="categorySharePct(item.stock_value, data.summary.total_stock_value)"
+                  ></div>
+                  <span class="share-bar-label">
+                    {{ categorySharePct(item.stock_value, data.summary.total_stock_value) }}%
+                  </span>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-row">Sin productos</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</div>

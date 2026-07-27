@@ -164,13 +164,13 @@ export class ShiftsApiService {
       employee,
     };
     if (cashInitial !== null && cashInitial !== undefined) {
-      body.cash_initial = cashInitial;
+      body['cash_initial'] = cashInitial;
     }
     if (options.force) {
-      body.force = true;
+      body['force'] = true;
     }
     if (options.bypassScheduleCheck) {
-      body.bypass_schedule_check = true;
+      body['bypass_schedule_check'] = true;
     }
     return this.http.post<{ shift: ShiftInfo; message: string }>(
       '/api/reception/shifts/open',

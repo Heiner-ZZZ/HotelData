@@ -1,0 +1,85 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="modal-container" role="dialog" aria-modal="true" [attr.aria-label]="'Reponer stock de ' + product.name">
+    <header class="modal-header">
+      <div class="modal-title">
+        <span class="material-symbols-outlined">inventory</span>
+        <div>
+          <h2>Reponer stock</h2>
+          <p class="product-info">
+            <span class="product-name">{{ product.name }}</span>
+            <span class="product-id">{{ product.productId }}</span>
+          </p>
+        </div>
+      </div>
+      <button type="button" class="close-btn" (click)="cancel()" aria-label="Cerrar" [disabled]="saving()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="modal-body">
+      <div class="current-stock">
+        <span class="label">Stock actual</span>
+        <span class="value">{{ product.quantityAvailable }}</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="restock-qty">
+            Cantidad a reponer <span class="req">*</span>
+          </label>
+          <input id="restock-qty" type="number" step="1" min="0.01" formControlName="qty" />
+          @if (fieldError('qty'); as err) {
+            <span class="field-error">{{ err }}</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="restock-unit-cost">
+            Costo unitario <span class="req">*</span>
+            <span class="hint">actualiza cost_price del producto</span>
+          </label>
+          <input id="restock-unit-cost" type="number" step="0.01" min="0" formControlName="unit_cost" />
+          @if (fieldError('unit_cost'); as err) {
+            <span class="field-error">{{ err }}</span>
+          }
+        </div>
+
+        <div class="field field-wide">
+          <label for="restock-supplier">Proveedor</label>
+          <input id="restock-supplier" type="text" formControlName="supplier_name" placeholder="ej. Proveedor Demo" />
+        </div>
+
+        <div class="field field-wide">
+          <label for="restock-invoice-ref">
+            Referencia factura
+            <span class="hint">opcional — para trazabilidad</span>
+          </label>
+          <input id="restock-invoice-ref" type="text" formControlName="invoice_ref" placeholder="ej. INV-2026-001" />
+        </div>
+      </div>
+
+      <div class="total-preview">
+        <span class="label">Costo total del restock</span>
+        <span class="value">${{ totalPreview().toFixed(2) }}</span>
+        <span class="hint">DR 1050 Inventario / CR 2010 Cuentas por Pagar</span>
+      </div>
+
+      @if (submitError(); as err) {
+        <div class="submit-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ err }}
+        </div>
+      }
+    </form>
+
+    <footer class="modal-footer">
+      <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving()">
+        Cancelar
+      </button>
+      <button type="submit" class="btn-primary" (click)="submit()" [disabled]="saving() || form.invalid">
+        <span class="material-symbols-outlined">{{ saving() ? 'hourglass_top' : 'check' }}</span>
+        <span>{{ saving() ? 'Registrando…' : 'Registrar restock' }}</span>
+      </button>
+    </footer>
+  </div>
+</div>

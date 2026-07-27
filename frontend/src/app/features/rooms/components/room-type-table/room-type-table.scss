@@ -217,21 +217,6 @@
   }
 }
 
-.features-more {
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: var(--muted-text);
-  white-space: nowrap;
-  padding: 0.1rem 0.3rem;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--muted-text) 6%, transparent);
-  transition: background 120ms;
-
-  &:hover {
-    background: color-mix(in srgb, var(--muted-text) 12%, transparent);
-  }
-}
-
 .no-features {
   color: var(--muted-text);
   font-size: 0.82rem;

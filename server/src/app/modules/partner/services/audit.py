@@ -17,6 +17,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from src.app.core.outbox import enqueue_audit_log
 from src.database.connection import get_database
 
 
@@ -81,7 +82,7 @@ def register_action(
         entry["diff"] = diff
     if metadata:
         entry["metadata"] = metadata
-    db.audit_log.insert_one(entry)
+    enqueue_audit_log(db, entry)
 
 
 def list_audit_entries(

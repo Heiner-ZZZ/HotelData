@@ -7,7 +7,11 @@ import logging
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from src.app.modules.reservations.schemas import ModuleStatus
+from src.app.modules.reservations.schemas import (
+    BookingListResponse,
+    BookingResponse,
+    ModuleStatus,
+)
 from src.app.modules.reservations.service import (
     build_reservation_input,
     cancel_booking,
@@ -50,7 +54,7 @@ def module_status_endpoint() -> ModuleStatus:
     )
 
 
-@api_router.get("")
+@api_router.get("", response_model=BookingListResponse)
 def reservations_list_api(
     page: int = Query(default=1, ge=1),
     created_date: str | None = Query(default=None, alias="date"),
@@ -63,7 +67,7 @@ def reservations_list_api(
     current_user: dict = Depends(require_permission("reservations.read")),
 ):
     from src.app.modules.reservations.service.queries import list_bookings as _list
-    return _list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, folio=folio, stay_status=stay_status, booking_source=booking_source, user=current_user)
+    return BookingListResponse.model_validate(_list(page=page, page_size=20, created_date=created_date, status=status, prop_id=prop_id, guest_name=guest_name, folio=folio, stay_status=stay_status, booking_source=booking_source, user=current_user))
 
 
 @api_router.get("/dates")
@@ -107,7 +111,7 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
     return preview_reservation(payload)
 
 
-@api_router.post("", status_code=status.HTTP_201_CREATED)
+@api_router.post("", status_code=status.HTTP_201_CREATED, response_model=BookingResponse)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.create"))):
     try:
         user_role = get_role_name(current_user)
@@ -121,7 +125,7 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
         reservation_input = build_reservation_input(payload, source=get_role_name(current_user))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
-        return create_booking(reservation_input)
+        return BookingResponse.model_validate(create_booking(reservation_input))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -158,12 +162,18 @@ def reservation_export_api(
     )
 
 
-@api_router.get("/{booking_id}")
+@api_router.get("/{booking_id}", response_model=BookingResponse)
 def reservation_detail_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
+    """Booking detail with embedded reservation history (``history: list[BookingHistoryResponse]``).
+
+    The history is surfaced by ``get_booking_detail``
+    (queries.py:401) and validated under the BookingResponse's nested
+    ``BookingHistoryResponse`` items.
+    """
     detail = get_booking_detail(booking_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
-    return detail
+    return BookingResponse.model_validate(detail)
 
 
 @api_router.get("/{booking_id}/cancel-preview")
@@ -243,10 +253,10 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@api_router.patch("/{booking_id}")
+@api_router.patch("/{booking_id}", response_model=BookingResponse)
 def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), current_user: dict = Depends(require_permission("reservations.update"))):
     try:
-        return modify_booking(booking_id,
+        return BookingResponse.model_validate(modify_booking(booking_id,
             check_in_date=str(payload["check_in_date"]) if payload.get("check_in_date") else None,
             check_in_time=str(payload["check_in_time"]) if payload.get("check_in_time") else None,
             check_out_date=str(payload["check_out_date"]) if payload.get("check_out_date") else None,
@@ -254,7 +264,7 @@ def reservation_modify_api(booking_id: str, payload: dict = Body(default={}), cu
             rooms=int(payload["rooms"]) if payload.get("rooms") is not None else None,
             comment=str(payload["comment"]) if payload.get("comment") is not None else None,
             changed_by=current_user.get("username", "web"),
-            selected_amenities=payload.get("selected_amenities"))
+            selected_amenities=payload.get("selected_amenities")))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

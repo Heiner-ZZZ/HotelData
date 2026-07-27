@@ -52,6 +52,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../amenities/amenities.routes').then((m) => m.AMENITIES_ROUTES)
   },
   {
+    path: 'products',
+    loadChildren: () =>
+      import('../products/products.routes').then((m) => m.PRODUCTS_ROUTES)
+  },
+  {
     path: 'check-ins',
     loadChildren: () =>
       import('../check-ins/check-ins.routes').then((m) => m.CHECK_INS_ROUTES)

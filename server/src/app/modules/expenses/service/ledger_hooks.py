@@ -369,3 +369,91 @@ def generate_ledger_from_payment(payment: dict) -> int:
     )
 
     return 2
+
+
+def post_journal_entry(
+    *,
+    amount: float,
+    dr_account_code: str,
+    dr_account_name: str,
+    cr_account_code: str,
+    cr_account_name: str,
+    description: str,
+    prop_id: int,
+    source: str,
+    source_id: str = "",
+    booking_id: str = "",
+    guest_name: str = "",
+    cost_center: str | None = None,
+) -> str:
+    """Post a balanced double-entry journal entry (DR + CR pair).
+
+    Creates two ledger_transactions docs sharing the same journal_entry_id.
+    Useful for module hooks (restock, COGS) that need to write a simple
+    two-sided posting without re-implementing _insert_entry.
+
+    Idempotent on (source, source_id): if a posting with that key already
+    exists, returns the marker ``"skip:<source>/<source_id>"`` instead of
+    double-posting. The caller can use this marker to detect a no-op reply.
+
+    Returns
+    -------
+    str
+        The journal_entry_id (e.g. ``"JE-20260725-0042"``) on success, or
+        ``"skip:<source>/<source_id>"`` if entries already exist.
+
+    Raises
+    ------
+    ValueError
+        If amount <= 0 or source is empty.
+    """
+    db = get_database()
+
+    if amount <= 0:
+        raise ValueError(f"amount debe ser > 0 (got {amount})")
+    if not source:
+        raise ValueError("source es requerido")
+
+    # Idempotency: skip if a posting for this source/source_id already exists.
+    if source_id:
+        existing = db[LEDGER_COLLECTION].count_documents({
+            "source": source,
+            "source_id": source_id,
+        })
+        if existing > 0:
+            return f"skip:{source}/{source_id}"
+
+    seq = _journal_seq()
+    tx_date = datetime.now(timezone.utc)
+    journal_id = f"JE-{tx_date.strftime('%Y%m%d')}-{seq:04d}"
+    amount_rounded = round(amount, 2)
+    cc = cost_center or f"hotel-{int(prop_id) if prop_id else 1}"
+
+    # DR side
+    _insert_entry(
+        db, journal_id, tx_date,
+        dr_account_code, dr_account_name,
+        description,
+        debit=amount_rounded, credit=0,
+        cost_center=cc,
+        invoice_ref=source_id,
+        booking_id=booking_id,
+        prop_id=prop_id,
+        guest_name=guest_name,
+        source=source,
+    )
+    # CR side
+    _insert_entry(
+        db, journal_id, tx_date,
+        cr_account_code, cr_account_name,
+        description,
+        debit=0, credit=amount_rounded,
+        cost_center=cc,
+        invoice_ref=source_id,
+        booking_id=booking_id,
+        prop_id=prop_id,
+        guest_name=guest_name,
+        source=source,
+    )
+
+    return journal_id

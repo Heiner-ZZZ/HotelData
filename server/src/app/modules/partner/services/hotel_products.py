@@ -13,6 +13,7 @@ from typing import Any
 
 from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import clean_text, now_utc
+from src.app.modules.partner.services.audit import register_action
 from src.database.connection import get_database
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,175 @@ def delete_hotel_product(prop_id: int, product_id: str) -> bool:
     db = get_database()
     result = db.hotel_products.delete_one({"prop_id": prop_id, "product_id": product_id})
     return result.deleted_count > 0
+
+
+def restock_product(
+    prop_id: int,
+    product_id: str,
+    *,
+    qty: float,
+    unit_cost: float,
+    supplier_name: str = "",
+    invoice_ref: str = "",
+    changed_by: str = "system",
+) -> dict[str, Any] | None:
+    """Manual restock for a hotel product.
+
+    Updates quantity_available += qty and cost_price = unit_cost (last-purchase
+    model) on the matching hotel_products doc. Best-effort:
+
+    - Posts a balanced DR 1050 (Inventario) / CR 2010 (Ctas por Pagar Proveedores)
+      journal entry via ``post_journal_entry``.
+    - Records an audit row via ``register_action`` (outbox-backed).
+
+    Failures on either side effect are logged but do NOT roll back the stock
+    update — the catalog state is the source of truth; ledger/audit are
+    advisory.
+
+    Returns
+    -------
+    dict or None
+        The updated fields + ``ledger_journal_id``. Returns ``None`` if no
+        product matches (prop_id, product_id).
+
+    Raises
+    ------
+    ValueError
+        ``qty <= 0`` or ``unit_cost < 0``.
+    """
+    db = get_database()
+
+    if qty <= 0:
+        raise ValueError("qty debe ser > 0")
+    if unit_cost < 0:
+        raise ValueError("unit_cost debe ser >= 0")
+
+    product = db.hotel_products.find_one(
+        {"prop_id": prop_id, "product_id": product_id},
+        {"_id": 0},
+    )
+    if not product:
+        return None
+
+    old_qty = float(product.get("quantity_available", 0) or 0)
+    old_cost = float(product.get("cost_price", 0.0) or 0.0)
+    supplier = supplier_name or product.get("default_supplier") or ""
+    new_qty = old_qty + qty
+    total_cost = round(qty * unit_cost, 2)
+    now = now_utc()
+
+    update_doc = {
+        "quantity_available": new_qty,
+        "cost_price": round(unit_cost, 2),
+        "default_supplier": supplier,
+        "last_purchase_invoice_ref": invoice_ref or None,
+        "last_purchase_at": now,
+        "last_purchase_qty": qty,
+        "updated_at": now,
+        "updated_by": changed_by,
+    }
+    db.hotel_products.update_one(
+        {"prop_id": prop_id, "product_id": product_id},
+        {"$set": update_doc},
+    )
+
+    # Post DR 1050 / CR 2010 — best-effort (stock update is the source of truth).
+    journal_id = ""
+    try:
+        from src.app.modules.expenses.service.ledger_hooks import post_journal_entry
+        journal_id = post_journal_entry(
+            amount=total_cost,
+            dr_account_code="1050",
+            dr_account_name="Inventario",
+            cr_account_code="2010",
+            cr_account_name="Cuentas por Pagar Proveedores",
+            description=(
+                f"Restock {product_id}: {qty} unidades @ ${unit_cost:.2f} "
+                f"(supplier {supplier})"
+            ),
+            prop_id=prop_id,
+            source="hotel_product_restock",
+            source_id=invoice_ref or f"manual:{product_id}:{now.isoformat()}",
+        )
+    except Exception:
+        logger.exception("Failed to post ledger entry for restock %s", product_id)
+
+    # Per-layer inventory trace (Fase 6): one immutable row per restock.
+    # Best-effort: a missing layer means COGS report will fall back to
+    # ``hotel_products.cost_price`` for this acquisition window. We insert
+    # BEFORE the audit row so the audit ``diff`` block can include the
+    # ``layer_id`` for traceability.
+    layer_id = ""
+    try:
+        from src.app.modules.partner.services._inventory import (
+            insert_inventory_layer,
+        )
+        layer = insert_inventory_layer(
+            prop_id=prop_id,
+            product_id=product_id,
+            qty=qty,
+            cost_per_unit=unit_cost,
+            source="restock",
+            supplier_name=supplier,
+            invoice_ref=invoice_ref or "",
+            acquired_at=now,
+            created_by=changed_by,
+        )
+        layer_id = layer.get("layer_id", "")
+    except Exception:
+        logger.exception(
+            "Failed to insert fact_inventory layer for restock %s", product_id
+        )
+
+    # Audit row via outbox — best-effort.
+    try:
+        register_action(
+            prop_id=prop_id,
+            entity_type="hotel_product_stock",
+            entity_id=f"in:{product_id}",
+            action="restock",
+            summary=(
+                f"Reponen {qty} unidades de {product_id} @ ${unit_cost:.2f} "
+                f"(supplier {supplier})"
+            ),
+            changed_by=changed_by,
+            diff={
+                "quantity_available": {"old": old_qty, "new": new_qty},
+                "cost_price": {"old": old_cost, "new": round(unit_cost, 2)},
+                "default_supplier": {
+                    "old": product.get("default_supplier"),
+                    "new": supplier,
+                },
+                "last_purchase_invoice_ref": {
+                    "old": product.get("last_purchase_invoice_ref"),
+                    "new": invoice_ref or None,
+                },
+            },
+            metadata={
+                "qty_added": qty,
+                "total_cost": total_cost,
+                "journal_entry_id": journal_id,
+                # ``layer_id`` is the fact_inventory row this restock
+                # corresponds to. Empty string if layer insert failed.
+                # COGS reports will then fall back to ``hotel_products.cost_price``
+                # for this acquisition window's consumption.
+                "fact_inventory_layer_id": layer_id,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to register audit action for restock %s", product_id)
+
+    return {
+        **update_doc,
+        "product_id": product_id,
+        "prop_id": prop_id,
+        "total_cost": total_cost,
+        "ledger_journal_id": journal_id,
+        # Echo the layer_id so the restock UI can show "INV-..." in the
+        # success toast, providing immediate feedback that the per-layer
+        # trace is recorded (Fase 6 feature).
+        "fact_inventory_layer_id": layer_id,
+    }
 
 
 # ─── Add-on products on active bookings ────────────────────────────────
