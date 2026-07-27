@@ -143,7 +143,16 @@ class LedgerTransactionResponse(BaseModel):
     credit: float | None = None
     balance: float | None = None
     status: str | None = None
-    prop_id: int | None = None
+    # Prop_id may be int (legacy) or ObjectId (post-FK migration). Same
+    # transitional pattern as BookingResponse.prop_id — collapses to a
+    # single type once the ledger pipeline is fully FK-migrated.
+    prop_id: int | ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Property FK reference. May be a legacy integer or a "
+            "post-migration ObjectId string."
+        ),
+    )
     user: str | None = None
     notes: str | None = None
     created_at: str | None = None

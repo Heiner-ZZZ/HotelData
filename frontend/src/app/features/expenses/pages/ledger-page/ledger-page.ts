@@ -27,6 +27,8 @@ import {
 } from '../../../../shared/utils/report-html-templates';
 import { ExpensesApiService, DEFAULT_LEDGER_PAGE_SIZE } from '../../services/expenses-api.service';
 import type { LedgerTransaction, LedgerSummary, TrialBalance, IncomeStatement, BalanceSheet, ChartAccount } from '../../models/ledger.model';
+import type { LedgerSummaryDto, TrialBalanceDto, IncomeStatementDto, BalanceSheetDto, LedgerTransactionsDto, ChartAccountDto } from '../../models/ledger.dto';
+import { mapLedgerSummary, mapTrialBalance, mapIncomeStatement, mapBalanceSheet, mapLedgerTransactions, mapChartAccounts } from '../../mappers/expenses.mapper';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -38,7 +40,56 @@ interface JournalEntryGroupRow extends LedgerTransaction {
   __groupCredit: number;
 }
 
-type TreeRow = LedgerTransaction | JournalEntryGroupRow;
+/** Module-scope helper hoisted from the 2 XLSX export implementations.
+ *
+ * NOTE: declared as a `type` alias (was `type` locally too). Using `interface`
+ * here would cause TS2322 against `ExcelSheetPayload.headers`
+ * ({ label: string; [style: string]: unknown }[]) — TS treats `interface` with
+ * known-key-only fields as a stricter shape than an index-signature target,
+ * while `type` aliases are erased and surface as compatible. Keep as `type`.
+ */
+type HeaderCell = {
+  label: string;
+  align?: 'left' | 'right' | 'center';
+};
+
+/** Module-scope helper hoisted from the 2 XLSX export implementations. */
+type Row = (string | number | null)[];
+
+/**
+ * Sibling interface that narrows `__isChild` to the literal `true` for rows
+ * emitted by `rebuildTreeData` as journal-entry-expansion children. The base
+ * `LedgerTransaction` keeps the field optional (`?: boolean`) so unrelated
+ * fetches (summary, periods, etc.) don't carry the marker spuriously.
+ */
+interface LedgerTransactionExpanded extends LedgerTransaction {
+  __isChild: true;
+}
+
+type TreeRow = LedgerTransaction | JournalEntryGroupRow | LedgerTransactionExpanded;
+
+/**
+ * Coerce any incoming value into a finite number.
+ *
+ * Used by ledger valueFormatters and the P&L waterfall template to defend
+ * against string-number wire values (e.g. Mongo Decimal128 serialized as
+ * "10.50") and undefined/null fields that would otherwise crash `.toFixed(2)`.
+ *
+ * Returns:
+ * - finite numbers → unchanged
+ * - finite numeric strings ("10.50", "0") → coerced via Number()
+ * - everything else (null, undefined, NaN, Infinity, objects, booleans) → 0
+ *
+ * Pure function; safe to hoist to module scope and reuse.
+ */
+const _num = (v: unknown): number => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+};
 
 @Component({
   selector: 'app-ledger-page',
@@ -91,6 +142,8 @@ export class LedgerPageComponent {
   readonly summaryResource = httpResource<LedgerSummary>(() => {
     const propId = this.selectedPropId();
     return propId ? `/api/expenses/ledger/${propId}/summary` : undefined;
+  }, {
+    parse: (dto) => mapLedgerSummary(dto as LedgerSummaryDto),
   });
 
   readonly periodsResource = httpResource<string[]>(() => {
@@ -98,13 +151,15 @@ export class LedgerPageComponent {
     return propId ? `/api/expenses/ledger/${propId}/periods` : undefined;
   });
 
-  readonly transactionsResource = httpResource<{ items: LedgerTransaction[] }>(() => {
+  readonly transactionsResource = httpResource<LedgerTransaction[]>(() => {
     const propId = this.selectedPropId();
     if (!propId) return undefined;
     const period = this.selectedPeriod() || undefined;
     let url = `/api/expenses/ledger/${propId}/transactions?page=1&page_size=${DEFAULT_LEDGER_PAGE_SIZE}&sort_by=tx_date&sort_dir=desc`;
     if (period) url += `&period=${period}`;
     return url;
+  }, {
+    parse: (dto) => mapLedgerTransactions(dto as LedgerTransactionsDto),
   });
 
   readonly trialBalanceResource = httpResource<TrialBalance>(() => {
@@ -114,6 +169,8 @@ export class LedgerPageComponent {
     let url = `/api/expenses/ledger/${propId}/trial-balance`;
     if (period) url += `?period=${period}`;
     return url;
+  }, {
+    parse: (dto) => mapTrialBalance(dto as TrialBalanceDto),
   });
 
   readonly incomeStatementResource = httpResource<IncomeStatement>(() => {
@@ -123,6 +180,8 @@ export class LedgerPageComponent {
     let url = `/api/expenses/ledger/${propId}/income-statement`;
     if (period) url += `?period=${period}`;
     return url;
+  }, {
+    parse: (dto) => mapIncomeStatement(dto as IncomeStatementDto),
   });
 
   readonly balanceSheetResource = httpResource<BalanceSheet>(() => {
@@ -132,11 +191,28 @@ export class LedgerPageComponent {
     let url = `/api/expenses/ledger/${propId}/balance-sheet`;
     if (period) url += `?period=${period}`;
     return url;
+  }, {
+    parse: (dto) => mapBalanceSheet(dto as BalanceSheetDto),
   });
 
-  readonly chartOfAccountsResource = httpResource<ChartAccount[]>(() => `/api/expenses/ledger/chart-of-accounts`);
+  readonly chartOfAccountsResource = httpResource<ChartAccount[]>(() => `/api/expenses/ledger/chart-of-accounts`, {
+    parse: (dto) => mapChartAccounts(dto as ChartAccountDto[]),
+  });
 
   readonly theme = themeQuartz;
+
+  /**
+   * Template-scope alias for the module-scope `_num` helper. Angular templates
+   * can read `public` and `protected` members, but with `strictTemplates: true`
+   * (Angular 22 default), `protected` produces a TS2341 compile error in the
+   * template type-check phase. We expose it as `public` here so the template
+   * binds cleanly without sacrificing encapsulation concerns in callers — the
+   * template legitimately needs the helper and `public readonly` matches.
+   *
+   * Used by ledger-page.html to wrap every `' + X.toFixed(2)` expression with
+   * `_num(X).toFixed(2)` so string-number inputs cannot crash the renderer.
+   */
+  public readonly _num = _num;
 
   columnDefs!: ColDef<LedgerTransaction>[];
 
@@ -152,17 +228,16 @@ export class LedgerPageComponent {
     'je-child-row': (p: RowClassParams<TreeRow>) => p.data?.__isChild === true,
   };
 
-  // Stable monotonic counter for fallback IDs when data has no `id`/`_id`.
-  // Required: ag-grid uses getRowId to reconcile nodes across renders;
-  // a non-deterministic fallback leaks nodes and breaks tree-group state.
-  private fallbackIdCounter = 0;
-
+  /**
+   * Every row leaves `rebuildTreeData` with a deterministic `id` (see the
+   * stable-id policy in that method), so this method no longer needs a
+   * non-deterministic counter fallback. The contract: same logical doc
+   * yields the same id across renders — ag-grid reconciles nodes correctly.
+   */
   getRowId = (params: GetRowIdParams<TreeRow>) => {
     const d = params.data;
-    if (d && d.__groupRow === true) return d.id;
-    if (d && d.id !== undefined && d.id !== null && d.id !== '') return String(d.id);
-    if (d && d._id) return String(d._id);
-    return `row-fallback-${++this.fallbackIdCounter}`;
+    if (!d) return '';
+    return String(d.id ?? '');
   };
 
   constructor() {
@@ -221,9 +296,9 @@ export class LedgerPageComponent {
 
     effect(() => {
       const t = this.transactionsResource.value();
-      if (t) {
+      if (t !== undefined) {
         untracked(() => {
-          this.rebuildTreeData(t.items);
+          this.rebuildTreeData(t);
           this.autoSizeGridColumns();
         });
       }
@@ -324,19 +399,25 @@ export class LedgerPageComponent {
       {
         field: 'debit', headerName: 'Débito', minWidth: 105, sortable: true,
         headerClass: 'col-odd',
-        valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
+        valueFormatter: (p) => {
+          const n = _num(p.value);
+          return n ? '$' + n.toFixed(2) : '\u2014';
+        },
         cellClass: 'cell-mono cell-debit col-odd',
       },
       {
         field: 'credit', headerName: 'Crédito', minWidth: 105, sortable: true,
         headerClass: 'col-even',
-        valueFormatter: (p) => p.value ? '$' + p.value.toFixed(2) : '\u2014',
+        valueFormatter: (p) => {
+          const n = _num(p.value);
+          return n ? '$' + n.toFixed(2) : '\u2014';
+        },
         cellClass: 'cell-mono cell-credit col-even',
       },
       {
         field: 'balance', headerName: 'Balance', minWidth: 115, sortable: true,
         headerClass: 'col-odd',
-        valueFormatter: (p) => '$' + ((p.value ?? 0) as number).toFixed(2),
+        valueFormatter: (p) => '$' + _num(p.value).toFixed(2),
         cellClass: 'cell-mono cell-balance col-odd',
       },
       {
@@ -383,7 +464,7 @@ export class LedgerPageComponent {
 
     const pill = document.createElement('span');
     pill.className = 'group-dc-pill';
-    const usd = (n: number) => '$' + n.toFixed(2);
+    const usd = (n: unknown) => '$' + _num(n).toFixed(2);
     const dLabel = document.createElement('span');
     dLabel.className = 'group-dc-debit';
     dLabel.textContent = 'D: ' + usd(data.__groupDebit || 0);
@@ -571,7 +652,7 @@ export class LedgerPageComponent {
       const month = String(d.getMonth() + 1).padStart(2, '0');
       return `${day}-${month} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
-    const usd = (n: number) => '$' + n.toFixed(2);
+    const usd = (n: unknown) => '$' + _num(n).toFixed(2);
     const esc = (v: string | number | null | undefined) => {
       if (v === null || v === undefined) return '';
       const s = String(v);
@@ -634,10 +715,23 @@ export class LedgerPageComponent {
       this.treeData.set([]);
       return;
     }
-    this.rowData.set(items);
+
+    // ─── Stable-id policy ───
+    // Required: ag-grid uses `getRowId` to reconcile nodes across renders.
+    // Every row must leave this builder with a deterministic id so the grid
+    // never collapses two distinct rows. Precedence per row:
+    //   1. server-provided `id` (api response);
+    //   2. Mongo `_id` (string form);
+    //   3. content composite `<jeId>|<accountCode>|<txDate>|<debit>|<credit>`.
+    // Group rows get a synthetic `__ledger_grp__<jeId>` id (stable per JE).
+    const stableIdFor = (r: LedgerTransaction): string =>
+      r.id || r._id || `${r.journalEntryId}|${r.accountCode}|${r.txDate}|${r.debit}|${r.credit}`;
+    const withIds: LedgerTransaction[] = items.map((r) => ({ ...r, id: stableIdFor(r) }));
+    this.rowData.set(withIds);
 
     if (!this.groupedMode()) {
-      this.treeData.set([]);
+      // Non-grouped mode: hand the same stable-ided rows straight to ag-grid.
+      this.treeData.set(withIds);
       return;
     }
 
@@ -668,6 +762,9 @@ export class LedgerPageComponent {
       visible.push({
         ...first,
         __groupRow: true,
+        // Cover the previous "undefined children" AG Grid crash: any virtualizer
+        // or row-buffer that inspects node.children.length sees an empty arr.
+        children: [],
         __childCount: groupBuffer.length,
         __groupDebit: groupBuffer.reduce((s, r) => s + (r.debit || 0), 0),
         __groupCredit: groupBuffer.reduce((s, r) => s + (r.credit || 0), 0),
@@ -683,7 +780,10 @@ export class LedgerPageComponent {
       } as JournalEntryGroupRow);
       if (expanded.has(jeId)) {
         for (const child of groupBuffer) {
-          visible.push({ ...child, __isChild: true } as LedgerTransaction & { __isChild: true });
+          // `child` already carries a stable id from the policy above; cast
+          // to `LedgerTransactionExpanded` because `__isChild: true` matches
+          // the narrowed literal type defined in the sibling interface.
+          visible.push({ ...child, __isChild: true } as LedgerTransactionExpanded);
         }
       }
       groupBuffer = [];
@@ -848,7 +948,6 @@ export class LedgerPageComponent {
     const period = inc.period || this.selectedPeriod() || 'Todos los períodos';
     const propLabel = this.selectedLabel() || `Propiedad #${inc.propId}`;
     const filename = `estado-resultados_${propLabel.replace(/\s+/g, '_')}_${period.replace(/\s+/g, '_')}`.toLowerCase();
-    type HeaderCell = { label: string; align?: 'left' | 'right' | 'center' };
     const head: HeaderCell[] = [
       { label: 'Cuenta' },
       { label: 'Nombre de la cuenta' },
@@ -856,7 +955,6 @@ export class LedgerPageComponent {
       { label: 'Créditos', align: 'right' },
       { label: 'Neto', align: 'right' },
     ];
-    type Row = (string | number | null)[];
     const summaryItems = [
       { label: 'Ingresos brutos', val: inc.revenue.total },
       { label: 'Descuentos', val: -inc.discounts.total },
@@ -1007,8 +1105,6 @@ export class LedgerPageComponent {
     const period = bs.period || this.selectedPeriod() || 'Todos los períodos';
     const propLabel = this.selectedLabel() || `Propiedad #${bs.propId}`;
     const filename = `balance-general_${propLabel.replace(/\s+/g, '_')}_${period.replace(/\s+/g, '_')}`.toLowerCase();
-    type HeaderCell = { label: string; align?: 'left' | 'right' | 'center' };
-    type Row = (string | number | null)[];
     const head: HeaderCell[] = [
       { label: 'Cuenta' },
       { label: 'Nombre de la cuenta' },

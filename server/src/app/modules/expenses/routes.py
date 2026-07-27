@@ -43,6 +43,7 @@ from src.app.modules.expenses.service.collections import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_permission
+from src.app.core.types import to_json_safe
 
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
@@ -85,8 +86,13 @@ def _resolve_category_id(category_name: str) -> ObjectId | None:
 def _enrich_invoice(doc: dict) -> dict:
     """Strip _id conversion (Pydantic ObjectIdStr handles it); keep totals and datetime ISO."""
     doc["total"] = (doc.get("amount") or 0) + (doc.get("tax_amount") or 0)
-    if doc.get("prop_id"):
-        doc["prop_id"] = int(doc["prop_id"])
+    pid = doc.get("prop_id")
+    if pid is not None and not isinstance(pid, (ObjectId, str)):
+        try:
+            doc["prop_id"] = int(pid)
+        except (TypeError, ValueError):
+            # ObjectId (post-FK migration) — leave for ObjectIdStr validator
+            pass
     for f in ("created_at", "updated_at", "approved_at"):
         if isinstance(doc.get(f), datetime):
             doc[f] = doc[f].isoformat()
@@ -111,12 +117,43 @@ def _enrich_budget(doc: dict) -> dict:
 
 def _enrich_ledger(doc: dict) -> dict:
     """Strip _id conversion (Pydantic ObjectIdStr handles it); keep datetime ISO + prop_id cast."""
-    if doc.get("prop_id"):
-        doc["prop_id"] = int(doc["prop_id"])
+    pid = doc.get("prop_id")
+    if pid is not None and not isinstance(pid, (ObjectId, str)):
+        try:
+            doc["prop_id"] = int(pid)
+        except (TypeError, ValueError):
+            # ObjectId (post-FK migration) — leave for ObjectIdStr validator
+            pass
     for f in ("tx_date", "created_at"):
         if isinstance(doc.get(f), datetime):
             doc[f] = doc[f].isoformat()
     return doc
+
+
+def _unwrap_query(value: Any) -> Any:
+    """Normalize a fastapi.params.Param INSTANCE back to its declared default.
+
+    Why this exists: ``list_ledger`` is annotated with FastAPI Query defaults
+    (``prop_id: int = Query(default=0, ge=0)``, ``status_filter: str | None =
+    Query(default=None, alias="status")``, ...). When FastAPI dispatches a
+    request it resolves them to runtime values BEFORE calling the function, so
+    the function body always sees scalars.
+
+    BUT ``ledger_transactions_by_prop`` and other by-prop route aliases
+    call ``list_ledger(prop_id=…, accounting_period=…, page=…, …)`` directly
+    from Python. For kwargs the caller did NOT pass, Python falls back to the
+    function's signature default, which is the raw ``Query(default=None)``
+    OBJECT, not the value the Query was supposed to represent. BSON encoder
+    then crashes with ``InvalidDocument: cannot encode object: Query(None)``.
+
+    This helper unwraps any such Param instance to its ``.default`` value.
+    Belt-and-suspenders guard for fastapi.route-from-route calls.
+    """
+    from fastapi.params import Param  # local import to avoid module-level cycle
+
+    if isinstance(value, Param):
+        return value.default
+    return value
 
 
 # ─── Module Status ───
@@ -282,6 +319,9 @@ def list_invoices(
     cursor = db[INVOICES_COLLECTION].find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
     items = [_enrich_invoice(doc) for doc in cursor]
     user = getattr(request.state, "current_user", None) or {}
+    # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime → isoformat)
+    # catches anything _enrich_invoice may have missed (e.g. nested ObjectIds).
+    items = [to_json_safe(it) for it in items]
     register_action(
         prop_id=prop_id or 0,
         entity_type="expense_invoice",
@@ -299,11 +339,11 @@ def list_invoices(
             "url": str(request.url),
         },
     )
-    return InvoiceListResponse.model_validate({
+    return InvoiceListResponse.model_validate(to_json_safe({
         "items": items, "total": total, "page": page, "page_size": page_size,
         "total_pages": max(1, ceil(total / page_size)) if total else 1,
         "has_next": page * page_size < total, "has_prev": page > 1,
-    })
+    }))
 
 
 @api_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
@@ -505,6 +545,23 @@ def list_ledger(
     sort_order: str = Query(default="desc"),
 ):
     """Paginated ledger with server-side sorting and filtering for AG Grid."""
+    # Belt-and-suspenders: when called from another FastAPI route (e.g.
+    # ``ledger_transactions_by_prop``) without explicit kwargs for the
+    # optional params below, Python fills them with the raw ``Query(...)``
+    # instance instead of the resolved value. ``_unwrap_query`` normalizes
+    # each one to its declared ``.default``. Without this guard, BSON
+    # encoding crashes on ``Query(None)`` leaking into ``query[...]``.
+    prop_id = _unwrap_query(prop_id)
+    folio_ref = _unwrap_query(folio_ref)
+    account_code = _unwrap_query(account_code)
+    accounting_period = _unwrap_query(accounting_period)
+    status_filter = _unwrap_query(status_filter)
+    search = _unwrap_query(search)
+    page = _unwrap_query(page)
+    page_size = _unwrap_query(page_size)
+    sort_field = _unwrap_query(sort_field)
+    sort_order = _unwrap_query(sort_order)
+
     db = get_database()
     query: dict = {}
     if prop_id:
@@ -572,8 +629,8 @@ def list_ledger(
             cumulative += item.get("debit", 0) - item.get("credit", 0)
             item["balance"] = round(cumulative, 2)
 
-    items = [LedgerTransactionResponse.model_validate(it) for it in items_raw]
-    return LedgerListResponse.model_validate({
+    items = [LedgerTransactionResponse.model_validate(to_json_safe(it)) for it in items_raw]
+    return LedgerListResponse.model_validate(to_json_safe({
         "items": items,
         "total": total,
         "page": page,
@@ -582,7 +639,7 @@ def list_ledger(
         "has_next": page * page_size < total,
         "has_prev": page > 1,
         "total_balance": total_balance,
-    })
+    }))
 
 
 @api_router.get("/ledger/folios", response_model=LedgerFolioListResponse)

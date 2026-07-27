@@ -113,3 +113,46 @@ export interface ChartAccountDto {
   normal_balance: string;
   description: string;
 }
+
+/**
+ * Wire DTO for an individual ledger transaction row. Backend emits snake_case;
+ * `mapLedgerTransaction` in `expenses.mapper.ts` converts to the camelCase
+ * `LedgerTransaction` model. Required by the page component's
+ * `transactionsResource` httpResource generic, which previously was typed as
+ * `LedgerTransaction[]` directly — a lie that let snake_case keys leak into
+ * the camelCase-typed rowData signal and caused the synthetic group-row
+ * collapse (all rows shared `journalEntryId === undefined`, bucketed under
+ * the empty-string key, producing exactly one row in AG Grid).
+ */
+export interface LedgerTransactionDto {
+  id?: string;
+  _id?: string;
+  tx_date: string;
+  journal_entry_id: string;
+  entry_type: 'auto' | 'manual';
+  account_code: string;
+  account_name: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  cost_center: string;
+  folio_ref: string;
+  booking_id: string;
+  prop_id: number | null;
+  guest_name: string;
+  source: string;
+  source_id: string;
+  accounting_period: string;
+  status: 'audited' | 'pending' | 'discrepancy';
+  notes: string;
+  created_at: string;
+}
+
+/** Wire envelope for the `/transactions` list endpoint. */
+export interface LedgerTransactionsDto {
+  items: LedgerTransactionDto[];
+  page: number;
+  page_size: number;
+  total: number;
+}

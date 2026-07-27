@@ -1,7 +1,7 @@
 import type { ExpenseDashboardDto, InvoiceDetailDto, InvoiceItemDto, InvoiceListDto } from '../models/expenses.dto';
-import type { LedgerFolioDto, LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, TrialBalanceRowDto, StatementLineDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingDto, FolioPostingsDto } from '../models/ledger.dto';
+import type { LedgerFolioDto, LedgerFoliosDto, LedgerSummaryDto, TrialBalanceDto, TrialBalanceRowDto, StatementLineDto, IncomeStatementDto, BalanceSheetDto, ChartAccountDto, FolioPostingDto, FolioPostingsDto, LedgerTransactionDto, LedgerTransactionsDto } from '../models/ledger.dto';
 import type { ExpenseDashboard, InvoiceDetail, InvoiceListItem } from '../models/expenses.model';
-import type { LedgerFolio, LedgerSummary, TrialBalance, TrialBalanceRow, StatementLine, IncomeStatement, BalanceSheet, ChartAccount, FolioPosting, FolioPostingsResponse } from '../models/ledger.model';
+import type { LedgerFolio, LedgerSummary, TrialBalance, TrialBalanceRow, StatementLine, IncomeStatement, BalanceSheet, ChartAccount, FolioPosting, FolioPostingsResponse, LedgerTransaction } from '../models/ledger.model';
 
 function mapInvoiceItem(dto: InvoiceItemDto): InvoiceListItem {
   return {
@@ -210,4 +210,46 @@ export function mapTrialBalance(dto: TrialBalanceDto): TrialBalance {
     },
     accountCount: dto.account_count,
   };
+}
+
+/**
+ * Convert a single wire-transaction DTO to the camelCase LedgerTransaction model.
+ * Used by `transactionsResource` in `ledger-page.ts` because httpResource
+ * bypasses the mapper pipeline that HttpClient.pipe(map(...)) provides.
+ *
+ * Defaults `id` from `_id` when the server doesn't supply a stable id, and
+ * `propId` to `null` when missing so the tree-builder can rely on the field.
+ * Number fields default to 0 to keep AG Grid valueFormatters from crashing
+ * on wire-shape inequalities (the template also wraps with `_num`).
+ */
+export function mapLedgerTransaction(dto: LedgerTransactionDto): LedgerTransaction {
+  return {
+    id: dto.id ?? dto._id ?? '',
+    _id: dto._id,
+    journalEntryId: dto.journal_entry_id,
+    entryType: dto.entry_type,
+    txDate: dto.tx_date,
+    accountCode: dto.account_code,
+    accountName: dto.account_name ?? '',
+    description: dto.description ?? '',
+    debit: dto.debit ?? 0,
+    credit: dto.credit ?? 0,
+    balance: dto.balance ?? 0,
+    costCenter: dto.cost_center ?? '',
+    folioRef: dto.folio_ref ?? '',
+    bookingId: dto.booking_id ?? '',
+    propId: dto.prop_id ?? null,
+    guestName: dto.guest_name ?? '',
+    source: dto.source ?? '',
+    sourceId: dto.source_id ?? '',
+    accountingPeriod: dto.accounting_period ?? '',
+    status: dto.status ?? 'pending',
+    notes: dto.notes ?? '',
+    createdAt: dto.created_at ?? '',
+  };
+}
+
+/** Envelope mapper: maps the full /transactions response. */
+export function mapLedgerTransactions(dto: LedgerTransactionsDto): LedgerTransaction[] {
+  return (dto?.items || []).map(mapLedgerTransaction);
 }

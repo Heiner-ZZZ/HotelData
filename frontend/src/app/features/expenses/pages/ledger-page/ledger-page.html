@@ -28,7 +28,7 @@
         <div class="kpi-item">
           <span class="kpi-label">Balance de Comprobación</span>
           <span class="kpi-value mono" [class.text-success]="s.isBalanced" [class.text-danger]="!s.isBalanced">
-            {{ s.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO $' + (s.trialBalanceDiff | number:'1.0-2') }}
+            {{ s.isBalanced ? 'BALANCEADO' : 'DESBALANCEADO $' + (_num(s.trialBalanceDiff) | number:'1.0-2') }}
           </span>
         </div>
         <div class="kpi-divider"></div>
@@ -209,10 +209,10 @@
                       {{ row.accountType === 'asset' ? 'Activo' : row.accountType === 'liability' ? 'Pasivo' : row.accountType === 'equity' ? 'Patrimonio' : row.accountType === 'revenue' ? 'Ingreso' : row.accountType === 'expense' ? 'Gasto' : row.accountType === 'contra_revenue' ? 'Descuento' : row.accountType }}
                     </span>
                   </td>
-                  <td class="tb-num mono">{{ row.totalDebits ? ('$' + row.totalDebits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.totalCredits ? ('$' + row.totalCredits.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.totalDebits ? ('$' + _num(row.totalDebits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.totalCredits ? ('$' + _num(row.totalCredits).toFixed(2)) : '—' }}</td>
                   <td class="tb-num mono" [class.text-danger]="row.balance > 0" [class.text-success]="row.balance < 0">
-                    {{ row.isZeroBalance ? '—' : ('$' + row.balance.toFixed(2)) }}
+                    {{ row.isZeroBalance ? '—' : ('$' + _num(row.balance).toFixed(2)) }}
                   </td>
                   <td class="tb-num tb-tx">{{ row.txCount }}</td>
                 </tr>
@@ -221,10 +221,10 @@
             <tfoot>
               <tr class="tb-totals">
                 <td colspan="3"><strong>TOTALES</strong></td>
-                <td class="tb-num mono"><strong>{{ '$' + tb.totals.totalDebits.toFixed(2) }}</strong></td>
-                <td class="tb-num mono"><strong>{{ '$' + tb.totals.totalCredits.toFixed(2) }}</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + _num(tb.totals.totalDebits).toFixed(2) }}</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + _num(tb.totals.totalCredits).toFixed(2) }}</strong></td>
                 <td class="tb-num mono" [class.text-danger]="!tb.totals.isBalanced">
-                  <strong>{{ tb.totals.isBalanced ? '—' : ('$' + tb.totals.difference.toFixed(2)) }}</strong>
+                  <strong>{{ tb.totals.isBalanced ? '—' : ('$' + _num(tb.totals.difference).toFixed(2)) }}</strong>
                 </td>
                 <td></td>
               </tr>
@@ -267,10 +267,10 @@
               <span class="pnl-bar-label">Ingresos<small>Revenue</small></span>
               <div class="pnl-bar-track">
                 <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.revenue.total)">
-                  <span class="pnl-bar-fill-inner">{{ '$' + inc.revenue.total.toFixed(2) }}</span>
+                  <span class="pnl-bar-fill-inner">{{ '$' + _num(inc.revenue.total).toFixed(2) }}</span>
                 </div>
               </div>
-              <span class="pnl-bar-value text-success">{{ '$' + inc.revenue.total.toFixed(2) }}<small>100%</small></span>
+              <span class="pnl-bar-value text-success">{{ '$' + _num(inc.revenue.total).toFixed(2) }}<small>100%</small></span>
             </div>
             @if (inc.discounts.total > 0) {
             <div class="pnl-bar-row pnl-bar-discount">
@@ -278,10 +278,10 @@
               <span class="pnl-bar-label">Descuentos<small>Discounts</small></span>
               <div class="pnl-bar-track">
                 <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.discounts.total)">
-                  <span class="pnl-bar-fill-inner">−{{ '$' + inc.discounts.total.toFixed(2) }}</span>
+                  <span class="pnl-bar-fill-inner">−{{ '$' + _num(inc.discounts.total).toFixed(2) }}</span>
                 </div>
               </div>
-              <span class="pnl-bar-value text-danger">−{{ '$' + inc.discounts.total.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-danger">−{{ '$' + _num(inc.discounts.total).toFixed(2) }}</span>
             </div>
             }
             @if (inc.discounts.total > 0) {
@@ -290,10 +290,10 @@
               <span class="pnl-bar-label">Neto<small>Net Rev</small></span>
               <div class="pnl-bar-track">
                 <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netRevenue)" style="background:linear-gradient(90deg,#4ade80,#22c55e);box-shadow:0 1px 4px rgba(34,197,94,0.25)">
-                  <span class="pnl-bar-fill-inner">{{ '$' + inc.netRevenue.toFixed(2) }}</span>
+                  <span class="pnl-bar-fill-inner">{{ '$' + _num(inc.netRevenue).toFixed(2) }}</span>
                 </div>
               </div>
-              <span class="pnl-bar-value text-success">{{ '$' + inc.netRevenue.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-success">{{ '$' + _num(inc.netRevenue).toFixed(2) }}</span>
             </div>
             }
             <div class="pnl-bar-row pnl-bar-cost">
@@ -301,21 +301,21 @@
               <span class="pnl-bar-label">Costos<small>Expenses</small></span>
               <div class="pnl-bar-track">
                 <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.costs.total)">
-                  <span class="pnl-bar-fill-inner">−{{ '$' + inc.costs.total.toFixed(2) }}</span>
+                  <span class="pnl-bar-fill-inner">−{{ '$' + _num(inc.costs.total).toFixed(2) }}</span>
                 </div>
               </div>
-              <span class="pnl-bar-value text-danger">−{{ '$' + inc.costs.total.toFixed(2) }}</span>
+              <span class="pnl-bar-value text-danger">−{{ '$' + _num(inc.costs.total).toFixed(2) }}</span>
             </div>
             <div class="pnl-bar-row pnl-bar-net" [class.pnl-net-profit]="inc.netIncome >= 0" [class.pnl-net-loss]="inc.netIncome < 0">
               <div class="pnl-bar-icon"><span class="material-symbols-outlined">{{ inc.netIncome >= 0 ? 'savings' : 'warning' }}</span></div>
               <span class="pnl-bar-label">Resultado<small>Net Income</small></span>
               <div class="pnl-bar-track">
                 <div class="pnl-bar-fill" [style.width.%]="pnlBarPct(inc.netIncome)">
-                  <span class="pnl-bar-fill-inner">{{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + (inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}</span>
+                  <span class="pnl-bar-fill-inner">{{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + _num(inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}</span>
                 </div>
               </div>
               <span class="pnl-bar-value" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
-                {{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + (inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}
+                {{ inc.netIncome >= 0 ? '' : '−' }}{{ '$' + _num(inc.netIncome < 0 ? -inc.netIncome : inc.netIncome).toFixed(2) }}
               </span>
             </div>
           </div>
@@ -336,9 +336,9 @@
                   <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
                   <td class="tb-name">{{ row.accountName }}</td>
                   <td></td>
-                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono text-success">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono text-success">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
@@ -347,7 +347,7 @@
             <tfoot>
               <tr class="tb-totals">
                 <td colspan="5"><strong>Total Ingresos</strong></td>
-                <td class="tb-num mono text-success"><strong>{{ '$' + inc.revenue.total.toFixed(2) }}</strong></td>
+                <td class="tb-num mono text-success"><strong>{{ '$' + _num(inc.revenue.total).toFixed(2) }}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -369,16 +369,16 @@
                     <td class="tb-code">{{ row.accountCode }}</td>
                     <td class="tb-name">{{ row.accountName }}</td>
                     <td></td>
-                    <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                    <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                    <td class="tb-num mono text-danger">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono text-danger">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                   </tr>
                 }
               </tbody>
               <tfoot>
                 <tr class="tb-totals">
                   <td colspan="5"><strong>Total Descuentos</strong></td>
-                  <td class="tb-num mono text-danger"><strong>{{ '$' + inc.discounts.total.toFixed(2) }}</strong></td>
+                  <td class="tb-num mono text-danger"><strong>{{ '$' + _num(inc.discounts.total).toFixed(2) }}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -386,8 +386,8 @@
 
           <!-- Net Revenue -->
           <div class="st-subtotal-bar">
-            <span>Ingresos Netos ({{ '$' + inc.revenue.total.toFixed(2) }} − {{ '$' + inc.discounts.total.toFixed(2) }})</span>
-            <span class="mono text-success"><strong>{{ '$' + inc.netRevenue.toFixed(2) }}</strong></span>
+            <span>Ingresos Netos ({{ '$' + _num(inc.revenue.total).toFixed(2) }} − {{ '$' + _num(inc.discounts.total).toFixed(2) }})</span>
+            <span class="mono text-success"><strong>{{ '$' + _num(inc.netRevenue).toFixed(2) }}</strong></span>
           </div>
 
           <!-- Costs Section -->
@@ -406,9 +406,9 @@
                   <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
                   <td class="tb-name">{{ row.accountName }}</td>
                   <td></td>
-                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono text-danger">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono text-danger">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
@@ -417,7 +417,7 @@
             <tfoot>
               <tr class="tb-totals">
                 <td colspan="5"><strong>Total Costos</strong></td>
-                <td class="tb-num mono text-danger"><strong>{{ '$' + inc.costs.total.toFixed(2) }}</strong></td>
+                <td class="tb-num mono text-danger"><strong>{{ '$' + _num(inc.costs.total).toFixed(2) }}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -425,7 +425,7 @@
           <!-- Final Bottom Line -->
           <div class="st-bottom-line" [class.text-success]="inc.netIncome >= 0" [class.text-danger]="inc.netIncome < 0">
             <span>Resultado Neto del Período</span>
-            <span class="mono"><strong>{{ '$' + inc.netIncome.toFixed(2) }}</strong></span>
+            <span class="mono"><strong>{{ '$' + _num(inc.netIncome).toFixed(2) }}</strong></span>
           </div>
         </div>
       }
@@ -469,9 +469,9 @@
                   <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
                   <td class="tb-name">{{ row.accountName }}</td>
                   <td></td>
-                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
@@ -480,7 +480,7 @@
             <tfoot>
               <tr class="tb-totals">
                 <td colspan="5"><strong>Total Activos</strong></td>
-                <td class="tb-num mono"><strong>{{ '$' + bs.assets.total.toFixed(2) }}</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + _num(bs.assets.total).toFixed(2) }}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -501,9 +501,9 @@
                   <td class="tb-code" [title]="accountTooltip(row.accountCode)">{{ row.accountCode }}</td>
                   <td class="tb-name">{{ row.accountName }}</td>
                   <td></td>
-                  <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                  <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                  <td class="tb-num mono">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="st-empty">Sin movimientos en el período</td></tr>
@@ -512,7 +512,7 @@
             <tfoot>
               <tr class="tb-totals">
                 <td colspan="5"><strong>Total Pasivos</strong></td>
-                <td class="tb-num mono"><strong>{{ '$' + bs.liabilities.total.toFixed(2) }}</strong></td>
+                <td class="tb-num mono"><strong>{{ '$' + _num(bs.liabilities.total).toFixed(2) }}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -534,16 +534,16 @@
                     <td class="tb-code">{{ row.accountCode }}</td>
                     <td class="tb-name">{{ row.accountName }}</td>
                     <td></td>
-                    <td class="tb-num mono">{{ row.debits ? ('$' + row.debits.toFixed(2)) : '—' }}</td>
-                    <td class="tb-num mono">{{ row.credits ? ('$' + row.credits.toFixed(2)) : '—' }}</td>
-                    <td class="tb-num mono">{{ row.net ? ('$' + row.net.toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.debits ? ('$' + _num(row.debits).toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.credits ? ('$' + _num(row.credits).toFixed(2)) : '—' }}</td>
+                    <td class="tb-num mono">{{ row.net ? ('$' + _num(row.net).toFixed(2)) : '—' }}</td>
                   </tr>
                 }
               </tbody>
               <tfoot>
                 <tr class="tb-totals">
                   <td colspan="5"><strong>Total Patrimonio</strong></td>
-                  <td class="tb-num mono"><strong>{{ '$' + bs.equity.total.toFixed(2) }}</strong></td>
+                  <td class="tb-num mono"><strong>{{ '$' + _num(bs.equity.total).toFixed(2) }}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -553,14 +553,14 @@
           <div class="st-subtotal-bar">
             <span>Resultado del Período</span>
             <span class="mono" [class.text-success]="bs.netIncome >= 0" [class.text-danger]="bs.netIncome < 0">
-              <strong>{{ '$' + bs.netIncome.toFixed(2) }}</strong>
+              <strong>{{ '$' + _num(bs.netIncome).toFixed(2) }}</strong>
             </span>
           </div>
 
           <!-- Accounting Equation Verification -->
           <div class="st-bottom-line" [class.text-success]="bs.isBalanced" [class.text-danger]="!bs.isBalanced">
             <span>Pasivos + Patrimonio + Resultado</span>
-            <span class="mono"><strong>{{ '$' + bs.totalLiabilitiesAndEquity.toFixed(2) }}</strong></span>
+            <span class="mono"><strong>{{ '$' + _num(bs.totalLiabilitiesAndEquity).toFixed(2) }}</strong></span>
           </div>
         </div>
       }
