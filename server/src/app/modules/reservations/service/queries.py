@@ -18,9 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 def _json_safe(obj: Any) -> Any:
-    """Recursively convert ObjectIds to strings for JSON serialization."""
+    """Recursively convert ObjectIds + datetimes to JSON-safe primitive types.
+
+    Extended from the original (which only handled ObjectId) to also
+    isoformat ``datetime`` objects. ``list_bookings`` now wraps its
+    return payload with this helper so the raw BSON docs survive
+    ``BookingListResponse.model_validate(...)``. See reservation routes
+    reservations.py:70 + schemas.py ReservationResponse strict types.
+    """
     if isinstance(obj, ObjectId):
         return str(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
     if isinstance(obj, dict):
         return {k: _json_safe(v) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -114,7 +123,7 @@ def list_bookings(
     if total_pages and page > total_pages:
         page = total_pages
     items = list(
-        db.booking_orders.find(filters, {"_id": 0})
+        db.booking_orders.find(filters)
         .sort([("created_at", DESCENDING)])
         .skip((page - 1) * page_size)
         .limit(page_size)
@@ -136,7 +145,7 @@ def list_bookings(
         # Serialize ObjectId FK fields for JSON
         if isinstance(item.get("coupon_id"), ObjectId):
             item["coupon_id"] = str(item["coupon_id"])
-    return {
+    return _json_safe({
         "items": items,
         "page": page,
         "page_size": page_size,
@@ -144,7 +153,7 @@ def list_bookings(
         "total_pages": total_pages,
         "has_prev": page > 1 and total_pages > 0,
         "has_next": total_pages > 0 and page < total_pages,
-    }
+    })
 
 
 def list_reservation_dates(*, prop_id: int | None = None, user: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -310,11 +319,11 @@ def get_booking_detail(booking_id: str) -> dict[str, Any] | None:
         return None
     booking_oid = booking_doc["_id"]
 
-    booking = db.booking_orders.find_one({"booking_id": booking_id}, {"_id": 0})
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
     if booking is None:
         return None
     guest = db.booking_guests.find_one({"booking_id": booking_id, "is_primary": True}, {"_id": 0})
-    history = list(db.booking_status_history.find({"booking_id": booking_id}, {"_id": 0}).sort([("changed_at", ASCENDING)]))
+    history = list(db.booking_status_history.find({"booking_id": booking_id}).sort([("changed_at", ASCENDING)]))
     manual = db.manual_reservations.find_one({"booking_id": booking_id}, {"_id": 0})
 
     # Invoice

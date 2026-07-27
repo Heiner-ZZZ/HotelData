@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from datetime import datetime
@@ -8,6 +9,8 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from src.app.security.session import ensure_utc
+
+_logger = logging.getLogger(__name__)
 
 from src.app.modules.admin.schemas import (
     PermissionsOverviewResponse,
@@ -235,73 +238,84 @@ def notifications_list_api(
     end_date: str | None = Query(default=None),
     current_user: dict = Depends(require_login),
 ):
-    from src.database.connection import get_database
-    from src.app.security.permissions import user_has_permission
+    try:
+        from src.database.connection import get_database
+        from src.app.security.permissions import user_has_permission
 
-    db = get_database()
-    match: dict[str, Any] = {}
+        db = get_database()
+        match: dict[str, Any] = {}
 
-    # Check permission. If user does not have users.manage permission, force filter by their own email
-    has_manage = user_has_permission(db, current_user, "users.manage")
-    if not has_manage:
-        user_email = (current_user.get("email") or current_user.get("username") or "").strip()
-        match["recipient_email"] = {"$regex": f"^{user_email}$", "$options": "i"}
-    if notification_type:
-        match["notification_type"] = notification_type
+        has_manage = user_has_permission(db, current_user, "users.manage")
+        if not has_manage:
+            user_email = (current_user.get("email") or current_user.get("username") or "").strip()
+            match["recipient_email"] = {"$regex": f"^{user_email}$", "$options": "i"}
+        if notification_type:
+            match["notification_type"] = notification_type
 
-    # Apply date range filter (created_at is stored as BSON Date, so convert ISO strings to datetime)
-    date_filter: dict[str, datetime] = {}
-    if start_date:
-        try:
-            date_filter["$gte"] = ensure_utc(datetime.fromisoformat(start_date))
-        except ValueError:
-            pass
-    if end_date:
-        try:
-            # Include the full end_date day: set to 23:59:59 UTC
-            dt = ensure_utc(datetime.fromisoformat(end_date))
-            date_filter["$lte"] = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-        except ValueError:
-            pass
-    if date_filter:
-        match["created_at"] = date_filter
+        date_filter: dict[str, datetime] = {}
+        if start_date:
+            try:
+                date_filter["$gte"] = ensure_utc(datetime.fromisoformat(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                dt = ensure_utc(datetime.fromisoformat(end_date))
+                date_filter["$lte"] = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                pass
+        if date_filter:
+            match["created_at"] = date_filter
 
-    total = db.notification_log.count_documents(match)
-    items = list(
-        db.notification_log.find(match, {"_id": 0})
-        .sort([("created_at", -1)])
-        .skip((page - 1) * page_size)
-        .limit(page_size)
-    )
+        total = db.notification_log.count_documents(match)
+        items = list(
+            db.notification_log.find(match, {"_id": 0})
+            .sort([("created_at", -1)])
+            .skip((page - 1) * page_size)
+            .limit(page_size)
+        )
 
-    # Build stats — when date filter is active, stats reflect the filtered set
-    stats_pipeline: list[dict[str, Any]] = []
-    if match:
-        stats_pipeline.append({"$match": match})
-    stats_pipeline.append({"$group": {"_id": "$notification_type", "count": {"$sum": 1}}})
-    stats_pipeline.append({"$sort": {"count": -1}})
-    stats = list(db.notification_log.aggregate(stats_pipeline))
-    type_counts: dict[str, int] = {r["_id"]: r["count"] for r in stats}
+        stats_pipeline: list[dict[str, Any]] = []
+        if match:
+            stats_pipeline.append({"$match": match})
+        stats_pipeline.append({"$group": {"_id": "$notification_type", "count": {"$sum": 1}}})
+        stats_pipeline.append({"$sort": {"count": -1}})
+        stats = list(db.notification_log.aggregate(stats_pipeline))
+        type_counts: dict[str, int] = {r["_id"]: r["count"] for r in stats}
 
-    status_pipeline: list[dict[str, Any]] = []
-    if match:
-        status_pipeline.append({"$match": match})
-    status_pipeline.append({"$group": {"_id": "$status", "count": {"$sum": 1}}})
-    status_stats = list(db.notification_log.aggregate(status_pipeline))
-    status_counts: dict[str, int] = {r["_id"]: r["count"] for r in status_stats}
+        status_pipeline: list[dict[str, Any]] = []
+        if match:
+            status_pipeline.append({"$match": match})
+        status_pipeline.append({"$group": {"_id": "$status", "count": {"$sum": 1}}})
+        status_stats = list(db.notification_log.aggregate(status_pipeline))
+        status_counts: dict[str, int] = {r["_id"]: r["count"] for r in status_stats}
 
-    return {
-        "items": items,
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
-        "stats": {
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
             "total": total,
-            "by_type": type_counts,
-            "by_status": status_counts,
-        },
-    }
+            "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
+            "stats": {
+                "total": total,
+                "by_type": type_counts,
+                "by_status": status_counts,
+            },
+        }
+    except Exception:
+        _logger.exception("Failed to fetch notifications")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "items": [],
+                "page": page,
+                "page_size": page_size,
+                "total": 0,
+                "total_pages": 1,
+                "stats": {"total": 0, "by_type": {}, "by_status": {}},
+                "error": "Failed to load notifications",
+            },
+        )
 
 
 @api_router.get("/ownership/users")
