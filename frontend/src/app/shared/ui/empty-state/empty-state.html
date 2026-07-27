@@ -5,7 +5,7 @@
     </div>
   }
   <h2>{{ title() }}</h2>
-  @if (description()) {
-    <p>{{ description() }}</p>
+  @if (message() || description()) {
+    <p>{{ message() || description() }}</p>
   }
 </section>

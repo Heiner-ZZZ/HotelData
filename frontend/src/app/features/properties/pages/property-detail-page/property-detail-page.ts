@@ -71,6 +71,14 @@ export class PropertyDetailPageComponent {
     const month = this.calendarMonth();
     if (!propId || !year || !month) return undefined;
     return `/api/management/properties/${propId}/operational-calendar?year=${year}&month=${month}`;
+  }, {
+    /**
+     * Tolerant passthrough mapper. `OperationalCalendarData` is already the
+     * view-model type consumed downstream. If a future refactor introduces
+     * a snake-shape DTO, replace this passthrough with an explicit
+     * snake→camel mapper (per the round-6/7 canonical pattern).
+     */
+    parse: (dto) => dto as OperationalCalendarData,
   });
   readonly calendarData = computed(() => this.calendarResource.value() ?? null);
   readonly calendarLoading = this.calendarResource.isLoading;

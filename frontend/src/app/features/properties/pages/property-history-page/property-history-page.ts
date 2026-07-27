@@ -19,6 +19,22 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ChangeRecordDto, PropertyHistoryResponseDto } from '../../models/properties.dto';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
+/** Helper: extract a runtime error message without `any`.
+ *
+ * Handles: `Error` instances, plain strings, and duck-typed objects with a
+ * string `message` field (covers Angular's `HttpErrorResponse`, XHR errors,
+ * and any other framework-neutrally typed error).
+ */
+function toErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+}
+
 @Component({
   selector: 'app-property-history-page',
   imports: [DatePipe, ErrorStateComponent, LoadingStateComponent, PageHeaderComponent, EmptyStateComponent, ReactiveFormsModule, RouterLink],
@@ -178,8 +194,8 @@ export class PropertyHistoryPageComponent {
       const items = this.items();
       const pag = this.pagination();
       const fv = this.filterForm.getRawValue();
-      const fieldsModified = [...new Set(items.map((i) => i.field))];
-      const usersInvolved = [...new Set(items.map((i) => i.changed_by))];
+      const fieldsModified = [...new Set(items.map((i: ChangeRecordDto) => i.field))];
+      const usersInvolved = [...new Set(items.map((i: ChangeRecordDto) => i.changed_by))];
 
       const grid = buildSummaryGrid([
         { label: 'Total de cambios', value: String(pag?.total ?? items.length), tone: 'neutral' },
@@ -189,7 +205,7 @@ export class PropertyHistoryPageComponent {
         { label: 'Usuarios', value: String(usersInvolved.length), tone: 'neutral' },
       ]);
 
-      const metaRows = [
+      const metaRows: { label: string; value: string }[] = [
         { label: 'Propiedad', value: `#${pid}` },
         { label: 'Total de cambios', value: String(pag?.total ?? items.length) },
       ];
@@ -206,7 +222,7 @@ export class PropertyHistoryPageComponent {
           { label: 'Usuario', align: 'left' },
           { label: 'Fecha', align: 'right' },
         ],
-        items.map((c) => [
+        items.map((c: ChangeRecordDto) => [
           this.fieldLabel(c.field),
           (c.old_value || '—').substring(0, 80),
           (c.new_value || '—').substring(0, 80),
@@ -236,8 +252,8 @@ export class PropertyHistoryPageComponent {
       });
 
       await this.reports.exportPdf(html, `auditoria-propiedad-${pid}-${new Date().toISOString().slice(0, 10)}`);
-    } catch (err) {
-      console.error('[PropertyHistory] PDF export failed', err);
+    } catch (err: unknown) {
+      console.error('[PropertyHistory] PDF export failed', toErrorMessage(err, 'unknown error'));
     } finally {
       this.exportingPdf.set(false);
     }
@@ -250,8 +266,8 @@ export class PropertyHistoryPageComponent {
       const items = this.items();
       const pag = this.pagination();
       const fv = this.filterForm.getRawValue();
-      const fieldsModified = [...new Set(items.map((i) => i.field))];
-      const usersInvolved = [...new Set(items.map((i) => i.changed_by))];
+      const fieldsModified = [...new Set(items.map((i: ChangeRecordDto) => i.field))];
+      const usersInvolved = [...new Set(items.map((i: ChangeRecordDto) => i.changed_by))];
 
       await this.reports.exportXlsx({
         filename: `auditoria-propiedad-${pid}-${new Date().toISOString().slice(0, 10)}`,
@@ -261,16 +277,16 @@ export class PropertyHistoryPageComponent {
             name: 'Resumen',
             headers: [{ label: 'Métrica' }, { label: 'Valor' }],
             rows: [
-              ['ID propiedad', pid] as any,
-              ['Total de cambios', pag?.total ?? items.length] as any,
-              ['Registros en esta página', items.length] as any,
-              ['Página actual', `${pag?.page ?? 1} de ${pag?.pages ?? 1}`] as any,
-              ['Campos modificados', fieldsModified.length] as any,
-              ['Usuarios involucrados', usersInvolved.length] as any,
-              ['Filtro Desde', fv.from || '—'] as any,
-              ['Filtro Hasta', fv.to || '—'] as any,
-              ['Filtro Campo', fv.field ? this.fieldLabel(fv.field) : '—'] as any,
-              ['Filtro Usuario', fv.user || '—'] as any,
+              ['ID propiedad', pid],
+              ['Total de cambios', pag?.total ?? items.length],
+              ['Registros en esta página', items.length],
+              ['Página actual', `${pag?.page ?? 1} de ${pag?.pages ?? 1}`],
+              ['Campos modificados', fieldsModified.length],
+              ['Usuarios involucrados', usersInvolved.length],
+              ['Filtro Desde', fv.from || '—'],
+              ['Filtro Hasta', fv.to || '—'],
+              ['Filtro Campo', fv.field ? this.fieldLabel(fv.field) : '—'],
+              ['Filtro Usuario', fv.user || '—'],
             ],
             column_widths: { A: 32, B: 36 },
           },
@@ -283,19 +299,19 @@ export class PropertyHistoryPageComponent {
               { label: 'Valor nuevo' },
               { label: 'Usuario' },
             ],
-            rows: items.map((c) => [
+            rows: items.map((c: ChangeRecordDto) => [
               new Date(c.changed_at).toLocaleString('es-MX'),
               this.fieldLabel(c.field),
               c.old_value || '—',
               c.new_value || '—',
               c.changed_by,
-            ]) as any[],
+            ]),
             column_widths: { A: 22, B: 24, C: 40, D: 40, E: 22 },
           },
         ],
       });
-    } catch (err) {
-      console.error('[PropertyHistory] XLSX export failed', err);
+    } catch (err: unknown) {
+      console.error('[PropertyHistory] XLSX export failed', toErrorMessage(err, 'unknown error'));
     } finally {
       this.exportingXlsx.set(false);
     }

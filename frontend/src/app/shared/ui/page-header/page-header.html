@@ -1,11 +1,14 @@
 <header class="page-header">
   <div class="page-header-text">
+    @if (icon(); as iconName) {
+      <span class="material-symbols-outlined page-header-icon" aria-hidden="true">{{ iconName }}</span>
+    }
     @if (eyebrow()) {
       <p class="eyebrow">{{ eyebrow() }}</p>
     }
     <h1>{{ title() }}</h1>
-    @if (description()) {
-      <p class="description">{{ description() }}</p>
+    @if (subtitle() || description()) {
+      <p class="description">{{ subtitle() || description() }}</p>
     }
   </div>
   <div class="page-header-actions">

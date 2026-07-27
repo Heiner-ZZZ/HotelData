@@ -28,7 +28,7 @@ from src.app.modules.billing.service import (
     FOLIO_CATEGORIES,
 )
 from src.app.modules.billing.service.services import get_billable_services
-from src.app.core.types import ObjectIdStr
+from src.app.core.types import ObjectIdStr, to_json_safe
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_permission
 from src.database.connection import get_database
@@ -49,7 +49,15 @@ class InvoiceResponse(BaseModel):
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
     booking_id: str | None = None
     parent_invoice_id: ObjectIdStr | None = Field(default=None, validation_alias="parent_invoice_id", serialization_alias="parent_invoice_id")
-    prop_id: int | None = None
+    # Prop_id may be int (legacy) or ObjectId (post-FK migration). Same transitional
+    # pattern as BookingResponse.prop_id + LedgerTransactionResponse.prop_id (Fase 5/6).
+    prop_id: int | ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Property FK reference. May be a legacy integer or a "
+            "post-migration ObjectId string."
+        ),
+    )
     invoice_number: str | None = None
     status: str | None = None
     currency: str | None = None
@@ -104,7 +112,15 @@ class PaymentResponse(BaseModel):
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
     booking_id: str | None = None
     invoice_id: ObjectIdStr | None = Field(default=None, validation_alias="invoice_id", serialization_alias="invoice_id")
-    prop_id: int | None = None
+    # Post-FK migration: prop_id may now arrive as ObjectId string. Same transitional
+    # pattern as InvoiceResponse.prop_id + BookingResponse.prop_id (Fase 5/6).
+    prop_id: int | ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Property FK reference. May be a legacy integer or a "
+            "post-migration ObjectId string."
+        ),
+    )
     amount: float | None = None
     currency: str | None = None
     method: str | None = None
@@ -132,7 +148,15 @@ class FolioResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
     booking_id: str | None = None
-    prop_id: int | None = None
+    # Post-FK migration: prop_id may now arrive as ObjectId string. Same transitional
+    # pattern as InvoiceResponse.prop_id + PaymentResponse.prop_id (Fase 5/6).
+    prop_id: int | ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Property FK reference. May be a legacy integer or a "
+            "post-migration ObjectId string."
+        ),
+    )
     folio_number: str | None = None
     status: str | None = None
     currency: str | None = None
@@ -244,6 +268,9 @@ def list_invoices_api(
         booking_id=booking_id, prop_id=prop_id, status=status_filter, q=q,
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
+    # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime → isoformat)
+    # catches anything list_invoices may have left raw (e.g. nested ObjectIds/dates).
+    result = to_json_safe(result)
     register_action(
         prop_id=prop_id or 0,
         entity_type="billing_invoice",
@@ -261,7 +288,7 @@ def list_invoices_api(
             "url": str(request.url),
         },
     )
-    return InvoiceListResponse.model_validate(result)
+    return InvoiceListResponse.model_validate(to_json_safe(result))
 
 
 @api_router.get("/invoices/stats", response_model=InvoiceStatsResponse)
@@ -290,6 +317,8 @@ def get_invoice_api(
     current_user: dict = Depends(require_permission("billing.read")),
 ):
     result = get_invoice(invoice_id)
+    if result is not None:
+        result = to_json_safe(result)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
     register_action(
@@ -574,6 +603,8 @@ def list_payments_api(
     current_user: dict = Depends(require_permission("payments.read")),
 ):
     result = list_payments(booking_id=booking_id, prop_id=prop_id, page=page, page_size=page_size)
+    # Belt-and-suspenders: defensive JSON-safe wrap (same rationale as list_invoices)
+    result = to_json_safe(result)
     register_action(
         prop_id=prop_id or 0,
         entity_type="billing_payment",
@@ -583,7 +614,7 @@ def list_payments_api(
         changed_by=current_user.get("username", "system"),
         metadata={"booking_id": booking_id, "prop_id": prop_id, "page": page, "url": str(request.url)},
     )
-    return PaymentListResponse.model_validate(result)
+    return PaymentListResponse.model_validate(to_json_safe(result))
 
 
 @api_router.get("/payments/{payment_id}", response_model=PaymentResponse)
@@ -593,6 +624,8 @@ def get_payment_api(
     current_user: dict = Depends(require_permission("payments.read")),
 ):
     result = get_payment(payment_id)
+    if result is not None:
+        result = to_json_safe(result)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado")
     register_action(
@@ -766,6 +799,8 @@ def get_folio_api(
 ):
     """Get the folio for a booking."""
     result = get_folio(booking_id)
+    if result is not None:
+        result = to_json_safe(result)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado para esta reserva")
     register_action(
@@ -894,6 +929,8 @@ def list_folios_api(
 ):
     """List folios with optional property and status filters."""
     result = list_folios(prop_id=prop_id, status=status_filter, page=page, page_size=page_size)
+    # Belt-and-suspenders: defensive JSON-safe wrap (same rationale as list_invoices)
+    result = to_json_safe(result)
     register_action(
         prop_id=prop_id or 0,
         entity_type="billing_folio",

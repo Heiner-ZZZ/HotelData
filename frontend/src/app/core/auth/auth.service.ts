@@ -6,6 +6,14 @@ import { toast } from '../toast/toast.service';
 import { API_CONFIG } from '../api/api.config';
 import type { AuthMeDto, AuthState } from './auth.models';
 
+/**
+ * Re-export `AuthUser` as a named type so feature services can do
+ * ``as AuthUser | null`` narrowing on ``AuthService.currentUser()`` without
+ * having to import from ``./auth.models``. Derived from ``AuthState['user']``
+ * so any future shape change in ``AuthState.user`` propagates here for free.
+ */
+export type AuthUser = NonNullable<AuthState['user']>;
+
 @Injectable({
   providedIn: 'root'
 })
