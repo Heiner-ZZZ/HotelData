@@ -206,7 +206,7 @@
         />
       }
       @case ('success') {
-        @let d = maintenanceData()!;
+        @if (maintenanceData(); as d) {
         <section class="surface-card data-card">
           <!-- Header -->
           <div class="data-card-head">
@@ -220,11 +220,11 @@
               </div>
             </div>
             <div class="pagination-bar">
-              <button type="button" class="btn-page" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+              <button type="button" class="btn-page" (click)="goToPage((d.page ?? 1) - 1)" [disabled]="!d.hasPrev">
                 <span class="material-symbols-outlined">chevron_left</span>
                 <span class="btn-page-label">Anterior</span>
               </button>
-              <button type="button" class="btn-page" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+              <button type="button" class="btn-page" (click)="goToPage((d.page ?? 1) + 1)" [disabled]="!d.hasNext">
                 <span class="btn-page-label">Siguiente</span>
                 <span class="material-symbols-outlined">chevron_right</span>
               </button>
@@ -351,6 +351,7 @@
             </table>
           </div>
         </section>
+        }
       }
     }
   }

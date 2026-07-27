@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { lastValueFrom, Observable, switchMap } from 'rxjs';
+import { lastValueFrom, map, of, switchMap } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SlicePipe } from '@angular/common';
 
@@ -16,6 +16,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { HousekeepingApiService, type HousekeepingTaskItem, type RoomStatusItem, type StaffUser } from '../../services/housekeeping-api.service';
+import { PaginatedListResponse, normalizePaginatedList } from '../../utils/paginated-list-response';
 import { roleLabel } from '../../../../core/auth/role-labels';
 
 function todayLocalIso(): string {
@@ -56,7 +57,36 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   inspection: 'Inspección',
 };
 
+/** Concrete response shapes — replaces `rxResource<any, any>`. */
+interface RoomListResponse {
+  items: RoomStatusItem[];
+}
+interface StaffListResponse {
+  staff: StaffUser[];
+}
+interface TasksQuery {
+  propId: number;
+  status: string | undefined;
+  assignedTo: string | undefined;
+  priority: string | undefined;
+  page: number;
+}
 
+/** Helper: extract a runtime error message without `any`.
+ *
+ * Handles: `Error` instances, plain strings, and duck-typed objects with a
+ * string `message` field (covers Angular's `HttpErrorResponse`, XHR errors,
+ * and any other framework-neutrally typed error).
+ */
+function toErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+}
 
 @Component({
   selector: 'app-housekeeping-tasks-page',
@@ -94,13 +124,12 @@ export class HousekeepingTasksPageComponent {
   );
 
   // ── Rooms resource (fetches room labels after sync) ──
-  readonly roomsResource = rxResource<any, any>({
+  readonly roomsResource = rxResource<RoomListResponse, number | undefined>({
     params: () => this.selectedPropId() || undefined,
     stream: ({ params }) => {
-      const pid = params as any;
-      if (!pid) return new Observable(sub => { sub.next({ items: [] }); sub.complete(); });
-      return this.api.syncRoomStatus(pid).pipe(
-        switchMap(() => this.api.getRoomStatus(pid, undefined, 1)),
+      if (params === undefined) return of<RoomListResponse>({ items: [] });
+      return this.api.syncRoomStatus(params).pipe(
+        switchMap(() => this.api.getRoomStatus(params, undefined, 1)),
       );
     },
   });
@@ -110,7 +139,7 @@ export class HousekeepingTasksPageComponent {
   );
 
   // ── Tasks resource ──
-  readonly tasksResource = rxResource<any, any>({
+  readonly tasksResource = rxResource<PaginatedListResponse<HousekeepingTaskItem>, TasksQuery | undefined>({
     params: () => {
       const pid = this.selectedPropId();
       if (!pid) return undefined;
@@ -123,12 +152,15 @@ export class HousekeepingTasksPageComponent {
       };
     },
     stream: ({ params }) => {
-      const r = params as any;
-      return this.api.getTasks(r.propId, r.status, r.assignedTo, r.priority, r.page);
+      if (params === undefined) return of<PaginatedListResponse<HousekeepingTaskItem>>({ items: [] });
+      const { propId, status, assignedTo, priority, page } = params;
+      return this.api.getTasks(propId, status, assignedTo, priority, page).pipe(
+        map(normalizePaginatedList),
+      );
     },
   });
 
-  readonly tasks = computed(() => this.tasksResource.value() ?? null);
+  readonly tasks = computed<PaginatedListResponse<HousekeepingTaskItem>>(() => this.tasksResource.value() ?? { items: [] });
 
   readonly viewState = computed(() => {
     const r = this.tasksResource;
@@ -140,15 +172,12 @@ export class HousekeepingTasksPageComponent {
 
   // ── Stats summary ──
   readonly statsSummary = computed(() => {
-    const items = this.tasksResource.value()?.items ?? [];
-    // note: these stats are based on the current page — a full summary would
-    // require a dedicated endpoint. For now show what we can.
-    const allItems = items;
+    const items: HousekeepingTaskItem[] = this.tasksResource.value()?.items ?? [];
     return {
-      pending: allItems.filter((i: any) => i.status === 'pending').length,
-      inProgress: allItems.filter((i: any) => i.status === 'in_progress').length,
-      inspection: allItems.filter((i: any) => i.status === 'inspection').length,
-      completed: allItems.filter((i: any) => i.status === 'completed').length,
+      pending: items.filter((i) => i.status === 'pending').length,
+      inProgress: items.filter((i) => i.status === 'in_progress').length,
+      inspection: items.filter((i) => i.status === 'inspection').length,
+      completed: items.filter((i) => i.status === 'completed').length,
     };
   });
 
@@ -194,12 +223,11 @@ export class HousekeepingTasksPageComponent {
   readonly taskTypeLabels = TASK_TYPE_LABELS;
   readonly roleLabel = roleLabel;
   // ── Staff resource (real users instead of hardcoded) ──
-  readonly staffResource = rxResource<any, any>({
+  readonly staffResource = rxResource<StaffListResponse, number | undefined>({
     params: () => this.selectedPropId() || undefined,
     stream: ({ params }) => {
-      const pid = params as any;
-      if (!pid) return new Observable(sub => { sub.next({ staff: [] }); sub.complete(); });
-      return this.api.getStaff(pid);
+      if (params === undefined) return of<StaffListResponse>({ staff: [] });
+      return this.api.getStaff(params);
     },
   });
 
@@ -355,8 +383,8 @@ export class HousekeepingTasksPageComponent {
       this.showCreateForm.set(false);
       this.editingId.set(null);
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al guardar tarea');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al guardar tarea'));
       this.message.set('');
     }
   }
@@ -404,8 +432,8 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.closeCompleteModal();
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al completar limpieza');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al completar limpieza'));
       this.message.set('');
     }
   }
@@ -425,8 +453,8 @@ export class HousekeepingTasksPageComponent {
       this.message.set(`🧹 Limpieza iniciada — Hab. ${item.roomLabel}`);
       this.errorMessage.set('');
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al iniciar limpieza');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al iniciar limpieza'));
       this.message.set('');
     }
   }
@@ -452,8 +480,8 @@ export class HousekeepingTasksPageComponent {
       this.message.set('🔍 Tarea enviada a inspección');
       this.errorMessage.set('');
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al enviar a inspección');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al enviar a inspección'));
       this.message.set('');
     }
   }
@@ -464,8 +492,8 @@ export class HousekeepingTasksPageComponent {
       this.message.set('✅ Tarea completada');
       this.errorMessage.set('');
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al completar tarea');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al completar tarea'));
       this.message.set('');
     }
   }
@@ -486,8 +514,8 @@ export class HousekeepingTasksPageComponent {
       this.message.set('🗑️ Tarea eliminada');
       this.errorMessage.set('');
       this.tasksResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al eliminar tarea');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al eliminar tarea'));
       this.message.set('');
     }
   }

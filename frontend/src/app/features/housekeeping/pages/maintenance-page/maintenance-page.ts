@@ -1,11 +1,11 @@
 import { KeyValuePipe } from '@angular/common';
 import {
-  ChangeDetectionStrategy, Component, computed, inject, signal,
+  ChangeDetectionStrategy, Component, computed, effect, inject, signal,
 } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, map, of } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -16,6 +16,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { HousekeepingApiService, type MaintenanceTaskItem, type RoomStatusItem } from '../../services/housekeeping-api.service';
+import { PaginatedListResponse, normalizePaginatedList } from '../../utils/paginated-list-response';
 
 function todayLocalIso(): string {
   const now = new Date();
@@ -53,6 +54,29 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   inspection: 'Inspección',
 };
 
+interface MaintenanceQuery {
+  propId: number;
+  status: string | undefined;
+  priority: string | undefined;
+  page: number;
+}
+
+/** Helper: extract a runtime error message without `any`.
+ *
+ * Handles: `Error` instances, plain strings, and duck-typed objects with a
+ * string `message` field (covers Angular's `HttpErrorResponse`, XHR errors,
+ * and any other framework-neutrally typed error).
+ */
+function toErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+}
+
 @Component({
   selector: 'app-maintenance-page',
   imports: [
@@ -85,7 +109,7 @@ export class MaintenancePageComponent {
   readonly roomItems = signal<RoomStatusItem[]>([]);
 
   // ── Maintenance resource ──
-  readonly maintenanceResource = rxResource<any, any>({
+  readonly maintenanceResource = rxResource<PaginatedListResponse<MaintenanceTaskItem>, MaintenanceQuery | undefined>({
     params: () => {
       const pid = this.selectedPropId();
       if (!pid) return undefined;
@@ -97,24 +121,39 @@ export class MaintenancePageComponent {
       };
     },
     stream: ({ params }) => {
-      const { propId, status, priority, page } = params as any;
-
-      // Sync rooms + fetch room items with metadata
-      this.api.syncRoomStatus(propId).subscribe({
-        next: () => {
-          this.api.getRoomStatus(propId, undefined, 1).subscribe({
-            next: (roomData) => this.roomItems.set(roomData.items),
-            error: () => {},
-          });
-        },
-        error: () => {},
-      });
-
-      return this.api.getMaintenance(propId, status, priority, page);
+      if (params === undefined) return of<PaginatedListResponse<MaintenanceTaskItem>>({ items: [] });
+      const { propId, status, priority, page } = params;
+      return this.api.getMaintenance(propId, status, priority, page).pipe(
+        map(normalizePaginatedList),
+      );
     },
   });
 
-  readonly maintenanceData = computed(() => this.maintenanceResource.value() ?? null);
+  constructor() {
+    // Side-channel: refresh `roomItems` whenever the selected property changes.
+    // Hoisted out of `rxResource.stream()` so status/priority/page mutations do
+    // NOT re-fire it, and replaced the nested `.subscribe()` calls with an
+    // Angular 22 `effect()` that reads the propId signal directly. Cleanup is
+    // implicit — the effect re-runs on each propId change and silently overwrites.
+    effect(() => {
+      const pid = this.selectedPropId();
+      if (!pid) return;
+      void this.refreshRoomItems(pid);
+    });
+  }
+
+  /** Best-effort side-channel refresh for the room-select metadata. */
+  private async refreshRoomItems(propId: number): Promise<void> {
+    try {
+      await lastValueFrom(this.api.syncRoomStatus(propId));
+      const roomResp = await lastValueFrom(this.api.getRoomStatus(propId, undefined, 1));
+      this.roomItems.set(roomResp.items);
+    } catch {
+      // Silent — the maintenance list still renders correctly without room metadata.
+    }
+  }
+
+  readonly maintenanceData = computed<PaginatedListResponse<MaintenanceTaskItem>>(() => this.maintenanceResource.value() ?? { items: [] });
 
   readonly viewState = computed(() => {
     const r = this.maintenanceResource;
@@ -127,12 +166,12 @@ export class MaintenancePageComponent {
 
   // ── Stats summary ──
   readonly statsSummary = computed(() => {
-    const items = this.maintenanceData()?.items ?? [];
+    const items: MaintenanceTaskItem[] = this.maintenanceData()?.items ?? [];
     return {
-      scheduled: items.filter((i: any) => i.status === 'scheduled').length,
-      inProgress: items.filter((i: any) => i.status === 'in_progress').length,
-      inspection: items.filter((i: any) => i.status === 'inspection').length,
-      completed: items.filter((i: any) => i.status === 'completed').length,
+      scheduled: items.filter((i) => i.status === 'scheduled').length,
+      inProgress: items.filter((i) => i.status === 'in_progress').length,
+      inspection: items.filter((i) => i.status === 'inspection').length,
+      completed: items.filter((i) => i.status === 'completed').length,
     };
   });
 
@@ -294,8 +333,8 @@ export class MaintenancePageComponent {
       this.showCreateForm.set(false);
       this.editingId.set(null);
       this.maintenanceResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al guardar mantenimiento');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al guardar mantenimiento'));
       this.message.set('');
     }
   }
@@ -323,8 +362,8 @@ export class MaintenancePageComponent {
       this.message.set(`🔧 Mantenimiento iniciado — ${item.title}`);
       this.errorMessage.set('');
       this.maintenanceResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al iniciar mantenimiento');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al iniciar mantenimiento'));
       this.message.set('');
     }
   }
@@ -351,8 +390,8 @@ export class MaintenancePageComponent {
       this.message.set(`🔍 ${item.title} enviado a inspección`);
       this.errorMessage.set('');
       this.maintenanceResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al enviar a inspección');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al enviar a inspección'));
       this.message.set('');
     }
   }
@@ -380,8 +419,8 @@ export class MaintenancePageComponent {
       this.errorMessage.set('');
       this.closeCompleteModal();
       this.maintenanceResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al completar mantenimiento');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al completar mantenimiento'));
       this.message.set('');
     }
   }
@@ -399,8 +438,8 @@ export class MaintenancePageComponent {
       this.message.set('🗑️ Mantenimiento eliminado');
       this.errorMessage.set('');
       this.maintenanceResource.reload();
-    } catch (err: any) {
-      this.errorMessage.set(err.message || 'Error al eliminar mantenimiento');
+    } catch (err: unknown) {
+      this.errorMessage.set(toErrorMessage(err, 'Error al eliminar mantenimiento'));
       this.message.set('');
     }
   }
