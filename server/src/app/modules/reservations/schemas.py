@@ -17,9 +17,11 @@ RULES (canonical from prior Fases):
 
 from __future__ import annotations
 
+from typing import Annotated, Any
+
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from src.app.core.types import ObjectIdStr
+from src.app.core.types import ListToCommaStr, ObjectIdStr
 
 
 # ── Module Status (kept pre-Fase — no migration needed) ─────────────────
@@ -36,27 +38,6 @@ class ModuleStatus(BaseModel):
 
 
 # ── Pydantic *Response models (canonical, migrated) ─────────────────────
-
-
-class AssignedRoom(BaseModel):
-    """One row in ``BookingResponse.assigned_rooms``.
-
-    Locked wire-shape — service layer formats ``hotel_room_id`` as a string FK
-    reference. ``room_label`` is the human-readable identifier surfaced to the
-    UI; ``assigned_at`` is an ISO-8601 timestamp. Tightening the previous
-    ``list[Any]`` field closes a hidden wire-shape contract (extra="allow"
-    was silently swallowing the shape).
-    """
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    hotel_room_id: ObjectIdStr | None = Field(
-        default=None,
-        validation_alias="hotel_room_id",
-        serialization_alias="hotel_room_id",
-    )
-    room_label: str = ""
-    assigned_at: str | None = None
 
 
 class BookingHistoryResponse(BaseModel):
@@ -91,6 +72,14 @@ class BookingResponse(BaseModel):
     surfaced by ``get_booking_detail`` (queries.py:401). The list is
     permissive in length — recent vs full history depends on the service
     layer's projection.
+
+    ``assigned_rooms`` is a flat ``list[str]`` of room labels (e.g.
+    ``['HR-1-119', 'HR-1-120']``), as emitted by the Mongo
+    ``booking_orders`` collection. Once the service layer evolves to
+    embed rich dicts (FK + label + assigned_at), this field should
+    migrate to ``list[AssignedRoom]``. The previously-added
+    ``AssignedRoom`` typed sub-model was orphaned and removed in the
+    Mongo-shape-verification round (one-time diagnostic).
     """
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
@@ -100,8 +89,23 @@ class BookingResponse(BaseModel):
         serialization_alias="id",
     )
     booking_id: str = ""
-    user_id: str = ""
-    prop_id: int = 0
+    user_id: ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Owner / creator FK reference (auth user). Tolerates explicit "
+            "`None` from pre-migration docs and bookings created via "
+            "unauthenticated channels (OTA imports, walk-ins, PocketBase "
+            "legacy rows). Same canonical pattern as `prop_id`."
+        ),
+    )
+    prop_id: int | ObjectIdStr | None = Field(
+        default=None,
+        description=(
+            "Property/hotel FK reference. May be a legacy integer or a "
+            "post-migration ObjectId string. Will collapse to `ObjectIdStr` "
+            "once the create flow + tests are migrated."
+        ),
+    )
     hotel_id: ObjectIdStr | None = Field(
         default=None,
         validation_alias="hotel_id",
@@ -132,8 +136,16 @@ class BookingResponse(BaseModel):
     booking_source: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
-    special_requests: str | None = None
-    assigned_rooms: list[AssignedRoom] = Field(default_factory=list)
+    special_requests: ListToCommaStr | None = None
+    assigned_rooms: list[str] | None = Field(
+        default=None,
+        description=(
+            "Room labels assigned to this booking (e.g. ``['HR-1-119', 'HR-1-120']``). "
+            "Tolerates explicit ``None`` from pre-FK-migration docs that stored "
+            "the field as ``null``. FUTURE: migrate to ``list[AssignedRoom]`` "
+            "once the service layer starts emitting the richer dict shape."
+        ),
+    )
     # History is nested INSIDE BookingResponse because ``get_booking_detail``
     # surfaces it under the same response (queries.py:401).
     history: list[BookingHistoryResponse] = Field(default_factory=list)
@@ -158,6 +170,5 @@ class BookingListResponse(BaseModel):
 
 ModuleStatus.model_rebuild()
 BookingHistoryResponse.model_rebuild()
-AssignedRoom.model_rebuild()
 BookingResponse.model_rebuild()
 BookingListResponse.model_rebuild()

@@ -7,6 +7,91 @@ import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarRese
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { mapReceptionCalendar, type ReceptionCalendarDto } from '../../services/reservations-api.service';
 
+/**
+ * Snake-case wire shape for `/api/reservations/{id}`. Field list mirrors the
+ * fields the calendar-popup modal displays; extend when adding new rendered
+ * properties. The mapper below is the only place that converts wire → view.
+ */
+interface ReservationDetailDto {
+  booking_id: string;
+  prop_id: number | null;
+  guest_name: string;
+  guest_email?: string | null;
+  guest_phone?: string | null;
+  status: string;
+  check_in: string;
+  check_out: string;
+  adults: number;
+  children: number;
+  total_nights: number;
+  hotel_room_id?: string | null;
+  hotel_room_number?: string | null;
+  total_amount: number;
+  currency: string;
+  source: string;
+  source_id?: string | null;
+  notes: string;
+  created_at: string;
+  hotel?: { hotel_label: string } | null;
+}
+
+/**
+ * CamelCase view-model type emitted by `parse: mapReservationDetail(dto)` on
+ * `detailResource` (consumed through the typed signal below).
+ */
+interface ReservationDetail {
+  bookingId: string;
+  propId: number | null;
+  guestName: string;
+  guestEmail: string | null;
+  guestPhone: string | null;
+  status: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  totalNights: number;
+  hotelRoomId: string | null;
+  hotelRoomNumber: string | null;
+  totalAmount: number;
+  currency: string;
+  source: string;
+  sourceId: string | null;
+  notes: string;
+  createdAt: string;
+  hotel: { hotelLabel: string } | null;
+}
+
+/**
+ * Inline snake→camel mapper for the reservation-detail endpoint. Lives next to
+ * its sole consumer because no other view-model in the codebase currently
+ * reads this response; promote to a shared mapper if more callers appear.
+ */
+function mapReservationDetail(dto: ReservationDetailDto): ReservationDetail {
+  return {
+    bookingId: dto.booking_id,
+    propId: dto.prop_id,
+    guestName: dto.guest_name,
+    guestEmail: dto.guest_email ?? null,
+    guestPhone: dto.guest_phone ?? null,
+    status: dto.status,
+    checkIn: dto.check_in,
+    checkOut: dto.check_out,
+    adults: dto.adults,
+    children: dto.children,
+    totalNights: dto.total_nights,
+    hotelRoomId: dto.hotel_room_id ?? null,
+    hotelRoomNumber: dto.hotel_room_number ?? null,
+    totalAmount: dto.total_amount,
+    currency: dto.currency,
+    source: dto.source,
+    sourceId: dto.source_id ?? null,
+    notes: dto.notes,
+    createdAt: dto.created_at,
+    hotel: dto.hotel ? { hotelLabel: dto.hotel.hotel_label } : null,
+  };
+}
+
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 @Component({
@@ -113,13 +198,15 @@ export class ReceptionCalendarComponent {
   /** Detail modal state. */
   readonly selectedReservation = signal<ReceptionCalendarReservation | null>(null);
   readonly detailLoading = signal(false);
-  readonly detailData = signal<any>(null);
+  readonly detailData = signal<ReservationDetail | null>(null);
 
   /** httpResource for reservation detail (on-demand via selectedBookingId trigger). */
   readonly selectedBookingId = signal('');
-  readonly detailResource = httpResource<any>(() => {
+  readonly detailResource = httpResource<ReservationDetail>(() => {
     const id = this.selectedBookingId();
     return id ? `/api/reservations/${id}` : undefined;
+  }, {
+    parse: (dto) => mapReservationDetail(dto as ReservationDetailDto),
   });
 
   /** Drag-and-drop state. */
