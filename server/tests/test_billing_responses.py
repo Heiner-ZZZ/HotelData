@@ -217,6 +217,82 @@ class TestActionResponseNestedPaymentRecursion:
         assert model.payment is None
 
 
+class TestPaymentResponseInvoiceIdNoAliasCollision:
+    """Invariant #5: ``PaymentResponse.invoice_id`` MUST NOT inherit primary key.
+
+    Closed at the schema level in Fase #7 hardening: ``invoice_id`` now uses
+    a strict SINGLE alias (``validation_alias=\"invoice_id\"``) so Pydantic
+    v2 cannot ambiguity-match the FK against the primary ``id``'s
+    ``AliasChoices(\"_id\",\"id\")`` chain through ``populate_by_name``.
+
+    These tests pin that invariant. If a future refactor copies the
+    ``AliasChoices(\"_id\",\"id\")`` pattern back onto the FK field, the FK
+    will silently inherit the primary's value and the tests below will fail.
+    """
+
+    def test_invoice_id_does_not_inherit_primary_when_both_provided(self):
+        """The post-fix invariant: FK equals its wire name, NOT the primary."""
+        payment_oid = ObjectId()
+        invoice_oid = ObjectId()
+        # Pre-fix: populate_by_name + AliasChoices overlap would coerce
+        # invoice_id to str(payment_oid) (primary leak).
+        # Post-fix: invoice_id coerces to str(invoice_oid) explicitly.
+        doc = {
+            "_id": payment_oid,
+            "invoice_id": invoice_oid,
+            "booking_id": "BK-400",
+            "prop_id": 1,
+            "amount": 116.0,
+            "currency": "USD",
+            "method": "card",
+            "status": "captured",
+        }
+        payment = PaymentResponse.model_validate(doc)
+        # Primary coerces via its alias chain.
+        assert isinstance(payment.id, str)
+        assert payment.id == str(payment_oid)
+        # FK coerces via its wire name explicitly — NOT inheriting primary.
+        assert isinstance(payment.invoice_id, str)
+        assert payment.invoice_id == str(invoice_oid)
+        # The critical invariant: they MUST be distinct ObjectIds on the wire.
+        assert payment.invoice_id != payment.id, (
+            f"FK alias-collision regression: invoice_id ({payment.invoice_id}) "
+            f"matches id ({payment.id}). They must be distinct."
+        )
+
+    def test_invoice_id_defaults_to_none_when_absent(self):
+        """``invoice_id`` falls to ``None`` when the wire lacks the FK key."""
+        doc = {
+            "_id": ObjectId(),
+            "booking_id": "BK-401",
+            "prop_id": 1,
+            "amount": 50.0,
+        }
+        payment = PaymentResponse.model_validate(doc)
+        # Without an explicit ``invoice_id`` in the wire, the FK is None
+        # (NOT inherited from ``_id`` via the legacy AliasChoices overlap).
+        assert payment.invoice_id is None
+        assert payment.id is not None
+
+    def test_invoice_id_accepts_pre_stringified_passthrough(self):
+        """Pre-stringified ``invoice_id`` (already stringified by service layer) passes through."""
+        payment_oid = ObjectId()
+        invoice_oid = ObjectId()
+        doc = {
+            "_id": payment_oid,
+            "invoice_id": str(invoice_oid),  # already a string (legacy caller)
+            "booking_id": "BK-402",
+            "prop_id": 1,
+            "amount": 99.0,
+        }
+        payment = PaymentResponse.model_validate(doc)
+        assert payment.id == str(payment_oid)
+        assert payment.invoice_id == str(invoice_oid)
+        # Distinct 24-char hex still.
+        assert payment.invoice_id != payment.id
+        assert len(payment.invoice_id) == 24
+
+
 class TestFolioResponsePostingsAnyList:
     """Invariant #4: ``postings: list[Any]`` accepts heterogeneous nested payloads.
 
