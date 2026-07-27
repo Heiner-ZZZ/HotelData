@@ -6,9 +6,9 @@
  *   private api = inject(ReportApiService);
  *
  *   // In some page/partial component constructor or computed:
- *   report = httpResource<MarginReportDto>(() =>
- *     this.api.marginReportUrl(this.propId())
- *   );
+ *   report = httpResource<MarginReportDto>(() => ({
+ *     url: this.api.marginReportUrl(this.propId) ?? '',
+ *   }));
  *
  * The `inject(ReportApiService)` pattern keeps the service singleton while
  * letting each component pick the right endpoint. The service caches its
@@ -45,7 +45,7 @@ export class ReportApiService {
   // ─── URL builders (consumed by httpResource) ──────────────────────────
 
   /** URL for the margin report for a given property. */
-  marginReportUrl(propId: Signal<number | null | undefined>): () => string | undefined {
+  marginReportUrl(propId: Signal<number | null | undefined>): string | undefined {
     const pid = propId();
     return pid ? `${this.base}/margin?prop_id=${pid}` : undefined;
   }
@@ -55,7 +55,7 @@ export class ReportApiService {
     propId: Signal<number | null | undefined>,
     period: Signal<StockValueReportPeriod>,
     method: Signal<CogsMethod>,
-  ): () => string | undefined {
+  ): string | undefined {
     const pid = propId();
     const p = period();
     const m = method();
@@ -63,7 +63,7 @@ export class ReportApiService {
   }
 
   /** URL for the stock-value report for a given property. */
-  stockValueReportUrl(propId: Signal<number | null | undefined>): () => string | undefined {
+  stockValueReportUrl(propId: Signal<number | null | undefined>): string | undefined {
     const pid = propId();
     return pid ? `${this.base}/stock-value?prop_id=${pid}` : undefined;
   }
@@ -71,7 +71,7 @@ export class ReportApiService {
   // ─── httpResource factories (for components that prefer explicit data) ─
 
   marginReport(propId: Signal<number | null | undefined>): HttpResourceRef<MarginReportDto | undefined> {
-    return httpResource<MarginReportDto>(() => ({ url: this.marginReportUrl(propId)() ?? '' }));
+    return httpResource<MarginReportDto>(() => ({ url: this.marginReportUrl(propId) ?? '' }));
   }
 
   cogsReport(
@@ -80,11 +80,11 @@ export class ReportApiService {
     method: Signal<CogsMethod>,
   ): HttpResourceRef<CogsReportDto | undefined> {
     return httpResource<CogsReportDto>(() => ({
-      url: this.cogsReportUrl(propId, period, method)() ?? '',
+      url: this.cogsReportUrl(propId, period, method) ?? '',
     }));
   }
 
   stockValueReport(propId: Signal<number | null | undefined>): HttpResourceRef<StockValueReportDto | undefined> {
-    return httpResource<StockValueReportDto>(() => ({ url: this.stockValueReportUrl(propId)() ?? '' }));
+    return httpResource<StockValueReportDto>(() => ({ url: this.stockValueReportUrl(propId) ?? '' }));
   }
 }

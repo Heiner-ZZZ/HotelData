@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -34,7 +34,6 @@ const CATEGORY_OPTIONS = [
 @Component({
   selector: 'app-products-form-page',
   imports: [
-    RouterLink,
     ReactiveFormsModule,
     ErrorStateComponent,
     LoadingStateComponent,

@@ -1,4 +1,4 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { httpResource, HttpResourceRef } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -15,7 +15,6 @@ import type { MarginReportDto } from '../../models/products-report.dto';
   standalone: true,
   imports: [
     CurrencyPipe,
-    DecimalPipe,
     EmptyStateComponent,
     ErrorStateComponent,
     LoadingStateComponent,

@@ -89,7 +89,7 @@
         <span class="meta-row__sep">·</span>
         <span class="meta-row__label">Método:</span>
         <span class="meta-row__method">{{ methodLabel(data.method) }}</span>
-        @if ((data.summary?.fallback_units_across_products ?? 0) > 0) {
+        @if (data.summary.fallback_units_across_products > 0) {
           <span class="meta-row__sep">·</span>
           <span class="meta-row__warn-chip" title="Capas faltantes: ejecute migrate_inventory_layers o verifique sobrestock vs historial de adquisición.">
             {{ data.summary!.fallback_units_across_products }} ud sin capa

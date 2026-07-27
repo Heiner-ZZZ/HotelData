@@ -1,4 +1,4 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { httpResource, HttpResourceRef, HttpResourceRequest } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -28,6 +28,7 @@ const PERIOD_OPTIONS: { key: StockValueReportPeriod; label: string }[] = [
   standalone: true,
   imports: [
     CurrencyPipe,
+    DatePipe,
     DecimalPipe,
     EmptyStateComponent,
     ErrorStateComponent,
@@ -59,9 +60,8 @@ export default class CogsReportComponent {
   constructor() {
     // httpResource is a Signal: re-derives whenever period OR method changes.
     // The backend resolves the same URL pattern with a different cost flow.
-    this.report = httpResource<CogsReportDto>(() => ({
-      url: this.api.cogsReportUrl(this.propId, this.period, this.method)() ?? '',
-    }));
+    this.report = httpResource<CogsReportDto>(() => ({      url: this.api.cogsReportUrl(this.propId, this.period, this.method) ?? '',
+      }));
   }
 
   selectPeriod(p: StockValueReportPeriod): void {

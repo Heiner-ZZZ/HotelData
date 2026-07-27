@@ -1,5 +1,4 @@
-@use 'styles' as *;
-
+// CSS vars (var(--token)) inherit globally from frontend/src/styles.scss; local @use was redundant.
 .report-page {
   display: flex;
   flex-direction: column;
