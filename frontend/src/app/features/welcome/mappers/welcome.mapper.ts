@@ -1,4 +1,5 @@
 import type { FeaturedHotel } from '../models/welcome.models';
+import { placeholderImageUrl } from '../../../shared/utils/placeholder-image.util';
 
 /** Raw DTO shape from /api/hotels/availability. */
 interface FeaturedHotelDto {
@@ -11,11 +12,9 @@ interface FeaturedHotelDto {
   min_nightly_rate_label: string | null;
 }
 
-/** Generates a loremflickr URL consistent with the search page hotel-card. */
+/** Generates a deterministic placeholder image URL (loremflickr.com seeded by hotel id). */
 export function hotelImageUrl(propId: number, variant: 'hotel' | 'lobby' | 'pool' = 'hotel'): string {
-  const tag = variant === 'hotel' ? 'hotel' : `hotel,${variant}`;
-  const suffix = variant === 'hotel' ? '1' : variant === 'lobby' ? '2' : '3';
-  return `https://loremflickr.com/400/250/${tag}?lock=${propId}${suffix}`;
+  return placeholderImageUrl(`${propId}-${variant}`, 400, 250);
 }
 
 /** Maps the raw availability API response to FeaturedHotel cards. */

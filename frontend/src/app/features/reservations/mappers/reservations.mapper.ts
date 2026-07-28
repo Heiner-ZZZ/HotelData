@@ -1,5 +1,6 @@
 import { formatDateTime } from '../../../shared/utils/date-format.util';
 import type {
+  AssignedRoomSnapshotDto,
   ReservationCreateDto,
   ReservationDetailDto,
   ReservationListItemDto,
@@ -9,6 +10,7 @@ import type {
   ReservationsListDto
 } from '../models/reservations.dto';
 import type {
+  AssignedRoomView,
   ReservationCreateInput,
   ReservationDetailViewModel,
   ReservationHotelOption,
@@ -17,8 +19,26 @@ import type {
   ReservationsListViewModel
 } from '../models/reservations.model';
 
+/**
+ * Normalize backend `assigned_rooms` item (dict or legacy string) →
+ * AssignedRoomView. Tolerates the `@model_validator` backward-compat path
+ * where pre-migration bookings may emit a bare string.
+ */
+function toAssignedRoomView(r: AssignedRoomSnapshotDto | string): AssignedRoomView {
+  if (typeof r === 'string') {
+    return { hotelRoomId: r, roomNumber: '', roomLabel: '', floor: '', roomStatus: '' };
+  }
+  return {
+    hotelRoomId: r.hotel_room_id,
+    roomNumber: r.room_number ?? '',
+    roomLabel: r.room_label ?? '',
+    floor: r.floor ?? '',
+    roomStatus: r.room_status ?? '',
+  };
+}
+
 function mapReservationListItem(item: ReservationListItemDto): ReservationListItem {
-  const assigned: string[] = item.assigned_rooms || [];
+  const assigned: AssignedRoomView[] = (item.assigned_rooms ?? []).map(toAssignedRoomView);
   return {
     bookingId: item.booking_id,
     propId: item.prop_id,
@@ -228,12 +248,15 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
   const booking = dto.booking ?? wire;
   const guest = dto.guest ?? wire;
   /** Backend splits `special_requests` with `|` when flattening from flat wire,
-   *  whereas nested wire keeps it as a `string[]`. Normalise to string[]. */
-  const specialRequests = (() => {
-    const raw = booking.special_requests;
-    if (Array.isArray(raw)) return raw;
+   *  whereas nested wire keeps it as a `string[]`. Normalise to string[].
+   *  `raw` is typed `unknown` first to avoid TS narrowing `raw` to `never`
+   *  after the `Array.isArray` early-return chain — its true union
+   *  (`string[] | string | undefined`) collapses under strict narrowing. */
+  const specialRequests: string[] = (() => {
+    const raw: unknown = booking.special_requests;
+    if (Array.isArray(raw)) return raw as string[];
     if (typeof raw === 'string' && raw.length > 0) {
-      return raw.split('|').map((s) => s.trim()).filter(Boolean);
+      return raw.split('|').map((s: string) => s.trim()).filter((s: string) => Boolean(s));
     }
     return [];
   })();
@@ -307,13 +330,7 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
       note: c.note || '',
       createdAt: c.created_at,
     })),
-    assignedRooms: (dto.assigned_rooms ?? []).map(r => ({
-      hotelRoomId: r.hotel_room_id,
-      roomNumber: r.room_number,
-      roomLabel: r.room_label,
-      floor: r.floor,
-      roomStatus: r.room_status,
-    })),
+    assignedRooms: (dto.assigned_rooms ?? []).map(toAssignedRoomView),
     totalCharges: (dto.additional_charges ?? []).reduce((sum, c) => sum + (c.total ?? 0), 0),
     amenitiesCount: wire.amenities_count ?? 0,
     amenitiesTotal: wire.amenities_total ?? 0,

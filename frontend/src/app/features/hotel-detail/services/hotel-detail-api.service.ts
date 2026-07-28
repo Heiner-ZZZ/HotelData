@@ -6,6 +6,7 @@ import { API_CONFIG } from '../../../core/api/api.config';
 import { mapHotelDetailResponse } from '../mappers/hotel-detail.mapper';
 import type { HotelDetailDto, SimilarHotelDto, SimilarHotelsResponseDto } from '../models/hotel-detail.dto';
 import type { SimilarHotel } from '../models/hotel-detail.model';
+import { placeholderImageUrl } from '../../../shared/utils/placeholder-image.util';
 
 export function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
   return {
@@ -16,7 +17,7 @@ export function mapSimilarHotel(dto: SimilarHotelDto): SimilarHotel {
     location: dto.country_display_name,
     similarityScore: dto.similarity_score,
     reason: dto.reason,
-    imageUrl: dto.image_url || `https://loremflickr.com/400/250/hotel?lock=${dto.prop_id}1`,
+    imageUrl: dto.image_url || placeholderImageUrl(`${dto.prop_id}1`),
   };
 }
 

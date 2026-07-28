@@ -1,5 +1,6 @@
 import type { HotelDetailDto } from '../models/hotel-detail.dto';
 import type { HotelDetailViewModel } from '../models/hotel-detail.model';
+import { placeholderImageUrl } from '../../../shared/utils/placeholder-image.util';
 
 function displayValue(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') {
@@ -92,9 +93,9 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
     galleryImages: (dto.hotel_images || []).length > 0
       ? dto.hotel_images.map((img) => img.image_url)
       : [
-          `https://loremflickr.com/800/400/hotel?lock=${dto.prop_id}1`,
-          `https://loremflickr.com/800/400/hotel,lobby?lock=${dto.prop_id}2`,
-          `https://loremflickr.com/800/400/hotel,pool?lock=${dto.prop_id}3`,
+          placeholderImageUrl(`${dto.prop_id}1`, 800, 400),
+          placeholderImageUrl(`${dto.prop_id}2`, 800, 400),
+          placeholderImageUrl(`${dto.prop_id}3`, 800, 400),
         ],
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',

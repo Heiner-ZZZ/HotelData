@@ -162,7 +162,9 @@ def create_app() -> FastAPI:
         allow_headers=list(settings.cors_allowed_headers),
     )
     app.middleware("http")(role_access_middleware)
-    app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
+    static_dir = Path(__file__).resolve().parent / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     uploads_dir = settings.project_root / "data" / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")

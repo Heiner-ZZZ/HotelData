@@ -199,7 +199,24 @@ export class LedgerPageComponent {
     parse: (dto) => mapChartAccounts(dto as ChartAccountDto[]),
   });
 
-  readonly theme = themeQuartz;
+  /**
+   * ag-grid theme with semantic CSS-variable lookups so a `[data-theme="dark"]`
+   * flip on the document swaps the surface/text/border tokens automatically.
+   * themeQuartz (v36) without withParams() defaults to its internal light
+   * constants and ignores app-level theme context.
+   */
+  readonly theme = themeQuartz.withParams({
+    backgroundColor: 'var(--surface)',
+    foregroundColor: 'var(--app-text)',
+    headerBackgroundColor: 'var(--surface-soft)',
+    headerTextColor: 'var(--app-text)',
+    rowHoverColor: 'var(--surface-hover)',
+    borderColor: 'var(--app-border)',
+    cellTextColor: 'var(--app-text)',
+    rowBorder: { color: 'var(--app-border)', style: 'solid', width: 1 },
+    oddRowBackgroundColor: 'var(--surface-raised)',
+    selectedRowBackgroundColor: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+  });
 
   /**
    * Template-scope alias for the module-scope `_num` helper. Angular templates

@@ -8,12 +8,27 @@ export interface ReservationsListDto {
   has_next: boolean;
 }
 
+/**
+ * Per-room snapshot returned by `GET /api/reservations` (list + detail)
+ * post-FK-migration. Mirrors backend `AssignedRoomSnapshot` in
+ * `server/src/app/modules/reservations/schemas.py` (Option B schema).
+ * All optional fields tolerate pre-migration Mongo rows that stored
+ * only `hotel_room_id`.
+ */
+export interface AssignedRoomSnapshotDto {
+  hotel_room_id: string;
+  room_number?: string | null;
+  room_label?: string | null;
+  floor?: string | null;
+  room_status?: string | null;
+}
+
 export interface ReservationListItemDto {
   booking_id: string;
   prop_id: number;
   status: string;
   booking_source: string;
-  assigned_rooms?: string[];
+  assigned_rooms?: AssignedRoomSnapshotDto[];
   guest_name: string;
   guest_email: string;
   guest_phone?: string;
@@ -192,13 +207,7 @@ export interface ReservationDetailDto {
   room_type: RoomTypeInfoDto | null;
   price_breakdown: PriceBreakdownDto | null;
   cancellation_policy: string | null;
-  assigned_rooms?: {
-    hotel_room_id: string;
-    room_number: string;
-    room_label: string;
-    floor: string;
-    room_status: string;
-  }[];
+  assigned_rooms?: AssignedRoomSnapshotDto[];
   additional_charges?: {
     concept: string;
     amount: number;

@@ -20,7 +20,7 @@ export interface ReservationListItem {
   checkOutDate: string;
   status: string;
   bookingSource: string;
-  assignedRooms: string[];
+  assignedRooms: AssignedRoomView[];
   roomsAssignedCount: number;
   totalPrice: number | null;
   currency: string;
@@ -187,6 +187,19 @@ export interface InvoiceSummary {
   paidAt: string | null;
 }
 
+/**
+ * View-model mirror of backend `AssignedRoomSnapshotSchema` (Option B
+ * schema in `server/src/app/modules/reservations/schemas.py`).
+ * Carries the canonical hotel_room_id plus enriched room metadata.
+ */
+export interface AssignedRoomView {
+  hotelRoomId: string;
+  roomNumber: string;
+  roomLabel: string;
+  floor: string;
+  roomStatus: string;
+}
+
 export interface ReservationDetailViewModel {
   bookingId: string;
   status: string;
@@ -232,13 +245,7 @@ export interface ReservationDetailViewModel {
     note: string;
     createdAt: string;
   }[];
-  assignedRooms: {
-    hotelRoomId: string;
-    roomNumber: string;
-    roomLabel: string;
-    floor: string;
-    roomStatus: string;
-  }[];
+  assignedRooms: AssignedRoomView[];
   totalCharges: number;
   amenitiesCount: number;
   amenitiesTotal: number;

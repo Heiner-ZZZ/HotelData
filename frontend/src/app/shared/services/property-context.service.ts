@@ -116,6 +116,19 @@ export class PropertyContextService {
 
   private loadContext(): void {
     if (this.loading) return;
+    // Property context is only meaningful on management routes. The DI graph
+    // wires PropertyContextService into the root injector, so any shell that
+    // activates (account, system, ownership, public) would otherwise fire the
+    // same /api/management/properties/context call and produce 401/403 noise on
+    // guest-side paths like /account/bookings. Restrict the call to /management/*.
+    const url = this.router.url || '/';
+    // Strip query string and hash fragment — `router.url` returns the full URL
+    // (e.g. `/management?prop_id=1`), so naïve `startsWith('/management/')` misses
+    // bare `/management?prop_id=1` (the next char is `?`, not `/`). Same split
+    // pattern as `_ensurePropIdInUrl` further down in this class.
+    const pathOnly = url.split('?')[0].split('#')[0];
+    const isManagementRoute = pathOnly === '/management' || pathOnly.startsWith('/management/');
+    if (!isManagementRoute) return;
     this.loading = true;
 
     this.http

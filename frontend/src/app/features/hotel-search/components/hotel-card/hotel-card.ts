@@ -6,6 +6,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { FavoritesService } from '../../../../core/favorites/favorites.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
+import { placeholderImageUrl } from '../../../../shared/utils/placeholder-image.util';
 import type { HotelSearchResult } from '../../models/hotel-search.model';
 
 @Component({
@@ -50,19 +51,19 @@ export class HotelCardComponent implements OnInit {
 
   readonly BASE_GALLERY_COUNT = 3;
 
-  /** Combined gallery: hotel images + room-type images + loremflickr + amenity photos. */
+  /** Combined gallery: hotel images + room-type images + placeholder seeds + amenity photos. */
   readonly galleryImages = computed(() => {
     const h = this.hotel();
     if (this.fallbackImg()) return [];
     const hotelImgs = (this.hotelPhotosRes.value()?.images ?? []).map((img) => img.image_url);
     const roomImgs = (this.roomPhotosRes.value()?.images ?? []).map((img) => img.image_url);
     const amenityImgs = (this.amenityPhotosRes.value()?.photos ?? []).map((p) => p.url);
-    const lorem = [
-      `https://loremflickr.com/400/250/hotel?lock=${h.id}1`,
-      `https://loremflickr.com/400/250/hotel,lobby?lock=${h.id}2`,
-      `https://loremflickr.com/400/250/hotel,pool?lock=${h.id}3`,
+    const placeholders = [
+      placeholderImageUrl(`${h.id}1`),
+      placeholderImageUrl(`${h.id}2`),
+      placeholderImageUrl(`${h.id}3`),
     ];
-    return [...hotelImgs, ...roomImgs, ...lorem, ...amenityImgs];
+    return [...hotelImgs, ...roomImgs, ...placeholders, ...amenityImgs];
   });
 
   /** Total images in the carousel — dynamic based on gallery. */
@@ -85,7 +86,7 @@ export class HotelCardComponent implements OnInit {
     const h = this.hotel();
     if (h.imageUrl && !this.fallbackImg()) return h.imageUrl;
     const gallery = this.galleryImages();
-    return gallery.length ? gallery[0] : `https://loremflickr.com/400/250/hotel?lock=${h.id}1`;
+    return gallery.length ? gallery[0] : placeholderImageUrl(`${h.id}1`);
   });
 
   /** TranslateX offset for the carousel strip — slides to the active image. */

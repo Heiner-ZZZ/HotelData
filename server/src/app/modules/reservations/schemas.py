@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from src.app.core.types import ListToCommaStr, ObjectIdStr
 
@@ -63,6 +63,44 @@ class BookingHistoryResponse(BaseModel):
     reason: str | None = None
     changed_by: str | None = None
     is_test: bool | None = None
+
+
+class AssignedRoomSnapshot(BaseModel):
+    """Snapshot of a hotel room assigned to a booking.
+
+    Mirrors the dict shape produced by ``get_booking_detail`` (queries.py
+    around line 374) which enriches each ``booking.assigned_rooms`` ID
+    against the ``hotel_rooms`` collection. Optional fields tolerate
+    pre-migration docs that stored only ``hotel_room_id``.
+
+    Backward compat for legacy ``list[str]`` rows: a ``@model_validator``
+    coerces bare strings into ``{hotel_room_id: <str>}``, so the wire
+    shape is consistent end-to-end and the frontend never has to handle
+    a mixed ``list[str | dict]``.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    hotel_room_id: str
+    room_number: str | None = None
+    room_label: str | None = None
+    floor: str | None = None
+    room_status: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_legacy_string(cls, data: Any) -> Any:
+        """Pre-migration bookings stored ``assigned_rooms: list[str]``.
+
+        Pydantic's per-item validator runs BEFORE the strict field
+        check, so a bare string like ``"HR-1-119"`` is converted into
+        the dict shape required by the field definitions below. There
+        is no ObjectId / richer-id roundtrip from this class — the
+        canonical identifier is the wire-level ``hotel_room_id`` string.
+        """
+        if isinstance(data, str):
+            return {"hotel_room_id": data}
+        return data
 
 
 class BookingResponse(BaseModel):
@@ -137,13 +175,13 @@ class BookingResponse(BaseModel):
     created_at: str | None = None
     updated_at: str | None = None
     special_requests: ListToCommaStr | None = None
-    assigned_rooms: list[str] | None = Field(
+    assigned_rooms: list[AssignedRoomSnapshot] | None = Field(
         default=None,
         description=(
-            "Room labels assigned to this booking (e.g. ``['HR-1-119', 'HR-1-120']``). "
-            "Tolerates explicit ``None`` from pre-FK-migration docs that stored "
-            "the field as ``null``. FUTURE: migrate to ``list[AssignedRoom]`` "
-            "once the service layer starts emitting the richer dict shape."
+            "Room snapshots assigned to this booking. Each item carries "
+            "``hotel_room_id`` plus enriched metadata (room_number/label/floor/status) "
+            "resolved from ``hotel_rooms`` at query time. Tolerates ``None`` "
+            "and legacy ``list[str]`` rows (auto-coerced via the @model_validator)."
         ),
     )
     # History is nested INSIDE BookingResponse because ``get_booking_detail``
@@ -170,5 +208,6 @@ class BookingListResponse(BaseModel):
 
 ModuleStatus.model_rebuild()
 BookingHistoryResponse.model_rebuild()
+AssignedRoomSnapshot.model_rebuild()
 BookingResponse.model_rebuild()
 BookingListResponse.model_rebuild()

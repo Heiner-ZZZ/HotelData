@@ -12,71 +12,69 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
   selector: 'app-invoice-detail-page',
   standalone: true,
   imports: [CurrencyPipe, DatePipe, PageHeaderComponent, LoadingStateComponent],
+  styleUrl: '../../expenses.shared.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div style="max-width: 700px; margin: 0 auto; padding: 24px;">
+    <div class="page-wrap page-wrap--narrow">
       <app-page-header eyebrow="Gastos" title="Detalle de Factura" description="Información completa de la factura." />
 
-      <button (click)="goBack()" style="display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; margin-bottom: 16px; color: #475569;">
-        <span class="material-symbols-outlined" style="font-size: 16px;">arrow_back</span> Volver
+      <button class="back-btn" type="button" (click)="goBack()">
+        <span class="material-symbols-outlined icon">arrow_back</span> Volver
       </button>
 
       @switch (viewState()) {
         @case ('loading') { <app-loading-state label="Cargando factura..." /> }
-        @case ('error') { <div style="text-align: center; padding: 24px; color: #dc2626;">Error al cargar la factura.</div> }
+        @case ('error') { <div class="error-line">Error al cargar la factura.</div> }
         @default {
           @if (inv(); as i) {
-            <!-- Status Banner -->
-            <div [style]="'padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; ' + statusBannerStyle(i.status)">
+            <!-- Status Banner (theme-aware via .status-banner--<status>) -->
+            <div class="status-banner" [class]="'status-banner status-banner--' + i.status">
               <span class="material-symbols-outlined">{{ statusIcon(i.status) }}</span>
               <span style="font-weight: 500;">{{ statusText(i.status) }}</span>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-              <!-- Vendor & Amount -->
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-                <h4 style="font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 16px;">Proveedor</h4>
-                <p style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">{{ i.vendorName }}</p>
-                <p style="font-size: 13px; color: #64748b; margin: 0;">{{ i.category }}</p>
+            <div class="meta-grid">
+              <!-- Vendor -->
+              <div class="meta-tile">
+                <h4 class="meta-tile__heading">Proveedor</h4>
+                <p class="meta-tile__primary">{{ i.vendorName }}</p>
+                <p class="meta-tile__secondary">{{ i.category }}</p>
               </div>
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-                <h4 style="font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 16px;">Total</h4>
-                <p style="font-size: 24px; font-weight: 700; color: #0f172a; margin: 0;">{{ i.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
-                <p style="font-size: 12px; color: #64748b; margin: 2px 0 0;">Subtotal: {{ i.amount | currency:'MXN':'symbol-narrow' }} + IVA: {{ i.taxAmount | currency:'MXN':'symbol-narrow' }}</p>
+              <!-- Amount -->
+              <div class="meta-tile">
+                <h4 class="meta-tile__heading">Total</h4>
+                <p class="meta-tile__total">{{ i.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
+                <p class="meta-tile__secondary">Subtotal: {{ i.amount | currency:'MXN':'symbol-narrow' }} + IVA: {{ i.taxAmount | currency:'MXN':'symbol-narrow' }}</p>
               </div>
 
               <!-- Details -->
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; grid-column: 1 / -1;">
-                <h4 style="font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 16px;">Detalles</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
-                  <div><span style="color: #64748b;">Descripción:</span> <span style="color: #0f172a;">{{ i.description || '—' }}</span></div>
-                  <div><span style="color: #64748b;">Factura:</span> <span style="color: #0f172a;">{{ i.invoiceDate || '—' }}</span></div>
-                  <div><span style="color: #64748b;">Vencimiento:</span> <span style="color: #0f172a;">{{ i.dueDate || '—' }}</span></div>
-                  <div><span style="color: #64748b;">Creada:</span> <span style="color: #0f172a;">{{ i.createdAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+              <div class="meta-tile meta-tile--full">
+                <h4 class="meta-tile__heading">Detalles</h4>
+                <div class="meta-row">
+                  <div><span class="meta-row__label">Descripción:</span> <span class="meta-row__value">{{ i.description || '—' }}</span></div>
+                  <div><span class="meta-row__label">Factura:</span> <span class="meta-row__value">{{ i.invoiceDate || '—' }}</span></div>
+                  <div><span class="meta-row__label">Vencimiento:</span> <span class="meta-row__value">{{ i.dueDate || '—' }}</span></div>
+                  <div><span class="meta-row__label">Creada:</span> <span class="meta-row__value">{{ i.createdAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
                   @if (i.approvedBy) {
-                    <div><span style="color: #64748b;">Aprobada por:</span> <span style="color: #0f172a;">{{ i.approvedBy }}</span></div>
+                    <div class="meta-row--full"><span class="meta-row__label">Aprobada por:</span> <span class="meta-row__value">{{ i.approvedBy }}</span></div>
                   }
                   @if (i.notes) {
-                    <div style="grid-column: 1 / -1;"><span style="color: #64748b;">Notas:</span> <span style="color: #0f172a;">{{ i.notes }}</span></div>
+                    <div class="meta-row--full"><span class="meta-row__label">Notas:</span> <span class="meta-row__value">{{ i.notes }}</span></div>
                   }
                 </div>
               </div>
 
               <!-- Actions -->
               @if (i.status === 'pending') {
-                <div style="grid-column: 1 / -1; display: flex; gap: 12px; justify-content: flex-end;">
-                  <button (click)="updateStatus(i.id, 'rejected')"
-                    style="padding: 10px 20px; background: white; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; font-size: 13px; cursor: pointer;">Rechazar</button>
-                  <button (click)="updateStatus(i.id, 'approved')"
-                    style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Aprobar</button>
-                  <button (click)="updateStatus(i.id, 'paid')"
-                    style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Marcar Pagada</button>
+                <div class="meta-actions">
+                  <button class="btn btn--lg btn--ghost-danger" type="button" (click)="updateStatus(i.id, 'rejected')">Rechazar</button>
+                  <button class="btn btn--lg btn--success" type="button" (click)="updateStatus(i.id, 'approved')">Aprobar</button>
+                  <button class="btn btn--lg btn--primary" type="button" (click)="updateStatus(i.id, 'paid')">Marcar Pagada</button>
                 </div>
               }
               @if (i.status === 'approved') {
-                <div style="grid-column: 1 / -1; display: flex; gap: 12px; justify-content: flex-end;">
-                  <button (click)="updateStatus(i.id, 'paid')"
-                    style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">Marcar Pagada</button>
+                <div class="meta-actions">
+                  <button class="btn btn--lg btn--primary" type="button" (click)="updateStatus(i.id, 'paid')">Marcar Pagada</button>
                 </div>
               }
             </div>
@@ -116,10 +114,6 @@ export class InvoiceDetailPageComponent {
     });
   }
 
-  statusBannerStyle(s: string) {
-    const map: any = { pending: 'background:#fefce8;color:#a16207;border:1px solid #fde68a;', approved: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;', paid: 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;', rejected: 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;' };
-    return map[s] || '';
-  }
   statusIcon(s: string) {
     const map: any = { pending: 'pending', approved: 'check_circle', paid: 'payments', rejected: 'cancel' };
     return map[s] || 'info';
