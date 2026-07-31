@@ -1,45 +1,75 @@
 // ═══════════════════════════════════════════════════════════════
-//   LIVE NOW-LINE
-//   1px blue vertical line + HH:MM dot marking the current time.
-//   The line is rendered in each today cell at the horizontal
-//   position proportional to (currentSeconds / 86400). The dot
-//   appears only once per view (header today cell).
+//   LIVE NOW-LINE — PER-CELL INTEGRATED
+//   Each .rc-cell-bg in the today column renders its own `.rc-now-line`
+//   span, anchored at `left:%` via the live `nowFraction()` signal. The
+//   line is positioned inside the cell box (with `position: relative` on
+//   the cell as anchor), so it visually integrates with the cell's own
+//   background, border, and accent treatment — not a foreign overlay on
+//   top.
+//
+//   Continuity across vertical cells is achieved with `bottom: -1px`,
+//   which extends each segment 1px past the cell's bottom padding edge
+//   into the row's 1px border-bottom region. Consecutive segments touch
+//   perfectly at each row boundary, so the column reads as a single
+//   uninterrupted vertical line even though each cell renders its own.
 // ═══════════════════════════════════════════════════════════════
-
-.rc-cell-bg {
-  position: relative; // anchor for absolute-positioned now-line
-}
 
 .rc-now-line {
   position: absolute;
-  top: 2px;
-  bottom: 2px;
+  top: 0;
+  // `bottom: -1px` bridges the 1px border-bottom of each .rc-row so
+  // consecutive segments meet without a visible gap. With border-box
+  // layout, this places the line's bottom edge exactly at the row's
+  // outer bottom edge (where the next row begins).
+  bottom: -1px;
+  left: 0;
   width: 1px;
   background: var(--accent, #2563eb);
   pointer-events: none;
-  z-index: 4;
-  // Subtle 30% halo to soften the line on dark cells without losing crispness
+  // Subtle 30% halo softens the line on dark cells without losing crispness.
   box-shadow: 0 0 6px 0 color-mix(in srgb, var(--accent, #2563eb) 35%, transparent);
-  // Smooth tick-by-tick repositioning (matches the 30s signal tick)
+  // Smooth tick-by-tick repositioning (matches the 30 s `now` signal tick).
+  // Kept unconditional: `transition` is benign for vestibular comfort and
+  // lets the line slide smoothly to the new `left` value instead of snapping.
   transition: left 600ms cubic-bezier(0.4, 0, 0.2, 1);
-  animation: rc-now-pulse 2.6s ease-in-out infinite;
+  // Animation is scoped under @media below. By default NO opacity pulse runs
+  // — that prevents N (= rooms) simultaneous animations from draining
+  // battery on mobile. Users who opt INTO motion (via OS-level preference)
+  // still get a subtle 2.6 s pulse that signals "live."
 }
 
 @keyframes rc-now-pulse {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.78; }
+  50%      { opacity: 0.85; }
 }
 
-.rc-cell-day { // header today cell — anchor for the dot
-  position: relative;
+@media (prefers-reduced-motion: no-preference) {
+  .rc-now-line {
+    animation: rc-now-pulse 2.6s ease-in-out infinite;
+  }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  // Defence-in-depth: if anyone re-introduces an unconditional animation
+  // later, this block still kills it under reduce.
+  .rc-now-line {
+    animation: none;
+  }
+}
+
+// ─── Header HH:MM dot (above the line, in the today header cell) ───
+// The .rc-cell-day position:relative is declared in _rc-content.scss so all
+// cell-day styling lives in one place.
 .rc-now-dot {
   position: absolute;
-  top: 14px; // sits over the day-number badge
+  // Anchor sits BELOW the day-num badge so the HH:MM label clears the
+  // 22×22 day-num box. With `padding-top: 0.45rem + .rc-cell-day` plus
+  // the day-name block (~10 px) and the 22 px day-num box, the badge ends
+  // ~38–40 px from the cell top; positioning the dot at 42 px leaves a
+  // small visual gap so the label doesn't overlap the accent badge.
+  top: 42px;
   z-index: 6;
   pointer-events: none;
-  // Smooth tick-by-tick repositioning (matches the 30s signal tick)
   transition: left 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 

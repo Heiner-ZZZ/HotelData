@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { lastValueFrom, map, of, switchMap } from 'rxjs';
@@ -384,6 +384,9 @@ export class HousekeepingTasksPageComponent {
       this.editingId.set(null);
       this.tasksResource.reload();
     } catch (err: unknown) {
+      // Dev visibility: console.error so devs see WHAT went wrong, not
+      // only the friendly toast string surfaced via errorMessage.
+      if (isDevMode()) console.error(`[housekeeping-tasks] submitTask failed (editId=${editId ?? 'new'})`, err);
       this.errorMessage.set(toErrorMessage(err, 'Error al guardar tarea'));
       this.message.set('');
     }
@@ -433,6 +436,7 @@ export class HousekeepingTasksPageComponent {
       this.closeCompleteModal();
       this.tasksResource.reload();
     } catch (err: unknown) {
+      if (isDevMode()) console.error('[housekeeping-tasks] submitCompleteCleaning failed', err);
       this.errorMessage.set(toErrorMessage(err, 'Error al completar limpieza'));
       this.message.set('');
     }
@@ -454,6 +458,7 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.tasksResource.reload();
     } catch (err: unknown) {
+      if (isDevMode()) console.error('[housekeeping-tasks] startCleaning failed', err);
       this.errorMessage.set(toErrorMessage(err, 'Error al iniciar limpieza'));
       this.message.set('');
     }
@@ -481,6 +486,7 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.tasksResource.reload();
     } catch (err: unknown) {
+      if (isDevMode()) console.error('[housekeeping-tasks] markInspection failed', err);
       this.errorMessage.set(toErrorMessage(err, 'Error al enviar a inspección'));
       this.message.set('');
     }
@@ -493,6 +499,7 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.tasksResource.reload();
     } catch (err: unknown) {
+      if (isDevMode()) console.error('[housekeeping-tasks] completeTask failed', err);
       this.errorMessage.set(toErrorMessage(err, 'Error al completar tarea'));
       this.message.set('');
     }
@@ -515,6 +522,7 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.tasksResource.reload();
     } catch (err: unknown) {
+      if (isDevMode()) console.error('[housekeeping-tasks] deleteTask failed', err);
       this.errorMessage.set(toErrorMessage(err, 'Error al eliminar tarea'));
       this.message.set('');
     }

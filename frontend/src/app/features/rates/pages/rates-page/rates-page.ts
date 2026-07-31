@@ -151,7 +151,15 @@ export class RatesPageComponent {
     });
   }
   readonly planBaseRate = signal(0);
-  readonly planCurrency = signal('USD');
+  /**
+   * Default currency for a NEW rate plan. Initialized from the active
+   * property's currency (e.g. USD for a USD-denominated property) so the
+   * form opens pre-filled with the currency the user just selected on
+   * the public welcome page. Resets on form-cleared piggyback on the
+   * same source — multi-property portfolios with mixed currencies get
+   * a smart default; single-currency users see no change.
+   */
+  readonly planCurrency = signal(this.propertyCtx.currentCurrency());
   readonly planIsActive = signal(true);
   readonly planIncludedAmenities = signal<string[]>([]);
 
@@ -559,7 +567,7 @@ readonly sidebarSections: SidebarSection[] = [
         this.ratesResource.reload();
         this.message.set('Plan tarifario registrado'); this.errorMessage.set('');
         this.editingPlan.set(null);
-        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
+        this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set(this.propertyCtx.currentCurrency()); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true); this.planIncludedAmenities.set([]);
       },
       error: (error: ApiError) => { this.errorMessage.set(error.message || 'No fue posible registrar el plan tarifario.'); this.message.set(''); },
     });
@@ -583,7 +591,7 @@ readonly sidebarSections: SidebarSection[] = [
 
   cancelEditPlan(): void {
     this.editingPlan.set(null);
-    this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set('USD'); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true);
+    this.planName.set(''); this.planDescription.set(''); this.planBaseRate.set(0); this.planCurrency.set(this.propertyCtx.currentCurrency()); this.planApplicableRoomTypes.set([]); this.planIsActive.set(true);
     this.planIncludedAmenities.set([]);
   }
 

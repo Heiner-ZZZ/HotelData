@@ -10,6 +10,7 @@ import { PropertySelectorComponent } from '../../../../shared/ui/property-select
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { HousekeepingApiService } from '../../services/housekeeping-api.service';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
+import { statusColor } from '../../../../shared/utils/semantic-color.helper';
 
 const STATUS_LABELS: Record<string, string> = {
   vacant_dirty: 'Vacante Sucia',
@@ -24,29 +25,38 @@ const STATUS_LABELS: Record<string, string> = {
   maintenance_requested: 'Mtto Solicitado',
 };
 
+/**
+ * Status colors — delegated to design tokens
+ * (`frontend/src/styles/_scss-variables.scss`). Status keys kept
+ * verbatim so the existing template lookups work; only the value
+ * shifts from a hardcoded hex to `var(--token)`. Auto-adapts to
+ * light/dark theme via the cascade.
+ */
 const STATUS_COLORS: Record<string, string> = {
-  vacant_dirty: '#92400e',
-  vacant_clean: '#16a34a',
-  occupied_clean: '#006076',
-  occupied_dirty: '#d97706',
-  cleaning_in_progress: '#ca8a04',
-  cleaning_completed: '#059669',
-  inspected: '#4338ca',
-  out_of_service: '#6f797d',
-  out_of_order: '#ba1a1a',
-  maintenance_requested: '#ea580c',
+  vacant_dirty: 'var(--warning-strong)',
+  vacant_clean: 'var(--success)',
+  occupied_clean: 'var(--teal)',
+  occupied_dirty: 'var(--warning)',
+  cleaning_in_progress: 'var(--cyan)',
+  cleaning_completed: 'var(--success-strong)',
+  inspected: 'var(--purple-strong)',
+  out_of_service: 'var(--muted-text)',
+  out_of_order: 'var(--danger)',
+  maintenance_requested: 'var(--warning)',
 };
 
-/** KPI card definitions: id, label, icon, value source key */
+/** KPI card definitions: id, label, icon, value source key. The
+ *  `color` field is a `var(--token)` consumer; the cascade handles
+ *  light/dark theme switching. */
 const KPI_CARDS = [
-  { id: 'occupied', label: 'Ocupadas', icon: 'bed', key: 'occupied' as const, color: '#006076' },
-  { id: 'vacant_clean', label: 'Vacantes Limpias', icon: 'check_circle', key: 'clean_rooms' as const, color: '#16a34a' },
-  { id: 'pending', label: 'Pendientes', icon: 'report', key: 'pending_rooms' as const, color: '#92400e' },
-  { id: 'cleaning', label: 'En Limpieza', icon: 'cleaning_services', key: 'in_cleaning' as const, color: '#ca8a04' },
-  { id: 'inspected', label: 'Inspección', icon: 'fact_check', key: 'inspected' as const, color: '#4338ca' },
-  { id: 'maintenance', label: 'Mantenimiento', icon: 'build', key: 'maintenance_requested' as const, color: '#ea580c' },
-  { id: 'oos', label: 'F/Servicio', icon: 'block', key: 'out_of_service' as const, color: '#6f797d' },
-  { id: 'ooo', label: 'F/Orden', icon: 'dangerous', key: 'out_of_order' as const, color: '#ba1a1a' },
+  { id: 'occupied', label: 'Ocupadas', icon: 'bed', key: 'occupied' as const, color: 'var(--teal)' },
+  { id: 'vacant_clean', label: 'Vacantes Limpias', icon: 'check_circle', key: 'clean_rooms' as const, color: 'var(--success)' },
+  { id: 'pending', label: 'Pendientes', icon: 'report', key: 'pending_rooms' as const, color: 'var(--warning-strong)' },
+  { id: 'cleaning', label: 'En Limpieza', icon: 'cleaning_services', key: 'in_cleaning' as const, color: 'var(--cyan)' },
+  { id: 'inspected', label: 'Inspección', icon: 'fact_check', key: 'inspected' as const, color: 'var(--purple-strong)' },
+  { id: 'maintenance', label: 'Mantenimiento', icon: 'build', key: 'maintenance_requested' as const, color: 'var(--warning)' },
+  { id: 'oos', label: 'F/Servicio', icon: 'block', key: 'out_of_service' as const, color: 'var(--muted-text)' },
+  { id: 'ooo', label: 'F/Orden', icon: 'dangerous', key: 'out_of_order' as const, color: 'var(--danger)' },
 ];
 
 @Component({
@@ -122,7 +132,7 @@ export class HousekeepingDashboardPageComponent {
   }
 
   getStatusColor(status: string): string {
-    return STATUS_COLORS[status] ?? '#6f797d';
+    return STATUS_COLORS[status] ?? statusColor(null);
   }
 
   getStatusLabel(status: string): string {

@@ -1,9 +1,9 @@
 import { DatePipe, SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -39,7 +39,13 @@ export class LostAndFoundPageComponent {
   readonly searchQuery = signal('');
   readonly errorMessage = signal('');
 
-  readonly search$ = new Subject<string>();
+  /**
+   * Bump-friendly signal that drives the debounced search pipeline.
+   * Replaces the legacy ``Subject<string>`` pattern: ``onSearch(value)`` sets
+   * this signal, ``toObservable()`` below re-evaluates through debounceTime
+   * and triggers the ``_loadList`` refresh.
+   */
+  readonly searchTrigger = signal('');
 
   // Modal state
   readonly showCreateModal = signal(false);
@@ -61,12 +67,17 @@ export class LostAndFoundPageComponent {
     notes: '',
   });
 
-  // Status badge config
+  // Status badge config — bound to design tokens that ACTUALLY exist
+  // (the previous references `var(--color-warning/info/success/danger)`
+  // pointed at tokens that were NEVER declared in
+  // `_scss-variables.scss`, so the lost-and-found status pills
+  // rendered with empty/missing colors before this migration — visible
+  // bug fixed by Wave A color migration).
   readonly statusColor: Record<string, string> = {
-    pending: 'var(--color-warning)',
-    claimed: 'var(--color-info)',
-    returned: 'var(--color-success)',
-    disposed: 'var(--color-danger)',
+    pending: 'var(--warning)',
+    claimed: 'var(--accent)',
+    returned: 'var(--success)',
+    disposed: 'var(--danger)',
   };
 
   readonly statusLabel: Record<string, string> = {
@@ -85,8 +96,8 @@ export class LostAndFoundPageComponent {
 
     this._loadList();
 
-    // Debounced search
-    this.search$
+    // Debounced search — replaces the Subject<string> legacy pattern.
+    toObservable(this.searchTrigger)
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((query) => {
         this.searchQuery.set(query);
@@ -126,7 +137,7 @@ export class LostAndFoundPageComponent {
   }
 
   onSearch(value: string) {
-    this.search$.next(value);
+    this.searchTrigger.set(value);
   }
 
   openCreateModal() {

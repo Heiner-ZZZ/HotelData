@@ -4,7 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, ActiveShiftConflict, ScheduleMismatchDetail, ScheduleBypassForbiddenDetail, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
+import { SHIFTS_CREATE, SHIFTS_UPDATE } from '../../../../core/auth/permission.constants';
 
 @Component({
   selector: 'app-control-turnos-caja',
@@ -17,6 +19,7 @@ export class ControlTurnosCajaPageComponent {
   private readonly api = inject(ShiftsApiService);
   private readonly propCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
 
   readonly selectedPropId = this.propCtx.currentPropId;
   readonly selectedLabel = signal('');
@@ -26,6 +29,26 @@ export class ControlTurnosCajaPageComponent {
   readonly shift = signal<ShiftInfo | null>(null);
   readonly shiftTypeLabels = signal<Record<string, string>>({});
   readonly lastClosedShift = signal<ShiftInfo | null>(null);
+
+  /**
+   * Whether the current user can mutate a shift on this page.
+   *
+   * Combines the two back-end permission gates required to act on the
+   * cashbox flow:
+   * - ``shifts.create`` to open a new shift / add a force-override.
+   * - ``shifts.update`` to close a shift or add a deposit.
+   *
+   * When this returns ``false``, the page renders only the read-only
+   * history + details view (active shift info card, arqueo breakdown,
+   * transaction audit). Mutation buttons (open / close / deposit) are
+   * hidden from the template. The server still enforces these perms on
+   * POST endpoints, so this gate is purely a UX convenience to avoid
+   * 403 toasts — not a security boundary.
+   */
+  readonly canMutateShift = computed(() =>
+    this.auth.hasPermission(SHIFTS_CREATE) ||
+    this.auth.hasPermission(SHIFTS_UPDATE),
+  );
 
   // Shift open form
   readonly showOpenForm = signal(false);

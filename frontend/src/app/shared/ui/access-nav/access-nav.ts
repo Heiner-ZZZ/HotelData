@@ -8,7 +8,6 @@ import {
   ElementRef,
   HostListener,
   NgZone,
-  OnDestroy,
   inject,
   signal
 } from '@angular/core';
@@ -58,7 +57,7 @@ function isSubGroup(item: NavMenuItem | NavSubGroup): item is NavSubGroup {
   styleUrl: './access-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AccessNavComponent implements AfterViewInit, OnDestroy {
+export class AccessNavComponent implements AfterViewInit {
   private readonly authService = inject(AuthService);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
@@ -236,6 +235,17 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       .ensureSessionLoaded()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
+    // Drop the legacy ``ngOnDestroy`` lifecycle hook — register cleanup
+    // inline with ``DestroyRef.onDestroy`` so registration is co-located
+    // with the listeners they need to remove.
+    this.destroyRef.onDestroy(() => {
+      this.removePointerListener?.();
+      this.removePointerLeaveListener?.();
+      if (this.hoverCloseTimer) {
+        clearTimeout(this.hoverCloseTimer);
+        this.hoverCloseTimer = null;
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -266,15 +276,6 @@ export class AccessNavComponent implements AfterViewInit, OnDestroy {
       this.removePointerListener = () => element.removeEventListener('pointermove', onPointerMove);
       this.removePointerLeaveListener = () => element.removeEventListener('pointerleave', onPointerLeave);
     });
-  }
-
-  ngOnDestroy() {
-    this.removePointerListener?.();
-    this.removePointerLeaveListener?.();
-    if (this.hoverCloseTimer) {
-      clearTimeout(this.hoverCloseTimer);
-      this.hoverCloseTimer = null;
-    }
   }
 
   onMenuEnter(menuId: string) {

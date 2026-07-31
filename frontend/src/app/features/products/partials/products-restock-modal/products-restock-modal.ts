@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, EventEmitter, inject, Input, OnInit, Output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -19,9 +19,12 @@ export class ProductsRestockModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
-  @Input({ required: true }) product!: HotelProduct;
-  @Output() close = new EventEmitter<void>();
-  @Output() success = new EventEmitter<RestockResult>();
+  /** Product being restocked. Required input — modal renders nothing meaningful without it. */
+  readonly product = input.required<HotelProduct>();
+  /** Emits when the modal is closed (cancel button, backdrop click, or success path cleanup). */
+  readonly close = output<void>();
+  /** Emits when restock succeeds; parent refreshes product list / closes modal as needed. */
+  readonly success = output<RestockResult>();
 
   readonly form: FormGroup = this.fb.nonNullable.group({
     qty: [1, [Validators.required, Validators.min(0.01)]],
@@ -36,11 +39,16 @@ export class ProductsRestockModalComponent implements OnInit {
   /** Live preview of the total restock cost. */
   readonly totalPreview = signal(0);
 
+  /**
+   * Required inputs are only bound AFTER the constructor runs, so we cannot
+   * read ``this.product()`` in the constructor body. ngOnInit guarantees the
+   * input has a value when we pre-fill the form.
+   */
   ngOnInit(): void {
-    // Pre-fill with the last-known supplier (if any) and last unit cost.
+    const p = this.product();
     this.form.patchValue({
-      unit_cost: this.product.costPrice ?? 0,
-      supplier_name: this.product.defaultSupplier ?? '',
+      unit_cost: p.costPrice ?? 0,
+      supplier_name: p.defaultSupplier ?? '',
     });
     this.recalcTotal();
 
@@ -85,7 +93,7 @@ export class ProductsRestockModalComponent implements OnInit {
     this.submitError.set(null);
 
     this.productsApi
-      .restockProduct(propId, this.product.productId, {
+      .restockProduct(propId, this.product().productId, {
         qty: Number(v.qty),
         unit_cost: Number(v.unit_cost),
         supplier_name: v.supplier_name || undefined,

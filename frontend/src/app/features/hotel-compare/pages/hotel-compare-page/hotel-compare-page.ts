@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnDestroy, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map, switchMap } from 'rxjs';
 import { CompareMapComponent } from './components/compare-map';
 import { amenityIcon, carouselImages, categorizeAmenities, computeComparisonFlags, minRate, policyIcon } from './hotel-compare.helpers';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
@@ -15,19 +15,62 @@ import { HotelCompareApiService } from '../../services/hotel-compare-api.service
   styleUrl: './hotel-compare-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HotelComparePageComponent implements OnDestroy {
+export class HotelComparePageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly compareApi = inject(HotelCompareApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly compareData = signal<HotelCompareData | null>(null);
-  readonly propIds = signal<number[]>([]);
+  /** Reactive queryParams bridge — toSignal keeps URL the source of truth. */
+  private readonly qp = toSignal(this.activatedRoute.queryParamMap, {
+    initialValue: this.activatedRoute.snapshot.queryParamMap,
+  });
+
+  /** Multi-prop_id aggregation parameter — distinct + max 3. */
+  private readonly propIdsParam = computed(() => {
+    const raw = this.qp().getAll('prop_id').flatMap((v) => {
+      const n = Number(v);
+      return !Number.isNaN(n) && n > 0 ? [n] : [];
+    });
+    return [...new Set(raw)].slice(0, 3);
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    const ids = this.propIdsParam();
+    if (!ids.length) return 'empty';
+    const v = this.compareResource.value();
+    if (this.compareResource.isLoading() && !v) return 'loading';
+    const err = this.compareResource.error();
+    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
+    if (err) return 'error';
+    return v?.items.length ? 'success' : 'empty';
+  });
+
+  readonly compareData = computed(() => this.compareResource.value() ?? null);
+  readonly propIds = computed(() => this.propIdsParam());
   readonly expandedRooms = signal<Set<number>>(new Set());
   readonly imageErrors = signal<Set<string>>(new Set());
   readonly carouselSlides = signal<Map<number, number>>(new Map());
   private readonly _carouselTimers = new Map<number, ReturnType<typeof setInterval>>();
+
+  /** httpResource — auto-fetches whenever URL params change. */
+  readonly compareResource = httpResource<HotelCompareData>(() => {
+    const ids = this.propIdsParam();
+    if (!ids.length) return undefined;
+    const checkIn = this.qp().get('check_in') ?? '';
+    const checkOut = this.qp().get('check_out') ?? '';
+    const adults = Number(this.qp().get('adults') ?? '1');
+    const children = Number(this.qp().get('children') ?? '0');
+    const params = new URLSearchParams();
+    if (checkIn) params.set('check_in', checkIn);
+    if (checkOut) params.set('check_out', checkOut);
+    if (adults) params.set('adults', String(adults));
+    if (children) params.set('children', String(children));
+    const qs = params.toString();
+    return qs
+      ? `/api/hostels/compare?ids=${ids.join(',')}&${qs}`
+      : `/api/hostels/compare?ids=${ids.join(',')}`;
+  });
 
   readonly comparisonResults = computed(() => {
     const items = this.compareData()?.items;
@@ -40,38 +83,15 @@ export class HotelComparePageComponent implements OnDestroy {
   });
 
   constructor() {
-    this.activatedRoute.queryParamMap
-      .pipe(
-        map((qpm) => {
-          const raw = qpm.getAll('prop_id').flatMap((v) => {
-            const n = Number(v);
-            return !Number.isNaN(n) && n > 0 ? [n] : [];
-          });
-          return [...new Set(raw)].slice(0, 3);
-        }),
-        switchMap((ids) => {
-          if (!ids.length) {
-            this.viewState.set('empty');
-            return [];
-          }
-          this.propIds.set(ids);
-          const checkIn = this.activatedRoute.snapshot.queryParamMap.get('check_in') ?? '';
-          const checkOut = this.activatedRoute.snapshot.queryParamMap.get('check_out') ?? '';
-          const adults = Number(this.activatedRoute.snapshot.queryParamMap.get('adults') ?? '1');
-          const children = Number(this.activatedRoute.snapshot.queryParamMap.get('children') ?? '0');
-          this.viewState.set('loading');
-          return this.compareApi.compare(ids, checkIn, checkOut, adults, children);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data) => {
-          if (!data) return;
-          this.compareData.set(data);
-          this.viewState.set(data.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
+    // Carousel auto-play timers are torn down here instead of via
+    // ``ngOnDestroy``. ``DestroyRef.onDestroy`` runs during the same
+    // destruction phase so the lifecycle ordering is equivalent.
+    this.destroyRef.onDestroy(() => {
+      for (const timer of this._carouselTimers.values()) {
+        clearInterval(timer);
+      }
+      this._carouselTimers.clear();
+    });
   }
 
   readonly removeId = (id: number) => {
@@ -168,12 +188,5 @@ export class HotelComparePageComponent implements OnDestroy {
     const next = new Set(current);
     next.add(key);
     this.imageErrors.set(next);
-  }
-
-  ngOnDestroy() {
-    for (const timer of this._carouselTimers.values()) {
-      clearInterval(timer);
-    }
-    this._carouselTimers.clear();
   }
 }

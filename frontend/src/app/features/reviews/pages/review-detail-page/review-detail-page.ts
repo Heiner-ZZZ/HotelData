@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -21,12 +21,31 @@ import { FormsModule } from '@angular/forms';
 })
 export class ReviewDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly reviewsApi = inject(ReviewsApiService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly review = signal<ReviewDetailViewModel | null>(null);
+  // ── Reactive route param — httpResource re-fires when this changes ──
+  private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
+    initialValue: this.activatedRoute.snapshot.paramMap,
+  });
+  readonly reviewId = computed(() => this.paramMap().get('reviewId') ?? '');
+
+  readonly detailResource = httpResource<ReviewDetailViewModel>(() => {
+    const id = this.reviewId();
+    return id ? `/api/reviews/${id}` : undefined;
+  });
+
+  readonly review = computed(() => this.detailResource.value() ?? null);
+
+  readonly viewState = computed<ViewState>(() => {
+    const v = this.detailResource.value();
+    if (this.detailResource.isLoading() && !v) return 'loading';
+    const err = this.detailResource.error();
+    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
+    if (err) return 'error';
+    return v ? 'success' : 'loading';
+  });
+
   readonly actionMessage = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly staffResponseText = signal('');
@@ -41,25 +60,20 @@ export class ReviewDetailPageComponent {
   // Confirmation dialog
   readonly confirmAction = signal<{ type: 'approve' | 'reject'; label: string; status: string } | null>(null);
 
+  // Id-based init gate: pre-fills staffResponseText + resolves user role only
+  // once per fetched review (does NOT overwrite user's edits during a reload).
+  private initializedReviewId: string | null = null;
+
   constructor() {
-    this.activatedRoute.paramMap
-      .pipe(
-        switchMap(params => {
-          this.viewState.set('loading');
-          return this.reviewsApi.getReviewDetail(params.get('reviewId')!);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: data => {
-          this.review.set(data);
-          this.staffResponseText.set(data.staffResponse || '');
-          this.viewState.set('success');
-          // Resolve user role from auth context (set by middleware)
-          this.resolveUserRole();
-        },
-        error: () => this.viewState.set('error'),
-      });
+    effect(() => {
+      const detail = this.detailResource.value();
+      if (!detail) return;
+      if (this.initializedReviewId === detail.id) return;
+      this.initializedReviewId = detail.id;
+      // Initial pre-fill from backend (user can edit afterwards freely).
+      this.staffResponseText.set(detail.staffResponse || '');
+      this.resolveUserRole();
+    });
   }
 
   private resolveUserRole() {
@@ -117,12 +131,13 @@ export class ReviewDetailPageComponent {
     this.actionError.set(null);
     this.actionMessage.set(null);
     const reason = action.status === 'rejected' ? this.rejectionReason().trim() : '';
-    this.reviewsApi.moderateReview(this.review()!.id, action.status, reason).subscribe({
-      next: () => {
-        this.actionMessage.set(`Reseña ${action.label}da correctamente.`);
-        this.review.update(r => r ? { ...r, moderationStatus: action.status } : r);
-        this.rejectionReason.set('');
-      },
+    this.reviewsApi.moderateReview(this.review()!.id, action.status, reason).subscribe({        next: () => {
+          this.actionMessage.set(`Reseña ${action.label}da correctamente.`);
+          // Refetch detail so backend's new moderationStatus / staff_response
+          // propagate to the template via `review()` (computed).
+          this.detailResource.reload();
+          this.rejectionReason.set('');
+        },
       error: (err) => {
         const detail = err?.error?.detail || 'No se pudo moderar la reseña. Intenta nuevamente.';
         this.actionError.set(detail);

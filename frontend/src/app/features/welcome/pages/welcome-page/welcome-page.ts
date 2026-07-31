@@ -185,7 +185,12 @@ export class WelcomePageComponent {
 
   private readStoredCurrency(): string {
     const v = localStorage.getItem(CURRENCY_STORAGE_KEY);
-    return v && v.trim().length === 3 ? v.trim().toUpperCase() : 'USD';
+    if (v && v.trim().length === 3) return v.trim().toUpperCase();
+    // First-time visitor: fall back to the property context's default
+    // currency (also 'USD' on a fresh install, but this codepath keeps the
+    // single source of truth in PropertyContextService instead of leaking
+    // a literal that drifts over time).
+    return this.propertyCtx.currentCurrency();
   }
 
   private writeStoredCurrency(code: string): void {

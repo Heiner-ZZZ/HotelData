@@ -5,6 +5,7 @@ import { catchError, map, of, tap } from 'rxjs';
 import { toast } from '../toast/toast.service';
 import { API_CONFIG } from '../api/api.config';
 import type { AuthMeDto, AuthState } from './auth.models';
+import { SUPERUSER_WILDCARD, type PermissionCode } from './permission.constants';
 
 /**
  * Re-export `AuthUser` as a named type so feature services can do
@@ -84,13 +85,29 @@ export class AuthService {
     });
   }
 
-  /** Check if the current user has a specific permission code (or *.*).
-   *  Available for component-level permission checks (e.g. nav menus). */
-  readonly hasPermission = computed(() => {
+  /**
+   * Check if the current user has a specific permission code (or the
+   * ``*.*`` superuser wildcard). Available for component-level
+   * permission checks (action buttons, nav menus, route guards).
+   *
+   * Reads ``permissionCodes`` directly from the underlying signal, so
+   * callers that wrap this in a ``computed()`` will recompute whenever
+   * the user's permission set changes (login, logout, role elevation,
+   * session expiry). A plain method call in a template-only context
+   * is also reactive: Angular re-renders the template on every signal
+   * change, which re-evaluates this method.
+   *
+   * History: this was previously a ``computed()`` returning a closure
+   * (``this.auth.hasPermission()('shifts.create')``). That shape was
+   * unintuitive and tripped TS2554 in callers; it has been replaced by
+   * this plain method so callers write
+   * ``this.auth.hasPermission('shifts.create')`` directly.
+   */
+  hasPermission(code: PermissionCode): boolean {
     const codes = this.authStateSignal().permissionCodes;
-    if (codes.includes('*.*')) return (_code: string) => true;
-    return (code: string) => codes.includes(code);
-  });
+    if (codes.includes(SUPERUSER_WILDCARD)) return true;
+    return codes.includes(code);
+  }
 
   loadSession() {
     // If no stored session flag, skip the HTTP call entirely — avoids a

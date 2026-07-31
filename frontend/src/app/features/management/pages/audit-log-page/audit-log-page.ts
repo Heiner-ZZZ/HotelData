@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpClient, HttpParams, HttpErrorResponse, HttpResourceRequest, httpResource } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,12 +8,10 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { API_CONFIG } from '../../../../core/api/api.config';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -93,8 +92,22 @@ export class AuditLogPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly reports = inject(ReportsExportService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<AuditResponse | null>(null);
+  /** Reactive query-params bridge — toSignal keeps URL the source of truth. */
+  private readonly qp = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    const v = this.auditResource.value();
+    if (this.auditResource.isLoading() && !v) return 'loading';
+    const err = this.auditResource.error();
+    if (err instanceof HttpErrorResponse && err.status === 404) return 'empty';
+    if (err) return 'error';
+    return v?.items.length ? 'success' : 'empty';
+  });
+
+  /** Snapshot of filter UI state for the URL write-back. */
+  readonly data = computed(() => this.auditResource.value() ?? null);
   readonly filterOptions = signal<FilterOptions>({ entity_types: [], actions: [] });
   readonly selectedEntry = signal<AuditEntry | null>(null);
   readonly showDetail = signal(false);
@@ -155,25 +168,33 @@ export class AuditLogPageComponent {
     open: 'door_open',
   };
 
+  /** Reactive httpResource — re-fetches whenever qp() changes. */
+  readonly auditResource = httpResource<AuditResponse>(() => {
+    const q = this.qp();
+    const page = Number(q.get('page') ?? '1');
+    const entityType = q.get('entity_type') || this.filterForm.value.entityType || '';
+    const action = q.get('action') || this.filterForm.value.action || '';
+    const propId = Number(q.get('prop_id') || this.filterForm.value.propId || '0');
+    const fromDate = q.get('from_date') || this.filterForm.value.fromDate || '';
+    const toDate = q.get('to_date') || this.filterForm.value.toDate || '';
+    const params = new HttpParams()
+      .set('page', String(page))
+      .set('entity_type', entityType)
+      .set('action', action)
+      .set('prop_id', String(propId))
+      .set('from_date', fromDate)
+      .set('to_date', toDate);
+    const request: HttpResourceRequest = {
+      url: `${this.apiConfig.baseUrl}/management/audit-log`,
+      method: 'GET',
+      params,
+      withCredentials: true,
+    };
+    return request;
+  });
+
   constructor() {
     this.loadFilterOptions();
-    this.route.queryParamMap
-      .pipe(
-        map(() => this.buildParams()),
-        distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-        switchMap((params) => {
-          this.viewState.set('loading');
-          return this.fetchAuditLog(params);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (res) => {
-          this.data.set(res);
-          this.viewState.set(res.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
   }
 
   private loadFilterOptions(): void {
@@ -186,35 +207,6 @@ export class AuditLogPageComponent {
         next: (opts) => this.filterOptions.set(opts),
         // Silently fail — filters just won't show dropdowns
       });
-  }
-
-  private buildParams(): Record<string, string | number> {
-    const qp = this.route.snapshot.queryParamMap;
-    const params: Record<string, string | number> = {};
-    const page = Number(qp.get('page') || '1');
-    const entityType = qp.get('entity_type') || this.filterForm.value.entityType || '';
-    const action = qp.get('action') || this.filterForm.value.action || '';
-    const propId = Number(qp.get('prop_id') || this.filterForm.value.propId || '0');
-    const fromDate = qp.get('from_date') || this.filterForm.value.fromDate || '';
-    const toDate = qp.get('to_date') || this.filterForm.value.toDate || '';
-    if (page > 1) params['page'] = page;
-    if (entityType) params['entity_type'] = entityType;
-    if (action) params['action'] = action;
-    if (propId > 0) params['prop_id'] = propId;
-    if (fromDate) params['from_date'] = fromDate;
-    if (toDate) params['to_date'] = toDate;
-    return params;
-  }
-
-  private fetchAuditLog(params: Record<string, string | number>) {
-    let httpParams = new HttpParams();
-    Object.entries(params).forEach(([key, value]) => {
-      httpParams = httpParams.set(key, String(value));
-    });
-    return this.http.get<AuditResponse>(
-      `${this.apiConfig.baseUrl}/management/audit-log`,
-      { params: httpParams, withCredentials: true },
-    );
   }
 
   /** Navigate via Angular Router — this triggers the route.queryParamMap subscription

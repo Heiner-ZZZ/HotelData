@@ -178,6 +178,10 @@
   overflow-x: auto;
   border: 1px solid var(--app-border);
   background: var(--surface);
+  /* Anchor for .rc-now-line-overlay. Without `position: relative` it
+     resolves against the viewport and renders at the wrong horizontal
+     offset as the grid scrolls. */
+  position: relative;
 }
 
 /* ─── Header row ─── */
@@ -221,4 +225,3 @@
   color: var(--muted-text);
   --icon-opsz: 20;
 }
-

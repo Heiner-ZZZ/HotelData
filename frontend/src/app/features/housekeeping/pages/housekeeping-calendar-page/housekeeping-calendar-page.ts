@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { catchAndToastError } from '../../../../shared/utils/catch-and-toast';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -18,6 +19,7 @@ import {
   type CalendarDayTask,
   type CalendarRoomDay,
 } from '../../services/housekeeping-api.service';
+import { statusColor } from '../../../../shared/utils/semantic-color.helper';
 
 /** Generate ISO date string for today (local timezone-aware). */
 function todayIso(): string {
@@ -63,14 +65,19 @@ const TASK_TYPE_ICONS: Record<string, string> = {
   maintenance: 'build',
 };
 
-/** Status colors for task badges. */
+/**
+ * Status colors for task badges — DELGATED to
+ * {@link PALETTE_STATUS_MAP} in `semantic-color.helper.ts` so the
+ * light/dark theme cascade applies automatically. Status codes
+ * kept verbatim to preserve template lookups (`taskStatusColors[status]`).
+ */
 const TASK_STATUS_COLORS: Record<string, string> = {
-  pending: '#d97706',
-  in_progress: '#006076',
-  inspection: '#7c3aed',
-  completed: '#059669',
-  scheduled: '#ea580c',
-  maintenance: '#ba1a1a',
+  pending: 'var(--warning)',
+  in_progress: 'var(--teal)',
+  inspection: 'var(--purple-strong)',
+  completed: 'var(--success)',
+  scheduled: 'var(--warning)',
+  maintenance: 'var(--danger)',
 };
 
 /** Common staff names. */
@@ -225,8 +232,11 @@ export class HousekeepingCalendarPageComponent {
       }));
       this.closeQuickForm();
       this.calendarResource.reload();
-    } catch {
-      // error silently — the task list will show errors if needed
+    } catch (err) {
+      // Was silent — now logs dev + red toast so devs see which task failed
+      // (the prior behavior made the failures indistinguishable from a
+      // successful create).
+      catchAndToastError('housekeeping.quickTask', undefined)(err);
     } finally {
       this.quickFormBusy.set(false);
     }
@@ -275,7 +285,9 @@ export class HousekeepingCalendarPageComponent {
 
   /** Get task type color for the cell indicator. */
   getTaskType(task: CalendarDayTask): string {
-    return TASK_STATUS_COLORS[task.status] ?? TASK_STATUS_COLORS[task.task_type] ?? '#6f797d';
+    return TASK_STATUS_COLORS[task.status]
+      ?? TASK_STATUS_COLORS[task.task_type]
+      ?? statusColor(null);
   }
 
   /** Priority class. */

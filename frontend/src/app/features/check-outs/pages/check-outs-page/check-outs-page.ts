@@ -6,7 +6,6 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { API_CONFIG } from '../../../../core/api/api.config';
 
@@ -60,15 +59,23 @@ export class CheckOutsPageComponent {
   });
 
   // ── Route params as signals ──
-  private readonly routeParams = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => ({
-        propId: Number(params.get('prop_id') ?? '0'),
-        operationDate: params.get('date') || todayIso(),
-      })),
-      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
-    ),
-    { initialValue: { propId: 0, operationDate: todayIso() } }
+  // The legacy `distinctUntilChanged(...)` operator is replaced by `computed`'s
+  // `equal` option — the comparator runs after every queryParamMap emission
+  // and downstream consumers (httpResource URL formula + selectedPropId /
+  // selectedPropName computeds) re-evaluate only when propId or operationDate
+  // actually change.
+  private readonly queryParamMap = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  private readonly routeParams = computed(
+    () => ({
+      propId: Number(this.queryParamMap().get('prop_id') ?? '0'),
+      operationDate: this.queryParamMap().get('date') || todayIso(),
+    }),
+    {
+      equal: (a, b) => a.propId === b.propId && a.operationDate === b.operationDate,
+    },
   );
 
   // ── Declarative data fetching ──

@@ -6,7 +6,10 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { FavoritesService } from '../../../../core/favorites/favorites.service';
 import { toast } from '../../../../core/toast/toast.service';
 import { TrackingService } from '../../../../core/tracking/tracking.service';
-import { placeholderImageUrl } from '../../../../shared/utils/placeholder-image.util';
+import {
+  isValidImageUrl,
+  placeholderImageUrl,
+} from '../../../../shared/utils/placeholder-image.util';
 import type { HotelSearchResult } from '../../models/hotel-search.model';
 
 @Component({
@@ -36,28 +39,44 @@ export class HotelCardComponent implements OnInit {
 
   /** Custom hotel photos — httpResource, auto-fetches when hotel changes. */
   private readonly hotelPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
-    () => `/api/public/hotels/${this.hotel().id}/images`,
+    () => this.hotel().id
+      ? `/api/public/hotels/${this.hotel().id}/images`
+      : undefined,
   );
 
   /** Amenity photos — httpResource, auto-fetches when hotel changes. */
   private readonly amenityPhotosRes = httpResource<{ ok: boolean; photos: { url: string }[] }>(
-    () => `/api/amenities/photos/property/${this.hotel().id}`,
+    () => this.hotel().id
+      ? `/api/amenities/photos/property/${this.hotel().id}`
+      : undefined,
   );
 
   /** Room-type images — httpResource, auto-fetches when hotel changes. */
   private readonly roomPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
-    () => `/api/public/hotels/${this.hotel().id}/room-images`,
+    () => this.hotel().id
+      ? `/api/public/hotels/${this.hotel().id}/room-images`
+      : undefined,
   );
 
   readonly BASE_GALLERY_COUNT = 3;
 
-  /** Combined gallery: hotel images + room-type images + placeholder seeds + amenity photos. */
+  /** Combined gallery: hotel images + room-type images + placeholder seeds + amenity photos.
+   *  Hybrid pattern: backend URLs render first; loremflickr placeholders decorate the tail
+   *  even when the backend has supplied its own photos. Empty/whitespace URLs are
+   *  filtered out so `<img src="">` never reaches the DOM (browser would resolve it
+   *  to the current page URL and silently skip the onError handler). */
   readonly galleryImages = computed(() => {
     const h = this.hotel();
     if (this.fallbackImg()) return [];
-    const hotelImgs = (this.hotelPhotosRes.value()?.images ?? []).map((img) => img.image_url);
-    const roomImgs = (this.roomPhotosRes.value()?.images ?? []).map((img) => img.image_url);
-    const amenityImgs = (this.amenityPhotosRes.value()?.photos ?? []).map((p) => p.url);
+    const hotelImgs = (this.hotelPhotosRes.value()?.images ?? [])
+      .map((img) => img.image_url)
+      .filter(isValidImageUrl);
+    const roomImgs = (this.roomPhotosRes.value()?.images ?? [])
+      .map((img) => img.image_url)
+      .filter(isValidImageUrl);
+    const amenityImgs = (this.amenityPhotosRes.value()?.photos ?? [])
+      .map((p) => p.url)
+      .filter(isValidImageUrl);
     const placeholders = [
       placeholderImageUrl(`${h.id}1`),
       placeholderImageUrl(`${h.id}2`),
@@ -144,11 +163,22 @@ export class HotelCardComponent implements OnInit {
 
   get summaryText(): string {
     const h = this.hotel();
-    const destinations = h.destinationLabels.length
-      ? `Ideal para ${h.destinationLabels.slice(0, 2).join(' y ')}.`
+    // No defensive `?? []` here. The mapper is the single canonical audit
+    // point — if `destinationLabels` ever arrives undefined, the mapper
+    // already rejected that item and toasts a wire-shape regression in dev.
+    // Trusting the canonical type lets a real backend bug crash loudly
+    // instead of being masked by a silent fallback that misleads the user
+    // with the generic "Disponible para estancias urbanas…" copy.
+    const labels = h.destinationLabels;
+    const destinations = labels.length > 0
+      ? `Ideal para ${labels.slice(0, 2).join(' y ')}.`
       : 'Disponible para estancias urbanas y escapadas de viaje.';
-    const review = h.reviewScore ? `Puntuación ${h.reviewScore.toFixed(1)}/10. ` : '';
-    const rooms = h.availableRoomTypesCount ? `${h.availableRoomTypesCount} tipo(s) de habitación disponible(s). ` : '';
+    const review = h.reviewScore != null
+      ? `Puntuación ${h.reviewScore.toFixed(1)}/10. `
+      : '';
+    const rooms = h.availableRoomTypesCount
+      ? `${h.availableRoomTypesCount} tipo(s) de habitación disponible(s). `
+      : '';
     return `${review}${rooms}${destinations}`;
   }
 

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, effect, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { switchMap, timer, map, BehaviorSubject } from 'rxjs';
+import { switchMap, timer, map } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
 import type { EmployeePortal, PortalTasksData, PortalTask } from '../../models/hr.model';
@@ -16,12 +16,18 @@ import { toast } from '../../../../core/toast/toast.service';
   styleUrl: './employee-dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EmployeeDashboardPageComponent implements OnDestroy {
+export class EmployeeDashboardPageComponent {
   private readonly api = inject(HrApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
-  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  /**
+   * Bump signal that triggers a re-fetch of the portal stream when its value
+   * changes. Replaces the legacy ``BehaviorSubject<void>`` refresh pattern;
+   * week navigation + check-in/out flows increment it.
+   */
+  private readonly refreshTrigger = signal(0);
   private autoCheckinDone = false;
   private autoCheckoutTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -63,7 +69,7 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
   });
 
   readonly portal = toSignal(
-    this.refresh$.pipe(
+    toObservable(this.refreshTrigger).pipe(
       switchMap(() => this.route.paramMap),
       switchMap(params => {
         const employeeId = params.get('employeeId') || '';
@@ -118,6 +124,11 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
   }
 
   constructor() {
+    // Auto check-out timer cleanup is registered inline with ``DestroyRef``,
+    // replacing the legacy ``ngOnDestroy`` hook. Angular 22 fires ``onDestroy``
+    // callbacks during the same destruction phase as the lifecycle hook.
+    this.destroyRef.onDestroy(() => this._clearAutoCheckoutTimer());
+
     // ── Auto register attendance on first load if shift is pending ──
     effect(() => {
       const data = this.portal();
@@ -127,10 +138,6 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
       this._scheduleAutoCheckout(data);
       this._loadPortalTasks();
     });
-  }
-
-  ngOnDestroy() {
-    this._clearAutoCheckoutTimer();
   }
 
   /** Auto register check-in when shift is pending */
@@ -148,7 +155,7 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
     this.api.shiftCheckIn(shift.id, data.employee.id).subscribe({
       next: () => {
         this.shiftLoading.set(false);
-        this.refresh$.next();
+        this.refreshTrigger.update(v => v + 1);
         toast(
           `Asistencia registrada automáticamente el ${dateStr} a las ${timeStr}`,
           'success',
@@ -196,7 +203,7 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
       this.api.shiftCheckOut(shift.id, data.employee.id).subscribe({
         next: () => {
           this.shiftLoading.set(false);
-          this.refresh$.next();
+          this.refreshTrigger.update(v => v + 1);
           toast(
             `Check-out automático registrado a las ${timeStr}`,
             'success',
@@ -247,16 +254,14 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
     const shift = data.currentShift;
     const action = shift.status === 'active'
       ? this.api.shiftCheckOut(shift.id, employeeId)
-      : this.api.shiftCheckIn(shift.id, employeeId);
-
-    action.subscribe({
+      : this.api.shiftCheckIn(shift.id, employeeId);      action.subscribe({
       next: () => {
         // Cancel auto check-out timer if user manually checked out
         if (shift.status === 'active') {
           this._clearAutoCheckoutTimer();
         }
         this.shiftLoading.set(false);
-        this.refresh$.next();
+        this.refreshTrigger.update(v => v + 1);
         const msg = shift.status === 'active'
           ? 'Check-out registrado correctamente.'
           : 'Asistencia registrada correctamente.';
@@ -272,19 +277,19 @@ export class EmployeeDashboardPageComponent implements OnDestroy {
   /** Navegar a la semana anterior */
   goPrevWeek() {
     this.weekOffset.update(v => v - 1);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   /** Navegar a la semana siguiente */
   goNextWeek() {
     this.weekOffset.update(v => v + 1);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   /** Volver a la semana actual */
   goCurrentWeek() {
     this.weekOffset.set(0);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   /** Navegar al historial de asistencias */

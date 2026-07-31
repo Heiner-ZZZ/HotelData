@@ -17,12 +17,21 @@ interface ToastPalette {
   label: string;
 }
 
+/**
+ * Toast backgrounds — bound to design tokens (`--danger`, `--warning`,
+ * `--accent`, `--success`, `--gray-800`) defined in
+ * `src/styles/_scss-variables.scss`. They auto-adapt to the active
+ * theme via [data-theme="dark"] overrides, so a ``success`` toast in
+ * dark mode uses the brighter `--success: #3fb950` while remaining
+ * green. Inline `var(--token)` works as an inline-style value because
+ * the browser resolves the variable at paint time.
+ */
 const PALETTES: Record<ToastType, ToastPalette> = {
-  error:   { bg: '#dc3545', icon: '✕',  label: 'Error' },
-  warning: { bg: '#f59e0b', icon: '⚠',  label: 'Advertencia' },
-  info:    { bg: '#0d6efd', icon: 'ℹ',  label: 'Información' },
-  success: { bg: '#16a34a', icon: '✓',  label: 'Éxito' },
-  dark:    { bg: '#1e293b', icon: '◉',  label: 'Notificación' },
+  error:   { bg: 'var(--danger)',   icon: '✕', label: 'Error' },
+  warning: { bg: 'var(--warning)',  icon: '⚠', label: 'Advertencia' },
+  info:    { bg: 'var(--accent)',   icon: 'ℹ', label: 'Información' },
+  success: { bg: 'var(--success)',  icon: '✓', label: 'Éxito' },
+  dark:    { bg: 'var(--gray-800)', icon: '◉', label: 'Notificación' },
 };
 
 /** Smooth fade-out transition — lasts 400ms with ease-out deceleration. */
@@ -63,7 +72,10 @@ export function toast(
   if (existing) existing.remove();
 
   const palette = PALETTES[type];
-  const textColor = type === 'warning' ? '#1e293b' : '#fff';
+  // Warning bg is amber-light → use dark text token; other types use
+  // their inverse-on-bg token (all defined as `--on-{success,danger,
+  // accent,warning}` so light/dark themes pick the right contrast).
+  const textColor = type === 'warning' ? 'var(--warning-strong)' : 'var(--on-accent)';
 
   const container = document.createElement('div');
   container.id = 'hoteldata-toast';

@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, viewChild } from '@angular/core';
 import maplibregl from 'maplibre-gl';
 import type { HotelCompareItem } from '../../../models/hotel-compare.model';
 
@@ -8,13 +8,25 @@ import type { HotelCompareItem } from '../../../models/hotel-compare.model';
   styleUrl: './compare-map.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CompareMapComponent implements OnDestroy, AfterViewInit {
+export class CompareMapComponent implements AfterViewInit {
   readonly hotels = input<HotelCompareItem[]>([]);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly _mapContainer = viewChild<ElementRef<HTMLElement>>('mapContainer');
   private _map: maplibregl.Map | null = null;
   private _userMarker: maplibregl.Marker | null = null;
   private _hotelMarkers: maplibregl.Marker[] = [];
+
+  constructor() {
+    // Map lifecycle is teardown here, replacing ``ngOnDestroy``. The
+    // ``DestroyRef.onDestroy`` callback fires during the same destruction
+    // phase as the legacy lifecycle hook.
+    this.destroyRef.onDestroy(() => {
+      this._destroyMarkers();
+      this._map?.remove();
+      this._map = null;
+    });
+  }
 
   ngAfterViewInit() {
     const el = this._mapContainer();
@@ -118,11 +130,5 @@ export class CompareMapComponent implements OnDestroy, AfterViewInit {
       bounds.extend([h.longitude, h.latitude]);
     }
     this._map.fitBounds(bounds, { padding: 60, maxZoom: 10 });
-  }
-
-  ngOnDestroy() {
-    this._destroyMarkers();
-    this._map?.remove();
-    this._map = null;
   }
 }

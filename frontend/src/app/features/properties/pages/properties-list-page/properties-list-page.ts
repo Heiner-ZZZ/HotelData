@@ -1,9 +1,9 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -30,13 +30,31 @@ import { PropertiesApiService } from '../../services/properties-api.service';
 })
 export class PropertiesListPageComponent {
   private readonly api = inject(PropertiesApiService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly vm = signal<PropertiesDashboardViewModel | null>(null);
+  /** Reactive queryParams bridge — toSignal keeps URL the source of truth. */
+  private readonly qp = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  /** Derived filter — single computed surface that drives both the URL
+   *  navigation and the httpResource request below. */
+  private readonly queryParams = computed(() => ({
+    q: this.qp().get('q') ?? '',
+    page: Number(this.qp().get('page') ?? '1') || 1,
+  }));
+
+  readonly viewState = computed<ViewState>(() => {
+    const v = this.dashboardResource.value();
+    if (this.dashboardResource.isLoading() && !v) return 'loading';
+    const err = this.dashboardResource.error();
+    if (err) return 'error';
+    return v ? 'success' : 'loading';
+  });
+
+  readonly vm = computed(() => this.dashboardResource.value() ?? null);
   readonly chartView = signal<'daily' | 'weekly'>('weekly');
   readonly todayStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -44,29 +62,24 @@ export class PropertiesListPageComponent {
     q: ['']
   });
 
+  /** Side-effect bridge: keep the search `<input>` in sync with the URL's
+   *  canonical `q` value. Lives in an effect (not in the httpResource request
+   *  function) because Angular docs warn request functions may be called
+   *  repeatedly during resource tracking and must remain pure. */
   constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => ({
-          q: params.get('q') ?? '',
-          page: Number(params.get('page') ?? '1') || 1
-        })),
-        distinctUntilChanged((prev, curr) => prev.q === curr.q && prev.page === curr.page),
-        switchMap(({ q, page }) => {
-          this.form.controls.q.setValue(q, { emitEvent: false });
-          this.viewState.set('loading');
-          return this.api.getDashboard(q, page);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (dashboard) => {
-          this.vm.set(dashboard);
-          this.viewState.set('success');
-        },
-        error: () => this.viewState.set('error')
-      });
+    effect(() => {
+      const { q } = this.queryParams();
+      if (this.form.controls.q.value !== q) {
+        this.form.controls.q.setValue(q, { emitEvent: false });
+      }
+    });
   }
+
+  /** httpResource — auto-fetches when q or page changes. Pure request builder. */
+  readonly dashboardResource = httpResource<PropertiesDashboardViewModel>(() => {
+    const { q, page } = this.queryParams();
+    return q ? `/api/management/properties/dashboard?q=${encodeURIComponent(q)}&page=${page}` : `/api/management/properties/dashboard?page=${page}`;
+  });
 
   chartMaxRevenue(): number {
     const chart = this.vm()?.revenueChart;

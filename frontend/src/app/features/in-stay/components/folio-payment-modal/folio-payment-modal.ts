@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import type { LedgerFolio } from '../../../expenses/models/ledger.model';
@@ -20,25 +20,23 @@ const PAYMENT_METHODS = [
   styleUrl: './folio-payment-modal.scss',
 })
 export class FolioPaymentModalComponent {
-  @Input() mode: ModalMode = 'payment';
-  @Input() folio: LedgerFolio | null = null;
-  @Input() availableFolios: LedgerFolio[] = [];
+  /** 'payment' shows method picker + folio balance guard; 'transfer' shows target-folio picker. */
+  readonly mode = input<ModalMode>('payment');
+  /** Folio being paid into (or transferred FROM in transfer mode). */
+  readonly folio = input<LedgerFolio | null>(null);
+  /** Other open folios available as transfer targets (only used when mode === 'transfer'). */
+  readonly availableFolios = input<LedgerFolio[]>([]);
+  /**
+   * Server error message surfaced by the parent after a failed API call.
+   * Parent is responsible for clearing its own ``submitting`` flag — the
+   * modal is purely presentational.
+   */
+  readonly serverError = input<string | null>(null);
 
-  /** Server error from parent (set via property binding after failed API call) */
-  @Input()
-  set serverError(value: string | null) {
-    if (value) {
-      this.submitting.set(false);
-      this._serverError.set(value);
-    }
-  }
-  get serverError(): string | null {
-    return this._serverError();
-  }
-  private readonly _serverError = signal<string | null>(null);
-
-  @Output() close = new EventEmitter<void>();
-  @Output() confirmed = new EventEmitter<{
+  /** Fires when the user closes the modal (close button or backdrop click). */
+  readonly close = output<void>();
+  /** Fires when the user clicks Confirmar; parent performs the actual API call. */
+  readonly confirmed = output<{
     amount: number;
     method?: string;
     notes: string;
@@ -51,53 +49,61 @@ export class FolioPaymentModalComponent {
   readonly selectedMethod = signal('cash');
   readonly targetFolioId = signal('');
   readonly notes = signal('');
+  /** Local "submit in flight" flag — controls Confirm/Espinar button disabled state and spinner. */
   readonly submitting = signal(false);
+  /** Inline validation messages (empty string by default). Distinct from serverError input. */
+  readonly localError = signal<string | null>(null);
 
   selectMethod(method: string): void {
     this.selectedMethod.set(method);
+    this.localError.set(null);
   }
+
+  /** Derived title from mode — replaces the legacy getter. */
+  readonly title = computed(() => this.mode() === 'payment' ? 'Registrar Pago' : 'Transferir Cargos');
+
+  /**
+   * Derived list of transfer-target folios. Excludes the source folio and
+   * only includes folios currently open. Replaces the legacy getter.
+   */
+  readonly targetFolios = computed(() =>
+    this.availableFolios().filter(f => f.folioId !== this.folio()?.folioId && f.status === 'open')
+  );
 
   confirm(): void {
     const amt = this.amount();
     if (!amt || amt <= 0) {
-      this._serverError.set('Ingresa un monto válido mayor a 0.');
+      this.localError.set('Ingresa un monto válido mayor a 0.');
       return;
     }
 
-    if (this.mode === 'transfer' && !this.targetFolioId()) {
-      this._serverError.set('Selecciona un folio destino.');
+    if (this.mode() === 'transfer' && !this.targetFolioId()) {
+      this.localError.set('Selecciona un folio destino.');
       return;
     }
 
-    if (this.mode === 'payment' && amt > (this.folio?.balance ?? 0)) {
-      this._serverError.set(`El monto excede el saldo pendiente (${this.folio?.balance})`);
+    const folioBalance = this.folio()?.balance ?? 0;
+    if (this.mode() === 'payment' && amt > folioBalance) {
+      this.localError.set(`El monto excede el saldo pendiente (${folioBalance})`);
       return;
     }
 
-    if (this.mode === 'transfer') {
-      const target = this.availableFolios.find(f => f.folioId === this.targetFolioId());
+    if (this.mode() === 'transfer') {
+      const target = this.targetFolios().find(f => f.folioId === this.targetFolioId());
       if (!target) {
-        this._serverError.set('Folio destino no encontrado.');
+        this.localError.set('Folio destino no encontrado.');
         return;
       }
     }
 
-    this._serverError.set(null);
+    this.localError.set(null);
     this.submitting.set(true);
 
     this.confirmed.emit({
       amount: amt,
-      method: this.mode === 'payment' ? this.selectedMethod() : undefined,
+      method: this.mode() === 'payment' ? this.selectedMethod() : undefined,
       notes: this.notes(),
-      targetFolioId: this.mode === 'transfer' ? this.targetFolioId() : undefined,
+      targetFolioId: this.mode() === 'transfer' ? this.targetFolioId() : undefined,
     });
-  }
-
-  get title(): string {
-    return this.mode === 'payment' ? 'Registrar Pago' : 'Transferir Cargos';
-  }
-
-  get targetFolios(): LedgerFolio[] {
-    return this.availableFolios.filter(f => f.folioId !== this.folio?.folioId && f.status === 'open');
   }
 }

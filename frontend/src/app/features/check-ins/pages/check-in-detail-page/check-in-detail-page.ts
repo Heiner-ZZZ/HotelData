@@ -1,7 +1,9 @@
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+
+import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -38,9 +40,27 @@ export class CheckInDetailPageComponent {
   private readonly api = inject(CheckInsApiService);
 
   readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<CheckInDetailDto | null>(null);
+  readonly data = computed(() => this.detailResource.value() ?? null);
   readonly successMessage = signal('');
   readonly errorMessage = signal('');
+
+  // ── Reactive route param → httpResource (re-fires on bookingId change) ──
+  private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
+    initialValue: this.activatedRoute.snapshot.paramMap,
+  });
+  readonly bookingId = computed(() => this.paramMap().get('bookingId') ?? '');
+
+  readonly detailResource = httpResource<CheckInDetailDto>(() => {
+    const id = this.bookingId();
+    return id ? `/management/check-ins/${id}/detail` : undefined;
+  });
+
+  /**
+   * Id-gate for the wizard init effect: pre-fills the 8 backend-derived fields,
+   * the localStorage overlay, and the currentStep exactly once per fetched
+   * booking_id. Reloads after completeCheckIn() don't reset user edits.
+   */
+  private lastInitializedId: string | null = null;
 
   // ── Wizard state ──
   readonly currentStep = signal(1);
@@ -115,41 +135,45 @@ export class CheckInDetailPageComponent {
   private readonly STORAGE_PREFIX = 'ciw_draft_';
 
   constructor() {
-    // Restore any draft from localStorage
-    this.activatedRoute.paramMap
-      .pipe(
-        map((params) => params.get('bookingId') ?? ''),
-        distinctUntilChanged(),
-        map((bookingId) => {
-          this.storageKey = this.STORAGE_PREFIX + bookingId;
-          this.viewState.set('loading');
-          return bookingId;
-        }),
-        switchMap((bookingId) => this.api.getCheckInDetail(bookingId)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
-          // Always restore backend-saved fields first
-          this.arrivalTime.set(detail.check_in_arrival_time || '');
-          this.hasCompanions.set(detail.check_in_has_companions || false);
-          this.companionsCount.set(detail.check_in_companions_count || 0);
-          this.documentVerified.set(detail.check_in_document_verified || false);
-          this.keysDelivered.set(detail.check_in_keys_delivered || false);
-          this.paymentPending.set(detail.check_in_payment_pending || false);
-          this.depositReceived.set(detail.check_in_deposit_received || false);
-          this.privacySigned.set(detail.check_in_privacy_signed || false);
-          this.observations.set(detail.check_in_observations || '');
-          // Then overlay localStorage draft (if newer)
-          this._restoreDraft();
-          if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
-          this.viewState.set('success');
-        },
-        error: (err: ApiError) => {
-          this.viewState.set(err.status === 404 ? 'empty' : 'error');
-        },
-      });
+    // Single effect handles: error → viewState('error'|'empty'),
+    // first fetch → bind storage key + pre-fill backend fields + overlay
+    // localStorage draft + set currentStep if stay_status indicates completed.
+    //
+    // Id-gate ensures reload() after completeCheckIn() does NOT overwrite
+    // user-edited wizard fields. The backend already received those edits via
+    // completeCheckInWithDetail() call below.
+    effect(() => {
+      const detail = this.detailResource.value();
+      const err = this.detailResource.error();
+
+      if (err) {
+        const status = err instanceof HttpErrorResponse ? err.status : undefined;
+        this.viewState.set(status === 404 ? 'empty' : 'error');
+        return;
+      }
+      if (!detail) {
+        this.viewState.set('loading');
+        return;
+      }
+      if (this.lastInitializedId === detail.booking_id) return;
+      this.lastInitializedId = detail.booking_id;
+
+      this.storageKey = this.STORAGE_PREFIX + detail.booking_id;
+      // Always restore backend-saved fields first
+      this.arrivalTime.set(detail.check_in_arrival_time || '');
+      this.hasCompanions.set(detail.check_in_has_companions || false);
+      this.companionsCount.set(detail.check_in_companions_count || 0);
+      this.documentVerified.set(detail.check_in_document_verified || false);
+      this.keysDelivered.set(detail.check_in_keys_delivered || false);
+      this.paymentPending.set(detail.check_in_payment_pending || false);
+      this.depositReceived.set(detail.check_in_deposit_received || false);
+      this.privacySigned.set(detail.check_in_privacy_signed || false);
+      this.observations.set(detail.check_in_observations || '');
+      // Then overlay localStorage draft (if newer)
+      this._restoreDraft();
+      if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
+      this.viewState.set('success');
+    }, { allowSignalWrites: true });
 
     // Persist wizard fields to localStorage on every change
     effect(() => {
@@ -174,8 +198,11 @@ export class CheckInDetailPageComponent {
     if (!this.storageKey) return;
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(draft));
-    } catch {
-      // localStorage full or unavailable — silently ignore
+    } catch (err) {
+      // Was silent — now logs dev + warning toast so dev sees when localStorage
+      // is full/unavailable (was previously invisible, hiding hard-to-debug
+      // "my draft didn't save" complaints).
+      catchAndToastWarning('check-in.localStorage.persist', undefined)(err);
     }
   }
 
@@ -197,8 +224,9 @@ export class CheckInDetailPageComponent {
       if (typeof saved['step'] === 'number' && saved['step'] >= 1 && saved['step'] <= 5) {
         this.currentStep.set(saved['step']);
       }
-    } catch {
-      // Ignore corrupt localStorage data
+    } catch (err) {
+      // Corrupt JSON or storage access error — was silent; now visible.
+      catchAndToastWarning('check-in.localStorage.restore', undefined)(err);
     }
   }
 
@@ -207,8 +235,9 @@ export class CheckInDetailPageComponent {
     if (!this.storageKey) return;
     try {
       localStorage.removeItem(this.storageKey);
-    } catch {
-      // ignore
+    } catch (err) {
+      // Was silent — now visible.
+      catchAndToastWarning('check-in.localStorage.clear', undefined)(err);
     }
   }
 
@@ -260,10 +289,9 @@ export class CheckInDetailPageComponent {
           this._clearDraft();
           this.successMessage.set(`Check-in completado — Folio: ${result.folio || 'N/A'}`);
           this.currentStep.set(5);
-          // Reload
-          this.api.getCheckInDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (updated) => this.data.set(updated),
-          });
+          // Refresh detail; the init effect's id-gate preserves user-edited
+          // wizard fields across this refetch.
+          this.detailResource.reload();
         },
         error: (err: ApiError) => {
           this.completing.set(false);

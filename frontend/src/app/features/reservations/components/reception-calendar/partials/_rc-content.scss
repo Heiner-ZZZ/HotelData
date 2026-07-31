@@ -21,9 +21,18 @@
 
 .rc-cell-day {
   align-items: center;
-  padding: 0.3rem 0.1rem;
+  /* position:relative anchors the HH:MM .rc-now-dot positioned within the
+     today header cell. */
+  position: relative;
+  /* Generous bottom padding + 2px border-bottom separator + soft background.
+     Gives the HH:MM dot/label (anchored absolute at the top of the cell)
+     clear visual breathing room from the first room row below, and the
+     border makes the header↔body break crisp instead of ragged. */
+  padding: 0.45rem 0.5rem 1rem;
   border-left: 1px solid var(--app-border);
-  min-width: 60px;
+  border-bottom: 2px solid var(--app-border);
+  background: var(--surface-soft);
+  min-width: 110px;
 }
 
 .rc-day-name {
@@ -41,6 +50,13 @@
   line-height: 1.4;
 }
 
+.rc-cell-weekend {
+  .rc-day-name { color: color-mix(in srgb, var(--accent) 50%, var(--muted-text)); }
+}
+
+/* Cascade analogy with the body-cell swap below: header weekend-today days
+   keep today's tint and day-num badge instead of losing them to weekend.
+   Declared SECOND so `.rc-cell-today` wins on weekend-today headers. */
 .rc-cell-today {
   background: color-mix(in srgb, var(--accent) 6%, var(--surface-soft));
 
@@ -53,10 +69,6 @@
     align-items: center;
     justify-content: center;
   }
-}
-
-.rc-cell-weekend {
-  .rc-day-name { color: color-mix(in srgb, var(--accent) 50%, var(--muted-text)); }
 }
 
 /* ─── Reservation rows ─── */
@@ -97,36 +109,41 @@
 }
 
 .rc-cell-bg {
+  /* position:relative anchors the per-cell .rc-now-line span positioned at
+     `left:%` via the live HH:MM signal update. */
+  position: relative;
   border-left: 1px solid color-mix(in srgb, var(--app-border) 30%, transparent);
-  min-width: 60px;
+  min-width: 110px;
+}
+
+/* Cascade order matters when day.isToday && day.isWeekend both apply:
+   weekend declared FIRST so today's accent tint wins on weekend days,
+   keeping visual continuity of "today" across the whole grid. Occupied
+   stays LAST so its stronger highlight wins over the today tint when a
+   cell has reservations (intentional — the cell needs to read as busy). */
+.rc-cell-bg.rc-cell-weekend {
+  background: color-mix(in srgb, var(--surface-soft) 30%, transparent);
 }
 
 .rc-cell-bg.rc-cell-today {
   background: color-mix(in srgb, var(--accent) 2%, transparent);
 }
 
-.rc-cell-bg.rc-cell-weekend {
-  background: color-mix(in srgb, var(--surface-soft) 30%, transparent);
-}
-
 .rc-cell-occupied {
   background: var(--accent-light);
 }
 
-/* ─── Drag row states ─── */
-
-.rc-row-drag-over {
+/* ─── CDK drag-drop states ───
+   Angular CDK applies these classes automatically — no manual toggle needed.
+   The highlight on receiving tells the user "this room will accept the drop". */
+.cdk-drop-list-receiving {
   background: var(--accent-light);
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-.rc-row-drag-src {
-  opacity: 0.4;
-}
-
-/* ═══════════════════════════════════════════════════════════════
+/* ════════════════════════════════
    BARS
-   ═══════════════════════════════════════════════════════════════ */
+   ════════════════════════════════ */
 
 .rc-bar {
   position: absolute;
@@ -156,13 +173,29 @@
   }
 }
 
-.rc-bar-drag {
+/* CDK drag-specific states. The base .rc-bar styles apply to the placeholder
+   and preview too, so the ghost retains its rhomboid shape. These additions
+   cover cursor + per-state visual emphasis. */
+.cdk-drag {
   cursor: grab;
   &:active { cursor: grabbing; }
 }
 
-.rc-bar-dragging {
+.cdk-drag-dragging {
   opacity: 0.35;
+}
+
+.cdk-drag-placeholder {
+  /* Ghost element left at the source row while dragging. Inherits
+     the rhomboid clip-path from .rc-bar but is faded so the user
+     sees a "hole" where the bar is moving from. */
+  opacity: 0.5;
+}
+
+.cdk-drag-preview {
+  /* Element following the cursor during drag. Same shape as the bar, with a
+     stronger drop shadow so it stands out against the grid. */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .rc-bar-name {

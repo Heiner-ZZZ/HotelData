@@ -34,7 +34,11 @@ export interface HotelSearchResult {
   minNightlyRateLabel: string | null;
   totalEstimated: number | null;
   totalEstimatedLabel: string | null;
-  availableRoomTypesCount: number;
+  // [FIX BUG] nullable because /api/hotels/search (analytics-fact endpoint)
+  // does NOT return `available_room_types_count` — wire-shape drift; mapper
+  // logs this in per-field drift audit. Card template's `h.availableRoomTypesCount
+  // ? ... : ''` truthy check tolerates null.
+  availableRoomTypesCount: number | null;
   selected: boolean;
 }
 
@@ -52,5 +56,10 @@ export interface HotelSearchPageData {
   hasPrev: boolean;
   hasNext: boolean;
   filters: HotelSearchFilters;
-  alternativeDestinations?: AlternativeDestination[];
+  // [FIX BUG] Non-optional — `mapHotelSearchResponse` audits missing
+  // `alternative_destinations` and substitutes `[]` loudly (`console.error`
+  // + dev toast), so callers can trust this is always an array. Without
+  // this typed invariant, every consumer must re-introduce `?? []` swallow
+  // — the exact regression the user flagged: "tapaste los errores".
+  alternativeDestinations: AlternativeDestination[];
 }

@@ -1,10 +1,10 @@
 import {
   Directive,
+  DestroyRef,
   ElementRef,
   Input,
   inject,
-  OnInit,
-  OnDestroy
+  OnInit
 } from '@angular/core';
 import { NgControl } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -14,10 +14,11 @@ import { AiSuggestService } from '../services/ai-suggest.service';
   selector: '[appAiSuggest]',
   standalone: true
 })
-export class AiSuggestDirective implements OnInit, OnDestroy {
+export class AiSuggestDirective implements OnInit {
   private readonly el = inject(ElementRef);
   private readonly aiSuggest = inject(AiSuggestService);
   private readonly ngControl = inject(NgControl, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
 
   @Input('appAiSuggest') fieldName!: string;
 
@@ -69,6 +70,24 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
     };
     this.sparkBtn.addEventListener('click', clickHandler);
     this.listeners.push({ el: this.sparkBtn, type: 'click', fn: clickHandler });
+
+    // ``DestroyRef.onDestroy`` registers the cleanup phase inline so the
+    // DOM wrapper / listeners / RxJS subscription get torn down automatically
+    // when the directive is destroyed.
+    this.destroyRef.onDestroy(() => {
+      this.sub?.unsubscribe();
+      this.removePill();
+      for (const { el, type, fn } of this.listeners) {
+        el.removeEventListener(type, fn);
+      }
+      this.listeners = [];
+      if (this.wrapper && this.wrapper.parentElement) {
+        const parent = this.wrapper.parentElement;
+        const nativeEl = this.el.nativeElement;
+        parent.insertBefore(nativeEl, this.wrapper);
+        parent.removeChild(this.wrapper);
+      }
+    });
   }
 
   private triggerSuggestion() {
@@ -159,23 +178,6 @@ export class AiSuggestDirective implements OnInit, OnDestroy {
     if (this.suggestionPill) {
       this.suggestionPill.remove();
       this.suggestionPill = undefined;
-    }
-  }
-
-  ngOnDestroy() {
-    this.sub?.unsubscribe();
-    this.removePill();
-    // Clean up event listeners
-    for (const { el, type, fn } of this.listeners) {
-      el.removeEventListener(type, fn);
-    }
-    this.listeners = [];
-    // Clean up wrapper - move input back to parent
-    if (this.wrapper && this.wrapper.parentElement) {
-      const parent = this.wrapper.parentElement;
-      const nativeEl = this.el.nativeElement;
-      parent.insertBefore(nativeEl, this.wrapper);
-      parent.removeChild(this.wrapper);
     }
   }
 }

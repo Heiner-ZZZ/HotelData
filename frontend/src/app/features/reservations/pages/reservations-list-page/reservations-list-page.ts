@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, type WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, isDevMode, signal, type WritableSignal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -6,7 +6,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import type { GridReadyEvent, GridApi, SelectionChangedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
 import { HttpClient, httpResource } from '@angular/common/http';
-import { distinctUntilChanged, firstValueFrom, map } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -64,42 +64,40 @@ export class ReservationsListPageComponent {
   private readonly actionService = inject(ReservationActionService);
 
   // ─── Reactive query params ───
-  private readonly queryParams = toSignal(
-    this.activatedRoute.queryParamMap.pipe(
-      map((params) => ({
-        page: Number(params.get('page') ?? '1'),
-        createdDate: params.get('date') || '',
-        status: params.get('status') || '',
-        propId: Number(params.get('prop_id') ?? '0'),
-        folio: params.get('folio') || '',
-        stayStatus: params.get('stay_status') || '',
-        bookingSource: params.get('booking_source') || '',
-        view: (params.get('view') === 'calendar' ? 'calendar' : 'list') as 'list' | 'calendar',
-      })),
-      distinctUntilChanged(
-        (a, b) =>
-          a.page === b.page &&
-          a.createdDate === b.createdDate &&
-          a.status === b.status &&
-          a.propId === b.propId &&
-          a.folio === b.folio &&
-          a.stayStatus === b.stayStatus &&
-          a.bookingSource === b.bookingSource &&
-          a.view === b.view
-      )
-    ),
+  // Migrated from `pipe(map, distinctUntilChanged)` to Angular's signal graph.
+  // `computed` with a custom 8-field `equal` comparator preserves the
+  // original dedup semantics so the three httpResources + downstream
+  // `currentDateFilter`/`currentStatusFilter`/... computeds re-fire only when
+  // at least one filter param actually changes.
+  private readonly queryParamMap = toSignal(this.activatedRoute.queryParamMap, {
+    initialValue: this.activatedRoute.snapshot.queryParamMap,
+  });
+
+  private readonly queryParams = computed(
+    () => {
+      const p = this.queryParamMap();
+      return {
+        page: Number(p.get('page') ?? '1'),
+        createdDate: p.get('date') || '',
+        status: p.get('status') || '',
+        propId: Number(p.get('prop_id') ?? '0'),
+        folio: p.get('folio') || '',
+        stayStatus: p.get('stay_status') || '',
+        bookingSource: p.get('booking_source') || '',
+        view: (p.get('view') === 'calendar' ? 'calendar' : 'list') as 'list' | 'calendar',
+      };
+    },
     {
-      initialValue: {
-        page: 1,
-        createdDate: '',
-        status: '',
-        propId: 0,
-        folio: '',
-        stayStatus: '',
-        bookingSource: '',
-        view: 'list' as 'list' | 'calendar',
-      },
-    }
+      equal: (a, b) =>
+        a.page === b.page &&
+        a.createdDate === b.createdDate &&
+        a.status === b.status &&
+        a.propId === b.propId &&
+        a.folio === b.folio &&
+        a.stayStatus === b.stayStatus &&
+        a.bookingSource === b.bookingSource &&
+        a.view === b.view,
+    },
   );
 
   readonly currentDateFilter = computed(() => this.queryParams().createdDate);
@@ -281,6 +279,10 @@ export class ReservationsListPageComponent {
           })
         );
       } catch (err: any) {
+        // Dev visibility: log the raw error so devs see which booking +
+        // HTTP status failed. The user-facing toast still gets the friendly
+        // message via the failures array.
+        if (isDevMode()) console.error('[reservations-list] bulk check-in failed for', bookingId, err);
         const msg = err?.error?.detail || err?.message || 'Error al registrar check-in';
         failures.push(`${row.guestName || bookingId}: ${msg}`);
       } finally {
@@ -510,7 +512,10 @@ export class ReservationsListPageComponent {
         this.statsResource.reload();
         setTimeout(() => this.successMessage.set(''), 3000);
       },
-      error: () => {
+      error: (err) => {
+        // Dev visibility: surface the actual error so we can diagnose
+        // silent confirmation/rejection failures during development.
+        if (isDevMode()) console.error(`[reservations-list] ${type} action failed`, err);
         loadingSignal.set(null);
       },
     });
@@ -532,7 +537,11 @@ export class ReservationsListPageComponent {
           window.URL.revokeObjectURL(url);
           this.exporting.set(false);
         },
-        error: () => this.exporting.set(false),
+        error: (err) => {
+          // Dev visibility: surface the actual error.
+          if (isDevMode()) console.error('[reservations-list] CSV export failed', err);
+          this.exporting.set(false);
+        },
       });
   }
 

@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Router, RouterLink } from '@angular/router';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { catchAndToastError } from '../../../../shared/utils/catch-and-toast';
 import { ManualReservationApiService } from '../../services/manual-reservation-api.service';
 import type { HotelOption, RoomTypeOption } from '../../models/manual-reservation.model';
 
@@ -116,7 +117,10 @@ export class ManualReservationNewPageComponent {
           this.hotelOptions.set(options);
           this.loading.set(false);
         },
-        error: () => {
+        error: (err) => {
+          // Dev visibility: log + toast so we know why the dropdown is empty.
+          // The user-facing errorMessage is preserved for context below.
+          catchAndToastError('manual.loadHotelOptions', undefined)(err);
           this.errorMessage.set('No se pudieron cargar los hoteles.');
           this.loading.set(false);
         }
@@ -137,7 +141,10 @@ export class ManualReservationNewPageComponent {
           this.roomTypeOptions.set(types);
           this.roomTypesLoading.set(false);
         },
-        error: () => {
+        error: (err) => {
+          // Was silent — now visible in console + toast (loading flag still
+          // flips correctly so the spinner stops).
+          catchAndToastError('manual.loadRoomTypes', undefined)(err);
           this.roomTypesLoading.set(false);
         }
       });

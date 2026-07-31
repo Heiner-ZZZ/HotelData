@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { switchMap, BehaviorSubject } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { switchMap } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -21,7 +21,13 @@ export class ShiftSchedulePageComponent {
   private readonly router = inject(Router);
   private readonly propCtx = inject(PropertyContextService);
 
-  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  /**
+   * Bump signal that triggers a re-fetch when its value changes. Replaces the
+   * legacy ``BehaviorSubject<void>`` refresh pattern: any user action that
+   * causes the shifts list to be stale increments this counter, and the
+   * ``toObservable(refreshTrigger)`` stream re-subscribes the API call.
+   */
+  private readonly refreshTrigger = signal(0);
 
   readonly todayStr = new Date().toISOString().substring(0, 10);
 
@@ -59,7 +65,7 @@ export class ShiftSchedulePageComponent {
 
   // Shifts for selected employee in current week range
   readonly shifts = toSignal(
-    this.refresh$.pipe(
+    toObservable(this.refreshTrigger).pipe(
       switchMap(() => {
         const empId = this.selectedEmployeeId();
         if (!empId) return [null];
@@ -101,12 +107,12 @@ export class ShiftSchedulePageComponent {
 
   selectEmployee(id: string) {
     this.selectedEmployeeId.set(id);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   selectWeek(offset: number) {
     this.weekOffset.set(offset);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   /** Open form to create/edit a shift */
@@ -175,7 +181,7 @@ export class ShiftSchedulePageComponent {
       next: () => {
         this.saving.set(false);
         this.editingShiftId.set(null);
-        this.refresh$.next();
+        this.refreshTrigger.update(v => v + 1);
         toast(editId ? 'Turno actualizado.' : 'Turno creado.', 'success', 4000);
       },
       error: () => {
@@ -189,7 +195,7 @@ export class ShiftSchedulePageComponent {
     if (!confirm(`Eliminar turno del ${shift.date} (${shift.scheduledStart}-${shift.scheduledEnd})?`)) return;
     this.api.deleteShift(shift.id).subscribe({
       next: () => {
-        this.refresh$.next();
+        this.refreshTrigger.update(v => v + 1);
         toast('Turno eliminado.', 'info', 4000);
       },
       error: () => toast('Error al eliminar el turno.', 'error', 5000),

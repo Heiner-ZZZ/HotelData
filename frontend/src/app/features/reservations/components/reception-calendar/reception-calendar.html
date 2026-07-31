@@ -49,15 +49,8 @@
         </div>
       </div>
 
-      @if (dragBookingId()) {
-        <div class="rc-drag-hint">
-          <span class="material-symbols-outlined">drag_indicator</span>
-          Arrastra sobre otra habitación para reasignar
-        </div>
-      }
-
-      <!-- Calendar Grid -->
-      <div class="rc-grid">
+      <!-- Calendar Grid (cdkDropListGroup wires every room's cdkDropList together) -->
+      <div class="rc-grid" cdkDropListGroup>
         <!-- Header -->
         <div class="rc-header" [style.grid-template-columns]="gridCols()">
           <div class="rc-cell rc-cell-label">Puerta</div>
@@ -76,15 +69,15 @@
           }
         </div>
 
-        <!-- Individual room rows -->
+        <!-- Each room is its own cdkDropList — CDK connects them via cdkDropListGroup -->
         @for (rm of data.rooms; track rm.hotelRoomId) {
           <div class="rc-row"
+               cdkDropList
+               [cdkDropListSortingDisabled]="true"
+               [cdkDropListData]="rm"
+               [id]="'rc-room-' + rm.hotelRoomId"
                [style.grid-template-columns]="gridCols()"
-               [class.rc-row-drag-over]="isDragOverByRoomId(rm.hotelRoomId)"
-               [class.rc-row-drag-src]="rm.reservations.some(r => isDragging(r))"
-               (dragover)="onRowDragOver(rm.hotelRoomId, $event)"
-               (dragleave)="onRowDragLeave(rm.hotelRoomId)"
-               (drop)="onRowDropByRoomId(rm.hotelRoomId, rm.roomNumber, $event)">
+               (cdkDropListDropped)="onBarDropped($event)">
             <div class="rc-cell rc-cell-label">
               <span class="rc-room-num">{{ rm.roomNumber }}</span>
               <span class="rc-room-type">{{ rm.roomTypeName }}</span>
@@ -96,7 +89,14 @@
                    [class.rc-cell-weekend]="day.isWeekend"
                    [class.rc-cell-occupied]="rm.reservations.length > 0">
                 @if (day.isToday && showNowLine()) {
-                  <span class="rc-now-line" [style.left]="(nowFraction() * 100) + '%'" aria-hidden="true"></span>
+                  <!-- Per-cell now-line segment: rendered INSIDE the today
+                       column cell so it feels integrated with the cell's own
+                       design. `bottom: -1px` in CSS bridges the row's
+                       border-bottom so consecutive segments touch perfectly
+                       and form a continuous vertical line through the column. -->
+                  <span class="rc-now-line"
+                        [style.left.%]="nowFraction() * 100"
+                        aria-hidden="true"></span>
                 }
               </div>
             }
@@ -104,14 +104,12 @@
             @if (rm.reservations.length > 0) {
               @for (r of rm.reservations; track r.bookingId) {
                 <div class="rc-bar"
+                     cdkDrag
+                     [cdkDragData]="r"
+                     [cdkDragDisabled]="!canDrag(r)"
                      [class]="barColorClass(r.visualStatus)"
-                     [class.rc-bar-drag]="canDrag(r)"
-                     [class.rc-bar-dragging]="isDragging(r)"
                      [ngStyle]="barGridStyle(r)"
                      [title]="barTooltip(r)"
-                     [attr.draggable]="canDrag(r) ? 'true' : null"
-                     (dragstart)="onDragStart(r, $event)"
-                     (dragend)="onDragEnd()"
                      (click)="openDetail(r, $event)">
                   <span class="rc-bar-name">{{ r.guestName }}</span>
                   <span class="rc-bar-times">{{ r.checkInTime || '--:--' }} → {{ r.checkOutTime || '--:--' }}</span>
@@ -120,6 +118,7 @@
             }
           </div>
         }
+
       </div>
 
       <!-- Summary -->
@@ -129,17 +128,27 @@
     }
   }
 
-  <!-- Detail Modal -->
+  <!-- Detail Modal — cdkTrapFocus keeps Tab cycling inside; Escape closes -->
   @if (selectedReservation(); as r) {
-    <div class="rc-backdrop" (click)="closeDetail()">
-      <div class="rc-modal" role="dialog" (click)="$event.stopPropagation()">
+    <div class="rc-backdrop"
+         role="presentation"
+         tabindex="-1"
+         (click)="closeDetail()"
+         (keydown.escape)="closeDetail()">
+      <div class="rc-modal"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="rc-detail-title"
+           tabindex="-1"
+           cdkTrapFocus
+           (click)="$event.stopPropagation()">
         <div class="rc-modal-head">
           <div>
             <span class="rc-badge rc-badge-{{ r.visualStatus }}">{{ statusLabel(r.visualStatus) }}</span>
-            <h3>{{ r.guestName }}</h3>
+            <h3 id="rc-detail-title">{{ r.guestName }}</h3>
             <span class="rc-modal-id">{{ r.bookingId }}</span>
           </div>
-          <button type="button" class="rc-modal-close" (click)="closeDetail()">
+          <button #modalCloseBtn type="button" class="rc-modal-close" (click)="closeDetail()">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -203,13 +212,23 @@
     </div>
   }
 
-  <!-- Conflict Modal -->
+  <!-- Conflict Modal — cdkTrapFocus keeps Tab cycling inside; Escape cancels -->
   @if (reassignConflict(); as conflict) {
-    <div class="rc-backdrop" (click)="cancelReassign()">
-      <div class="rc-modal" role="dialog" (click)="$event.stopPropagation()">
+    <div class="rc-backdrop"
+         role="presentation"
+         tabindex="-1"
+         (click)="cancelReassign()"
+         (keydown.escape)="cancelReassign()">
+      <div class="rc-modal"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="rc-conflict-title"
+           tabindex="-1"
+           cdkTrapFocus
+           (click)="$event.stopPropagation()">
         <div class="rc-modal-head">
-          <h3>Habitación ocupada</h3>
-          <button type="button" class="rc-modal-close" (click)="cancelReassign()">
+          <h3 id="rc-conflict-title">Habitación ocupada</h3>
+          <button #modalCloseBtn type="button" class="rc-modal-close" (click)="cancelReassign()">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>

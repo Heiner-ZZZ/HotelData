@@ -9,14 +9,14 @@
     </div>
 
     <div class="modal-body">
-      @if (folio) {
+      @if (folio()) {
         <div class="tx-folio-info">
-          <div class="tx-folio-guest">{{ folio.guestName }}</div>
+          <div class="tx-folio-guest">{{ folio()!.guestName }}</div>
           <div class="tx-folio-meta">
-            <span>Hab. {{ folio.room || '—' }}</span>
-            <span class="mono">{{ folio.folioRef }}</span>
-            <span [class.text-danger]="folio.balance > 0" [class.text-success]="folio.balance <= 0">
-              Saldo: {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+            <span>Hab. {{ folio()!.room || '—' }}</span>
+            <span class="mono">{{ folio()!.folioRef }}</span>
+            <span [class.text-danger]="folio()!.balance > 0" [class.text-success]="folio()!.balance <= 0">
+              Saldo: {{ folio()!.balance | currency:'USD':'symbol':'1.0-2' }}
             </span>
           </div>
         </div>
@@ -50,6 +50,7 @@
         @if (d.postings.length === 0) {
           <div class="tx-empty">Sin transacciones registradas</div>
         } @else {
+
           <div class="tx-list">
             @for (p of d.postings; track p.postingId) {
               <div class="tx-row" [class]="typeClass(p.type)">

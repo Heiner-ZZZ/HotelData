@@ -1,8 +1,8 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -87,30 +87,39 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
 export class InvoiceDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(ExpensesApiService);
 
-  readonly viewState = signal<'loading' | 'success' | 'error'>('loading');
-  readonly inv = signal<any>(null);
+  // ── Reactive route param — httpResource re-fires when this changes ──
+  private readonly paramMap = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  readonly invId = computed(() => this.paramMap().get('invoiceId') ?? '');
 
-  constructor() {
-    this.route.paramMap.pipe(
-      switchMap(params => {
-        this.viewState.set('loading');
-        return this.api.getInvoice(params.get('invoiceId')!);
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (data) => { this.inv.set(data); this.viewState.set('success'); },
-      error: () => this.viewState.set('error'),
-    });
-  }
+  readonly detailResource = httpResource<any>(() => {
+    const id = this.invId();
+    return id ? `/api/expenses/invoices/${id}` : undefined;
+  });
+
+  readonly inv = computed(() => this.detailResource.value() ?? null);
+
+  readonly viewState = computed<'loading' | 'success' | 'error' | 'empty'>(() => {
+    const v = this.detailResource.value();
+    // Anti-flicker: keep 'success' during silent reloads after mutations
+    // (updateStatus() → detailResource.reload() triggers a brief isLoading).
+    if (this.detailResource.isLoading() && !v) return 'loading';
+    const err = this.detailResource.error();
+    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
+    if (err) return 'error';
+    return v ? 'success' : 'loading';
+  });
 
   goBack() { this.router.navigate(['/management/expenses/invoices']); }
 
   updateStatus(id: string, status: string) {
+    // Server-side update; httpResource reload picks up the new value and
+    // re-renders the template via `inv()` (computed).
     this.api.updateInvoice(id, { status }).subscribe({
-      next: (updated: any) => { this.inv.set(updated); },
+      next: () => { this.detailResource.reload(); },
     });
   }
 

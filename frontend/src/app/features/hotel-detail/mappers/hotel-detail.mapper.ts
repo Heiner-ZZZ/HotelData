@@ -1,6 +1,9 @@
 import type { HotelDetailDto } from '../models/hotel-detail.dto';
 import type { HotelDetailViewModel } from '../models/hotel-detail.model';
-import { placeholderImageUrl } from '../../../shared/utils/placeholder-image.util';
+import {
+  isValidImageUrl,
+  placeholderImageUrl,
+} from '../../../shared/utils/placeholder-image.util';
 
 function displayValue(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') {
@@ -90,13 +93,24 @@ export function mapHotelDetailResponse(dto: HotelDetailDto): HotelDetailViewMode
         ]
       : [],
     cancellationPolicy: displayValue(dto.hotel_policies?.cancellation_policy),
-    galleryImages: (dto.hotel_images || []).length > 0
-      ? dto.hotel_images.map((img) => img.image_url)
-      : [
-          placeholderImageUrl(`${dto.prop_id}1`, 800, 400),
-          placeholderImageUrl(`${dto.prop_id}2`, 800, 400),
-          placeholderImageUrl(`${dto.prop_id}3`, 800, 400),
-        ],
+    // Hybrid display: locals go first (the hotel's own photos), then up
+    // to 3 loremflickr placeholders decorate the bottom of the bento
+    // gallery. Even for hotel #1 (db.hotel_images empty) the 3
+    // loremflickr photos serve as visual fillers so the gallery is never
+    // empty. When hotel config populates hotel_images, those URLs sit at
+    // the top and the loremflickr ones fill below them.
+    galleryImages: [
+      // Filter out empties via the shared type guard. Backend may persist
+      // `image_url: ""` for half-configured hotels; `<img src="">` resolves
+      // to the current page URL and never fires `onError`, so the
+      // placeholder fallback would never kick in.
+      ...(dto.hotel_images || [])
+        .map((img) => img.image_url)
+        .filter(isValidImageUrl),
+      placeholderImageUrl(`${dto.prop_id}1`, 800, 400),
+      placeholderImageUrl(`${dto.prop_id}2`, 800, 400),
+      placeholderImageUrl(`${dto.prop_id}3`, 800, 400),
+    ],
     description: dto.hotel_content?.description || '',
     highlights: dto.hotel_content?.highlights || '',
     amenitiesTags: (dto.hotel_content?.amenities_text || '').split(',').map((s) => s.trim()).filter(Boolean),

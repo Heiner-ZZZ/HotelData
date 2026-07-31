@@ -1,6 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
+import { SHIFTS_MANAGE, type PermissionCode } from '../../../core/auth/permission.constants';
+
 export interface ShiftInfo {
   id: string;
   prop_id: number;
@@ -114,7 +116,7 @@ export interface ScheduleMismatchDetail {
   opener: string;
   message: string;
   /** Permission code the opener must hold to invoke bypass_schedule_check. */
-  bypass_requires: 'shifts.manage';
+  bypass_requires: PermissionCode;
   /** Whether the current authenticated user is ALLOWED to bypass. */
   opener_can_override: boolean;
 }
@@ -124,7 +126,7 @@ export interface ScheduleMismatchDetail {
 export interface ScheduleBypassForbiddenDetail {
   error: 'schedule_bypass_forbidden';
   message: string;
-  bypass_requires: 'shifts.manage';
+  bypass_requires: typeof SHIFTS_MANAGE;
 }
 
 @Injectable({ providedIn: 'root' })

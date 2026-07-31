@@ -6,8 +6,8 @@
         <div>
           <h2>Reponer stock</h2>
           <p class="product-info">
-            <span class="product-name">{{ product.name }}</span>
-            <span class="product-id">{{ product.productId }}</span>
+            <span class="product-name">{{ product().name }}</span>
+            <span class="product-id">{{ product().productId }}</span>
           </p>
         </div>
       </div>
@@ -19,7 +19,7 @@
     <form [formGroup]="form" (ngSubmit)="submit()" class="modal-body">
       <div class="current-stock">
         <span class="label">Stock actual</span>
-        <span class="value">{{ product.quantityAvailable }}</span>
+        <span class="value">{{ product().quantityAvailable }}</span>
       </div>
 
       <div class="form-grid">

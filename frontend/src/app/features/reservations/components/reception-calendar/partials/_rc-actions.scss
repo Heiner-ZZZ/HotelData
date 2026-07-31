@@ -45,6 +45,15 @@
   display: flex;
   flex-direction: column;
   animation: rc-slide 200ms ease;
+
+  /* The modal itself isn't interactive (cdkTrapFocus wraps Tab cycling
+     inside it). Suppressing its focus outline avoids a visible flash on
+     the non-interactive container; interactive children (buttons, links)
+     still get their own focus rings via UA defaults. */
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 @keyframes rc-slide {

@@ -11,7 +11,7 @@
         [selectedLabel]="selectedLabel()"
         (propIdChange)="onPropSelected($event)"
       />
-      @if (shift() && !showCloseModal()) {
+      @if (shift() && !showCloseModal() && canMutateShift()) {
         <button class="sc-btn-outline" (click)="openDepositModal()">
           <span class="material-symbols-outlined">payments</span>
           Realizar Depósito
@@ -21,7 +21,7 @@
           Cerrar Turno e Imprimir Acta
         </button>
       }
-      @if (!shift() && !loading()) {
+      @if (!shift() && !loading() && canMutateShift()) {
         <button class="sc-btn-primary" (click)="openOpenForm()">
           <span class="material-symbols-outlined">play_arrow</span>
           Abrir Turno
@@ -38,7 +38,7 @@
       <span class="material-symbols-outlined sc-empty-icon">schedule</span>
       <h2>No hay turno activo</h2>
       <p>Abre un turno para comenzar a registrar operaciones.</p>
-      @if (showOpenForm()) {
+      @if (showOpenForm() && canMutateShift()) {
         <div class="sc-open-form">
           <div class="sc-form-group">
             <label for="sc-shift-type">Tipo de Turno</label>

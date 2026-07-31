@@ -1,9 +1,10 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, ViewEncapsulation } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { httpResource, HttpParams } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, ViewEncapsulation } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, EMPTY, Subject, switchMap, debounceTime } from 'rxjs';
+import { distinctUntilChanged, EMPTY, switchMap, debounceTime } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -12,10 +13,44 @@ import { ToastService } from '../../../../shared/services/toast.service';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
 import { RnGuestSectionComponent } from './partials/rn-guest-section';
 import { RnReviewSectionComponent } from './partials/rn-review-section';
+import { mapReservationOptions } from '../../mappers/reservations.mapper';
 import type { RatePlanOption, ReservationCreateInput, ReservationHotelOption, ReservationPreview } from '../../models/reservations.model';
+import type { ReservationOptionsDto } from '../../models/reservations.dto';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { GuestAmenityService } from '../../../amenities/services/guest-amenity.service';
 import type { GuestAmenityCategoryDto } from '../../../amenities/models/guest-amenity.dto';
+
+/**
+ * Raw shape returned by `GET /reservations/rate-plans` — the route returns
+ * `rate_plans: Array<RatePlanRaw>` and we map it to typed
+ * `RatePlanOption[]` via `parse` (mirrors the optionsResource pattern).
+ */
+interface RatePlanRaw {
+  rate_plan_id: string;
+  name: string;
+  description: string;
+  base_rate: number;
+  currency: string;
+  is_active: boolean;
+  avg_rate_per_night: number;
+  total_price: number;
+  nights: number;
+}
+type RatePlansResponseDto = { rate_plans?: RatePlanRaw[] };
+
+function mapRatePlans(raw: RatePlansResponseDto): RatePlanOption[] {
+  return (raw.rate_plans || []).map((p) => ({
+    ratePlanId: p.rate_plan_id,
+    name: p.name,
+    description: p.description,
+    baseRate: p.base_rate,
+    currency: p.currency,
+    isActive: p.is_active,
+    avgRatePerNight: p.avg_rate_per_night,
+    totalPrice: p.total_price,
+    nights: p.nights,
+  }));
+}
 
 @Component({
   selector: 'app-reservation-new-page',
@@ -27,6 +62,7 @@ import type { GuestAmenityCategoryDto } from '../../../amenities/models/guest-am
   encapsulation: ViewEncapsulation.None,
 })
 export class ReservationNewPageComponent {
+  // ─── Injections ───
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
   private readonly reservationsAuth = inject(ReservationsAuthService);
@@ -35,7 +71,100 @@ export class ReservationNewPageComponent {
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly guestAmenityService = inject(GuestAmenityService);
 
+  // ─── Form ─── (declared BEFORE the toSignal fields that read it)
+  readonly form = this.formBuilder.nonNullable.group({
+    propId: [0, [Validators.required, Validators.min(1)]],
+    guestName: ['', [Validators.required]],
+    guestEmail: ['', [Validators.required, Validators.email]],
+    guestPhone: [''],
+    checkInDate: ['', [Validators.required]],
+    checkOutDate: ['', [Validators.required]],
+    checkInTime: [''],
+    checkOutTime: [''],
+    adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
+    children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
+    rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+    comment: [''],
+    couponCode: [''],
+    specialRequests: [[] as string[]],
+    cedula: [''],
+  });
+
+  // ─── Form-driven signal sources that httpResource declarations read in their URL formula ───
+  // httpResource re-fires automatically whenever any signal read inside its request fn changes.
+  // This replaces the four manual `form.controls.X.valueChanges.subscribe(...)` chains that
+  // used to live in the constructor — reactivity is now declarative, not imperative.
+  private readonly propIdSignal = toSignal(this.form.controls.propId.valueChanges, {
+    initialValue: this.form.controls.propId.value,
+  });
+  private readonly checkInDateSignal = toSignal(this.form.controls.checkInDate.valueChanges, {
+    initialValue: this.form.controls.checkInDate.value,
+  });
+  private readonly checkOutDateSignal = toSignal(this.form.controls.checkOutDate.valueChanges, {
+    initialValue: this.form.controls.checkOutDate.value,
+  });
+
+  // ─── httpResource declarations (GETs only — POSTs stay as `subscribe(takeUntilDestroyed)`) ───
+
+  /** Hotel options dropdown — fired once on mount, no dependency. */
+  readonly optionsResource = httpResource<ReservationHotelOption[]>(
+    () => ({ url: '/reservations/options' }),
+    { parse: (dto) => mapReservationOptions(dto as ReservationOptionsDto) },
+  );
+
+  /** Per-hotel availability — re-fires when propId or any date signal changes. */
+  readonly availabilityResource = httpResource<{
+    hasInventory: boolean;
+    hasRoomTypes: boolean;
+    totalRooms: number;
+    availableRooms: number;
+    message: string;
+  }>(() => {
+    const propId = this.propIdSignal();
+    const checkIn = this.checkInDateSignal();
+    const checkOut = this.checkOutDateSignal();
+    if (!propId || !checkIn || !checkOut) return undefined;
+    return {
+      url: '/reservations/availability-check',
+      method: 'GET' as const,
+      params: new HttpParams()
+        .set('prop_id', String(propId))
+        .set('check_in', checkIn)
+        .set('check_out', checkOut),
+    };
+  });
+
+  /** Available rate plans for the selected hotel + dates + optional room type. */
+  readonly ratePlansResource = httpResource<RatePlanOption[]>(() => {
+    const propId = this.propIdSignal();
+    const checkIn = this.checkInDateSignal();
+    const checkOut = this.checkOutDateSignal();
+    if (!propId || !checkIn || !checkOut) return undefined;
+    let params = new HttpParams()
+      .set('prop_id', String(propId))
+      .set('check_in', checkIn)
+      .set('check_out', checkOut);
+    const roomTypeId = this.preselectedRoomTypeId();
+    if (roomTypeId) {
+      params = params.set('room_type_id', roomTypeId);
+    }
+    return { url: '/reservations/rate-plans', method: 'GET' as const, params };
+  }, { parse: (dto) => mapRatePlans(dto as RatePlansResponseDto) });
+
+  /** Amenity catalog per hotel — re-fires when propId changes. */
+  readonly amenityResource = httpResource<{ catalog: GuestAmenityCategoryDto[] }>(() => {
+    const propId = this.propIdSignal();
+    if (!propId) return undefined;
+    return {
+      url: '/amenities/guest/catalog/by-prop',
+      method: 'GET' as const,
+      params: new HttpParams().set('prop_id', String(propId)),
+    };
+  });
+
+  // ─── Writable signals preserved for template compatibility ───
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly previewing = signal(false);
@@ -51,7 +180,7 @@ export class ReservationNewPageComponent {
   readonly preselectedRoomTypeId = signal('');
   readonly preselectedRoomTypeName = signal('');
 
-  /** Availability status per hotel: 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types' */
+  /** Availability status per hotel (legacy dict — kept so the existing template + helper still work). */
   readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
 
   readonly guestSuggestions = signal<{ name: string; email: string; phone: string }[]>([]);
@@ -60,21 +189,24 @@ export class ReservationNewPageComponent {
   readonly showGuestDropdown = signal(false);
   readonly guestSearchFocused = signal(false);
 
-  /** Subject with debounce for typing-triggered user search */
-  /** Subject with debounce for typing-triggered user search — public for template access */
-  readonly userSearch$ = new Subject<string>();
+  /**
+   * Bump-friendly signal that drives the debounced user-search pipeline.
+   * Replaces the legacy ``Subject<string>`` pattern: the template (or the
+   * guest-section partial) calls ``onUserSearchInput(value)`` which sets the
+   * signal; ``toObservable()`` below re-evaluates through debounceTime → API
+   * search users. The signal-based shape removes the Subject dependency from
+   * the constructor and keeps the API consistent across the file.
+   */
+  readonly userSearchTrigger = signal('');
 
   readonly couponStatus = signal<{valid: boolean; message: string; discountPercent: number} | null>(null);
   readonly couponValidating = signal(false);
 
-  // Amenities catalog & selection
-  private readonly guestAmenityService = inject(GuestAmenityService);
   readonly amenityCatalog = signal<GuestAmenityCategoryDto[]>([]);
   readonly amenityCatalogLoading = signal(false);
   readonly selectedAmenities = signal<Set<string>>(new Set());
   readonly amenityCatalogError = signal('');
 
-  /** Available rate plans for selected hotel + dates */
   readonly availableRatePlans = signal<RatePlanOption[]>([]);
   readonly ratePlansLoading = signal(false);
   readonly selectedRatePlanId = signal('');
@@ -105,31 +237,7 @@ export class ReservationNewPageComponent {
     return { adults, children, rooms, nights };
   });
 
-  /** Check inventory availability for a given hotel and date range */
-  checkHotelAvailability(propId: number): void {
-    if (!propId) return;
-    const checkIn = this.form.controls.checkInDate.value;
-    const checkOut = this.form.controls.checkOutDate.value;
-    if (!checkIn || !checkOut) return;
-
-    this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: 'checking' }));
-
-    this.reservationsApi.getHotelAvailability(propId, checkIn, checkOut).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (result) => {
-        const status = result.hasRoomTypes
-          ? (result.hasInventory ? 'has_inventory' : 'no_inventory')
-          : 'no_room_types';
-        this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: status }));
-      },
-      error: () => {
-        this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: 'unknown' }));
-      },
-    });
-  }
-
-  /** Availability label and icon for a given hotel */
+  /** Availability label and icon for a given hotel (legacy API consumed by `rn-planner-section`). */
   getHotelAvailabilityInfo(propId: number): { label: string; icon: string; color: string } | null {
     const status = this.hotelAvailabilityStatus()[propId];
     if (!status || status === 'unknown') return null;
@@ -153,24 +261,6 @@ export class ReservationNewPageComponent {
 
   readonly today = new Date().toISOString().split('T')[0];
 
-  readonly form = this.formBuilder.nonNullable.group({
-    propId: [0, [Validators.required, Validators.min(1)]],
-    guestName: ['', [Validators.required]],
-    guestEmail: ['', [Validators.required, Validators.email]],
-    guestPhone: [''],
-    checkInDate: ['', [Validators.required]],
-    checkOutDate: ['', [Validators.required]],
-    checkInTime: [''],
-    checkOutTime: [''],
-    adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
-    children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
-    rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
-    comment: [''],
-    couponCode: [''],
-    specialRequests: [[] as string[]],
-    cedula: ['']
-  });
-
   constructor() {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     const prefixedRoomType = this.activatedRoute.snapshot.queryParamMap.get('room_type') ?? '';
@@ -181,8 +271,86 @@ export class ReservationNewPageComponent {
     }
     this._loadGuestSuggestions();
 
-    // ── Search registered users on the backend when staff types ──
-    this.userSearch$
+    // ── Resources → writable signals (effect-based) ──
+
+    // optionsResource.value() → hotelOptions + (initial) propId setValue + loading toggle.
+    // The setValue triggers propIdSignal → amenityResource / availabilityResource / ratePlansResource
+    // auto-fire on the same micro-task, so we don't need manual `checkHotelAvailability()` calls.
+    effect(() => {
+      const r = this.optionsResource.value();
+      if (!r) return;
+      this.hotelOptions.set(r);
+      if (prefixedPropId > 0 && this.form.controls.propId.value === 0) {
+        this.form.controls.propId.setValue(prefixedPropId);
+      }
+      this.loading.set(false);
+    });
+
+    // optionsResource.error() → toast + loading toggle (avoids the page getting stuck on loading=true).
+    effect(() => {
+      const err = this.optionsResource.error();
+      if (!err) return;
+      this.toast.show('No fue posible cargar el formulario de reservas.', 'error', 6000);
+      this.loading.set(false);
+    });
+
+    // availabilityResource.value() → hotelAvailabilityStatus dict.
+    effect(() => {
+      const r = this.availabilityResource.value();
+      const propId = this.propIdSignal();
+      if (!r || !propId) return;
+      const status = r.hasRoomTypes
+        ? (r.hasInventory ? 'has_inventory' : 'no_inventory')
+        : 'no_room_types';
+      this.hotelAvailabilityStatus.update(s => ({ ...s, [propId]: status }));
+    });
+
+    // ratePlansResource.value() → availableRatePlans + auto-select first plan.
+    // The parse callback (`mapRatePlans`) already maps DTO → view-model.
+    effect(() => {
+      const plans = this.ratePlansResource.value();
+      if (!plans) return;
+      this.availableRatePlans.set(plans);
+      if (plans.length > 0 && !this.selectedRatePlanId()) {
+        this.selectedRatePlanId.set(plans[0].ratePlanId);
+      }
+    });
+
+    // ratePlansResource.isLoading() → ratePlansLoading toggle (separate effect so transitions
+    // catch even when the URL formula computes to undefined → IDLE → no value change).
+    effect(() => {
+      this.ratePlansLoading.set(this.ratePlansResource.isLoading());
+    });
+
+    // amenityResource.value() → amenityCatalog (success).
+    effect(() => {
+      const r = this.amenityResource.value();
+      if (!r) return;
+      this.amenityCatalog.set(r.catalog || []);
+      this.amenityCatalogLoading.set(false);
+    });
+
+    // amenityResource.error() → empty catalog + error string + loading toggle (failure).
+    effect(() => {
+      const err = this.amenityResource.error();
+      if (!err) return;
+      this.amenityCatalog.set([]);
+      this.amenityCatalogLoading.set(false);
+      this.amenityCatalogError.set('No se pudo cargar el catálogo de amenities.');
+    });
+
+    // Reset selectedAmenities whenever the hotel changes (side-effect that has no home in an httpResource).
+    // This used to be inline inside the propId valueChanges subscribe; preserved verbatim here.
+    effect(() => {
+      this.propIdSignal();
+      this.selectedAmenities.set(new Set());
+    });
+
+    // ── Search registered users on the backend when staff types (debounced, rxjs-native) ──
+    // httpResource has no native debounce: keeping `toObservable + debounceTime + distinctUntilChanged +
+    // switchMap` is the canonical pattern for search-typeahead input. The signal-driven trigger
+    // (`userSearchTrigger.set(value)`) keeps the input API fully reactive.
+    toObservable(this.userSearchTrigger)
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
@@ -220,88 +388,9 @@ export class ReservationNewPageComponent {
         this.form.controls.guestEmail.setValue(user.email || '');
       }
     }
-
-    this.reservationsApi
-      .getOptions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (options) => {
-          this.hotelOptions.set(options);
-          if (prefixedPropId > 0) {
-            this.form.controls.propId.setValue(prefixedPropId);
-          }
-          this.loading.set(false);
-          
-          // Trigger initial availability check if hotel and dates are already selected
-          if (prefixedPropId > 0 && this.form.controls.checkInDate.value && this.form.controls.checkOutDate.value) {
-            this.checkHotelAvailability(prefixedPropId);
-          }
-        },          error: () => {
-          this.toast.show('No fue posible cargar el formulario de reservas.', 'error', 6000);
-          this.loading.set(false);
-        }
-      });
-
-    // Load amenity catalog when hotel changes
-    this.form.controls.propId.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        distinctUntilChanged(),
-      )
-      .subscribe((propId) => {
-        // Reset amenity selection when hotel changes
-        this.selectedAmenities.set(new Set());
-        if (propId) {
-          this._loadAmenityCatalog(propId);
-        } else {
-          this.amenityCatalog.set([]);
-        }
-      });
-
-    // Reactively check availability when hotel or dates change
-    this.form.controls.propId.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        distinctUntilChanged(),
-      )
-      .subscribe(() => {
-        if (this.form.controls.checkInDate.value && this.form.controls.checkOutDate.value) {
-          this.checkHotelAvailability(this.form.controls.propId.value);
-        } else {
-          this.hotelAvailabilityStatus.set({});
-        }
-      });
-
-    this.form.controls.checkInDate.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        distinctUntilChanged(),
-      )
-      .subscribe(() => {
-        const propId = this.form.controls.propId.value;
-        const checkOut = this.form.controls.checkOutDate.value;
-        if (propId && checkOut) {
-          this.checkHotelAvailability(propId);
-        }
-        this._loadRatePlans();
-      });
-
-    this.form.controls.checkOutDate.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        distinctUntilChanged(),
-      )
-      .subscribe(() => {
-        const propId = this.form.controls.propId.value;
-        const checkIn = this.form.controls.checkInDate.value;
-        if (propId && checkIn) {
-          this.checkHotelAvailability(propId);
-        }
-        this._loadRatePlans();
-      });
   }
 
-  /** Payment form fields */
+  // ─── Payment form fields ───
   readonly cardNumber = signal('');
   readonly cardHolder = signal('');
   readonly cardExpiry = signal('');
@@ -411,33 +500,6 @@ export class ReservationNewPageComponent {
     this.step.set('details');
   }
 
-  /** Load available rate plans when hotel and dates are selected */
-  private _loadRatePlans(): void {
-    const propId = this.form.controls.propId.value;
-    const checkIn = this.form.controls.checkInDate.value;
-    const checkOut = this.form.controls.checkOutDate.value;
-    if (!propId || !checkIn || !checkOut) {
-      this.availableRatePlans.set([]);
-      return;
-    }
-    this.ratePlansLoading.set(true);
-    this.reservationsApi.getAvailableRatePlans(
-      propId, checkIn, checkOut,
-      this.preselectedRoomTypeId() || undefined,
-    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (result) => {
-        this.availableRatePlans.set(result.rate_plans || []);
-        this.ratePlansLoading.set(false);
-        // Auto-select first plan if none selected
-        const plans = result.rate_plans || [];
-        if (plans.length > 0 && !this.selectedRatePlanId()) {
-          this.selectedRatePlanId.set(plans[0].ratePlanId);
-        }
-      },
-      error: () => this.ratePlansLoading.set(false),
-    });
-  }
-
   /** Select a rate plan */
   selectRatePlan(planId: string): void {
     this.selectedRatePlanId.set(planId);
@@ -448,27 +510,6 @@ export class ReservationNewPageComponent {
     const id = this.selectedRatePlanId();
     return this.availableRatePlans().find(p => p.ratePlanId === id) || null;
   });
-
-  private _loadAmenityCatalog(propId: number) {
-    if (!propId) return;
-    this.amenityCatalogLoading.set(true);
-    this.amenityCatalogError.set('');
-    // Use a dummy booking_id to get catalog for a prop — the guest endpoint needs it
-    // Instead, directly fetch via the partner endpoint which works with prop_id
-    this.guestAmenityService.getCatalogByProp(propId).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (result) => {
-        this.amenityCatalog.set(result.catalog || []);
-        this.amenityCatalogLoading.set(false);
-      },
-      error: () => {
-        this.amenityCatalog.set([]);
-        this.amenityCatalogLoading.set(false);
-        this.amenityCatalogError.set('No se pudo cargar el catálogo de amenities.');
-      },
-    });
-  }
 
   toggleAmenity(label: string) {
     const current = new Set(this.selectedAmenities());
@@ -615,7 +656,16 @@ export class ReservationNewPageComponent {
     this.showGuestDropdown.set(false);
   }
 
-  /** Toggle guest dropdown visibility */
+  /**
+   * Push a guest-name keystroke into the debounced search pipeline.
+   * Called from ``rn-guest-section`` (or the template directly) instead of
+   * ``this.userSearch$.next(value)`` — the signal API keeps callers free of
+   * any rxjs Subject import.
+   */
+  onUserSearchInput(value: string): void {
+    this.userSearchTrigger.set(value);
+  }
+
   toggleGuestDropdown(show: boolean) {
     // Small delay to allow click events on dropdown items
     setTimeout(() => {

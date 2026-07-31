@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { DatePipe, CurrencyPipe, formatCurrency } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -88,7 +88,13 @@ function getRequestIcon(type?: string): string {
   styleUrl: './staff-inbox-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StaffInboxPageComponent implements OnDestroy {
+export class StaffInboxPageComponent {
+  /**
+   * Cleanup registered via ``inject(DestroyRef).onDestroy`` in the constructor —
+   * replaces the legacy ``ngOnDestroy`` lifecycle hook. SSE subscription
+   * disconnect and ``document.title`` reset happen during the same destruction
+   * phase in Angular 22.
+   */
   // ── Dependencies ──
   private readonly api = inject(InStayApiService);
   private readonly ledgerApi = inject(ExpensesApiService);
@@ -97,6 +103,7 @@ export class StaffInboxPageComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly sse = inject(StaySseService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // ── State ──
   readonly selectedPropId = this.propCtx.currentPropId;
@@ -227,6 +234,15 @@ export class StaffInboxPageComponent implements OnDestroy {
   private originalTitle = document.title;
 
   constructor() {
+    // Disconnect SSE + restore the original document title when the page is
+    // torn down. Co-located with the ``subscribe``/``subscribe.remove`` paths
+    // because SSE lifecycle is the only resource holding async teardown work.
+    this.destroyRef.onDestroy(() => {
+      this.sseSub?.unsubscribe();
+      this.sse.disconnect();
+      document.title = this.originalTitle;
+    });
+
     // Auto-select property in single-hotel mode
     effect(() => {
       if (this.propCtx.ready() && this.propCtx.singleHotelMode()) {
@@ -674,14 +690,6 @@ export class StaffInboxPageComponent implements OnDestroy {
       next: (res) => { this.requests.set(res.items); this.updateTabTitle(); },
     });
   }
-
-  ngOnDestroy(): void {
-    this.sseSub?.unsubscribe();
-    this.sse.disconnect();
-    document.title = this.originalTitle;
-  }
-
-
 
   // ── Folio modals ──
 

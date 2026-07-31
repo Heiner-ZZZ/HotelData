@@ -1,24 +1,23 @@
 <div class="modal-overlay" (click)="close.emit()">
-  <div class="modal-panel folio-modal" (click)="$event.stopPropagation()">
-    <div class="modal-head">
+  <div class="modal-panel folio-modal" (click)="$event.stopPropagation()">      <div class="modal-head">
         <span class="material-symbols-outlined modal-head-icon">
-          {{ mode === 'payment' ? 'payments' : 'swap_horiz' }}
+          {{ mode() === 'payment' ? 'payments' : 'swap_horiz' }}
         </span>
-        <h2>{{ title }}</h2>
+        <h2>{{ title() }}</h2>
         <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
       <div class="modal-body">
-        @if (folio) {
+        @if (folio()) {
           <div class="folio-preview">
-            <div class="folio-preview-guest">{{ folio.guestName }}</div>
+            <div class="folio-preview-guest">{{ folio()!.guestName }}</div>
             <div class="folio-preview-meta">
-              <span>Hab. {{ folio.room || '—' }}</span>
-              <span class="mono">{{ folio.folioRef }}</span>
-              <span class="folio-preview-balance" [class.text-danger]="folio.balance > 0">
-                Saldo: {{ folio.balance | currency:'USD':'symbol':'1.0-2' }}
+              <span>Hab. {{ folio()!.room || '—' }}</span>
+              <span class="mono">{{ folio()!.folioRef }}</span>
+              <span class="folio-preview-balance" [class.text-danger]="folio()!.balance > 0">
+                Saldo: {{ folio()!.balance | currency:'USD':'symbol':'1.0-2' }}
               </span>
             </div>
           </div>
@@ -41,7 +40,7 @@
           </div>
         </div>
 
-        @if (mode === 'payment') {
+        @if (mode() === 'payment') {
           <!-- Payment method -->
           <div class="form-field">
             <label>Método de pago</label>
@@ -61,18 +60,18 @@
           </div>
         }
 
-        @if (mode === 'transfer') {
+        @if (mode() === 'transfer') {
           <!-- Target folio selector -->
           <div class="form-field">
             <label>Folio destino</label>
-            @if (targetFolios.length === 0) {
+            @if (targetFolios().length === 0) {
               <div class="no-folios">
                 <span class="material-symbols-outlined">info</span>
                 No hay otros folios activos para transferir
               </div>
             } @else {
               <div class="target-folio-list">
-                @for (f of targetFolios; track f.folioId) {
+                @for (f of targetFolios(); track f.folioId) {
                   <button
                     type="button"
                     class="target-folio-btn"
@@ -107,10 +106,16 @@
           />
         </div>
 
-        @if (serverError) {
+        @if (serverError()) {
           <div class="form-error">
             <span class="material-symbols-outlined">error</span>
-            {{ serverError }}
+            {{ serverError() }}
+          </div>
+        }
+        @if (localError()) {
+          <div class="form-error">
+            <span class="material-symbols-outlined">error</span>
+            {{ localError() }}
           </div>
         }
       </div>
@@ -122,13 +127,13 @@
         <button
           type="button"
           class="btn-confirm"
-          [class.payment]="mode === 'payment'"
-          [class.transfer]="mode === 'transfer'"
+          [class.payment]="mode() === 'payment'"
+          [class.transfer]="mode() === 'transfer'"
           (click)="confirm()"
           [disabled]="submitting() || !amount()"
         >
-          <span class="material-symbols-outlined">{{ mode === 'payment' ? 'check' : 'swap_horiz' }}</span>
-          {{ submitting() ? 'Procesando...' : (mode === 'payment' ? 'Registrar Pago' : 'Transferir') }}
+          <span class="material-symbols-outlined">{{ mode() === 'payment' ? 'check' : 'swap_horiz' }}</span>
+          {{ submitting() ? 'Procesando...' : (mode() === 'payment' ? 'Registrar Pago' : 'Transferir') }}
         </button>
       </div>
   </div>

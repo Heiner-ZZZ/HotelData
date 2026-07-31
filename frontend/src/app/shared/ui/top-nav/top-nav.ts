@@ -7,7 +7,6 @@ import {
   HostListener,
   inject,
   OnInit,
-  OnDestroy,
   signal
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -41,7 +40,13 @@ interface TopNavGroup {
   styleUrl: './top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TopNavComponent implements OnInit, OnDestroy {
+export class TopNavComponent implements OnInit {
+  /**
+   * Cleanup registered via ``inject(DestroyRef).onDestroy`` in the constructor —
+   * replaces the legacy ``ngOnDestroy`` lifecycle hook for Angular 22 modern style.
+   * Order matches the equivalent ``ngOnDestroy`` invocation since both are
+   * invoked during the same destruction phase.
+   */
   private readonly authService = inject(AuthService);
   private readonly reservationsApi = inject(ReservationsApiService);
   private readonly notificationsApi = inject(NotificationsApiService);
@@ -124,10 +129,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this._startNotifPolling();
   }
 
-  ngOnDestroy() {
-    this._stopNotifPolling();
-  }
-
   private _startNotifPolling() {
     this._fetchNotifications();
     this._notifPollSub = setInterval(() => this._fetchNotifications(), 30000);
@@ -205,6 +206,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.authService.ensureSessionLoaded()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
+    this.destroyRef.onDestroy(() => this._stopNotifPolling());
   }
 
   onMenuEnter(id: string) {

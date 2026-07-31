@@ -1,4 +1,4 @@
-import { Component, DestroyRef, EventEmitter, inject, Input, Output, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ExpensesApiService } from '../../../expenses/services/expenses-api.service';
@@ -28,20 +28,22 @@ const TYPE_ICONS: Record<string, string> = {
   templateUrl: './folio-transactions-modal.html',
   styleUrl: './folio-transactions-modal.scss',
 })
-export class FolioTransactionsModalComponent implements OnInit {
+export class FolioTransactionsModalComponent {
   private readonly api = inject(ExpensesApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  @Input() folio: LedgerFolio | null = null;
+  /** Folio whose transaction history will be loaded. Required: parent only opens this modal with a real folio. */
+  readonly folio = input<LedgerFolio | null>(null);
 
-  @Output() close = new EventEmitter<void>();
+  /** Fires when the user closes the modal (close button, backdrop click). */
+  readonly close = output<void>();
 
   readonly loading = signal(true);
   readonly error = signal('');
   readonly data = signal<FolioPostingsResponse | null>(null);
 
-  ngOnInit(): void {
-    const f = this.folio;
+  constructor() {
+    const f = this.folio();
     if (!f?.folioId) {
       this.error.set('Folio no encontrado');
       this.loading.set(false);

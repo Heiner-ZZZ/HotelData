@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, ViewEncapsulation } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, ViewEncapsulation } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { distinctUntilChanged, map, switchMap, tap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -45,8 +45,26 @@ export class CheckOutDetailPageComponent {
   private readonly api = inject(CheckOutsApiService);
 
   readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<CheckOutDetailDto | null>(null);
+  readonly data = computed(() => this.detailResource.value() ?? null);
   readonly errorMessage = signal('');
+
+  // ── Reactive route param → httpResource (re-fires on bookingId change) ──
+  private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
+    initialValue: this.activatedRoute.snapshot.paramMap,
+  });
+  readonly bookingId = computed(() => this.paramMap().get('bookingId') ?? '');
+
+  readonly detailResource = httpResource<CheckOutDetailDto>(() => {
+    const id = this.bookingId();
+    return id ? `/management/check-outs/${id}/detail` : undefined;
+  });
+
+  /**
+   * Id-gate for the wizard init effect: pre-fills the 9 backend-derived
+   * wizard fields exactly once per fetched `booking_id`. Reloads after
+   * addCharge/quickCharge/completeCheckOut etc. don't reset user edits.
+   */
+  private lastInitializedId: string | null = null;
 
   // ── Step wizard ──
   readonly currentStep = signal(1);
@@ -184,34 +202,39 @@ export class CheckOutDetailPageComponent {
   ];
 
   constructor() {
-    this.activatedRoute.paramMap
-      .pipe(
-        map(params => params.get('bookingId') ?? ''),
-        distinctUntilChanged(),
-        tap(() => this.viewState.set('loading')),
-        switchMap(bookingId => this.api.getCheckOutDetail(bookingId)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (detail) => {
-          this.data.set(detail);
-          this.roomInspected.set(detail.check_out_room_inspected || false);
-          this.keysReturned.set(detail.check_out_keys_returned || false);
-          this.damagesFound.set(detail.check_out_damages_found || false);
-          this.lateCheckoutFee.set(detail.check_out_late_checkout_fee || 0);
-          this.discount.set(detail.check_out_discount || 0);
-          this.discountReason.set(detail.check_out_discount_reason || '');
-          this.paymentMethod.set(detail.check_out_payment_method || 'credit_card');
-          this.paymentRef.set(detail.check_out_payment_ref || '');
-          this.observations.set(detail.check_out_observations || '');
-          this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== STAY_CHECKED_OUT);
-          if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
-          this.viewState.set('success');
-        },
-        error: (err: ApiError) => {
-          this.viewState.set(err.status === 404 ? 'empty' : 'error');
-        }
-      });
+    // Single effect: error → viewState('error'|'empty'),
+    // first fetch → pre-fill backend-saved wizard fields (id-gated so reloads
+    // after completeCheckOut/addCharge/removeCharge/quickCharge/onInvoiceEmitted
+    // don't trash user-edited values).
+    effect(() => {
+      const detail = this.detailResource.value();
+      const err = this.detailResource.error();
+
+      if (err) {
+        const status = err instanceof HttpErrorResponse ? err.status : undefined;
+        this.viewState.set(status === 404 ? 'empty' : 'error');
+        return;
+      }
+      if (!detail) {
+        this.viewState.set('loading');
+        return;
+      }
+      if (this.lastInitializedId === detail.booking_id) return;
+      this.lastInitializedId = detail.booking_id;
+
+      this.roomInspected.set(detail.check_out_room_inspected || false);
+      this.keysReturned.set(detail.check_out_keys_returned || false);
+      this.damagesFound.set(detail.check_out_damages_found || false);
+      this.lateCheckoutFee.set(detail.check_out_late_checkout_fee || 0);
+      this.discount.set(detail.check_out_discount || 0);
+      this.discountReason.set(detail.check_out_discount_reason || '');
+      this.paymentMethod.set(detail.check_out_payment_method || 'credit_card');
+      this.paymentRef.set(detail.check_out_payment_ref || '');
+      this.observations.set(detail.check_out_observations || '');
+      this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== STAY_CHECKED_OUT);
+      if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
+      this.viewState.set('success');
+    }, { allowSignalWrites: true });
   }
 
   // ── Step navigation ──
@@ -228,11 +251,8 @@ export class CheckOutDetailPageComponent {
   }
 
   onInvoiceEmitted(): void {
-    const d = this.data();
-    if (!d) return;
-    this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (updated) => this.data.set(updated),
-    });
+    if (!this.data()) return;
+    this.detailResource.reload();
   }
 
   removeCharge(chargeId: string): void {
@@ -240,15 +260,8 @@ export class CheckOutDetailPageComponent {
     this.chargeSaving.set(true);
     this.api.deleteCharge(chargeId).subscribe({
       next: () => {
-        const d = this.data();
-        if (d) {
-          this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (updated) => { this.data.set(updated); this.chargeSaving.set(false); },
-            error: () => this.chargeSaving.set(false),
-          });
-        } else {
-          this.chargeSaving.set(false);
-        }
+        if (this.data()) this.detailResource.reload();
+        this.chargeSaving.set(false);
       },
       error: () => this.chargeSaving.set(false),
     });
@@ -312,9 +325,7 @@ export class CheckOutDetailPageComponent {
       next: () => {
         this.chargeSaving.set(false);
         this.chargeFormVisible.set(false);
-        this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: (updated) => this.data.set(updated),
-        });
+        this.detailResource.reload();
       },
       error: (err: ApiError) => {
         this.chargeSaving.set(false);
@@ -331,9 +342,7 @@ export class CheckOutDetailPageComponent {
     this.api.createCharge(d.booking_id, d.prop_id, concept, amount, 1, '', category).subscribe({
       next: () => {
         this.chargeSaving.set(false);
-        this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: (updated) => this.data.set(updated),
-        });
+        this.detailResource.reload();
       },
       error: () => { this.chargeSaving.set(false); },
     });
@@ -361,9 +370,9 @@ export class CheckOutDetailPageComponent {
         this.completing.set(false);
         this.canComplete.set(false);
         this.goToStep(5);
-        this.api.getCheckOutDetail(d.booking_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: (updated) => this.data.set(updated),
-        });
+        // Refresh detail; the init effect's id-gate preserves user edits
+        // across this refetch.
+        this.detailResource.reload();
       },
       error: (err: ApiError) => {
         this.completing.set(false);

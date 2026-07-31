@@ -1,11 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { distinctUntilChanged, map } from 'rxjs';
 
 import { mapRoomHistoryResponse, type RoomHistoryViewModel, type RoomHistoryDto } from './room-history-page.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -37,26 +35,35 @@ const STATUS_META: Record<string, { label: string; icon: string; color: string }
 export class RoomHistoryPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly propertyCtx = inject(PropertyContextService);
 
   readonly selectedLabel = signal(this.route.snapshot.queryParamMap.get('prop_label') ?? '');
 
   // ── URL params → signals (source of truth for filters & pagination) ──
-  private readonly queryParams = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => ({
-        propId: Number(params.get('prop_id') ?? '0'),
-        roomLabel: params.get('room_label') || '',
-        bookingId: params.get('booking_id') || '',
-        page: Math.max(1, Number(params.get('page') ?? '1')),
-      })),
-      distinctUntilChanged((a, b) =>
+  // Migrated from `pipe(map, distinctUntilChanged)` to Angular's signal graph.
+  // `computed` with a custom 4-field `equal` comparator preserves the
+  // original dedup semantics so the `httpResource` URL formula + downstream
+  // `selectedPropId` / `roomLabelFilter` / `bookingIdFilter` / `currentPage`
+  // computeds re-fire only when at least one filter param actually changes.
+  private readonly queryParamMap = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  private readonly queryParams = computed(
+    () => {
+      const p = this.queryParamMap();
+      return {
+        propId: Number(p.get('prop_id') ?? '0'),
+        roomLabel: p.get('room_label') || '',
+        bookingId: p.get('booking_id') || '',
+        page: Math.max(1, Number(p.get('page') ?? '1')),
+      };
+    },
+    {
+      equal: (a, b) =>
         a.propId === b.propId && a.roomLabel === b.roomLabel &&
-        a.bookingId === b.bookingId && a.page === b.page
-      ),
-    ),
-    { initialValue: { propId: 0, roomLabel: '', bookingId: '', page: 1 } }
+        a.bookingId === b.bookingId && a.page === b.page,
+    },
   );
 
   // ── Reactive filter signals synced from URL (for input binding) ──
@@ -67,9 +74,13 @@ export class RoomHistoryPageComponent {
   readonly pageSize = 20;
 
   // ── Local mutable copies for editing before submitting ──
-  readonly editPropId = signal(0);
-  readonly editRoomLabel = signal('');
-  readonly editBookingId = signal('');
+  // `linkedSignal` mirrors `queryParams()` automatically (no manual effect) while
+  // still allowing local `.set()` overrides from the filters form before the
+  // user clicks "Aplicar". This is the canonical Angular 22 pattern already
+  // used in `property-selector.ts:47` and `gp-confirm-modal.component.ts:74,76`.
+  readonly editPropId = linkedSignal(() => this.queryParams().propId);
+  readonly editRoomLabel = linkedSignal(() => this.queryParams().roomLabel);
+  readonly editBookingId = linkedSignal(() => this.queryParams().bookingId);
 
   // ── Data fetching via httpResource (reacts to queryParams changes) ──
   private readonly historyResource = httpResource<RoomHistoryViewModel>(() => {
@@ -100,18 +111,11 @@ export class RoomHistoryPageComponent {
   readonly hasNext = computed(() => this.historyResource.value()?.hasNext ?? false);
   readonly pagesArray = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
 
-  constructor() {
-    // Sync URL params into edit signals on mount/navigation
-    this.queryParams();
-    // Re-initialize edit signals from URL on change
-    this.route.queryParamMap.pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe((params) => {
-      this.editPropId.set(Number(params.get('prop_id') ?? '0'));
-      this.editRoomLabel.set(params.get('room_label') || '');
-      this.editBookingId.set(params.get('booking_id') || '');
-    });
-  }
+  // (No constructor needed — `linkedSignal` tracks `queryParams()` lazily, the
+  //  first read happens when the template or any consumer calls `editPropId()` /
+  //  `editRoomLabel()` / `editBookingId()` during the first change-detection
+  //  cycle. This eliminates the timing regression that `effect`-based sync
+  //  would have had versus the legacy `subscribe` of `route.queryParamMap`.)
 
   // ── Property selection ──
   onPropSelected(event: { propId: number; label: string }): void {

@@ -41,11 +41,19 @@ const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Urgente',
 };
 
+/**
+ * Status colors — delegated to design tokens
+ * (`frontend/src/styles/_scss-variables.scss`). Status keys kept
+ * verbatim so the template lookups (`statusColors[status]`) keep
+ * working; only the value shifts from a hardcoded hex to a
+ * `var(--token)` reference. Auto-adapts to the active theme via
+ * `[data-theme="dark"]` overlay.
+ */
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: '#1463ff',
-  in_progress: '#d97706',
-  inspection: '#7c3aed',
-  completed: '#059669',
+  scheduled: 'var(--accent)',
+  in_progress: 'var(--warning)',
+  inspection: 'var(--purple-strong)',
+  completed: 'var(--success)',
 };
 
 const TASK_TYPE_LABELS: Record<string, string> = {

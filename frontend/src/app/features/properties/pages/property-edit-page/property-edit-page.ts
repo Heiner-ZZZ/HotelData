@@ -140,13 +140,13 @@ export class PropertyEditPageComponent {
           accepted_currencies: this.parseAcceptedCurrencies(fv.acceptedCurrencies),
           reason: 'Actualización manual desde Angular'
         })
-      ).then(() => true).catch(() => false)
+      ).then(() => true).catch(this.devSilentFail('saveProfile'))
     );
 
     checks.push(
       firstValueFrom(
         this.propertiesApi.saveContent(propId, fv.description, fv.highlights)
-      ).then(() => true).catch(() => false)
+      ).then(() => true).catch(this.devSilentFail('saveContent'))
     );
 
     checks.push(
@@ -161,13 +161,13 @@ export class PropertyEditPageComponent {
           payment_policy: currentVm.policies.paymentPolicy,
           house_rules: currentVm.policies.houseRules,
         })
-      ).then(() => true).catch(() => false)
+      ).then(() => true).catch(this.devSilentFail('savePolicies'))
     );
 
     checks.push(
       firstValueFrom(
         this.propertiesApi.saveAmenities(propId, currentVm.amenities)
-      ).then(() => true).catch(() => false)
+      ).then(() => true).catch(this.devSilentFail('saveAmenities'))
     );
 
     Promise.all(checks).then((results) => {
@@ -254,5 +254,21 @@ export class PropertyEditPageComponent {
 
   private parseAcceptedCurrencies(raw: string): string[] {
     return raw.split(',').map(c => c.trim().toUpperCase()).filter(c => c.length === 3);
+  }
+
+  /**
+   * Dev visibility for the saveAll() Promise chain. In production this
+   * swallows the rejection (saveAll() reads the booleans to decide whether
+   * to surface the generic "some changes failed" toast), but in
+   * development we always `console.error` with the endpoint name so the
+   * dev console shows WHAT failed and WHERE — the user's invisible-error
+   * complaint on `http://localhost:4200/hotels/1` came from this chain
+   * silently turning 4 endpoint failures into 4 booleans.
+   */
+  private devSilentFail(context: string) {
+    return (err: unknown): false => {
+      if (isDevMode()) console.error(`[property-edit] ${context} failed`, err);
+      return false;
+    };
   }
 }

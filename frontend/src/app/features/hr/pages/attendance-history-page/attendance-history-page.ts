@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { switchMap, map, BehaviorSubject } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { switchMap, map } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
 import { toast } from '../../../../core/toast/toast.service';
+import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
 type TabType = 'all' | 'present' | 'absent' | 'late';
 
@@ -21,7 +22,12 @@ export class AttendanceHistoryPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  /**
+   * Bump signal that triggers a re-fetch when its value changes. Replaces the
+   * legacy ``BehaviorSubject<void>`` refresh pattern; ``prevMonth`` /
+   * ``nextMonth`` increment it to invalidate the attendance stream.
+   */
+  private readonly refreshTrigger = signal(0);
 
   /** Current month in YYYY-MM format */
   readonly currentMonth = signal(this._getDefaultMonth());
@@ -41,7 +47,7 @@ export class AttendanceHistoryPageComponent {
   );
 
   readonly attendance = toSignal(
-    this.refresh$.pipe(
+    toObservable(this.refreshTrigger).pipe(
       switchMap(() => this.route.paramMap),
       switchMap(params => {
         const id = params.get('employeeId') || '';
@@ -81,7 +87,7 @@ export class AttendanceHistoryPageComponent {
     const [y, m] = this.currentMonth().split('-').map(Number);
     const d = new Date(y, m - 2, 1);
     this.currentMonth.set(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   nextMonth() {
@@ -89,7 +95,7 @@ export class AttendanceHistoryPageComponent {
     const [y, m] = this.currentMonth().split('-').map(Number);
     const d = new Date(y, m, 1);
     this.currentMonth.set(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-    this.refresh$.next();
+    this.refreshTrigger.update(v => v + 1);
   }
 
   goBack() {
@@ -103,7 +109,15 @@ export class AttendanceHistoryPageComponent {
 
   formatTime(iso: string | null): string {
     if (!iso) return '—';
-    try { return iso.substring(11, 16); } catch { return '—'; }
+    try {
+      return iso.substring(11, 16);
+    } catch (err) {
+      // Was silent — now visible in dev console + amber toast so devs see
+      // when an unexpected ISO shape arrives (the previous fallback to '—'
+      // hid any bad-data issues on the page).
+      catchAndToastWarning('attendance.formatTime', '—')(err);
+      return '—';
+    }
   }
 
   formatHours(hours: number | null): string {

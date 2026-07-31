@@ -2,8 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs';
-
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -34,13 +32,24 @@ export class GuestsPageComponent {
   private readonly api = inject(GuestsApiService);
   readonly propertyCtx = inject(PropertyContextService);
 
-  private readonly routePropId = toSignal(
-      this.route.queryParamMap.pipe(
-        map((params) => Number(params.get('prop_id') ?? '0')),
-        distinctUntilChanged(),
-      ),
-      { initialValue: 0 }
-    );
+  /**
+   * Reactive snapshot of the route's `queryParamMap`. Initialised from
+   * `snapshot.queryParamMap` so the first httpResource request fires on direct
+   * navigation without a flash of empty URL → loading → real data.
+   */
+  private readonly queryParamMap = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  /**
+   * Default `Object.is` equality on the resulting `number` already dedups
+   * upstream noise, so the legacy `distinctUntilChanged` operator is no longer
+   * needed — `computed` rebuilds downstream `httpResource` URLs only when the
+   * numeric propId actually changes.
+   */
+  private readonly routePropId = computed(() =>
+    Number(this.queryParamMap().get('prop_id') ?? '0')
+  );
 
   readonly selectedPropId = computed(() => this.routePropId());
 

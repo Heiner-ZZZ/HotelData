@@ -1,9 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
 import { DecimalPipe, NgStyle } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { httpResource } from '@angular/common/http';
+import { CdkDrag, CdkDropList, CdkDropListGroup, type CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
-import type { ReceptionCalendarData, ReceptionCalendarDay, ReceptionCalendarReservation } from '../../models/reception-calendar.model';
+import type {
+  ReceptionCalendarData,
+  ReceptionCalendarDay,
+  ReceptionCalendarReservation,
+  ReceptionCalendarRoom,
+} from '../../models/reception-calendar.model';
 import { ReservationsApiService } from '../../services/reservations-api.service';
 import { mapReceptionCalendar, type ReceptionCalendarDto } from '../../services/reservations-api.service';
 
@@ -92,11 +99,23 @@ function mapReservationDetail(dto: ReservationDetailDto): ReservationDetail {
   };
 }
 
+/** Reservation awaiting user confirmation in the conflict modal. */
+type PendingReassign = { source: ReceptionCalendarReservation; targetRoom: ReceptionCalendarRoom };
+
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 @Component({
   selector: 'app-reception-calendar',
-  imports: [DecimalPipe, EmptyStateComponent, NgStyle, RouterLink],
+  imports: [
+    CdkDrag,
+    CdkDropList,
+    CdkDropListGroup,
+    CdkTrapFocus,
+    DecimalPipe,
+    EmptyStateComponent,
+    NgStyle,
+    RouterLink,
+  ],
   templateUrl: './reception-calendar.html',
   styleUrl: './reception-calendar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -131,6 +150,17 @@ export class ReceptionCalendarComponent {
       const loading = this.detailResource.isLoading();
       this.detailData.set(data ?? null);
       this.detailLoading.set(loading);
+    });
+
+    // Auto-focus the modal close button on open. cdkTrapFocus only redirects
+    // focus WHEN focus tries to leave the trap; on open, focus would otherwise
+    // stay on the calendar bar that triggered the modal (hidden under the
+    // backdrop from the user's perspective). Predictable programmatic focus
+    // via queueMicrotask defers past Angular's view lifecycle.
+    effect(() => {
+      if (this.selectedReservation() || this.reassignConflict()) {
+        queueMicrotask(() => this.modalCloseBtn?.nativeElement?.focus());
+      }
     });
   }
 
@@ -209,13 +239,14 @@ export class ReceptionCalendarComponent {
     parse: (dto) => mapReservationDetail(dto as ReservationDetailDto),
   });
 
-  /** Drag-and-drop state. */
-  readonly dragBookingId = signal<string | null>(null);
-  readonly dragOverRoom = signal<string | null>(null);
+  // ─── Reassignment state (CDK drag-drop) ───
   readonly reassigning = signal(false);
   readonly reassignSuccess = signal<string | null>(null);
   readonly reassignError = signal<string | null>(null);
+  /** Blocking reservation at the drop target (room already has active/upcoming booking). */
   readonly reassignConflict = signal<ReceptionCalendarReservation | null>(null);
+  /** Held while user resolves the conflict modal. Cleared on confirm/cancel. */
+  readonly pendingReassign = signal<PendingReassign | null>(null);
 
   /** Computed: days to display in the calendar header. */
   readonly calendarDays = computed<ReceptionCalendarDay[]>(() => {
@@ -248,12 +279,27 @@ export class ReceptionCalendarComponent {
 
   readonly totalDays = computed(() => this.calendarDays().length);
 
-  /** CSS grid-template-columns value for grid rows (wider cells for 7 days). */
+  /** Each day column is a fixed 110px wide. The fixed width makes the
+   *  pixel offset for the now-line overlay calculable in pure TS without
+   *  DOM measurement (see `nowLineLeftPx`), and produces a stable horizontal
+   *  scroll bound (140 + 14×110 = 1680px minimum) so the grid behaves
+   *  identically across viewports. */
+  static readonly DAY_COL_WIDTH_PX = 110;
+  static readonly LABEL_COL_WIDTH_PX = 140;
+
+  /** CSS grid-template-columns value for the calendar header and every row. */
   readonly gridCols = computed(() => {
     const n = this.totalDays();
     if (n === 0) return '';
-    return `140px repeat(${n}, minmax(60px, 1fr))`;
+    return `${ReceptionCalendarComponent.LABEL_COL_WIDTH_PX}px repeat(${n}, ${ReceptionCalendarComponent.DAY_COL_WIDTH_PX}px)`;
   });
+
+  /** Captures the modal close button for programmatic focus on modal open.
+   *  Same ref name on both modals because they're gated behind mutually exclusive
+   *  `@if` blocks — only one renders at a time, so `@ViewChild` resolves to the
+   *  currently-mounted instance. */
+  @ViewChild('modalCloseBtn', { static: false })
+  readonly modalCloseBtn?: ElementRef<HTMLButtonElement>;
 
   /** Public method for retry button. */
   loadCalendar() {
@@ -366,41 +412,65 @@ export class ReceptionCalendarComponent {
     return data.rooms.reduce((sum, rm) => sum + rm.reservations.length, 0);
   });
 
-  // ─── Drag-and-Drop handlers ───
+  // ─── Drag-and-drop (Angular CDK) ───
 
-  onDragStart(r: ReceptionCalendarReservation, event: DragEvent) {
-    if (!this.canDrag(r)) {
-      event.preventDefault();
-      return;
-    }
-    this.dragBookingId.set(r.bookingId);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', r.bookingId);
-    }
+  /** Only upcoming/active reservations with a known room are draggable.
+   *  Past/cancelled bars stay put — historical record.
+   */
+  canDrag(r: ReceptionCalendarReservation): boolean {
+    return (r.visualStatus === 'upcoming' || r.visualStatus === 'active') && !!r.hotelRoomId;
   }
 
-  onDragEnd() {
-    this.dragBookingId.set(null);
-    this.dragOverRoom.set(null);
+  /**
+   * Single drop handler. Replaces the previous HTML5 dragstart/dragover/drop
+   * state machine that was tracking the dragged booking via `dragBookingId`
+   * and re-resolving it through `_findReservation(bookingId)` on each event.
+   *
+   * CDK (`cdkDropListGroup` on `.rc-grid`) auto-connects every room's
+   * `cdkDropList`, so any room can accept any bar. Source/target rooms and
+   * the dragged reservation arrive on the event as typed objects, no lookup.
+   *
+   * If the target room has its own active/upcoming reservation we surface the
+   * existing conflict modal. We deliberately do NOT move the bar in CDK's
+   * data — after the API call reassigns the booking server-side, the next
+   * `calendarResource.reload()` fetches the new location and the bar renders
+   * there naturally.
+   */
+  onBarDropped(
+    event: CdkDragDrop<ReceptionCalendarRoom, ReceptionCalendarRoom, ReceptionCalendarReservation>,
+  ) {
+    if (event.previousContainer === event.container) return;
+
+    const targetRoom = event.container.data;
+    const reservation = event.item.data;
+    if (!targetRoom || !reservation) return;
+    if (!this.canDrag(reservation)) return;
+
+    const blockingReservation = targetRoom.reservations.find(
+      r => (r.visualStatus === 'active' || r.visualStatus === 'upcoming')
+       && r.bookingId !== reservation.bookingId,
+    );
+
+    if (blockingReservation) {
+      this.pendingReassign.set({ source: reservation, targetRoom });
+      this.reassignConflict.set(blockingReservation);
+      return;
+    }
+
+    this._executeReassign(reservation, targetRoom.hotelRoomId, targetRoom.roomNumber);
   }
 
   confirmReassign() {
-    const conflict = this.reassignConflict();
-    if (!conflict) return;
+    const pending = this.pendingReassign();
+    if (!pending) return;
     this.reassignConflict.set(null);
-
-    const sourceBookingId = this.dragBookingId();
-    if (!sourceBookingId) return;
-    const source = this._findReservation(sourceBookingId);
-    if (!source) { this.dragBookingId.set(null); return; }
-
-    this._executeReassign(source, conflict.hotelRoomId, conflict.roomNumber);
+    this.pendingReassign.set(null);
+    this._executeReassign(pending.source, pending.targetRoom.hotelRoomId, pending.targetRoom.roomNumber);
   }
 
   cancelReassign() {
     this.reassignConflict.set(null);
-    this.dragBookingId.set(null);
+    this.pendingReassign.set(null);
   }
 
   private _executeReassign(
@@ -416,85 +486,14 @@ export class ReceptionCalendarComponent {
       next: () => {
         this.reassignSuccess.set(`${source.guestName} → Habitación ${targetRoomNumber}`);
         this.reassigning.set(false);
-        this.dragBookingId.set(null);
         this.calendarResource.reload();
         setTimeout(() => this.reassignSuccess.set(null), 4000);
       },
       error: (err) => {
         this.reassignError.set(err?.error?.detail || 'Error al reasignar habitación');
         this.reassigning.set(false);
-        this.dragBookingId.set(null);
         setTimeout(() => this.reassignError.set(null), 5000);
       },
     });
-  }
-
-  private _findReservation(bookingId: string): ReceptionCalendarReservation | null {
-    const data = this.calendarResource.value();
-    if (!data) return null;
-    for (const rm of data.rooms) {
-      for (const r of rm.reservations) {
-        if (r.bookingId === bookingId) return r;
-      }
-    }
-    return null;
-  }
-
-  isDragOverByRoomId(hotelRoomId: string): boolean {
-    return this.dragOverRoom() === hotelRoomId && this.dragBookingId() !== null;
-  }
-
-  isDragging(r: ReceptionCalendarReservation): boolean {
-    return this.dragBookingId() === r.bookingId;
-  }
-
-  canDrag(r: ReceptionCalendarReservation): boolean {
-    return (r.visualStatus === 'upcoming' || r.visualStatus === 'active') && !!r.hotelRoomId;
-  }
-
-  /** Handle drop on any room (even empty) by hotel_room_id. */
-  onRowDropByRoomId(targetHotelRoomId: string, targetRoomNumber: string, event: DragEvent) {
-    event.preventDefault();
-    this.dragOverRoom.set(null);
-
-    const sourceBookingId = this.dragBookingId();
-    if (!sourceBookingId) return;
-
-    const source = this._findReservation(sourceBookingId);
-    if (!source) { this.dragBookingId.set(null); return; }
-
-    if (!source.hotelRoomId) {
-      this.dragBookingId.set(null);
-      return;
-    }
-
-    // Find target room in data
-    const data = this.calendarResource.value();
-    const targetRoom = data?.rooms.find(rm => rm.hotelRoomId === targetHotelRoomId);
-    const hasActiveReservation = targetRoom?.reservations.some(
-      r => r.visualStatus === 'active' || r.visualStatus === 'upcoming'
-    );
-
-    if (hasActiveReservation) {
-      this.reassignConflict.set(targetRoom!.reservations[0]);
-      return;
-    }
-
-    this._executeReassign(source, targetHotelRoomId, targetRoomNumber);
-  }
-
-  /** Override: track dragOver by hotel_room_id too */
-  onRowDragOver(roomId: string, event: DragEvent) {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
-    }
-    this.dragOverRoom.set(roomId);
-  }
-
-  onRowDragLeave(roomId: string) {
-    if (this.dragOverRoom() === roomId) {
-      this.dragOverRoom.set(null);
-    }
   }
 }

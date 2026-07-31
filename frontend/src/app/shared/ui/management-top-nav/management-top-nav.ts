@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, OnInit, OnDestroy, ElementRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal, OnInit, ElementRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
@@ -44,7 +44,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   styleUrl: './management-top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ManagementTopNavComponent implements OnInit, OnDestroy {
+export class ManagementTopNavComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly notificationsApi = inject(NotificationsApiService);
   private readonly router = inject(Router);
@@ -119,6 +119,7 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
   private _pollingStopped = false;
 
   constructor() {
+    this.destroyRef.onDestroy(() => this._stopPolling());
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -140,10 +141,6 @@ export class ManagementTopNavComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this._startPolling();
-  }
-
-  ngOnDestroy() {
-    this._stopPolling();
   }
 
   private _startPolling() {

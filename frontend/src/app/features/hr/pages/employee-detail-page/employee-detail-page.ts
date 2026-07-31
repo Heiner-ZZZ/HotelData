@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -121,24 +121,29 @@ import { HrApiService } from '../../services/hr-api.service';
 export class EmployeeDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly hrApi = inject(HrApiService);
 
-  readonly viewState = signal<'loading' | 'success' | 'error'>('loading');
-  readonly emp = signal<any>(null);
+  // ── Reactive route param — httpResource re-fires when this changes ──
+  private readonly paramMap = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  readonly empId = computed(() => this.paramMap().get('employeeId') ?? '');
 
-  constructor() {
-    this.route.paramMap.pipe(
-      switchMap(params => {
-        this.viewState.set('loading');
-        return this.hrApi.getEmployee(params.get('employeeId')!);
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (data) => { this.emp.set(data); this.viewState.set('success'); },
-      error: () => this.viewState.set('error'),
-    });
-  }
+  readonly detailResource = httpResource<any>(() => {
+    const id = this.empId();
+    return id ? `/api/hr/${id}` : undefined;
+  });
+
+  readonly emp = computed(() => this.detailResource.value() ?? null);
+
+  readonly viewState = computed<'loading' | 'success' | 'error' | 'empty'>(() => {
+    const v = this.detailResource.value();
+    if (this.detailResource.isLoading() && !v) return 'loading';
+    const err = this.detailResource.error();
+    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
+    if (err) return 'error';
+    return v ? 'success' : 'loading';
+  });
 
   goBack() { this.router.navigate(['/management/hr/directory']); }
 }

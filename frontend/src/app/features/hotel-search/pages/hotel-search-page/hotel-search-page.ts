@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -11,9 +11,9 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { FilterSidebarComponent } from '../../components/filter-sidebar/filter-sidebar';
 import { HotelCardComponent } from '../../components/hotel-card/hotel-card';
 import { SortControlComponent } from '../../components/sort-control/sort-control';
-import { createHotelSearchFilters } from '../../mappers/hotel-search.mapper';
+import { createHotelSearchFilters, mapHotelSearchItems, mapHotelSearchResponse } from '../../mappers/hotel-search.mapper';
+import type { HotelSearchDto } from '../../models/hotel-search.dto';
 import type { AlternativeDestination, HotelSearchFilters, HotelSearchResult } from '../../models/hotel-search.model';
-import { HotelSearchApiService } from '../../services/hotel-search-api.service';
 
 @Component({
   selector: 'app-hotel-search-page',
@@ -33,12 +33,58 @@ import { HotelSearchApiService } from '../../services/hotel-search-api.service';
 })
 export class HotelSearchPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly hotelSearchApi = inject(HotelSearchApiService);
   private readonly router = inject(Router);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly pageData = signal<HotelSearchFilters | null>(null);
+  /** Reactive query-params bridge — toSignal keeps URL the source of truth. */
+  private readonly qp = toSignal(this.activatedRoute.queryParamMap, {
+    initialValue: this.activatedRoute.snapshot.queryParamMap,
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    const v = this.searchResource.value();
+    if (this.searchResource.isLoading() && !v) return 'loading';
+    const err = this.searchResource.error();
+    if (err instanceof HttpErrorResponse) return err.status === 404 ? 'empty' : 'error';
+    if (err) return 'error';
+    return v?.items.length ? 'success' : 'empty';
+  });
+
+  // [FIX NG0600 cyclic dependency] Removed the `const data = this.searchResource.value()`
+  // read entirely. `pageData` and `searchResource` formed a cycle: pageData
+  // read `searchResource.value()` to check existence, and `searchResource`'s
+  // URL formula read `pageData()` to build the request URL — Angular's reactive
+  // graph produced the producerRecomputeValue → equal → value storm on every
+  // emission. Flip-mode: filters are the SINGLE SOURCE OF TRUTH for the request,
+  // derived purely from query params (`qp` is the URL state, `pageData` is its
+  // typed view, the resource fires on that URL string).
+  readonly pageData = computed<HotelSearchFilters>(() => {
+    return createHotelSearchFilters({
+      destination: this.qp().get('destination') ?? '',
+      checkIn: this.qp().get('check_in') ?? '',
+      checkOut: this.qp().get('check_out') ?? '',
+      adults: this.qp().get('adults') ?? '1',
+      children: this.qp().get('children') ?? '0',
+      rooms: this.qp().get('rooms') ?? '1',
+      minPrice: this.qp().get('price_min') ?? '',
+      maxPrice: this.qp().get('price_max') ?? '',
+      minStars: this.qp().get('star_rating') ?? '',
+      amenities: (this.qp().get('amenities') ?? '').split(',').filter(Boolean),
+      amenitiesMode: (this.qp().get('amenities_mode') as 'or' | 'and') ?? 'or',
+      sortBy: (this.qp().get('sort_by') as 'price' | 'rating' | 'stars' | 'name') ?? 'price',
+      page: Number(this.qp().get('page') ?? '1'),
+      compareIds: (this.qp().get('compare_ids') || '').split(',').map(Number).filter((n) => !isNaN(n) && n > 0),
+    });
+  });
+
+  /** httpResource — auto-fetches on URL change. Typed as `HotelSearchDto`
+   *  so the mapper below receives the canonical shape without any cast
+   *  (the prior `{ items: any[]; ... }` type silently hid wire-shape drift). */
+  readonly searchResource = httpResource<HotelSearchDto>(() => {
+    const f = this.pageData();
+    return f ? `/api/hotels/search?${this.toQueryString(f)}` : undefined;
+  });
+
+  /** Derived signals enumerated from search response. */
   readonly items = signal<HotelSearchResult[]>([]);
   readonly total = signal(0);
   readonly page = signal(1);
@@ -48,11 +94,7 @@ export class HotelSearchPageComponent {
   readonly showCompareMode = signal(false);
   readonly alternativeDestinations = signal<AlternativeDestination[]>([]);
 
-  readonly currentFilters = computed(() => {
-    const data = this.pageData();
-    if (data) return data;
-    return createHotelSearchFilters();
-  });
+  readonly currentFilters = computed(() => this.pageData());
 
   readonly selectedCompareIds = computed(() => {
     const fromUrl = this.currentFilters().compareIds;
@@ -61,58 +103,44 @@ export class HotelSearchPageComponent {
   });
 
   constructor() {
-    this.activatedRoute.queryParamMap
-      .pipe(
-        map((queryParams) =>
-          createHotelSearchFilters({
-            destination: queryParams.get('destination') ?? '',
-            checkIn: queryParams.get('check_in') ?? '',
-            checkOut: queryParams.get('check_out') ?? '',
-            adults: queryParams.get('adults') ?? '1',
-            children: queryParams.get('children') ?? '0',
-            rooms: queryParams.get('rooms') ?? '1',
-            minPrice: queryParams.get('price_min') ?? '',
-            maxPrice: queryParams.get('price_max') ?? '',
-            minStars: queryParams.get('star_rating') ?? '',
-            amenities: (queryParams.get('amenities') ?? '').split(',').filter(Boolean),
-            amenitiesMode: (queryParams.get('amenities_mode') as 'or' | 'and') ?? 'or',
-            sortBy: (queryParams.get('sort_by') as 'price' | 'rating' | 'stars' | 'name') ?? 'price',
-            page: Number(queryParams.get('page') ?? '1'),
-            compareIds: (queryParams.get('compare_ids') || '').split(',').map(Number).filter((n) => !isNaN(n) && n > 0),
-          })
-        ),
-        distinctUntilChanged((previous, current) => JSON.stringify(previous) === JSON.stringify(current)),
-        switchMap((filters) => {
-          this.viewState.set('loading');
-          this.pageData.set(filters);
-          this.showCompareMode.set(filters.compareIds.length > 0);
-          return this.hotelSearchApi.search(filters);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (pageData) => {
-          // Preserve selection state when items refresh
-          const currentFilters = this.pageData();
-          const fromCompareIds = new Set(currentFilters?.compareIds ?? []);
-          const selected = new Set(this.selectedCompareIds());
-          const items = pageData.items.map((h) => ({
-            ...h,
-            selected: selected.has(h.id) || fromCompareIds.has(h.id),
-          }));
-          this.items.set(items);
-          this.total.set(pageData.total);
-          this.page.set(pageData.page);
-          this.totalPages.set(pageData.totalPages);
-          this.hasPrev.set(pageData.hasPrev);
-          this.hasNext.set(pageData.hasNext);
-          this.alternativeDestinations.set(pageData.alternativeDestinations ?? []);
-          this.viewState.set(items.length ? 'success' : 'empty');
-        },
-        error: () => {
-          this.viewState.set('error');
-        }
-      });
+    // Side-effect: derive from httpResource.value into the discrete signals that
+    // the template reads. The id-gate prevents paged fetches from overwriting any
+    // user's optimistic compare selections.
+    effect(() => {
+      const data = this.searchResource.value();
+      if (!data) return;
+      const currentFilters = this.pageData();
+      const fromCompareIds = new Set(currentFilters?.compareIds ?? []);
+      // [FIX] `untracked()` around `selectedCompareIds()` breaks the NG0600
+      // self-write re-entrancy: `selectedCompareIds` is a computed that
+      // transitively reads `this.items()`, so calling it inside this effect
+      // would subscribe us to `items`. Then `this.items.set(...)` further
+      // down would trigger `producerRecomputeValue → equal → value` on every
+      // emission. We just need the pre-write selected IDs to merge into the
+      // new page — untracking that one read is the minimum diff.
+      const selected = new Set(untracked(() => this.selectedCompareIds()));
+      // [FIX BUG] Use `mapHotelSearchResponse` so the response envelope
+      // (`total_pages` → `totalPages`, `has_prev` → `hasPrev`, `alternative_
+      // destinations` → `alternativeDestinations`, plus the per-item mapping
+      // via `mapHotelSearchItems`) goes through the SAME canonical mapper
+      // — never access `data.X` directly here. The mapper is the audit point
+      // for wire-shape drift; bypassing it (Page → data.X) reintroduces the
+      // silent-fallback class of bugs the user asked us to stop.
+      const page = mapHotelSearchResponse(data, currentFilters);
+      this.items.set(
+        page.items.map((h) => ({
+          ...h,
+          selected: selected.has(h.id) || fromCompareIds.has(h.id),
+        })),
+      );
+      this.total.set(page.total);
+      this.page.set(page.page);
+      this.totalPages.set(page.totalPages);
+      this.hasPrev.set(page.hasPrev);
+      this.hasNext.set(page.hasNext);
+      this.alternativeDestinations.set(page.alternativeDestinations);
+      this.showCompareMode.set(page.filters.compareIds.length > 0);
+    }, { allowSignalWrites: true });
   }
 
   updateFilters(filters: HotelSearchFilters) {
@@ -167,7 +195,32 @@ export class HotelSearchPageComponent {
     });
   }
 
-  private toQueryParams(filters: HotelSearchFilters) {
+  /** Flatten the filter object into a URLSearchParams query string for the
+   *  httpResource request. Same null-skip semantics as the router call. */
+  private toQueryString(filters: HotelSearchFilters): string {
+    const sp = new URLSearchParams();
+    if (filters.destination) sp.set('destination', filters.destination);
+    if (filters.checkIn) sp.set('check_in', filters.checkIn);
+    if (filters.checkOut) sp.set('check_out', filters.checkOut);
+    if (filters.adults !== '1') sp.set('adults', filters.adults);
+    if (filters.children !== '0') sp.set('children', filters.children);
+    if (filters.rooms !== '1') sp.set('rooms', filters.rooms);
+    if (filters.minPrice) sp.set('price_min', filters.minPrice);
+    if (filters.maxPrice) sp.set('price_max', filters.maxPrice);
+    if (filters.minStars) sp.set('star_rating', filters.minStars);
+    if (filters.amenities.length) sp.set('amenities', filters.amenities.join(','));
+    if (filters.amenitiesMode !== 'or') sp.set('amenities_mode', filters.amenitiesMode);
+    if (filters.sortBy !== 'price') sp.set('sort_by', filters.sortBy);
+    if (filters.compareIds.length) sp.set('compare_ids', filters.compareIds.join(','));
+    if (filters.page > 1) sp.set('page', String(filters.page));
+    return sp.toString();
+  }
+
+  /** Build a `Record<string, string | number | null>` for `router.navigate`
+   *  calls. `null` values are deleted from the URL by the router (the same
+   *  null-skip behaviour as `toQueryString`). Defaults that match the page's
+   *  initial state are returned as `null` so the URL stays clean. */
+  private toQueryParams(filters: HotelSearchFilters): Record<string, string | number | null> {
     return {
       destination: filters.destination || null,
       check_in: filters.checkIn || null,
@@ -178,10 +231,9 @@ export class HotelSearchPageComponent {
       price_min: filters.minPrice || null,
       price_max: filters.maxPrice || null,
       star_rating: filters.minStars || null,
-      amenities: filters.amenities || null,
+      amenities: filters.amenities.length ? filters.amenities.join(',') : null,
       amenities_mode: filters.amenitiesMode !== 'or' ? filters.amenitiesMode : null,
       sort_by: filters.sortBy !== 'price' ? filters.sortBy : null,
-      compare_ids: filters.compareIds.length ? filters.compareIds.join(',') : null,
       page: filters.page > 1 ? filters.page : null,
     };
   }

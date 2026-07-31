@@ -1,9 +1,10 @@
 import { LowerCasePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, Observable, switchMap } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -56,8 +57,20 @@ export class GeoCatalogPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly toast = inject(ToastService);
 
-  readonly viewState = signal<ViewState>('loading');
-  readonly data = signal<GeoListResponse | null>(null);
+  /** Reactive queryParams bridge — toSignal keeps URL the source of truth. */
+  private readonly qp = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  readonly viewState = computed<ViewState>(() => {
+    const v = this.geoResource.value();
+    if (this.geoResource.isLoading() && !v) return 'loading';
+    const err = this.geoResource.error();
+    if (err) return 'error';
+    return v?.items.length ? 'success' : 'empty';
+  });
+
+  readonly data = computed(() => this.geoResource.value() ?? null);
   readonly message = signal('');
   readonly errorMessage = signal('');
 
@@ -77,118 +90,100 @@ export class GeoCatalogPageComponent {
     longitude: [(null as number | null)],
   });
 
-  constructor() {
-    this.route.queryParamMap
-      .pipe(
-        map((params) => ({
-          page: Number(params.get('page') ?? '1'),
-          type: params.get('type') || 'visitor-country',
-          q: params.get('q') || '',
-        })),
-        distinctUntilChanged((a, b) => a.page === b.page && a.type === b.type && a.q === b.q),
-        switchMap(({ page, type, q }) => {
-          this.viewState.set('loading');
-          this.activeType.set(type);
+  /**
+   * Type-aware URL resolver — picks the right endpoint for each ``activeType``
+   * value and sets up the page/q fetch. Visitor dimension endpoints return the
+   * full list (no server-side filter/pag), so this is a 1-call chain via
+   * httpResource with type-driven client-side ``applyLocalFilters()``.
+   */
+  readonly geoResource = httpResource<GeoListResponse>(() => {
+    const page = Number(this.qp().get('page') ?? '1');
+    const type = this.qp().get('type') || 'visitor-country';
+    const q = this.qp().get('q') || '';
 
-          let obs: Observable<GeoListResponse>;
-          if (type === 'visitor-country') {
-            obs = this.api.listVisitorCountries().pipe(
-              map((res: VisitorListResponse<VisitorCountryItem>) => {
-                const items: GeoEntry[] = res.items.map((item) => ({
-                  id: String(item.visitor_location_country_id),
-                  type: 'visitor-country',
-                  code: String(item.visitor_location_country_id),
-                  name: item.country_display_name,
-                  countryCode: '',
-                  stateCode: '',
-                  category: '',
-                  isoCode: '',
-                  latitude: null,
-                  longitude: null,
-                  isActive: true,
-                  createdAt: '',
-                  updatedAt: null,
-                }));
-                return this.applyLocalFilters(items, q, page);
-              })
-            );
-          } else if (type === 'visitor-destination') {
-            obs = this.api.listVisitorDestinations().pipe(
-              map((res: VisitorListResponse<VisitorDestinationItem>) => {
-                const items: GeoEntry[] = res.items.map((item) => ({
-                  id: String(item.srch_destination_id),
-                  type: 'visitor-destination',
-                  code: String(item.srch_destination_id),
-                  name: item.destination_display_name,
-                  countryCode: '',
-                  stateCode: '',
-                  category: '',
-                  isoCode: '',
-                  latitude: null,
-                  longitude: null,
-                  isActive: true,
-                  createdAt: '',
-                  updatedAt: null,
-                }));
-                return this.applyLocalFilters(items, q, page);
-              })
-            );
-          } else if (type === 'visitor-site') {
-            obs = this.api.listVisitorSites().pipe(
-              map((res: VisitorListResponse<VisitorSiteItem>) => {
-                const items: GeoEntry[] = res.items.map((item) => ({
-                  id: String(item.site_id),
-                  type: 'visitor-site',
-                  code: String(item.site_id),
-                  name: item.site_display_name,
-                  countryCode: '',
-                  stateCode: '',
-                  category: '',
-                  isoCode: '',
-                  latitude: null,
-                  longitude: null,
-                  isActive: true,
-                  createdAt: '',
-                  updatedAt: null,
-                }));
-                return this.applyLocalFilters(items, q, page);
-              })
-            );
-          } else if (type === 'visitor-hotel') {
-            obs = this.api.listVisitorHotels().pipe(
-              map((res: VisitorListResponse<VisitorHotelItem>) => {
-                const items: GeoEntry[] = res.items.map((item) => ({
-                  id: String(item.prop_id),
-                  type: 'visitor-hotel',
-                  code: String(item.prop_id),
-                  name: item.hotel_name,
-                  countryCode: '',
-                  stateCode: '',
-                  category: '',
-                  isoCode: '',
-                  latitude: null,
-                  longitude: null,
-                  isActive: true,
-                  createdAt: '',
-                  updatedAt: null,
-                }));
-                return this.applyLocalFilters(items, q, page);
-              })
-            );
-          } else {
-            obs = this.api.listEntries(type || undefined, undefined, q || undefined, page);
-          }
-          return obs;
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (data: GeoListResponse) => {
-          this.data.set(data);
-          this.viewState.set(data.items.length ? 'success' : 'empty');
-        },
-        error: () => this.viewState.set('error'),
-      });
+    // Visitor dimension types — full-list endpoint, paginate client-side.
+    if (type === 'visitor-country' || type === 'visitor-destination' || type === 'visitor-site' || type === 'visitor-hotel') {
+      this.activeType.set(type);
+      return this.urlForVisitorType(type, q, page);
+    }
+
+    // Generic catalog (geo-catalog collection) — server-side filter/pag.
+    this.activeType.set(type);
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (page > 1) params.set('page', String(page));
+    const qs = params.toString();
+    return qs ? `/api/management/geo-catalog?type=${type}&${qs}` : `/api/management/geo-catalog?type=${type}`;
+  }, {
+    parse: (raw: unknown) => {
+      const page = Number(this.qp().get('page') ?? '1');
+      const type = this.qp().get('type') || 'visitor-country';
+      const q = this.qp().get('q') || '';
+      const items = this.extractGeoEntries(raw, type);
+      return this.applyLocalFilters(items, q, page);
+    },
+  });
+
+  /**
+   * Build URL for one of the visitor dimension endpoints and let httpResource
+   * fire the GET; the parse callback adapts the response via
+   * ``extractGeoEntries()`` + ``applyLocalFilters()``.
+   */
+  private urlForVisitorType(type: string, q: string, page: number): string {
+    switch (type) {
+      case 'visitor-country': return '/api/visitor/countries';
+      case 'visitor-destination': return '/api/visitor/destinations';
+      case 'visitor-site': return '/api/visitor/sites';
+      case 'visitor-hotel': return '/api/visitor/hotels';
+      default: return '/api/visitor/countries';
+    }
+  }
+
+  private extractGeoEntries(raw: unknown, type: string): GeoEntry[] {
+    const visitList = (raw as { items?: unknown[] })?.items ?? [];
+    return visitList.map((itemUnknown) => {
+      const item = itemUnknown as Record<string, unknown>;
+      let id = '';
+      let name = '';
+      if (type === 'visitor-country') {
+        id = String(item['visitor_location_country_id']);
+        name = String(item['country_display_name'] ?? '');
+      } else if (type === 'visitor-destination') {
+        id = String(item['srch_destination_id']);
+        name = String(item['destination_display_name'] ?? '');
+      } else if (type === 'visitor-site') {
+        id = String(item['site_id']);
+        name = String(item['site_display_name'] ?? '');
+      } else if (type === 'visitor-hotel') {
+        id = String(item['prop_id']);
+        name = String(item['hotel_name'] ?? '');
+      }
+      return {
+        id,
+        type,
+        code: id,
+        name,
+        countryCode: '',
+        stateCode: '',
+        category: '',
+        isoCode: '',
+        latitude: null,
+        longitude: null,
+        isActive: true,
+        createdAt: '',
+        updatedAt: null,
+      };
+    });
+  }
+
+  constructor() {
+    // No httpResource lifecycle hooks needed — the resource itself drives
+    // viewState + data via its computed fields. Initial side-effect to keep
+    // activeType in sync when type changes externally:
+    effect(() => {
+      const type = this.qp().get('type') || 'visitor-country';
+      if (this.activeType() !== type) this.activeType.set(type);
+    }, { allowSignalWrites: true });
   }
 
   private applyLocalFilters(items: GeoEntry[], q: string, page: number): GeoListResponse {
@@ -299,71 +294,8 @@ export class GeoCatalogPageComponent {
   }
 
   private refresh(): void {
-    const current = this.data();
-    if (!current) return;
-    this.viewState.set('loading');
-    
-    let listObs: Observable<unknown>;
-    if (this.activeType() === 'visitor-country') {
-      listObs = this.api.listVisitorCountries();
-    } else if (this.activeType() === 'visitor-destination') {
-      listObs = this.api.listVisitorDestinations();
-    } else if (this.activeType() === 'visitor-site') {
-      listObs = this.api.listVisitorSites();
-    } else if (this.activeType() === 'visitor-hotel') {
-      listObs = this.api.listVisitorHotels();
-    } else {
-      return;
-    }
-
-    listObs.pipe(
-      map((raw: unknown): GeoListResponse => {
-        const items: GeoEntry[] = [];
-        const visitList = (raw as { items: unknown[] }).items ?? [];
-        for (const itemUnknown of visitList) {
-          const item = itemUnknown as Record<string, unknown>;
-          let id = '';
-          let name = '';
-          if (this.activeType() === 'visitor-country') {
-            id = String(item['visitor_location_country_id']);
-            name = String(item['country_display_name'] ?? '');
-          } else if (this.activeType() === 'visitor-destination') {
-            id = String(item['srch_destination_id']);
-            name = String(item['destination_display_name'] ?? '');
-          } else if (this.activeType() === 'visitor-site') {
-            id = String(item['site_id']);
-            name = String(item['site_display_name'] ?? '');
-          } else if (this.activeType() === 'visitor-hotel') {
-            id = String(item['prop_id']);
-            name = String(item['hotel_name'] ?? '');
-          }
-          items.push({
-            id,
-            type: this.activeType(),
-            code: id,
-            name,
-            countryCode: '',
-            stateCode: '',
-            category: '',
-            isoCode: '',
-            latitude: null,
-            longitude: null,
-            isActive: true,
-            createdAt: '',
-            updatedAt: null,
-          });
-        }
-        const q = this.route.snapshot.queryParams['q'] || '';
-        return this.applyLocalFilters(items, q, current.page);
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (data: GeoListResponse) => {
-        this.data.set(data);
-        this.viewState.set(data.items.length ? 'success' : 'empty');
-      },
-      error: () => this.viewState.set('error'),
-    });
+    // Removed legacy sub-pipeline; reload via the httpResource.
+    this.geoResource.reload();
   }
 
   typeIcon(type: string): string {

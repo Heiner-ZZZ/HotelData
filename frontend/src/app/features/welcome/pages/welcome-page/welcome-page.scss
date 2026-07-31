@@ -23,11 +23,25 @@
   --welcome-header-divider: color-mix(in srgb, var(--on-accent) 16%, transparent);
   --welcome-header-hover: color-mix(in srgb, var(--on-accent) 10%, transparent);
 
-  min-height: 100vh;
+  // Use 100dvh (dynamic viewport) instead of 100vh so mobile browser UI
+  // (URL bar/nav bar collapse) is accounted for. Without this the page is
+  // measured against the larger "large viewport" and leaves a phantom
+  // scrollable void at the bottom when the OS UI is visible.
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--surface-raised);
   color: var(--app-text);
+}
+
+// Distribute the leftover height into <main>, not after it. The footer
+// uses margin-top:auto to stick to the bottom, but with no flex-grow
+// on <main> the gap appears between the end of the featured-hotels
+// section and the footer — visible as a "scroll to empty space".
+main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 [data-theme="dark"] .welcome-page {
@@ -40,6 +54,23 @@
 }
 
 /* ─── Responsive (cross-partial breakpoints) ───── */
+
+/* Tablet (1024px and below): 3-col grid becomes 2-col, hero padding
+   shrinks so the section does not dominate the viewport. */
+@media (max-width: 1024px) {
+  .welcome-featured__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .welcome-featured__grid > :nth-child(3) {
+    grid-column: 1 / -1;
+    max-width: calc(50% - 12px);
+    justify-self: center;
+  }
+  .welcome-search {
+    padding: clamp(28px, 4vw, 56px) 0 clamp(40px, 10vw, 120px);
+  }
+}
+
 @media (max-width: 720px) {
   .booking-bar { grid-template-columns: 1fr 1fr; }
   .booking-bar__cta { grid-column: 1 / -1; padding: 14px 26px; }

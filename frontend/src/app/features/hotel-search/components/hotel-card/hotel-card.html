@@ -58,6 +58,11 @@
         <p class="summary">{{ summaryText }}</p>
 
         <div class="tag-row">
+          <!-- No `(?? []).slice(…)` here. The mapper is the single canonical
+               audit point — a backend wire-shape drop is user-visible
+               (toast in dev) + console.error loud, and reaching this line
+               with `undefined` would crash the render loop noisily rather
+               than silently showing an empty tag row. -->
           @for (destination of hotel().destinationLabels.slice(0, 3); track destination) {
             <span class="tag">{{ destination }}</span>
           }

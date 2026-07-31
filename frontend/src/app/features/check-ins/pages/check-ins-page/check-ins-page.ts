@@ -4,7 +4,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { httpResource } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -53,15 +52,23 @@ export class CheckInsPageComponent {
   });
 
   // ── Route params as signals ──
-  private readonly routeParams = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => ({
-        propId: Number(params.get('prop_id') ?? '0'),
-        operationDate: params.get('date') || todayIso(),
-      })),
-      distinctUntilChanged((a, b) => a.propId === b.propId && a.operationDate === b.operationDate),
-    ),
-    { initialValue: { propId: 0, operationDate: todayIso() } }
+  // Migrated from rxjs `pipe(map, distinctUntilChanged)` to Angular's signal
+  // graph: `computed` with a custom `equal` comparator preserves the original
+  // dedup semantics so the httpResource URL formula + `selectedPropId` /
+  // `selectedPropName` computeds re-fire only when propId or operationDate
+  // actually change.
+  private readonly queryParamMap = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
+  private readonly routeParams = computed(
+    () => ({
+      propId: Number(this.queryParamMap().get('prop_id') ?? '0'),
+      operationDate: this.queryParamMap().get('date') || todayIso(),
+    }),
+    {
+      equal: (a, b) => a.propId === b.propId && a.operationDate === b.operationDate,
+    },
   );
 
   // ── Declarative data fetching ──

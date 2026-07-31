@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, signal } from '@angular/core';
 
 @Component({
   selector: 'app-scroll-to-top',
@@ -51,10 +51,21 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, OnIn
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ScrollToTopComponent implements OnInit, OnDestroy {
+export class ScrollToTopComponent implements OnInit {
   readonly visible = signal(false);
   private readonly elementRef = inject(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
   private scrollEl: HTMLElement | null = null;
+
+  constructor() {
+    // ``DestroyRef.onDestroy`` replaces the legacy ``ngOnDestroy`` hook —
+    // fires during the same destruction phase in Angular 22.
+    this.destroyRef.onDestroy(() => {
+      if (this.scrollEl) {
+        this.scrollEl.removeEventListener('scroll', this._onScroll);
+      }
+    });
+  }
 
   ngOnInit(): void {
     // Find the nearest scrollable ancestor (the overflow-y:auto container)
@@ -69,12 +80,6 @@ export class ScrollToTopComponent implements OnInit, OnDestroy {
     }
     if (this.scrollEl) {
       this.scrollEl.addEventListener('scroll', this._onScroll, { passive: true });
-    }
-  }
-
-  ngOnDestroy(): void {
-    if (this.scrollEl) {
-      this.scrollEl.removeEventListener('scroll', this._onScroll);
     }
   }
 
