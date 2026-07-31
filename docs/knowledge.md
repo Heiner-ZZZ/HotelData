@@ -892,6 +892,10 @@ Definido en `security/rate_limit.py`. Se aplica vía `app.add_middleware(SlowAPI
 - Async-first (`async def`) en endpoints críticos.
 - Indexes Mongo gestionados vía funciones `ensure_X_collections()`.
 
+#### Layer Separation: FastAPI ↔ Pydantic v2 ↔ Mongo
+
+Cross-reference → `knowledge.md` (raíz) > **Backend Conventions > Layer Separation: FastAPI ↔ Pydantic v2 ↔ Mongo**. Ahí encontrás la tabla de capas (Framework / Data models / Database driver), las reglas de naming para reports de waves (cuándo decir "FastAPI-layer" vs "Pydantic v2-layer" vs "Mongo driver"), y el test mental rápido para evitar confusiones de naming.
+
 ### Python
 
 - Tipado completo (type hints).

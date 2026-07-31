@@ -244,6 +244,26 @@ If you skip this ritual and the server starts returning 500s referencing symbols
 - **Fase 6 COGS 500** (2026-Q2): `partner/routes/hotel_products.py` had the COGS section banner-collapsed onto `class CogsSummaryResponse(BaseModel):`. Pre-existing 500 (`TypeAdapter not fully defined`) was masked by `from __future__ import annotations`. After the explicit `model_rebuild()` was added during the migration, the symptom flipped to `PydanticUndefinedAnnotation: name 'CogsSummaryResponse' is not defined`. Both fixes (banner split + model_rebuild) were needed; one alone was insufficient.
 - **Auth + Account migration** (2026-Q2): 7 endpoints migrated to `*Response` in `auth/routes/login.py` and `account/routes.py`. Each followed the post-rewrite invariant — banner on its own line, all classes before any decorator, explicit `model_rebuild()` block before `@api_router.get(...)` — and shipped green in the first smoke run.
 
+### Layer Separation: FastAPI ↔ Pydantic v2 ↔ Mongo (renaming-to-avoid-confusion)
+
+Migration waves a backend deben precisar **a qué capa tocan** para evitar reportes ambiguos. Tres librerías distintas en tres capas distintas:
+
+| Capa | Librería | Rol en HotelData | Símbolo en código |
+|------|----------|------------------|-------------------|
+| Web framework | **FastAPI** | Rutas, async, deps, middleware, OpenAPI gen | `@router.get`, `Depends(...)`, `BackgroundTasks` |
+| Data models | **Pydantic v2** | Validación + serialización (`_id → "id"`) | `BaseModel`, `Field(validation_alias=...)`, `model_rebuild()` |
+| Database driver | **Motor + PyMongo** | CRUD async/sync sobre MongoDB | `collection.find_one(...)`, `await db.insert_one(...)` |
+
+**Reglas de naming** para reports de waves:
+
+- Si tu wave toca `@router.get/post`, `Depends`, async endpoints → llamala **"FastAPI-layer migration"**.
+- Si tu wave toca `BaseModel`, `model_rebuild()`, `ObjectIdStr`, alias mapping → llamala **"Pydantic v2-layer migration"** (correcto para los waves 2026-Q2 como el `partner/routes/hotels.py` rebuild block).
+- Si tu wave toca collection queries, indexes, `ensure_indexes` → llamala **"Mongo driver migration"**.
+
+**Test mental rápido**: **"¿El cambio sobreviviría si quitara FastAPI/Django/Flask y siguiera usando Pydantic v2 puro?"** Si la respuesta es **sí**, es migración Pydantic v2, no FastAPI. FastAPI como framework nunca reemplaza a Pydantic — siempre los usamos **juntos**, porque FastAPI depende internamente de Pydantic para type-driven request/response.
+
+Cross-reference: el mismo principio vive en `docs/knowledge.md#19-convenciones-del-proyecto` (formato tabla de arquitectura).
+
 ### Layer atomic-write pattern (concurrent-safe inventory drains)
 
 For inventory-style concurrency-sensitive operations (e.g. `fact_inventory` layer drain in `server/src/app/modules/partner/services/_inventory.py`):
