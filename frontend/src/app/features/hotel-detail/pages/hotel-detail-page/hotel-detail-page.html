@@ -32,7 +32,7 @@
             <!-- Main large image -->
             <div class="bento-main" (click)="openGalleryModal(vm.galleryImages[0])">
               @if (!imageErrors().has('gallery-0')) {
-                <img [src]="vm.galleryImages[0]" [alt]="vm.name" loading="eager" (error)="onImageError('gallery-0')" />
+                <img [src]="vm.galleryImages[0]" [alt]="vm.name" loading="eager" (error)="onImageError('gallery-0', $event)" />
               } @else {
                 <div class="img-placeholder-lg">
                   <span class="material-symbols-outlined">hotel</span>
@@ -44,7 +44,7 @@
               @for (url of vm.galleryImages.slice(1, 5); track url; let i = $index) {
                 <div class="bento-thumb" (click)="openGalleryModal(url)">
                   @if (!imageErrors().has('gallery-' + (i + 1))) {
-                    <img [src]="url" [alt]="vm.name + ' ' + (i + 2)" loading="lazy" (error)="onImageError('gallery-' + (i + 1))" />
+                    <img [src]="url" [alt]="vm.name + ' ' + (i + 2)" loading="lazy" (error)="onImageError('gallery-' + (i + 1), $event)" />
                   } @else {
                     <div class="img-placeholder-sm">
                       <span class="material-symbols-outlined">hotel</span>
@@ -215,14 +215,14 @@
                     <div class="room-card">
                       <div class="room-img">
                         @if (item.imageUrl && !imageErrors().has('room-' + item.id)) {
-                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" />
+                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" />
                         } @else if (!imageErrors().has('room-' + item.id)) {
                           @switch (roomIdx % 5) {
-                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
-                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,lobby?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id)" /> }
+                            @case (0) { <img src="https://loremflickr.com/400/250/hotel,room?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
+                            @case (1) { <img src="https://loremflickr.com/400/250/hotel,bedroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
+                            @case (2) { <img src="https://loremflickr.com/400/250/hotel,suite?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
+                            @case (3) { <img src="https://loremflickr.com/400/250/hotel,bathroom?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
+                            @case (4) { <img src="https://loremflickr.com/400/250/hotel,lobby?lock={{ vm.id * 100 + roomIdx }}" [alt]="item.name" loading="lazy" (error)="onImageError('room-' + item.id, $event)" /> }
                           }
                         } @else {
                           <span class="material-symbols-outlined room-img-placeholder">meeting_room</span>
@@ -373,7 +373,7 @@
                     <a [routerLink]="['/hotels', item.id]" class="similar-card">
                       <div class="similar-img">
                         @if (item.imageUrl && !imageErrors().has('sim-' + item.id)) {
-                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id)" />
+                          <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" (error)="onImageError('sim-' + item.id, $event)" />
                         } @else {
                           <span class="material-symbols-outlined">hotel</span>
                         }

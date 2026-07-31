@@ -94,6 +94,20 @@ class ChangeDetailResponse(BaseModel):
     entity_type: str = "profile"
 
 
+# Rebuild Pydantic v2 models to resolve string-lazy annotations from
+# ``from __future__ import annotations``. Without this explicit rebuild,
+# FastAPI's ``TypeAdapter`` binding at ``response_model=…`` raises
+# ``pydantic.errors.PydanticUserError`` on the first request, and any
+# nested ``ObjectIdStr`` field surfaces as ``PydanticUndefinedAnnotation``
+# when the eager rebuild graph walk hits it (transitively via
+# ``PropertyHistoryListResponse.data: list[ChangeRecordResponse]``).
+ChangeRecordResponse.model_rebuild()
+PaginationResponse.model_rebuild()
+FilterOptionsResponse.model_rebuild()
+PropertyHistoryListResponse.model_rebuild()
+ChangeDetailResponse.model_rebuild()
+
+
 @web_router.get("/hotels")
 def hotels(request: Request, q: str = "", page: int = Query(default=1, ge=1)):
     results = list_partner_hotels(q, page=page, page_size=20)

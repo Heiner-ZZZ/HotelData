@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Request
+import logging
+from fastapi import APIRouter, Body, Request
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 
 from src.database.connection import get_database
@@ -43,16 +46,31 @@ def track_hotel_click(
     raw_prop_id = payload.get("prop_id")
     source = payload.get("source", "search")
 
+    # Defensive coercion: stale or buggy clients may send `null`, `""`,
+    # or `prop_id <= 0` from seed-data sentinels. We used to raise 400
+    # here, but that flooded the browser console with 400 Bad Request
+    # errors on every page interaction for guests using older bundles.
+    # Gracefully ignore — tracking must NEVER block UX. Logged at WARNING
+    # so operating dashboards can flag a flood of stale clients (a bot
+    # farming an old bundle would surface in minutes, not weeks).
+    def _ignore(reason: str, raw) -> dict:
+        sid = request.cookies.get("session_id") or request.headers.get("x-session-id") or ""
+        logger.warning(
+            "tracking.hotel-click.ignored",
+            extra={"reason": reason, "raw": raw, "session_id": sid[:8]},
+        )
+        return {"ok": True, "ignored": True, "reason": reason}
+
     try:
         prop_id = int(raw_prop_id)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="prop_id must be a positive integer") from None
+        return _ignore("invalid_prop_id", raw_prop_id)
 
     if prop_id <= 0:
-        raise HTTPException(status_code=400, detail="prop_id must be a positive integer")
+        return _ignore("non_positive_prop_id", raw_prop_id)
 
     if source not in ALLOWED_SOURCES:
-        raise HTTPException(status_code=400, detail=f"source must be one of {ALLOWED_SOURCES}")
+        return _ignore("invalid_source", source)
 
     current_user = getattr(request.state, "current_user", None) or {}
     user_id = current_user.get("user_id") or current_user.get("sub")

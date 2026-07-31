@@ -47,13 +47,21 @@ export const BOOKING_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelada',
 };
 
+/**
+ * Status colors — design-token backed (see
+ * `frontend/src/styles/_scss-variables.scss`). Status keys kept
+ * verbatim so the existing template lookups
+ * (`[ngClass]="bookingStatusCss(status)"` etc.) keep working;
+ * only the value shifts from a hardcoded hex to a `var(--token)`
+ * reference. Auto-adapts to light/dark theme via the cascade.
+ */
 export const BOOKING_STATUS_COLORS: Record<string, string> = {
-  pending: '#ca8a04',
-  confirmed: '#006076',
-  rejected: '#ba1a1a',
-  checked_in: '#16a34a',
-  checked_out: '#4338ca',
-  cancelled: '#6f797d',
+  pending: 'var(--cyan)',
+  confirmed: 'var(--teal)',
+  rejected: 'var(--danger)',
+  checked_in: 'var(--success)',
+  checked_out: 'var(--purple-strong)',
+  cancelled: 'var(--muted-text)',
 };
 
 export const BOOKING_STATUS_ICONS: Record<string, string> = {
@@ -108,7 +116,7 @@ export function getBookingStatusLabel(status: string | undefined | null): string
 }
 
 export function getBookingStatusColor(status: string | undefined | null): string {
-  return BOOKING_STATUS_COLORS[status ?? ''] ?? '#6f797d';
+  return BOOKING_STATUS_COLORS[status ?? ''] ?? 'var(--muted-text)';
 }
 
 export function getBookingStatusIcon(status: string | undefined | null): string {

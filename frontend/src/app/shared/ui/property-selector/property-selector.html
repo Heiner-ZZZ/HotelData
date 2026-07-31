@@ -54,7 +54,7 @@
           @for (option of propertyOptions(); track option.propId) {
             <li
               class="ps-option"
-              [class.ps-selected]="option.propId === selectedPropId"
+              [class.ps-selected]="option.propId === selectedPropId()"
               (click)="selectProperty(option)"
             >
               <span class="material-symbols-outlined">hotel</span>

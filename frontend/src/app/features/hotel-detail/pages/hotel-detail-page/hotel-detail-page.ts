@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, isDevMode, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { distinctUntilChanged, map } from 'rxjs';
 
 import { TrackingService } from '../../../../core/tracking/tracking.service';
+import { API_CONFIG } from '../../../../core/api/api.config';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -27,13 +27,22 @@ export class HotelDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly hotelDetailApi = inject(HotelDetailApiService);
   private readonly trackingService = inject(TrackingService);
+  private readonly apiConfig = inject(API_CONFIG);
 
-  private readonly hotelId = toSignal(
-    this.activatedRoute.paramMap.pipe(
-      map((params) => Number(params.get('hotelId') ?? '0')),
-      distinctUntilChanged(),
-    ),
-    { initialValue: 0 }
+  /**
+   * Reactive snapshot of the route's `paramMap`. Initialised from
+   * `snapshot.paramMap` so the first httpResource request fires on direct
+   * navigation (no flash of `hotelId=0` → loading → real data).
+   *
+   * `hotelId` below is a single-primitive `computed`; default `Object.is`
+   * equality already dedups upstream noise, no `distinctUntilChanged` needed.
+   */
+  private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
+    initialValue: this.activatedRoute.snapshot.paramMap,
+  });
+
+  private readonly hotelId = computed(() =>
+    Number(this.paramMap().get('hotelId') ?? '0')
   );
 
   readonly hotelResource = httpResource<HotelDetailViewModel>(() => {
@@ -67,8 +76,18 @@ export class HotelDetailPageComponent {
   readonly showSimilarInfo = signal(false);
   readonly showBooking = signal(false);
 
-  onImageError(key: string) {
+  onImageError(key: string, event?: Event) {
     this.imageErrors.update((s) => new Set(s).add(key));
+    // Dev visibility: log the failing URL + the gallery key so devs can
+    // tell whether the failure came from a real hotel_images entry or
+    // from the loremflickr placeholder fallback. Browser DevTools logs
+    // HTTP 404s as Network-tab entries (not Console), so without this
+    // explicit console.error the broken images are invisible while
+    // rendering the placeholder icon.
+    if (event?.target instanceof HTMLImageElement) {
+      const src = event.target.src;
+      if (isDevMode()) console.error(`[hotel-detail] image load failed · ${key} · ${src}`);
+    }
   }
 
   openGalleryModal(url: string) {
@@ -116,7 +135,16 @@ export class HotelDetailPageComponent {
   readonly mapUrl = computed(() => {
     const vm = this.hotel();
     if (!vm || !vm.latitude || !vm.longitude) return '';
-    return `https://www.google.com/maps/embed/v1/view?key=&center=${vm.latitude},${vm.longitude}&zoom=14&language=es`;
+    // Return '' when no Google Maps API key is configured so the iframe
+    // doesn't render broken (referer-rejected). Set the key via ApiConfig
+    // factory override (provideApiConfig({googleMapsApiKey: '...'}) in
+    // app.config.ts) or env-injected token to enable the map.
+    const key = this.apiConfig.googleMapsApiKey;
+    if (!key) {
+      if (isDevMode()) console.warn('[hotel-detail] map disabled — provide API_CONFIG.googleMapsApiKey to /api/hostels/<id> map iframe');
+      return '';
+    }
+    return `https://www.google.com/maps/embed/v1/view?key=${key}&center=${vm.latitude},${vm.longitude}&zoom=14&language=es`;
   });
 
   amenityIcon(amenity: string): string {

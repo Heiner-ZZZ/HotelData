@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 
 import { AuthService } from './auth.service';
+import { SUPERUSER_WILDCARD } from './permission.constants';
 
 function hasAllowedRole(role: string | undefined, allowedRoles: string[] | undefined): boolean {
   if (!allowedRoles?.length) {
@@ -16,7 +17,7 @@ function hasRequiredPermission(permissionCodes: string[], requiredPermission: st
     return true;
   }
   // *.* super_admin wildcard grants access to everything
-  if (permissionCodes.includes('*.*')) {
+  if (permissionCodes.includes(SUPERUSER_WILDCARD)) {
     return true;
   }
   return permissionCodes.includes(requiredPermission);
