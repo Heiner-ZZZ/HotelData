@@ -90,7 +90,9 @@ export class ManagementTopNavComponent implements OnInit {
     const rootIdx = segments.findIndex(s => s === 'management' || s === 'system' || s === 'ownership');
     if (rootIdx === -1) return [{ label: 'Gestión', path: '/management', queryParams: propQp }];
     const crumbs = segments.slice(rootIdx).map((seg, i) => {
-      const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' ');
+      const normalizedSegment = seg.trim();
+      const label = SEGMENT_LABELS[normalizedSegment]
+        || (normalizedSegment ? normalizedSegment.charAt(0).toUpperCase() + normalizedSegment.slice(1).replace(/-/g, ' ') : 'Gestión');
       return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/'), queryParams: propQp };
     });
     // En modo single, el hotel se muestra como badge aparte, no en el breadcrumb

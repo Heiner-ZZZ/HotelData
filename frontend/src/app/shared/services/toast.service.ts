@@ -13,9 +13,29 @@ export interface ToastMessage {
 export class ToastService {
   readonly toasts = signal<ToastMessage[]>([]);
   private counter = 0;
+  private readonly recentToastAt = new Map<string, number>();
 
   /** Show a toast notification. Auto-dismisses after `duration` ms (default 5500). */
   show(message: string, type: ToastType = 'info', duration = 5500): string {
+    // Several subscribers can observe the same failed HTTP request. Suppress
+    // only bursts of the same notification; after the short window, a real
+    // repeated action should still be visible to the user.
+    const key = `${type}:${message}`;
+    const now = Date.now();
+    const previousAt = this.recentToastAt.get(key) ?? 0;
+    if (now - previousAt < 1000) {
+      const existing = this.toasts().find(
+        (toast) => toast.message === message && toast.type === type,
+      );
+      if (existing) return existing.id;
+    }
+    this.recentToastAt.set(key, now);
+    setTimeout(() => {
+      if (this.recentToastAt.get(key) === now) {
+        this.recentToastAt.delete(key);
+      }
+    }, 1000);
+
     const id = `toast-${++this.counter}`;
     this.toasts.update((list) => [...list, { id, message, type, duration }]);
 

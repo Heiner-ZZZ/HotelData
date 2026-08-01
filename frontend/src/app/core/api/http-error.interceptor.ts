@@ -1,7 +1,8 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 
-import { toast } from '../toast/toast.service';
+import { ToastService } from '../../shared/services/toast.service';
 import type { ApiError } from './api-error.model';
 
 /**
@@ -15,8 +16,9 @@ import type { ApiError } from './api-error.model';
  *      dev and user — even if a calling catch swallows the err
  *      afterwards, the global toast already announced it.
  */
-export const httpErrorInterceptor: HttpInterceptorFn = (request, next) =>
-  next(request).pipe(
+export const httpErrorInterceptor: HttpInterceptorFn = (request, next) => {
+  const toast = inject(ToastService);
+  return next(request).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
         const detail = error.error?.detail;
@@ -26,7 +28,7 @@ export const httpErrorInterceptor: HttpInterceptorFn = (request, next) =>
           error.message ||
           'Unexpected API error';
 
-        toast(message, 'error', 6000);
+        toast.error(message);
 
         const apiError: ApiError = {
           status: error.status,
@@ -39,3 +41,4 @@ export const httpErrorInterceptor: HttpInterceptorFn = (request, next) =>
       return throwError(() => error);
     })
   );
+};
