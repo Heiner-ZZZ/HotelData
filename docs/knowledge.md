@@ -41,7 +41,7 @@
 13. [Flujo CRS (Central Reservation System)](#13-flujo-crs-central-reservation-system)
 14. [Flujo Booking Engine](#14-flujo-booking-engine)
 15. [Flujo CRM (Guest Experience / Loyalty)](#15-flujo-crm-guest-experience--loyalty)
-16. [Pipeline ETL PocketBase → MongoDB](#16-pipeline-etl-pocketbase--mongodb)
+16. [Pipeline ETL CSV → PocketBase → MongoDB](#16-pipeline-etl-csv--pocketbase--mongodb)
 
 ### V. Operaciones, seguridad & endpoints
 9. [Roles y matriz de permisos](#9-roles-y-matriz-de-permisos)
@@ -59,7 +59,7 @@
 - **Backend API** (FastAPI, Pydantic v2) organizado por dominios de negocio.
 - **MongoDB** como base operativa principal (colecciones dimensionales y de hechos).
 - **PocketBase** como sistema origen para datos de muestra y ETL determinístico.
-- **Airflow** (en Docker) como orquestador del pipeline de extracción/transformación/carga.
+- **Airflow 3** (en Docker, despliegue descompuesto) como orquestador del pipeline de extracción/transformación/carga.
 - **Redis** como caché compartido (incluye sesiones de UI y verrou de inventario distribuido).
 - **Change Stream Watcher** como puente reactivo PocketBase → MongoDB para datos casi en tiempo real.
 
@@ -115,7 +115,7 @@ El sistema soporta los cuatro ejes de la operación hotelera moderna:
 | Servicios | Python (asyncio-friendly) | Lógica de negocio (reservas, billing, housekeeping, revenue). |
 | Persistencia | MongoDB (motor primario) | Colecciones dimensionales + hechos + log. |
 | Caché | Redis | Cache de KPIs, sesiones Redis, lock optimista opcional. |
-| ETL | Airflow 3 (Docker) | DAG `hoteldata_ga03_etl` (PocketBase→MongoDB). |
+| ETL | Airflow 3.2.2 (Docker) | Despliegue único descompuesto (`airflow-postgres`, `airflow-init`, API server, scheduler, DAG processor, triggerer y worker Celery); DAG `hoteldata_ga03_etl` (CSV→PocketBase→validación→MongoDB). |
 | CDC | `hoteldata_change_stream_watcher` | Sincroniza PocketBase → MongoDB en near-real-time. |
 | Source-of-truth de demo | PocketBase | Datos de muestra, generación sintética. |
 
@@ -130,7 +130,7 @@ Servicios definidos en `infra/docker-compose.yml`:
 | `mongo` | `mongo:7` | 27017 | Persistencia principal |
 | `redis` | `redis:7-alpine` | 6379 | Cache + sesiones |
 | `pocketbase` | `pocketbase:0.22` | 8090 | Fuente de datos para ETL/CDC |
-| `airflow` | custom (Dockerfile) | 8080 | Orquestación DAGs ETL |
+| `airflow-postgres` + `airflow-*` | custom + `postgres:16` | 8080 (API) | Un despliegue lógico Airflow 3 descompuesto; no un Airflow por dominio o tenant |
 | `server` | custom (FastAPI) | 8000 | API de la aplicación |
 | `frontend` | Nginx + Angular dist | 8081 | UI servida |
 | `change_stream_watcher` | custom Python | — | PocketBase → MongoDB CDC |
@@ -563,7 +563,7 @@ Además del DAG ETL en Airflow, el sistema ejecuta trabajo en segundo plano en e
 - **Change stream watcher** — proceso/servicio independiente (`change_stream_watcher` en docker-compose) que observa PocketBase y replica cambios a Mongo a través del outbox.
 - **Rate limiter cleanup** — SlowAPI limpia contadores expirados internamente.
 
-Nota: tareas one-shot extremadamente cortas pueden usar `BackgroundTasks` de FastAPI (definido en el handler), pero para cualquier trabajo durable se prefiere una de las tres opciones anteriores (outbox, hilo daemon, watcher externo). NO se usa Celery — la decisión de diseño es mantener la stack lo más simple posible.
+Nota: tareas one-shot extremadamente cortas pueden usar `BackgroundTasks` de FastAPI (definido en el handler), pero para cualquier trabajo durable se prefiere una de las opciones anteriores (outbox, hilo daemon, watcher externo). Airflow usa `CeleryExecutor` para distribuir tareas ETL durables entre sus workers; esto no convierte a Celery en el mecanismo de background de la API.
 
 ### 11.8 Multi-tenancy
 
@@ -761,25 +761,34 @@ sequenceDiagram
 
 ---
 
-## 16. Pipeline ETL PocketBase → MongoDB
+## 16. Pipeline ETL CSV → PocketBase → MongoDB
 
-### DAGs activos
+### DAGs y superficie cargada por Airflow
 
-- `server/dags/hoteldata_ga03_etl.py` — DAG principal GA03 (PocketBase → MongoDB)
-- `server/dags_backup/hoteldata_ta02_reservations_dag.py` — DAG TA02 extracciones
-- `server/dags_backup/hoteldata_reservas_03_pipeline.py` — DAG reservas 03 (legacy)
-- `server/dags_backup/hoteldata_taf01_etl_dag.py` — DAG inicial TAF01 (legacy, reemplazado por GA03)
+- **Activo y montado:** `server/dags/hoteldata_ga03_etl.py` — DAG GA03 completo: preparación CSV → PocketBase, validación y ETL PocketBase → MongoDB.
+- **Archivo histórico no montado:** `server/dags_backup/` contiene TA02, TAF01 y una versión anterior de reservas. Compose monta únicamente `server/dags` en `/opt/airflow/dags`; esos archivos no se cargan ni se ejecutan.
+- La carpeta activa puede contener más DAGs legítimos en el futuro, por ejemplo el ETL MongoDB → ClickHouse. No se debe interpretar “activo” como “único archivo permitido”.
 
-### Tareas del DAG GA03
+### Tareas actuales del DAG GA03
 
-1. `validate_environment`
-2. `seed_source` (opcional, sólo si no hay datos previos en PocketBase)
-3. `extract_from_pocketbase_03` → JSONL staging
-4. `validate_schema`
-5. `build_dim_*` (8 tareas)
-6. `build_fact_reservations`
-7. `load_to_mongodb` (upsert)
-8. `generate_quality_report`
+El DAG activo tiene 14 tareas `PythonOperator`, con esta cadena:
+
+1. `seed_source` — prepara o verifica la fuente CSV → PocketBase.
+2. `validate_dataset` — valida PocketBase, MongoDB y los prerrequisitos del dataset.
+3. `validate_environment`
+4. `extract_from_pocketbase`
+5. `save_extract_jsonl`
+6. `convert_to_parquet`
+7. `validate_parquet_schema`
+8. `transform_dimensions`
+9. `transform_fact_reservations`
+10. `load_dimensions_to_mongodb`
+11. `load_fact_to_mongodb`
+12. `create_indexes`
+13. `run_quality_checks`
+14. `save_execution_report`
+
+El DAG conserva la secuencia completa implementada en código. Los endpoints de `etl_status` también permiten ejecutar la preparación, validación y pipeline por separado para operación manual, pero no sustituyen las tareas del DAG.
 
 ### Modes
 
@@ -902,15 +911,31 @@ Cross-reference → `knowledge.md` (raíz) > **Backend Conventions > Layer Separ
 - Docstrings en funciones públicas (especialmente servicios de reglas de negocio).
 - Tests bajo `server/tests/` con pytest + fixtures en `conftest.py`.
 
+### Airflow 3: instalación y conflicto de dependencias
+
+La imagen `infra/docker/airflow3.Dockerfile` instala Airflow 3.2.2 para Python 3.12 en dos fases:
+
+1. `apache-airflow[celery,postgres]==3.2.2` usando el constraints oficial `constraints-3.2.2/constraints-3.12.txt`.
+2. Dependencias específicas del DAG desde `infra/docker/airflow3.requirements.txt`, sin volver a pasar el constraints.
+
+El constraints oficial fija un conjunto probado de versiones. No se deben imponer rangos incompatibles en el requirements del DAG ni volver a declarar `apache-airflow-providers-celery`, `apache-airflow-providers-postgres` o `psycopg2-binary`: los extras oficiales gestionan esos componentes. El error `ResolutionImpossible` observado se produjo porque `pyarrow>=15,<18` contradijo el `pyarrow==24.0.0` fijado por Airflow.
+
+Al modificar el Dockerfile o los requirements de Airflow:
+
+```powershell
+docker compose --env-file .env -f infra/docker-compose.yml build airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker airflow-init
+docker compose --env-file .env -f infra/docker-compose.yml up -d airflow-postgres airflow-init airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker
+```
+
 ### Docker
 
 - `docker compose -f infra/docker-compose.yml up -d --build <svc>` para rebuilds.
-- NUNCA `docker compose down` sin `--volumes` (preserva datos).
+- **NUNCA** ejecutar `docker compose down --volumes` ni `docker compose down -v`; ambos eliminan volúmenes y datos persistentes.
 - Volúmenes montados en dev para que cambios en código no requieran rebuild.
 
 ### Otros
 
-- ETL determinístico (PocketBase → MongoDB) — seeds reproducibles.
+- ETL determinístico (CSV → PocketBase → MongoDB) — preparación y cargas reproducibles.
 - Money: enteros en centavos/cents cuando posible; o `Decimal` (recomendado) para evitar float.
 - Multi-moneda: configuración en `system_currencies`, formateo via `PropertyCurrencyPipe`.
 
@@ -927,8 +952,8 @@ Cross-reference → `knowledge.md` (raíz) > **Backend Conventions > Layer Separ
 ### Opción A: Todo en Docker (recomendado)
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d --build
-docker compose -f infra/docker-compose.yml ps   # ver estado
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml ps   # ver estado
 docker compose -f infra/docker-compose.yml logs -f server   # ver logs
 ```
 
@@ -947,12 +972,10 @@ El DAG ETL es responsable de poblar MongoDB. Disparar manualmente:
 
 ```bash
 # Full load inicial
-docker exec -it hoteldata_airflow airflow dags trigger hoteldata_ga03_etl
+docker compose --env-file .env -f infra/docker-compose.yml exec airflow-worker airflow dags trigger hoteldata_ga03_etl
 
 # Incremental (después del primer full)
-docker exec -it hoteldata_airflow \
-  env GA03_INCREMENTAL_MODE=true \
-  airflow dags trigger hoteldata_ga03_etl
+docker compose --env-file .env -f infra/docker-compose.yml exec -e GA03_INCREMENTAL_MODE=true airflow-worker airflow dags trigger hoteldata_ga03_etl
 ```
 
 O desde la UI: `http://localhost:8080/api/etl-status/ga03/run` (POST, requiere super_admin).
@@ -961,7 +984,7 @@ O desde la UI: `http://localhost:8080/api/etl-status/ga03/run` (POST, requiere s
 
 - Frontend: `http://localhost:8081`
 - Swagger OpenAPI: `http://localhost:8000/docs`
-- Airflow UI: `http://localhost:8080`
+- Airflow 3 API/UI: `http://localhost:8080` (servicio `airflow-api-server`)
 
 ---
 

@@ -105,7 +105,7 @@
 | CU-T09: Usuarios/roles | ✅ Existe | JWT, roles, permisos |
 | CU-T10: Auditoría | ✅ Existe | `user_activity_logs`, `hotel_profile_changes` |
 | CU-T11: Monitoreo servicios | ✅ Existe | Redis, health checks |
-| CU-T12: Pipeline Airflow | ✅ Existe | DAG `hoteldata_ga03_etl` con 14 tareas |
+| CU-T12: Pipeline Airflow | ✅ Existe | DAG `hoteldata_ga03_etl` con 14 tareas PythonOperator: seed, validación y ETL CSV→PocketBase→MongoDB |
 | CU-T13: Reseñas/reputación | ❌ Ausente | Depende de CU-O22/O23 |
 
 ---

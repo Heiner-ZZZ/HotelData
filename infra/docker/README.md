@@ -4,36 +4,24 @@ Este entorno permite levantar `HotelData` desde Docker Desktop en Windows, sin d
 
 ## Servicios incluidos
 
-- `app`: FastAPI + Angular
+- `server`: FastAPI
+- `frontend`: Angular servido por Nginx
 - `mongo`: MongoDB para `hoteldata`
-- `redis`: cache opcional pero habilitado en Docker
-- `pocketbase`: fuente operacional para pruebas y preparacion de GA03
-
-## Compose con Mongo local (Windows)
-
-Si usas `docker-compose.local-mongo.yml`, ese compose **no** define servicio `mongo`.
-La app se conecta al MongoDB local de Windows via `host.docker.internal:27018`.
-
-```powershell
-docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d redis app
-```
-
-No usar:
-
-```powershell
-docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d mongo redis app
-```
+- `redis`: caché de la aplicación y broker de Celery para Airflow
+- `pocketbase`: fuente operacional para pruebas y preparación de GA03
+- `airflow-postgres`: base de metadatos exclusiva de Airflow
+- `airflow-init`, `airflow-api-server`, `airflow-scheduler`, `airflow-dag-processor`, `airflow-triggerer`, `airflow-worker`: un único despliegue lógico de Airflow 3 descompuesto por servicio
 
 ## Archivos usados
 
-- `../docker-compose.yml`
-- `../Dockerfile`
-- `./.env.example`
-- `../scripts/docker_healthcheck_ga03.py`
+- `infra/docker-compose.yml`
+- `infra/Dockerfile`
+- `infra/docker/.env.example`
+- `server/scripts/docker_healthcheck_ga03.py`
 
 ## Variables clave dentro de Docker
 
-- `MONGO_URI=mongodb://mongo:27017`
+- `MONGO_URI=mongodb://mongo:27018`
 - `MONGO_DATABASE=hoteldata_hub`
 - `REDIS_HOST=redis`
 - `REDIS_PORT=6379`
@@ -46,25 +34,25 @@ docker compose -f hoteldata_project/docker-compose.local-mongo.yml up -d mongo r
 ## Levantar desde PowerShell
 
 ```powershell
-docker compose up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 ```
 
 ## Ver estado
 
 ```powershell
-docker compose ps
+docker compose --env-file .env -f infra/docker-compose.yml ps
 ```
 
 ## Ver logs de la app
 
 ```powershell
-docker compose logs -f app
+docker compose --env-file .env -f infra/docker-compose.yml logs -f server
 ```
 
 ## Apagar servicios
 
 ```powershell
-docker compose down
+docker compose --env-file .env -f infra/docker-compose.yml stop
 ```
 
 ## Validar salud del stack
@@ -72,14 +60,39 @@ docker compose down
 Desde PowerShell local:
 
 ```powershell
-python scripts/docker_healthcheck_ga03.py
+python server/scripts/docker_healthcheck_ga03.py
 ```
 
 Si prefieres validar con el stack ya levantado:
 
 ```powershell
-docker compose exec app python scripts/docker_healthcheck_ga03.py
+docker compose --env-file .env -f infra/docker-compose.yml exec server python server/scripts/docker_healthcheck_ga03.py
 ```
+
+## Airflow descompuesto
+
+Airflow no se separa por PMS, CRS, Booking Engine ni por tenant. HotelData usa un solo despliegue lógico con componentes independientes:
+
+```text
+airflow-postgres       metadata de Airflow
+airflow-init            migraciones iniciales
+airflow-api-server      UI/API en :8080
+airflow-scheduler       planificación
+airflow-dag-processor   lectura/procesamiento de DAGs
+airflow-triggerer       tareas diferibles
+airflow-worker          ejecución Celery
+```
+
+El DAG activo `hoteldata_ga03_etl` conserva el flujo completo implementado: preparación CSV → PocketBase, validación y ETL PocketBase → MongoDB. La separación de componentes permite escalar y aislar la infraestructura de Airflow, pero no introduce aún ningún ETL hacia ClickHouse.
+
+Arranque y validación:
+
+```powershell
+docker compose --env-file .env -f infra/docker-compose.yml config --quiet
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build airflow-postgres airflow-init airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker
+```
+
+La URL de la UI/API de Airflow es `http://localhost:8080`. La base `airflow-postgres` es únicamente la metadata database de Airflow; no sustituye MongoDB ni almacena datos operativos del hotel.
 
 ## Importante
 

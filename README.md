@@ -63,7 +63,7 @@ La arquitectura planeada es:
 | **Base de datos transaccional** | MongoDB 8.0 (réplica set, motor transaccional) |
 | **Base de datos analítica** | ClickHouse *(próximamente)* |
 | **Infraestructura** | Docker Compose · Nginx · Node 24 Alpine |
-| **ETL / Data pipeline** | Airflow · PocketBase (origen legacy) |
+| **ETL / Data pipeline** | Airflow 3.2.2 · PocketBase (origen legacy) |
 | **Calidad** | Ruff · MyPy · pytest |
 
 ---
@@ -142,8 +142,10 @@ La arquitectura planeada es:
 ### Desarrollo (Docker)
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
+
+Airflow se levanta como un despliegue Docker descompuesto; sus dependencias se fijan durante el build.
 
 ### Frontend standalone
 

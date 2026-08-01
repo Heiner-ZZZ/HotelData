@@ -27,7 +27,7 @@ Pydantic v2 + FastAPI + Docker source mount + `from __future__ import annotation
 **Required cleanup** (mandatory after every delete or alias mutation; skipping it leaves the running server carrying deleted-class ghosts from cached bytecode):
 
 ```bash
-docker compose -f infra/docker-compose.yml exec -T server find /app/server -name __pycache__ -exec rm -rf {} + && docker compose -f infra/docker-compose.yml restart server
+docker compose --env-file .env -f infra/docker-compose.yml exec -T server find /app/server -name __pycache__ -exec rm -rf {} + && docker compose --env-file .env -f infra/docker-compose.yml restart server
 ```
 
 The first command clears every `__pycache__/` directory under the server tree so the next interpreter boot reads source from disk. The `docker compose restart server` cold-restarts the uvicorn process — required because Python already loaded the stale `.pyc` at boot and is now holding the deleted symbol in `sys.modules`. The `&&` ensures the restart only runs if the cache clear succeeds — if `find` errors out (e.g. permission denied), halt the ritual and investigate instead of restarting with stale bytecode still on disk.
@@ -138,7 +138,7 @@ Este archivo define **TODOS** los colores de la app mediante CSS custom properti
 ### Desbloquear cuenta (423 Locked)
 
 ```bash
-docker compose -f infra/docker-compose.yml exec -T server python -c "
+docker compose --env-file .env -f infra/docker-compose.yml exec -T server python -c "
 from config.settings import get_settings
 from pymongo import MongoClient
 s = get_settings()
@@ -154,13 +154,35 @@ c.close()
 
 ## 🔴 NUNCA hacer sin autorización explícita del usuario
 
-- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down` sin `--volumes` ni ningún comando que elimine volúmenes de Docker.
+- **🚫 ABSOLUTAMENTE NUNCA** ejecutar `docker compose down --volumes` ni `docker compose down -v`, porque eliminan volúmenes y datos persistentes.
 - **🚫 NUNCA** ejecutar `docker compose down` para reconstruir contenedores — usar `up --build` en su lugar.
-- **🚫 NUNCA** ejecutar `docker compose down -v`.
+- Si solo necesitas detener servicios sin borrar volúmenes, usa `docker compose stop`.
 - **NUNCA** hacer `git commit`, `git push` ni ningún comando de git que modifique el historial sin autorización.
 - **NUNCA** eliminar archivos, directorios, colecciones de MongoDB, tablas o datos sin preguntar.
 - **NUNCA** ejecutar scripts que modifiquen la base de datos en producción (seed, drop, reset) sin confirmación.
 - **NUNCA** sobrescribir archivos de configuración (`.env`, `docker-compose.yml`, etc.) sin informar.
+
+## Airflow 3 — instalación y dependencias
+
+La imagen `infra/docker/airflow3.Dockerfile` usa `apache/airflow:3.2.2-python3.12`.
+La instalación se realiza en dos pasos obligatorios:
+
+1. `apache-airflow[celery,postgres]==3.2.2` con el constraints oficial de Airflow para Python 3.12.
+2. Dependencias propias del DAG desde `infra/docker/airflow3.requirements.txt`, sin reutilizar ese constraints.
+
+**No** agregar providers de Celery/Postgres ni rangos incompatibles al requirements del DAG: los providers del executor y de PostgreSQL los resuelven los extras oficiales de Airflow. El constraints de Airflow fija versiones exactas; imponer rangos externos puede producir `ResolutionImpossible`.
+
+Si cambia `airflow3.Dockerfile` o `airflow3.requirements.txt`, reconstruir únicamente la imagen Airflow:
+
+```powershell
+docker compose --env-file .env -f infra/docker-compose.yml build airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker airflow-init
+```
+
+Después aplicar los servicios sin borrar volúmenes:
+
+```powershell
+docker compose --env-file .env -f infra/docker-compose.yml up -d airflow-postgres airflow-init airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker
+```
 
 ## ✅ Docker — Estándar para desarrollo
 
@@ -173,7 +195,7 @@ Basado en [Docker docs: build best practices](https://docs.docker.com/build/buil
 | Cache corrompido, error extraño de build, o dependencias stale | `docker compose build --no-cache <servicio>` | Solo cuando sea necesario — rebuild completo de todas las capas (lento). |
 
 **Reglas:**
-- Usar `docker compose -f infra/docker-compose.yml up --build <servicio>` para rebuild + logs visibles en primer plano.
+- Usar `docker compose --env-file .env -f infra/docker-compose.yml up --build <servicio>` para rebuild + logs visibles en primer plano.
 - **NO** usar `--no-cache` en rebuilds rutinarios — desperdicia tiempo redescargando dependencias inalteradas.
 - Si el servicio monta volúmenes de código (dev), no hace falta rebuild para cambios de código fuente.
 - Preferir `docker compose up -d` (detached) cuando no se necesiten logs en terminal.

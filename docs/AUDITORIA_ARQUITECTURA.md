@@ -345,7 +345,9 @@ provideRouter(routes, withComponentInputBinding(), withPreloading(PreloadAllModu
 
 **Problema:** La lógica ETL vive en `src/etl/` pero es invocada directamente desde el DAG de Airflow. Hay código legacy en `dags_backup/` que ya no se usa. Esto mezcla responsabilidades (orquestación vs lógica de transformación).
 
-**Propuesta:** Extraer la lógica ETL a un paquete independiente (`hoteldata-etl`) y que Airflow solo la invoque. Eliminar `dags_backup/`.
+**Estado de la reorganización (2026-07-30):** `server/dags/hoteldata_ga03_etl.py` es el único DAG activo montado por Compose. `server/dags_backup/` queda fuera de `/opt/airflow/dags` como archivo histórico y contiene referencias no activas.
+
+**Propuesta pendiente:** Extraer la lógica ETL a un paquete independiente (`hoteldata-etl`) y que Airflow solo la invoque. No eliminar `dags_backup/` hasta completar una auditoría de referencias y obtener autorización explícita.
 
 ---
 

@@ -8,7 +8,7 @@
 
 ```bash
 # Full stack (Docker)
-docker compose -f infra/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # Frontend standalone
 cd frontend && npm install && npm start
@@ -28,12 +28,23 @@ cd server && pip install -r requirements.txt && uvicorn src.app.main:app --reloa
 | Redis | localhost:6379 |
 | MongoDB | localhost:27018 |
 
+### Airflow 3 build note
+
+Airflow 3 se construye desde `apache/airflow:3.2.2-python3.12` en dos pasos: primero `apache-airflow[celery,postgres]==3.2.2` con el constraints oficial de Airflow; después las dependencias propias del DAG sin ese constraints. No agregar providers de Celery/Postgres al requirements del DAG ni imponer rangos que contradigan el constraints. Esto evita `ResolutionImpossible` (por ejemplo, `pyarrow<18` frente al `pyarrow==24` fijado por Airflow).
+
+Si cambian `infra/docker/airflow3.Dockerfile` o `infra/docker/airflow3.requirements.txt`, reconstruir con:
+
+```powershell
+docker compose --env-file .env -f infra/docker-compose.yml build airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker airflow-init
+docker compose --env-file .env -f infra/docker-compose.yml up -d airflow-postgres airflow-init airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer airflow-worker
+```
+
 ### Docker rebuild rules
 
 | Situation | Command |
 |-----------|---------|
-| Code changes (TS, HTML, Python) only | `docker compose -f infra/docker-compose.yml up -d <service>` — no rebuild needed |
-| Dockerfile/package.json/requirements.txt changed | `docker compose -f infra/docker-compose.yml up -d --build <service>` |
+| Code changes (TS, HTML, Python) only | `docker compose --env-file .env -f infra/docker-compose.yml up -d <service>` — no rebuild needed |
+| Dockerfile/package.json/requirements.txt changed | `docker compose --env-file .env -f infra/docker-compose.yml up -d --build <service>` |
 | Stale cache / weird errors | `docker compose build --no-cache <service>` — slow, only when needed |
 
 **NEVER** run `docker compose down --volumes` or `docker compose down -v`.
@@ -46,7 +57,7 @@ cd server && pip install -r requirements.txt && uvicorn src.app.main:app --reloa
 | Backend | FastAPI, Python 3.12 | Pydantic v2, async, uvicorn |
 | Database | MongoDB 8.0 (replica set) | Port 27018, RS `rs0` |
 | Analytics | ClickHouse | *Coming soon* |
-| ETL | Airflow, PocketBase (legacy source) | GA03 pipeline, incremental mode |
+| ETL | Airflow 3.2.2, PocketBase (legacy source) | GA03 pipeline, CeleryExecutor, incremental mode |
 | Auth | JWT (python-jose) + bcrypt | |
 | Cache | Redis 7.4 | |
 
@@ -205,7 +216,7 @@ Quick smoke that catches BOTH failure modes above (banner collapse + missing reb
 
 ```bash
 # From project root, inside the server container:
-docker compose -f infra/docker-compose.yml exec -T server python -c "
+docker compose --env-file .env -f infra/docker-compose.yml exec -T server python -c "
 import src.app.modules.<module_path>.<routes_file> as m
 needed = ['ClassA', 'ClassB', 'ClassC']  # every *Response class in the new file
 missing = [n for n in needed if not hasattr(m, n)]
@@ -230,7 +241,7 @@ Pydantic v2 + FastAPI + Docker source mount + `from __future__ import annotation
 **Required cleanup** (mandatory after every delete or alias mutation; skipping it leaves the running server carrying deleted-class ghosts from cached bytecode):
 
 ```bash
-docker compose -f infra/docker-compose.yml exec -T server find /app/server -name __pycache__ -exec rm -rf {} + && docker compose -f infra/docker-compose.yml restart server
+docker compose --env-file .env -f infra/docker-compose.yml exec -T server find /app/server -name __pycache__ -exec rm -rf {} + && docker compose --env-file .env -f infra/docker-compose.yml restart server
 ```
 
 The first command clears every `__pycache__/` directory under the server tree so the next interpreter boot reads source from disk. The `docker compose restart server` cold-restarts the uvicorn process — required because Python already loaded the stale `.pyc` at boot and is now holding the deleted symbol in `sys.modules`. The `&&` ensures the restart only runs if the cache clear succeeds — if `find` errors out (e.g. permission denied), halt the ritual and investigate instead of restarting with stale bytecode still on disk.
