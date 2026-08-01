@@ -36,6 +36,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "hr.manage", "hr.create", "hr.read", "hr.update", "hr.delete",
         "billing.manage", "billing.read",
         "payments.manage", "payments.read",
+        "shifts.manage", "shifts.create", "shifts.read", "shifts.update",
         "amenities.manage", "amenities.read",
         "promotions.manage", "promotions.read",
         "settings.manage", "settings.read",

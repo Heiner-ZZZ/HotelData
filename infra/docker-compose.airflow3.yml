@@ -1,38 +1,6 @@
-services:
-  airflow:
-    build:
-      context: ..
-      dockerfile: infra/docker/airflow3.Dockerfile
-    container_name: hoteldata_airflow
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:admin
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-      _AIRFLOW_WWW_USER_USERNAME: admin
-      _AIRFLOW_WWW_USER_PASSWORD: Admin12345*
-      _AIRFLOW_WWW_USER_EMAIL: admin@hoteldata.local
-      HOTELDATA_PROJECT_ROOT: /opt/hoteldata
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DATABASE: hoteldata_hub
-      POCKETBASE_URL: http://pocketbase:8090
-      POCKETBASE_COLLECTION_03: hotel_reservation_events_03
-      TASK_NUMBER: "03"
-      TARGET_RECORDS: "300000"
-      GA03_EXPECTED_RECORDS: "300000"
-    volumes:
-      - ../server/src:/opt/hoteldata/src
-      - ../server/config:/opt/hoteldata/config
-      - ../server/scripts:/opt/hoteldata/scripts
-      - ../server/tests:/opt/hoteldata/tests
-      - ../server/dags:/opt/airflow/dags
-      - ../data:/opt/hoteldata/data
-      - ./docker/airflow3-entrypoint.sh:/entrypoint3.sh
-    depends_on:
-      mongo:
-        condition: service_healthy
-    command: bash /entrypoint3.sh
+# Compatibility entry point.
+# The canonical Airflow 3 deployment is defined in docker-compose.yml.
+# Compose includes preserve one source of truth and avoid accidentally starting
+# the former single-container SequentialExecutor topology.
+include:
+  - path: ./docker-compose.yml

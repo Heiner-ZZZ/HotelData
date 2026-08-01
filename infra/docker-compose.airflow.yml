@@ -1,30 +1,6 @@
-services:
-  airflow-standalone:
-    image: apache/airflow:2.9.3-python3.12
-    container_name: hoteldata_airflow_standalone
-    restart: unless-stopped
-    profiles:
-      - airflow
-    ports:
-      - "8080:8080"
-    environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-      HOTELDATA_PROJECT_ROOT: /opt/hoteldata
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DATABASE: hoteldata_hub
-      POCKETBASE_URL: http://pocketbase:8090
-      POCKETBASE_COLLECTION_03: hotel_reservation_events_03
-      TASK_NUMBER: "03"
-      TARGET_RECORDS: "300000"
-      GA03_EXPECTED_RECORDS: "300000"
-    volumes:
-      - ../server/src:/opt/hoteldata/src
-      - ../server/config:/opt/hoteldata/config
-      - ../server/scripts:/opt/hoteldata/scripts
-      - ../server/tests:/opt/hoteldata/tests
-      - ../server/dags:/opt/airflow/dags
-      - ../data:/opt/hoteldata/data
-    command: standalone
-
+# Compatibility entry point.
+# Use docker-compose.yml as the single source of truth for the Airflow 3
+# deployment. This file no longer exposes the obsolete Airflow 2 standalone
+# service with SQLite and SequentialExecutor.
+include:
+  - path: ./docker-compose.yml

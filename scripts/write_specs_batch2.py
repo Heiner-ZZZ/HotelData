@@ -388,7 +388,7 @@ Ejecutar el pipeline ETL orquestado por Airflow que extrae datos desde PocketBas
 
 ## 2. Contexto
 
-Pipeline GA03 procesa ~600k registros. Usa Airflow con PythonOperator. 14 tareas, chunk 50k, batch 5k.
+Pipeline GA03 procesa ~600k registros. Usa Airflow con PythonOperator. El DAG activo tiene 14 tareas: preparación CSV→PocketBase, validación y carga PocketBase→MongoDB. Chunk 50k, batch 5k.
 
 ## 3. Actores
 
@@ -401,7 +401,7 @@ Pipeline GA03 procesa ~600k registros. Usa Airflow con PythonOperator. 14 tareas
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RF-001 | Airflow debe ejecutar DAG hoteldata_ga03_etl con 14 tareas | Alta |
+| RF-001 | Airflow debe ejecutar DAG hoteldata_ga03_etl con 14 tareas PythonOperator | Alta |
 | RF-002 | El DAG debe usar solo PythonOperator | Alta |
 | RF-003 | El pipeline debe extraer datos desde PocketBase | Alta |
 | RF-004 | El pipeline debe transformar a dimensiones (upsert) y hechos (batch insert) | Alta |
@@ -423,7 +423,7 @@ extract_from_pocketbase validate_schema convert_to_jsonl convert_to_parquet buil
 ### Escenario 1: Ejecutar pipeline exitosamente
 ```gherkin
 Dado que Airflow inicia el DAG hoteldata_ga03_etl
-Cuando se ejecutan las 14 tareas
+Cuando se ejecutan las 14 tareas del DAG
 Entonces los datos se cargan en MongoDB
 Y se genera el reporte de calidad
 ```
