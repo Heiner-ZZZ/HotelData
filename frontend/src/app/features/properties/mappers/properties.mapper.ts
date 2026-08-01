@@ -129,14 +129,14 @@ export function mapPropertyDetailResponse(dto: PropertyDetailResponseDto): Prope
   };
 }
 
-function mapQuickStats(dto: DashboardQuickStatsDto): DashboardQuickStats {
+function mapQuickStats(dto?: DashboardQuickStatsDto | null): DashboardQuickStats {
   return {
-    occupancyRate: dto.occupancy_rate,
-    occupancyTrend: dto.occupancy_trend,
-    totalRevenueMtd: dto.total_revenue_mtd,
-    revenueTrend: dto.revenue_trend,
-    pendingCheckins: dto.pending_checkins,
-    dataHealthScore: dto.data_health_score
+    occupancyRate: dto?.occupancy_rate ?? 0,
+    occupancyTrend: dto?.occupancy_trend ?? null,
+    totalRevenueMtd: dto?.total_revenue_mtd ?? 0,
+    revenueTrend: dto?.revenue_trend ?? 0,
+    pendingCheckins: dto?.pending_checkins ?? 0,
+    dataHealthScore: dto?.data_health_score ?? null
   };
 }
 
@@ -214,16 +214,16 @@ export function mapEditPropertySources(
     })),
     amenities: amenities.active_amenities ?? [],
     amenityCatalog: amenities.catalog ?? [],
-    currency: (profileDto as any).currency || 'USD',
-    acceptedCurrencies: (profileDto as any).accepted_currencies || ['USD'],
+    currency: profileDto.currency || 'USD',
+    acceptedCurrencies: profileDto.accepted_currencies || ['USD'],
   };
 }
 
 export function mapPropertiesDashboardResponse(dto: PropertiesDashboardResponseDto): PropertiesDashboardViewModel {
   return {
     quickStats: mapQuickStats(dto.quick_stats),
-    revenueChart: dto.revenue_chart.map(mapRevenuePoint),
-    arrivalsToday: dto.arrivals_today.map(mapArrival),
+    revenueChart: (dto.revenue_chart ?? []).map(mapRevenuePoint),
+    arrivalsToday: (dto.arrivals_today ?? []).map(mapArrival),
     properties: mapPropertiesListResponse(dto.properties)
   };
 }

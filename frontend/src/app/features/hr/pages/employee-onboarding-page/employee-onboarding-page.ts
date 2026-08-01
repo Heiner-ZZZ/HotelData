@@ -7,6 +7,7 @@ import { API_CONFIG } from '../../../../core/api/api.config';
 import { roleLabel } from '../../../../core/auth/role-labels';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import type { ReplacementCandidateDto } from '../../models/hr.dto';
 
 @Component({
   selector: 'app-employee-onboarding-page',
@@ -216,7 +217,8 @@ import { PropertyContextService } from '../../../../shared/services/property-con
                 <p style="font-size: 11px; color: var(--muted-text); margin: 2px 0 0;">¿Este empleado reemplaza a alguien?</p>
               </div>
               <label style="position: relative; display: inline-flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" [(ngModel)]="form.replacesEmployee" class="sr-only"
+                <input type="checkbox" [checked]="form.replacesEmployee"
+                  (change)="onReplacementToggle($any($event.target).checked)" class="sr-only"
                   style="position: absolute; opacity: 0; width: 0; height: 0;" />
                 <div [style]="form.replacesEmployee ? 'background:var(--accent);' : 'background:var(--app-border);'"
                   style="width: 40px; height: 22px; border-radius: 999px; transition: all 0.2s; position: relative;">
@@ -228,19 +230,36 @@ import { PropertyContextService } from '../../../../shared/services/property-con
             @if (form.replacesEmployee) {
               <div style="background: var(--accent-light); border: 1px solid var(--accent-light); border-radius: 10px; padding: 16px;">
                 <p style="font-size: 12px; color: var(--indigo); margin: 0 0 10px;">Selecciona al empleado a reemplazar y qué transferir:</p>
-                <input type="text" [(ngModel)]="form.replacesEmployeeId" placeholder="ID del empleado a reemplazar..."
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--accent-light); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; margin-bottom: 10px;" />
-                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
-                    <input type="checkbox" [(ngModel)]="form.transferShifts" /> Transferir turnos
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
-                    <input type="checkbox" [(ngModel)]="form.transferPermissions" /> Transferir permisos
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
-                    <input type="checkbox" [(ngModel)]="form.transferTasks" /> Transferir tareas
-                  </label>
-                </div>
+                @if (replacementLoading()) {
+                  <p style="font-size: 12px; color: var(--muted-text); margin: 0 0 10px;">Cargando empleados del hotel...</p>
+                } @else {
+                  <select [(ngModel)]="form.replacesEmployeeId" (ngModelChange)="onReplacementSelected($event)"
+                    style="width: 100%; padding: 8px 12px; border: 1px solid var(--accent-light); border-radius: 8px; font-size: 13px; box-sizing: border-box; outline: none; margin-bottom: 10px; background: var(--surface); color: var(--app-text);">
+                    <option value="">Selecciona el empleado a reemplazar...</option>
+                    @for (candidate of replacementCandidates(); track candidate.id) {
+                      <option [value]="candidate.id">{{ candidate.full_name }} · {{ candidate.department || candidate.position || 'Sin área' }}</option>
+                    }
+                  </select>
+                  @if (!replacementCandidates().length) {
+                    <p style="font-size: 11px; color: var(--muted-text); margin: 0 0 10px;">No hay empleados activos disponibles en este hotel.</p>
+                  }
+                  @if (selectedReplacement(); as replacement) {
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                      <label [style.opacity]="replacement.shift_count ? '1' : '0.5'" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
+                        <input type="checkbox" [(ngModel)]="form.transferShifts" [disabled]="!replacement.shift_count" />
+                        Transferir turnos futuros/activos <small style="color: var(--muted-text);">({{ replacement.shift_count }})</small>
+                      </label>
+                      <label [style.opacity]="replacement.permission_count ? '1' : '0.5'" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
+                        <input type="checkbox" [(ngModel)]="form.transferPermissions" [disabled]="!replacement.permission_count" />
+                        Transferir permisos <small style="color: var(--muted-text);">({{ replacement.permission_count }})</small>
+                      </label>
+                      <label [style.opacity]="replacement.task_count || replacement.duty_count ? '1' : '0.5'" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--app-text); cursor: pointer;">
+                        <input type="checkbox" [(ngModel)]="form.transferTasks" [disabled]="!(replacement.task_count || replacement.duty_count)" />
+                        Transferir tareas y obligaciones <small style="color: var(--muted-text);">({{ replacement.task_count + replacement.duty_count }})</small>
+                      </label>
+                    </div>
+                  }
+                }
               </div>
             }
           </div>
@@ -276,10 +295,9 @@ import { PropertyContextService } from '../../../../shared/services/property-con
           </div>
           @if (form.replacesEmployee && form.replacesEmployeeId) {
             <div style="margin-top: 16px; padding: 10px; background: var(--accent-light); border-radius: 8px; font-size: 12px; color: var(--indigo);">
-              Reemplazará al empleado ID: {{ form.replacesEmployeeId }}
-              @if (form.transferShifts) { · Turnos }
-              @if (form.transferPermissions) { · Permisos }
-              @if (form.transferTasks) { · Tareas }
+              Reemplazará a {{ selectedReplacement()?.full_name || 'empleado seleccionado' }}                  @if (form.transferShifts) { · Turnos futuros/activos }
+                  @if (form.transferPermissions) { · Permisos }
+                  @if (form.transferTasks) { · Tareas y obligaciones }
             </div>
           }
           <div style="margin-top: 20px; display: flex; justify-content: space-between;">
@@ -312,30 +330,29 @@ import { PropertyContextService } from '../../../../shared/services/property-con
             </div>
             <p style="font-size: 11px; color: var(--muted-text); margin: 0 0 16px;">Archivos requeridos para completar el alta.</p>
 
-            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-              @for (doc of documentChecklist(); track doc.key) {
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">                  @for (doc of documentChecklist(); track doc.key) {
                 <li style="background: var(--surface-soft); border: 1px solid var(--app-border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
                   <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 6px;">
                       <span class="material-symbols-outlined" style="font-size: 16px; color: var(--app-border);">{{ doc.icon }}</span>
                       <span style="font-size: 12px; font-weight: 500; color: var(--app-text);">{{ doc.label }}</span>
                     </div>
-                    <span [style]="doc.status === 'completed' ? 'background:var(--success-light);color:var(--success-strong);' : 'background:var(--danger-light);color:var(--danger-strong);'"
+                    <span [style]="doc.status === 'selected' ? 'background:var(--success-light);color:var(--success-strong);' : 'background:var(--danger-light);color:var(--danger-strong);'"
                       style="padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600;">
-                      {{ doc.status === 'completed' ? 'Completado' : 'Pendiente' }}
+                      {{ doc.status === 'selected' ? 'Seleccionado' : 'Pendiente' }}
                     </span>
                   </div>
-                  @if (doc.status === 'completed') {
+                  @if (doc.status === 'selected') {
                     <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted-text); background: var(--surface); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--app-border);">
                       <span class="material-symbols-outlined" style="font-size: 14px;">picture_as_pdf</span>
                       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ doc.filename }}</span>
                     </div>
                   } @else {
-                    <button (click)="uploadDocument(doc.key)"
-                      style="width: 100%; padding: 6px 0; background: transparent; border: 1px dashed var(--app-border); border-radius: 6px; font-size: 11px; color: var(--muted-text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    <label style="width: 100%; padding: 6px 0; background: transparent; border: 1px dashed var(--app-border); border-radius: 6px; font-size: 11px; color: var(--muted-text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
                       <span class="material-symbols-outlined" style="font-size: 14px;">upload</span>
-                      Subir Archivo
-                    </button>
+                      Seleccionar archivo
+                      <input type="file" accept="application/pdf,.pdf" (change)="onDocumentSelected(doc.key, $event)" style="display: none;" />
+                    </label>
                   }
                 </li>
               }
@@ -602,12 +619,15 @@ export class EmployeeOnboardingPageComponent {
     });
   }
 
-  readonly documentChecklist = signal<{ key: string; icon: string; label: string; status: 'pending' | 'completed'; filename: string }[]>([
+  readonly documentChecklist = signal<{ key: string; icon: string; label: string; status: 'pending' | 'selected'; filename: string; file?: File }[]>([
     { key: 'id_passport', icon: 'badge', label: 'Copia de ID / Pasaporte', status: 'pending', filename: '' },
     { key: 'contract', icon: 'description', label: 'Contrato Firmado', status: 'pending', filename: '' },
     { key: 'tax_form', icon: 'receipt_long', label: 'Formulario de Impuestos', status: 'pending', filename: '' },
     { key: 'certificate', icon: 'school', label: 'Certificado de Estudios', status: 'pending', filename: '' },
   ]);
+
+  readonly replacementCandidates = signal<ReplacementCandidateDto[]>([]);
+  readonly replacementLoading = signal(false);
 
   form = {
     fullName: '',
@@ -630,6 +650,10 @@ export class EmployeeOnboardingPageComponent {
     transferTasks: false,
   };
 
+  readonly selectedReplacement = computed(() =>
+    this.replacementCandidates().find(candidate => candidate.id === this.form.replacesEmployeeId) ?? null,
+  );
+
   /** Whether the current user already has a property selected — auto-assign to that hotel */
   get hasCurrentHotel(): boolean {
     return (this.propCtx.currentPropId() ?? 0) > 0 || (this.form.propId ?? 0) > 0;
@@ -637,17 +661,72 @@ export class EmployeeOnboardingPageComponent {
 
   onHotelSelected(event: { propId: number; label: string }) {
     this.form.propId = event.propId || null;
+    this.form.replacesEmployeeId = '';
+    this.resetTransferOptions();
+    if (this.form.replacesEmployee && this.form.propId) this.loadReplacementCandidates();
   }
 
-  uploadDocument(key: string) {
-    // En un entorno real esto abriría un file picker y subiría el archivo al backend
-    // Por ahora simulamos la subida
-    this.documentChecklist.update(list =>
-      list.map(d => d.key === key ? { ...d, status: 'completed' as const, filename: `${key}_${Date.now()}.pdf` } : d)
-    );
+  onReplacementToggle(enabled: boolean): void {
+    this.form.replacesEmployee = enabled;
+    this.form.replacesEmployeeId = '';
+    this.resetTransferOptions();
+    if (enabled) this.loadReplacementCandidates();
   }
 
-  nextStep() { this.step.update(s => Math.min(s + 1, 4)); }
+  loadReplacementCandidates(): void {
+    const propId = this.form.propId;
+    if (!propId) {
+      this.replacementCandidates.set([]);
+      return;
+    }
+    this.replacementLoading.set(true);
+    this.hrApi.getReplacementCandidates(propId).subscribe({
+      next: response => {
+        this.replacementCandidates.set(response.items ?? []);
+        this.replacementLoading.set(false);
+      },
+      error: () => {
+        this.replacementCandidates.set([]);
+        this.replacementLoading.set(false);
+      },
+    });
+  }
+
+  onReplacementSelected(employeeId: string): void {
+    this.form.replacesEmployeeId = employeeId;
+    this.resetTransferOptions();
+  }
+
+  private resetTransferOptions(): void {
+    this.form.transferShifts = false;
+    this.form.transferPermissions = false;
+    this.form.transferTasks = false;
+  }
+
+  onDocumentSelected(key: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      this.error.set('Solo se permiten archivos PDF.');
+      input.value = '';
+      return;
+    }
+    this.error.set(null);
+    this.documentChecklist.update(list => list.map(document => document.key === key
+      ? { ...document, status: 'selected' as const, filename: file.name, file }
+      : document));
+    input.value = '';
+  }
+
+  nextStep() {
+    if (this.step() === 2 && this.form.replacesEmployee && !this.form.replacesEmployeeId) {
+      this.error.set('Selecciona el empleado que será reemplazado o desactiva la opción.');
+      return;
+    }
+    this.error.set(null);
+    this.step.update(s => Math.min(s + 1, 4));
+  }
   prevStep() { this.step.update(s => Math.max(s - 1, 1)); }
 
   submit() {

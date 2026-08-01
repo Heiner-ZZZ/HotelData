@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, CurrencyPipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ShiftsApiService, ShiftInfo, ShiftCloseSummary, ActiveShiftConflict, ScheduleMismatchDetail, ScheduleBypassForbiddenDetail, DepositRecord, PaymentBreakdown, CASH_DEPOSIT_METHODS } from '../../services/shifts-api.service';
-import { SHIFTS_CREATE, SHIFTS_UPDATE } from '../../../../core/auth/permission.constants';
+import { SHIFTS_CREATE, SHIFTS_MANAGE, SHIFTS_UPDATE } from '../../../../core/auth/permission.constants';
 
 @Component({
   selector: 'app-control-turnos-caja',
@@ -20,6 +21,7 @@ export class ControlTurnosCajaPageComponent {
   private readonly propCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly selectedPropId = this.propCtx.currentPropId;
   readonly selectedLabel = signal('');
@@ -49,6 +51,9 @@ export class ControlTurnosCajaPageComponent {
     this.auth.hasPermission(SHIFTS_CREATE) ||
     this.auth.hasPermission(SHIFTS_UPDATE),
   );
+
+  /** The history endpoint is a manager-control view protected by shifts.manage. */
+  readonly canViewShiftHistory = computed(() => this.auth.hasPermission(SHIFTS_MANAGE));
 
   // Shift open form
   readonly showOpenForm = signal(false);
@@ -194,6 +199,13 @@ export class ControlTurnosCajaPageComponent {
         this.loading.set(false);
         this.shift.set(null);
       },
+    });
+  }
+
+  openShiftHistory(): void {
+    const propId = this.selectedPropId();
+    void this.router.navigate(['/management/shifts/manager-control'], {
+      queryParams: propId ? { prop_id: propId } : {},
     });
   }
 
@@ -469,9 +481,10 @@ export class ControlTurnosCajaPageComponent {
           this.showCloseModal.set(false);
         }, 8000);
       },
-      error: (err: any) => {
+      error: (err: { error?: { detail?: unknown } }) => {
         this.closingShift.set(false);
-        this.toast.error(err?.error?.detail || 'Error al cerrar turno');
+        const detail = err?.error?.detail;
+        this.toast.error(typeof detail === 'string' ? detail : 'Error al cerrar turno');
       },
     });
   }

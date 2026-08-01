@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { HrApiService } from '../../services/hr-api.service';
+import type { EmployeeListItem } from '../../models/hr.model';
 
 @Component({
   selector: 'app-employee-list-page',
@@ -126,10 +127,18 @@ export class EmployeeListPageComponent implements OnInit {
   private readonly hrApi = inject(HrApiService);
   private readonly router = inject(Router);
   readonly propertyCtx = inject(PropertyContextService);
-  private searchTimeout: any;
+  private searchTimeout: ReturnType<typeof setTimeout> | undefined;
 
   readonly viewState = signal<'loading' | 'success' | 'empty' | 'error'>('loading');
-  readonly data = signal<any>(null);
+  readonly data = signal<{
+    items: EmployeeListItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  } | null>(null);
   readonly searchTerm = signal('');
   readonly selectedDepartment = signal('');
   readonly selectedStatus = signal('');
@@ -146,7 +155,7 @@ export class EmployeeListPageComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (depts) => this.departments.set(depts),
-        error: () => {},
+        error: () => this.departments.set([]),
       });
   }
 
@@ -184,7 +193,7 @@ export class EmployeeListPageComponent implements OnInit {
   }
 
   onSearch() {
-    clearTimeout(this.searchTimeout);
+    if (this.searchTimeout) clearTimeout(this.searchTimeout);
     this.searchTimeout = setTimeout(() => {
       this.currentPage.set(1);
       this.loadEmployees();

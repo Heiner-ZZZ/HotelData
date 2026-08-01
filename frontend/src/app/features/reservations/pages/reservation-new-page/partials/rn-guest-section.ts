@@ -1,6 +1,30 @@
 import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+
+import type { RecentGuestView } from './reservation-form.types';
+
+interface GuestAmenityItemView {
+  label: string;
+  active: boolean;
+  unit_price: number;
+}
+
+interface GuestAmenityCategoryView {
+  category: string;
+  items: GuestAmenityItemView[];
+}
+
+interface CouponStatusView {
+  valid: boolean;
+  message: string;
+  discountPercent: number;
+}
+
+interface SpecialRequestView {
+  value: string;
+  label: string;
+}
 
 @Component({
   selector: 'app-rn-guest-section',
@@ -8,7 +32,7 @@ import { ReactiveFormsModule } from '@angular/forms';
   imports: [CurrencyPipe, ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section #guestSection class="surface-card form-section">
+    <section #guestSection class="surface-card form-section" [formGroup]="form()">
       <div class="section-head">
         <span class="material-symbols-outlined section-icon">person</span>
         <div>
@@ -23,37 +47,58 @@ import { ReactiveFormsModule } from '@angular/forms';
           <span class="field-label">Nombre completo</span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">badge</span>
-            <input [formControl]="form()?.controls?.guestName" autocomplete="name" [attr.readonly]="isClient() || null" />
+            <input formControlName="guestName" autocomplete="name" [attr.readonly]="isClient() || null"
+              (input)="guestInput.emit($any($event.target).value)" (focus)="guestFocus.emit()" (blur)="guestBlur.emit()" />
           </div>
         </label>
         <label class="field">
           <span class="field-label">Correo electrónico</span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">mail</span>
-            <input [formControl]="form()?.controls?.guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email"
+            <input formControlName="guestEmail" type="email" placeholder="ejemplo@correo.com" autocomplete="email"
               [attr.readonly]="isClient() || null" [class.readonly-field]="isClient()" />
           </div>
         </label>
       </div>
       <div class="field-group two-col">
         <label class="field">
-          <span class="field-label">Teléfono (opcional)</span>
+          <span class="field-label">Teléfono <span class="required-mark" aria-hidden="true">*</span></span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">phone</span>
-            <input [formControl]="form()?.controls?.guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" />
+            <input formControlName="guestPhone" type="tel" placeholder="+52 555 123 4567" autocomplete="tel" required aria-required="true" />
+            @if (form().get('guestPhone')?.touched && form().get('guestPhone')?.hasError('required')) { <span class="field-error-msg">El teléfono es obligatorio.</span> }
           </div>
         </label>
         <label class="field">
-          <span class="field-label">Cédula / Identificación</span>
+          <span class="field-label">Cédula / Identificación <span class="required-mark" aria-hidden="true">*</span></span>
           <div class="input-wrap">
             <span class="material-symbols-outlined input-prefix">badge</span>
-            <input [formControl]="form()?.controls?.cedula" type="text" placeholder="Ej: 123456789" />
+            <input formControlName="cedula" type="text" placeholder="Ej: 123456789" autocomplete="off" required aria-required="true" />
+            @if (form().get('cedula')?.touched && form().get('cedula')?.hasError('required')) { <span class="field-error-msg">La cédula es obligatoria.</span> }
           </div>
         </label>
       </div>
+      @if (!isClient() && showGuestDropdown() && guestSuggestions().length > 0) {
+        <div class="recent-guests" role="listbox" aria-label="Contactos recientes">
+          <div class="recent-guests-head">
+            <span class="material-symbols-outlined">history</span>
+            <span>Contactos recientes</span>
+          </div>
+          @for (guest of guestSuggestions(); track guest.email) {
+            <button type="button" class="recent-guest" (mousedown)="$event.preventDefault()" (click)="selectGuest.emit(guest)">
+              <span class="material-symbols-outlined">person</span>
+              <span class="recent-guest-copy">
+                <strong>{{ guest.name }}</strong>
+                <small>{{ guest.email }} · {{ guest.phone || 'Sin teléfono' }}</small>
+              </span>
+              <span class="material-symbols-outlined recent-guest-action">north_west</span>
+            </button>
+          }
+        </div>
+      }
     </section>
 
-    <section class="surface-card form-section">
+    <section class="surface-card form-section" [formGroup]="form()">
       <div class="section-head">
         <span class="material-symbols-outlined section-icon">room_service</span>
         <div>
@@ -64,7 +109,7 @@ import { ReactiveFormsModule } from '@angular/forms';
       <div class="field-group checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
         @for (req of specialRequestsOptions(); track req.value) {
           <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" (change)="toggleRequest.emit({ request: req.value, checked: $any($event.target).checked })" />
+            <input type="checkbox" (change)="onRequestChange(req.value, $event)" />
             <span>{{ req.label }}</span>
           </label>
         }
@@ -72,7 +117,7 @@ import { ReactiveFormsModule } from '@angular/forms';
     </section>
 
     @if (selectedHotel()) {
-      <section class="surface-card form-section">
+      <section class="surface-card form-section" [formGroup]="form()">
         <div class="section-head">
           <span class="material-symbols-outlined section-icon">spa</span>
           <div>
@@ -85,25 +130,28 @@ import { ReactiveFormsModule } from '@angular/forms';
             <span class="material-symbols-outlined loading-spin">sync</span><span>Cargando servicios...</span>
           </div>
         } @else if (amenityCatalog().length > 0) {
-          <div class="amenity-selector" style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="amenity-selector">
             @for (cat of amenityCatalog(); track cat.category) {
-              <div>
-                <strong style="display: block; margin-bottom: 8px; text-transform: capitalize; color: var(--text-2); font-size: 0.85rem;">{{ cat.category }}</strong>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <section class="amenity-category">
+                <div class="amenity-category-head">
+                  <span class="material-symbols-outlined">category</span>
+                  <h3>{{ cat.category }}</h3>
+                </div>
+                <div class="amenity-grid">
                   @for (item of cat.items; track item.label) {
-                    @if (item.active) {
-                      <label class="amenity-chip" [class.is-selected]="selectedAmenities().has(item.label)"
-                        style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">
-                        <input type="checkbox" [checked]="selectedAmenities().has(item.label)"
-                          (change)="toggleAmenity.emit(item.label)" style="display: none;" />
-                        <span>{{ item.label }}</span>
-                        @if (item.unit_price > 0) { <span style="font-weight: 700; color: var(--accent);">{{ item.unit_price | currency:'USD' }}</span> }
-                        @else { <span style="color: #16a34a; font-size: 0.8rem;">Gratis</span> }
-                      </label>
-                    }
+                    <label class="amenity-chip" [class.is-selected]="selectedAmenities().has(item.label)">
+                      <input type="checkbox" [checked]="selectedAmenities().has(item.label)"
+                        (change)="toggleAmenity.emit(item.label)" />
+                      <span class="amenity-check material-symbols-outlined" aria-hidden="true">check_circle</span>
+                      <span class="amenity-copy">
+                        <span class="amenity-label">{{ item.label }}</span>
+                        @if (item.unit_price > 0) { <span class="amenity-price">{{ item.unit_price | currency:'USD' }}</span> }
+                        @else { <span class="amenity-free">Gratis</span> }
+                      </span>
+                    </label>
                   }
                 </div>
-              </div>
+              </section>
             }
           </div>
         } @else if (amenityError()) { <p style="color: var(--text-2); font-size: 0.85rem;">{{ amenityError() }}</p> }
@@ -111,7 +159,7 @@ import { ReactiveFormsModule } from '@angular/forms';
       </section>
     }
 
-    <section class="surface-card form-section">
+    <section class="surface-card form-section" [formGroup]="form()">
       <div class="section-head">
         <span class="material-symbols-outlined section-icon">notes</span>
         <div>
@@ -122,14 +170,14 @@ import { ReactiveFormsModule } from '@angular/forms';
       <div class="field-group">
         <label class="field">
           <div class="input-wrap">
-            <textarea [formControl]="form()?.controls?.comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
+            <textarea formControlName="comment" rows="3" placeholder="Ej: Prefiero piso alto, sin mascotas, hora de llegada tardía..."></textarea>
           </div>
         </label>
       </div>
     </section>
 
     @if (isClient()) {
-      <section class="surface-card form-section">
+      <section class="surface-card form-section" [formGroup]="form()">
         <div class="section-head">
           <span class="material-symbols-outlined section-icon">local_activity</span>
           <div>
@@ -140,7 +188,7 @@ import { ReactiveFormsModule } from '@angular/forms';
         <div class="field-group">
           <label class="field">
             <div class="input-wrap promo-wrap" style="display: flex; gap: 8px; border: none; background: transparent; padding: 0;">
-              <input [formControl]="form()?.controls?.couponCode" placeholder="Ej: VERANO20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
+              <input formControlName="couponCode" placeholder="Ej: VERANO20" style="text-transform: uppercase; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; flex: 1; background: var(--surface-1);" />
               <button type="button" class="btn-secondary" (click)="validateCoupon.emit()" [disabled]="couponValidating()">
                 @if (couponValidating()) { <span class="material-symbols-outlined loading-spin">sync</span> }
                 @else { Aplicar }
@@ -159,18 +207,29 @@ import { ReactiveFormsModule } from '@angular/forms';
   `
 })
 export class RnGuestSectionComponent {
-  readonly form = input<any>(null);
+  readonly form = input.required<FormGroup>();
   readonly isClient = input(false);
-  readonly selectedHotel = input<any>(null);
+  readonly guestSuggestions = input<RecentGuestView[]>([]);
+  readonly showGuestDropdown = input(false);
+  readonly selectedHotel = input<{ label: string } | null>(null);
   readonly amenityLoading = input(false);
-  readonly amenityCatalog = input<any[]>([]);
+  readonly amenityCatalog = input<GuestAmenityCategoryView[]>([]);
   readonly amenityError = input<string>('');
   readonly selectedAmenities = input<Set<string>>(new Set());
   readonly couponValidating = input(false);
-  readonly couponStatus = input<any>(null);
-  readonly specialRequestsOptions = input<any[]>([]);
+  readonly couponStatus = input<CouponStatusView | null>(null);
+  readonly specialRequestsOptions = input<SpecialRequestView[]>([]);
 
+  readonly guestInput = output<string>();
+  readonly guestFocus = output<void>();
+  readonly guestBlur = output<void>();
+  readonly selectGuest = output<RecentGuestView>();
   readonly toggleRequest = output<{ request: string; checked: boolean }>();
   readonly toggleAmenity = output<string>();
   readonly validateCoupon = output<void>();
+
+  onRequestChange(request: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement | null)?.checked ?? false;
+    this.toggleRequest.emit({ request, checked });
+  }
 }

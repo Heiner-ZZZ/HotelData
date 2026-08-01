@@ -196,6 +196,20 @@ select option {
   color: var(--app-text);
 }
 
+/* Keeps the autofill username available to assistive technology and password
+ * managers without adding another visible field to the settings card. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .input-wrap:has(select)::after {
   content: '';
   position: absolute;

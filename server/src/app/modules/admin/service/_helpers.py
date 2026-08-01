@@ -9,12 +9,19 @@ from src.database.connection import get_database
 
 
 def _clean(document: dict[str, Any]) -> dict[str, Any]:
-    cleaned = dict(document)
-    for key, value in list(cleaned.items()):
+    """Return a JSON-safe copy of a Mongo document for API responses."""
+    def clean_value(value: Any) -> Any:
         if isinstance(value, ObjectId):
-            cleaned[key] = str(value)
-        elif isinstance(value, list):
-            cleaned[key] = [str(item) if isinstance(item, ObjectId) else item for item in value]
+            return str(value)
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, list):
+            return [clean_value(item) for item in value]
+        if isinstance(value, dict):
+            return {key: clean_value(item) for key, item in value.items()}
+        return value
+
+    cleaned = {key: clean_value(value) for key, value in document.items()}
     cleaned.pop("password_hash", None)
     return cleaned
 

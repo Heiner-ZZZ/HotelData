@@ -365,6 +365,12 @@ def check_out_complete_api(
         {"booking_id": booking_id},
         {"prop_id": 1, "status": 1, "stay_status": 1, "check_out_by": 1},
     )
+    # Check-out is a terminal transition. A stale tab, double click, or retry
+    # after a successful request must be safe and must not repeat side effects
+    # such as inventory restoration, housekeeping tasks, or audit entries.
+    if before and before.get("stay_status") == "checked_out":
+        return {"booking_id": booking_id, "stay_status": "checked_out"}
+
     try:
         observations = str(payload.get("check_out_observations") or "")
         save_check_out_detail(

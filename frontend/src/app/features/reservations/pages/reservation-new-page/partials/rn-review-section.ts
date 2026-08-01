@@ -1,6 +1,28 @@
 import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+interface ReservationPreviewView {
+  available: boolean;
+  availabilityMessage?: string | null;
+  totalPrice: number | null;
+  currency: string;
+  totalNights: number;
+  cancellationPolicy?: string | null;
+  priceBreakdown?: {
+    ratePlanName: string | null;
+    baseNightlyRate: number | null;
+    nights: number;
+    baseTotal: number | null;
+    includedAmenities: { label: string; unitPrice: number }[];
+    selectedExtras: { label: string; unitPrice: number }[];
+    amenityTotal: number;
+    subtotal: number | null;
+    taxAmount: number;
+    taxRate: number;
+    grandTotal: number | null;
+  } | null;
+}
+
 @Component({
   selector: 'app-rn-review-section',
   standalone: true,
@@ -147,11 +169,15 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
                 <span>Total</span>
                 <strong>
                   @let grandTotal = bd.grandTotal;
-                  @if (couponStatus()?.valid) {
-                    <span class="pb-original">{{ grandTotal | currency:p.currency }}</span>
-                    <span>{{ grandTotal * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                  @if (couponStatus(); as coupon) {
+                    @if (coupon.valid) {
+                      <span class="pb-original">{{ displayGrandTotal(grandTotal, p.totalPrice) | currency:p.currency }}</span>
+                      <span>{{ displayGrandTotal(grandTotal, p.totalPrice) * (1 - coupon.discountPercent / 100) | currency:p.currency }}</span>
+                    } @else {
+                      {{ displayGrandTotal(grandTotal, p.totalPrice) | currency:p.currency }}
+                    }
                   } @else {
-                    {{ grandTotal | currency:p.currency }}
+                    {{ displayGrandTotal(grandTotal, p.totalPrice) | currency:p.currency }}
                   }
                   <span class="pb-night-suffix">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
                 </strong>
@@ -162,9 +188,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
             <div class="review-total">
               <span>Total estimado</span>
               <strong>
-                @if (couponStatus()?.valid) {
-                  <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
-                  <span>{{ p.totalPrice * (1 - couponStatus()!.discountPercent / 100) | currency:p.currency }}</span>
+                @if (couponStatus(); as coupon) {
+                  @if (coupon.valid) {
+                    <span style="text-decoration: line-through; opacity: 0.7; margin-right: 8px; font-weight: normal;">{{ p.totalPrice | currency:p.currency }}</span>
+                    <span>{{ p.totalPrice * (1 - coupon.discountPercent / 100) | currency:p.currency }}</span>
+                  } @else { {{ p.totalPrice | currency:p.currency }} }
                 } @else { {{ p.totalPrice | currency:p.currency }} }
                 <span style="font-size: 0.8em; font-weight: normal; margin-left: 4px;">({{ p.totalNights }} {{ p.totalNights === 1 ? 'noche' : 'noches' }})</span>
               </strong>
@@ -185,7 +213,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   `
 })
 export class RnReviewSectionComponent {
-  readonly selectedHotel = input<any>(null);
+  readonly selectedHotel = input<{ label: string } | null>(null);
+
+  displayGrandTotal(total: number | null, fallback: number | null): number {
+    return total ?? fallback ?? 0;
+  }
   readonly guestName = input<string>('');
   readonly guestEmail = input<string>('');
   readonly guestPhone = input<string>('');
@@ -201,8 +233,8 @@ export class RnReviewSectionComponent {
   readonly specialRequests = input<string[]>([]);
   readonly selectedAmenities = input<Set<string>>(new Set());
   readonly couponCode = input<string>('');
-  readonly couponStatus = input<any>(null);
-  readonly preview = input<any>(null);
+  readonly couponStatus = input<{ valid: boolean; discountPercent: number } | null>(null);
+  readonly preview = input<ReservationPreviewView | null>(null);
   readonly previewing = input(false);
   readonly cancellationPolicy = input<string | null | undefined>(null);
 }

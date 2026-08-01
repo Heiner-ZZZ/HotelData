@@ -1,360 +1,42 @@
 <div class="permissions-page">
-  <app-confirm-dialog />
   <app-page-header
     eyebrow="Administración del Sistema"
     title="Roles y Permisos"
     description="Matriz visual de permisos, roles del sistema y catálogo completo de autorizaciones."
   />
 
-  @switch (viewState()) {
-    @case ('loading') {
-      <div class="loading-wrapper">
-        <app-loading-state label="Cargando permisos..." />
-      </div>
-    }
+  @switch (context.viewState()) {
+    @case ('loading') { <div class="loading-wrapper"><app-loading-state label="Cargando permisos..." /></div> }
     @case ('error') {
       <div class="error-wrapper">
-        <app-error-state
-          title="No fue posible cargar los permisos"
-          [description]="loadErrorMessage() || 'Revisa la conexión con la API de administración o vuelve a intentar.'"
-        />
+        <app-error-state title="No fue posible cargar los permisos" [description]="loadErrorMessage() || 'Revisa la conexión con la API de administración o vuelve a intentar.'" />
       </div>
     }
     @case ('empty') {
-      <div class="empty-wrapper">
-        <app-empty-state
-          title="Sin permisos configurados"
-          description="Cuando existan roles y permisos cargados aparecerán aquí para administración global."
-        />
-      </div>
+      <div class="empty-wrapper"><app-empty-state title="Sin permisos configurados" description="Cuando existan roles y permisos cargados aparecerán aquí para administración global." /></div>
     }
     @default {
-      @if (permissionsResource.value(); as vm) {
-        <!-- ─── Stats Cards ─── -->
+      @if (context.overviewResource.value(); as vm) {
         <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--roles">
-              <span class="material-symbols-outlined">vpn_key</span>
-            </div>
-            <div class="stat-body">
-              <span class="stat-value">{{ vm.totals.roles }}</span>
-              <span class="stat-label">Roles del sistema</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--perms">
-              <span class="material-symbols-outlined">security</span>
-            </div>
-            <div class="stat-body">
-              <span class="stat-value">{{ vm.totals.permissions }}</span>
-              <span class="stat-label">Permisos registrados</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--users">
-              <span class="material-symbols-outlined">group</span>
-            </div>
-            <div class="stat-body">
-              <span class="stat-value">{{ vm.totals.users }}</span>
-              <span class="stat-label">Usuarios impactados</span>
-            </div>
-          </div>
+          <div class="stat-card"><div class="stat-icon stat-icon--roles"><span class="material-symbols-outlined">vpn_key</span></div><div class="stat-body"><span class="stat-value">{{ vm.totals.roles }}</span><span class="stat-label">Roles del sistema</span></div></div>
+          <div class="stat-card"><div class="stat-icon stat-icon--perms"><span class="material-symbols-outlined">security</span></div><div class="stat-body"><span class="stat-value">{{ vm.totals.permissions }}</span><span class="stat-label">Permisos registrados</span></div></div>
+          <div class="stat-card"><div class="stat-icon stat-icon--users"><span class="material-symbols-outlined">group</span></div><div class="stat-body"><span class="stat-value">{{ vm.totals.users }}</span><span class="stat-label">Usuarios impactados</span></div></div>
         </div>
 
-        <!-- ─── Role Editor (overlay when editing) ─── -->
-        @if (editRoleName(); as editing) {
-          @if (roleDetail(); as detail) {
-            <section class="role-editor-card">
-              <div class="editor-head">
-                <div class="editor-title">
-                  <span class="editor-badge">{{ detail.role.roleName }}</span>
-                  <span class="editor-subtitle">{{ detail.role.permissionCodes.length }} permisos asignados</span>
-                </div>
-                <button class="btn btn-sm btn-ghost" (click)="closeRoleEditor()">
-                  <span class="material-symbols-outlined">close</span>
-                  Cerrar
-                </button>
-              </div>
-
-              <div class="editor-body">
-                <div class="editor-perms">
-                  <div class="field">
-                    <label class="field-label">Descripción del rol</label>
-                    <textarea
-                      class="field-input"
-                      [value]="detail.role.description"
-                      (input)="detail.role.description = $any($event.target).value"
-                      rows="2"
-                      placeholder="Descripción del rol..."
-                    ></textarea>
-                  </div>
-
-                  <div class="editor-perms-header">
-                    <span class="field-label">Permisos — Matriz CRUD</span>
-                    <span class="perm-count">{{ detail.role.permissionCodes.length }} / {{ detail.permissions.length }} seleccionados</span>
-                  </div>
-
-                  <!-- CRUD Matrix Checkboxes -->
-                  @if (crudMatrix(); as matrix) {
-                    <div class="crud-matrix-wrap">
-                      <table class="crud-matrix-table">
-                        <thead>
-                          <tr>
-                            <th class="crud-resource-th">Recurso</th>
-                            @for (action of matrix.actions; track action) {
-                              <th class="crud-action-th">{{ action | titlecase }}</th>
-                            }
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (row of matrix.rows; track row.resource) {
-                            <tr class="crud-row" [class.crud-row--partial]="isResourcePartiallySelected(row.resource)">
-                              <td class="crud-resource-td">
-                                <span class="crud-resource-name">{{ row.resource }}</span>
-                              </td>
-                              <!-- Manage column: toggle all actions -->
-                              <td class="crud-check-td">
-                                @if (row.actions.manage) {
-                                  <label class="crud-check" [class.crud-check--partial]="isResourcePartiallySelected(row.resource)">
-                                    <input
-                                      type="checkbox"
-                                      [checked]="isResourceFullySelected(row.resource)"
-                                      [indeterminate]="isResourcePartiallySelected(row.resource)"
-                                      (change)="toggleResourceActions(row.resource)"
-                                    />
-                                    <span class="crud-check-label">manage</span>
-                                  </label>
-                                } @else {
-                                  <span class="crud-empty">—</span>
-                                }
-                              </td>
-                              <!-- Individual action columns -->
-                              @for (action of matrix.actions; track action) {
-                                @if (action !== 'manage') {
-                                  <td class="crud-check-td">
-                                    @if (row.actions[action]; as act) {
-                                      <label class="crud-check">
-                                        <input
-                                          type="checkbox"
-                                          [checked]="detail.role.permissionCodes.includes(act.code)"
-                                          (change)="togglePermission(act.code)"
-                                        />
-                                      </label>
-                                    } @else {
-                                      <span class="crud-empty">—</span>
-                                    }
-                                  </td>
-                                }
-                              }
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                  }
-
-                  <div class="editor-actions">
-                    <button class="btn btn-primary" [disabled]="saving()" (click)="saveRole()">
-                      @if (saving()) {
-                        <span class="material-symbols-outlined spinning">refresh</span>
-                        Guardando…
-                      } @else {
-                        <span class="material-symbols-outlined">save</span>
-                        Guardar cambios
-                      }
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Right: Navigation preview -->
-                <div class="editor-preview">
-                  <div class="preview-header">
-                    <span class="material-symbols-outlined preview-header-icon">visibility</span>
-                    <span>Vista previa de navegación</span>
-                  </div>
-                  <p class="preview-desc">Menú que verá este rol según los permisos seleccionados.</p>
-                  <div class="nav-preview-list">
-                    @for (item of detail.role.navigationCatalog; track item.href) {
-                      <div class="nav-item" [class.visible]="item.visible" [class.hidden]="!item.visible">
-                        <span class="nav-icon material-symbols-outlined">{{ item.icon }}</span>
-                        <span class="nav-label">{{ item.label }}</span>
-                        <span class="nav-badge" [class.visible-badge]="item.visible" [class.hidden-badge]="!item.visible">
-                          {{ item.visible ? 'Visible' : 'Oculto' }}
-                        </span>
-                      </div>
-                    }
-                  </div>
-                </div>
-              </div>
-            </section>
-          } @else {
-            <app-loading-state label="Cargando detalle del rol..." />
-          }
-        }
-
-        <!-- ─── Content Tabs ─── -->
-        @if (!editRoleName()) {
-          <div class="content-card">
-            <div class="tab-bar">
-              <button
-                class="tab-btn"
-                [class.active]="activeTab() === 'matrix'"
-                (click)="setTab('matrix')"
-              >
-                <span class="material-symbols-outlined">grid_view</span>
-                Matriz de permisos
-              </button>
-              <button
-                class="tab-btn"
-                [class.active]="activeTab() === 'roles'"
-                (click)="setTab('roles')"
-              >
-                <span class="material-symbols-outlined">vpn_key</span>
-                Roles
-                <span class="tab-count">{{ vm.roles.length }}</span>
-              </button>
-              <button
-                class="tab-btn"
-                [class.active]="activeTab() === 'catalog'"
-                (click)="setTab('catalog')"
-              >
-                <span class="material-symbols-outlined">list_alt</span>
-                Catálogo CRUD
-                <span class="tab-count">{{ crudMatrix().resources.length }}</span>
-              </button>
-            </div>
-
-            <!-- ── Tab: Permission Matrix ── -->
-            @if (activeTab() === 'matrix') {
-              <div class="tab-content">
-                <div class="matrix-intro">
-                  <span class="material-symbols-outlined">info</span>
-                  <span>Vista consolidada de roles y sus permisos asignados. Haz clic en un rol para editarlo.</span>
-                </div>
-                <div class="matrix-wrap">
-                  <table class="matrix-table">
-                    <thead>
-                      <tr>
-                        <th class="matrix-role-th">Rol</th>
-                        @for (cat of permissionCategories(); track cat.key) {
-                          <th class="matrix-cat-th" [title]="cat.permissions.map(p => p.permissionCode).join(', ')">
-                            <span>{{ cat.key }}</span>
-                            <span class="cat-count">{{ cat.permissions.length }}</span>
-                          </th>
-                        }
-                        <th class="matrix-total-th">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (role of vm.roles; track role.roleName) {
-                        <tr class="matrix-row" (click)="openRoleEditor(role.roleName)">
-                          <td class="matrix-role-td">
-                            <div class="matrix-role-info">
-                              <span class="matrix-role-name">{{ role.roleName }}</span>
-                              <span class="matrix-role-desc">{{ role.description }}</span>
-                            </div>
-                          </td>
-                          @for (cat of permissionCategories(); track cat.key) {
-                            <td class="matrix-cell">
-                              @if (roleHasCategory(role, cat.key)) {
-                                <span class="matrix-dot matrix-dot--active" title="Tiene permisos en {{ cat.key }}"></span>
-                              } @else {
-                                <span class="matrix-dot matrix-dot--empty"></span>
-                              }
-                            </td>
-                          }
-                          <td class="matrix-total-td">
-                            <span class="total-badge">{{ role.permissionCount }}</span>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            }
-
-            <!-- ── Tab: Roles List ── -->
-            @if (activeTab() === 'roles') {
-              <div class="tab-content">
-                <div class="roles-grid">
-                  @for (role of vm.roles; track role.roleName) {
-                    <div class="role-card" [class.highlight]="role.roleName === 'admin_sistema'">
-                      <div class="role-card-head">
-                        <div class="role-card-info">
-                          <h3 class="role-card-name">{{ role.roleName }}</h3>
-                          <span class="role-card-desc">{{ role.description }}</span>
-                        </div>
-                        <span class="role-badge-count">{{ role.permissionCount }} permisos</span>
-                      </div>
-                      <div class="role-card-body">
-                        <span class="role-section-label">Accesos visibles</span>
-                        <div class="access-chips">
-                          @for (btn of role.accessButtons; track btn.href) {
-                            <span class="access-chip">
-                              <span class="material-symbols-outlined access-chip-icon">{{ btn.icon }}</span>
-                              {{ btn.label }}
-                            </span>
-                          }
-                        </div>
-                      </div>
-                      <button class="role-edit-btn" (click)="openRoleEditor(role.roleName); $event.stopPropagation()">
-                        <span class="material-symbols-outlined">edit</span>
-                        Editar permisos
-                      </button>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- ── Tab: CRUD Catalog Matrix ── -->
-            @if (activeTab() === 'catalog') {
-              <div class="tab-content">
-                <div class="catalog-intro">
-                  <span class="material-symbols-outlined">info</span>
-                  <span>Catálogo de permisos: recursos (filas) × acciones (columnas).</span>
-                </div>
-                @if (crudMatrix(); as matrix) {
-                  <div class="crud-matrix-wrap">
-                    <table class="crud-matrix-table">
-                      <thead>
-                        <tr>
-                          <th class="crud-resource-th">Recurso</th>
-                          @for (action of matrix.actions; track action) {
-                            <th class="crud-action-th">
-                              <span class="action-header">{{ action | titlecase }}</span>
-                            </th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (row of matrix.rows; track row.resource) {
-                          <tr>
-                            <td class="crud-resource-td">
-                              <span class="crud-resource-name">{{ row.resource }}</span>
-                            </td>
-                            @for (action of matrix.actions; track action) {
-                              <td class="crud-cell-td">
-                                @if (row.actions[action]; as act) {
-                                  <span class="crud-code-badge" [title]="act.description">
-                                    {{ act.code }}
-                                  </span>
-                                } @else {
-                                  <span class="crud-empty">—</span>
-                                }
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
+        <div class="content-card">
+          <nav class="tab-bar" aria-label="Secciones de permisos">
+            <a class="tab-btn" routerLink="matrix" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="material-symbols-outlined">grid_view</span> Matriz de permisos
+            </a>
+            <a class="tab-btn" routerLink="roles" routerLinkActive="active">
+              <span class="material-symbols-outlined">vpn_key</span> Roles <span class="tab-count">{{ vm.roles.length }}</span>
+            </a>
+            <a class="tab-btn" routerLink="catalog" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="material-symbols-outlined">list_alt</span> Catálogo CRUD <span class="tab-count">{{ context.overviewResource.value()?.permissions?.length || 0 }}</span>
+            </a>
+          </nav>
+          <div class="tab-content"><router-outlet /></div>
+        </div>
       }
     }
   }

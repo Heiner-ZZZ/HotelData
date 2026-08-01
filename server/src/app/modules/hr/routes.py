@@ -46,12 +46,24 @@ from src.app.modules.hr.service.collections import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.role_helpers import resolve_role_id
-from src.app.security.dependencies import require_login, require_permission
+from src.app.security.dependencies import require_permission
 
 _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Legacy department name overrides (employees.department → catalog name)
 _DEPT_RENAMES = {"Limpieza": "Housekeeping"}
+
+
+def _serialize_hr_doc(doc: dict[str, Any]) -> dict[str, Any]:
+    """Convert Mongo-native values to the API's JSON-safe wire shape."""
+    serialized = dict(doc)
+    if "_id" in serialized:
+        serialized["id"] = str(serialized.pop("_id"))
+    for field in ("created_at", "updated_at"):
+        value = serialized.get(field)
+        if isinstance(value, datetime):
+            serialized[field] = value.isoformat()
+    return serialized
 
 
 def _resolve_position_id(position: str) -> object | None:
@@ -257,7 +269,7 @@ def hr_dashboard(
         "active_employees": active,
         "inactive_employees": total - active,
         "departments": len(departments),
-        "recent_hires": recent,  # EmployeeResponse.model_validate runs per item
+        "recent_hires": [_serialize_hr_doc(doc) for doc in recent],
     })
 
 
@@ -273,7 +285,7 @@ def list_departments(
 ):
     db = get_database()
     cursor = db[DEPARTMENTS_COLLECTION].find().sort("name", 1)
-    items = [DepartmentResponse.model_validate(doc) for doc in cursor]
+    items = [DepartmentResponse.model_validate(_serialize_hr_doc(doc)) for doc in cursor]
     register_action(
         prop_id=prop_id or 0,
         entity_type="department",
@@ -319,7 +331,7 @@ def create_department(
         changed_by=current_user.get("username", "system"),
         diff=diff,
     )
-    return DepartmentResponse.model_validate(doc)
+    return DepartmentResponse.model_validate(_serialize_hr_doc(doc))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -761,7 +773,14 @@ def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
     user_id = str(current_user.get("_id", ""))
     emp = db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1, "prop_id": 1})
     if not emp:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró un perfil de empleado vinculado a este usuario.")
+        # Administrators can see the HR module but are not employees. Keep the
+        # navigation action successful and send them to the directory instead
+        # of treating the expected absence of a self-profile as an API error.
+        return MyPortalResponse.model_validate({
+            "employee_id": "",
+            "full_name": current_user.get("display_name") or current_user.get("username", ""),
+            "portal_url": "/management/hr/directory",
+        })
 
     emp_prop_id = emp.get("prop_id")
     if emp_prop_id is not None:
@@ -778,6 +797,59 @@ def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
         "full_name": emp.get("full_name", ""),
         "portal_url": f"/management/hr/portal/{emp_oid}",
     })
+
+
+# ═══════════════════════════════════════════════════════════
+# Replacement Candidates
+# ═══════════════════════════════════════════════════════════
+
+@api_router.get("/replacement-candidates")
+def list_replacement_candidates(
+    prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_permission("hr.create")),
+):
+    """Return active employees in one hotel with transferable work counts."""
+    db = get_database()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    candidates: list[dict[str, Any]] = []
+
+    for employee in db[EMPLOYEES_COLLECTION].find(
+        {"prop_id": prop_id, "is_active": True},
+        {"full_name": 1, "department": 1, "department_name": 1, "position": 1, "daily_duties": 1},
+    ).sort("full_name", 1):
+        employee_id = str(employee["_id"])
+        employee_name = employee.get("full_name", "")
+        shift_count = db[SHIFTS_COLLECTION].count_documents({
+            "employee_id": employee_id,
+            "$or": [
+                {"date": {"$gte": today}, "status": {"$nin": ["completed", "cancelled"]}},
+                {"status": "active"},
+            ],
+        })
+        permission_count = db["employee_permissions"].count_documents({
+            "employee_id": employee_id,
+        })
+        task_query = {
+            "prop_id": prop_id,
+            "assigned_to": employee_name,
+            "status": {"$nin": ["completed", "deleted"]},
+        }
+        task_count = sum(
+            db[collection].count_documents(task_query)
+            for collection in ("housekeeping_tasks", "maintenance_tasks")
+        )
+        duty_count = len(employee.get("daily_duties") or [])
+        candidates.append({
+            "id": employee_id,
+            "full_name": employee_name,
+            "department": employee.get("department_name") or employee.get("department") or "",
+            "position": employee.get("position") or "",
+            "shift_count": shift_count,
+            "permission_count": permission_count,
+            "task_count": task_count,
+            "duty_count": duty_count,
+        })
+    return {"items": candidates, "total": len(candidates)}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -851,7 +923,7 @@ def employee_attendance(
             check_out = shift.get("actual_check_out")
             sched_start = shift.get("scheduled_start", "")
             sched_end = shift.get("scheduled_end", "")
-            status = shift.get("status", "pending")
+            shift_status = shift.get("status", "pending")
             area = shift.get("area", "")
 
             hours_worked: float | None = None
@@ -885,7 +957,7 @@ def employee_attendance(
                 except (ValueError, IndexError):
                     pass
 
-            if status != "rest":
+            if shift_status != "rest":
                 scheduled_days += 1
 
             records.append({
@@ -896,7 +968,7 @@ def employee_attendance(
                 "check_in": cin_iso,
                 "check_out": cout_iso,
                 "hours_worked": hours_worked,
-                "status": status,
+                "status": shift_status,
                 "area": area,
             })
         else:
@@ -1280,6 +1352,28 @@ def create_employee(
             detail="Ya existe un empleado con ese documento de identidad",
         )
 
+    # Validate replacement context before inserting the new employee. This keeps
+    # an invalid ID, inactive employee, or cross-hotel selection from leaving a
+    # partially-created employee behind.
+    replacement_id: ObjectId | None = None
+    replacement_employee: dict[str, Any] | None = None
+    if payload.replaces_employee_id:
+        try:
+            replacement_id = ObjectId(payload.replaces_employee_id)
+        except InvalidId:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID de reemplazo inválido")
+
+        replacement_employee = db[EMPLOYEES_COLLECTION].find_one({
+            "_id": replacement_id,
+            "prop_id": payload.prop_id,
+            "is_active": True,
+        })
+        if not replacement_employee:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El empleado a reemplazar debe pertenecer al mismo hotel y estar activo.",
+            )
+
     doc = {
         "full_name": payload.full_name,
         "id_document": payload.id_document,
@@ -1323,40 +1417,74 @@ def create_employee(
     )
 
     if payload.replaces_employee_id:
-        try:
-            old_id = ObjectId(payload.replaces_employee_id)
-            old = db[EMPLOYEES_COLLECTION].find_one({"_id": old_id})
-            if old:
-                db[EMPLOYEES_COLLECTION].update_one(
-                    {"_id": old_id},
-                    {"$set": {"is_active": False, "replaced_by": str(result.inserted_id), "updated_at": now}},
-                )
-                register_action(
-                    prop_id=old.get("prop_id", payload.prop_id or 0),
-                    entity_type="employee",
-                    entity_id=str(old_id),
-                    action="update",
-                    summary=f"Reemplazo de empleado: {old.get('full_name', '')} → {payload.full_name}",
-                    changed_by=current_user.get("username", "system"),
-                    diff={
-                        "is_active": {"old": old.get("is_active"), "new": False},
-                        "replaced_by": {"old": None, "new": str(result.inserted_id)},
-                    },
-                )
-                if payload.transfer_shifts:
-                    db["employee_shifts"].update_many(
-                        {"employee_id": str(old_id)},
-                        {"$set": {"employee_id": str(result.inserted_id), "transferred_from": str(old_id)}},
-                    )
-                if payload.transfer_permissions:
-                    db["employee_permissions"].update_many(
-                        {"employee_id": str(old_id)},
-                        {"$set": {"employee_id": str(result.inserted_id), "transferred_from": str(old_id)}},
-                    )
-        except InvalidId:
-            pass
+        assert replacement_id is not None and replacement_employee is not None
+        old_id = replacement_id
+        old = replacement_employee
+        new_id = str(result.inserted_id)
+        old_id_str = str(old_id)
+        old_name = old.get("full_name", "")
+        new_name = payload.full_name
+        transfer_summary: dict[str, int] = {}
 
-    return EmployeeResponse.model_validate(doc)
+        if payload.transfer_shifts:
+            shift_result = db[SHIFTS_COLLECTION].update_many(
+                {
+                    "employee_id": old_id_str,
+                    "$or": [
+                        {"date": {"$gte": datetime.now(timezone.utc).strftime("%Y-%m-%d")}, "status": {"$nin": ["completed", "cancelled"]}},
+                        {"status": "active"},
+                    ],
+                },
+                {"$set": {"employee_id": new_id, "transferred_from": old_id_str, "updated_at": now}},
+            )
+            transfer_summary["shifts"] = int(shift_result.modified_count)
+
+        if payload.transfer_permissions:
+            permission_result = db["employee_permissions"].update_many(
+                {"employee_id": old_id_str},
+                {"$set": {"employee_id": new_id, "transferred_from": old_id_str, "updated_at": now}},
+            )
+            transfer_summary["permissions"] = int(permission_result.modified_count)
+
+        if payload.transfer_tasks:
+            task_query = {
+                "prop_id": payload.prop_id,
+                "assigned_to": old_name,
+                "status": {"$nin": ["completed", "deleted"]},
+            }
+            task_count = 0
+            for collection in ("housekeeping_tasks", "maintenance_tasks"):
+                task_result = db[collection].update_many(
+                    task_query,
+                    {"$set": {"assigned_to": new_name, "transferred_from": old_id_str, "updated_at": now}},
+                )
+                task_count += int(task_result.modified_count)
+            if old.get("daily_duties"):
+                db[EMPLOYEES_COLLECTION].update_one(
+                    {"_id": result.inserted_id},
+                    {"$set": {"daily_duties": old["daily_duties"]}},
+                )
+            transfer_summary["tasks"] = task_count
+
+        db[EMPLOYEES_COLLECTION].update_one(
+            {"_id": old_id},
+            {"$set": {"is_active": False, "replaced_by": new_id, "updated_at": now}},
+        )
+        register_action(
+            prop_id=old.get("prop_id", payload.prop_id or 0),
+            entity_type="employee",
+            entity_id=old_id_str,
+            action="update",
+            summary=f"Reemplazo de empleado: {old_name} → {new_name}",
+            changed_by=current_user.get("username", "system"),
+            diff={
+                "is_active": {"old": old.get("is_active"), "new": False},
+                "replaced_by": {"old": None, "new": new_id},
+                "transfers": {"old": None, "new": transfer_summary},
+            },
+        )
+
+    return EmployeeResponse.model_validate(_serialize_hr_doc(doc))
 
 
 @api_router.get("", response_model=EmployeeListResponse)
@@ -1396,7 +1524,7 @@ def list_employees(
         .skip((page - 1) * page_size)
         .limit(page_size)
     )
-    items = [EmployeeResponse.model_validate(doc) for doc in cursor]
+    items = [EmployeeResponse.model_validate(_serialize_hr_doc(doc)) for doc in cursor]
 
     register_action(
         prop_id=prop_id or 0,
@@ -1445,8 +1573,7 @@ def get_employee(
     creds = _ensure_user_account(db, doc)
     doc = db[EMPLOYEES_COLLECTION].find_one({"_id": oid})
 
-    enriched = dict(doc)
-    enriched["id"] = str(enriched.pop("_id"))
+    enriched = _serialize_hr_doc(doc)
     enriched["username"] = creds["username"]
     enriched["password"] = creds["password"]
 
@@ -1459,7 +1586,7 @@ def get_employee(
         changed_by=current_user.get("username", "system"),
         metadata={"url": str(request.url)},
     )
-    return EmployeeResponse.model_validate(enriched)
+    return EmployeeResponse.model_validate(_serialize_hr_doc(enriched))
 
 
 @api_router.put("/{employee_id}", response_model=EmployeeResponse)
@@ -1515,7 +1642,7 @@ def update_employee(
         changed_by=current_user.get("username", "system"),
         diff=diff if diff else None,
     )
-    return EmployeeResponse.model_validate(doc)
+    return EmployeeResponse.model_validate(_serialize_hr_doc(doc))
 
 
 @api_router.delete("/{employee_id}", status_code=204)

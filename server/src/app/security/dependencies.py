@@ -33,6 +33,61 @@ def require_login(request: Request) -> dict[str, Any]:
     )
 
 
+def require_any_permission(*permission_codes: str) -> Callable[[Request], dict[str, Any]]:
+    """Require at least one permission from a set of equivalent capabilities.
+
+    Some workflows span modules: a front-desk check-out operator needs to
+    issue/send that booking's invoice without receiving every billing-admin
+    capability. This dependency keeps that boundary explicit at the route.
+    """
+    if not permission_codes:
+        raise ValueError("At least one permission code is required")
+
+    def dependency(request: Request) -> dict[str, Any]:
+        user = require_login(request)
+        db = get_database()
+        if any(user_has_permission(db, user, code) for code in permission_codes):
+            return user
+
+        username = (user or {}).get("username") or "anonymous"
+        required = " or ".join(permission_codes)
+        try:
+            register_action(
+                prop_id=0,
+                entity_type="permission",
+                entity_id=f"denied:{required}",
+                action="access_denied",
+                summary=(
+                    f"403: {username} tried {request.method} {request.url.path} "
+                    f"(requires {required})"
+                ),
+                changed_by=username,
+                metadata={
+                    "permissions": list(permission_codes),
+                    "path": request.url.path,
+                    "method": request.method,
+                    "user_id": (user or {}).get("_id"),
+                    "ip": request.client.host if request.client else None,
+                },
+            )
+        except Exception:
+            _logger.warning(
+                "Failed to write access_denied audit for %s on %s %s "
+                "(perms=%s); 403 will still fire",
+                username,
+                request.method,
+                request.url.path,
+                required,
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permiso requerido: {required}",
+        )
+
+    return dependency
+
+
 def require_permission(permission_code: str) -> Callable[[Request], dict[str, Any]]:
     def dependency(request: Request) -> dict[str, Any]:
         user = require_login(request)

@@ -132,6 +132,10 @@ def get_hotel_search_cards(filters: dict[str, Any], page: int = 1, page_size: in
         "has_next": total_pages > 0 and page < total_pages,
         "source_collection": source_collection,
         "filters": filters,
+        # Keep the search envelope stable for non-empty pages too. The Angular
+        # mapper treats this as a canonical array, including when no
+        # alternatives are available.
+        "alternative_destinations": [],
         "start_index": ((page - 1) * page_size) + 1 if total else 0,
         "end_index": ((page - 1) * page_size) + len(items) if items else 0,
     }

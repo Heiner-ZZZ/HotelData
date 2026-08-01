@@ -292,6 +292,22 @@ h2 a {
   font-weight: 600;
 }
 
+.amenity-tag {
+  background: color-mix(in srgb, var(--success-light) 72%, transparent);
+  color: var(--success-strong);
+
+  .material-symbols-outlined {
+    margin-right: 0.25rem;
+    font-size: 0.95rem;
+    color: var(--success);
+  }
+}
+
+.room-summary-tag {
+  background: color-mix(in srgb, var(--accent-light) 72%, transparent);
+  color: var(--accent-strong);
+}
+
 .copy-header {
   display: flex;
   align-items: flex-start;

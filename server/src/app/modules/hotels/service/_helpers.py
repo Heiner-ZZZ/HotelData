@@ -113,6 +113,7 @@ def _empty_search(filters: dict[str, Any], page_size: int, source_collection: st
         "has_next": False,
         "source_collection": source_collection,
         "filters": filters,
+        "alternative_destinations": [],
         "start_index": 0,
         "end_index": 0,
     }

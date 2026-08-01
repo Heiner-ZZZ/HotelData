@@ -28,6 +28,23 @@
     }
   }
 
+  &-danger {
+    background: var(--danger);
+    border: 1px solid var(--danger);
+    color: var(--on-danger);
+    padding: 0.5rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    .material-symbols-outlined {
+      font-size: 1.05rem;
+    }
+
+    &:hover:not([disabled]) {
+      background: var(--danger-strong);
+    }
+  }
+
   &-primary {
     background: var(--accent);
     border: 1px solid var(--accent);
@@ -219,7 +236,9 @@
   }
 
   &.hidden {
-    opacity: 0.4;
+    opacity: 0.82;
+    background: color-mix(in srgb, var(--app-border) 16%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--app-border) 70%, transparent);
   }
 }
 

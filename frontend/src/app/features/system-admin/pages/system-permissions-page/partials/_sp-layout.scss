@@ -109,6 +109,7 @@ $transition: 0.18s ease;
 
 .tab-btn {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   gap: 0.4rem;
   padding: 0.75rem 1rem;
@@ -125,6 +126,16 @@ $transition: 0.18s ease;
 
   .material-symbols-outlined {
     font-size: 1.1rem;
+    text-decoration: none;
+  }
+
+  .tab-count {
+    text-decoration: none;
+  }
+
+  &,
+  & * {
+    text-decoration: none;
   }
 
   &:hover {
@@ -155,6 +166,106 @@ $transition: 0.18s ease;
 
 .tab-content {
   padding: 1.25rem;
+}
+
+/* ─── Routed internal sections ───────────── */
+
+.permissions-subpage {
+  display: grid;
+  gap: 1rem;
+}
+
+.subpage-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.25rem;
+}
+
+.subpage-heading h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: var(--app-text);
+  font-size: 1.15rem;
+}
+
+.subpage-heading p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.82rem;
+}
+
+.subpage-eyebrow {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.subpage-hint,
+.preview-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted-text);
+  font-size: 0.75rem;
+}
+
+.subpage-hint .material-symbols-outlined,
+.preview-sync .material-symbols-outlined {
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.role-detail-page {
+  gap: 1.25rem;
+}
+
+.role-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.role-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.7rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--accent-strong);
+}
+
+.role-edit-arrow {
+  font-size: 1rem;
+  margin-left: auto;
+}
+
+.role-card {
+  min-height: 100%;
+}
+
+@media (max-width: 640px) {
+  .subpage-heading,
+  .role-detail-header,
+  .role-detail-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 /* ─── Matrix Tab ─────────────────────────── */
@@ -253,11 +364,14 @@ $transition: 0.18s ease;
   cursor: pointer;
   transition: background $transition;
 
-  &:hover {
-    background: color-mix(in srgb, var(--accent) 3%, transparent);
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: -2px;
 
     .matrix-role-td {
-      background: color-mix(in srgb, var(--surface) 97%, var(--accent));
+      background: color-mix(in srgb, var(--surface) 92%, var(--accent));
     }
   }
 }

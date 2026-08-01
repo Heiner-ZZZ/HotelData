@@ -16,3 +16,31 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 640px) {
+  .co-page { padding-inline: 12px; }
+  .co-stay-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .co-stay-val { width: 100%; text-align: left; }
+  .co-invoice-actions { grid-template-columns: 1fr; }
+  .co-step-card { padding: 18px 14px; }
+}
+
+@media print {
+  .co-page { max-width: none; padding: 0; }
+  .co-header, .co-steps, .co-step-actions, .co-confirm-box,
+  .co-cta, .co-invoice-actions, .co-split-check,
+  app-loading-state, app-error-state, app-empty-state { display: none !important; }
+  .co-card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .co-col-main, .co-col-side { gap: 10px; }
+  .co-checked-out-banner {
+    margin-bottom: 10px;
+    print-color-adjust: exact;
+  }
+}

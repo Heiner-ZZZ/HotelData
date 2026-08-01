@@ -30,7 +30,7 @@ from src.app.modules.billing.service import (
 from src.app.modules.billing.service.services import get_billable_services
 from src.app.core.types import ObjectIdStr, to_json_safe
 from src.app.modules.partner.services.audit import register_action
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_any_permission, require_permission
 from src.database.connection import get_database
 
 router = APIRouter(prefix="/modules/billing", tags=["modules-billing"])
@@ -229,8 +229,20 @@ def billing_module_status():
 @api_router.post("/invoices", status_code=201, response_model=InvoiceResponse)
 def create_invoice_api(
     payload: InvoiceCreate = Body(...),
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
 ):
+    # Checkout can revisit this step after a reload. Reuse the active invoice
+    # for the booking instead of creating a duplicate fiscal document.
+    db = get_database()
+    existing = db.reservation_invoices.find_one(
+        {"booking_id": payload.booking_id, "status": {"$ne": "cancelled"}},
+        {"_id": 1},
+    )
+    if existing:
+        existing_result = get_invoice(str(existing["_id"]))
+        if existing_result is not None:
+            return InvoiceResponse.model_validate(to_json_safe(existing_result))
+
     result = create_invoice(payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la factura (booking inválido)")
@@ -510,7 +522,7 @@ def pay_invoice_api(
 @api_router.post("/invoices/{invoice_id}/email", response_model=ActionResponse)
 def send_invoice_email_api(
     invoice_id: str,
-    current_user: dict = Depends(require_permission("billing.manage")),
+    current_user: dict = Depends(require_any_permission("billing.manage", "check-outs.manage")),
 ):
     """Send the invoice to the guest by email."""
     from bson import ObjectId

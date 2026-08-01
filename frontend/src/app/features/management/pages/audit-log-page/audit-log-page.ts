@@ -171,19 +171,23 @@ export class AuditLogPageComponent {
   /** Reactive httpResource — re-fetches whenever qp() changes. */
   readonly auditResource = httpResource<AuditResponse>(() => {
     const q = this.qp();
-    const page = Number(q.get('page') ?? '1');
+    const requestedPage = Number(q.get('page') ?? '1');
+    const page = Number.isInteger(requestedPage) && requestedPage >= 1 ? requestedPage : 1;
     const entityType = q.get('entity_type') || this.filterForm.value.entityType || '';
     const action = q.get('action') || this.filterForm.value.action || '';
-    const propId = Number(q.get('prop_id') || this.filterForm.value.propId || '0');
+    const requestedPropId = Number(q.get('prop_id') || this.filterForm.value.propId || '0');
+    const propId = Number.isInteger(requestedPropId) && requestedPropId >= 1 ? requestedPropId : 0;
     const fromDate = q.get('from_date') || this.filterForm.value.fromDate || '';
     const toDate = q.get('to_date') || this.filterForm.value.toDate || '';
-    const params = new HttpParams()
-      .set('page', String(page))
-      .set('entity_type', entityType)
-      .set('action', action)
-      .set('prop_id', String(propId))
-      .set('from_date', fromDate)
-      .set('to_date', toDate);
+    // Optional filters must be omitted when unset. In particular, `prop_id=0`
+    // violates the backend contract (`prop_id` is optional, but when present
+    // it must be >= 1) and causes a 422 on the initial request.
+    let params = new HttpParams().set('page', String(page));
+    if (entityType) params = params.set('entity_type', entityType);
+    if (action) params = params.set('action', action);
+    if (propId > 0) params = params.set('prop_id', String(propId));
+    if (fromDate) params = params.set('from_date', fromDate);
+    if (toDate) params = params.set('to_date', toDate);
     const request: HttpResourceRequest = {
       url: `${this.apiConfig.baseUrl}/management/audit-log`,
       method: 'GET',

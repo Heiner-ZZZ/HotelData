@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.app.security.navigation import get_all_navigation_items, get_navigation_for_role
-from src.app.security.permissions import expand_permissions
+from src.app.security.permissions import ensure_read_dependencies, expand_permissions
 from src.database.connection import get_database
 
 from ._helpers import _clean
@@ -14,6 +14,12 @@ from .security import role_permission_map
 
 def _all_permission_codes(db) -> list[str]:
     return [p["permission_code"] for p in db.permissions.find({}, {"permission_code": 1}).sort("permission_code", 1)]
+
+
+def _normalize_role_permission_codes(db, selected_codes: list[str]) -> list[str]:
+    available_codes = set(_all_permission_codes(db))
+    normalized = ensure_read_dependencies(set(selected_codes), available_codes)
+    return sorted(code for code in normalized if code in available_codes)
 
 
 def role_editor_payload(role_name: str) -> dict[str, Any] | None:
@@ -27,6 +33,7 @@ def role_editor_payload(role_name: str) -> dict[str, Any] | None:
     selected_codes = permission_map.get(role_name, [])
     if role_name == "super_admin":
         selected_codes = _all_permission_codes(db)
+    selected_codes = _normalize_role_permission_codes(db, selected_codes)
     role_clean["permission_codes"] = selected_codes
     expanded = expand_permissions(set(selected_codes))
     role_clean["access_buttons"] = get_navigation_for_role(role_name, expanded)
@@ -51,6 +58,7 @@ def role_editor_payload_api(role_name: str) -> dict[str, Any] | None:
     selected_codes = permission_map.get(role_name, [])
     if role_name == "super_admin":
         selected_codes = _all_permission_codes(db)
+    selected_codes = _normalize_role_permission_codes(db, selected_codes)
     role_clean["permission_codes"] = selected_codes
     expanded = expand_permissions(set(selected_codes))
     role_clean["access_buttons"] = get_navigation_for_role(role_name, expanded)

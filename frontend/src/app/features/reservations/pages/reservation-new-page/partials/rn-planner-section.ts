@@ -2,6 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-picker/date-range-picker';
+import { FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-rn-planner-section',
@@ -9,14 +10,14 @@ import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-pi
   imports: [CurrencyPipe, ReactiveFormsModule, DateRangePickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="surface-card planner-section">
+    <section class="surface-card planner-section" [formGroup]="form()">
       <div class="planner-grid">
         <label class="planner-field" [class.field-error]="false">
           <span class="material-symbols-outlined planner-icon">location_on</span>
           <div class="planner-copy">
             <span class="planner-label">Hotel</span>
             <div class="select-wrap planner-select-wrap">
-              <select [formControl]="form()?.controls?.propId" aria-label="Hotel">
+              <select formControlName="propId" aria-label="Hotel">
                 <option [ngValue]="0">¿A dónde quieres ir?</option>
                 @for (option of hotelOptions(); track option.propId) {
                   <option [ngValue]="option.propId">{{ option.label }}</option>
@@ -43,18 +44,20 @@ import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-pi
             @if (checkInDate() && checkOutDate()) {
               <div class="times-section">
                 <span class="times-section-label">
-                  <span class="material-symbols-outlined">schedule</span> Horario (opcional)
+                  <span class="material-symbols-outlined">schedule</span>
+                  Horario de la estancia <span class="required-mark" aria-hidden="true">*</span>
                 </span>
+                <span class="times-section-help">Indica cuándo llegarás y cuándo dejarás la habitación. Se valida con el horario del hotel.</span>
                 <div class="times-picker">
                   <label class="time-box">
                     <span class="material-symbols-outlined time-box-icon">login</span>
-                    <span class="time-box-label">Entrada</span>
-                    <input type="time" [formControl]="form()?.controls?.checkInTime" class="time-input" />
+                    <span class="time-box-label">Entrada *</span>
+                    <input type="time" formControlName="checkInTime" class="time-input" required aria-required="true" />
                   </label>
                   <label class="time-box">
                     <span class="material-symbols-outlined time-box-icon">logout</span>
-                    <span class="time-box-label">Salida</span>
-                    <input type="time" [formControl]="form()?.controls?.checkOutTime" class="time-input" />
+                    <span class="time-box-label">Salida *</span>
+                    <input type="time" formControlName="checkOutTime" class="time-input" required aria-required="true" />
                   </label>
                 </div>
               </div>
@@ -175,9 +178,9 @@ import { DateRangePickerComponent } from '../../../../../shared/ui/date-range-pi
   `
 })
 export class RnPlannerSectionComponent {
-  readonly form = input<any>(null);
-  readonly hotelOptions = input<any[]>([]);
-  readonly selectedHotel = input<any>(null);
+  readonly form = input.required<FormGroup>();
+  readonly hotelOptions = input<{ propId: number; label: string }[]>([]);
+  readonly selectedHotel = input<{ propId: number; label: string } | null>(null);
   readonly preselectedRoomTypeName = input<string>('');
   readonly today = input<string>('');
   readonly checkInDate = input<string>('');
@@ -186,8 +189,8 @@ export class RnPlannerSectionComponent {
   readonly children = input(0);
   readonly rooms = input(1);
   readonly computedNights = input(0);
-  readonly availabilityInfo = input<any>(null);
-  readonly ratePlans = input<any[]>([]);
+  readonly availabilityInfo = input<{ label: string; icon: string; color: string } | null>(null);
+  readonly ratePlans = input<{ ratePlanId: string; name: string; description: string; totalPrice: number; currency: string; avgRatePerNight: number; nights: number }[]>([]);
   readonly ratePlansLoading = input(false);
   readonly selectedRatePlanId = input<string>('');
 

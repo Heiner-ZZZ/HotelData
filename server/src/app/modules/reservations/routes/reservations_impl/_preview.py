@@ -7,7 +7,11 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-from src.app.modules.reservations.service import build_reservation_input, validate_reservation_input
+from src.app.modules.reservations.service import (
+    build_reservation_input,
+    validate_booking_form_requirements,
+    validate_reservation_input,
+)
 from src.app.modules.reservations.service.lifecycle.create import _check_availability, _calculate_total_price
 from src.app.modules.reservations.service.lifecycle.create.core import _get_cancellation_policy_text
 from src.app.modules.partner.services.content.amenities import _amenity_unit_price
@@ -93,8 +97,9 @@ def preview_reservation(payload: dict) -> dict:
     try:
         reservation_input = build_reservation_input(payload, source="staff")
         errors = validate_reservation_input(reservation_input)
+        errors.extend(validate_booking_form_requirements(reservation_input))
         if errors:
-            raise ValueError("; ".join(errors))
+            raise ValueError("; ".join(dict.fromkeys(errors)))
         avail_error = _check_availability(
             reservation_input.prop_id, reservation_input.check_in_date,
             reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,

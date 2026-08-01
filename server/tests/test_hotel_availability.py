@@ -41,6 +41,14 @@ def _seed_test_data(db):
         }},
         upsert=True,
     )
+    db.hotel_content_pages.update_one(
+        {"prop_id": 99999},
+        {"$set": {
+            "prop_id": 99999,
+            "active_amenities": ["Wi-Fi", "Piscina", "Playa", "Parking", "Spa"],
+        }},
+        upsert=True,
+    )
     # Create a room type
     db.room_types.update_one(
         {"room_type_id": "RT-99999-test"},
@@ -154,9 +162,14 @@ async def test_search_available_hotels_full_flow(db):
     assert result["total"] >= 1
     item = result["items"][0]
     assert item["prop_id"] == 99999
+    assert item["hotel_name"] == "Test Hotel Availability Madrid"
     assert item["min_nightly_rate"] == 89.50
     assert item["total_estimated"] == 89.50 * 3  # 3 nights
     assert item["matched_room_type"]["room_type_id"] == "RT-99999-test"
+    assert item["general_amenities"] == ["Wi-Fi", "Piscina", "Playa", "Parking"]
+    assert "hotel_rooms" not in item
+    assert "room_inventory_calendar" not in item
+    assert result["alternative_destinations"] == []
 
 
 async def test_search_no_availability_excludes_hotel(db):
@@ -172,6 +185,42 @@ async def test_search_no_availability_excludes_hotel(db):
         rooms=10,
     )
     assert result["total"] == 0
+    assert isinstance(result["alternative_destinations"], list)
+
+
+async def test_search_returns_only_one_room_summary(db):
+    """Search returns one available room type, never physical room data."""
+    _seed_test_data(db)
+    db.room_types.insert_many([
+        {
+            "room_type_id": "RT-99999-large",
+            "prop_id": 99999,
+            "name": "Large Suite",
+            "max_adults": 4,
+            "max_children": 2,
+            "base_capacity": 6,
+            "is_active": True,
+        },
+        {
+            "room_type_id": "RT-99999-second",
+            "prop_id": 99999,
+            "name": "Second Room Type",
+            "max_adults": 2,
+            "max_children": 1,
+            "base_capacity": 3,
+            "is_active": True,
+        },
+    ])
+    result = search_available_hotels(
+        check_in="2026-08-01",
+        check_out="2026-08-04",
+        adults=2,
+        rooms=1,
+    )
+    item = next(item for item in result["items"] if item["prop_id"] == 99999)
+    assert item["matched_room_type"]["room_type_id"] == "RT-99999-test"
+    assert "hotel_rooms" not in item
+    assert "room_inventory_calendar" not in item
 
 
 async def test_search_no_destination_returns_all(db):
@@ -183,8 +232,11 @@ async def test_search_no_destination_returns_all(db):
         adults=2,
         rooms=1,
     )
-    # At minimum the seeded hotel should appear
+    # At minimum the seeded hotel should appear, with the public page size
+    # capped at ten cards.
     assert result["total"] >= 1
+    assert result["page_size"] == 10
+    assert len(result["items"]) <= 10
 
 
 async def test_amenities_filter_works(db):
@@ -288,3 +340,33 @@ async def test_compare_hotels_returns_up_to_three(db):
     result = compare_hotels([99999])
     assert len(result["items"]) >= 1
     assert result["items"][0]["prop_id"] == 99999
+
+
+async def test_search_endpoint_always_returns_alternative_destinations(db, client):
+    """The public /search envelope always includes the alternatives array."""
+    _seed_test_data(db)
+    response = await client.get("/api/hotels/search")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload["alternative_destinations"], list)
+
+
+async def test_availability_endpoint_returns_operational_hotel_name(db, client):
+    """The guest search endpoint exposes the name consumed by its cards."""
+    _seed_test_data(db)
+    response = await client.get("/api/hotels/availability", params={"page_size": 10})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["page_size"] == 10
+    assert payload["items"][0]["hotel_name"] == "Test Hotel Availability Madrid"
+
+
+async def test_compare_endpoint_accepts_repeated_prop_id_parameters(db, client):
+    """The comparison contract uses repeated prop_id query parameters."""
+    _seed_test_data(db)
+    response = await client.get(
+        "/api/hotels/compare",
+        params=[("prop_id", "99999")],
+    )
+    assert response.status_code == 200
+    assert response.json()["items"][0]["prop_id"] == 99999

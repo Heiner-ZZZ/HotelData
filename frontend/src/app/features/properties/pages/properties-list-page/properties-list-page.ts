@@ -10,6 +10,8 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { PropertiesDashboardViewModel } from '../../models/properties.model';
+import type { PropertiesDashboardResponseDto } from '../../models/properties.dto';
+import { mapPropertiesDashboardResponse } from '../../mappers/properties.mapper';
 import { InfoTooltipComponent } from '../../../../shared/ui/info-tooltip/info-tooltip.component';
 import { PropertiesApiService } from '../../services/properties-api.service';
 
@@ -79,6 +81,8 @@ export class PropertiesListPageComponent {
   readonly dashboardResource = httpResource<PropertiesDashboardViewModel>(() => {
     const { q, page } = this.queryParams();
     return q ? `/api/management/properties/dashboard?q=${encodeURIComponent(q)}&page=${page}` : `/api/management/properties/dashboard?page=${page}`;
+  }, {
+    parse: (dto) => mapPropertiesDashboardResponse(dto as PropertiesDashboardResponseDto),
   });
 
   chartMaxRevenue(): number {

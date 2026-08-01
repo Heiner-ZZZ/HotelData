@@ -5,7 +5,7 @@ from typing import Any
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Body, Depends, Form, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from src.app.security.session import ensure_utc
@@ -137,6 +137,48 @@ def users_dashboard_api(current_user: dict = Depends(require_permission("users.m
 def permissions_dashboard_api(current_user: dict = Depends(require_permission("users.manage"))):
     ensure_user_status_field()
     return PermissionsOverviewResponse.model_validate(_serialize_permissions_overview())
+
+
+@api_router.post("/permissions/preview")
+def permissions_permissions_preview_api(
+    body: dict = Body(...),
+    current_user: dict = Depends(require_permission("users.manage")),
+):
+    """Preview navigation for unsaved permission changes.
+
+    This endpoint intentionally performs no write. It expands ``manage``
+    permissions and asks the Mongo-backed navigation catalog which entries
+    would be visible for the proposed permission set.
+    """
+    from src.app.security.navigation import get_all_navigation_items
+    from src.app.security.permissions import ensure_read_dependencies, expand_permissions
+    from src.database.connection import get_database
+
+    raw_codes = body.get("permission_codes", [])
+    if not isinstance(raw_codes, list):
+        raw_codes = []
+    permission_codes = {str(code).strip() for code in raw_codes if str(code).strip()}
+    available_codes = {
+        item.get("permission_code")
+        for item in get_database().permissions.find({}, {"permission_code": 1})
+        if item.get("permission_code")
+    }
+    normalized_codes = ensure_read_dependencies(permission_codes, available_codes)
+    normalized_codes = {
+        code
+        for code in normalized_codes
+        if code == "*.*"
+        or (
+            code in available_codes
+            and (
+                "." not in code
+                or code.split(".", 1)[1] == "read"
+                or f"{code.split('.', 1)[0]}.read" in available_codes
+            )
+        )
+    }
+    expanded_codes = expand_permissions(normalized_codes)
+    return {"navigation_catalog": get_all_navigation_items(expanded_codes)}
 
 
 @api_router.get("/permissions/roles/{role_name}")

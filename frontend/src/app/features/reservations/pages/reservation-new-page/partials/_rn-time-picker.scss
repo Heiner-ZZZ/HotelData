@@ -23,6 +23,13 @@
   }
 }
 
+.times-section-help {
+  margin-top: -0.2rem;
+  font-size: 0.7rem;
+  color: var(--muted-text);
+  line-height: 1.35;
+}
+
 .times-picker { display: flex; gap: 0.55rem; flex-wrap: wrap; }
 
 .time-box {
@@ -39,6 +46,7 @@
   transition: border-color 160ms ease, box-shadow 160ms ease;
 
   &:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+  &:has(.ng-invalid.ng-touched) { border-color: var(--danger); }
   &:hover { border-color: color-mix(in srgb, var(--app-border) 60%, var(--accent) 40%); }
 }
 

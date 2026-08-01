@@ -114,9 +114,9 @@ export interface DashboardArrivalDto {
 }
 
 export interface PropertiesDashboardResponseDto {
-  quick_stats: DashboardQuickStatsDto;
-  revenue_chart: DashboardRevenuePointDto[];
-  arrivals_today: DashboardArrivalDto[];
+  quick_stats?: DashboardQuickStatsDto | null;
+  revenue_chart?: DashboardRevenuePointDto[];
+  arrivals_today?: DashboardArrivalDto[];
   properties: PropertiesListResponseDto;
 }
 

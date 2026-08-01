@@ -5,11 +5,22 @@ import { Component, input, output } from '@angular/core';
   template: `
     <div class="sort-control surface-card">
       <div class="copy-block">
-        <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrados</strong>
+        @if (totalIsEstimate()) {
+          <strong>{{ pageSize() }} hoteles por página</strong>
+          <span>Disponibilidad real · página {{ page() }}</span>
+        } @else {
+          <strong>{{ total() }} hotel{{ total() !== 1 ? 'es' : '' }} encontrados</strong>
+        }
       </div>
       <div class="actions">
         <button type="button" (click)="previous.emit()" [disabled]="!hasPrev()">Anterior</button>
-        <span>Pagina {{ page() }} de {{ totalPages() || 1 }}</span>
+        <span>
+          @if (totalIsEstimate()) {
+            Página {{ page() }} · {{ hasNext() ? 'hay más resultados' : 'última página' }}
+          } @else {
+            Página {{ page() }} de {{ totalPages() || 1 }}
+          }
+        </span>
         <button type="button" (click)="next.emit()" [disabled]="!hasNext()">Siguiente</button>
       </div>
     </div>
@@ -45,8 +56,15 @@ import { Component, input, output } from '@angular/core';
       padding: 0 0.875rem;
       border-radius: 8px;
       border: 1px solid var(--app-border);
-      background: #fff;
+      background: var(--surface);
+      color: var(--app-text);
       cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    button:hover:not(:disabled) {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+      color: var(--accent);
     }
     button:disabled {
       cursor: not-allowed;
@@ -64,6 +82,8 @@ export class SortControlComponent {
   readonly total = input(0);
   readonly page = input(1);
   readonly totalPages = input(0);
+  readonly totalIsEstimate = input(false);
+  readonly pageSize = input(10);
   readonly hasPrev = input(false);
   readonly hasNext = input(false);
   readonly previous = output<void>();

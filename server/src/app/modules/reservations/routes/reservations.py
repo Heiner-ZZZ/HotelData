@@ -11,6 +11,7 @@ from src.app.modules.reservations.schemas import (
     BookingListResponse,
     BookingResponse,
     ModuleStatus,
+    ReservationCreatedResponse,
 )
 from src.app.modules.reservations.service import (
     build_reservation_input,
@@ -112,7 +113,7 @@ def reservation_preview_api(payload: dict = Body(...), current_user: dict = Depe
     return preview_reservation(payload)
 
 
-@api_router.post("", status_code=status.HTTP_201_CREATED, response_model=BookingResponse)
+@api_router.post("", status_code=status.HTTP_201_CREATED, response_model=ReservationCreatedResponse)
 def reservations_create_api(payload: dict = Body(...), current_user: dict = Depends(require_permission("reservations.create"))):
     try:
         user_role = get_role_name(current_user)
@@ -124,9 +125,13 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
         if not payload.get("user_id"):
             payload["user_id"] = str(current_user.get("_id", ""))
         reservation_input = build_reservation_input(payload, source=get_role_name(current_user))
+        from src.app.modules.reservations.service.validation import validate_booking_form_requirements
+        form_errors = validate_booking_form_requirements(reservation_input)
+        if form_errors:
+            raise ValueError("; ".join(form_errors))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
-        return BookingResponse.model_validate(to_json_safe(create_booking(reservation_input)))
+        return ReservationCreatedResponse.model_validate(to_json_safe(create_booking(reservation_input)))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

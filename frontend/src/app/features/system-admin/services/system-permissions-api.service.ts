@@ -3,8 +3,8 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
-import { mapRoleDetailResponse, mapSystemPermissionsResponse } from '../mappers/system-permissions.mapper';
-import type { RoleDetailResponseDto, RoleUpdateRequestDto, SystemPermissionsResponseDto } from '../models/system-permissions.dto';
+import { mapNavigationItem, mapRoleDetailResponse, mapSystemPermissionsResponse } from '../mappers/system-permissions.mapper';
+import type { NavigationPreviewResponseDto, RoleDetailResponseDto, RoleUpdateRequestDto, SystemPermissionsResponseDto } from '../models/system-permissions.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -36,5 +36,15 @@ export class SystemPermissionsApiService {
         body,
         { withCredentials: true }
       );
+  }
+
+  previewNavigation(permissionCodes: string[]) {
+    return this.http
+      .post<NavigationPreviewResponseDto>(
+        `${this.apiConfig.baseUrl}/admin/permissions/preview`,
+        { permission_codes: permissionCodes },
+        { withCredentials: true },
+      )
+      .pipe(map((dto) => (dto.navigation_catalog || []).map(mapNavigationItem)));
   }
 }

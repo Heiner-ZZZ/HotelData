@@ -1,6 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { httpResource, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, ViewEncapsulation } from '@angular/core';
+import type { AbstractControl, ValidationErrors } from '@angular/forms';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -36,7 +37,16 @@ interface RatePlanRaw {
   total_price: number;
   nights: number;
 }
-type RatePlansResponseDto = { rate_plans?: RatePlanRaw[] };
+interface RatePlansResponseDto {
+  rate_plans?: RatePlanRaw[];
+}
+
+function validateStayDates(control: AbstractControl): ValidationErrors | null {
+  const checkIn = String(control.get('checkInDate')?.value || '');
+  const checkOut = String(control.get('checkOutDate')?.value || '');
+  if (!checkIn || !checkOut) return null;
+  return checkOut > checkIn ? null : { invalidStayDates: true };
+}
 
 function mapRatePlans(raw: RatePlansResponseDto): RatePlanOption[] {
   return (raw.rate_plans || []).map((p) => ({
@@ -78,19 +88,21 @@ export class ReservationNewPageComponent {
     propId: [0, [Validators.required, Validators.min(1)]],
     guestName: ['', [Validators.required]],
     guestEmail: ['', [Validators.required, Validators.email]],
-    guestPhone: [''],
+    guestPhone: ['', [Validators.required]],
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
-    checkInTime: [''],
-    checkOutTime: [''],
+    // Standard overnight booking requires both arrival and departure times.
+    // These are editable defaults, and the backend checks the hotel's policy.
+    checkInTime: ['15:00', [Validators.required]],
+    checkOutTime: ['12:00', [Validators.required]],
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
     comment: [''],
     couponCode: [''],
     specialRequests: [[] as string[]],
-    cedula: [''],
-  });
+    cedula: ['', [Validators.required]],
+  }, { validators: validateStayDates });
 
   // ─── Form-driven signal sources that httpResource declarations read in their URL formula ───
   // httpResource re-fires automatically whenever any signal read inside its request fn changes.
@@ -215,17 +227,17 @@ export class ReservationNewPageComponent {
   readonly isClient = this.reservationsAuth.isClient;
 
   readonly selectedHotel = computed(() => {
-    const selectedId = this.form.controls.propId.value;
+    const selectedId = this.propIdSignal();
     return this.hotelOptions().find((item) => item.propId === selectedId) || null;
   });
 
   readonly computedNights = computed(() => {
-    const checkIn = this.form.controls.checkInDate.value;
-    const checkOut = this.form.controls.checkOutDate.value;
+    const checkIn = this.checkInDateSignal();
+    const checkOut = this.checkOutDateSignal();
     if (!checkIn || !checkOut) return 0;
     const inDate = new Date(checkIn);
     const outDate = new Date(checkOut);
-    const diff = (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24);
+    const diff = Math.round((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
   });
 
@@ -270,6 +282,8 @@ export class ReservationNewPageComponent {
       this.preselectedRoomTypeName.set(prefixedRoomTypeName);
     }
     this._loadGuestSuggestions();
+    this._restoreGuestDraft();
+    this._persistGuestDraft();
 
     // ── Resources → writable signals (effect-based) ──
 
@@ -290,7 +304,7 @@ export class ReservationNewPageComponent {
     effect(() => {
       const err = this.optionsResource.error();
       if (!err) return;
-      this.toast.show('No fue posible cargar el formulario de reservas.', 'error', 6000);
+      // The HTTP interceptor emits the single global toast for this failure.
       this.loading.set(false);
     });
 
@@ -426,6 +440,7 @@ export class ReservationNewPageComponent {
   goToReview() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.toast.warning('Completa los campos obligatorios y selecciona fechas válidas para continuar.');
       return;
     }
     this.step.set('review');
@@ -552,7 +567,7 @@ export class ReservationNewPageComponent {
     }
     const previewData = this.preview();
     if (previewData && !previewData.available) {
-      this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas.', 'error', 6000);
+      this.toast.error('No hay habitaciones disponibles para las fechas seleccionadas.');
       this.step.set('details');
       return;
     }
@@ -585,13 +600,8 @@ export class ReservationNewPageComponent {
         },
         error: (error: ApiError) => {
           const msg = error.message || '';
-          if (msg.includes('No inventory data') || msg.includes('inventory')) {
-            this.toast.show('No hay habitaciones disponibles para las fechas seleccionadas.', 'error', 6000);
-          } else if (msg.includes('available')) {
-            this.toast.show('No hay suficientes habitaciones disponibles.', 'error', 6000);
-          } else {
-            this.toast.show(msg || 'No fue posible crear la reserva.', 'error', 6000);
-          }
+          // The HTTP interceptor already presents the single global toast.
+          this.errorMessage.set(msg || 'No fue posible crear la reserva.');
           this.submitting.set(false);
         }
       });
@@ -601,12 +611,50 @@ export class ReservationNewPageComponent {
   private _loadGuestSuggestions() {
     try {
       const raw = localStorage.getItem('hoteldata_recent_guests');
-      if (raw) {
-        this.guestSuggestions.set(JSON.parse(raw));
-      }
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      this.guestSuggestions.set(parsed.filter((guest): guest is { name: string; email: string; phone: string } =>
+        !!guest && typeof guest.name === 'string' && typeof guest.email === 'string'
+      ).map(guest => ({
+        name: guest.name,
+        email: guest.email,
+        phone: typeof guest.phone === 'string' ? guest.phone : '',
+      })));
     } catch {
-      // ignore corrupt localStorage
+      // Ignore corrupt or unavailable localStorage.
     }
+  }
+
+  private _restoreGuestDraft() {
+    try {
+      const raw = localStorage.getItem('hoteldata_booking_guest_draft');
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<{ guestName: string; guestEmail: string; guestPhone: string }>;
+      this.form.patchValue({
+        guestName: draft.guestName || '',
+        guestEmail: draft.guestEmail || '',
+        guestPhone: draft.guestPhone || '',
+      }, { emitEvent: false });
+    } catch {
+      // Ignore corrupt or unavailable localStorage.
+    }
+  }
+
+  private _persistGuestDraft() {
+    this.form.valueChanges
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(value => {
+        try {
+          localStorage.setItem('hoteldata_booking_guest_draft', JSON.stringify({
+            guestName: value.guestName || '',
+            guestEmail: value.guestEmail || '',
+            guestPhone: value.guestPhone || '',
+          }));
+        } catch {
+          // Browser storage can be disabled or full; booking still works.
+        }
+      });
   }
 
   /** Save a guest to localStorage for future autocomplete */
@@ -625,23 +673,24 @@ export class ReservationNewPageComponent {
 
   /** Combined guest suggestions: localStorage recent guests + API search results */
   readonly filteredGuestSuggestions = computed(() => {
+    this.userSearchTrigger();
     const query = this.form.controls.guestName.value.toLowerCase().trim();
     const localGuests = this.guestSuggestions();
     const apiGuests = this.apiUserResults();
 
     // Show only recent guests when no query
     if (!query || query.length < 1) {
-      return localGuests.map(g => ({ ...g, cedula: '', source: 'local' as const }));
+      return localGuests.map(g => ({ ...g, source: 'local' as const }));
     }
 
     // Merge: API results shown first, then matching localStorage entries (filter out dupes by email)
     const apiEmails = new Set(apiGuests.map(g => g.email.toLowerCase()));
-    const merged: { name: string; email: string; phone: string; cedula: string; source: 'api' | 'local' }[] = [
+    const merged: { name: string; email: string; phone: string; cedula?: string; source: 'api' | 'local' }[] = [
       ...apiGuests.map(g => ({ ...g, source: 'api' as const })),
       ...localGuests
         .filter(g => !apiEmails.has(g.email.toLowerCase()))
         .filter(g => g.name.toLowerCase().includes(query) || g.email.toLowerCase().includes(query))
-        .map(g => ({ ...g, cedula: '', source: 'local' as const })),
+        .map(g => ({ ...g, source: 'local' as const })),
     ];
 
     return merged;
@@ -654,6 +703,7 @@ export class ReservationNewPageComponent {
     this.form.controls.guestPhone.setValue(guest.phone || '');
     this.form.controls.cedula.setValue(guest.cedula || '');
     this.showGuestDropdown.set(false);
+    this.guestSearchFocused.set(false);
   }
 
   /**
@@ -667,11 +717,14 @@ export class ReservationNewPageComponent {
   }
 
   toggleGuestDropdown(show: boolean) {
-    // Small delay to allow click events on dropdown items
-    setTimeout(() => {
-      if (!show && !this.guestSearchFocused()) return;
-      this.showGuestDropdown.set(show);
-    }, 150);
+    if (show) {
+      this.guestSearchFocused.set(true);
+      this.showGuestDropdown.set(true);
+      return;
+    }
+    this.guestSearchFocused.set(false);
+    // Keep the list open briefly so a click on a suggestion is not swallowed.
+    setTimeout(() => this.showGuestDropdown.set(false), 150);
   }
 
   /** Wrapper for rn-planner-section adjust output — casts string to union type */

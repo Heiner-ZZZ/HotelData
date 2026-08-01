@@ -9,5 +9,10 @@
 .booking-form,
 .review-container {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
+}
+
+.booking-form > *,
+.review-container > * {
+  min-width: 0;
 }

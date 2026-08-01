@@ -9,6 +9,8 @@
 .review-item-span { grid-column: 1 / -1; }
 .review-label { font-size: 0.7rem; color: var(--muted-text); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
 .review-item strong { font-size: 0.85rem; font-weight: 600; color: var(--app-text); word-break: break-word; }
+.review-time { display: inline-block; margin-left: 0.25rem; white-space: nowrap; color: var(--muted-text); font-weight: 500; }
+.review-date-separator { margin-inline: 0.25rem; color: var(--muted-text); }
 
 .review-total {
   display: flex;

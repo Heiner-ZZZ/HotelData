@@ -30,21 +30,33 @@ from src.etl.ga03_airflow import (
 
 
 def _load_infra_env() -> dict[str, str]:
+    """Load an optional local override without replacing container env vars.
+
+    Compose injects the authoritative Airflow/PocketBase settings into the
+    worker. The legacy ``infra/docker/.env`` file is only a local fallback for
+    non-Compose execution, and never wins over an already-exported variable.
+    """
     env_path = PROJECT_ROOT / "infra" / "docker" / ".env"
     overrides: dict[str, str] = {}
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, val = line.split("=", 1)
-                overrides[key.strip()] = val.strip()
+    if not env_path.exists():
+        return overrides
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, val = line.split("=", 1)
+            overrides[key.strip()] = val.strip()
     return overrides
+
+
+def _runtime_env() -> dict[str, str]:
+    """Return optional file settings merged under the live process environment."""
+    return {**_load_infra_env(), **os.environ}
 
 
 def _run_script(script_name: str, extra_args: list[str] | None = None) -> None:
     script_path = PROJECT_ROOT / "scripts" / script_name
     cmd = [sys.executable, str(script_path), *(extra_args or [])]
-    env = {**os.environ, **_load_infra_env()}
+    env = _runtime_env()
     result = subprocess.run(
         cmd,
         cwd=PROJECT_ROOT,
@@ -60,30 +72,61 @@ def _run_script(script_name: str, extra_args: list[str] | None = None) -> None:
 
 def seed_source() -> None:
     import requests
-    env = _load_infra_env()
-    pb_url = env.get("POCKETBASE_URL", "http://pocketbase:8090")
-    pb_email = env.get("POCKETBASE_ADMIN_EMAIL", "hzambranor@uteq.edu.ec")
-    pb_pass = env.get("POCKETBASE_ADMIN_PASSWORD", "Heiner2005*")
-    expected = int(env.get("TARGET_RECORDS", env.get("GA03_EXPECTED_RECORDS", "800000")))
-    try:
+
+    env = _runtime_env()
+    pb_url = env.get("POCKETBASE_URL", "http://pocketbase:8090").rstrip("/")
+    collection = env.get("POCKETBASE_COLLECTION_03", "hotel_reservation_events_03")
+    expected_raw = env.get("TARGET_RECORDS") or env.get("GA03_EXPECTED_RECORDS")
+    if not expected_raw:
+        raise RuntimeError("Falta TARGET_RECORDS o GA03_EXPECTED_RECORDS para seed_source")
+    expected = int(expected_raw)
+
+    token = env.get("POCKETBASE_AUTH_TOKEN")
+    headers = {"Accept": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        pb_email = env.get("POCKETBASE_ADMIN_EMAIL")
+        pb_pass = env.get("POCKETBASE_ADMIN_PASSWORD")
+        if not pb_email or not pb_pass:
+            raise RuntimeError(
+                "Faltan POCKETBASE_AUTH_TOKEN o POCKETBASE_ADMIN_EMAIL/"
+                "POCKETBASE_ADMIN_PASSWORD para seed_source"
+            )
         auth = requests.post(
             f"{pb_url}/api/collections/_superusers/auth-with-password",
-            json={"identity": pb_email, "password": pb_pass}, timeout=30,
+            json={"identity": pb_email, "password": pb_pass},
+            timeout=30,
         )
-        token = auth.json().get("token", "")
-        r = requests.get(
-            f"{pb_url}/api/collections/hotel_reservation_events_03/records?perPage=1",
-            headers={"Authorization": f"Bearer {token}"}, timeout=30,
-        )
-        current = r.json().get("totalItems", 0)
-    except Exception:
-        current = 0
+        auth.raise_for_status()
+        headers["Authorization"] = f"Bearer {auth.json()['token']}"
+
+    response = requests.get(
+        f"{pb_url}/api/collections/{collection}/records",
+        params={"perPage": 1},
+        headers=headers,
+        timeout=30,
+    )
+    response.raise_for_status()
+    current = int(response.json().get("totalItems", 0) or 0)
     if current >= expected:
         print(f"seed_source: PocketBase ya tiene {current}/{expected} registros. Omitiendo seed.")
         return
+
     csv_path = PROJECT_ROOT / "data" / "uploads" / "ga03_source.csv"
     print(f"seed_source: PocketBase vacío. Sembrando {expected} registros desde CSV...")
-    _run_script("cargar_reservas_hoteleras_03.py", ["--csv", str(csv_path), "--target", str(expected), "--reload", "--confirm-reload", "hotel_reservation_events_03"])
+    _run_script(
+        "cargar_reservas_hoteleras_03.py",
+        [
+            "--csv",
+            str(csv_path),
+            "--target",
+            str(expected),
+            "--reload",
+            "--confirm-reload",
+            collection,
+        ],
+    )
 
 
 def validate_dataset() -> None:

@@ -11,7 +11,7 @@ import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { FilterSidebarComponent } from '../../components/filter-sidebar/filter-sidebar';
 import { HotelCardComponent } from '../../components/hotel-card/hotel-card';
 import { SortControlComponent } from '../../components/sort-control/sort-control';
-import { createHotelSearchFilters, mapHotelSearchItems, mapHotelSearchResponse } from '../../mappers/hotel-search.mapper';
+import { createHotelSearchFilters, mapHotelSearchResponse } from '../../mappers/hotel-search.mapper';
 import type { HotelSearchDto } from '../../models/hotel-search.dto';
 import type { AlternativeDestination, HotelSearchFilters, HotelSearchResult } from '../../models/hotel-search.model';
 
@@ -81,7 +81,7 @@ export class HotelSearchPageComponent {
    *  (the prior `{ items: any[]; ... }` type silently hid wire-shape drift). */
   readonly searchResource = httpResource<HotelSearchDto>(() => {
     const f = this.pageData();
-    return f ? `/api/hotels/search?${this.toQueryString(f)}` : undefined;
+    return f ? `/api/hotels/availability?${this.toQueryString(f)}` : undefined;
   });
 
   /** Derived signals enumerated from search response. */
@@ -89,6 +89,7 @@ export class HotelSearchPageComponent {
   readonly total = signal(0);
   readonly page = signal(1);
   readonly totalPages = signal(0);
+  readonly totalIsEstimate = signal(false);
   readonly hasPrev = signal(false);
   readonly hasNext = signal(false);
   readonly showCompareMode = signal(false);
@@ -136,6 +137,7 @@ export class HotelSearchPageComponent {
       this.total.set(page.total);
       this.page.set(page.page);
       this.totalPages.set(page.totalPages);
+      this.totalIsEstimate.set(page.totalIsEstimate);
       this.hasPrev.set(page.hasPrev);
       this.hasNext.set(page.hasNext);
       this.alternativeDestinations.set(page.alternativeDestinations);
@@ -199,6 +201,10 @@ export class HotelSearchPageComponent {
    *  httpResource request. Same null-skip semantics as the router call. */
   private toQueryString(filters: HotelSearchFilters): string {
     const sp = new URLSearchParams();
+    // The guest search is intentionally paged in small batches. Keep this
+    // explicit so a backend default change cannot make the first request
+    // expensive or render more than the promised 10 cards.
+    sp.set('page_size', '10');
     if (filters.destination) sp.set('destination', filters.destination);
     if (filters.checkIn) sp.set('check_in', filters.checkIn);
     if (filters.checkOut) sp.set('check_out', filters.checkOut);

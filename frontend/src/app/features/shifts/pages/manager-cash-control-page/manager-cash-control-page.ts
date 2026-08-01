@@ -23,8 +23,9 @@ export class ManagerCashControlPageComponent {
 
   readonly loading = signal(false);
   readonly shifts = signal<ShiftInfo[]>([]);
-  readonly startDate = signal<string>(this._defaultStartDate());
-  readonly endDate = signal<string>(this._defaultEndDate());
+  /** Empty dates mean "all available history"; the API still caps the result at 200. */
+  readonly startDate = signal<string>('');
+  readonly endDate = signal<string>('');
   readonly selectedShift = signal<ShiftInfo | null>(null);
 
   readonly totalOverShort = computed(() => {
@@ -65,13 +66,14 @@ export class ManagerCashControlPageComponent {
     if (!propId) return;
 
     this.loading.set(true);
-    this.api.listShiftsForCashControl(propId, this.startDate(), this.endDate()).subscribe({
+    this.api.listShiftsForCashControl(propId, this.startDate(), this.endDate(), 200).subscribe({
       next: (res) => {
         this.shifts.set(res.items);
         this.loading.set(false);
       },
-      error: (err: any) => {
-        this.toast.error(err?.error?.detail || 'Error al cargar control de cajas');
+      error: (err: { error?: { detail?: unknown } }) => {
+        const detail = err?.error?.detail;
+        this.toast.error(typeof detail === 'string' ? detail : 'Error al cargar control de cajas');
         this.loading.set(false);
       },
     });
@@ -105,13 +107,4 @@ export class ManagerCashControlPageComponent {
     return labels[type] || type;
   }
 
-  private _defaultStartDate(): string {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  }
-
-  private _defaultEndDate(): string {
-    return new Date().toISOString().split('T')[0];
-  }
 }

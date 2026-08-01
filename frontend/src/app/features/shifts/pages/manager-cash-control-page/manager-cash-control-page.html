@@ -122,6 +122,10 @@
               <strong>{{ s.cash_initial | currency:'USD':'symbol':'1.2-2' }}</strong>
             </div>
             <div class="mcc-detail-row">
+              <span>Abierto por</span>
+              <strong>{{ s.opened_by || 'No registrado' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
               <span>Efectivo Contado</span>
               <strong>{{ (s.cash_counted ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong>
             </div>
@@ -139,6 +143,26 @@
                 {{ (s.cash_over_short ?? 0) | currency:'USD':'symbol':'1.2-2' }}
               </strong>
             </div>
+            <div class="mcc-detail-breakdown">
+              <h3>Desglose de cobros</h3>
+              <div class="mcc-breakdown-grid">
+                <span>Efectivo <strong>{{ (s.payment_breakdown?.cash ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
+                <span>Tarjeta <strong>{{ (s.payment_breakdown?.card ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
+                <span>Transferencias <strong>{{ (s.payment_breakdown?.transfer ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
+                <span>Otros <strong>{{ (s.payment_breakdown?.other ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong></span>
+              </div>
+            </div>
+            @if (s.deposits?.length) {
+              <div class="mcc-detail-breakdown">
+                <h3>Depósitos registrados</h3>
+                @for (deposit of s.deposits; track $index) {
+                  <div class="mcc-deposit-row">
+                    <span>{{ deposit.method || 'Método no indicado' }}{{ deposit.notes ? ' · ' + deposit.notes : '' }}</span>
+                    <strong>{{ deposit.amount | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  </div>
+                }
+              </div>
+            }
             @if (s.closing_notes) {
               <div class="mcc-detail-row notes">
                 <span>Notas</span>
@@ -146,9 +170,24 @@
               </div>
             }
             <div class="mcc-detail-row">
+              <span>Cerrado por</span>
+              <strong>{{ s.closed_by || 'No registrado' }}</strong>
+            </div>
+            <div class="mcc-detail-row">
               <span>Vínculos del Turno</span>
               <strong>{{ (s.payment_ids?.length ?? 0) }} pagos · {{ (s.folio_ids?.length ?? 0) }} folios · {{ (s.booking_ids?.length ?? 0) }} reservas</strong>
             </div>
+            @if (s.transactions.length) {
+              <div class="mcc-detail-breakdown mcc-transactions">
+                <h3>Transacciones del turno ({{ s.transactions.length }})</h3>
+                @for (transaction of s.transactions; track transaction.transaction_id) {
+                  <div class="mcc-transaction-row">
+                    <span>{{ transaction.timestamp | date:'dd/MM/yyyy HH:mm' }} · {{ transaction.description }}</span>
+                    <strong>{{ transaction.amount | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  </div>
+                }
+              </div>
+            }
           </div>
         </div>
         <div class="mcc-modal-footer">

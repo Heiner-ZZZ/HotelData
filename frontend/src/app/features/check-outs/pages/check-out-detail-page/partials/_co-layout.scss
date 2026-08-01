@@ -95,7 +95,8 @@
   background: var(--surface);
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  padding: 16px;
+  padding: 18px;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--app-text) 6%, transparent);
 }
 .co-card-head {
   display: flex;
@@ -117,6 +118,65 @@
       color: var(--accent);
     }
   }
+}
+
+// ─── Stay summary ───
+// Shared by the active checkout wizard and the completed-stay view.
+// Keeping these rules here prevents the detail cards from collapsing into
+// unstyled label/value text when either partial is rendered.
+.co-stay-summary {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.co-stay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 42px;
+  padding: 9px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 72%, transparent);
+  font-size: 13px;
+  &:last-child { border-bottom: 0; }
+}
+.co-stay-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted-text);
+  font-size: 12px;
+  font-weight: 600;
+  .material-symbols-outlined {
+    flex: 0 0 auto;
+    font-size: 17px;
+    color: var(--accent);
+  }
+}
+.co-stay-val {
+  min-width: 0;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.co-stay-paid { color: var(--success); }
+.co-stay-pending { color: var(--danger); }
+.co-stay-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--app-border);
+}
+.co-stay-row-balance {
+  min-height: 48px;
+  border-bottom: 0;
+  .co-stay-label { color: var(--app-text); }
+  .co-stay-val { font-size: 15px; }
 }
 
 // ─── Folio Table ───
@@ -380,6 +440,19 @@
   .material-symbols-outlined {
     font-size: 20px;
   }
+}
+
+// ─── Completed stay ───
+.co-col-main > .co-card,
+.co-col-side > .co-card {
+  animation: co-card-enter 0.22s ease both;
+}
+.co-col-main > .co-card:nth-child(2) { animation-delay: 35ms; }
+.co-col-main > .co-card:nth-child(3) { animation-delay: 70ms; }
+.co-col-main > .co-card:nth-child(4) { animation-delay: 105ms; }
+@keyframes co-card-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 // ─── Checked-out banner ───

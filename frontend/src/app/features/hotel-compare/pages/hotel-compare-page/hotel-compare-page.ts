@@ -6,7 +6,8 @@ import { CompareMapComponent } from './components/compare-map';
 import { amenityIcon, carouselImages, categorizeAmenities, computeComparisonFlags, minRate, policyIcon } from './hotel-compare.helpers';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ComparisonFlags, HotelCompareData } from '../../models/hotel-compare.model';
-import { HotelCompareApiService } from '../../services/hotel-compare-api.service';
+import { mapHotelCompareResponse } from '../../mappers/hotel-compare.mapper';
+import type { HotelCompareDto } from '../../models/hotel-compare.dto';
 
 @Component({
   selector: 'app-hotel-compare-page',
@@ -17,7 +18,6 @@ import { HotelCompareApiService } from '../../services/hotel-compare-api.service
 })
 export class HotelComparePageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly compareApi = inject(HotelCompareApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
 
@@ -46,7 +46,10 @@ export class HotelComparePageComponent {
     return v?.items.length ? 'success' : 'empty';
   });
 
-  readonly compareData = computed(() => this.compareResource.value() ?? null);
+  readonly compareData = computed(() => {
+    const dto = this.compareResource.value();
+    return dto ? mapHotelCompareResponse(dto) : null;
+  });
   readonly propIds = computed(() => this.propIdsParam());
   readonly expandedRooms = signal<Set<number>>(new Set());
   readonly imageErrors = signal<Set<string>>(new Set());
@@ -54,7 +57,7 @@ export class HotelComparePageComponent {
   private readonly _carouselTimers = new Map<number, ReturnType<typeof setInterval>>();
 
   /** httpResource — auto-fetches whenever URL params change. */
-  readonly compareResource = httpResource<HotelCompareData>(() => {
+  readonly compareResource = httpResource<HotelCompareDto>(() => {
     const ids = this.propIdsParam();
     if (!ids.length) return undefined;
     const checkIn = this.qp().get('check_in') ?? '';
@@ -66,10 +69,14 @@ export class HotelComparePageComponent {
     if (checkOut) params.set('check_out', checkOut);
     if (adults) params.set('adults', String(adults));
     if (children) params.set('children', String(children));
+    // FastAPI declares `prop_id` as a repeated query parameter. Do not use
+    // the legacy `/hostels` prefix or a comma-separated `ids` parameter:
+    // both produce a 404/empty comparison request.
+    for (const id of ids) {
+      params.append('prop_id', String(id));
+    }
     const qs = params.toString();
-    return qs
-      ? `/api/hostels/compare?ids=${ids.join(',')}&${qs}`
-      : `/api/hostels/compare?ids=${ids.join(',')}`;
+    return `/api/hotels/compare?${qs}`;
   });
 
   readonly comparisonResults = computed(() => {

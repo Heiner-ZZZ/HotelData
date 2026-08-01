@@ -11,6 +11,12 @@
         [selectedLabel]="selectedLabel()"
         (propIdChange)="onPropSelected($event)"
       />
+      @if (canViewShiftHistory()) {
+        <button class="sc-btn-secondary" type="button" (click)="openShiftHistory()">
+          <span class="material-symbols-outlined">history</span>
+          Ver historial de turnos
+        </button>
+      }
       @if (shift() && !showCloseModal() && canMutateShift()) {
         <button class="sc-btn-outline" (click)="openDepositModal()">
           <span class="material-symbols-outlined">payments</span>

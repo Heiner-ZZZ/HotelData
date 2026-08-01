@@ -241,7 +241,7 @@ export class ShiftsApiService {
 
   /** Manager cash-control view: closed shifts with over/short details.
    *
-   * Requires `billing.manage` permission.
+   * Requires `shifts.manage` permission.
    */
   listShiftsForCashControl(
     propId?: number,

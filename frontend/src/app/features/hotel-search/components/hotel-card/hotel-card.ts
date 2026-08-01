@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
-import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -37,52 +36,19 @@ export class HotelCardComponent implements OnInit {
   readonly noTransition = signal(false);
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Custom hotel photos — httpResource, auto-fetches when hotel changes. */
-  private readonly hotelPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
-    () => this.hotel().id
-      ? `/api/public/hotels/${this.hotel().id}/images`
-      : undefined,
-  );
-
-  /** Amenity photos — httpResource, auto-fetches when hotel changes. */
-  private readonly amenityPhotosRes = httpResource<{ ok: boolean; photos: { url: string }[] }>(
-    () => this.hotel().id
-      ? `/api/amenities/photos/property/${this.hotel().id}`
-      : undefined,
-  );
-
-  /** Room-type images — httpResource, auto-fetches when hotel changes. */
-  private readonly roomPhotosRes = httpResource<{ ok: boolean; images: { image_url: string }[] }>(
-    () => this.hotel().id
-      ? `/api/public/hotels/${this.hotel().id}/room-images`
-      : undefined,
-  );
-
   readonly BASE_GALLERY_COUNT = 3;
 
-  /** Combined gallery: hotel images + room-type images + placeholder seeds + amenity photos.
-   *  Hybrid pattern: backend URLs render first; loremflickr placeholders decorate the tail
-   *  even when the backend has supplied its own photos. Empty/whitespace URLs are
-   *  filtered out so `<img src="">` never reaches the DOM (browser would resolve it
-   *  to the current page URL and silently skip the onError handler). */
+  /**
+   * Small, request-free gallery for search cards. The availability endpoint
+   * already includes the first hotel image, so fetching hotel, amenity and
+   * room images for every card would turn a 10-result page into 30 extra
+   * requests. Detail pages remain the place for the full gallery.
+   */
   readonly galleryImages = computed(() => {
     const h = this.hotel();
     if (this.fallbackImg()) return [];
-    const hotelImgs = (this.hotelPhotosRes.value()?.images ?? [])
-      .map((img) => img.image_url)
-      .filter(isValidImageUrl);
-    const roomImgs = (this.roomPhotosRes.value()?.images ?? [])
-      .map((img) => img.image_url)
-      .filter(isValidImageUrl);
-    const amenityImgs = (this.amenityPhotosRes.value()?.photos ?? [])
-      .map((p) => p.url)
-      .filter(isValidImageUrl);
-    const placeholders = [
-      placeholderImageUrl(`${h.id}1`),
-      placeholderImageUrl(`${h.id}2`),
-      placeholderImageUrl(`${h.id}3`),
-    ];
-    return [...hotelImgs, ...roomImgs, ...placeholders, ...amenityImgs];
+    const primaryImage = h.imageUrl && isValidImageUrl(h.imageUrl) ? [h.imageUrl] : [];
+    return primaryImage;
   });
 
   /** Total images in the carousel — dynamic based on gallery. */
@@ -91,6 +57,7 @@ export class HotelCardComponent implements OnInit {
   /** Generate dot indices for the carousel indicators. */
   readonly dotIndices = computed(() => {
     const count = this.totalImages();
+    if (count <= 1) return [0] as const;
     if (count <= this.BASE_GALLERY_COUNT) return [0, 1, 2] as const;
     return Array.from({ length: count }, (_, i) => i);
   });
@@ -115,7 +82,7 @@ export class HotelCardComponent implements OnInit {
   });
 
   startRotation() {
-    if (this.fallbackImg() || this.rotationTimer) return;
+    if (this.fallbackImg() || this.rotationTimer || this.totalImages() <= 1) return;
     this.rotationTimer = setInterval(() => {
       const next = (this.currentImageIdx() + 1) % this.totalImages();
       if (next === 0) {

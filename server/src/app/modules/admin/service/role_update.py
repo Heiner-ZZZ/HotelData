@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.database.connection import get_database
+from src.app.security.permissions import ensure_read_dependencies
 
 from ._helpers import utc_now
 
@@ -21,8 +22,25 @@ def update_role_definition(
     if role_name == "super_admin":
         return {"ok": False, "message": "El rol super_admin no se modifica desde esta vista."}
 
-    permission_docs = list(db.permissions.find({"permission_code": {"$in": permission_codes}}))
-    valid_codes = sorted({item["permission_code"] for item in permission_docs if item.get("permission_code")})
+    all_permission_docs = list(db.permissions.find({}, {"permission_code": 1}))
+    available_codes = {
+        item["permission_code"] for item in all_permission_docs if item.get("permission_code")
+    }
+    normalized_codes = ensure_read_dependencies(set(permission_codes), available_codes)
+    missing_read = sorted(
+        f"{code.split('.', 1)[0]}.read"
+        for code in normalized_codes
+        if '.' in code
+        and code.split('.', 1)[1] != 'read'
+        and f"{code.split('.', 1)[0]}.read" not in available_codes
+    )
+    if missing_read:
+        return {
+            "ok": False,
+            "message": "No se pueden guardar acciones sin un permiso Read disponible: "
+            + ', '.join(missing_read),
+        }
+    valid_codes = sorted(normalized_codes & available_codes)
     role_id = role["_id"]
 
     db.roles.update_one(

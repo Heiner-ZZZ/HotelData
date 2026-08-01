@@ -23,8 +23,14 @@ function mapAccessButton(b: { label: string; href: string; icon: string }): { la
   return { label: b.label, href: b.href, icon: ICON_MAP[b.icon] || b.icon || 'arrow_right' };
 }
 
-function mapNavigationItem(b: { label: string; href: string; icon: string; visible: boolean }): { label: string; href: string; icon: string; visible: boolean } {
-  return { label: b.label, href: b.href, icon: ICON_MAP[b.icon] || b.icon || 'arrow_right', visible: b.visible };
+export function mapNavigationItem(b: { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null }): { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null } {
+  return {
+    label: b.label,
+    href: b.href,
+    icon: ICON_MAP[b.icon] || b.icon || 'arrow_right',
+    visible: b.visible,
+    permissionId: b.permissionId ?? null,
+  };
 }
 
 function mapRole(item: SystemPermissionsResponseDto['roles'][number]): SystemRolePermissionItem {

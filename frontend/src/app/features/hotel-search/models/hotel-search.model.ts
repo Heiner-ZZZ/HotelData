@@ -23,6 +23,7 @@ export interface HotelSearchResult {
   reviewScore: number | null;
   imageUrl: string | null;
   destinationLabels: string[];
+  generalAmenities: string[];
   matchedRoomType: {
     roomTypeId: string;
     name: string;
@@ -53,6 +54,7 @@ export interface HotelSearchPageData {
   page: number;
   pageSize: number;
   totalPages: number;
+  totalIsEstimate: boolean;
   hasPrev: boolean;
   hasNext: boolean;
   filters: HotelSearchFilters;

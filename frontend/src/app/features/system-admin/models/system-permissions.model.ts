@@ -28,7 +28,7 @@ export interface RoleDetailModel {
     description: string;
     permissionCodes: string[];
     accessButtons: { label: string; href: string; icon: string }[];
-    navigationCatalog: { label: string; href: string; icon: string; visible: boolean }[];
+    navigationCatalog: { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null }[];
   };
   permissions: SystemPermissionItem[];
 }

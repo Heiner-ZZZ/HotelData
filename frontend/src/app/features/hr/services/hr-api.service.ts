@@ -4,7 +4,7 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapEmployeeDetail, mapEmployeeList, mapHrDashboard, mapEmployeePortal, mapAttendanceResponse, mapShiftList, mapPortalTasks } from '../mappers/hr.mapper';
-import type { EmployeeDetailDto, EmployeeListDto, EmployeePortalDto, AttendanceResponseDto, ShiftListDto, ShiftCreateDto, PortalTasksDto } from '../models/hr.dto';
+import type { AttendanceResponseDto, DepartmentListDto, EmployeeCreateDto, EmployeeDetailDto, EmployeeListDto, EmployeePortalDto, EmployeeShiftDto, EmployeeUpdateDto, HrDashboardDto, PortalTasksDto, ReplacementCandidateListDto, ShiftCreateDto, ShiftListDto } from '../models/hr.dto';
 
 @Injectable({ providedIn: 'root' })
 export class HrApiService {
@@ -12,7 +12,7 @@ export class HrApiService {
   private readonly apiConfig = inject(API_CONFIG);
 
   getDashboard() {
-    return this.http.get<any>(`${this.apiConfig.baseUrl}/hr/dashboard`, { withCredentials: true })
+    return this.http.get<HrDashboardDto>(`${this.apiConfig.baseUrl}/hr/dashboard`, { withCredentials: true })
       .pipe(map(dto => mapHrDashboard(dto)));
   }
 
@@ -31,12 +31,12 @@ export class HrApiService {
       .pipe(map(dto => mapEmployeeDetail(dto)));
   }
 
-  createEmployee(payload: any) {
-    return this.http.post(`${this.apiConfig.baseUrl}/hr`, payload, { withCredentials: true });
+  createEmployee(payload: EmployeeCreateDto) {
+    return this.http.post<EmployeeDetailDto>(`${this.apiConfig.baseUrl}/hr`, payload, { withCredentials: true });
   }
 
-  updateEmployee(id: string, payload: any) {
-    return this.http.put(`${this.apiConfig.baseUrl}/hr/${id}`, payload, { withCredentials: true });
+  updateEmployee(id: string, payload: EmployeeUpdateDto) {
+    return this.http.put<EmployeeDetailDto>(`${this.apiConfig.baseUrl}/hr/${id}`, payload, { withCredentials: true });
   }
 
   deleteEmployee(id: string) {
@@ -44,7 +44,15 @@ export class HrApiService {
   }
 
   getDepartments() {
-    return this.http.get<any[]>(`${this.apiConfig.baseUrl}/hr/departments`, { withCredentials: true });
+    return this.http.get<DepartmentListDto>(`${this.apiConfig.baseUrl}/hr/departments`, { withCredentials: true })
+      .pipe(map(response => response.items ?? []));
+  }
+
+  getReplacementCandidates(propId: number) {
+    return this.http.get<ReplacementCandidateListDto>(
+      `${this.apiConfig.baseUrl}/hr/replacement-candidates`,
+      { params: new HttpParams().set('prop_id', String(propId)), withCredentials: true },
+    );
   }
 
   // ─── My Portal (self-service redirect) ───
@@ -94,11 +102,11 @@ export class HrApiService {
   }
 
   createShift(payload: ShiftCreateDto) {
-    return this.http.post<any>(`${this.apiConfig.baseUrl}/hr/shifts`, payload, { withCredentials: true });
+    return this.http.post<EmployeeShiftDto>(`${this.apiConfig.baseUrl}/hr/shifts`, payload, { withCredentials: true });
   }
 
   updateShift(shiftId: string, payload: ShiftCreateDto) {
-    return this.http.put<any>(`${this.apiConfig.baseUrl}/hr/shifts/${shiftId}`, payload, { withCredentials: true });
+    return this.http.put<EmployeeShiftDto>(`${this.apiConfig.baseUrl}/hr/shifts/${shiftId}`, payload, { withCredentials: true });
   }
 
   deleteShift(shiftId: string) {

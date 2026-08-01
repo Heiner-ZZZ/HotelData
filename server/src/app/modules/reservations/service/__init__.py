@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from src.app.modules.reservations.schemas import ModuleStatus
-from .validation import validate_reservation_input, build_reservation_input
+from .validation import validate_booking_form_requirements, validate_reservation_input, build_reservation_input
 from .collections import ensure_reservation_collections
 from .queries import hotel_booking_context, list_bookings, get_booking_detail, list_reservation_dates, get_reservation_stats
 from ._hotel_options import reservation_hotel_options
@@ -26,6 +26,7 @@ def module_status() -> ModuleStatus:
 __all__ = [
     "module_status",
     "ensure_reservation_collections",
+    "validate_booking_form_requirements",
     "validate_reservation_input",
     "build_reservation_input",
     "hotel_booking_context",

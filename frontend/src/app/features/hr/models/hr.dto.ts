@@ -1,3 +1,32 @@
+export interface DepartmentDto {
+  id: string;
+  name: string;
+  description: string;
+  head_count: number;
+  created_at: string;
+}
+
+export interface DepartmentListDto {
+  items: DepartmentDto[];
+  total: number;
+}
+
+export interface ReplacementCandidateDto {
+  id: string;
+  full_name: string;
+  department: string;
+  position: string;
+  shift_count: number;
+  permission_count: number;
+  task_count: number;
+  duty_count: number;
+}
+
+export interface ReplacementCandidateListDto {
+  items: ReplacementCandidateDto[];
+  total: number;
+}
+
 export interface EmployeeListDto {
   items: EmployeeItemDto[];
   total: number;
@@ -19,6 +48,44 @@ export interface EmployeeItemDto {
   is_active: boolean;
   hire_date: string;
   created_at: string;
+}
+
+export interface EmployeeCreateDto {
+  full_name: string;
+  id_document: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  position?: string;
+  department?: string;
+  hire_date?: string;
+  salary?: number | null;
+  emergency_contact?: string;
+  emergency_phone?: string;
+  notes?: string;
+  prop_id?: number | null;
+  user_id?: string | null;
+  daily_duties?: unknown[] | null;
+  replaces_employee_id?: string | null;
+  transfer_shifts?: boolean;
+  transfer_permissions?: boolean;
+  transfer_tasks?: boolean;
+}
+
+export interface EmployeeUpdateDto {
+  full_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  position?: string;
+  department?: string;
+  salary?: number | null;
+  emergency_contact?: string;
+  emergency_phone?: string;
+  notes?: string;
+  is_active?: boolean;
+  user_id?: string | null;
+  daily_duties?: unknown[];
 }
 
 export interface EmployeeDetailDto {

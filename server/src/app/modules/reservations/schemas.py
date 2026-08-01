@@ -189,6 +189,41 @@ class BookingResponse(BaseModel):
     history: list[BookingHistoryResponse] = Field(default_factory=list)
 
 
+class ReservationCreatedResponse(BaseModel):
+    """Compact response returned by POST /api/reservations.
+
+    KEEP IN SYNC with ``ReservationCreateDto`` in the frontend. Creation
+    returns a summary envelope, not a full Mongo booking document, so it must
+    not reuse ``BookingResponse`` (whose canonical ``id`` is required).
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    booking_id: str
+    status: str
+    total_price: float | None = None
+    currency: str = "USD"
+    total_nights: int = 0
+    manual_reservation_id: str | None = None
+    hotel_label: str = ""
+    hotel_prop_id: int | None = None
+    room_type_name: str | None = None
+    check_in_date: str = ""
+    check_out_date: str = ""
+    rooms: int = 1
+    adults: int = 1
+    children: int = 0
+    guest_name: str = ""
+    guest_email: str = ""
+    discount_percent: float | None = None
+    original_total_price: float | None = None
+    transaction_id: str | None = None
+    payment_method: str | None = None
+    card_last4: str | None = None
+    payment_status: str | None = None
+    cancellation_policy: str | None = None
+
+
 class BookingListResponse(BaseModel):
     """Paginated envelope for ``GET /api/reservations`` (list)."""
 
@@ -210,4 +245,5 @@ ModuleStatus.model_rebuild()
 BookingHistoryResponse.model_rebuild()
 AssignedRoomSnapshot.model_rebuild()
 BookingResponse.model_rebuild()
+ReservationCreatedResponse.model_rebuild()
 BookingListResponse.model_rebuild()

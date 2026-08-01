@@ -56,6 +56,8 @@
             [total]="total()"
             [page]="page()"
             [totalPages]="totalPages()"
+            [totalIsEstimate]="totalIsEstimate()"
+            [pageSize]="10"
             [hasPrev]="hasPrev()"
             [hasNext]="hasNext()"
             (previous)="goToPage(page() - 1)"

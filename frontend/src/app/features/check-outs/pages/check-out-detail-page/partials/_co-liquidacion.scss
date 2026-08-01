@@ -94,6 +94,118 @@
 }
 
 // ─── Invoice Actions (Step 4) ───
+.co-invoice-card {
+  max-width: 920px;
+  margin-inline: auto;
+}
+.co-invoice-summary {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.co-invoice-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--app-border);
+  strong {
+    display: block;
+    margin-top: 2px;
+    color: var(--app-text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  > .material-symbols-outlined {
+    color: var(--accent);
+    font-size: 24px;
+  }
+}
+.co-invoice-summary-kicker {
+  display: block;
+  color: var(--muted-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.co-invoice-summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted-text);
+    font-size: 12px;
+    strong {
+      color: var(--app-text);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+  }
+  .co-invoice-summary-total {
+    margin-top: 3px;
+    padding-top: 9px;
+    border-top: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-size: 13px;
+    font-weight: 700;
+    strong { color: var(--accent); font-size: 15px; }
+  }
+}
+.co-invoice-status {
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.co-invoice-success,
+.co-invoice-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.co-invoice-success {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  .material-symbols-outlined { font-size: 18px; }
+}
+.co-invoice-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+}
+.co-inv-btn {
+  &:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+    filter: saturate(0.45);
+  }
+  &:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    outline-offset: 2px;
+  }
+}
+.co-invoice-card .co-split-check {
+  max-width: 360px;
+  margin-inline: auto;
+}
 .co-invoice-actions {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -130,12 +242,12 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--app-text);
-}
-.co-inv-btn-sub {
+}  .co-inv-btn-sub {
   font-size: 10px;
   color: var(--muted-text);
   text-align: center;
 }
+
 
 // ─── Close / Complete (Step 5) ───
 .co-close-desc {

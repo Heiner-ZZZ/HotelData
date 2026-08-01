@@ -1,23 +1,42 @@
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 
-import { CheckOutsApiService } from '../../../services/check-outs-api.service';
+import { CheckOutsApiService, type CheckOutInvoiceDto } from '../../../services/check-outs-api.service';
 import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-co-step-invoice',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CurrencyPipe, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="co-card co-step-card">
+    <section class="co-card co-step-card co-invoice-card">
       <div class="co-step-badge">Paso 4</div>
       <h2 class="co-step-title">Emitir factura</h2>
 
       @if (invoiceGenerated()) {
         <div class="co-invoice-success">
           <span class="material-symbols-outlined">check_circle</span>
-          Factura {{ invoiceNumber() }} generada
+          <span>Factura {{ invoiceNumber() }} disponible</span>
+          @if (existingInvoice()?.status) {
+            <span class="co-invoice-status">{{ existingInvoice()!.status }}</span>
+          }
+        </div>
+
+        <div class="co-invoice-summary">
+          <div class="co-invoice-summary-head">
+            <div>
+              <span class="co-invoice-summary-kicker">Comprobante fiscal</span>
+              <strong>{{ invoiceNumber() }}</strong>
+            </div>
+            <span class="material-symbols-outlined">receipt_long</span>
+          </div>
+          <div class="co-invoice-summary-rows">
+            <div><span>Subtotal</span><strong>{{ (existingInvoice()?.subtotal ?? subtotal()) | currency:currency() }}</strong></div>
+            <div><span>Impuestos</span><strong>{{ (existingInvoice()?.taxes ?? taxes()) | currency:currency() }}</strong></div>
+            <div class="co-invoice-summary-total"><span>Total</span><strong>{{ (existingInvoice()?.total ?? (subtotal() + taxes())) | currency:currency() }}</strong></div>
+          </div>
         </div>
       }
 
@@ -74,10 +93,12 @@ import { ConfirmDialogService } from '../../../../../shared/ui/confirm-dialog/co
         @if (splitInvoice()) { <span class="co-check-icon material-symbols-outlined">check_circle</span> }
       </label>
 
-      <div class="co-step-actions">
-        <button class="co-btn-outline" (click)="prev.emit()">&larr; Atr&aacute;s</button>
-        <button class="co-btn-primary" (click)="next.emit()">Continuar &rarr;</button>
-      </div>
+      @if (showNavigation()) {
+        <div class="co-step-actions">
+          <button class="co-btn-outline" (click)="prev.emit()">&larr; Atr&aacute;s</button>
+          <button class="co-btn-primary" (click)="next.emit()">Continuar &rarr;</button>
+        </div>
+      }
     </section>
   `
 })
@@ -86,11 +107,14 @@ export class CoStepInvoiceComponent {
   private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly guestEmail = input('');
+  readonly existingInvoice = input<CheckOutInvoiceDto | null>(null);
+  readonly showNavigation = input(true);
   readonly splitInvoice = input(false);
   readonly bookingId = input('');
   readonly propId = input(0);
   readonly subtotal = input(0);
   readonly taxes = input(0);
+  readonly currency = input('USD');
 
   readonly prev = output<void>();
   readonly next = output<void>();
@@ -104,6 +128,19 @@ export class CoStepInvoiceComponent {
   readonly invoiceId = signal('');
   readonly invoiceNumber = signal('');
   readonly errorMsg = signal('');
+
+  constructor() {
+    // Keep the action buttons usable after the detail resource reloads. The
+    // invoice may have been issued before this page was opened, so local state
+    // cannot be the only source of truth.
+    effect(() => {
+      const invoice = this.existingInvoice();
+      if (!invoice) return;
+      this.invoiceGenerated.set(invoice.status !== 'cancelled');
+      this.invoiceId.set(invoice.id);
+      this.invoiceNumber.set(invoice.invoice_number);
+    }, { allowSignalWrites: true });
+  }
 
   emitInvoice(): void {
     const bookingId = this.bookingId();

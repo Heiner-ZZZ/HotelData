@@ -29,6 +29,30 @@ logger = logging.getLogger(__name__)
 _MANAGE_CRUD_ACTIONS = ("create", "read", "update", "delete")
 
 
+def ensure_read_dependencies(
+    explicit_codes: set[str],
+    available_codes: set[str] | None = None,
+) -> set[str]:
+    """Ensure every non-read action has its resource's ``read`` permission.
+
+    The editor and API both use this invariant: an actor cannot be granted
+    create/update/delete/manage/execute access to a resource without being
+    able to read that resource's UI/data. When a catalog is supplied, only
+    existing permission codes are added.
+    """
+    normalized = set(explicit_codes)
+    for code in tuple(explicit_codes):
+        if "." not in code:
+            continue
+        resource, action = code.split(".", 1)
+        if action == "read":
+            continue
+        read_code = f"{resource}.read"
+        if available_codes is None or read_code in available_codes:
+            normalized.add(read_code)
+    return normalized
+
+
 def expand_permissions(explicit_codes: set[str]) -> set[str]:
     """Expand wildcard ``resource.manage`` into individual CRUD permissions.
 

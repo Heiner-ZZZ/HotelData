@@ -8,12 +8,40 @@ from ._helpers import ReservationInput, _clean_text, _safe_int
 
 
 PHONE_RE = re.compile(r"^[\d\s\-\+\(\)\.]+$")
+TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 
 def _valid_phone(value: str) -> bool:
     if not value:
         return True
     return bool(PHONE_RE.match(value))
+
+
+def validate_booking_form_requirements(payload: ReservationInput) -> list[str]:
+    """Validate requirements specific to the guest booking form.
+
+    The reservation service still accepts legacy/internal bookings that may
+    omit contact metadata. The public booking form, however, must send a
+    complete guest identity and an explicit overnight schedule.
+    """
+    errors: list[str] = []
+    if not payload.guest_phone:
+        errors.append("guest_phone is required")
+    if payload.guest_phone and not _valid_phone(payload.guest_phone):
+        errors.append("guest_phone contains invalid characters")
+    if not payload.cedula:
+        errors.append("cedula is required")
+    if not payload.check_in_time:
+        errors.append("check_in_time is required")
+    elif not TIME_RE.fullmatch(payload.check_in_time):
+        errors.append("check_in_time must use HH:MM format")
+    if not payload.check_out_time:
+        errors.append("check_out_time is required")
+    elif not TIME_RE.fullmatch(payload.check_out_time):
+        errors.append("check_out_time must use HH:MM format")
+    if payload.check_in_date and payload.check_out_date and payload.check_out_date <= payload.check_in_date:
+        errors.append("check_out_date must be after check_in_date for an overnight booking")
+    return errors
 
 
 def validate_reservation_input(payload: ReservationInput) -> list[str]:

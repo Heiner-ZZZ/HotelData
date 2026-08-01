@@ -93,14 +93,17 @@
           />
         }
 
-        @if (currentStep() === 4) {
+        @if (currentStep() === 4 || checkoutDone()) {
           <app-co-step-invoice
             [guestEmail]="vm.guest_email"
+            [existingInvoice]="vm.invoice"
+            [showNavigation]="!checkoutDone()"
             [splitInvoice]="splitInvoice()"
             [bookingId]="vm.booking_id"
             [propId]="vm.prop_id"
             [subtotal]="subtotal()"
             [taxes]="taxes()"
+            [currency]="currency()"
             (prev)="prevStep()"
             (next)="nextStep()"
             (splitInvoiceChange)="splitInvoice.set($event)"

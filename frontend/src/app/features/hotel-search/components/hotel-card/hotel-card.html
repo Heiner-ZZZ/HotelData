@@ -66,8 +66,14 @@
           @for (destination of hotel().destinationLabels.slice(0, 3); track destination) {
             <span class="tag">{{ destination }}</span>
           }
+          @for (amenity of hotel().generalAmenities; track amenity) {
+            <span class="tag amenity-tag">
+              <span class="material-symbols-outlined">check_circle</span>
+              {{ amenity }}
+            </span>
+          }
           @if (hotel().matchedRoomType; as rt) {
-            <span class="tag">{{ rt.name }}</span>
+            <span class="tag room-summary-tag">{{ rt.name }}</span>
           }
         </div>
 

@@ -9,7 +9,7 @@ import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loadi
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
-import { CheckOutsApiService, type CheckOutDetailDto } from '../../services/check-outs-api.service';
+import { CheckOutsApiService, type BookingCharge, type CheckOutDetailDto } from '../../services/check-outs-api.service';
 import { STAY_CHECKED_OUT } from '../../../reservations/utils/reservation-status.util';
 import { CoHeaderComponent } from './partials/co-header';
 import { CoStepBreadcrumbComponent } from './partials/co-step-breadcrumb';
@@ -144,7 +144,7 @@ export class CheckOutDetailPageComponent {
   readonly chargeCategoryEntries = computed(() => {
     const d = this.data();
     if (!d?.charges_by_category) return [];
-    return Object.entries(d.charges_by_category).map(([key, items]: [string, any]) => ({
+    return (Object.entries(d.charges_by_category) as [string, BookingCharge[]][]).map(([key, items]) => ({
       key,
       items,
       label: this.categoryLabel(key),
@@ -156,7 +156,7 @@ export class CheckOutDetailPageComponent {
   readonly chargeDetailEntries = computed(() => {
     const d = this.data();
     if (!d?.charges) return [];
-    return d.charges.map((c: any) => ({
+    return d.charges.map((c: BookingCharge) => ({
       ...c,
       categoryIcon: this.categoryIcon(c.category),
       categoryLabel: this.categoryLabel(c.category),
@@ -350,7 +350,9 @@ export class CheckOutDetailPageComponent {
 
   completeCheckOut(): void {
     const d = this.data();
-    if (!d || this.completing()) return;
+    // A repeated click or a stale tab must not submit the terminal transition
+    // again. The backend is idempotent too, but this keeps the UI quiet.
+    if (!d || this.completing() || this.checkoutDone()) return;
     this.completing.set(true);
     this.completeError.set('');
 
@@ -366,7 +368,7 @@ export class CheckOutDetailPageComponent {
       check_out_observations: this.observations(),
       split_invoice: this.splitInvoice(),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (result) => {
+      next: (_result) => {
         this.completing.set(false);
         this.canComplete.set(false);
         this.goToStep(5);

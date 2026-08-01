@@ -73,13 +73,22 @@ def guest_amenity_catalog_by_prop_api(
         if label and avail is not None:
             stock_map[label] = int(avail)
 
+    filtered_catalog = []
     for category in catalog:
-        for item in category.get("items", []):
-            label = item.get("label", "")
-            item["available_stock"] = stock_map.get(label)  # None = unlimited
+        active_items = [
+            item for item in category.get("items", [])
+            if item.get("active") and str(item.get("label") or "").strip()
+        ]
+        for item in active_items:
+            item["available_stock"] = stock_map.get(item.get("label", ""))  # None = unlimited
+        if active_items:
+            filtered_catalog.append({
+                **category,
+                "items": active_items,
+            })
 
     return {
-        "catalog": catalog,
+        "catalog": filtered_catalog,
         "active_amenities": amenities_data.get("active_amenities", []),
     }
 

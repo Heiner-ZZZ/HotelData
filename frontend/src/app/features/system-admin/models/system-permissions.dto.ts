@@ -39,3 +39,17 @@ export interface RoleUpdateRequestDto {
   description: string;
   permission_codes: string[];
 }
+
+export interface NavigationPreviewItemDto {
+  label: string;
+  href: string;
+  icon: string;
+  visible: boolean;
+  section?: string | null;
+  is_section_header?: boolean;
+  permissionId?: string | null;
+}
+
+export interface NavigationPreviewResponseDto {
+  navigation_catalog: NavigationPreviewItemDto[];
+}

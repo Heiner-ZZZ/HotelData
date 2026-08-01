@@ -18,6 +18,10 @@
 .field-group.two-col { grid-template-columns: 1fr 1fr; gap: 0.65rem; }
 .field { display: grid; gap: 0.25rem; }
 .field-label { font-size: 0.78rem; font-weight: 600; color: var(--app-text); }
+.required-mark { color: var(--danger); font-weight: 800; }
+.field-error-msg { display: block; margin-top: 0.25rem; font-size: 0.7rem; color: var(--danger); }
+
+.input-wrap .field-error-msg { position: absolute; left: 2.2rem; top: 100%; }
 .input-wrap, .select-wrap { position: relative; display: flex; align-items: center; }
 
 .input-prefix { position: absolute; left: 0.65rem; font-size: 1rem; color: var(--muted-text); pointer-events: none; font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20; }
@@ -42,7 +46,58 @@
 
 .readonly-field { background: var(--surface-soft) !important; opacity: 0.8; cursor: default; }
 .field.field-error input, .field.field-error select, .field.field-error textarea { border-color: var(--danger); }
-.field-error-msg { font-size: 0.7rem; color: var(--danger); }
+.field:has(input.ng-invalid.ng-touched) .input-wrap input { border-color: var(--danger); }
+
+.recent-guests {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: -0.35rem;
+  padding: 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.recent-guests-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem;
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recent-guests-head .material-symbols-outlined { font-size: 0.95rem; }
+
+.recent-guest {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--app-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.recent-guest:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.recent-guest > .material-symbols-outlined { color: var(--accent); font-size: 1.1rem; }
+.recent-guest-copy { display: grid; min-width: 0; flex: 1; gap: 0.12rem; }
+.recent-guest-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; }
+.recent-guest-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-text); font-size: 0.7rem; }
+.recent-guest-action { color: var(--muted-text); font-size: 0.95rem; }
 
 .select-wrap select {
   width: 100%;
