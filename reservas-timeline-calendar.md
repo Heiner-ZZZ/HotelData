@@ -132,7 +132,6 @@ Cada reserva contiene:
 | `adults`, `children` | Resumen de ocupación |
 | `check_in_date`, `check_out_date` | Rango de estancia |
 | `check_in_time`, `check_out_time` | Hora del evento y del panel de selección |
-| `check_in_fraction`, `check_out_fraction` | Compatibilidad del contrato; el Timeline usa fechas y horas |
 | `total_nights` | Resumen de estancia |
 | `status` | Estado de negocio original |
 | `visual_status` | Estado normalizado: `active`, `upcoming`, `past`, `cancelled` |

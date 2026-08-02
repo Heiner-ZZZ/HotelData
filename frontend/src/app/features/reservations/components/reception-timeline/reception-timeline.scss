@@ -121,10 +121,27 @@
   min-width: 0;
 
   > .material-symbols-outlined { flex: 0 0 auto; color: var(--accent); }
-  div { display: grid; gap: 0.1rem; min-width: 0; }
+  div { display: grid; gap: 0.15rem; min-width: 0; }
   strong, span { overflow-wrap: anywhere; }
   strong { color: var(--app-text); font-size: 0.84rem; line-height: 1.25; }
   span { color: var(--muted-text); font-size: 0.72rem; line-height: 1.25; }
+
+  .timeline-selection-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--app-text);
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  .timeline-slot-arrow {
+    flex: 0 0 auto;
+    width: 1rem;
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 700;
+  }
 }
 
 .timeline-selection-actions {
@@ -437,122 +454,100 @@
 }
 
 /*
- * Syncfusion renders resources and timeline cells in two synchronized tables.
- * The compact height must therefore be applied to the parent row on BOTH
- * sides. The native parent markers are e-parent-node (resource table) and
- * e-resource-group-cells (timeline/content table); styling only the left
- * column is what previously caused the vertical drift.
+ * ── Compactación real de Piso y Tipo ───────────────────────────────
+ * En Timeline cada nodo del árbol (Piso, Tipo, Habitación) es una `<tr>`
+ * propia en AMBAS tablas, con correspondencia 1:1 por índice (la librería
+ * NO usa rowspan en esta vista; lo confirmamos en resource.js y
+ * timeline-view.js). La causa de que las filas Piso/Tipo se vieran tan
+ * altas como las habitaciones es que material3.css fija `height: 84px` en
+ * `.e-timeline-view .e-resource-cells` y en `.e-timeline-view
+ * .e-work-cells`. El CSS anterior compactaba solo el contenido interno
+ * (a 20px) sin tocar la altura de la celda/fila, por eso no cambiaba
+ * nada visualmente. Aquí se fija la altura REAL de la fila padre en los
+ * dos lados con el mismo valor, lo que mantiene la alineación vertical
+ * entre la columna de recursos y la cuadrícula de días.
  */
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells .e-resource-text,
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells .e-resource-name {
-  font-size: 0.72rem;
-  line-height: 1.1;
-}
-
-:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-cells,
-:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-parent,
-:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-child {
-  padding-block: 0 !important;
-}
-
-/*
- * El árbol de recursos y la cuadrícula temporal son tablas independientes.
- * No se fuerzan alturas distintas sobre `tr`/`td`: en Timeline un nodo padre
- * puede abarcar varias habitaciones y hacerlo rompe la alineación vertical.
- * `rowAutoHeight=false` mantiene una métrica estructural estable; la
- * compactación se aplica únicamente al contenido visual de Piso y Tipo.
- */
-:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-cells,
-:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells {
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td {
   box-sizing: border-box;
-  padding-block: 0 !important;
 }
 
-/* La flecha y el título permanecen en una sola línea, sin un salto vertical. */
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node {
-  vertical-align: top;
+/* Filas Piso/Tipo → 20px en ambas tablas a la vez. La altura se fija en la
+ * celda (no en el `tr`): en layout de tabla, `height` en `tr` actúa solo
+ * como mínimo y `max-height` no aplica a `table-row`; en cambio la celda
+ * con `height` + `overflow: hidden` controla la fila al ser la más alta.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-cells.e-parent-node,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells {
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  vertical-align: middle;
 }
 
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node > div {
-  display: inline-flex;
+/* Contenido del padre: flecha + texto en UNA línea, desde el inicio. */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-parent-node {
+  display: flex;
   align-items: center;
   justify-content: flex-start;
-  vertical-align: middle;
-  min-width: 0;
-  min-height: 20px;
-  height: 20px;
-  line-height: 1;
-  overflow: visible;
+  gap: 0.2rem;
+  padding-inline: 0.3rem !important;
 }
 
-/* Control nativo de expansión: permanece clickable y junto a Piso/Tipo. */
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .e-resource-tree-icon {
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-parent-node .e-resource-tree-icon {
+  float: none !important;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  margin: 0 0.12rem 0 0;
+  margin: 0 !important;
+  padding: 0 !important;
   line-height: 1;
-  vertical-align: top;
+  font-size: 11px;
 }
 
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .e-resource-text {
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-parent-node .timeline-resource-header,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .timeline-resource-header {
   display: inline-flex;
   align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  width: auto;
-  height: 20px;
-  line-height: 1;
-  overflow: visible;
-}
-
-/*
- * `timeline-resource-group` es el CssClass común de Piso/Tipo. Se aplica al
- * contenido de sus celdas en ambos lados cuando Syncfusion lo replica; no se
- * cambia la altura de la fila, solo se elimina espacio interno innecesario.
- */
-:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-header,
-:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-header,
-:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .timeline-resource-header {
-  display: flex;
-  align-items: center;
   flex: 1 1 auto;
-  width: auto;
   min-width: 0;
   height: 20px;
   min-height: 20px;
   padding: 0;
-  box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-title,
-:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-title {
-  display: flex;
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-parent-node .timeline-resource-title,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .timeline-resource-title {
+  display: inline-flex;
   align-items: center;
-  flex: 1 1 auto;
   gap: 0.2rem;
   min-width: 0;
-  min-height: 20px;
   line-height: 1;
   white-space: nowrap;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-icon,
-:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-icon {
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .timeline-resource-icon {
   font-size: 0.78rem;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-title strong,
-:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-title strong {
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .timeline-resource-title strong {
+  overflow: hidden;
   font-size: 0.66rem;
   line-height: 1;
+  text-overflow: ellipsis;
 }
 
-:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .e-resource-text,
-:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .e-resource-name {
-  line-height: 1;
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table .e-resource-cells .e-resource-text,
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table .e-resource-cells .e-resource-name {
+  font-size: 0.72rem;
+  line-height: 1.1;
 }
 
 .timeline-date-header {
@@ -759,15 +754,15 @@
   padding: 0 0.35rem !important;
 }
 
-/* Piso y Tipo usan la indentación nativa de Syncfusion; no necesitan otra
- * caja de padding alrededor de la flecha y el texto. */
+/* Las filas Piso/Tipo usan su propio layout compacto (flecha + texto en
+ * línea, altura 20px); la indentación la aporta el padding-inline. */
 :host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node {
-  padding: 0 !important;
-  vertical-align: top;
+  padding: 0 0.3rem !important;
+  vertical-align: middle;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node > .e-resource-tree-icon {
-  margin-inline-end: 0.1rem;
+  margin: 0 0.15rem 0 0 !important;
 }
 
 /*
@@ -792,6 +787,58 @@
   z-index: 1;
   background: color-mix(in srgb, var(--accent) 22%, var(--surface)) !important;
   box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/*
+ * ── Línea "ahora" (current-time indicator) ──────────────────────────
+ * Se crea por JS dentro de `.e-content-wrap` (el contenedor scrolleable de
+ * la cuadrícula), por eso vive en el mismo sistema de coordenadas que las
+ * columnas de días y se mueve con el scroll horizontal y vertical. La clase
+ * `timeline-now-line` es DOM creado en runtime (sin atributo de
+ * encapsulación), así que necesita `::ng-deep` para recibir los estilos.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-content-wrap {
+  position: relative;
+}
+
+:host ::ng-deep .timeline-now-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  z-index: 9;
+  pointer-events: none;
+  background: var(--danger);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--danger) 28%, transparent),
+    0 0 8px color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+:host ::ng-deep .timeline-now-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 65%, transparent);
+  transform: translateX(-50%);
+}
+
+:host ::ng-deep .timeline-now-line-label {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  padding: 0.12rem 0.4rem;
+  border-radius: 2px;
+  background: var(--danger);
+  color: var(--on-danger);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--app-text) 28%, transparent);
 }
 
 @media (max-width: 900px) {

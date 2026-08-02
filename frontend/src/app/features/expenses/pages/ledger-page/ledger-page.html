@@ -3,13 +3,14 @@
     eyebrow="Contabilidad"
     title="Libro Mayor / Diario General"
     description="Sistema contable de doble partida alimentado por folios de huéspedes reales."
-  />
-
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   @if (selectedPropId()) {
     <!-- KPI Strip: Trial Balance -->

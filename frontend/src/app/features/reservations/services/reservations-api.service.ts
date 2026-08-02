@@ -57,10 +57,8 @@ export interface ReceptionCalendarDto {
       children: number;
       check_in_date: string;
       check_in_time: string;
-      check_in_fraction: number;
       check_out_date: string;
       check_out_time: string;
-      check_out_fraction: number;
       total_nights: number;
       status: string;
       visual_status: string;
@@ -105,10 +103,8 @@ function mapReceptionReservation(r: ReceptionCalendarDto['rooms'][number]['reser
     children: r.children,
     checkInDate: r.check_in_date,
     checkInTime: r.check_in_time,
-    checkInFraction: r.check_in_fraction,
     checkOutDate: r.check_out_date,
     checkOutTime: r.check_out_time,
-    checkOutFraction: r.check_out_fraction,
     totalNights: r.total_nights,
     status: r.status,
     visualStatus: r.visual_status as ReceptionCalendarReservation['visualStatus'],

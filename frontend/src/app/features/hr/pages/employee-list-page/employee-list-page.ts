@@ -19,16 +19,16 @@ import type { EmployeeListItem } from '../../models/hr.model';
   template: `
     <div class="employee-page" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
       <app-page-header
-        eyebrow="RRHH - Staff Directory"
         title="Directorio de Empleados"
         description="Consulta, busca y gestiona el personal del hotel."
-      />
-
-      <app-property-selector
-        [selectedPropId]="propertyCtx.currentPropId()"
-        [selectedLabel]="propertyCtx.currentPropLabel()"
-        (propIdChange)="onPropSelected($event)"
-      />
+      >
+        <app-property-selector
+          slot="actions"
+          [selectedPropId]="propertyCtx.currentPropId()"
+          [selectedLabel]="propertyCtx.currentPropLabel()"
+          (propIdChange)="onPropSelected($event)"
+        />
+      </app-page-header>
 
       <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px; position: relative;">

@@ -372,10 +372,19 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   private selectedAnchor: HTMLElement | null = null;
   private selectionPositionFrame: number | null = null;
   private cellSelectionFrame: number | null = null;
+  private scrollToCurrentTimeFrame: number | null = null;
   private lastCellSelectionKey = '';
+  /** Primer posicionamiento automático de la vista semanal en el día actual. */
+  private pendingScrollToToday = false;
+  /** Línea vertical "ahora": indicador de la hora local sobre la cuadrícula. */
+  private nowLineFrame: number | null = null;
+  private nowLineElement: HTMLElement | null = null;
+  private nowLineTimer: number | null = null;
 
   ngAfterViewInit(): void {
     this.disableNativeEditor();
+    this.startNowLineTimer();
+    this.scheduleNowLine();
   }
 
   ngOnDestroy(): void {
@@ -387,6 +396,17 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       cancelAnimationFrame(this.cellSelectionFrame);
       this.cellSelectionFrame = null;
     }
+    if (this.scrollToCurrentTimeFrame !== null) {
+      cancelAnimationFrame(this.scrollToCurrentTimeFrame);
+      this.scrollToCurrentTimeFrame = null;
+    }
+    this.stopNowLineTimer();
+    if (this.nowLineFrame !== null) {
+      cancelAnimationFrame(this.nowLineFrame);
+      this.nowLineFrame = null;
+    }
+    this.nowLineElement?.remove();
+    this.nowLineElement = null;
   }
 
   @HostListener('window:resize')
@@ -394,6 +414,30 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     if (this.selectedAnchor && this.selectedSlot()) {
       this.positionSelectionPopover(this.selectedAnchor);
     }
+    this.scheduleNowLine();
+  }
+
+  /**
+   * Cierra el panel de selección al hacer click en cualquier otra parte del
+   * sistema. Los clicks dentro del panel se ignoran (sus botones ya gestionan
+   * su propia acción) y los clicks dentro del Scheduler quedan a cargo de
+   * `onSelect`: así una nueva selección reemplaza el panel en lugar de
+   * cerrarlo por el camino del listener de documento.
+   */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.selectedSlot()) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+
+    const popover = this.selectionPopover?.nativeElement;
+    if (popover && popover.contains(target)) return;
+
+    const schedule = this.hotelSchedule;
+    if (schedule?.element && schedule.element.contains(target)) return;
+
+    this.dismissSelection();
+    schedule?.removeSelectedClass();
   }
 
   readonly selectedEvent = signal<TimelineEvent | null>(null);
@@ -482,14 +526,205 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   goToday(): void {
     this.closeDetail();
     const today = new Date();
-    this.viewStartDate.set(this.currentView() === 'TimelineMonth'
-      ? this.toIsoDate(this.monthStart(today))
-      : this.toIsoDate(this.weekStart(today)));
+    const isTimelineWeek = this.currentView() === 'TimelineWeek';
+    this.viewStartDate.set(isTimelineWeek
+      ? this.toIsoDate(this.weekStart(today))
+      : this.toIsoDate(this.monthStart(today)));
+    // La vista semanal es por horas: "Hoy" navega a la semana actual y además
+    // desplaza el scroll horizontal hasta la hora actual del día, para que
+    // (p. ej. un domingo) no quede lejos del primer día de la semana.
+    if (isTimelineWeek) this.scrollToCurrentTime(today);
+  }
+
+  /**
+   * Syncfusion dispara `dataBound` tras cada render de la vista. Se usa para
+   * posicionar el scroll inicial de la vista semanal en el día/hora actual al
+   * abrir la página o al cambiar de Mes → Semana.
+   */
+  onDataBound(): void {
+    // Re-ancla y reposiciona la línea "ahora" tras cada render de la vista
+    // (navegación, cambio de vista o carga de datos).
+    this.scheduleNowLine();
+    // Cubre también estados iniciales con nodos pre-colapsados: la columna de
+    // recursos es la fuente de verdad de qué filas están ocultas.
+    this.syncCollapsedRows();
+    if (this.currentView() !== 'TimelineWeek' || this.pendingScrollToToday) return;
+    // En el primer render el @ViewChild puede no estar resuelto todavía; si no
+    // hay instancia del schedule se descarta este disparo y el siguiente
+    // dataBound (tras la carga de datos) reintentará el posicionamiento.
+    if (!this.hotelSchedule) return;
+    this.pendingScrollToToday = true;
+    this.scrollToCurrentTime(new Date());
+  }
+
+  /**
+   * Desplaza el scroll horizontal del Timeline hasta ~1 hora antes de la
+   * hora actual del día, para que la línea "ahora" no quede pegada al borde
+   * inicial del calendario. El objetivo se recorta al inicio de la semana
+   * visible (p. ej. lunes 00:30 → domingo 23:30 de la semana anterior no
+   * puede posicionarse dentro del rango). Se difiere dos frames para que
+   * Syncfusion haya renderizado la semana y la cuadrícula con el nuevo rango
+   * antes de calcular la posición X.
+   */
+  private scrollToCurrentTime(date: Date): void {
+    const schedule = this.hotelSchedule;
+    if (!schedule) return;
+    const target = new Date(date.getTime() - 60 * 60 * 1000);
+    const weekStart = new Date(`${this.toIsoDate(this.weekStart(date))}T00:00:00`);
+    const clamped = target.getTime() < weekStart.getTime() ? weekStart : target;
+    const hour = `${String(clamped.getHours()).padStart(2, '0')}:${String(clamped.getMinutes()).padStart(2, '0')}`;
+    if (this.scrollToCurrentTimeFrame !== null) {
+      cancelAnimationFrame(this.scrollToCurrentTimeFrame);
+    }
+    this.scrollToCurrentTimeFrame = requestAnimationFrame(() => {
+      this.scrollToCurrentTimeFrame = requestAnimationFrame(() => {
+        this.scrollToCurrentTimeFrame = null;
+        schedule.scrollTo(hour, clamped);
+      });
+    });
+  }
+
+  /**
+   * Programa (en dos frames) el anclado de la línea "ahora". Se difiere para
+   * que Syncfusion haya renderizado la cuadrícula y el header antes de medir
+   * el ancho de columna y la posición X.
+   */
+  private scheduleNowLine(): void {
+    if (this.nowLineFrame !== null) {
+      cancelAnimationFrame(this.nowLineFrame);
+    }
+    this.nowLineFrame = requestAnimationFrame(() => {
+      this.nowLineFrame = requestAnimationFrame(() => {
+        this.nowLineFrame = null;
+        this.ensureNowLine();
+      });
+    });
+  }
+
+  private startNowLineTimer(): void {
+    this.stopNowLineTimer();
+    // Se llama a `ensureNowLine` (no a `updateNowLine`) para que la línea
+    // se auto-re-ancle si Syncfusion re-crea el `.e-content-wrap` sin
+    // disparar `dataBound`; el chequeo de `parentElement` es barato.
+    this.nowLineTimer = window.setInterval(() => this.ensureNowLine(), 30_000);
+  }
+
+  private stopNowLineTimer(): void {
+    if (this.nowLineTimer !== null) {
+      window.clearInterval(this.nowLineTimer);
+      this.nowLineTimer = null;
+    }
+  }
+
+  /**
+   * Crea (o re-engancha) la línea "ahora" dentro del contenedor scrolleable
+   * de la cuadrícula (`.e-content-wrap`). Al vivir dentro del scroll, la
+   * línea se mueve con el contenido al desplazarse en horizontal y vertical.
+   */
+  private ensureNowLine(): void {
+    const schedule = this.hotelSchedule;
+    if (!schedule) return;
+    const wrap = schedule.element.querySelector<HTMLElement>('.e-content-wrap');
+    if (!wrap) return;
+    if (this.nowLineElement && this.nowLineElement.parentElement === wrap) {
+      this.updateNowLine();
+      return;
+    }
+    if (this.nowLineElement) this.nowLineElement.remove();
+    this.nowLineElement = document.createElement('div');
+    this.nowLineElement.className = 'timeline-now-line';
+    this.nowLineElement.setAttribute('role', 'presentation');
+    this.nowLineElement.innerHTML = '<span class="timeline-now-line-label"></span>';
+    wrap.appendChild(this.nowLineElement);
+    this.updateNowLine();
+  }
+
+  /**
+   * Posiciona la línea en la columna del día actual. Usa como fuente de
+   * verdad la API pública de Syncfusion, no heurísticas de DOM ni la señal
+   * `currentView()`:
+   *
+   * - `schedule.getCurrentViewDates()` devuelve `activeView.renderDates`, las
+   *   fechas exactas renderizadas de la vista activa (7 en Semana; la
+   *   cuadrícula completa de 5–6 semanas en Mes). `dayIndex` se resuelve por
+   *   búsqueda directa de hoy en esa lista, con lo que siempre coincide con
+   *   la columna pintada, sin matemática manual de inicios de cuadrícula.
+   * - `schedule.currentView` (propiedad de la librería) distingue la vista
+   *   por horas (TimelineWeek) de la de días (TimelineMonth): en Semana la
+   *   línea suma la fracción exacta de la hora (la columna representa 24h) y
+   *   en Mes queda al inicio de la columna del día (aproximado a la celda).
+   * - El ancho de columna de día se deriva de la propia tabla de contenido
+   *   (`offsetWidth / nº de fechas renderizadas`), garantizando que la
+   *   posición X corresponda 1:1 con las columnas pintadas.
+   * - Si "hoy" no está en el rango visible la línea se oculta.
+   */
+  private updateNowLine(): void {
+    const line = this.nowLineElement;
+    const schedule = this.hotelSchedule;
+    if (!line || !schedule) return;
+    const wrap = schedule.element.querySelector<HTMLElement>('.e-content-wrap');
+    if (!wrap || line.parentElement !== wrap) return;
+
+    const contentTable = wrap.querySelector<HTMLElement>('.e-content-table');
+    if (!contentTable) {
+      line.style.display = 'none';
+      return;
+    }
+
+    const renderDates = schedule.getCurrentViewDates();
+    if (renderDates.length === 0) {
+      line.style.display = 'none';
+      return;
+    }
+
+    const now = new Date();
+    const nowIso = this.toIsoDate(now);
+    const dayIndex = renderDates.findIndex((date) => this.toIsoDate(date) === nowIso);
+    if (dayIndex < 0) {
+      line.style.display = 'none';
+      return;
+    }
+
+    const totalWidth = contentTable.offsetWidth;
+    if (totalWidth <= 0) {
+      line.style.display = 'none';
+      return;
+    }
+    const isHourView = schedule.currentView === 'TimelineWeek';
+    const dayWidth = totalWidth / renderDates.length;
+    // La fracción de hora asume columnas de día de 24h (el componente no
+    // configura workHours/startHour/endHour, así que la jornada visible es
+    // 00:00–24:00). Si algún día se acota la jornada, habrá que derivar la
+    // fracción de las horas visibles reales. En Semana la fracción es la hora
+    // exacta; en Mes se usa 0.5 para aproximar la línea al CENTRO de la
+    // columna del día (sin granularidad horaria, como corresponde a una
+    // vista por días).
+    const fraction = isHourView
+      ? (now.getHours() * 60 + now.getMinutes()) / (24 * 60)
+      : 0.5;
+    const left = (contentTable.offsetLeft ?? 0) + (dayIndex + fraction) * dayWidth;
+    const height = contentTable.offsetHeight;
+
+    line.style.display = 'block';
+    line.style.top = '0px';
+    line.style.left = `${left}px`;
+    line.style.height = `${height}px`;
+    line.setAttribute(
+      'aria-label',
+      `Hora actual: ${now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`,
+    );
+    const label = line.querySelector<HTMLElement>('.timeline-now-line-label');
+    if (label) {
+      label.textContent = `Ahora · ${now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+    }
   }
 
   setView(view: TimelineView): void {
     if (view === this.currentView()) return;
     this.closeDetail();
+    // Al volver de Mes → Semana se permite recentrar el scroll en el día
+    // actual de nuevo (el dataBound posterior lo hará).
+    if (view === 'TimelineWeek') this.pendingScrollToToday = false;
     const currentDate = new Date(`${this.viewStartDate()}T12:00:00`);
     this.currentView.set(view);
     this.viewStartDate.set(this.toIsoDate(
@@ -525,6 +760,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
    */
   onScheduleCreated(): void {
     this.disableNativeEditor();
+    this.scheduleNowLine();
   }
 
   private disableNativeEditor(): void {
@@ -545,6 +781,49 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       || args.requestType === 'eventRemove') {
       args.cancel = true;
     }
+  }
+
+  /**
+   * Al colapsar/expandir un nodo padre, Syncfusion oculta las filas con la
+   * clase `e-hidden` en tres tablas a la vez (columna de recursos, cuadrícula
+   * de días y tabla de eventos). Con agrupación anidada de 3 niveles
+   * (Piso → Tipo → Habitación), su `updateContent` construye la lista de
+   * filas de la cuadrícula con `querySelectorAll('.e-content-wrap tbody tr')`,
+   * que mezcla las filas de la tabla de contenido con las de la tabla de
+   * eventos; el mapeo por índice se descuadra y la columna de recursos
+   * colapsa mientras la cuadrícula de días conserva sus filas (espacio en
+   * blanco entre ambas columnas). Este self-heal re-aplica en la cuadrícula
+   * y en los eventos exactamente las mismas filas `e-hidden` que quedaron en
+   * la columna de recursos (fuente de verdad).
+   */
+  onActionComplete(args: ActionEventArgs): void {
+    if (args.requestType === 'resourceCollapsed' || args.requestType === 'resourceExpanded') {
+      this.syncCollapsedRows();
+    }
+  }
+
+  /** Re-sincroniza las filas ocultas entre las tres tablas del Timeline. */
+  private syncCollapsedRows(): void {
+    const schedule = this.hotelSchedule;
+    if (!schedule) return;
+    const resourceRows = Array.from(schedule.element.querySelectorAll<HTMLTableRowElement>(
+      '.e-resource-column-table tbody tr',
+    ));
+    if (resourceRows.length === 0) return;
+    const contentRows = Array.from(schedule.element.querySelectorAll<HTMLTableRowElement>(
+      '.e-content-table tbody tr',
+    ));
+    const eventRows = Array.from(schedule.element.querySelectorAll<HTMLTableRowElement>(
+      '.e-event-table tbody tr',
+    ));
+    // `e-hidden` en el schedule es exclusivamente el mecanismo de colapso de
+    // recursos; la columna de recursos (donde viven los iconos) es la fuente
+    // de verdad. Cuando nada está colapsado el toggle simplemente limpia.
+    resourceRows.forEach((row, index) => {
+      const hidden = row.classList.contains('e-hidden');
+      contentRows[index]?.classList.toggle('e-hidden', hidden);
+      eventRows[index]?.classList.toggle('e-hidden', hidden);
+    });
   }
 
   /** El Timeline nunca usa el editor nativo para crear reservas. */
@@ -777,6 +1056,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     args.cancel = true;
     const event = (Array.isArray(args.event) ? args.event[0] : args.event) as unknown as TimelineEvent;
     if (!event) return;
+    this.dismissSelection();
     this.selectedEvent.set(event);
     if (!event.BookingId) return;
     const reservation = this.calendarResource.value()?.rooms
@@ -793,10 +1073,8 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       children: event.Children,
       checkInDate: event.CheckInDate,
       checkInTime: event.CheckInTime,
-      checkInFraction: 0,
       checkOutDate: event.CheckOutDate,
       checkOutTime: event.CheckOutTime,
-      checkOutFraction: 0,
       totalNights: event.TotalNights,
       status: event.VisualStatus,
       visualStatus: event.VisualStatus,

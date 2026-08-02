@@ -28,22 +28,6 @@ reception_calendar_router = APIRouter(
 )
 
 
-def _parse_time_fraction(time_str: str) -> float:
-    """Convert 'HH:MM' to a 0.0–1.0 fraction of a 24-hour day.
-
-    00:00 → 0.0, 12:00 → 0.5, 23:59 → ~1.0
-    """
-    if not time_str or ":" not in time_str:
-        return 0.0
-    try:
-        parts = time_str.strip().split(":")
-        hours = int(parts[0])
-        minutes = int(parts[1]) if len(parts) > 1 else 0
-        return (hours * 60 + minutes) / (24 * 60)
-    except (ValueError, IndexError):
-        return 0.0
-
-
 def _reservation_status_label(booking: dict, today_str: str) -> str:
     """Determine visual status: 'active', 'upcoming', or 'past'."""
     check_in = (booking.get("check_in_date") or "")[:10]
@@ -218,10 +202,8 @@ def reception_calendar_api(
             "children": int(b.get("children") or 0),
             "check_in_date": (b.get("check_in_date") or "")[:10],
             "check_in_time": check_in_time_str,
-            "check_in_fraction": _parse_time_fraction(check_in_time_str),
             "check_out_date": (b.get("check_out_date") or "")[:10],
             "check_out_time": check_out_time_str,
-            "check_out_fraction": _parse_time_fraction(check_out_time_str),
             "total_nights": int(b.get("total_nights") or 0),
             "status": b.get("status", ""),
             "visual_status": visual,

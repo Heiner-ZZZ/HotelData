@@ -1,9 +1,15 @@
 <div class="payments-page">
   <app-page-header
-    eyebrow="Facturación"
     title="Pagos"
     description="Registro de pagos asociados a reservas."
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   <div class="pay-sub-nav">
     <a routerLink="/management/billing/invoices" class="pay-sub-link">Facturas</a>
@@ -12,15 +18,6 @@
       <span class="material-symbols-outlined btn-icon">print</span>
       Imprimir reporte
     </button>
-  </div>
-
-  <!-- ═══ Property Selector ═══ -->
-  <div class="pay-prop-bar">
-    <app-property-selector
-      [selectedPropId]="selectedPropId()"
-      [selectedLabel]="selectedLabel()"
-      (propIdChange)="onPropSelected($event)"
-    />
   </div>
 
   @if (selectedPropId()) {

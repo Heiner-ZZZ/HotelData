@@ -6,10 +6,8 @@ export interface ReceptionCalendarReservation {
   children: number;
   checkInDate: string;
   checkInTime: string;
-  checkInFraction: number;   // 0.0–1.0 — partial-day positioning
   checkOutDate: string;
   checkOutTime: string;
-  checkOutFraction: number;  // 0.0–1.0 — partial-day positioning
   totalNights: number;
   status: string;
   visualStatus: 'active' | 'upcoming' | 'past' | 'cancelled';

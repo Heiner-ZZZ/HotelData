@@ -1,15 +1,15 @@
 <div class="availability-page">
   <app-page-header
-    eyebrow="Disponibilidad"
     title="Control de inventario"
     description="Administra la disponibilidad de habitaciones, actualiza inventario y gestiona bloqueos operativos."
-  />
-
-  <app-property-selector
-    [selectedPropId]="store.selectedPropId()"
-    [selectedLabel]="store.selectedLabel()"
-    (propIdChange)="store.onPropSelected($event)"
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="store.selectedPropId()"
+      [selectedLabel]="store.selectedLabel()"
+      (propIdChange)="store.onPropSelected($event)"
+    />
+  </app-page-header>
 
   @switch (store.viewState()) {
     @case ('loading') {

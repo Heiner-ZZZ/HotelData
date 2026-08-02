@@ -112,9 +112,11 @@
         [resources]="resources()"
         [resourceHeaderTemplate]="resourceHeaderTemplate"
         (created)="onScheduleCreated()"
+        (dataBound)="onDataBound()"
         (navigating)="onNavigating($event)"
         (popupOpen)="onPopupOpen($event)"
         (actionBegin)="onActionBegin($event)"
+        (actionComplete)="onActionComplete($event)"
         (cellDoubleClick)="onCellDoubleClick($event)"
         (eventDoubleClick)="onEventDoubleClick($event)"
         (renderCell)="onRenderCell($event)"
@@ -189,8 +191,15 @@
           <div class="timeline-selection-copy">
             <span class="material-symbols-outlined">event_available</span>
             <div>
-              <strong>Crear reserva en Habitación {{ selection.roomNumber }}</strong>
-              <span>{{ selection.startDate }} · {{ selection.checkInTime }} → {{ selection.endDate }} · {{ selection.checkOutTime }}</span>
+              <strong>Crear reserva en Hab #{{ selection.roomNumber }}</strong>
+              <span class="timeline-selection-slot">
+                <i class="timeline-slot-arrow" aria-hidden="true">→</i>
+                {{ selection.startDate }} · {{ selection.checkInTime }}
+              </span>
+              <span class="timeline-selection-slot">
+                <i class="timeline-slot-arrow" aria-hidden="true">→</i>
+                {{ selection.endDate }} · {{ selection.checkOutTime }}
+              </span>
             </div>
           </div>
           <div class="timeline-selection-actions">

@@ -1,15 +1,15 @@
 <div class="rates-page">
   <app-page-header
-    eyebrow="Gestión comercial"
     title="Tarifas"
     description="Calendario operativo de tarifas por fecha para la propiedad seleccionada."
-  />
-
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   <!-- KPI Chart: 7-Day Rate Trend — hidden when hotel selected or in single-hotel mode -->
   @if (!propertyCtx.singleHotelMode()) {

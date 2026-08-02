@@ -1,22 +1,19 @@
 <div class="invl-page">
   <app-page-header
-    eyebrow="Facturación"
     title="Facturas"
     description="Consulta facturas emitidas, pagadas y anuladas. Filtra por estado, fecha o buscador."
-  />
-
-  <div class="invl-nav">
-    <a routerLink="/management/billing/invoices" class="invl-nav-link active">Facturas</a>
-    <a routerLink="/management/billing/payments" class="invl-nav-link">Pagos</a>
-  </div>
-
-  <!-- ═══ Property Selector ═══ -->
-  <div class="invl-prop-bar">
+  >
     <app-property-selector
+      slot="actions"
       [selectedPropId]="selectedPropId()"
       [selectedLabel]="selectedLabel()"
       (propIdChange)="onPropSelected($event)"
     />
+  </app-page-header>
+
+  <div class="invl-nav">
+    <a routerLink="/management/billing/invoices" class="invl-nav-link active">Facturas</a>
+    <a routerLink="/management/billing/payments" class="invl-nav-link">Pagos</a>
   </div>
 
   @if (selectedPropId()) {

@@ -1,18 +1,19 @@
 <div class="reservations-page">
+  <!-- El selector de hotel vive en la cabecera, al lado derecho de las frases
+       (mismo patrón que el dashboard de housekeeping). Solo staff lo ve. -->
   <app-page-header
-    eyebrow="Core de reservas"
     title="Recepción"
     description="Gestión de reservas, check-in y calendario de ocupación por hotel."
-  />
-
-  <!-- Hotel selector (solo staff — los clientes ven solo sus reservas) -->
-  @if (!isClient()) {
-    <app-property-selector
-      [selectedPropId]="calendarPropId()"
-      [selectedLabel]="calendarPropLabel()"
-      (propIdChange)="onCalendarPropSelected($event)"
-    />
-  }
+  >
+    @if (!isClient()) {
+      <app-property-selector
+        slot="actions"
+        [selectedPropId]="calendarPropId()"
+        [selectedLabel]="calendarPropLabel()"
+        (propIdChange)="onCalendarPropSelected($event)"
+      />
+    }
+  </app-page-header>
 
   <!-- View toggle: solo después de elegir hotel -->
   @if (hotelSelected() && !isClient()) {
@@ -24,8 +25,9 @@
         <span class="material-symbols-outlined" aria-hidden="true">view_list</span>
         <span>Lista de reservas</span>
       </button>
-      <button type="button" class="view-toggle-btn view-toggle-btn-new is-active"
-              aria-current="page"
+      <button type="button" class="view-toggle-btn view-toggle-btn-new"
+              [class.is-active]="activeViewTab() === 'timeline'"
+              [attr.aria-current]="activeViewTab() === 'timeline' ? 'page' : null"
               (click)="setViewTab('timeline')">
         <span class="material-symbols-outlined" aria-hidden="true">view_timeline</span>
         <span>Calendario Timeline</span>

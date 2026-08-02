@@ -1,15 +1,15 @@
 <div class="guests-page">
   <app-page-header
-    eyebrow="Gestión hotelera"
     title="Huéspedes"
     description="Lista de huéspedes por propiedad, con historial de reservas y gasto acumulado."
-  />
-
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="''"
-    (propIdChange)="onPropSelected($event)"
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="''"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   @if (message()) {
     <section class="notification success">

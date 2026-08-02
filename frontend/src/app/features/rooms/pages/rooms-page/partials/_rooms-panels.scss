@@ -11,6 +11,22 @@
   margin-bottom: 0.65rem;
 }
 
+/* Cajas colapsables (rp-tables): el panel-head actúa como disparador */
+.panel-head.collapsible-trigger {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapse-icon {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: var(--muted-text);
+  transition: transform 200ms;
+  flex-shrink: 0;
+  --icon-wght: 350;
+  --icon-opsz: 22;
+}
+
 .panel-head-icon {
   font-size: 1.25rem;
   color: var(--accent);

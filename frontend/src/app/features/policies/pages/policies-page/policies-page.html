@@ -1,15 +1,15 @@
 <div class="policies-page">
   <app-page-header
-    eyebrow="Gestion hotelera"
     title="Politicas"
     description="Operacion y reglas comerciales de la propiedad seleccionada."
-  />
-
-  <app-property-selector
-    [selectedPropId]="selectedPropId()"
-    [selectedLabel]="selectedLabel()"
-    (propIdChange)="onPropSelected($event)"
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   <!-- KPI Chart: Operational Stats — hidden when hotel selected or in single-hotel mode -->
   @if (!propertyCtx.singleHotelMode()) {
