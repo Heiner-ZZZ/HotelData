@@ -9,6 +9,7 @@ Returns:
 from __future__ import annotations
 
 import logging
+from datetime import date as date_type, timedelta
 from typing import Any
 
 from src.database.connection import get_database
@@ -343,13 +344,18 @@ def list_upcoming_events(prop_id: int | None = None, days: int = 30) -> list[dic
     """Return upcoming housekeeping tasks and maintenance events for calendar display."""
     db = get_database()
     today = now_iso()[:10]
+    end_date = (date_type.fromisoformat(today) + timedelta(days=days)).isoformat()
 
     query: dict[str, Any] = {"status": {"$ne": "deleted"}}
     if prop_id:
         query["prop_id"] = prop_id
 
     # Upcoming maintenance tasks
-    mt_query = {**query, "status": {"$in": ["scheduled", "in_progress"]}, "scheduled_date": {"$gte": today}}
+    mt_query = {
+        **query,
+        "status": {"$in": ["scheduled", "in_progress", "inspection"]},
+        "scheduled_date": {"$gte": today, "$lte": end_date},
+    }
     maintenance_events = []
     for doc in db[MAINTENANCE_COLLECTION].find(mt_query).sort("scheduled_date", 1).limit(100):
         doc["id"] = str(doc.pop("_id"))
@@ -360,7 +366,11 @@ def list_upcoming_events(prop_id: int | None = None, days: int = 30) -> list[dic
         maintenance_events.append(doc)
 
     # Pending housekeeping tasks
-    hk_query = {**query, "status": {"$in": ["pending", "in_progress"]}}
+    hk_query = {
+        **query,
+        "status": {"$in": ["pending", "in_progress", "inspection"]},
+        "scheduled_date": {"$gte": today, "$lte": end_date},
+    }
     task_events = []
     for doc in db[HOUSEKEEPING_COLLECTION].find(hk_query).sort("created_at", -1).limit(100):
         doc["id"] = str(doc.pop("_id"))

@@ -42,6 +42,7 @@ class ReservationInput:
     guest_phone: str = ""
     cedula: str = ""
     room_type_id: str = ""
+    hotel_room_id: str = ""
     rate_plan_id: str = ""
     coupon_code: str = ""
     contract_code: str = ""

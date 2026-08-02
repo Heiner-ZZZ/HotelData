@@ -129,6 +129,12 @@ import { FormGroup } from '@angular/forms';
               <span>{{ preselectedRoomTypeName() }}</span>
             </div>
           }
+          @if (preselectedRoomNumber()) {
+            <div class="avail-badge" style="--avail-color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent);">
+              <span class="material-symbols-outlined avail-icon">door_front</span>
+              <span>Habitación {{ preselectedRoomNumber() }} seleccionada</span>
+            </div>
+          }
           @if (availabilityInfo(); as avail) {
             <div class="avail-badge" [style.--avail-color]="avail.color">
               <span class="material-symbols-outlined avail-icon">{{ avail.icon }}</span>
@@ -182,6 +188,7 @@ export class RnPlannerSectionComponent {
   readonly hotelOptions = input<{ propId: number; label: string }[]>([]);
   readonly selectedHotel = input<{ propId: number; label: string } | null>(null);
   readonly preselectedRoomTypeName = input<string>('');
+  readonly preselectedRoomNumber = input<string>('');
   readonly today = input<string>('');
   readonly checkInDate = input<string>('');
   readonly checkOutDate = input<string>('');

@@ -3,7 +3,16 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
-import type { GridReadyEvent, GridApi, SelectionChangedEvent } from 'ag-grid-community';
+import type {
+  CellKeyDownEvent,
+  FullWidthCellKeyDownEvent,
+  GetRowIdParams,
+  GridReadyEvent,
+  GridApi,
+  RowClassParams,
+  RowClickedEvent,
+  SelectionChangedEvent,
+} from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, ValidationModule, themeQuartz } from 'ag-grid-community';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -18,9 +27,14 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 
-import type { ReservationStats, ReservationsListViewModel } from '../../models/reservations.model';
+import type {
+  ReservationListItem,
+  ReservationStats,
+  ReservationsListViewModel,
+} from '../../models/reservations.model';
 import type { DateHistoryEntry } from '../../services/reservations-api.service';
-import { ReceptionCalendarComponent } from '../../components/reception-calendar/reception-calendar';
+import type { ReceptionCalendarReservation } from '../../models/reception-calendar.model';
+import { ReceptionTimelineComponent } from '../../components/reception-timeline/reception-timeline';
 
 import { todayIso, shiftDate } from './reservations-list-page.utils';
 import { buildColumnDefs } from './reservations-list-page.columns';
@@ -42,7 +56,7 @@ ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
     PageHeaderComponent,
     PropertySelectorComponent,
     ReactiveFormsModule,
-    ReceptionCalendarComponent,
+    ReceptionTimelineComponent,
     ReservationsFiltersBarComponent,
     ReservationsHistoryModalComponent,
     ReservationsStatsBarComponent,
@@ -105,6 +119,9 @@ export class ReservationsListPageComponent {
   readonly currentFolioFilter = computed(() => this.queryParams().folio);
   readonly currentStayStatusFilter = computed(() => this.queryParams().stayStatus);
   readonly currentSourceFilter = computed(() => this.queryParams().bookingSource);
+  readonly activeViewTab = computed<'list' | 'timeline'>(() =>
+    this.queryParams().view === 'list' ? 'list' : 'timeline',
+  );
 
   readonly isStaff = this.reservationsAuth.isStaff;
   readonly isClient = this.reservationsAuth.isClient;
@@ -135,33 +152,35 @@ export class ReservationsListPageComponent {
     suppressMovable: true,
   };
   readonly rowClassRules = {
-    'row-pending': (p: any) => p.data?.status === 'pending',
+    'row-pending': (p: RowClassParams<ReservationListItem>) => p.data?.status === 'pending',
   };
   readonly columnDefs = buildColumnDefs({
     onConfirm: (id, name) => this.runConfirmAction(id, name),
     onReject: (id, name) => this.runRejectAction(id, name),
     isStaff: () => this.isStaff(),
   });
-  readonly getRowId = (params: any) => String(params.data?.bookingId ?? params.rowIndex);
+  readonly getRowId = (params: GetRowIdParams<ReservationListItem>) => String(params.data?.bookingId ?? '');
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi.set(params.api);
   }
 
-  onRowClicked(params: any) {
+  onRowClicked(params: RowClickedEvent<ReservationListItem>) {
     const row = params.data;
     if (row?.bookingId) void this.promptNavigate(row);
   }
 
-  onCellKeyDown(params: any) {
-    if (params.event?.key === 'Enter') {
+  onCellKeyDown(
+    params: CellKeyDownEvent<ReservationListItem> | FullWidthCellKeyDownEvent<ReservationListItem>,
+  ): void {
+    if (params.event instanceof KeyboardEvent && params.event.key === 'Enter') {
       params.event.stopPropagation();
       const row = params.data;
       if (row?.bookingId) void this.promptNavigate(row);
     }
   }
 
-  private async promptNavigate(row: any): Promise<void> {
+  private async promptNavigate(row: ReservationListItem): Promise<void> {
     const price = row.totalPrice != null
       ? new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(row.totalPrice)
       : null;
@@ -184,42 +203,37 @@ export class ReservationsListPageComponent {
     }
   }
 
-  /** View toggle: 'list' (default) or 'calendar' (alternative). */
-  readonly viewMode = signal<'list' | 'calendar'>('list');
-
-  /** URL ↔ view two-way sync. Bidirectional so back/forward buttons work. */
+  /** URL remains the single source of truth for the active reception view. */
   constructor() {
-    // Sync date form with URL query params reactively
     effect(() => {
       const date = this.currentDateFilter();
       this.dateForm.controls.createdDate.setValue(date, { emitEvent: false });
     });
 
-    // Sync viewMode from URL (?view=list|calendar). When URL changes
-    // externally (link, back button) we mirror into the page signal.
-    effect(() => {
-      const view = this.queryParams().view;
-      if (this.viewMode() !== view) {
-        this.viewMode.set(view);
-      }
-    });
   }
 
-  // URL is the single source of truth for viewMode. The sync effect in the
-  // constructor reflects the URL change into the page signal reactively.
-  // Writing to viewMode.set(mode) here would race with that effect and
-  // briefly revert the toggle before the URL catches up ("flash bug").
-  setViewMode(mode: 'list' | 'calendar') {
+  setViewTab(tab: 'list' | 'timeline'): void {
+    if (tab === 'list') {
+      void this.router.navigate([], {
+        relativeTo: this.activatedRoute,
+        queryParams: { view: null },
+        queryParamsHandling: 'merge',
+      });
+      return;
+    }
+
     void this.router.navigate([], {
       relativeTo: this.activatedRoute,
-      queryParams: { view: mode },
+      queryParams: {
+        view: 'calendar',
+      },
       queryParamsHandling: 'merge',
     });
   }
 
   // ─── Bulk check-in (multi-row selection) ───
   /** Selected reservations from the ag-grid selection model. */
-  readonly selectedRows = signal<any[]>([]);
+  readonly selectedRows = signal<ReservationListItem[]>([]);
   readonly bulkActionLoading = signal(false);
   readonly bulkActionProgress = signal<{ done: number; total: number; failures: string[] }>({
     done: 0,
@@ -233,7 +247,7 @@ export class ReservationsListPageComponent {
   readonly canBulkCheckIn = computed(() => {
     const rows = this.selectedRows();
     if (rows.length === 0) return false;
-    return rows.every((r: any) => r?.status === 'confirmed');
+    return rows.every((r) => r.status === 'confirmed');
   });
 
   onSelectionChanged(event: SelectionChangedEvent) {
@@ -266,7 +280,7 @@ export class ReservationsListPageComponent {
 
     const failures: string[] = [];
     for (let i = 0; i < rows.length; i++) {
-      const row: any = rows[i];
+      const row = rows[i];
       const bookingId: string = row?.bookingId;
       if (!bookingId) {
         failures.push(`Fila sin bookingId`);
@@ -278,12 +292,13 @@ export class ReservationsListPageComponent {
             payment_method: '',
           })
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Dev visibility: log the raw error so devs see which booking +
         // HTTP status failed. The user-facing toast still gets the friendly
         // message via the failures array.
         if (isDevMode()) console.error('[reservations-list] bulk check-in failed for', bookingId, err);
-        const msg = err?.error?.detail || err?.message || 'Error al registrar check-in';
+        const error = err as { error?: { detail?: string }; message?: string };
+        const msg = error.error?.detail || error.message || 'Error al registrar check-in';
         failures.push(`${row.guestName || bookingId}: ${msg}`);
       } finally {
         // Single signal.set call replaces the previous update-with-slice
@@ -390,8 +405,9 @@ export class ReservationsListPageComponent {
     });
   }
 
-  onCalendarReservationClick(reservation: any) {
-    // Could navigate to reservation detail or keep modal open
+  onCalendarReservationClick(_reservation: ReceptionCalendarReservation): void {
+    // The calendar engine owns the detail panel; keep this output available
+    // for future shared actions without duplicating the modal in the page.
   }
 
   applyFilter(overrides: { folio?: string; stayStatus?: string; source?: string; status?: string; createdDate?: string } = {}): void {

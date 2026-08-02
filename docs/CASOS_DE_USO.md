@@ -629,7 +629,7 @@
 
 **Descripción**: Ejecutar la operación diaria del hotel: check-in/out, reservas manuales, gestión de habitaciones, inventario, housekeeping, mantenimiento y recepción.  
 **Actores**: Recepcionista, Gerente, Hotel Partner, Personal de Housekeeping, Técnico  
-**Módulos Backend**: `reservations`, `housekeeping`, `reception`, `reception-calendar`  
+**Módulos Backend**: `reservations` (incluye la API del Timeline), `housekeeping`, `reception`
 **Módulos Frontend**: `management`, `check-ins`, `check-outs`, `manual-reservations`, `housekeeping`, `reception`, `shifts`, `availability`
 
 ---

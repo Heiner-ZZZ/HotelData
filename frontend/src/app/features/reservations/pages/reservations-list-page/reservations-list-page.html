@@ -16,27 +16,28 @@
 
   <!-- View toggle: solo después de elegir hotel -->
   @if (hotelSelected() && !isClient()) {
-    <div class="view-toggle-bar">
+    <nav class="view-toggle-bar" aria-label="Vistas de recepción">
       <button type="button" class="view-toggle-btn"
-              [class.is-active]="viewMode() === 'calendar'"
-              (click)="setViewMode('calendar')">
-        <span class="material-symbols-outlined">calendar_view_week</span>
-        Calendario
+              [class.is-active]="activeViewTab() === 'list'"
+              [attr.aria-current]="activeViewTab() === 'list' ? 'page' : null"
+              (click)="setViewTab('list')">
+        <span class="material-symbols-outlined" aria-hidden="true">view_list</span>
+        <span>Lista de reservas</span>
       </button>
-      <button type="button" class="view-toggle-btn"
-              [class.is-active]="viewMode() === 'list'"
-              (click)="setViewMode('list')">
-        <span class="material-symbols-outlined">view_list</span>
-        Lista de reservas
+      <button type="button" class="view-toggle-btn view-toggle-btn-new is-active"
+              aria-current="page"
+              (click)="setViewTab('timeline')">
+        <span class="material-symbols-outlined" aria-hidden="true">view_timeline</span>
+        <span>Calendario Timeline</span>
       </button>
-    </div>
+    </nav>
   }
 
   <!-- ═══ Calendar view (solo staff) ═══ -->
-  @if (viewMode() === 'calendar' && hotelSelected() && !isClient()) {
+  @if (activeViewTab() === 'timeline' && hotelSelected() && !isClient()) {
     <div class="calendar-section">
       @if (calendarPropId() > 0) {
-        <app-reception-calendar
+        <app-reception-timeline
           [propId]="calendarPropId()"
           (reservationClick)="onCalendarReservationClick($event)"
         />
@@ -45,7 +46,7 @@
   }
 
   <!-- ═══ List view ═══ -->
-  @if (viewMode() === 'list') {
+  @if (activeViewTab() === 'list') {
     <div class="action-row">
       @if (isStaff()) {
         <a routerLink="new" class="primary-link">

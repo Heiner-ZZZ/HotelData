@@ -15,6 +15,7 @@
     "module": "preserve",
     "useDefineForClassFields": false,
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "lib": [
       "ES2024",
       "dom"

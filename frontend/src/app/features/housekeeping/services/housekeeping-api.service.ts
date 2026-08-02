@@ -59,6 +59,48 @@ export interface MaintenanceTaskItem {
   completedAt: string | null;
 }
 
+/** Read-only operational item used by the reception Timeline overlay. */
+export interface UpcomingHousekeepingEvent {
+  id: string;
+  event_type: 'maintenance' | 'task' | string;
+  prop_id?: number;
+  hotel_room_id?: string;
+  room_id?: string;
+  room_label?: string;
+  title?: string;
+  task_type?: string;
+  status?: string;
+  priority?: string;
+  scheduled_date?: string;
+  created_at?: string;
+  assigned_to?: string;
+  note?: string;
+  description?: string;
+}
+
+/** Availability blackout returned by the existing partner read endpoint. */
+export interface PropertyBlackoutItem {
+  blackout_id: string;
+  prop_id: number;
+  room_type_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  blocked_rooms: number;
+  room_numbers?: string[];
+  range_label?: string;
+}
+
+export interface PropertyBlackoutsResponse {
+  items: PropertyBlackoutItem[];
+  total: number;
+}
+
+export interface UpcomingEventsQueryResponse {
+  items: UpcomingHousekeepingEvent[];
+  total?: number;
+}
+
 export interface StaffUser {
   username: string;
   display_name: string;
@@ -315,12 +357,15 @@ export class HousekeepingApiService {
     return this.http.get<HousekeepingDashboard>('/housekeeping/dashboard', { params });
   }
 
-  getUpcomingEvents(propId?: number) {
-    let params = new HttpParams();
+  getUpcomingEvents(propId?: number, days = 90) {
+    let params = new HttpParams().set('days', String(days));
     if (propId) params = params.set('prop_id', String(propId));
-    return this.http.get<{ id: string; event_type: string; room_label: string; title?: string; task_type: string; status: string; priority: string; scheduled_date?: string; created_at: string; assigned_to?: string; note?: string }[]>(
-      '/housekeeping/upcoming-events', { params }
-    );
+    return this.http.get<UpcomingHousekeepingEvent[]>('/housekeeping/upcoming-events', { params });
+  }
+
+  getPropertyBlackouts(propId: number) {
+    const params = new HttpParams().set('prop_id', String(propId));
+    return this.http.get<PropertyBlackoutsResponse>('/management/availability/blackouts', { params });
   }
 
   // ── Weekly Calendar ──

@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from pymongo import ASCENDING
 
+from src.app.core.timezone import local_today
 from src.app.modules.reservations.service._helpers import utc_now
 from src.app.modules.partner.services.audit import register_action
 
@@ -103,13 +104,50 @@ def assign_rooms_to_booking(
     """
     booking = db.booking_orders.find_one(
         {"booking_id": booking_id},
-        {"_id": 0, "status": 1, "is_test": 1},
+        {
+            "_id": 0,
+            "prop_id": 1,
+            "room_type_id": 1,
+            "check_out_date": 1,
+            "status": 1,
+            "stay_status": 1,
+            "is_test": 1,
+        },
     )
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if not isinstance(room_ids, list):
         raise HTTPException(status_code=400, detail="room_ids must be a list")
+    if any(not isinstance(room_id, str) or not room_id.strip() for room_id in room_ids):
+        raise HTTPException(status_code=400, detail="room_ids must contain valid room ids")
+    if len(set(room_ids)) != len(room_ids):
+        raise HTTPException(status_code=400, detail="room_ids must not contain duplicates")
+
+    if booking.get("status") in {"cancelled", "rejected"} or booking.get("stay_status") in {"checked_out", "cancelled"}:
+        raise HTTPException(status_code=400, detail="Cannot reassign a cancelled or completed booking")
+
+    check_out_date = str(booking.get("check_out_date") or "")[:10]
+    if check_out_date and check_out_date < local_today():
+        raise HTTPException(status_code=400, detail="Cannot reassign a booking after check-out")
+
+    prop_id = int(booking.get("prop_id") or 0)
+    if room_ids:
+        room_filter: dict[str, Any] = {
+            "hotel_room_id": {"$in": room_ids},
+            "prop_id": prop_id,
+            "is_active": True,
+        }
+        room_documents = list(db.hotel_rooms.find(
+            room_filter,
+            {"_id": 0, "hotel_room_id": 1, "room_type_id": 1},
+        ))
+        if len(room_documents) != len(room_ids):
+            raise HTTPException(status_code=400, detail="One or more rooms do not belong to this hotel or are inactive")
+
+        booking_room_type = booking.get("room_type_id")
+        if booking_room_type and any(room.get("room_type_id") != booking_room_type for room in room_documents):
+            raise HTTPException(status_code=400, detail="Assigned rooms must match the booking room type")
 
     now = utc_now()
     db.booking_orders.update_one(

@@ -6,6 +6,19 @@ export interface DateHistoryEntry {
   date: string;
   count: number;
 }
+
+/** Raw rate-plan row returned by `GET /reservations/rate-plans`. */
+interface RatePlanRaw {
+  rate_plan_id: string;
+  name: string;
+  description: string;
+  base_rate: number;
+  currency: string;
+  is_active: boolean;
+  avg_rate_per_night: number;
+  total_price: number;
+  nights: number;
+}
 import {
   mapReservationCreatePayload,
   mapReservationCreateResult,
@@ -36,6 +49,7 @@ export interface ReceptionCalendarDto {
     hotel_room_id: string;
     room_type_name: string;
     room_type_id: string;
+    floor: string;
     reservations: {
       booking_id: string;
       guest_name: string;
@@ -60,6 +74,9 @@ export interface ReceptionCalendarDto {
   start_date: string;
   end_date: string;
   today: string;
+  /** Hotel-wide policy defaults (HH:MM) used to prefill a new reservation. */
+  check_in_time?: string;
+  check_out_time?: string;
 }
 
 export function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalendarData {
@@ -69,11 +86,14 @@ export function mapReceptionCalendar(dto: ReceptionCalendarDto): ReceptionCalend
       hotelRoomId: rm.hotel_room_id,
       roomTypeName: rm.room_type_name,
       roomTypeId: rm.room_type_id,
+      floor: rm.floor || '',
       reservations: rm.reservations.map(mapReceptionReservation),
     })),
     startDate: dto.start_date,
     endDate: dto.end_date,
     today: dto.today,
+    checkInTime: dto.check_in_time || '',
+    checkOutTime: dto.check_out_time || '',
   };
 }
 
@@ -281,15 +301,6 @@ export class ReservationsApiService {
     );
   }
 
-  /** Fetch reception calendar data — reservations grouped by room type for a property. */
-  getReceptionCalendar(propId: number, startDate?: string, endDate?: string) {
-    let params = new HttpParams().set('prop_id', String(propId));
-    if (startDate) params = params.set('start_date', startDate);
-    if (endDate) params = params.set('end_date', endDate);
-    return this.http.get<ReceptionCalendarDto>('/management/reception/calendar', { params })
-      .pipe(map(dto => mapReceptionCalendar(dto)));
-  }
-
   /** Fetch available rate plans for a hotel + dates + optional room type */
   getAvailableRatePlans(propId: number, checkIn: string, checkOut: string, roomTypeId?: string) {
     let params = new HttpParams()
@@ -299,7 +310,7 @@ export class ReservationsApiService {
     if (roomTypeId) {
       params = params.set('room_type_id', roomTypeId);
     }
-    return this.http.get<{ rate_plans: any[] }>(
+    return this.http.get<{ rate_plans: RatePlanRaw[] }>(
       '/reservations/rate-plans',
       { params },
     ).pipe(map(dto => ({

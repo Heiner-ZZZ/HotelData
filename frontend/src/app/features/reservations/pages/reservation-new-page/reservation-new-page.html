@@ -44,6 +44,7 @@
           [hotelOptions]="hotelOptions()"
           [selectedHotel]="selectedHotel()"
           [preselectedRoomTypeName]="preselectedRoomTypeName()"
+          [preselectedRoomNumber]="preselectedRoomNumber()"
           [today]="today"
           [checkInDate]="form.controls.checkInDate.value || ''"
           [checkOutDate]="form.controls.checkOutDate.value || ''"
@@ -133,12 +134,12 @@
                   <p>{{ preview()?.cancellationPolicy }}</p>
                 </div>
               </div>
-              @if (selectedHotel()) {
+              @if (selectedHotel() && checkInOutPolicyLabel()) {
                 <div class="policy-item">
                   <span class="material-symbols-outlined">schedule</span>
                   <div>
                     <strong>Check-in / Check-out</strong>
-                    <p>Check-in desde las {{ form.controls.checkInTime.value || '15:00' }} · Check-out hasta las {{ form.controls.checkOutTime.value || '12:00' }}</p>
+                    <p>{{ checkInOutPolicyLabel() }}</p>
                   </div>
                 </div>
               }

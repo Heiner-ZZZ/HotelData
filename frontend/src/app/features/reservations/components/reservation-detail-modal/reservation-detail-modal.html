@@ -1,0 +1,85 @@
+<div class="reservation-detail-backdrop"
+     [class.is-side-panel]="presentation() === 'side-panel'"
+     role="presentation"
+     tabindex="-1"
+     (click)="close()">
+  <article class="reservation-detail-dialog"
+           role="dialog"
+           aria-labelledby="reservation-detail-title"
+           tabindex="-1"
+           [cdkTrapFocus]="presentation() === 'modal'"
+           [attr.aria-modal]="presentation() === 'modal' ? 'true' : null"
+           (click)="$event.stopPropagation()">
+    <header class="reservation-detail-header">
+      <div>
+        <span class="reservation-detail-badge" [class]="'status-' + reservation().visualStatus">
+          {{ statusLabel(reservation().visualStatus) }}
+        </span>
+        <h2 id="reservation-detail-title">{{ reservation().guestName || 'Reserva sin huésped' }}</h2>
+        <p>{{ reservation().bookingId }}</p>
+      </div>
+      <button #closeButton type="button" class="reservation-detail-close" (click)="close()" aria-label="Cerrar detalle">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="reservation-detail-body">
+      @if (detailResource.isLoading()) {
+        <div class="reservation-detail-state">
+          <span class="material-symbols-outlined reservation-detail-spin">progress_activity</span>
+          <span>Cargando detalle…</span>
+        </div>
+      } @else if (detailResource.error(); as error) {
+        <div class="reservation-detail-error" role="alert">
+          <span class="material-symbols-outlined">error_outline</span>
+          <div>
+            <strong>No se pudo cargar el detalle.</strong>
+            <span>{{ error.message || 'La API devolvió un error al consultar la reserva.' }}</span>
+          </div>
+          <button type="button" class="reservation-detail-retry" (click)="reload()">Reintentar</button>
+        </div>
+      } @else {
+        <dl class="reservation-detail-grid">
+          <div><dt>Habitación</dt><dd>{{ reservation().roomNumber || 'Sin asignar' }}</dd></div>
+          <div><dt>Estancia</dt><dd>{{ reservation().totalNights }} noche(s)</dd></div>
+          <div><dt>Entrada</dt><dd>{{ reservation().checkInDate }} {{ formatTime(reservation().checkInTime) }}</dd></div>
+          <div><dt>Salida</dt><dd>{{ reservation().checkOutDate }} {{ formatTime(reservation().checkOutTime) }}</dd></div>
+          <div><dt>Huéspedes</dt><dd>{{ reservation().adults }} adulto(s) · {{ reservation().children }} niño(s)</dd></div>
+          @if (reservation().totalPrice !== null) {
+            <div><dt>Total</dt><dd>{{ reservation().totalPrice | number:'1.2-2' }} {{ reservation().currency }}</dd></div>
+          }
+        </dl>
+
+        @if (detailResource.value(); as detail) {
+          <div class="reservation-detail-enriched">
+            <div><dt>Huésped</dt><dd>{{ detail.guestName || reservation().guestName }}</dd></div>
+            @if (detail.guestEmail) {
+              <div><dt>Email</dt><dd>{{ detail.guestEmail }}</dd></div>
+            }
+            @if (detail.guestPhone) {
+              <div><dt>Teléfono</dt><dd>{{ detail.guestPhone }}</dd></div>
+            }
+            @if (detail.hotelLabel) {
+              <div><dt>Hotel</dt><dd>{{ detail.hotelLabel }}</dd></div>
+            }
+            @if (detail.stayStatus) {
+              <div><dt>Estancia</dt><dd>{{ detail.stayStatus }}</dd></div>
+            }
+          </div>
+        }
+
+        <div class="reservation-detail-actions">
+          <a [routerLink]="['/management/check-ins', reservation().bookingId]" class="reservation-detail-action reservation-detail-primary">
+            <span class="material-symbols-outlined">login</span>
+            Ir a Check-in
+          </a>
+          <a [routerLink]="['/management/check-outs', reservation().bookingId]" class="reservation-detail-action reservation-detail-secondary">
+            <span class="material-symbols-outlined">logout</span>
+            Ir a Check-out
+          </a>
+          <button type="button" class="reservation-detail-action reservation-detail-ghost" (click)="close()">Cerrar</button>
+        </div>
+      }
+    </div>
+  </article>
+</div>

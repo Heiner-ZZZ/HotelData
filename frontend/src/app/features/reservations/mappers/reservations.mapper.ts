@@ -105,6 +105,7 @@ export function mapReservationCreatePayload(input: ReservationCreateInput) {
     special_requests: input.specialRequests || [],
     selected_amenities: input.selectedAmenities || [],
     room_type_id: input.roomTypeId || '',
+    hotel_room_id: input.hotelRoomId || '',
     rate_plan_id: input.ratePlanId || '',
     transaction_id: input.transactionId || '',
     payment_method: input.paymentMethod || '',
@@ -288,7 +289,7 @@ export function mapReservationDetail(dto: ReservationDetailDto): ReservationDeta
     canConfirm: false,
     canReject: false,
     invoice: dto.invoice ? {
-      id: (dto.invoice as any).id || (dto.invoice as any)._id,
+      id: dto.invoice.id || (dto.invoice as unknown as { _id?: string })._id || '',
       invoiceNumber: dto.invoice.invoice_number,
       subtotal: dto.invoice.subtotal,
       taxes: dto.invoice.taxes,

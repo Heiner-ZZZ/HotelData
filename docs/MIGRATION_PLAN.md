@@ -397,7 +397,7 @@ export const appConfig: ApplicationConfig = {
 |---|---|---|
 | `check-ins` | check-ins-page, check-in-detail-page | 2 días |
 | `check-outs` | check-outs-page, check-out-detail-page, co-step-invoice | 3 días |
-| `reservations` | reservations-list, reservation-new, reservation-detail, reservation-timeline, reception-calendar | 5 días |
+| `reservations` | reservations-list, reservation-new, reservation-detail, reservation-timeline | 5 días |
 
 **Criterios de aceptación**:
 - Check-ins/check-outs usan recursos condicionales para modales.

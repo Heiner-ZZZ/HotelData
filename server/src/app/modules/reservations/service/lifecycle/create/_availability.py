@@ -8,6 +8,54 @@ from typing import Any
 from src.database.connection import get_database
 
 
+def validate_requested_room(
+    prop_id: int,
+    room_id: str,
+    room_type_id: str,
+    check_in_date: str,
+    check_out_date: str,
+    rooms: int,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate the physical room selected from the reception Timeline.
+
+    A Timeline selection represents one concrete room. The normal inventory
+    check remains responsible for room-type capacity; this guard additionally
+    verifies ownership, type compatibility, active state, and overlapping
+    assigned bookings for that exact room.
+    """
+    if not room_id:
+        return None, None
+    if rooms != 1:
+        return None, "Una habitación física seleccionada solo puede crear una reserva para una habitación."
+
+    db = get_database()
+    room = db.hotel_rooms.find_one(
+        {"prop_id": prop_id, "hotel_room_id": room_id, "is_active": True},
+        {"_id": 0, "hotel_room_id": 1, "room_label": 1, "room_type_id": 1},
+    )
+    if not room:
+        return None, "La habitación seleccionada no pertenece a este hotel o no está activa."
+
+    room_type = str(room.get("room_type_id") or "")
+    if room_type_id and room_type != room_type_id:
+        return None, "La habitación seleccionada no coincide con el tipo de habitación elegido."
+
+    overlapping_query: dict[str, Any] = {
+        "prop_id": prop_id,
+        "status": {"$nin": ["cancelled", "rejected"]},
+        "check_in_date": {"$lt": check_out_date},
+        "check_out_date": {"$gt": check_in_date},
+        "$or": [
+            {"assigned_rooms": room_id},
+            {"assigned_rooms": {"$elemMatch": {"hotel_room_id": room_id}}},
+        ],
+    }
+    if db.booking_orders.find_one(overlapping_query, {"_id": 1}):
+        return None, "La habitación seleccionada ya está ocupada en las fechas elegidas."
+
+    return room, None
+
+
 def _check_availability(
     prop_id: int,
     check_in_date: str,

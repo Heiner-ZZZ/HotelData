@@ -59,7 +59,7 @@ La arquitectura planeada es:
 | Capa | Tecnología |
 |------|-----------|
 | **Frontend** | Angular 22 · TypeScript 6.x · Signals · SCSS · OnPush |
-| **Backend** | FastAPI · Python 3.12 · Pydantic v2 · Async |
+| **Backend** | FastAPI · Python 3.12 · Pydantic v2 · Async · slowapi (rate limiting) |
 | **Base de datos transaccional** | MongoDB 8.0 (réplica set, motor transaccional) |
 | **Base de datos analítica** | ClickHouse *(próximamente)* |
 | **Infraestructura** | Docker Compose · Nginx · Node 24 Alpine |

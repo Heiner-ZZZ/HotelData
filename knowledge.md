@@ -117,6 +117,7 @@ docker compose --env-file .env -f infra/docker-compose.yml up -d airflow-postgre
 
 - FastAPI async routes with Pydantic v2 models
 - MongoDB via PyMongo (MongoClient)
+- Rate limiting con slowapi (`limiter` en `server/src/app/security/rate_limit.py` + `SlowAPIMiddleware`, excedido → 429)
 - Ruff for linting, MyPy for type checking, pytest for tests
 - Permission-based access control (PBAC) via DB-backed navigation & permissions
 - JWT auth with python-jose + bcrypt (passlib)

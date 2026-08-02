@@ -13,6 +13,7 @@ from src.app.modules.reservations.service import (
     validate_reservation_input,
 )
 from src.app.modules.reservations.service.lifecycle.create import _check_availability, _calculate_total_price
+from src.app.modules.reservations.service.lifecycle.create._availability import validate_requested_room
 from src.app.modules.reservations.service.lifecycle.create.core import _get_cancellation_policy_text
 from src.app.modules.partner.services.content.amenities import _amenity_unit_price
 from src.database.connection import get_database
@@ -100,11 +101,20 @@ def preview_reservation(payload: dict) -> dict:
         errors.extend(validate_booking_form_requirements(reservation_input))
         if errors:
             raise ValueError("; ".join(dict.fromkeys(errors)))
+        _, room_error = validate_requested_room(
+            reservation_input.prop_id,
+            reservation_input.hotel_room_id,
+            reservation_input.room_type_id,
+            reservation_input.check_in_date,
+            reservation_input.check_out_date,
+            reservation_input.rooms,
+        )
         avail_error = _check_availability(
             reservation_input.prop_id, reservation_input.check_in_date,
             reservation_input.check_out_date, reservation_input.rooms, reservation_input.room_type_id,
             rate_plan_id=reservation_input.rate_plan_id or "",
         )
+        availability_error = room_error or avail_error
         total_price, currency, total_nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             reservation_input.prop_id, reservation_input.room_type_id,
             reservation_input.check_in_date, reservation_input.check_out_date, reservation_input.rooms,
@@ -158,8 +168,8 @@ def preview_reservation(payload: dict) -> dict:
         )
 
         return {
-            "available": avail_error is None,
-            "availability_message": avail_error,
+            "available": availability_error is None,
+            "availability_message": availability_error,
             "total_price": total_price,
             "currency": currency,
             "total_nights": total_nights,

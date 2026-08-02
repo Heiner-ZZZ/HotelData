@@ -258,6 +258,8 @@ services:
       context: ../frontend
     container_name: hoteldata_frontend
     restart: unless-stopped
+    environment:
+      SYNCFUSION_LICENSE_KEY: ${SYNCFUSION_LICENSE_KEY:-}
     ports:
       - "4200:80"
 

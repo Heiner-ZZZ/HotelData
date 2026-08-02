@@ -126,6 +126,7 @@ def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: 
         guest_phone=_clean_text(form_data.get("guest_phone")),
         cedula=_clean_text(form_data.get("cedula")),
         room_type_id=_clean_text(form_data.get("room_type_id")),
+        hotel_room_id=_clean_text(form_data.get("hotel_room_id")),
         rate_plan_id=_clean_text(form_data.get("rate_plan_id")),
         check_in_date=_clean_text(form_data.get("check_in_date")),
         check_out_date=_clean_text(form_data.get("check_out_date")),

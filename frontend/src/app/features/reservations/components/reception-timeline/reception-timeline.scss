@@ -1,0 +1,813 @@
+.reception-timeline {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.timeline-state,
+.timeline-error {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 4rem;
+  padding: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted-text);
+  font-size: 0.82rem;
+}
+
+.timeline-error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--app-border));
+
+  > div {
+    display: grid;
+    gap: 0.15rem;
+    flex: 1;
+  }
+
+  strong { color: var(--app-text); }
+  span { color: var(--muted-text); }
+}
+
+.timeline-spin { animation: timeline-spin 0.8s linear infinite; }
+@keyframes timeline-spin { to { transform: rotate(360deg); } }
+
+.timeline-retry,
+.timeline-button,
+.timeline-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  &:active { transform: translateY(1px); }
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+    --icon-opsz: 20;
+  }
+}
+
+.timeline-retry { padding: 0 0.75rem; }
+.timeline-button { padding: 0 0.8rem; }
+.timeline-button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+
+  &:hover {
+    background: var(--accent-strong);
+    color: var(--on-accent);
+  }
+}
+.timeline-icon-button { width: 2.25rem; padding: 0; }
+
+.timeline-selection-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--app-border));
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--app-text);
+}
+
+.timeline-selection-popover {
+  position: fixed;
+  z-index: 1100;
+  width: min(440px, calc(100vw - 24px));
+  min-height: 7.2rem;
+  box-sizing: border-box;
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--app-text) 18%, transparent);
+  animation: timeline-popover-in 140ms ease-out;
+}
+
+@keyframes timeline-popover-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.timeline-selection-copy,
+.timeline-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.timeline-selection-copy {
+  flex: 1 1 100%;
+  min-width: 0;
+
+  > .material-symbols-outlined { flex: 0 0 auto; color: var(--accent); }
+  div { display: grid; gap: 0.1rem; min-width: 0; }
+  strong, span { overflow-wrap: anywhere; }
+  strong { color: var(--app-text); font-size: 0.84rem; line-height: 1.25; }
+  span { color: var(--muted-text); font-size: 0.72rem; line-height: 1.25; }
+}
+
+.timeline-selection-actions {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.timeline-feedback {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 650;
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+.timeline-feedback-progress { color: var(--accent); }
+.timeline-feedback-success {
+  border-color: color-mix(in srgb, var(--success) 35%, var(--app-border));
+  color: var(--success-strong);
+}
+.timeline-feedback-error {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--app-border));
+  color: var(--danger-strong);
+}
+
+.timeline-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--app-text) 45%, transparent);
+}
+
+.timeline-conflict-modal {
+  width: min(100%, 30rem);
+  border: 1px solid var(--app-border);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--app-text);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--app-text) 22%, transparent);
+}
+
+.timeline-conflict-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--app-border);
+
+  > div { display: flex; align-items: center; gap: 0.55rem; }
+  h3 { margin: 0; font-size: 1rem; }
+  .material-symbols-outlined { color: var(--warning); }
+}
+
+.timeline-modal-close {
+  display: inline-grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--app-border);
+  border-radius: 2px;
+  background: var(--surface-soft);
+  color: var(--app-text);
+  cursor: pointer;
+
+  &:hover { border-color: var(--accent); color: var(--accent); }
+}
+
+.timeline-conflict-body {
+  padding: 1rem 1.1rem 1.1rem;
+
+  p { margin: 0 0 0.65rem; color: var(--muted-text); font-size: 0.84rem; }
+  strong { color: var(--app-text); }
+}
+
+.timeline-conflict-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.timeline-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 8%, var(--surface)), var(--surface) 42%);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--app-text) 5%, transparent);
+}
+
+.timeline-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 12rem;
+  margin-right: auto;
+
+  > div { display: grid; gap: 0.06rem; }
+}
+
+.timeline-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.timeline-eyebrow {
+  color: var(--muted-text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timeline-heading strong {
+  color: var(--app-text);
+  font-size: 0.88rem;
+  line-height: 1.1;
+}
+
+.timeline-navigation,
+.timeline-summary,
+.timeline-view-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.timeline-range {
+  margin-left: 0.25rem;
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.timeline-view-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.18rem;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+
+.timeline-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.95rem;
+  padding: 0 0.55rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-text);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+
+  .material-symbols-outlined { font-size: 0.95rem; }
+
+  &:hover { color: var(--app-text); }
+
+  &.is-active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--app-text) 10%, transparent);
+  }
+}
+
+.timeline-summary {
+  color: var(--muted-text);
+  font-size: 0.78rem;
+
+  strong { color: var(--app-text); }
+  .material-symbols-outlined { color: var(--accent); font-size: 1.15rem; }
+}
+
+.timeline-summary-separator { color: var(--app-border); }
+
+.timeline-resource-header {
+  display: grid;
+  align-content: center;
+  box-sizing: border-box;
+  gap: 0.12rem;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0.12rem 0.28rem;
+}
+
+.timeline-resource-title {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+
+  .timeline-resource-icon {
+    flex: 0 0 auto;
+    color: var(--accent);
+    font-size: 0.95rem;
+  }
+
+  strong {
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: var(--muted-text);
+    font-size: 0.66rem;
+  }
+}
+
+.timeline-resource-floor-header,
+.timeline-resource-type-header {
+  display: flex;
+  align-items: flex-start;
+  align-content: flex-start;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+
+  .timeline-resource-title strong {
+    color: var(--accent-strong);
+    font-size: 0.68rem;
+    letter-spacing: 0.015em;
+    text-transform: none;
+  }
+
+  .timeline-resource-icon { font-size: 0.9rem; }
+}
+
+.timeline-resource-room-header {
+  min-height: 0;
+
+  .timeline-resource-title strong { font-size: 0.78rem; }
+}
+
+/*
+ * La fila física es el recurso operativo que recepción consulta y selecciona.
+ * Piso y tipo son agrupadores; la habitación necesita una jerarquía visual
+ * claramente superior sin aumentar artificialmente la altura de los padres.
+ */
+.timeline-resource-physical-room {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 0;
+  margin: 0;
+  padding: 0.2rem 0.42rem 0.2rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+
+  .timeline-resource-title {
+    gap: 0.38rem;
+
+    .timeline-resource-icon {
+      color: var(--accent-strong);
+      font-size: 1.05rem;
+    }
+
+    strong {
+      color: var(--accent-strong);
+      font-size: 0.86rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    span {
+      color: var(--muted-text);
+      font-size: 0.64rem;
+    }
+  }
+
+  .timeline-room-status {
+    margin-top: 0.08rem;
+    font-size: 0.63rem;
+  }
+}
+
+/*
+ * Syncfusion renders resources and timeline cells in two synchronized tables.
+ * The compact height must therefore be applied to the parent row on BOTH
+ * sides. The native parent markers are e-parent-node (resource table) and
+ * e-resource-group-cells (timeline/content table); styling only the left
+ * column is what previously caused the vertical drift.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells .e-resource-text,
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells .e-resource-name {
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-cells,
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-parent,
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-child {
+  padding-block: 0 !important;
+}
+
+/*
+ * El árbol de recursos y la cuadrícula temporal son tablas independientes.
+ * No se fuerzan alturas distintas sobre `tr`/`td`: en Timeline un nodo padre
+ * puede abarcar varias habitaciones y hacerlo rompe la alineación vertical.
+ * `rowAutoHeight=false` mantiene una métrica estructural estable; la
+ * compactación se aplica únicamente al contenido visual de Piso y Tipo.
+ */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-column-table td.e-resource-cells,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells {
+  box-sizing: border-box;
+  padding-block: 0 !important;
+}
+
+/* La flecha y el título permanecen en una sola línea, sin un salto vertical. */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node {
+  vertical-align: top;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node > div {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  vertical-align: middle;
+  min-width: 0;
+  min-height: 20px;
+  height: 20px;
+  line-height: 1;
+  overflow: visible;
+}
+
+/* Control nativo de expansión: permanece clickable y junto a Piso/Tipo. */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .e-resource-tree-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0.12rem 0 0;
+  line-height: 1;
+  vertical-align: top;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .e-resource-text {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 20px;
+  line-height: 1;
+  overflow: visible;
+}
+
+/*
+ * `timeline-resource-group` es el CssClass común de Piso/Tipo. Se aplica al
+ * contenido de sus celdas en ambos lados cuando Syncfusion lo replica; no se
+ * cambia la altura de la fila, solo se elimina espacio interno innecesario.
+ */
+:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-header,
+:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-header,
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node .timeline-resource-header {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-title,
+:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-title {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 0.2rem;
+  min-width: 0;
+  min-height: 20px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-icon,
+:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-icon {
+  font-size: 0.78rem;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .timeline-resource-group .timeline-resource-title strong,
+:host ::ng-deep .hotel-timeline-schedule td.e-resource-group-cells .timeline-resource-title strong {
+  font-size: 0.66rem;
+  line-height: 1;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .e-resource-text,
+:host ::ng-deep .hotel-timeline-schedule .e-content-table td.e-resource-group-cells .e-resource-name {
+  line-height: 1;
+}
+
+.timeline-date-header {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  min-width: 4rem;
+  padding: 0.25rem 0.2rem;
+  border-radius: 2px;
+  color: var(--app-text);
+  line-height: 1.1;
+}
+
+.timeline-date-header[data-context='past'] {
+  background: color-mix(in srgb, var(--app-text) 6%, var(--surface-soft));
+  color: var(--muted-text);
+}
+
+.timeline-date-header[data-context='current'] {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-soft));
+}
+
+.timeline-date-header[data-context='outside'] {
+  background: color-mix(in srgb, var(--app-text) 9%, var(--surface-soft));
+  color: var(--muted-text);
+  opacity: 0.72;
+}
+
+.timeline-date-label {
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.timeline-occupancy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  min-width: 3.05rem;
+  justify-content: center;
+  padding: 0.14rem 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--app-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent-strong);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.timeline-occupancy-badge .material-symbols-outlined { font-size: 0.78rem; }
+.timeline-occupancy-low {
+  border-color: color-mix(in srgb, var(--info, var(--accent)) 28%, var(--app-border));
+  background: color-mix(in srgb, var(--info, var(--accent)) 10%, var(--surface));
+}
+.timeline-occupancy-medium {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--app-border));
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+.timeline-occupancy-high {
+  border-color: color-mix(in srgb, var(--accent-strong) 48%, var(--app-border));
+  background: color-mix(in srgb, var(--accent-strong) 24%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.timeline-resource-unassigned {
+  border-left: 3px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+.timeline-room-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.12rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--room-status-color) 14%, var(--surface));
+  color: var(--room-status-color);
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .material-symbols-outlined { font-size: 0.8rem; }
+}
+
+.timeline-room-status-unassigned {
+  color: var(--warning-strong);
+  background: var(--warning-light);
+}
+
+.timeline-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0 0.2rem;
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  small {
+    margin-left: auto;
+    color: var(--muted-text);
+    font-weight: 500;
+  }
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+}
+
+.status-active { background: var(--success); }
+.status-upcoming { background: var(--warning); }
+.status-past { background: var(--muted-text); }
+.status-cancelled { background: var(--danger); }
+
+.hotel-timeline-schedule {
+  display: block;
+  height: min(720px, 72vh);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+
+  /* Syncfusion's own surface is intentionally replaced with application tokens
+     so the scheduler follows the global theme switch. */
+  --hotel-timeline-surface: var(--surface);
+  --hotel-timeline-raised: var(--surface-raised);
+}
+
+.hotel-timeline-schedule .e-schedule,
+.hotel-timeline-schedule .e-schedule-toolbar,
+.hotel-timeline-schedule .e-timeline-view,
+.hotel-timeline-schedule .e-timeline-month-view,
+.hotel-timeline-schedule .e-schedule-table,
+.hotel-timeline-schedule .e-content-wrap,
+.hotel-timeline-schedule .e-resource-column-wrap {
+  background: var(--hotel-timeline-surface);
+  color: var(--app-text);
+}
+
+.hotel-timeline-schedule .e-schedule-toolbar { border-bottom-color: var(--app-border); }
+
+.hotel-timeline-schedule .e-toolbar-item .e-tbar-btn,
+.hotel-timeline-schedule .e-toolbar-item .e-tbar-btn .e-tbar-btn-text,
+.hotel-timeline-schedule .e-toolbar-item .e-icons { color: var(--app-text); }
+
+.hotel-timeline-schedule .e-header-cells,
+.hotel-timeline-schedule .e-resource-cells,
+.hotel-timeline-schedule .e-resource-column-wrap,
+.hotel-timeline-schedule .e-left-indent {
+  background: var(--surface-soft);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+.hotel-timeline-schedule .e-work-cells,
+.hotel-timeline-schedule .e-resource-cells,
+.hotel-timeline-schedule .e-time-cells-wrap,
+.hotel-timeline-schedule .e-date-header-wrap { border-color: var(--app-border); }
+
+.hotel-timeline-schedule .e-work-cells:hover { background: var(--surface-hover); }
+
+.hotel-timeline-schedule .e-appointment {
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
+  font-weight: 700;
+}
+
+/* Syncfusion renders appointments inside its child component; ::ng-deep is
+   required so semantic status colors reach the actual appointment nodes. */
+:host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-active {
+  background: color-mix(in srgb, var(--accent) 23%, var(--surface)) !important;
+  color: var(--accent-strong) !important;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-upcoming {
+  background: color-mix(in srgb, var(--warning) 23%, var(--surface)) !important;
+  color: var(--warning-strong) !important;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-past {
+  background: color-mix(in srgb, var(--muted-text) 18%, var(--surface)) !important;
+  color: var(--muted-text) !important;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-cancelled {
+  background: color-mix(in srgb, var(--danger) 17%, var(--surface)) !important;
+  color: var(--danger-strong) !important;
+  opacity: 0.82;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells {
+  padding: 0 0.35rem !important;
+}
+
+/* Piso y Tipo usan la indentación nativa de Syncfusion; no necesitan otra
+ * caja de padding alrededor de la flecha y el texto. */
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node {
+  padding: 0 !important;
+  vertical-align: top;
+}
+
+:host ::ng-deep .hotel-timeline-schedule .e-resource-cells.e-parent-node > .e-resource-tree-icon {
+  margin-inline-end: 0.1rem;
+}
+
+/*
+ * Date context is applied to the grid cells, not to appointments. This keeps
+ * the reservation status colors above the day background layer.
+ */
+:host ::ng-deep .hotel-timeline-schedule td.timeline-past-day-cell {
+  background: color-mix(in srgb, var(--app-text) 3.5%, var(--surface)) !important;
+}
+
+:host ::ng-deep .hotel-timeline-schedule td.timeline-current-day-cell {
+  background: color-mix(in srgb, var(--accent) 1.8%, var(--surface)) !important;
+}
+
+:host ::ng-deep .hotel-timeline-schedule td.timeline-outside-day-cell {
+  background: color-mix(in srgb, var(--app-text) 5%, var(--surface)) !important;
+}
+
+/* La selección nativa debe sobresalir del sombreado contextual de días. */
+:host ::ng-deep .hotel-timeline-schedule td.e-selected-cell {
+  position: relative;
+  z-index: 1;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface)) !important;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+@media (max-width: 900px) {
+  .timeline-heading { width: 100%; margin-right: 0; }
+}
+
+@media (max-width: 700px) {
+  .timeline-toolbar { align-items: stretch; }
+  .timeline-navigation { flex-wrap: wrap; }
+  .timeline-view-switcher { order: 3; }
+  .timeline-summary { width: 100%; }
+  .timeline-legend small { width: 100%; margin-left: 0; }
+  .timeline-selection-popover {
+    min-height: 8rem;
+    padding: 0.75rem;
+  }
+  .timeline-selection-prompt { align-items: stretch; flex-direction: column; }
+  .timeline-selection-actions { justify-content: flex-end; }
+}

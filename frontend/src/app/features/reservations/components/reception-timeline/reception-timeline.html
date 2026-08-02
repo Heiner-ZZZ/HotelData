@@ -1,0 +1,219 @@
+<section class="reception-timeline" [class.e-dark-mode]="isDark()">
+  @if (calendarResource.isLoading()) {
+    <div class="timeline-state">
+      <span class="material-symbols-outlined timeline-spin">progress_activity</span>
+      <span>Cargando timeline de reservas…</span>
+    </div>
+  } @else if (calendarResource.error()) {
+    <div class="timeline-error" role="alert">
+      <span class="material-symbols-outlined">error_outline</span>
+      <div>
+        <strong>No se pudo cargar el timeline.</strong>
+        <span>La API devolvió un error al consultar las reservas del hotel.</span>
+      </div>
+      <button type="button" class="timeline-retry" (click)="reload()">Reintentar</button>
+    </div>
+  } @else if (calendarResource.value(); as data) {
+    @if (data.rooms.length === 0) {
+      <app-empty-state
+        icon="event_available"
+        title="Sin habitaciones disponibles"
+        description="No hay habitaciones activas para mostrar en este hotel."
+      />
+    } @else {
+      <div class="timeline-toolbar">
+        <div class="timeline-heading">
+          <span class="material-symbols-outlined timeline-heading-icon" aria-hidden="true">calendar_view_week</span>
+          <div>
+            <span class="timeline-eyebrow">Operación · Reservas</span>
+            <strong>Timeline de habitaciones</strong>
+          </div>
+        </div>
+
+        <div class="timeline-navigation" aria-label="Navegación del timeline">
+          <button type="button" class="timeline-icon-button" (click)="navigate(-1)" aria-label="Periodo anterior">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button type="button" class="timeline-button" (click)="goToday()">
+            <span class="material-symbols-outlined">today</span>
+            Hoy
+          </button>
+          <button type="button" class="timeline-icon-button" (click)="navigate(1)" aria-label="Periodo siguiente">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+          <span class="timeline-range">{{ rangeLabel() }}</span>
+        </div>
+
+        <div class="timeline-view-switcher" role="group" aria-label="Vista del calendario">
+          <button
+            type="button"
+            class="timeline-view-button"
+            [class.is-active]="currentView() === 'TimelineWeek'"
+            [attr.aria-pressed]="currentView() === 'TimelineWeek'"
+            (click)="setView('TimelineWeek')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">view_week</span>
+            Semana
+          </button>
+          <button
+            type="button"
+            class="timeline-view-button"
+            [class.is-active]="currentView() === 'TimelineMonth'"
+            [attr.aria-pressed]="currentView() === 'TimelineMonth'"
+            (click)="setView('TimelineMonth')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            Mes
+          </button>
+        </div>
+
+        <div class="timeline-summary">
+          <span class="material-symbols-outlined">hotel</span>
+          <strong>{{ data.rooms.length }}</strong> habitaciones
+          <span class="timeline-summary-separator">·</span>
+          <strong>{{ totalReservations() }}</strong> reservas
+        </div>
+      </div>
+
+      <div class="timeline-legend" aria-label="Estados de reservas">
+        <span><i class="status-dot status-active"></i>Vigente</span>
+        <span><i class="status-dot status-upcoming"></i>Próxima</span>
+        <span><i class="status-dot status-past"></i>Finalizada</span>
+        <span><i class="status-dot status-cancelled"></i>Cancelada</span>
+        @if (housekeepingResource.error()) {
+          <small class="timeline-housekeeping-warning" role="status">
+            <span class="material-symbols-outlined">info</span>
+            Estado operativo no disponible para este usuario
+          </small>
+        }
+      </div>
+
+      <!-- Se permite seleccionar celdas; el CRUD nativo permanece bloqueado abajo. -->
+      <ejs-schedule
+        #hotelSchedule
+        class="hotel-timeline-schedule"
+        [selectedDate]="selectedDate()"
+        [currentView]="currentView()"
+        [views]="['TimelineWeek', 'TimelineMonth']"
+        [height]="'100%'"
+        [width]="'100%'"
+        [locale]="'es'"
+        [showHeaderBar]="false"
+        [showQuickInfo]="false"
+        [prerenderDialogs]="false"
+        [showTimeIndicator]="false"
+        [firstDayOfWeek]="1"
+        [group]="scheduleGroup"
+        [allowMultiCellSelection]="true"
+        [allowResizing]="false"
+        [rowAutoHeight]="false"
+        [dateHeaderTemplate]="dateHeaderTemplate"
+        [eventSettings]="eventSettings()"
+        [resources]="resources()"
+        [resourceHeaderTemplate]="resourceHeaderTemplate"
+        (created)="onScheduleCreated()"
+        (navigating)="onNavigating($event)"
+        (popupOpen)="onPopupOpen($event)"
+        (actionBegin)="onActionBegin($event)"
+        (cellDoubleClick)="onCellDoubleClick($event)"
+        (eventDoubleClick)="onEventDoubleClick($event)"
+        (renderCell)="onRenderCell($event)"
+        (select)="onSelect($event)"
+        (eventClick)="onEventClick($event)"
+        (eventRendered)="onEventRendered($event)">
+        <ng-template #dateHeaderTemplate let-data>
+          <div
+            class="timeline-date-header"
+            [attr.data-context]="dateContext(data.date)"
+          >
+            <span class="timeline-date-label">{{ formatTimelineDate(data.date) }}</span>
+            <span
+              class="timeline-occupancy-badge"
+              [class]="'timeline-occupancy-badge timeline-occupancy-' + occupancyTone(data.date)"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">hotel</span>
+              {{ occupancyForDate(data.date) }}%
+            </span>
+          </div>
+        </ng-template>
+
+        <ng-template #resourceHeaderTemplate let-data>
+          <div class="timeline-resource-header"
+               [class.timeline-resource-floor-header]="resourceHeaderKind(data) === 'floor'"
+               [class.timeline-resource-type-header]="resourceHeaderKind(data) === 'roomType'"
+               [class.timeline-resource-room-header]="resourceHeaderKind(data) === 'room'"
+               [class.timeline-resource-physical-room]="data.resourceData.CssClass === 'timeline-physical-room'"
+               [class.timeline-resource-unassigned]="data.resourceData.IsUnassigned">
+            <div class="timeline-resource-title">
+              @if (resourceHeaderKind(data) === 'room') {
+                <span class="material-symbols-outlined timeline-resource-icon" aria-hidden="true">meeting_room</span>
+                <strong>{{ resourceHeaderText(data) }}</strong>
+                @if (data.resourceData.Floor) {
+                  <span>Piso {{ data.resourceData.Floor }}</span>
+                }
+              } @else if (resourceHeaderKind(data) === 'floor') {
+                <span class="material-symbols-outlined timeline-resource-icon" aria-hidden="true">layers</span>
+                <strong>{{ resourceHeaderText(data) }}</strong>
+              } @else {
+                <span class="material-symbols-outlined timeline-resource-icon" aria-hidden="true">hotel</span>
+                <strong>{{ resourceHeaderText(data) }}</strong>
+              }
+            </div>
+            @if (data.resourceData.OperationalStatusLabel) {
+              <span
+                class="timeline-room-status"
+                [style.--room-status-color]="data.resourceData.OperationalStatusColor"
+                [attr.title]="data.resourceData.OperationalStatusLabel"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">cleaning_services</span>
+                {{ data.resourceData.OperationalStatusLabel }}
+              </span>
+            } @else if (data.resourceData.IsUnassigned) {
+              <span class="timeline-room-status timeline-room-status-unassigned">
+                <span class="material-symbols-outlined" aria-hidden="true">link_off</span>
+                Solo informativa
+              </span>
+            }
+          </div>
+        </ng-template>
+      </ejs-schedule>
+
+      @if (selectedSlot(); as selection) {
+        <div
+          #selectionPopover
+          class="timeline-selection-prompt timeline-selection-popover"
+          role="status"
+          [style.top.px]="selectionPopoverPosition().top"
+          [style.left.px]="selectionPopoverPosition().left"
+        >
+          <div class="timeline-selection-copy">
+            <span class="material-symbols-outlined">event_available</span>
+            <div>
+              <strong>Crear reserva en Habitación {{ selection.roomNumber }}</strong>
+              <span>{{ selection.startDate }} · {{ selection.checkInTime }} → {{ selection.endDate }} · {{ selection.checkOutTime }}</span>
+            </div>
+          </div>
+          <div class="timeline-selection-actions">
+            <button type="button" class="timeline-button" (click)="dismissSelection()" aria-label="Cancelar selección">
+              Cancelar
+            </button>
+            <button type="button" class="timeline-button timeline-button-primary" (click)="openPhysicalReservation()" aria-label="Abrir reserva física">
+              <span class="material-symbols-outlined">open_in_new</span>
+              Ir a reserva
+            </button>
+          </div>
+        </div>
+      }
+
+    }
+  }
+
+  @if (selectedReservation(); as reservation) {
+    <app-reservation-detail-modal
+      [reservation]="reservation"
+      presentation="side-panel"
+      (closed)="closeDetail()"
+    />
+  }
+
+</section>

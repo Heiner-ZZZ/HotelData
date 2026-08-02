@@ -201,10 +201,11 @@ def availability_patch_api(
 def availability_blackouts_list_api(
     request: Request,
     prop_id: int = Query(..., ge=1),
+    current_user: dict = Depends(require_permission("inventory.read")),
 ):
     """List all blackout blocks for a property."""
     items = list_property_blackouts(require_prop_id(prop_id))
-    user = getattr(request.state, "current_user", None) or {}
+    user = current_user or getattr(request.state, "current_user", None) or {}
     register_action(
         prop_id=prop_id,
         entity_type="blackout_block",

@@ -26,6 +26,7 @@ export interface ReceptionCalendarRoom {
   hotelRoomId: string;
   roomTypeName: string;
   roomTypeId: string;
+  floor: string;
   reservations: ReceptionCalendarReservation[];
 }
 
@@ -35,6 +36,9 @@ export interface ReceptionCalendarData {
   startDate: string;
   endDate: string;
   today: string;
+  /** Hotel-wide policy defaults (HH:MM) used to prefill a new reservation. */
+  checkInTime: string;
+  checkOutTime: string;
 }
 
 /** A computed day cell in the calendar grid. */

@@ -6,7 +6,10 @@
 /* ─── View toggle bar ─── */
 .view-toggle-bar {
   display: flex;
+  align-items: stretch;
   gap: 0;
+  max-width: 100%;
+  overflow-x: auto;
   border-bottom: 2px solid var(--app-border);
   width: fit-content;
 }
@@ -28,6 +31,7 @@
   font-family: inherit;
 
   .material-symbols-outlined {
+    flex: 0 0 auto;
     font-size: 1.1rem;
     --icon-opsz: 20;
   }
@@ -40,6 +44,25 @@
     color: var(--accent);
     border-bottom-color: var(--accent);
   }
+}
+
+.view-toggle-btn-new {
+  gap: 0.45rem;
+}
+
+.view-toggle-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.15rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent) !important;
+  font-size: 0.58rem !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 /* ─── Calendar section ─── */
@@ -454,6 +477,11 @@
   box-shadow: 0 8px 24px color-mix(in srgb, var(--accent, #2563eb) 8%, transparent),
               0 2px 6px rgba(0, 0, 0, 0.06);
   animation: bulk-bar-slide 180ms ease-out;
+}
+
+@media (max-width: 700px) {
+  .view-toggle-bar { width: 100%; }
+  .view-toggle-btn { flex: 1 0 auto; justify-content: center; }
 }
 
 @keyframes bulk-bar-slide {

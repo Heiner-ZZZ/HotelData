@@ -14,7 +14,7 @@
 | 1 | **Comercial / Experiencia Cliente** | hotels, reservations (guest) | hotel-search, hotel-compare, hotel-detail, reservations | 12 |
 | 2 | **Revenue Management** | revenue, partner/rates | rates, revenue | 8 |
 | 3 | **Marketing Hotelero / Partner** | partner, amenities, reviews (public), partner/rates | properties, policies, rooms, amenities | 16 |
-| 4 | **Operaciones Hoteleras** | reservations (mgmt), housekeeping, reception, reception-calendar | management, check-ins, check-outs, manual-reservations, housekeeping, reception, shifts, availability | 19 |
+| 4 | **Operaciones Hoteleras** | reservations (mgmt, incluye API del Timeline), housekeeping, reception | management, check-ins, check-outs, manual-reservations, housekeeping, reception, shifts, availability | 19 |
 | 5 | **Facturación, Pagos y Gastos** | billing, expenses | billing, expenses | 13 |
 | 6 | **Recursos Humanos** | hr | hr | 6 |
 | 7 | **Administración del Sistema** | admin, auth, account, users, settings, global_settings, notifications | admin, account, system-admin, ownership, settings, notifications | 16 |

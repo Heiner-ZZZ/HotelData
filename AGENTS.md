@@ -12,6 +12,10 @@ migration scripts, feature auth services, qué NO hacer — ObjectIdStr
 helper revertido) están en `knowledge.md` y deben leerse **antes** de
 tocar el código o proponer refactors.
 
+## 🔧 Backend Conventions
+
+- Rate limiting con **slowapi** (`slowapi>=0.1.10` en `server/requirements.txt`): `limiter` en `server/src/app/security/rate_limit.py` + `SlowAPIMiddleware` → 429. Detalles en `knowledge.md`.
+
 ## 🔧 Backend Conventions (mirror del cache-clear ritual)
 
 Se mirrora aquí el único patrón de **`knowledge.md → Backend Conventions`**

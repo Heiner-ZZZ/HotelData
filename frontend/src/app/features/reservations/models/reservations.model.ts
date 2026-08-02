@@ -58,6 +58,8 @@ export interface ReservationCreateInput {
   specialRequests?: string[];
   selectedAmenities?: string[];
   roomTypeId?: string;
+  /** Optional physical room selected from the reception Timeline. */
+  hotelRoomId?: string;
   ratePlanId?: string;
   /** Payment fields (Phase 1) */
   transactionId?: string;

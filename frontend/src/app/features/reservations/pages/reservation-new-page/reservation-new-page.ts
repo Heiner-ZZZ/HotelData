@@ -92,9 +92,11 @@ export class ReservationNewPageComponent {
     checkInDate: ['', [Validators.required]],
     checkOutDate: ['', [Validators.required]],
     // Standard overnight booking requires both arrival and departure times.
-    // These are editable defaults, and the backend checks the hotel's policy.
-    checkInTime: ['15:00', [Validators.required]],
-    checkOutTime: ['12:00', [Validators.required]],
+    // These are editable defaults sourced from the hotel policy (see the
+    // policiesResource effect below); the backend validates them against the
+    // hotel's configured policy hours.
+    checkInTime: ['', [Validators.required]],
+    checkOutTime: ['', [Validators.required]],
     adults: [2, [Validators.required, Validators.min(1), Validators.max(20)]],
     children: [0, [Validators.required, Validators.min(0), Validators.max(10)]],
     rooms: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
@@ -176,6 +178,17 @@ export class ReservationNewPageComponent {
     };
   });
 
+  /** Hotel policy defaults (check-in/check-out hours) — re-fires when propId changes. */
+  readonly policiesResource = httpResource<{ policies?: { check_in_time?: string; check_out_time?: string } }>(() => {
+    const propId = this.propIdSignal();
+    if (!propId) return undefined;
+    return {
+      url: '/management/policies',
+      method: 'GET' as const,
+      params: new HttpParams().set('prop_id', String(propId)),
+    };
+  });
+
   // ─── Writable signals preserved for template compatibility ───
   readonly loading = signal(true);
   readonly submitting = signal(false);
@@ -188,9 +201,11 @@ export class ReservationNewPageComponent {
   readonly preview = signal<ReservationPreview | null>(null);
   readonly step = signal<'details' | 'review' | 'payment'>('details');
 
-  /** Room type ID and name passed from hotel detail page via query params */
+  /** Room type and physical room passed from the reception Timeline. */
   readonly preselectedRoomTypeId = signal('');
   readonly preselectedRoomTypeName = signal('');
+  readonly preselectedHotelRoomId = signal('');
+  readonly preselectedRoomNumber = signal('');
 
   /** Availability status per hotel (legacy dict — kept so the existing template + helper still work). */
   readonly hotelAvailabilityStatus = signal<Record<number, 'unknown' | 'has_inventory' | 'no_inventory' | 'checking' | 'no_room_types'>>({});
@@ -218,6 +233,24 @@ export class ReservationNewPageComponent {
   readonly amenityCatalogLoading = signal(false);
   readonly selectedAmenities = signal<Set<string>>(new Set());
   readonly amenityCatalogError = signal('');
+
+  /** Hotel whose policy times were last auto-filled (0 = never). */
+  private lastPolicyPropId = 0;
+
+  /** Policy hours (HH:MM) for the selected hotel, from the policies endpoint. */
+  readonly policyCheckInTime = computed(() => this.policiesResource.value()?.policies?.check_in_time ?? '');
+  readonly policyCheckOutTime = computed(() => this.policiesResource.value()?.policies?.check_out_time ?? '');
+
+  /**
+   * Display label for the review step. Shows the form values (what the user is
+   * actually booking) with the policy hours as fallback when still empty.
+   */
+  readonly checkInOutPolicyLabel = computed(() => {
+    const checkIn = this.form.controls.checkInTime.value || this.policyCheckInTime();
+    const checkOut = this.form.controls.checkOutTime.value || this.policyCheckOutTime();
+    if (!checkIn && !checkOut) return '';
+    return `Check-in desde las ${checkIn || '—'} · Check-out hasta las ${checkOut || '—'}`;
+  });
 
   readonly availableRatePlans = signal<RatePlanOption[]>([]);
   readonly ratePlansLoading = signal(false);
@@ -277,9 +310,27 @@ export class ReservationNewPageComponent {
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     const prefixedRoomType = this.activatedRoute.snapshot.queryParamMap.get('room_type') ?? '';
     const prefixedRoomTypeName = this.activatedRoute.snapshot.queryParamMap.get('room_type_name') ?? '';
+    const prefixedHotelRoomId = this.activatedRoute.snapshot.queryParamMap.get('hotel_room_id') ?? '';
+    const prefixedRoomNumber = this.activatedRoute.snapshot.queryParamMap.get('room_number') ?? '';
+    const prefixedCheckIn = this.activatedRoute.snapshot.queryParamMap.get('check_in') ?? '';
+    const prefixedCheckOut = this.activatedRoute.snapshot.queryParamMap.get('check_out') ?? '';
+    const prefixedCheckInTime = this.activatedRoute.snapshot.queryParamMap.get('check_in_time') ?? '';
+    const prefixedCheckOutTime = this.activatedRoute.snapshot.queryParamMap.get('check_out_time') ?? '';
     if (prefixedRoomType) {
       this.preselectedRoomTypeId.set(prefixedRoomType);
       this.preselectedRoomTypeName.set(prefixedRoomTypeName);
+    }
+    if (prefixedHotelRoomId) {
+      this.preselectedHotelRoomId.set(prefixedHotelRoomId);
+      this.preselectedRoomNumber.set(prefixedRoomNumber);
+    }
+    if (prefixedCheckIn || prefixedCheckOut || prefixedCheckInTime || prefixedCheckOutTime) {
+      this.form.patchValue({
+        checkInDate: prefixedCheckIn,
+        checkOutDate: prefixedCheckOut,
+        checkInTime: prefixedCheckInTime || this.form.controls.checkInTime.value,
+        checkOutTime: prefixedCheckOutTime || this.form.controls.checkOutTime.value,
+      });
     }
     this._loadGuestSuggestions();
     this._restoreGuestDraft();
@@ -351,6 +402,38 @@ export class ReservationNewPageComponent {
       this.amenityCatalog.set([]);
       this.amenityCatalogLoading.set(false);
       this.amenityCatalogError.set('No se pudo cargar el catálogo de amenities.');
+    });
+
+    // policiesResource.value() → prefill check-in/check-out hours from the
+    // hotel policy. Only fills the fields when they are still empty so the
+    // user's own input (or the query-param prefill from the Timeline) wins.
+    // When the hotel changes and the user hasn't edited the times, the stale
+    // values from the previous hotel are cleared so the new policy applies.
+    effect(() => {
+      const propId = this.propIdSignal();
+      const policy = this.policiesResource.value();
+      const checkInControl = this.form.controls.checkInTime;
+      const checkOutControl = this.form.controls.checkOutTime;
+      // Al cambiar de hotel, limpia únicamente los campos pristine (no
+      // editados por el usuario) para que la política nueva (si existe) los
+      // rellene. Los campos que el usuario editó se conservan. Se ejecuta
+      // antes del guard de respuesta para que también se limpie cuando la
+      // política del nuevo hotel falla al cargar.
+      if (this.lastPolicyPropId !== 0 && this.lastPolicyPropId !== propId) {
+        if (!checkInControl.dirty) checkInControl.setValue('');
+        if (!checkOutControl.dirty) checkOutControl.setValue('');
+        this.lastPolicyPropId = propId;
+      }
+      if (!policy?.policies) return;
+      const checkIn = policy.policies.check_in_time;
+      const checkOut = policy.policies.check_out_time;
+      if (checkIn && !checkInControl.value) {
+        checkInControl.setValue(checkIn);
+      }
+      if (checkOut && !checkOutControl.value) {
+        checkOutControl.setValue(checkOut);
+      }
+      this.lastPolicyPropId = propId;
     });
 
     // Reset selectedAmenities whenever the hotel changes (side-effect that has no home in an httpResource).
@@ -556,6 +639,7 @@ export class ReservationNewPageComponent {
       specialRequests: v.specialRequests,
       selectedAmenities: [...this.selectedAmenities()],
       roomTypeId: this.preselectedRoomTypeId() || undefined,
+      hotelRoomId: this.preselectedHotelRoomId() || undefined,
       ratePlanId: this.selectedRatePlanId() || undefined,
     };
   }
