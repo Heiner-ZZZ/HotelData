@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import {
   ChatMessage,
@@ -9,6 +9,8 @@ import {
   ServiceRequest,
   StaySession,
 } from '../models/in-stay.model';
+import type { ServiceRequestsAnalyticsDto } from '../models/service-requests-analytics.dto';
+import type { ServiceRequestsAnalytics } from '../models/service-requests-analytics.model';
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -52,6 +54,68 @@ export class InStayApiService {
   }
 
   // ── Staff: Service Requests ──
+
+  /** Simple I1.1 dashboard: solicitudes por estado y tipo (Mongo). */
+  getRequestsAnalytics(params: {
+    prop_id?: number;
+    request_type?: string;
+    status?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    page_size?: number;
+  }): Observable<ServiceRequestsAnalytics> {
+    const q: Record<string, string> = {};
+    if (params.prop_id) q['prop_id'] = String(params.prop_id);
+    if (params.request_type) q['request_type'] = params.request_type;
+    if (params.status) q['status'] = params.status;
+    if (params.date_from) q['date_from'] = params.date_from;
+    if (params.date_to) q['date_to'] = params.date_to;
+    if (params.page) q['page'] = String(params.page);
+    if (params.page_size) q['page_size'] = String(params.page_size);
+    return this.http.get<ServiceRequestsAnalyticsDto>('/api/stay/requests/analytics', { params: q }).pipe(
+      map((dto) => ({
+        available: dto.available,
+        source: dto.source,
+        propId: dto.prop_id,
+        summary: {
+          total: dto.summary?.total ?? 0,
+          pending: dto.summary?.pending ?? 0,
+          inProgress: dto.summary?.in_progress ?? 0,
+          completed: dto.summary?.completed ?? 0,
+          cancelled: dto.summary?.cancelled ?? 0,
+          avgResolutionMinutes: dto.summary?.avg_resolution_minutes ?? null,
+          resolvedCount: dto.summary?.resolved_count ?? 0,
+        },
+        series: {
+          labels: dto.series?.labels ?? [],
+          keys: dto.series?.keys ?? [],
+          datasets: dto.series?.datasets ?? [],
+          dailyLabels: dto.series?.daily_labels ?? [],
+          dailyStatuses: dto.series?.daily_statuses ?? [],
+        },
+        rows: (dto.rows ?? []).map((r) => ({
+          id: r._id,
+          bookingId: r.booking_id,
+          propId: r.prop_id,
+          roomLabel: r.room_label,
+          requestType: r.request_type,
+          requestTypeLabel: r.request_type_label,
+          description: r.description,
+          status: r.status,
+          statusLabel: r.status_label,
+          createdAt: r.created_at,
+          resolvedAt: r.resolved_at,
+        })),
+        total: dto.total ?? 0,
+        page: dto.page ?? 1,
+        pageSize: dto.page_size ?? 20,
+        totalPages: dto.total_pages ?? 1,
+        hasNext: dto.has_next ?? false,
+        hasPrev: dto.has_prev ?? false,
+      })),
+    );
+  }
 
   listRequests(propId?: number, status?: string): Observable<PaginatedResponse<ServiceRequest>> {
     const params: Record<string, string> = {};

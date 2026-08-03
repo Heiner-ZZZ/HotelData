@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { roleLabel } from '../../../core/auth/role-labels';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
+import { OperationModeIndicatorComponent } from '../operation-mode-indicator/operation-mode-indicator';
 import { PropertyContextService } from '../../services/property-context.service';
 
 interface BreadcrumbItem {
@@ -39,7 +40,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 @Component({
   selector: 'app-management-top-nav',
-  imports: [RouterLink],
+  imports: [RouterLink, OperationModeIndicatorComponent],
   templateUrl: './management-top-nav.html',
   styleUrl: './management-top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

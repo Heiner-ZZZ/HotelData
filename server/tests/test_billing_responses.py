@@ -18,6 +18,7 @@ from __future__ import annotations
 import pytest
 from bson import ObjectId
 
+from src.app.core.types import to_json_safe
 from src.app.modules.billing.routes import (
     ActionResponse,
     FolioResponse,
@@ -291,6 +292,58 @@ class TestPaymentResponseInvoiceIdNoAliasCollision:
         # Distinct 24-char hex still.
         assert payment.invoice_id != payment.id
         assert len(payment.invoice_id) == 24
+
+
+class TestPaymentResponseDatetimeSerialization:
+    """Invariant #6: datetime fields must be stringified before validation.
+
+    ``create_payment``/``refund_payment`` return raw Mongo docs whose
+    ``created_at``/``updated_at``/``paid_at`` are native ``datetime``. The
+    routes must call ``to_json_safe`` before ``PaymentResponse.model_validate``
+    (same belt-and-suspenders as list/get). Without it, Pydantic raises
+    ``ValidationError`` (``created_at: Input should be a valid string``) and
+    the endpoint 500s — this bit ``create_payment_api`` on the failed-payment
+    smoke test. These tests pin the boundary.
+    """
+
+    def test_raw_datetime_created_at_fails_validation(self):
+        """Documents WHY the route must to_json_safe before validation."""
+        from datetime import datetime, timezone
+
+        raw = {
+            "_id": ObjectId(),
+            "booking_id": "BK-500",
+            "prop_id": 1,
+            "amount": 42.5,
+            "method": "card",
+            "status": "failed",
+            "created_at": datetime.now(timezone.utc),
+            "paid_at": datetime.now(timezone.utc),
+        }
+        with pytest.raises(Exception) as excinfo:
+            PaymentResponse.model_validate(raw)
+        assert "string" in str(excinfo.value)
+
+    def test_to_json_safe_then_validate_succeeds(self):
+        """The canonical route path: JSON-safe wrap + model_validate."""
+        from datetime import datetime, timezone
+
+        raw = {
+            "_id": ObjectId(),
+            "booking_id": "BK-501",
+            "prop_id": 1,
+            "amount": 42.5,
+            "method": "card",
+            "status": "failed",
+            "created_at": datetime(2026, 8, 3, 10, 30, tzinfo=timezone.utc),
+            "paid_at": datetime(2026, 8, 3, 10, 30, tzinfo=timezone.utc),
+        }
+        safe = to_json_safe(raw)
+        payment = PaymentResponse.model_validate(safe)
+        assert isinstance(payment.id, str)
+        assert payment.status == "failed"
+        assert isinstance(payment.created_at, str)
+        assert payment.created_at.startswith("2026-08-03T10:30")
 
 
 class TestFolioResponsePostingsAnyList:

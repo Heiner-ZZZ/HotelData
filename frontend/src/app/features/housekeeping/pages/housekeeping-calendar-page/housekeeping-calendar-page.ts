@@ -8,6 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { catchAndToastError } from '../../../../shared/utils/catch-and-toast';
 import { HousekeepingSubNavComponent } from '../../components/housekeeping-sub-nav/housekeeping-sub-nav';
@@ -100,6 +101,7 @@ export class HousekeepingCalendarPageComponent {
   private readonly api = inject(HousekeepingApiService);
   private readonly fb = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
 
   // ── Week navigation ──
   readonly weekStart = signal(getWeekStart(todayIso()));
@@ -203,12 +205,15 @@ export class HousekeepingCalendarPageComponent {
 
   // ── Quick create ──
   openQuickForm(roomId: string, roomLabel: string, date: string): void {
+    // Click en una celda del calendario → crear tarea → modo insert.
+    this.opMode.setMode('insert', `Tarea — ${roomLabel}`);
     this.quickFormTarget.set({ roomId, roomLabel, date });
     this.quickForm.reset({ taskType: 'cleaning', assignedTo: '', priority: 'normal', note: '' });
     this.showQuickForm.set(true);
   }
 
   closeQuickForm(): void {
+    this.opMode.reset();
     this.showQuickForm.set(false);
     this.quickFormTarget.set(null);
   }

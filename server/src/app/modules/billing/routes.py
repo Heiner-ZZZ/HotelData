@@ -597,6 +597,7 @@ def pay_invoice_api(
     result = create_payment(pay_payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+    result = to_json_safe(result)
 
     after = get_invoice(invoice_id)
     diff = {
@@ -691,6 +692,9 @@ def create_payment_api(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se encontró la reserva indicada (booking_id inválido). Verifica el ID de la reserva.",
         )
+    # JSON-safe wrap (ObjectId → str, datetime → isoformat): same rationale as
+    # list/get routes. PaymentResponse declares created_at/paid_at as strings.
+    result = to_json_safe(result)
     diff = {
         k: {"old": None, "new": v}
         for k, v in result.items()
@@ -764,6 +768,7 @@ def refund_payment_api(
     result = refund_payment(payment_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo reembolsar el pago")
+    result = to_json_safe(result)
     diff = {
         "status": {"old": before.get("status") if before else None, "new": "refunded"},
     }
@@ -1092,6 +1097,7 @@ def my_invoice_pay_api(
     result = create_payment(pay_payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar el pago")
+    result = to_json_safe(result)
 
     after = get_invoice(invoice_id)
     diff = {

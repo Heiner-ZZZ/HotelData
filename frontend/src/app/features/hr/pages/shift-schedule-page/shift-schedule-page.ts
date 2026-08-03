@@ -4,6 +4,9 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { toast } from '../../../../core/toast/toast.service';
 import type { EmployeeListItem, ShiftItem, ShiftCreatePayload } from '../../models/hr.model';
@@ -11,7 +14,7 @@ import type { EmployeeListItem, ShiftItem, ShiftCreatePayload } from '../../mode
 @Component({
   selector: 'app-shift-schedule-page',
   standalone: true,
-  imports: [],
+  imports: [ConfirmDialogComponent],
   templateUrl: './shift-schedule-page.html',
   styleUrl: './shift-schedule-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,6 +23,8 @@ export class ShiftSchedulePageComponent {
   private readonly api = inject(HrApiService);
   private readonly router = inject(Router);
   private readonly propCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   /**
    * Bump signal that triggers a re-fetch when its value changes. Replaces the
@@ -118,6 +123,8 @@ export class ShiftSchedulePageComponent {
   /** Open form to create/edit a shift */
   editShift(shift?: ShiftItem, date?: string) {
     if (shift) {
+      // Editar turno existente → modo update.
+      this.opMode.setMode('update', `Turno ${shift.date}`);
       this.editingShiftId.set(shift.id);
       this.formDate.set(shift.date);
       this.formStart.set(shift.scheduledStart);
@@ -125,6 +132,8 @@ export class ShiftSchedulePageComponent {
       this.formArea.set(shift.area);
       this.formNotes.set(shift.notes);
     } else {
+      // Click en celda vacía → crear turno → modo insert.
+      this.opMode.setMode('insert', `Turno ${date || this.todayStr}`);
       this.editingShiftId.set(null);
       this.formDate.set(date || this.todayStr);
       this.formStart.set('09:00');
@@ -135,6 +144,7 @@ export class ShiftSchedulePageComponent {
   }
 
   cancelEdit() {
+    this.opMode.reset();
     this.editingShiftId.set(null);
   }
 
@@ -181,6 +191,7 @@ export class ShiftSchedulePageComponent {
       next: () => {
         this.saving.set(false);
         this.editingShiftId.set(null);
+        this.opMode.reset();
         this.refreshTrigger.update(v => v + 1);
         toast(editId ? 'Turno actualizado.' : 'Turno creado.', 'success', 4000);
       },
@@ -191,8 +202,18 @@ export class ShiftSchedulePageComponent {
     });
   }
 
-  deleteShift(shift: ShiftItem) {
-    if (!confirm(`Eliminar turno del ${shift.date} (${shift.scheduledStart}-${shift.scheduledEnd})?`)) return;
+  async deleteShift(shift: ShiftItem): Promise<void> {
+    // Confirm compartido (mode-aware): muestra el modo delete en el nav mientras
+    // el diálogo está abierto y restaura el modo previo al cerrar.
+    const ok = await this.confirmDialog.open({
+      title: 'Eliminar turno',
+      message: `¿Eliminar el turno del ${shift.date} (${shift.scheduledStart}-${shift.scheduledEnd})?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+      mode: 'delete',
+      modeDetail: `Turno ${shift.date}`,
+    });
+    if (!ok) return;
     this.api.deleteShift(shift.id).subscribe({
       next: () => {
         this.refreshTrigger.update(v => v + 1);

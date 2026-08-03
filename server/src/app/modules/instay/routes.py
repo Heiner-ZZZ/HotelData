@@ -25,6 +25,7 @@ from fastapi.responses import StreamingResponse
 logger = logging.getLogger(__name__)
 
 from src.app.modules.instay.schemas import (
+    SERVICE_REQUEST_STATUSES,
     SERVICE_REQUEST_TYPES,
     ActionResponse,
     ChatMessageListResponse,
@@ -316,6 +317,139 @@ def list_service_requests(
         "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
     })
+
+
+@staff_router.get("/requests/analytics")
+def service_requests_analytics(
+    prop_id: int | None = Query(default=None, ge=1),
+    request_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_permission("reservations.read")),
+):
+    """Dashboard simple I1.1: solicitudes de servicio por estado y tipo (Mongo).
+
+    Lee ``stay_service_requests`` directamente. Devuelve resumen (por estado y
+    tiempo medio de resolución), serie de volumen por tipo/estado para el
+    gráfico central y filas paginadas para la grilla del patrón Z.
+    """
+    from datetime import datetime, timezone
+
+    db = get_database()
+    query: dict = {}
+    if prop_id:
+        query["prop_id"] = prop_id
+    if request_type:
+        query["request_type"] = request_type
+    if status:
+        query["status"] = status
+    if date_from or date_to:
+        date_q: dict = {}
+        if date_from:
+            date_q["$gte"] = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+        if date_to:
+            date_q["$lte"] = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+        query["created_at"] = date_q
+
+    total = db.stay_service_requests.count_documents(query)
+    all_items = list(
+        db.stay_service_requests.find(query).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size)
+    )
+
+    # ── Resumen por estado + tiempo medio de resolución (sobre todo el rango) ──
+    status_pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+    ]
+    raw_status = {r["_id"]: r["count"] for r in db.stay_service_requests.aggregate(status_pipeline)}
+    by_status: dict[str, int] = {s: 0 for s in SERVICE_REQUEST_STATUSES}
+    by_status.update(raw_status)
+    pending = by_status.get("pending", 0)
+    in_progress = by_status.get("in_progress", 0)
+    completed = by_status.get("completed", 0)
+    cancelled = by_status.get("cancelled", 0)
+
+    resolution_pipeline = [
+        {"$match": {**query, "status": "completed", "resolved_at": {"$ne": None}}},
+        {"$project": {"minutes": {"$divide": [{"$subtract": ["$resolved_at", "$created_at"]}, 60000]}}},
+        {"$group": {"_id": None, "avg": {"$avg": "$minutes"}, "n": {"$sum": 1}}},
+    ]
+    res_result = list(db.stay_service_requests.aggregate(resolution_pipeline))
+    avg_minutes = round(res_result[0]["avg"], 1) if res_result else None
+    resolved_count = res_result[0]["n"] if res_result else 0
+
+    # ── Serie: volumen por tipo (gráfico central) ──
+    type_pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$request_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    type_counts = {r["_id"]: r["count"] for r in db.stay_service_requests.aggregate(type_pipeline)}
+    type_keys = list(type_counts)
+    type_labels = [type_label(t) for t in type_keys]
+    type_data = [type_counts[t] for t in type_keys]
+
+    # ── Serie de tendencia diaria por estado (opcional segundo dataset) ──
+    daily_pipeline = [
+        {"$match": query},
+        {"$project": {"day": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}}, "status": 1}},
+        {"$group": {"_id": {"day": "$day", "status": "$status"}, "count": {"$sum": 1}}},
+        {"$sort": {"_id.day": 1}},
+    ]
+    daily_map: dict[str, dict[str, int]] = {}
+    for r in db.stay_service_requests.aggregate(daily_pipeline):
+        day = r["_id"]["day"]
+        st = r["_id"]["status"]
+        daily_map.setdefault(day, {})[st] = r["count"]
+    daily_labels = sorted(daily_map)
+    series = {
+        "labels": type_labels,
+        "keys": type_keys,
+        "datasets": [{"label": "Solicitudes", "data": type_data}],
+        "daily_labels": daily_labels,
+        "daily_statuses": [
+            {"label": status_label(s), "status": s, "data": [daily_map.get(d, {}).get(s, 0) for d in daily_labels]}
+            for s in SERVICE_REQUEST_STATUSES
+        ],
+    }
+
+    return {
+        "available": True,
+        "source": "mongodb",
+        "prop_id": prop_id,
+        "summary": {
+            "total": total,
+            "pending": pending,
+            "in_progress": in_progress,
+            "completed": completed,
+            "cancelled": cancelled,
+            "avg_resolution_minutes": avg_minutes,
+            "resolved_count": resolved_count,
+        },
+        "series": series,
+        "rows": [{
+            "_id": str(r.get("_id", "")),
+            "booking_id": r.get("booking_id", ""),
+            "prop_id": r.get("prop_id", 0),
+            "room_label": r.get("room_label", ""),
+            "request_type": r.get("request_type", ""),
+            "request_type_label": type_label(r.get("request_type", "")),
+            "description": r.get("description", ""),
+            "status": r.get("status", ""),
+            "status_label": status_label(r.get("status", "")),
+            "created_at": _iso(r.get("created_at")),
+            "resolved_at": _iso(r.get("resolved_at")),
+        } for r in all_items],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size) if total else 1,
+        "has_next": page * page_size < total,
+        "has_prev": page > 1,
+    }
 
 
 @staff_router.post("/requests", status_code=201, response_model=CreateRequestResponse)

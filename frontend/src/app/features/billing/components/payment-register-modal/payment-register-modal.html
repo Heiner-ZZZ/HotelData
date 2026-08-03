@@ -25,6 +25,7 @@
           placeholder="Ej. BK-XXXX o ID de Mongo"
           [ngModel]="bookingId()"
           (ngModelChange)="bookingId.set($event)"
+          [disabled]="submitting()"
         />
       </div>
 
@@ -37,6 +38,7 @@
           placeholder="ID de la factura a asociar"
           [ngModel]="invoiceId()"
           (ngModelChange)="invoiceId.set($event)"
+          [disabled]="submitting()"
         />
       </div>
 
@@ -53,6 +55,7 @@
             step="0.01"
             [ngModel]="amount()"
             (ngModelChange)="amount.set($event)"
+            [disabled]="submitting()"
           />
         </div>
       </div>
@@ -67,6 +70,7 @@
               class="method-btn"
               [class.active]="selectedMethod() === m.id"
               (click)="selectMethod(m.id)"
+              [disabled]="submitting()"
             >
               <span class="material-symbols-outlined">{{ m.icon }}</span>
               {{ m.label }}
@@ -86,6 +90,7 @@
               [class.active]="selectedStatus() === s.id"
               [class.is-failed]="s.id !== 'confirmed'"
               (click)="selectStatus(s.id)"
+              [disabled]="submitting()"
             >
               <span class="material-symbols-outlined">{{ s.icon }}</span>
               {{ s.label }}

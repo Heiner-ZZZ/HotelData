@@ -112,6 +112,13 @@ export class AvailabilityState {
   // Hotel rooms
   readonly allHotelRooms = signal<HotelRoomInfo[]>([]);
   readonly hotelRoomsForType = signal<HotelRoomItem[]>([]);
+  /**
+   * A qué room_type_id pertenece la señal `hotelRoomsForType`. El multi-select
+   * es compartido por el formulario de inventario y el de bloqueos; este
+   * registro evita que el selector de un formulario muestre (o muestre como
+   * vacío) las habitaciones del otro formulario.
+   */
+  readonly roomsForTypeId = signal('');
   readonly selectedAvailableRooms = signal<Set<string>>(new Set());
   readonly selectedBlockedRooms = signal<Set<string>>(new Set());
   readonly blackoutSelectedRooms = signal<Set<string>>(new Set());

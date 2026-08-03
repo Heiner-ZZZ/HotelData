@@ -112,6 +112,7 @@ export class InventoryService {
           this.state.activeCell.set(null);
           this.state.editingCell.set(null);
           this.state.hotelRoomsForType.set([]);
+          this.state.roomsForTypeId.set('');
           this.state.selectedAvailableRooms.set(new Set());
           this.state.selectedBlockedRooms.set(new Set());
           this.state.saving.set(false);
@@ -136,6 +137,7 @@ export class InventoryService {
     const propId = this.state.selectedPropId();
     if (!roomTypeId || !propId) {
       this.state.hotelRoomsForType.set([]);
+      this.state.roomsForTypeId.set('');
       this.state.selectedAvailableRooms.set(new Set());
       this.state.selectedBlockedRooms.set(new Set());
       return;
@@ -143,11 +145,15 @@ export class InventoryService {
     this.api.getHotelRooms(propId, roomTypeId).subscribe({
       next: (res) => {
         this.state.hotelRoomsForType.set(res.items);
+        this.state.roomsForTypeId.set(roomTypeId);
         this.state.selectedAvailableRooms.set(new Set(res.items.map((r) => r.room_number)));
         this.state.selectedBlockedRooms.set(new Set());
         this._syncFormFromCheckboxes();
       },
-      error: () => this.state.hotelRoomsForType.set([]),
+      error: () => {
+        this.state.hotelRoomsForType.set([]);
+        this.state.roomsForTypeId.set('');
+      },
     });
   }
 

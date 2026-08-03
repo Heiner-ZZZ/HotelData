@@ -383,6 +383,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.disableNativeEditor();
+    this.guardSyncfusionPopupDestroy();
     this.startNowLineTimer();
     this.scheduleNowLine();
   }
@@ -760,7 +761,40 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
    */
   onScheduleCreated(): void {
     this.disableNativeEditor();
+    this.guardSyncfusionPopupDestroy();
     this.scheduleNowLine();
+  }
+
+  /**
+   * Syncfusion instancia `quickPopup`/`eventWindow` en cada render, pero con
+   * `prerenderDialogs=false` el `element` del EventWindow (editor) nunca se
+   * crea. Al destruir el Schedule durante la navegación, `destroyPopups()`
+   * llama a `eventWindow.destroy()` → `destroyComponents()` →
+   * `getFormElements()`, que ejecuta `this.element.querySelectorAll(...)`
+   * sobre un elemento nulo y lanza:
+   *   TypeError: Cannot read properties of undefined (reading 'querySelectorAll')
+   * Este Timeline nunca abre el editor nativo (se bloquea en onActionBegin /
+   * openEditor), así que se envuelve `destroyPopups` con un guard try/catch
+   * para que el teardown de la navegación no falle. El wrapper se aplica una
+   * sola vez por instancia.
+   */
+  private guardSyncfusionPopupDestroy(): void {
+    const schedule = this.hotelSchedule as unknown as {
+      destroyPopups?: () => void;
+      __popupDestroyGuarded?: boolean;
+    } | undefined;
+    if (!schedule || typeof schedule.destroyPopups !== 'function') return;
+    if (schedule.__popupDestroyGuarded) return;
+    const original = schedule.destroyPopups.bind(schedule);
+    schedule.destroyPopups = (): void => {
+      try {
+        original();
+      } catch {
+        // Bug conocido de Syncfusion: popups del editor nunca renderizados
+        // (prerenderDialogs=false) se destruyen con `element` nulo.
+      }
+    };
+    schedule.__popupDestroyGuarded = true;
   }
 
   private disableNativeEditor(): void {

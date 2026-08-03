@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { filter, firstValueFrom, map, switchMap } from 'rxjs';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -30,6 +31,7 @@ export class PropertyEditPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly currenciesApi = inject(CurrenciesApiService);
+  private readonly operationMode = inject(OperationModeService);
 
   readonly activeCurrencies = signal<Currency[]>([]);
 
@@ -57,6 +59,10 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
+    // Página de edición → modo UPDATE en el nav (naranja: sobrescribe estado existente)
+    this.operationMode.setMode('update', 'Perfil del hotel');
+    this.destroyRef.onDestroy(() => this.operationMode.reset());
+
     this.currenciesApi.list(true).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({

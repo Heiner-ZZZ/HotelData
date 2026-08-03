@@ -35,6 +35,13 @@ export const HOUSEKEEPING_ROUTES: Routes = [
       ),
   },
   {
+    path: 'matrix',
+    loadComponent: () =>
+      import('./pages/room-status-dashboard-page/room-status-dashboard-page').then(
+        (m) => m.RoomStatusDashboardPageComponent
+      ),
+  },
+  {
     path: 'tasks',
     loadComponent: () =>
       import('./pages/housekeeping-tasks-page/housekeeping-tasks-page').then(

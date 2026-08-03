@@ -8,6 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { lastValueFrom, map, of } from 'rxjs';
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -103,6 +104,7 @@ export class MaintenancePageComponent {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly fb = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
 
   // ── Reactive URL params ──
   private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -268,6 +270,8 @@ export class MaintenancePageComponent {
     this.showCreateForm.update(v => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
+      // Abrir el form de nuevo mantenimiento → modo insert en el nav.
+      this.opMode.setMode('insert', 'Mantenimiento');
       this.createForm.reset({
         roomId: '',
         taskType: 'preventive',
@@ -278,12 +282,16 @@ export class MaintenancePageComponent {
         autoBlock: true,
         status: 'scheduled',
       });
+    } else {
+      this.opMode.reset();
     }
   }
 
   startEdit(item: MaintenanceTaskItem): void {
     this.showCreateForm.set(true);
     this.editingId.set(item.id);
+    // Editar mantenimiento existente → modo update.
+    this.opMode.setMode('update', `Mantenimiento — ${item.title}`);
     // Defer patchValue so select options render before value is set
     queueMicrotask(() => {
       // Normalize scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
@@ -310,6 +318,7 @@ export class MaintenancePageComponent {
   }
 
   cancelForm(): void {
+    this.opMode.reset();
     this.showCreateForm.set(false);
     this.editingId.set(null);
   }
@@ -340,6 +349,7 @@ export class MaintenancePageComponent {
       this.errorMessage.set('');
       this.showCreateForm.set(false);
       this.editingId.set(null);
+      this.opMode.reset();
       this.maintenanceResource.reload();
     } catch (err: unknown) {
       this.errorMessage.set(toErrorMessage(err, 'Error al guardar mantenimiento'));
@@ -439,6 +449,8 @@ export class MaintenancePageComponent {
       message: `¿Eliminar la tarea de mantenimiento "${title}"?`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: `Mantenimiento — ${title}`,
     });
     if (!ok) return;
     try {

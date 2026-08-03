@@ -45,6 +45,54 @@
     </div>
   </div>
 
+  <!-- ═══ KPIs + Gráfico (Z — patrón) ═══ -->
+  @if (propId() && analyticsSummary(); as s) {
+    <section class="rs-kpis" aria-label="Resumen de estado de habitaciones">
+      <article class="rs-kpi total">
+        <span class="material-symbols-outlined">meeting_room</span>
+        <strong>{{ s.total }}</strong>
+        <small>Habitaciones</small>
+        <em>en seguimiento</em>
+      </article>
+      <article class="rs-kpi occupied">
+        <span class="material-symbols-outlined">bed</span>
+        <strong>{{ s.occupied }}</strong>
+        <small>Ocupadas</small>
+        <em>{{ s.occupancy_rate }}% ocupación</em>
+      </article>
+      <article class="rs-kpi vacant">
+        <span class="material-symbols-outlined">check_circle</span>
+        <strong>{{ s.vacant }}</strong>
+        <small>Vacantes</small>
+        <em>{{ s.pending_dirty }} pendientes de limpieza</em>
+      </article>
+      <article class="rs-kpi cleaning">
+        <span class="material-symbols-outlined">cleaning_services</span>
+        <strong>{{ s.cleaning }}</strong>
+        <small>En limpieza</small>
+        <em>{{ s.inspected }} inspeccionadas</em>
+      </article>
+      <article class="rs-kpi maintenance">
+        <span class="material-symbols-outlined">build</span>
+        <strong>{{ s.maintenance + s.out_of_service }}</strong>
+        <small>Mtto / OOS</small>
+        <em>{{ s.maintenance }} en mantenimiento</em>
+      </article>
+    </section>
+
+    <section class="rs-chart-row">
+      <app-kpi-chart
+        title="Distribución por estado"
+        [labels]="distributionLabels()"
+        [datasets]="distributionDatasets()"
+        type="bar"
+        formatValue="number"
+        [showLegend]="true"
+        [height]="240"
+      />
+    </section>
+  }
+
   <!-- ═══ Legend / State Flow (desktop) ═══ -->
   @if (viewState() === 'success') {
     <details class="state-flow">

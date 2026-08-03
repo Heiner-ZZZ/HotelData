@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
@@ -57,6 +58,7 @@ export class RoomsPageComponent {
   private readonly toast = inject(ToastService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly opMode = inject(OperationModeService);
 
   // ── KPI data (top 5 hotels by rooms) ──
   readonly topHotelsResource = httpResource<{ items: TopHotelRoomsItem[] }>(() => '/api/kpi/top-hotels/rooms?limit=5', {
@@ -278,6 +280,8 @@ export class RoomsPageComponent {
   }
 
   startEdit(roomType: RoomTypeItem) {
+    // Editar tipo de habitación existente → modo update en el nav.
+    this.opMode.setMode('update', roomType.name);
     // Defer form manipulation to next VM turn to avoid NG01002
     this.ngZone.runOutsideAngular(() => {
       setTimeout(() => {
@@ -375,6 +379,7 @@ export class RoomsPageComponent {
   }
 
   cancelEdit() {
+    this.opMode.reset();
     this.showEditModal.set(false);
     this.editForm.reset();
     this.selectedFeatures.set(new Set());
@@ -384,12 +389,15 @@ export class RoomsPageComponent {
   }
 
   requestDelete(roomTypeId: string, name: string) {
+    // Modo delete mientras el modal de confirmación está abierto.
+    this.opMode.setMode('delete', name);
     this.deleteTargetId.set(roomTypeId);
     this.deleteTargetName.set(name);
     this.showDeleteConfirm.set(true);
   }
 
   cancelDelete() {
+    this.opMode.reset();
     this.showDeleteConfirm.set(false);
     this.deleteTargetId.set('');
     this.deleteTargetName.set('');
@@ -408,10 +416,12 @@ export class RoomsPageComponent {
         this.toast.success('Tipo de habitación eliminado');
         this.deleting.set(false);
         this.showDeleteConfirm.set(false);
+        this.opMode.reset();
       },
       error: (error: ApiError) => {
         this.toast.error(error.message || 'No se pudo eliminar el tipo de habitación.');
         this.deleting.set(false);
+        this.opMode.reset();
       }
     });
   }
@@ -458,8 +468,10 @@ export class RoomsPageComponent {
         this.toast.success('Tipo de habitación actualizado');
         this.savingEdit.set(false);
         this.showEditModal.set(false);
+        this.opMode.reset();
       },
       error: (error: ApiError) => {
+        // El modal sigue abierto con el error → se mantiene el modo update.
         this.toast.error(error.message || 'No fue posible actualizar el tipo de habitación.');
         this.savingEdit.set(false);
       }

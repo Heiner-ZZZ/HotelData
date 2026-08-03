@@ -217,6 +217,9 @@ export class LostAndFoundPageComponent {
       message: `¿Estás seguro de marcar "${item.item_name}" como desechado? Esta acción no se puede deshacer.`,
       confirmLabel: 'Desechar',
       variant: 'danger',
+      // Desecho = borrado lógico → mostrar modo delete mientras se confirma.
+      mode: 'delete',
+      modeDetail: item.item_name,
     });
     if (!ok) return;
 
@@ -237,6 +240,8 @@ export class LostAndFoundPageComponent {
       message: `¿Eliminar permanentemente "${item.item_name}"?`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: item.item_name,
     });
     if (!ok) return;
 

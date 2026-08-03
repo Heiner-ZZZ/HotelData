@@ -50,6 +50,9 @@
   </nav>
 
   <div class="nav-actions">
+    <!-- Modo CRUD actual (read/insert/update/delete) -->
+    <app-operation-mode-indicator />
+
     @if (authState().authenticated && canViewNotifications()) {
       <div class="menu-shell notif-wrapper">
         <button type="button" class="icon-btn notif-bell" [class.has-unread]="unreadCount() > 0" [class.is-reviewed]="showNotifications()" (click)="toggleNotifications()" aria-label="Notificaciones">

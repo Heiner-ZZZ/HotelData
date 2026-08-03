@@ -24,7 +24,9 @@ from src.app.modules.housekeeping.service import (
     delete_maintenance_task,
     get_additional_charge,
     get_housekeeping_dashboard,
+    get_operations_analytics,
     get_room_status,
+    get_room_status_analytics,
     get_weekly_calendar,
     list_additional_charges,
     list_housekeeping_tasks,
@@ -157,6 +159,30 @@ def room_status_history_api(
         metadata={"prop_id": prop_id, "room_label": room_label, "booking_id": booking_id, "url": str(request.url)},
     )
     return result
+
+
+@api_router.get("/room-status/analytics")
+def room_status_analytics_api(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+    status_filter: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
+):
+    """Dashboard simple O1.2: matriz de estado de habitaciones (Mongo).
+
+    Lee ``room_status_log`` directamente. Devuelve resumen (ocupadas, vacantes,
+    limpieza, mantenimiento, fuera de servicio, tasa de ocupación), distribución
+    por estado para el gráfico central del patrón Z y una grilla paginada de
+    habitaciones con su estado actual (filtrable por estado).
+    """
+    return get_room_status_analytics(
+        prop_id=prop_id,
+        status_filter=status_filter,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @api_router.get("/room-status/{record_id}")

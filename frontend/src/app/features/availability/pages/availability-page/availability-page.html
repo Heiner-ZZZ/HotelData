@@ -177,7 +177,7 @@
               </div>
 
               <!-- Room checkboxes (multi-select) -->
-              @if (store.hotelRoomsForType().length > 0) {
+              @if (store.hotelRoomsForType().length > 0 && store.inventoryForm.controls.roomTypeId.value === store.roomsForTypeId()) {
                 <div class="room-selector">
                   <div class="room-selector-head">
                     <span class="room-selector-title">Habitaciones</span>
@@ -207,7 +207,7 @@
                     }
                   </div>
                 </div>
-              } @else if (store.inventoryForm.controls.roomTypeId.value) {
+              } @else if (store.inventoryForm.controls.roomTypeId.value && store.inventoryForm.controls.roomTypeId.value === store.roomsForTypeId()) {
                 <div class="room-selector-empty">
                   <span class="material-symbols-outlined">info</span>
                   <span>No hay habitaciones físicas registradas para este tipo.</span>
@@ -274,7 +274,7 @@
               </div>
 
               <!-- Blackout room checkboxes -->
-              @if (store.hotelRoomsForType().length > 0 && store.blackoutForm.controls.roomTypeId.value) {
+              @if (store.hotelRoomsForType().length > 0 && store.blackoutForm.controls.roomTypeId.value && store.blackoutForm.controls.roomTypeId.value === store.roomsForTypeId()) {
                 <div class="room-selector">
                   <div class="room-selector-head">
                     <span class="room-selector-title">Habitaciones a bloquear</span>
@@ -295,6 +295,27 @@
                           <span class="material-symbols-outlined room-chip-status">block</span>
                         }
                       </button>
+                    }
+                  </div>
+                </div>
+              } @else if (store.blackoutForm.controls.roomTypeId.value && store.blackoutForm.controls.roomTypeId.value === store.roomsForTypeId()) {
+                <div class="room-selector-empty">
+                  <span class="material-symbols-outlined">info</span>
+                  <span>No hay habitaciones físicas registradas para este tipo. Define la cantidad a bloquear:</span>
+                  <div class="field">
+                    <label for="blk-empty-count">Cantidad a bloquear</label>
+                    <div class="input-wrap">
+                      <span class="material-symbols-outlined input-icon">block</span>
+                      <input id="blk-empty-count" type="number" formControlName="blockedRooms" min="1" />
+                    </div>
+                    <span class="field-hint">Mínimo 1. Se guardará como cantidad.</span>
+                    @if ((store.blackoutForm.controls.blockedRooms.value ?? 0) > 0) {
+                      <span class="block-qty-summary" role="status">
+                        <span class="material-symbols-outlined">meeting_room</span>
+                        Se bloquearán
+                        <strong>{{ store.blackoutForm.controls.blockedRooms.value }}</strong>
+                        habitaci{{ store.blackoutForm.controls.blockedRooms.value === 1 ? 'ón' : 'ones' }}
+                      </span>
                     }
                   </div>
                 </div>

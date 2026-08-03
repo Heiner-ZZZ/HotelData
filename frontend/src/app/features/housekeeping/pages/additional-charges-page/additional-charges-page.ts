@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
 
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -36,6 +37,7 @@ export class AdditionalChargesPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly opMode = inject(OperationModeService);
 
   readonly viewState = signal<ViewState | 'no-property'>('no-property');
   readonly data = signal<PaginatedResponse<AdditionalChargeItem> | null>(null);
@@ -114,15 +116,21 @@ export class AdditionalChargesPageComponent {
     this.showCreateForm.update((v) => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
+      // Abrir el form de nuevo cargo → modo insert en el nav.
+      this.opMode.setMode('insert', 'Cargo');
       this.createForm.reset({ bookingId: '', concept: '', amount: '0.00' as any, quantity: 1, chargeDate: '', note: '' });
       this.selectedPropId.set(0);
       this.loadReservations();
+    } else {
+      this.opMode.reset();
     }
   }
 
   startEdit(item: AdditionalChargeItem): void {
     this.editingId.set(item.id);
     this.showCreateForm.set(true);
+    // Editar cargo existente → modo update.
+    this.opMode.setMode('update', `Cargo — ${item.concept}`);
     // Convert chargeDate ISO to datetime-local format
     let dt = '';
     if (item.chargeDate) {
@@ -150,6 +158,7 @@ export class AdditionalChargesPageComponent {
   }
 
   cancelForm(): void {
+    this.opMode.reset();
     this.showCreateForm.set(false);
     this.editingId.set(null);
   }
@@ -185,6 +194,7 @@ export class AdditionalChargesPageComponent {
             this.errorMessage.set('');
             this.showCreateForm.set(false);
             this.editingId.set(null);
+            this.opMode.reset();
             this.refresh();
           },
           error: (err) => {
@@ -210,6 +220,7 @@ export class AdditionalChargesPageComponent {
             this.message.set('Cargo registrado exitosamente');
             this.errorMessage.set('');
             this.showCreateForm.set(false);
+            this.opMode.reset();
             this.refresh();
           },
           error: (err) => {
@@ -230,6 +241,8 @@ export class AdditionalChargesPageComponent {
       ],
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: `Cargo — ${item.concept}`,
     });
     if (!ok) return;
 

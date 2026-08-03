@@ -1,0 +1,67 @@
+/* ─── Operation mode indicator (CRUD chip) ───
+ * Cuadrito de color en el nav que indica el modo actual.
+ * read=verde, insert=ámbar, update=naranja, delete=rojo. */
+
+.op-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.op-chip {
+  --op-color: var(--success);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--op-color) 35%, transparent);
+  background: color-mix(in srgb, var(--op-color) 10%, var(--surface));
+  color: var(--op-color);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  .op-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--op-color);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--op-color) 55%, transparent);
+    flex-shrink: 0;
+  }
+}
+
+/* Modo lectura: discreto, sin animación */
+.op-chip--read {
+  .op-dot {
+    box-shadow: none;
+  }
+}
+
+/* Modos de escritura: leve pulso en el punto para llamar la atención */
+.op-chip--insert,
+.op-chip--update,
+.op-chip--delete {
+  .op-dot {
+    animation: op-dot-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes op-dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--op-color) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--op-color) 0%, transparent);
+  }
+}
+
+/* El modo delete es el más grave: fondo un poco más intenso */
+.op-chip--delete {
+  background: color-mix(in srgb, var(--op-color) 16%, var(--surface));
+}

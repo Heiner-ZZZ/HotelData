@@ -1,0 +1,245 @@
+<div class="rsd-page">
+  <app-housekeeping-sub-nav />
+
+  <app-page-header
+    title="Matriz de Estado de Habitaciones"
+    description="Ocupación, limpieza y disponibilidad por habitación — informe simple O1.2 (Mongo)."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card rsd-filters" aria-label="Filtros del dashboard">
+      <div class="rsd-filter-row">
+        <span class="rsd-filter-label">Estado</span>
+        <div class="rsd-chip-row">
+          <button type="button" class="rsd-chip" [class.active]="!statusFilter()" (click)="toggleStatus('')">
+            Todas
+          </button>
+          @for (opt of statusOptions; track opt.value) {
+            <button
+              type="button"
+              class="rsd-chip"
+              [class.active]="statusFilter() === opt.value"
+              [style.--chip-color]="statusColor(opt.value)"
+              (click)="toggleStatus(opt.value)"
+              [title]="opt.label"
+            >
+              <span class="rsd-chip-dot" [style.background]="statusColor(opt.value)"></span>
+              <span class="material-symbols-outlined rsd-chip-icon">{{ opt.icon }}</span>
+              {{ opt.label }}
+            </button>
+          }
+        </div>
+        @if (hasFilters()) {
+          <button type="button" class="rsd-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando matriz de habitaciones…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener los estados de las habitaciones." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay habitaciones registradas para este hotel." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          <!-- ═══ KPIs primarios (Z — top, jerarquía tipo Power BI) ═══ -->
+          @if (summary(); as s) {
+            <section class="rsd-kpis" aria-label="Resumen de la matriz">
+              <!-- Hero: ocupación con sparkline y contexto -->
+              <article class="rsd-kpi rsd-kpi-hero" [attr.title]="'Ocupación: ' + s.occupancy_rate + '% del hotel'">
+                <div class="rsd-kpi-top">
+                  <span class="material-symbols-outlined rsd-kpi-icon">percent</span>
+                  <small>Ocupación</small>
+                </div>
+                <strong class="rsd-kpi-value">{{ s.occupancy_rate | number:'1.1-1' }}<small>%</small></strong>
+                @if (sparkPoints()) {
+                  <svg class="rsd-hero-spark" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true">
+                    <polygon class="rsd-hero-spark-area" [attr.points]="'0,30 ' + sparkPoints() + ' 120,30'"></polygon>
+                    <polyline class="rsd-hero-spark-line" [attr.points]="sparkPoints()"></polyline>
+                  </svg>
+                }
+                <div class="rsd-kpi-context">
+                  <span>{{ s.occupied }}<b> ocupadas</b></span>
+                  <span>{{ s.total }}<b> total</b></span>
+                </div>
+              </article>
+
+              <!-- Ocupadas -->
+              <article class="rsd-kpi" [attr.title]="'Habitaciones ocupadas ahora mismo'">
+                <div class="rsd-kpi-top">
+                  <span class="material-symbols-outlined rsd-kpi-icon">bed</span>
+                  <small>Ocupadas</small>
+                </div>
+                <strong class="rsd-kpi-value">{{ s.occupied }}<small> de {{ s.total }}</small></strong>
+                <div class="rsd-kpi-context">
+                  <span>{{ s.pending_dirty }}<b> pendientes de limpieza</b></span>
+                </div>
+              </article>
+
+              <!-- Listas para vender: señal de salud -->
+              <article class="rsd-kpi" [attr.title]="'Vacantes limpias + inspeccionadas, listas para venta'">
+                <div class="rsd-kpi-top">
+                  <span class="material-symbols-outlined rsd-kpi-icon">check_circle</span>
+                  <small>Listas para vender</small>
+                </div>
+                <strong class="rsd-kpi-value">{{ s.clean_ready }}</strong>
+                <div class="rsd-progress" role="progressbar" [attr.aria-valuenow]="readyPct()" [attr.aria-label]="'Listas ' + readyPct() + '%'" aria-valuemin="0" aria-valuemax="100">
+                  <span class="rsd-progress-fill" [style.width.%]="readyPct()"></span>
+                </div>
+              </article>
+
+              <!-- Bloqueadas: señal de riesgo -->
+              <article class="rsd-kpi rsd-kpi-warn" [attr.title]="'Habitaciones en mantenimiento o fuera de servicio/orden'">
+                <div class="rsd-kpi-top">
+                  <span class="material-symbols-outlined rsd-kpi-icon">build</span>
+                  <small>Fuera de servicio</small>
+                </div>
+                <strong class="rsd-kpi-value">{{ s.maintenance + s.out_of_service }}</strong>
+                <div class="rsd-kpi-context">
+                  <span>{{ blockedPct() }}<b>% bloqueadas</b></span>
+                </div>
+              </article>
+            </section>
+
+            <!-- ═══ Franja secundaria de consulta (compacta) ═══ -->
+            <section class="rsd-kpi-strip" aria-label="Métricas de consulta">
+              <span class="rsd-kpi-strip-label">
+                <span class="material-symbols-outlined">travel_explore</span>
+                Consulta
+              </span>
+              <span class="rsd-stat" title="Habitaciones en seguimiento"><small>Total</small><b>{{ s.total }}</b></span>
+              <span class="rsd-stat" title="Vacantes (limpias o sucias)"><small>Vacantes</small><b>{{ s.vacant }}</b></span>
+              <span class="rsd-stat" title="En limpieza o limpieza completada"><small>Limpieza</small><b>{{ s.cleaning }}</b></span>
+              <span class="rsd-stat" title="Inspeccionadas por supervisor"><small>Inspección</small><b>{{ s.inspected }}</b></span>
+              <span class="rsd-stat" title="Mantenimiento solicitado"><small>Mtto</small><b>{{ s.maintenance }}</b></span>
+              <span class="rsd-stat" title="Fuera de servicio + fuera de orden"><small>OOS/OOO</small><b>{{ s.out_of_service }}</b></span>
+              <span class="rsd-strip-range">Fuente: Mongo · {{ d.source }}</span>
+            </section>
+          }
+
+          <!-- ═══ Gráfico (Z — centro) ═══ -->
+          @if (distribution().length) {
+            <section class="rsd-chart-row">
+              <app-kpi-chart
+                title="Distribución por estado"
+                [labels]="distribution().map(x => x.label)"
+                [datasets]="chartDatasets()"
+                type="bar"
+                formatValue="number"
+                [showLegend]="true"
+                [height]="280"
+                [showExport]="true"
+                [exportFilename]="exportChartName()"
+              />
+              <aside class="surface-card rsd-summary-card">
+                <h3>Desglose por estado</h3>
+                <ul class="rsd-summary-list">
+                  @for (item of distribution(); track item.status) {
+                    <li>
+                      <span class="rsd-summary-name">
+                        <span class="rsd-dot" [style.background]="item.color"></span>
+                        {{ item.label }}
+                      </span>
+                      <strong>{{ item.count }}</strong>
+                    </li>
+                  }
+                </ul>
+              </aside>
+            </section>
+          }
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card rsd-table-card">
+            <div class="rsd-table-head">
+              <div class="rsd-table-head-left">
+                <span class="material-symbols-outlined rsd-head-icon">meeting_room</span>
+                <div>
+                  <h2>Habitaciones</h2>
+                  <p class="rsd-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                    @if (statusFilter()) {
+                      <span class="rsd-range">Filtro: {{ statusLabel(statusFilter()) }}</span>
+                    }
+                  </p>
+                </div>
+              </div>
+              <div class="rsd-actions">
+                <button type="button" class="rsd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                  <span class="material-symbols-outlined">download</span>
+                  <span class="btn-label">CSV</span>
+                </button>
+                <div class="rsd-pagination">
+                  <button type="button" class="rsd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                    <span class="btn-label">Anterior</span>
+                  </button>
+                  <button type="button" class="rsd-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                    <span class="btn-label">Siguiente</span>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rsd-table-wrap">
+              <table class="rsd-table">
+                <thead>
+                  <tr>
+                    <th>Habitación</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Piso</th>
+                    <th>Nota</th>
+                    <th>Actualizado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.id) {
+                    <tr>
+                      <td>
+                        <strong class="rsd-room">{{ row.roomLabel }}</strong>
+                      </td>
+                      <td class="td-muted">{{ row.roomTypeId || '—' }}</td>
+                      <td>
+                        <span class="rsd-status-badge" [style.--badge-bg]="statusColor(row.status)">
+                          <span class="material-symbols-outlined rsd-status-icon">{{ statusIcon(row.status) }}</span>
+                          {{ statusLabel(row.status) }}
+                        </span>
+                      </td>
+                      <td class="td-muted">{{ row.floor ?? '—' }}</td>
+                      <td class="td-note">{{ row.note || '—' }}</td>
+                      <td class="td-muted">{{ formatDateTime(row.updatedAt || row.createdAt) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="6" class="rsd-empty-cell">No hay habitaciones con el filtro seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para ver la matriz de estado de habitaciones."
+    />
+  }
+</div>

@@ -7,6 +7,7 @@ import { SlicePipe } from '@angular/common';
 
 
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -107,6 +108,7 @@ export class HousekeepingTasksPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
 
   // ── URL-driven state (toSignal auto-cleans, no DestroyRef) ──
   private readonly qp = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -300,6 +302,8 @@ export class HousekeepingTasksPageComponent {
     this.showCreateForm.update(v => !v);
     this.editingId.set(null);
     if (this.showCreateForm()) {
+      // Abrir el form de nueva tarea → modo insert en el nav.
+      this.opMode.setMode('insert', 'Tarea');
       this.createForm.reset({
         roomId: '',
         taskType: 'cleaning',
@@ -309,12 +313,16 @@ export class HousekeepingTasksPageComponent {
         scheduledDate: todayLocalIso(),
         status: 'pending',
       });
+    } else {
+      this.opMode.reset();
     }
   }
 
   startEdit(item: HousekeepingTaskItem): void {
     this.showCreateForm.set(true);
     this.editingId.set(item.id);
+    // Editar tarea existente → modo update.
+    this.opMode.setMode('update', `Tarea — Hab. ${item.roomLabel}`);
     // Defer patchValue so select options render before value is set
     queueMicrotask(() => {
     // Map scheduledDate to datetime-local format (YYYY-MM-DDTHH:mm)
@@ -353,6 +361,7 @@ export class HousekeepingTasksPageComponent {
   }
 
   cancelForm(): void {
+    this.opMode.reset();
     this.showCreateForm.set(false);
     this.editingId.set(null);
   }
@@ -382,6 +391,7 @@ export class HousekeepingTasksPageComponent {
       this.errorMessage.set('');
       this.showCreateForm.set(false);
       this.editingId.set(null);
+      this.opMode.reset();
       this.tasksResource.reload();
     } catch (err: unknown) {
       // Dev visibility: console.error so devs see WHAT went wrong, not
@@ -511,6 +521,8 @@ export class HousekeepingTasksPageComponent {
       message: `¿Eliminar la tarea de "Hab. ${roomLabel}"?`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: `Tarea — Hab. ${roomLabel}`,
     });
     if (ok) this.deleteTask(taskId);
   }

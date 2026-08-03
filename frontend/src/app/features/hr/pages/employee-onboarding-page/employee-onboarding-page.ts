@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { HrApiService } from '../../services/hr-api.service';
 import { API_CONFIG } from '../../../../core/api/api.config';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { roleLabel } from '../../../../core/auth/role-labels';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
@@ -464,6 +465,12 @@ export class EmployeeOnboardingPageComponent {
   private readonly apiConfig = inject(API_CONFIG);
   private readonly router = inject(Router);
   readonly propCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
+
+  constructor() {
+    // Alta de empleado = registro de información NUEVA → modo insert.
+    this.opMode.setMode('insert', 'Empleado');
+  }
 
   readonly step = signal(1);
   readonly submitting = signal(false);

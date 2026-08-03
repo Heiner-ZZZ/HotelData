@@ -57,9 +57,10 @@ export class BlackoutService {
       this.api.getHotelRooms(propId, item.roomTypeId).subscribe({
         next: (res) => {
           this.state.hotelRoomsForType.set(res.items);
+          this.state.roomsForTypeId.set(item.roomTypeId);
           this.state.blackoutSelectedRooms.set(new Set(item.roomNumbers || []));
         },
-        error: () => {},
+        error: () => this.state.roomsForTypeId.set(''),
       });
     }
     setTimeout(() => {
@@ -118,7 +119,7 @@ export class BlackoutService {
       reason: this.form.controls.reason.value,
     };
     if (roomNumbers.length > 0) payload['room_numbers'] = roomNumbers;
-    else payload['blocked_rooms'] = this.form.controls.blockedRooms.value;
+    else payload['blocked_rooms'] = Math.max(1, Number(this.form.controls.blockedRooms.value) || 1);
 
     const request$ = editing ? this.api.updateBlackout(editing.blackoutId, payload) : this.api.createBlackout(payload as any);
 
@@ -132,6 +133,7 @@ export class BlackoutService {
           this.state.editingBlackout.set(null);
           this.state.blackoutSelectedRooms.set(new Set());
           this.state.hotelRoomsForType.set([]);
+          this.state.roomsForTypeId.set('');
           this.state.saving.set(false);
         },
         error: (err: ApiError) => {
@@ -151,9 +153,10 @@ export class BlackoutService {
     this.api.getHotelRooms(propId, roomTypeId).subscribe({
       next: (res) => {
         this.state.hotelRoomsForType.set(res.items);
+        this.state.roomsForTypeId.set(roomTypeId);
         this.state.blackoutSelectedRooms.set(new Set());
       },
-      error: () => {},
+      error: () => this.state.roomsForTypeId.set(''),
     });
   }
 

@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -70,6 +71,7 @@ export class RatesPageComponent {
   private readonly kpiApi = inject(KpiApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
 
   // ── KPI: 7-day rate trend ──
   readonly rateTrend = signal<RateTrendResponse | null>(null);
@@ -200,6 +202,60 @@ export class RatesPageComponent {
   readonly existingPlansCollapsed = signal(false);
   readonly newSeasonalCollapsed = signal(false);
   readonly existingSeasonsCollapsed = signal(false);
+
+  /**
+   * Modo CRUD reactivo según la sección activa, la edición en curso y los
+   * confirms de borrado abiertos. Un effect lo escribe al nav (applyMode).
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    // Confirms de borrado: el modal gestiona su propio modo mientras está abierto.
+    if (this.deleteConfirm()) {
+      const plan = this.ratesResource.value()?.ratePlans.find((p) => p.id === this.deleteConfirm());
+      return { mode: 'delete', detail: plan?.name || 'Plan tarifario' };
+    }
+    if (this.promoDeleteConfirm()) {
+      return { mode: 'delete', detail: 'Promoción' };
+    }
+    // Ediciones en curso tienen prioridad sobre el default de la sección.
+    if (this.editingPlan()) {
+      return { mode: 'update', detail: this.editingPlan()!.name };
+    }
+    if (this.editingSeason()) {
+      return { mode: 'update', detail: this.editingSeason()!.name };
+    }
+    if (this.editingPromo()) {
+      return { mode: 'update', detail: this.editingPromo()!.name };
+    }
+    if (!this.selectedPropId()) {
+      return { mode: 'read', detail: '' };
+    }
+    switch (this.activeSection()) {
+      case 'rate-entry':
+        // Form de entrada individual siempre visible en esta sección.
+        return { mode: 'insert', detail: 'Entrada de tarifa' };
+      case 'plans':
+        // El form de nuevo plan está abierto por defecto → insert.
+        return this.planFormCollapsed()
+          ? { mode: 'read', detail: '' }
+          : { mode: 'insert', detail: 'Plan tarifario' };
+      case 'seasons':
+        // El form de nueva regla está colapsado por defecto → read.
+        return this.newSeasonalCollapsed()
+          ? { mode: 'read', detail: '' }
+          : { mode: 'insert', detail: 'Regla de temporada' };
+      case 'promos':
+        // El form de promoción está siempre visible en esta sección.
+        return { mode: 'insert', detail: 'Promoción' };
+      default:
+        return { mode: 'read', detail: '' };
+    }
+  });
+
+  /** Escribe el modo calculado al servicio global del nav. */
+  private applyMode(): void {
+    const m = this._opMode();
+    this.opMode.setMode(m.mode, m.detail);
+  }
 
   toggleCollapse(section: string): void {
     if (section === 'planForm') this.planFormCollapsed.update(v => !v);
@@ -475,6 +531,11 @@ readonly sidebarSections: SidebarSection[] = [
         this.propertyCtx.setProperty(data.propId, data.hotelLabel);
       }      }, { allowSignalWrites: true });
 
+    // Modo CRUD reactivo en el nav según sección/edición/borrado.
+    effect(() => {
+      this.applyMode();
+    }, { allowSignalWrites: true });
+
     // Auto-carga en modo single-hotel: si no hay prop_id en URL pero el contexto
     // está ready, navegar con el propId del contexto
     effect(() => {
@@ -595,7 +656,14 @@ readonly sidebarSections: SidebarSection[] = [
     this.planIncludedAmenities.set([]);
   }
 
-  onDeletePlan(planId: string): void { this.deleteConfirm.set(planId); }
+  onDeletePlan(planId: string): void {
+    // El computed reactivo pone el modo delete al abrir el confirm.
+    this.deleteConfirm.set(planId);
+  }
+
+  cancelDeletePlan(): void {
+    this.deleteConfirm.set(null);
+  }
 
   confirmDeletePlan(): void {
     const planId = this.deleteConfirm(); if (!planId) return;
@@ -744,11 +812,14 @@ readonly sidebarSections: SidebarSection[] = [
 
   deleteSeasonalRule(ruleId: string): void {
     const current = this.ratesResource.value(); if (!current) return;
+    // Borrado directo (sin confirm): mostrar el modo delete durante la petición
+    // y volver al modo de la sección al terminar.
+    this.opMode.setMode('delete', 'Regla de temporada');
     this.api.deleteSeasonalRule(ruleId).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => { this.ratesResource.reload(); this.message.set('Regla de temporada eliminada'); },
-      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.'); },
+      next: () => { this.ratesResource.reload(); this.message.set('Regla de temporada eliminada'); this.applyMode(); },
+      error: (error: ApiError) => { this.errorMessage.set(error.message || 'Error al eliminar regla de temporada.'); this.applyMode(); },
     });
   }
 
@@ -778,7 +849,14 @@ readonly sidebarSections: SidebarSection[] = [
     });
   }
 
-  onDeletePromo(campaignId: string): void { this.promoDeleteConfirm.set(campaignId); }
+  onDeletePromo(campaignId: string): void {
+    // El computed reactivo pone el modo delete al abrir el confirm.
+    this.promoDeleteConfirm.set(campaignId);
+  }
+
+  cancelDeletePromo(): void {
+    this.promoDeleteConfirm.set(null);
+  }
 
   confirmDeletePromo(): void {
     const campaignId = this.promoDeleteConfirm(); if (!campaignId) return;

@@ -121,6 +121,13 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../in-stay/pages/staff-inbox/staff-inbox-page').then((m) => m.StaffInboxPageComponent)
   },
   {
+    path: 'service-requests',
+    loadComponent: () =>
+      import('../in-stay/pages/service-requests-dashboard-page/service-requests-dashboard-page').then(
+        (m) => m.ServiceRequestsDashboardPageComponent
+      )
+  },
+  {
     path: 'shifts',
     loadChildren: () =>
       import('../shifts/shifts.routes').then((m) => m.SHIFTS_ROUTES)

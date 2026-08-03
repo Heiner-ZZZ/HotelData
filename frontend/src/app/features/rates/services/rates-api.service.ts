@@ -4,8 +4,12 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapRatePlanOptions, mapRatesPropertyOptions, mapRatesResponse } from '../mappers/rates.mapper';
+import { mapRoomPerformanceDashboard } from '../mappers/room-performance.mapper';
+import { mapRateCalendarDashboard } from '../mappers/rate-calendar.mapper';
 import type { PropertyOptionsPage } from '../models/rates.model';
 import type { RatesDto, RatesOptionsDto } from '../models/rates.dto';
+import type { RoomPerformanceDashboardDto } from '../models/room-performance.dto';
+import type { RateCalendarDashboardDto } from '../models/rate-calendar.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +26,52 @@ export class RatesApiService {
         withCredentials: true
       })
       .pipe(map((dto) => mapRatesResponse(dto)));
+  }
+
+  /** Tactical R1.2 dashboard: ADR por fecha, tipo de habitación y canal (ClickHouse). */
+  getRoomPerformanceDashboard(params: {
+    prop_id?: number;
+    date_from?: string;
+    date_to?: string;
+    room_type_id?: string;
+    channel?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    let hp = new HttpParams();
+    if (params.prop_id) hp = hp.set('prop_id', String(params.prop_id));
+    if (params.date_from) hp = hp.set('date_from', params.date_from);
+    if (params.date_to) hp = hp.set('date_to', params.date_to);
+    if (params.room_type_id) hp = hp.set('room_type_id', params.room_type_id);
+    if (params.channel) hp = hp.set('channel', params.channel);
+    if (params.page) hp = hp.set('page', String(params.page));
+    if (params.page_size) hp = hp.set('page_size', String(params.page_size));
+    return this.http
+      .get<RoomPerformanceDashboardDto>(`${this.apiConfig.baseUrl}/management/rates/analytics/room-performance`, { params: hp, withCredentials: true })
+      .pipe(map(dto => mapRoomPerformanceDashboard(dto)));
+  }
+
+  /** Simple R2.2 dashboard: días con tarifa vs huecos (Mongo). */
+  getRateCalendarDashboard(params: {
+    prop_id?: number;
+    plan_id?: string;
+    date_from?: string;
+    date_to?: string;
+    days?: number;
+    page?: number;
+    page_size?: number;
+  }) {
+    let hp = new HttpParams();
+    if (params.prop_id) hp = hp.set('prop_id', String(params.prop_id));
+    if (params.plan_id) hp = hp.set('plan_id', params.plan_id);
+    if (params.date_from) hp = hp.set('date_from', params.date_from);
+    if (params.date_to) hp = hp.set('date_to', params.date_to);
+    if (params.days) hp = hp.set('days', String(params.days));
+    if (params.page) hp = hp.set('page', String(params.page));
+    if (params.page_size) hp = hp.set('page_size', String(params.page_size));
+    return this.http
+      .get<RateCalendarDashboardDto>(`${this.apiConfig.baseUrl}/management/rates/analytics/rate-calendar`, { params: hp, withCredentials: true })
+      .pipe(map(dto => mapRateCalendarDashboard(dto)));
   }
 
   /** Fetch amenity catalog labels for the given property (flatten grouped response).

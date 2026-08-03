@@ -1,0 +1,230 @@
+<div class="rpd-page">
+  <app-page-header
+    title="Dashboard ADR"
+    description="Tarifa media diaria por noche de estancia, tipo de habitación y canal."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <nav class="rpd-nav" aria-label="Tarifas">
+    <a routerLink="/management/rates/dashboard" class="rpd-nav-link active">Dashboard ADR</a>
+    <a routerLink="/management/rates" class="rpd-nav-link">Tarifas</a>
+  </nav>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card rpd-filters" aria-label="Filtros del dashboard">
+      <div class="rpd-filter-row">
+        <span class="rpd-filter-label">Período</span>
+        <button type="button" class="rpd-chip" [class.active]="(!dateFrom() || !dateTo()) || activeRange() === '30'" (click)="setRange(30)">30 días</button>
+        <button type="button" class="rpd-chip" [class.active]="activeRange() === '7'" (click)="setRange(7)">7 días</button>
+        <button type="button" class="rpd-chip" [class.active]="activeRange() === '90'" (click)="setRange(90)">90 días</button>
+      </div>
+      <div class="rpd-filter-row secondary">
+        <div class="rpd-date-group">
+          <span class="material-symbols-outlined rpd-date-icon">calendar_month</span>
+          <input type="date" class="rpd-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+          <span class="rpd-date-sep">→</span>
+          <input type="date" class="rpd-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+        </div>
+        <div class="rpd-select-chips">
+          <span class="rpd-filter-label">Tipo</span>
+          @for (opt of roomTypeOptions(); track opt.roomTypeId) {
+            <button
+              type="button"
+              class="rpd-chip"
+              [class.active]="roomTypeFilter() === opt.roomTypeId"
+              (click)="toggleFilter('room_type_id', opt.roomTypeId, roomTypeFilter())"
+            >{{ opt.roomTypeLabel || shortRoomType(opt.roomTypeId) }}</button>
+          }
+        </div>
+        <div class="rpd-select-chips">
+          <span class="rpd-filter-label">Canal</span>
+          @for (opt of channelOptions(); track opt.channel) {
+            <button
+              type="button"
+              class="rpd-chip"
+              [class.active]="channelFilter() === opt.channel"
+              (click)="toggleFilter('channel', opt.channel, channelFilter())"
+            >{{ opt.label }}</button>
+          }
+        </div>
+        @if (hasFilters()) {
+          <button type="button" class="rpd-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando KPI de rendimiento…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener los agregados de ADR." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay KPIs de rendimiento para el rango y hotel seleccionados. Verifica que el ETL horario haya cargado kpi_room_performance_daily." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          @if (!d.available) {
+            <div class="rpd-unavailable">
+              <span class="material-symbols-outlined">cloud_off</span>
+              ClickHouse no está disponible. El panel no consulta Mongo como sustituto.
+            </div>
+          }
+
+          <!-- ═══ KPIs (Z — top) ═══ -->
+          @if (summary(); as s) {
+            <section class="rpd-kpis" aria-label="Resumen de rendimiento">
+              <article class="rpd-kpi adr">
+                <span class="material-symbols-outlined">sell</span>
+                <strong>{{ s.adr | number:'1.2-2' }}</strong>
+                <small>ADR</small>
+                <em>{{ s.roomNights }} noche(s) vendida(s)</em>
+              </article>
+              <article class="rpd-kpi revpar">
+                <span class="material-symbols-outlined">insights</span>
+                <strong>{{ s.revpar | number:'1.2-2' }}</strong>
+                <small>RevPAR</small>
+                <em>{{ s.rangeDays }} día(s) · {{ s.capacityNights }} capacidades</em>
+              </article>
+              <article class="rpd-kpi occupancy">
+                <span class="material-symbols-outlined">hotel</span>
+                <strong>{{ s.occupancy | number:'1.1-1' }}%</strong>
+                <small>Ocupación</small>
+                <em>noches / capacidad</em>
+              </article>
+              <article class="rpd-kpi revenue">
+                <span class="material-symbols-outlined">payments</span>
+                <strong>{{ s.revenue | number:'1.2-2' }}</strong>
+                <small>Revenue realizado</small>
+                <em>{{ s.roomsSold }} habitación(es) vendida(s)</em>
+              </article>
+              <article class="rpd-kpi cancelled">
+                <span class="material-symbols-outlined">cancel</span>
+                <strong>{{ s.cancelledRooms }}</strong>
+                <small>Habitaciones canceladas</small>
+                <em>excluidas del ADR</em>
+              </article>
+            </section>
+          }
+
+          <!-- ═══ Gráfico (Z — centro) ═══ -->
+          <section class="rpd-chart-row">
+            <app-kpi-chart
+              title="Evolución del ADR"
+              [labels]="series().labels"
+              [datasets]="chartDatasets()"
+              type="line"
+              formatValue="currency"
+              [showLegend]="false"
+              [height]="280"
+            />
+            @if (summary()?.byChannel?.length) {
+              <aside class="surface-card rpd-channels">
+                <h3>ADR por canal</h3>
+                <ul class="rpd-channel-list">
+                  @for (c of summary()!.byChannel; track c.channel) {
+                    <li>
+                      <div class="rpd-channel-meta">
+                        <span class="rpd-channel-name">{{ c.label }}</span>
+                        <small>{{ c.roomNights }} noche(s) · {{ c.revenue | number:'1.2-2' }}</small>
+                      </div>
+                      <strong>{{ c.adr | number:'1.2-2' }}</strong>
+                    </li>
+                  } @empty {
+                    <li class="rpd-muted">Sin canales en el rango.</li>
+                  }
+                </ul>
+              </aside>
+            }
+          </section>
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card rpd-table-card">
+            <div class="rpd-table-head">
+              <div class="rpd-table-head-left">
+                <span class="material-symbols-outlined rpd-head-icon">calendar_view_day</span>
+                <div>
+                  <h2>Detalle diario por tipo y canal</h2>
+                  <p class="rpd-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                    <span class="rpd-range">{{ d.dateFrom }} → {{ d.dateTo }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="rpd-pagination">
+                <button type="button" class="rpd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                  <span class="btn-label">Anterior</span>
+                </button>
+                <button type="button" class="rpd-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                  <span class="btn-label">Siguiente</span>
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="rpd-table-wrap">
+              <table class="rpd-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Hotel</th>
+                    <th>Tipo</th>
+                    <th>Canal</th>
+                    <th class="th-num">Divisa</th>
+                    <th class="th-num">Noches</th>
+                    <th class="th-num">Revenue</th>
+                    <th class="th-num">ADR</th>
+                    <th class="th-num">Canceladas</th>
+                    <th class="th-num">Disponibles</th>
+                    <th class="th-num">Tarifa publicada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.date + row.propId + row.roomTypeId + row.currency + row.bookingSource) {
+                    <tr>
+                      <td>{{ formatDate(row.date) }}</td>
+                      <td>{{ row.hotelLabel || ('Hotel #' + row.propId) }}</td>
+                      <td>{{ row.roomTypeLabel || shortRoomType(row.roomTypeId) }}</td>
+                      <td>
+                        <span class="rpd-channel-badge">
+                          <span class="material-symbols-outlined badge-icon">swap_horiz</span>
+                          {{ channelLabel(row.bookingSource) }}
+                        </span>
+                      </td>
+                      <td class="td-num mono">{{ row.currency || '—' }}</td>
+                      <td class="td-num">{{ row.roomNights }}</td>
+                      <td class="td-num mono strong">${{ row.revenue.toFixed(2) }}</td>
+                      <td class="td-num mono adr">{{ (row.roomNights ? row.revenue / row.roomNights : 0).toFixed(2) }}</td>
+                      <td class="td-num mono cancelled">{{ row.cancelledRooms }}</td>
+                      <td class="td-num">{{ row.availableRooms }}<small class="rpd-sub">/{{ row.totalRooms }}</small></td>
+                      <td class="td-num mono">{{ row.publishedRate != null ? '$' + row.publishedRate.toFixed(2) : '—' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="11" class="rpd-empty-cell">No hay filas agregadas para el rango seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar el dashboard por hotel."
+    />
+  }
+</div>

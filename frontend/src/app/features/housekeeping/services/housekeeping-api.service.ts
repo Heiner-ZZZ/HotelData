@@ -1,5 +1,10 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { map } from 'rxjs';
+
+import type { RoomStatusAnalytics } from '../models/room-status-analytics.model';
+import type { RoomStatusAnalyticsDto } from '../models/room-status-analytics.dto';
+import { mapRoomStatusAnalytics } from '../mappers/room-status-analytics.mapper';
 
 export interface RoomStatusItem {
   id: string;
@@ -433,6 +438,16 @@ export class HousekeepingApiService {
       .set('week_start', weekStart);
     if (assignedTo) params = params.set('assigned_to', assignedTo);
     return this.http.get<WeeklyCalendarData>('/housekeeping/calendar-week', { params });
+  }
+
+  /** Simple O1.2 dashboard: matriz de estado de habitaciones (Mongo). */
+  getRoomStatusAnalytics(propId?: number, status?: string, page = 1) {
+    let params = new HttpParams().set('page', String(page));
+    if (propId) params = params.set('prop_id', String(propId));
+    if (status) params = params.set('status', status);
+    return this.http
+      .get<RoomStatusAnalyticsDto>('/housekeeping/room-status/analytics', { params })
+      .pipe(map((dto) => mapRoomStatusAnalytics(dto)));
   }
 
   // ── Room Status History / Audit ──

@@ -1,0 +1,217 @@
+<div class="srd-page">
+  <app-page-header
+    title="Dashboard Solicitudes"
+    description="Solicitudes de servicio por estado y tipo (in-stay / housekeeping)."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <nav class="srd-nav" aria-label="In-stay">
+    <a routerLink="/management/stay-inbox" class="srd-nav-link">Bandeja unificada</a>
+    <a routerLink="/management/service-requests" class="srd-nav-link active">Dashboard</a>
+  </nav>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card srd-filters" aria-label="Filtros del dashboard">
+      <div class="srd-filter-row">
+        <div class="srd-date-group">
+          <span class="material-symbols-outlined srd-date-icon">calendar_month</span>
+          <input type="date" class="srd-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+          <span class="srd-date-sep">→</span>
+          <input type="date" class="srd-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+        </div>
+        <div class="srd-select-chips">
+          <span class="srd-filter-label">Estado</span>
+          @for (opt of statusOptions; track opt.value) {
+            <button
+              type="button"
+              class="srd-chip"
+              [class.active]="statusFilter() === opt.value"
+              (click)="toggleStatus(opt.value)"
+            >{{ opt.label }}</button>
+          }
+        </div>
+        @if (typeOptions().length) {
+          <div class="srd-select-chips">
+            <span class="srd-filter-label">Tipo</span>
+            @for (opt of typeOptions(); track opt.key) {
+              <button
+                type="button"
+                class="srd-chip"
+                [class.active]="isTypeActive(opt.key)"
+                (click)="toggleType(opt.key)"
+              >{{ opt.label }}</button>
+            }
+          </div>
+        }
+        @if (hasFilters()) {
+          <button type="button" class="srd-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando solicitudes…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener las solicitudes de servicio." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay solicitudes para el hotel y filtros seleccionados." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          <!-- ═══ KPIs (Z — top) ═══ -->
+          @if (summary(); as s) {
+            <section class="srd-kpis" aria-label="Resumen de solicitudes">
+              <article class="srd-kpi total">
+                <span class="material-symbols-outlined">inbox</span>
+                <strong>{{ s.total }}</strong>
+                <small>Total solicitudes</small>
+                <em>en el rango seleccionado</em>
+              </article>
+              <article class="srd-kpi pending">
+                <span class="material-symbols-outlined">pending_actions</span>
+                <strong>{{ s.pending }}</strong>
+                <small>Pendientes</small>
+                <em>esperando atención</em>
+              </article>
+              <article class="srd-kpi in-progress">
+                <span class="material-symbols-outlined">engineering</span>
+                <strong>{{ s.inProgress }}</strong>
+                <small>En proceso</small>
+                <em>siendo atendidas</em>
+              </article>
+              <article class="srd-kpi completed">
+                <span class="material-symbols-outlined">task_alt</span>
+                <strong>{{ s.completed }}</strong>
+                <small>Completadas</small>
+                <em>{{ s.resolvedCount }} con tiempo medido</em>
+              </article>
+              <article class="srd-kpi resolution">
+                <span class="material-symbols-outlined">timer</span>
+                <strong>{{ s.avgResolutionMinutes !== null ? (s.avgResolutionMinutes | number:'1.0-1') + ' min' : '—' }}</strong>
+                <small>Resolución media</small>
+                <em>{{ s.cancelled }} canceladas</em>
+              </article>
+            </section>
+          }
+
+          <!-- ═══ Gráficos (Z — centro) ═══ -->
+          <section class="srd-chart-row">
+            <app-kpi-chart
+              title="Volumen por tipo de solicitud"
+              [labels]="series().labels"
+              [datasets]="chartDatasets()"
+              type="bar"
+              formatValue="number"
+              [showLegend]="false"
+              [height]="280"
+            />
+            @if (series().dailyLabels.length) {
+              <app-kpi-chart
+                title="Tendencia diaria por estado"
+                [labels]="series().dailyLabels"
+                [datasets]="dailyDatasets()"
+                type="line"
+                formatValue="number"
+                [showLegend]="true"
+                [height]="280"
+              />
+            }
+          </section>
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card srd-table-card">
+            <div class="srd-table-head">
+              <div class="srd-table-head-left">
+                <span class="material-symbols-outlined srd-head-icon">room_service</span>
+                <div>
+                  <h2>Detalle de solicitudes</h2>
+                  <p class="srd-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                  </p>
+                </div>
+              </div>
+              <div class="srd-actions">
+                <button type="button" class="srd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                  <span class="material-symbols-outlined">download</span>
+                  <span class="btn-label">CSV</span>
+                </button>
+                <div class="srd-pagination">
+                  <button type="button" class="srd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                    <span class="btn-label">Anterior</span>
+                  </button>
+                  <button type="button" class="srd-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                    <span class="btn-label">Siguiente</span>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="srd-table-wrap">
+              <table class="srd-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Habitación</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Descripción</th>
+                    <th>Resuelta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.id) {
+                    <tr>
+                      <td>{{ row.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td class="td-room">{{ row.roomLabel || '—' }}</td>
+                      <td>
+                        <span class="srd-type-badge">
+                          <span class="material-symbols-outlined badge-icon">room_service</span>
+                          {{ row.requestTypeLabel || typeLabel(row.requestType) }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="srd-status-badge {{ statusClass(row.status) }}">
+                          {{ row.statusLabel || row.status }}
+                        </span>
+                      </td>
+                      <td class="td-desc">
+                        @if (row.description) {
+                          <span class="desc-text">{{ row.description }}</span>
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </td>
+                      <td>{{ row.resolvedAt ? (row.resolvedAt | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="6" class="srd-empty-cell">No hay solicitudes para los filtros seleccionados.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar el dashboard de solicitudes por hotel."
+    />
+  }
+</div>

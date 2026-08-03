@@ -9,6 +9,7 @@ import { lastValueFrom, of, switchMap } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
+import { KpiChartComponent } from '../../../../shared/ui/kpi-chart/kpi-chart';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
@@ -137,7 +138,7 @@ function getQuickActions(status: string): QuickAction[] {
 
 @Component({
   selector: 'app-room-status-page',
-  imports: [DatePipe, SlicePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, PropertySelectorComponent, ConfirmDialogComponent, InfoTooltipComponent, HousekeepingSubNavComponent],
+  imports: [DatePipe, SlicePipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent, KpiChartComponent, PropertySelectorComponent, ConfirmDialogComponent, InfoTooltipComponent, HousekeepingSubNavComponent],
   templateUrl: './room-status-page.html',
   styleUrl: './room-status-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -222,6 +223,21 @@ export class RoomStatusPageComponent {
     },
   });
 
+  /** Analytics resource (O1.2): KPIs + distribución de estados para el patrón Z. */
+  readonly analyticsResource = rxResource<any, any>({
+    params: () => ({ propId: this.propId() }),
+    stream: ({ params }) => {
+      const { propId } = params as any;
+      if (!propId) {
+        return of({
+          available: false, summary: { total: 0 }, distribution: [], status_labels: STATUS_DEFS.reduce((acc, s) => ({ ...acc, [s.value]: s.label }), {}),
+          status_colors: STATUS_DEFS.reduce((acc, s) => ({ ...acc, [s.value]: s.color }), {}),
+        } as any);
+      }
+      return this.api.getRoomStatusAnalytics(propId);
+    },
+  });
+
   /** Side-effect: sync property context when propId changes */
   private readonly _syncPropCtx = effect(() => {
     const pid = this.propId();
@@ -233,6 +249,21 @@ export class RoomStatusPageComponent {
   });
 
   readonly data = computed(() => this.resource.value() ?? null);
+
+  readonly analytics = computed(() => this.analyticsResource.value() ?? null);
+  readonly analyticsSummary = computed(() => this.analytics()?.summary ?? null);
+
+  /** Datasets del gráfico de distribución (solo estados con > 0). */
+  readonly distributionDatasets = computed(() => {
+    const dist: { status: string; label: string; count: number; color: string }[] = this.analytics()?.distribution ?? [];
+    if (!dist.length) return [];
+    return [{ label: 'Habitaciones', data: dist.map((d) => d.count) }];
+  });
+
+  readonly distributionLabels = computed(() => {
+    const dist: { status: string; label: string; count: number; color: string }[] = this.analytics()?.distribution ?? [];
+    return dist.map((d) => this.getStatusLabel(d.status));
+  });
   readonly viewState = computed<'loading' | 'error' | 'empty' | 'success' | 'no-property'>(() => {
     if (!this.propId()) return 'no-property';
     const s = this.resource.status();

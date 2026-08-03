@@ -22,6 +22,7 @@ def hotel_rooms_by_type(prop_id: int, room_type_id: str) -> list[dict[str, Any]]
     # Add room_number derived from room_label for frontend compatibility
     for item in items:
         item["room_number"] = item.get("room_label", "")
+    return items
 
 
 def _hotel_rooms_for_prop(prop_id: int, limit: int = 80) -> list[dict[str, Any]]:

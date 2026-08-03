@@ -518,12 +518,12 @@
 
   <!-- Delete confirmation modal -->
   @if (deleteConfirm(); as planId) {
-    <div class="modal-backdrop" (click)="deleteConfirm.set(null)">
+    <div class="modal-backdrop" (click)="cancelDeletePlan()">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Eliminar plan tarifario</h2>
         <p>¿Estás seguro de eliminar este plan tarifario? Se eliminarán también las tarifas del calendario asociadas. Esta acción no se puede deshacer.</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="deleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="cancelDeletePlan()">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeletePlan()">Eliminar</button>
         </div>
       </article>
@@ -532,12 +532,12 @@
 
   <!-- Promo delete confirmation -->
   @if (promoDeleteConfirm(); as campaignId) {
-    <div class="modal-backdrop" (click)="promoDeleteConfirm.set(null)">
+    <div class="modal-backdrop" (click)="cancelDeletePromo()">
       <article class="modal-card modal-card-danger" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2>Desactivar promoción</h2>
         <p>¿Estás seguro de desactivar esta campaña promocional? Los cupones asociados dejarán de ser válidos.</p>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-btn-secondary" (click)="promoDeleteConfirm.set(null)">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="cancelDeletePromo()">Cancelar</button>
           <button type="button" class="modal-btn modal-btn-danger" (click)="confirmDeletePromo()">Desactivar</button>
         </div>
       </article>

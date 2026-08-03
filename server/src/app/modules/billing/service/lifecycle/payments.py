@@ -34,7 +34,13 @@ def create_payment(payload: PaymentCreate) -> dict | None:
         return None
     invoice_id = None
     if payload.invoice_id:
-        inv = db[INVOICES].find_one({"_id": ObjectId(payload.invoice_id)})
+        try:
+            from bson.errors import InvalidId
+            inv = db[INVOICES].find_one({"_id": ObjectId(payload.invoice_id)})
+        except InvalidId:
+            # Un id de factura malformado se ignora (no rompe el registro);
+            # el id opcional es solo un vínculo de contexto para el pago.
+            inv = None
         if inv:
             invoice_id = ObjectId(payload.invoice_id)
 

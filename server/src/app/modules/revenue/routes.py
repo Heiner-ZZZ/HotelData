@@ -6,7 +6,9 @@ from src.app.modules.revenue.schemas import ModuleStatus
 from src.app.modules.revenue.services import (
     create_promotion_campaign,
     create_rate_plan,
+    get_rate_calendar_dashboard,
     get_rate_plan,
+    get_room_performance_dashboard,
     hotel_rates_overview,
     list_property_campaigns,
     module_status,
@@ -30,6 +32,70 @@ def revenue_status() -> ModuleStatus:
 @api_router.get("/rates")
 def rates_api(prop_id: int = Query(..., ge=1), current_user: dict = Depends(require_permission("rates.read"))):
     return hotel_rates_overview(prop_id)
+
+
+@api_router.get("/rates/analytics/room-performance")
+def room_performance_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    room_type_id: str | None = Query(default=None),
+    channel: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_permission("rates.read")),
+):
+    """Dashboard táctico R1.2: ADR por fecha, tipo de habitación y canal.
+
+    Lee exclusivamente ``kpi_room_performance_daily`` (agregado por día × hotel
+    × tipo × divisa × canal). Devuelve resumen (ADR/RevPAR/ocupación), serie
+    diaria y filas paginadas. Filtros de tipo/canal solo afectan la grilla.
+    """
+    try:
+        return get_room_performance_dashboard(
+            prop_id=prop_id,
+            date_from=date_from,
+            date_to=date_to,
+            days=days,
+            room_type_id=room_type_id,
+            channel=channel,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.get("/rates/analytics/rate-calendar")
+def rate_calendar_dashboard_api(
+    prop_id: int | None = Query(default=None, ge=1),
+    plan_id: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=90, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: dict = Depends(require_permission("rates.read")),
+):
+    """Dashboard simple R2.2: días con tarifa vs huecos (Mongo).
+
+    Lee ``hotel_rate_calendar`` + ``rate_plans`` directamente desde Mongo.
+    Devuelve resumen (planes, tarifa media, días cerrados, huecos), serie
+    diaria y filas paginadas para la grilla del patrón Z.
+    """
+    try:
+        return get_rate_calendar_dashboard(
+            prop_id=prop_id,
+            plan_id=plan_id,
+            date_from=date_from,
+            date_to=date_to,
+            days=days,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @api_router.get("/rates/options")

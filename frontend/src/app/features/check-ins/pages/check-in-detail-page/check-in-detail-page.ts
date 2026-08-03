@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { catchAndToastWarning } from '../../../../shared/utils/catch-and-toast';
 
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -38,6 +39,7 @@ export class CheckInDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(CheckInsApiService);
+  private readonly opMode = inject(OperationModeService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = computed(() => this.detailResource.value() ?? null);
@@ -78,6 +80,34 @@ export class CheckInDetailPageComponent {
   readonly depositReceived = signal(false);
   readonly privacySigned = signal(false);
   readonly observations = signal('');
+
+  /**
+   * Modo CRUD reactivo: si algún campo del wizard difiere del estado guardado
+   * en backend, el usuario está editando el check-in → UPDATE en el nav.
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    const d = this.data();
+    if (!d) return { mode: 'read', detail: '' };
+    const edited =
+      this.arrivalTime() !== (d.check_in_arrival_time || '') ||
+      this.hasCompanions() !== (d.check_in_has_companions || false) ||
+      this.companionsCount() !== (d.check_in_companions_count || 0) ||
+      this.documentVerified() !== (d.check_in_document_verified || false) ||
+      this.keysDelivered() !== (d.check_in_keys_delivered || false) ||
+      this.paymentPending() !== (d.check_in_payment_pending || false) ||
+      this.depositReceived() !== (d.check_in_deposit_received || false) ||
+      this.privacySigned() !== (d.check_in_privacy_signed || false) ||
+      this.observations() !== (d.check_in_observations || '');
+    return edited
+      ? { mode: 'update', detail: `Check-in ${d.booking_id}` }
+      : { mode: 'read', detail: '' };
+  });
+
+  /** Escribe el modo calculado al servicio global del nav. */
+  private applyMode(): void {
+    const m = this._opMode();
+    this.opMode.setMode(m.mode, m.detail);
+  }
 
   // ── Past-date validation ──
   readonly isPastDate = computed(() => {
@@ -173,6 +203,11 @@ export class CheckInDetailPageComponent {
       this._restoreDraft();
       if (detail.stay_status === STAY_CHECKED_IN) this.currentStep.set(5);
       this.viewState.set('success');
+    }, { allowSignalWrites: true });
+
+    // Modo CRUD reactivo: editar campos del wizard → UPDATE en el nav.
+    effect(() => {
+      this.applyMode();
     }, { allowSignalWrites: true });
 
     // Persist wizard fields to localStorage on every change

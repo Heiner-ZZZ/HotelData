@@ -4,6 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -69,6 +70,7 @@ export class ReservationDetailPageComponent {
   private readonly instayApi = inject(InStayApiService);
   private readonly actionService = inject(ReservationActionService);
   private readonly router = inject(Router);
+  private readonly operationMode = inject(OperationModeService);
 
   readonly cancelPending = signal(false);
   readonly confirmPending = signal(false);
@@ -254,6 +256,8 @@ export class ReservationDetailPageComponent {
             message: `Cancelar la reserva de ${current.guestName}?`,
             confirmLabel: 'Cancelar reserva',
             variant: 'danger',
+            mode: 'delete',
+            modeDetail: `Reserva ${current.bookingId}`,
           }).then((ok) => { if (ok) this.executeCancel(current.bookingId); });
         }
       }
@@ -345,6 +349,8 @@ export class ReservationDetailPageComponent {
       message: `¿Eliminar "${itemName}" de la reserva?`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: itemName,
     });
     if (!ok) return;
     this.productError.set('');
@@ -367,6 +373,7 @@ export class ReservationDetailPageComponent {
   toggleEdit() {
     if (this.editMode()) {
       this.editMode.set(false);
+      this.operationMode.reset();
       return;
     }
     const vm = this.detailResource.value();
@@ -379,6 +386,8 @@ export class ReservationDetailPageComponent {
       });
       this.editError.set('');
       this.editMode.set(true);
+      // Modo edición → UPDATE en el nav (naranja: sobrescribe estado existente)
+      this.operationMode.setMode('update', vm.bookingId);
     }
   }
 
@@ -413,6 +422,7 @@ export class ReservationDetailPageComponent {
           this.detailResource.reload();
           this.editMode.set(false);
           this.editSaving.set(false);
+          this.operationMode.reset();
           this.successMessage.set('Reserva modificada exitosamente.');
           setTimeout(() => this.successMessage.set(''), 4000);
         },
@@ -422,6 +432,7 @@ export class ReservationDetailPageComponent {
             : (err as { message?: string }).message;
           this.editError.set(message || 'Error al modificar la reserva');
           this.editSaving.set(false);
+          this.operationMode.reset();
         },
       });
   }
@@ -464,6 +475,9 @@ export class ReservationDetailPageComponent {
       details,
       confirmLabel: isEffectivelyFree ? 'Cancelar sin costo' : `Pagar $${p.amount.toFixed(2)} y cancelar`,
       variant: isEffectivelyFree ? 'warning' : 'danger',
+      // Cancelación = borrado lógico → mostrar modo delete mientras se confirma.
+      mode: 'delete',
+      modeDetail: `Reserva ${bookingId}`,
     });
     if (!ok) return;
     this.executeCancel(bookingId);
@@ -471,12 +485,14 @@ export class ReservationDetailPageComponent {
 
   private executeCancel(bookingId: string) {
     this.cancelPending.set(true);
+    // Cancelación = borrado lógico → modo DELETE en el nav (rojo)
+    this.operationMode.setMode('delete', bookingId);
     this.reservationsApi
       .cancelReservation(bookingId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => { this.detailResource.reload(); this.cancelPending.set(false); },
-        error: () => { this.cancelPending.set(false); }
+        next: () => { this.detailResource.reload(); this.cancelPending.set(false); this.operationMode.reset(); },
+        error: () => { this.cancelPending.set(false); this.operationMode.reset(); }
       });
   }
 

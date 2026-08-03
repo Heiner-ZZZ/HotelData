@@ -206,6 +206,8 @@ export class InvoiceDetailPageComponent {
       message: `¿Eliminar "${item.name}" de la factura?`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: item.name,
     });
     if (!ok) return;
     this.removeBusy.set(item.itemId);
@@ -283,6 +285,9 @@ export class InvoiceDetailPageComponent {
       message: '¿Anular esta factura? Esta acción no se puede deshacer.',
       confirmLabel: 'Anular factura',
       variant: 'danger',
+      // Anulación = estado permanente → mostrar modo delete mientras se confirma.
+      mode: 'delete',
+      modeDetail: `Factura ${this.invoice()?.id ?? ''}`,
     });
     if (!ok) return;
     this.actionError.set(null);

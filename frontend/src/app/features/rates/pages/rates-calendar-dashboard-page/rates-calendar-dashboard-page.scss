@@ -1,0 +1,709 @@
+.rcd-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Sub-nav (Dashboard ADR | Calendario | Tarifas) ───────────────────── */
+.rcd-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 0.5rem;
+
+  .rcd-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--muted-text);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: var(--surface-hover);
+      color: var(--app-text);
+    }
+
+    &.active {
+      background: var(--accent-light);
+      color: var(--accent-strong);
+    }
+  }
+}
+
+/* ── Filter bar ────────────────────────────────────────────────────────── */
+.rcd-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+
+  .rcd-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    &.secondary {
+      justify-content: flex-start;
+    }
+  }
+
+  .rcd-filter-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    margin-right: 0.25rem;
+  }
+
+  .rcd-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--app-text);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      border-color: var(--accent);
+    }
+
+    &.active {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent-strong);
+    }
+  }
+
+  .rcd-date-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--surface);
+
+    .rcd-date-icon {
+      color: var(--muted-text);
+      font-size: 1rem;
+    }
+
+    .rcd-date-sep {
+      color: var(--muted-text);
+    }
+
+    .rcd-date-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--app-text);
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+  }
+
+  .rcd-select-chips {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .rcd-clear-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--danger-light);
+    color: var(--danger-strong);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+
+    &:hover {
+      filter: brightness(0.96);
+    }
+  }
+}
+
+/* ── KPIs primarios (Z — top, jerarquía tipo Power BI) ──────────────────
+ * Hasta 4 tarjetas: el hero (tarifa media) con más peso visual y ancho,
+ * y el resto de soporte. Los detalles finos viven en la franja de consulta
+ * compacta de abajo (no compiten por atención).
+ */
+.rcd-kpis {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 0.7rem;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+
+  .rcd-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--app-border);
+    background: var(--surface);
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+      border-color: var(--accent);
+    }
+
+    /* Hero: la métrica principal con más peso visual */
+    &.rcd-kpi-hero {
+      background: linear-gradient(135deg, var(--accent-light), var(--surface) 72%);
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--app-border));
+
+      .rcd-kpi-value {
+        font-size: 1.6rem;
+      }
+    }
+
+    /* Señal de riesgo (huecos) */
+    &.rcd-kpi-warn {
+      .rcd-kpi-icon { color: var(--danger); }
+      .rcd-kpi-value { color: var(--danger-strong); }
+    }
+
+    .rcd-kpi-top {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+
+      .rcd-kpi-icon {
+        font-size: 1.1rem;
+        color: var(--accent);
+      }
+
+      small {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .rcd-kpi-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--app-text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+
+      small {
+        font-size: 0.78rem;
+        color: var(--muted-text);
+        font-weight: 600;
+      }
+    }
+
+    .rcd-kpi-context {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      font-size: 0.72rem;
+      color: var(--muted-text);
+
+      span { white-space: nowrap; }
+
+      b {
+        color: var(--app-text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+  }
+}
+
+/* Sparkline del hero (tendencia de la tarifa media en el rango) */
+.rcd-hero-spark {
+  display: block;
+  width: 100%;
+  height: 34px;
+  margin: 0.15rem 0 0.2rem;
+
+  .rcd-hero-spark-area {
+    fill: color-mix(in srgb, var(--accent) 14%, transparent);
+    stroke: none;
+  }
+
+  .rcd-hero-spark-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+/* Barra de progreso de cobertura */
+.rcd-progress {
+  height: 6px;
+  margin: 0.15rem 0;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  overflow: hidden;
+
+  .rcd-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--success);
+    transition: width 0.4s ease;
+  }
+}
+
+/* ── Franja secundaria de consulta (compacta, no compite con los KPIs) ── */
+.rcd-kpi-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  border: 1px dashed var(--app-border);
+  background: var(--surface-soft);
+
+  .rcd-kpi-strip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-text);
+    margin-right: 0.2rem;
+
+    .material-symbols-outlined {
+      font-size: 0.9rem;
+    }
+  }
+
+  .rcd-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--app-border);
+    white-space: nowrap;
+    transition: border-color 0.15s ease;
+
+    &:hover {
+      border-color: var(--accent);
+    }
+
+    small {
+      font-size: 0.68rem;
+      color: var(--muted-text);
+      font-weight: 600;
+    }
+
+    b {
+      font-size: 0.82rem;
+      color: var(--app-text);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .rcd-strip-range {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--muted-text);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── Chart row (Z — center) ────────────────────────────────────────────── */
+.rcd-chart-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.85rem;
+  align-items: stretch;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+
+  .rcd-summary-card {
+    padding: 1rem;
+    border-radius: 12px;
+
+    h3 {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--app-text);
+    }
+
+    .rcd-summary-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+
+      li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 8px;
+        background: var(--surface-soft);
+        transition: background 0.15s ease;
+
+        &:hover {
+          background: var(--surface-hover);
+        }
+
+        strong {
+          font-size: 0.85rem;
+          color: var(--app-text);
+          font-variant-numeric: tabular-nums;
+        }
+
+        .rcd-summary-name {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--app-text);
+        }
+      }
+    }
+  }
+
+  .rcd-plan-card {
+    padding: 1rem;
+    border-radius: 12px;
+
+    h3 {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--app-text);
+    }
+
+    .rcd-plan-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+
+      li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 8px;
+        background: var(--surface-soft);
+        transition: background 0.15s ease;
+
+        &:hover {
+          background: var(--surface-hover);
+        }
+
+        &.closed-plan {
+          opacity: 0.6;
+        }
+
+        .rcd-plan-meta {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+
+          .rcd-plan-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--app-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          small {
+            font-size: 0.7rem;
+            color: var(--muted-text);
+          }
+        }
+
+        .rcd-plan-rates {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-variant-numeric: tabular-nums;
+          flex-shrink: 0;
+
+          strong {
+            font-size: 0.85rem;
+            color: var(--app-text);
+          }
+
+          .rcd-rate-min {
+            font-size: 0.72rem;
+            color: #22c55e;
+          }
+
+          .rcd-rate-max {
+            font-size: 0.72rem;
+            color: #f59e0b;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* ── Grid (Z — bottom) ─────────────────────────────────────────────────── */
+.rcd-table-card {
+  border-radius: 12px;
+  overflow: hidden;
+
+  .rcd-table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--surface-raised);
+
+    .rcd-table-head-left {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+
+      .rcd-head-icon {
+        color: var(--accent);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--app-text);
+      }
+
+      .rcd-meta {
+        margin: 0.1rem 0 0;
+        font-size: 0.76rem;
+        color: var(--muted-text);
+      }
+
+      .rcd-range {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: var(--surface-soft);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    .rcd-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .rcd-export-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.4rem 0.8rem;
+      border: 1px solid var(--app-border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--accent-strong);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+
+      &:hover:not(:disabled) {
+        border-color: var(--accent);
+        background: var(--accent-light);
+      }
+
+      &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+    }
+
+    .rcd-pagination {
+      display: flex;
+      gap: 0.4rem;
+
+      .rcd-page-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--app-border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--app-text);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+
+        &:hover:not(:disabled) {
+          border-color: var(--accent);
+        }
+
+        &:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  .rcd-table-wrap {
+    overflow-x: auto;
+  }
+
+  .rcd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted-text);
+      border-bottom: 1px solid var(--app-border);
+      white-space: nowrap;
+
+      &.th-num {
+        text-align: right;
+      }
+    }
+
+    tbody td {
+      padding: 0.55rem 0.8rem;
+      border-bottom: 1px solid var(--app-border);
+      color: var(--app-text);
+      white-space: nowrap;
+
+      &.td-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    tbody tr {
+      transition: background 0.12s ease;
+
+      &:hover {
+        background: var(--surface-hover);
+      }
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+    }
+
+    .strong {
+      font-weight: 700;
+    }
+
+    .rcd-plan-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--app-text);
+      font-size: 0.72rem;
+      font-weight: 600;
+
+      .badge-icon {
+        font-size: 0.85rem;
+        color: var(--accent);
+      }
+    }
+
+    .rcd-status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+
+      &.open {
+        background: var(--success-light);
+        color: var(--success-strong);
+      }
+
+      &.closed {
+        background: var(--danger-light);
+        color: var(--danger-strong);
+      }
+    }
+
+    .rcd-empty-cell {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--muted-text);
+    }
+  }
+}

@@ -19,6 +19,7 @@ export class HousekeepingSubNavComponent {
     { label: 'Dashboard', href: '/management/housekeeping/dashboard', icon: 'dashboard' },
     { label: 'Operaciones', href: '/management/housekeeping/operations', icon: 'analytics' },
     { label: 'Calendario', href: '/management/housekeeping/calendar', icon: 'calendar_month' },
+    { label: 'Matriz', href: '/management/housekeeping/matrix', icon: 'grid_view' },
     { label: 'Habitaciones', href: '/management/housekeeping/rooms', icon: 'meeting_room' },
     { label: 'Tareas', href: '/management/housekeeping/tasks', icon: 'checklist' },
     { label: 'Mantenimiento', href: '/management/housekeeping/maintenance', icon: 'build' },

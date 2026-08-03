@@ -128,7 +128,7 @@ def _extract_kpi_booking(db) -> list[dict[str, Any]]:
 
 
 def extract_kpi_booking_nights_daily(client, db_name: str) -> list[dict[str, Any]]:
-    """Expande cada reserva a una fila por noche de estancia.
+    """Expande cada reserva a una fila por noche de estancia (sin canal).
 
     ``total_price`` no trae desglose nocturno en Mongo, por lo que se prorratea
     linealmente entre noches y habitaciones. La moneda se conserva sin convertir;
@@ -138,58 +138,78 @@ def extract_kpi_booking_nights_daily(client, db_name: str) -> list[dict[str, Any
     mongo, owns = _mongo_client(client, settings)
     try:
         db = mongo[db_name]
-        pipeline = [
-            {"$match": {
-                "check_in_date": {"$type": "string"},
-                "check_out_date": {"$type": "string"},
-            }},
-            {"$set": {
-                "_check_in": {"$dateFromString": {"dateString": {"$substrBytes": ["$check_in_date", 0, 10]}, "onError": None, "onNull": None}},
-                "_check_out": {"$dateFromString": {"dateString": {"$substrBytes": ["$check_out_date", 0, 10]}, "onError": None, "onNull": None}},
-                "_rooms": {"$max": [{"$convert": {"input": "$rooms", "to": "int", "onError": 1, "onNull": 1}}, 1]},
-            }},
-            {"$match": {"$expr": {"$and": [
-                {"$ne": ["$_check_in", None]}, {"$ne": ["$_check_out", None]},
-                {"$gt": ["$_check_out", "$_check_in"]},
-            ]}}},
-            {"$set": {
-                "_nights": {"$dateDiff": {"startDate": "$_check_in", "endDate": "$_check_out", "unit": "day"}},
-            }},
-            {"$set": {
-                "_night_offsets": {"$range": [0, "$_nights"]},
-                "_is_cancelled": {"$in": [{"$toLower": {"$ifNull": ["$status", ""]}}, ["cancelled", "canceled", "cancelled_by_guest", "cancelled_by_hotel"]]},
-            }},
-            {"$unwind": "$_night_offsets"},
-            {"$set": {
-                "occupied_date": {"$dateAdd": {"startDate": "$_check_in", "unit": "day", "amount": "$_night_offsets"}},
-                "_night_revenue": {"$divide": [{"$ifNull": ["$total_price", 0]}, {"$multiply": ["$_nights", "$_rooms"]}]},
-            }},
-            {"$group": {
-                "_id": {
-                    "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$occupied_date"}},
-                    "prop_id": "$prop_id", "room_type_id": {"$ifNull": ["$room_type_id", ""]},
-                    "currency": {"$toUpper": {"$ifNull": ["$currency", ""]}},
-                },
-                "rooms_sold": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_rooms"]}},
-                "room_nights": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_rooms"]}},
-                "revenue": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_night_revenue"]}},
-                "cancelled_rooms": {"$sum": {"$cond": ["$_is_cancelled", "$_rooms", 0]}},
-                "adults": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$adults", 0]}]}},
-                "children": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$children", 0]}]}},
-            }},
-            {"$sort": {"_id.date": 1}},
-        ]
-        docs = list(db.booking_orders.aggregate(pipeline, allowDiskUse=True))
-        return [{
+        return _aggregate_booking_nights(db, include_source=False)
+    finally:
+        if owns:
+            mongo.close()
+
+
+def _aggregate_booking_nights(db, *, include_source: bool) -> list[dict[str, Any]]:
+    """Agregación compartida de noches de estancia por ocupación real.
+
+    ``include_source`` añade ``booking_source`` (canal) a la clave de grupo
+    para el informe R1.2 (ADR por fecha, tipo de habitación y canal).
+    ``kpi_booking_nights_daily`` no lo usa; ``kpi_room_performance_daily`` sí.
+    """
+    _id: dict[str, Any] = {
+        "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$occupied_date"}},
+        "prop_id": "$prop_id",
+        "room_type_id": {"$ifNull": ["$room_type_id", ""]},
+        "currency": {"$toUpper": {"$ifNull": ["$currency", ""]}},
+    }
+    if include_source:
+        _id["booking_source"] = {"$ifNull": ["$booking_source", ""]}
+    pipeline = [
+        {"$match": {
+            "check_in_date": {"$type": "string"},
+            "check_out_date": {"$type": "string"},
+        }},
+        {"$set": {
+            "_check_in": {"$dateFromString": {"dateString": {"$substrBytes": ["$check_in_date", 0, 10]}, "onError": None, "onNull": None}},
+            "_check_out": {"$dateFromString": {"dateString": {"$substrBytes": ["$check_out_date", 0, 10]}, "onError": None, "onNull": None}},
+            "_rooms": {"$max": [{"$convert": {"input": "$rooms", "to": "int", "onError": 1, "onNull": 1}}, 1]},
+        }},
+        {"$match": {"$expr": {"$and": [
+            {"$ne": ["$_check_in", None]}, {"$ne": ["$_check_out", None]},
+            {"$gt": ["$_check_out", "$_check_in"]},
+        ]}}},
+        {"$set": {
+            "_nights": {"$dateDiff": {"startDate": "$_check_in", "endDate": "$_check_out", "unit": "day"}},
+        }},
+        {"$set": {
+            "_night_offsets": {"$range": [0, "$_nights"]},
+            "_is_cancelled": {"$in": [{"$toLower": {"$ifNull": ["$status", ""]}}, ["cancelled", "canceled", "cancelled_by_guest", "cancelled_by_hotel"]]},
+        }},
+        {"$unwind": "$_night_offsets"},
+        {"$set": {
+            "occupied_date": {"$dateAdd": {"startDate": "$_check_in", "unit": "day", "amount": "$_night_offsets"}},
+            "_night_revenue": {"$divide": [{"$ifNull": ["$total_price", 0]}, {"$multiply": ["$_nights", "$_rooms"]}]},
+        }},
+        {"$group": {
+            "_id": _id,
+            "rooms_sold": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_rooms"]}},
+            "room_nights": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_rooms"]}},
+            "revenue": {"$sum": {"$cond": ["$_is_cancelled", 0, "$_night_revenue"]}},
+            "cancelled_rooms": {"$sum": {"$cond": ["$_is_cancelled", "$_rooms", 0]}},
+            "adults": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$adults", 0]}]}},
+            "children": {"$sum": {"$cond": ["$_is_cancelled", 0, {"$ifNull": ["$children", 0]}]}},
+        }},
+        {"$sort": {"_id.date": 1}},
+    ]
+    docs = list(db.booking_orders.aggregate(pipeline, allowDiskUse=True))
+    rows: list[dict[str, Any]] = []
+    for item in docs:
+        row: dict[str, Any] = {
             "date": item["_id"]["date"], "prop_id": item["_id"]["prop_id"],
             "room_type_id": item["_id"]["room_type_id"], "currency": item["_id"]["currency"],
             "rooms_sold": int(item["rooms_sold"]), "room_nights": int(item["room_nights"]),
             "revenue": float(item["revenue"] or 0), "cancelled_rooms": int(item["cancelled_rooms"]),
             "adults": int(item["adults"]), "children": int(item["children"]),
-        } for item in docs]
-    finally:
-        if owns:
-            mongo.close()
+        }
+        if include_source:
+            row["booking_source"] = item["_id"]["booking_source"]
+        rows.append(row)
+    return rows
 
 
 def extract_kpi_inventory_daily(client, db_name: str) -> list[dict[str, Any]]:
@@ -255,42 +275,62 @@ def extract_kpi_rate_daily(client, db_name: str) -> list[dict[str, Any]]:
 def extract_kpi_room_performance_daily(client, db_name: str) -> list[dict[str, Any]]:
     """Construye el KPI compuesto en memoria a partir de las tres agregaciones.
 
-    El cruce es por fecha/hotel/tipo. Las tarifas publicadas solo se asocian
-    cuando tienen esa misma clave; con el esquema actual quedan no asociadas y
-    ``published_rate``/``rate_variance`` quedan nulos, evitando un RevPAR falso.
+    R1.2: la clave de granularidad incluye el canal (``booking_source``) además
+    de fecha/hotel/tipo/divisa, de modo que el informe puede desglosar el ADR
+    por fecha, tipo de habitación y canal. Las tarifas publicadas solo se
+    asocian cuando tienen esa misma clave; con el esquema actual quedan no
+    asociadas y ``published_rate``/``rate_variance`` quedan nulos, evitando un
+    RevPAR falso.
     """
-    bookings = extract_kpi_booking_nights_daily(client, db_name)
-    inventory = extract_kpi_inventory_daily(client, db_name)
-    rates = extract_kpi_rate_daily(client, db_name)
-    inv_map = {(x["date"], x["prop_id"], x["room_type_id"]): x for x in inventory}
-    rate_candidates: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
-    for rate in rates:
-        if rate["room_type_id"]:
-            rate_candidates.setdefault((rate["date"], rate["prop_id"], rate["room_type_id"]), []).append(rate)
-    # Una tarifa publicada solo se cruza si hay exactamente una candidata;
-    # múltiples planes serían ambiguos sin rate_plan_id en booking_orders.
-    rate_map = {key: values[0] for key, values in rate_candidates.items() if len(values) == 1}
-    result: dict[tuple[Any, ...], dict[str, Any]] = {}
-    for inv in inventory:
-        key = (inv["date"], inv["prop_id"], inv["room_type_id"], "")
-        result[key] = {
-            "date": inv["date"], "prop_id": inv["prop_id"], "room_type_id": inv["room_type_id"],
-            "currency": "", "rooms_sold": 0, "room_nights": 0, "revenue": 0.0,
-            "cancelled_rooms": 0, "adults": 0, "children": 0,
-            "available_rooms": inv["available_rooms"], "total_rooms": inv["total_rooms"],
-            "blocked_rooms": inv["blocked_rooms"], "published_rate": None, "rate_variance": None,
-        }
-    for booking in bookings:
-        key = (booking["date"], booking["prop_id"], booking["room_type_id"], booking["currency"])
-        row = result.setdefault(key, {**booking, "available_rooms": 0, "total_rooms": 0, "blocked_rooms": 0, "published_rate": None, "rate_variance": None})
-        inv = inv_map.get((booking["date"], booking["prop_id"], booking["room_type_id"]))
-        if inv:
-            row.update({k: inv[k] for k in ("available_rooms", "total_rooms", "blocked_rooms")})
-        rate = rate_map.get((booking["date"], booking["prop_id"], booking["room_type_id"]))
-        if rate and (not rate["currency"] or rate["currency"] == booking["currency"]):
-            row["published_rate"] = rate["published_rate"]
-            row["rate_variance"] = (row["revenue"] / row["room_nights"]) - rate["published_rate"] if row["room_nights"] else 0
-    return list(result.values())
+    settings = get_settings()
+    mongo, owns = _mongo_client(client, settings)
+    try:
+        db = mongo[db_name]
+        bookings = _aggregate_booking_nights(db, include_source=True)
+        inventory = extract_kpi_inventory_daily(mongo, db_name)
+        rates = extract_kpi_rate_daily(mongo, db_name)
+        inv_map = {(x["date"], x["prop_id"], x["room_type_id"]): x for x in inventory}
+        rate_candidates: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+        for rate in rates:
+            if rate["room_type_id"]:
+                rate_candidates.setdefault((rate["date"], rate["prop_id"], rate["room_type_id"]), []).append(rate)
+        # Una tarifa publicada solo se cruza si hay exactamente una candidata;
+        # múltiples planes serían ambiguos sin rate_plan_id en booking_orders.
+        rate_map = {key: values[0] for key, values in rate_candidates.items() if len(values) == 1}
+        result: dict[tuple[Any, ...], dict[str, Any]] = {}
+        # 1. Las reservas primero: una fila con currency/canal vacíos debe
+        #    conservar su revenue y noches, nunca colisionar con el placeholder
+        #    de inventario de la misma clave.
+        for booking in bookings:
+            key = (booking["date"], booking["prop_id"], booking["room_type_id"], booking["currency"], booking["booking_source"])
+            row = result.setdefault(key, {**booking, "available_rooms": 0, "total_rooms": 0, "blocked_rooms": 0, "published_rate": None, "rate_variance": None})
+            inv = inv_map.get((booking["date"], booking["prop_id"], booking["room_type_id"]))
+            if inv:
+                row.update({k: inv[k] for k in ("available_rooms", "total_rooms", "blocked_rooms")})
+            rate = rate_map.get((booking["date"], booking["prop_id"], booking["room_type_id"]))
+            if rate and (not rate["currency"] or rate["currency"] == booking["currency"]):
+                row["published_rate"] = rate["published_rate"]
+                row["rate_variance"] = (row["revenue"] / row["room_nights"]) - rate["published_rate"] if row["room_nights"] else 0
+        # 2. Placeholders de inventario solo para (fecha, hotel, tipo) sin
+        #    ninguna reserva: alimentan el denominador de capacidad (ocupación
+        #    y RevPAR) sin pisar filas reales.
+        booked_keys = {(b["date"], b["prop_id"], b["room_type_id"]) for b in bookings}
+        for inv in inventory:
+            rt_key = (inv["date"], inv["prop_id"], inv["room_type_id"])
+            if rt_key in booked_keys:
+                continue
+            key = (inv["date"], inv["prop_id"], inv["room_type_id"], "", "")
+            result[key] = {
+                "date": inv["date"], "prop_id": inv["prop_id"], "room_type_id": inv["room_type_id"],
+                "currency": "", "booking_source": "", "rooms_sold": 0, "room_nights": 0, "revenue": 0.0,
+                "cancelled_rooms": 0, "adults": 0, "children": 0,
+                "available_rooms": inv["available_rooms"], "total_rooms": inv["total_rooms"],
+                "blocked_rooms": inv["blocked_rooms"], "published_rate": None, "rate_variance": None,
+            }
+        return list(result.values())
+    finally:
+        if owns:
+            mongo.close()
 
 
 def extract_kpi_review_daily(client, db_name: str) -> list[dict[str, Any]]:
@@ -398,12 +438,22 @@ def _doc_day(doc: dict[str, Any], *fields: str) -> str:
     return ""
 
 
+# Un cierre de tarea o una rotación sucia→limpia en menos de un minuto no
+# puede ser una medición real de operación hotelera: son artefactos de datos
+# (timestamps casi idénticos en demos/tests). Se excluyen del promedio y se
+# reportan con contadores en vez de contaminar la media con duraciones absurdas.
+MIN_MEASURABLE_MINUTES = 1.0
+
+
 def _minutes_between(start: Any, end: Any) -> float | None:
     first = _as_datetime(start)
     second = _as_datetime(end)
     if not first or not second or second < first:
         return None
-    return (second - first).total_seconds() / 60
+    minutes = (second - first).total_seconds() / 60
+    if minutes < MIN_MEASURABLE_MINUTES:
+        return None
+    return minutes
 
 
 def _add_metric(bucket: dict[str, Any], key: str, value: float | int = 1) -> None:
@@ -417,7 +467,9 @@ def extract_kpi_housekeeping_daily(client, db_name: str) -> list[dict[str, Any]]
     un estado sucio (`vacant_dirty`/`occupied_dirty`) seguido por una transición
     limpia (`vacant_clean`/`inspected`) con timestamps válidos. Si falta una de
     esas marcas, el caso no entra en el promedio y ``rotation_observed`` lo deja
-    explícito.
+    explícito. Las duraciones menores a un minuto se descartan como ruido de
+    medición (timestamps casi idénticos de demos/tests) y no cuentan como
+    observación.
     """
     settings = get_settings()
     mongo, owns = _mongo_client(client, settings)
@@ -529,7 +581,7 @@ def extract_kpi_housekeeping_daily(client, db_name: str) -> list[dict[str, Any]]
                 if current.get("new_status") not in {"cleaning_completed", "vacant_clean", "inspected"}:
                     continue
                 minutes = (current["_parsed"] - previous["_parsed"]).total_seconds() / 60
-                if minutes < 0:
+                if minutes < MIN_MEASURABLE_MINUTES:
                     continue
                 row = bucket(current["_parsed"].strftime("%Y-%m-%d"), prop_id)
                 row.setdefault("_rotation_minutes", []).append(minutes)

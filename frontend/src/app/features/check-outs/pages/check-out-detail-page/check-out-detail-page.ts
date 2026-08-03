@@ -4,6 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
+import { OperationModeService, type OperationMode } from '../../../../core/services/operation-mode.service';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -43,6 +44,7 @@ export class CheckOutDetailPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(CheckOutsApiService);
+  private readonly opMode = inject(OperationModeService);
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = computed(() => this.detailResource.value() ?? null);
@@ -88,6 +90,34 @@ export class CheckOutDetailPageComponent {
   readonly paymentRef = signal('');
   readonly observations = signal('');
   readonly splitInvoice = signal(false);
+
+  /**
+   * Modo CRUD reactivo: si algún campo del wizard difiere del estado guardado
+   * en backend, el usuario está editando el check-out → UPDATE en el nav.
+   */
+  private readonly _opMode = computed<{ mode: OperationMode; detail: string }>(() => {
+    const d = this.data();
+    if (!d) return { mode: 'read', detail: '' };
+    const edited =
+      this.roomInspected() !== (d.check_out_room_inspected || false) ||
+      this.keysReturned() !== (d.check_out_keys_returned || false) ||
+      this.damagesFound() !== (d.check_out_damages_found || false) ||
+      this.lateCheckoutFee() !== (d.check_out_late_checkout_fee || 0) ||
+      this.discount() !== (d.check_out_discount || 0) ||
+      this.discountReason() !== (d.check_out_discount_reason || '') ||
+      this.paymentMethod() !== (d.check_out_payment_method || 'credit_card') ||
+      this.paymentRef() !== (d.check_out_payment_ref || '') ||
+      this.observations() !== (d.check_out_observations || '');
+    return edited
+      ? { mode: 'update', detail: `Check-out ${d.booking_id}` }
+      : { mode: 'read', detail: '' };
+  });
+
+  /** Escribe el modo calculado al servicio global del nav. */
+  private applyMode(): void {
+    const m = this._opMode();
+    this.opMode.setMode(m.mode, m.detail);
+  }
 
   // ── Charge creation form ──
   readonly chargeFormVisible = signal(false);
@@ -234,6 +264,11 @@ export class CheckOutDetailPageComponent {
       this.canComplete.set(detail.assigned_rooms.length > 0 && detail.stay_status !== STAY_CHECKED_OUT);
       if (detail.stay_status === STAY_CHECKED_OUT) this.currentStep.set(5);
       this.viewState.set('success');
+    }, { allowSignalWrites: true });
+
+    // Modo CRUD reactivo: editar campos del wizard → UPDATE en el nav.
+    effect(() => {
+      this.applyMode();
     }, { allowSignalWrites: true });
   }
 

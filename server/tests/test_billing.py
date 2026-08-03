@@ -219,6 +219,16 @@ class TestCreatePayment:
         fetched = get_payment(pay["id"])
         assert fetched["status"] == "rejected"
 
+    def test_create_payment_malformed_invoice_id_ignored(self, db, seeded_booking):
+        """A non-hex invoice_id must be ignored (no 500) — reachable via the UI modal."""
+        pay = create_payment(PaymentCreate(
+            booking_id=seeded_booking,
+            invoice_id="factura-1",  # not a valid ObjectId
+            amount=25.0,
+        ))
+        assert pay is not None
+        assert pay["invoice_id"] is None
+
 
 class TestListGetPayment:
     def test_list_payments(self, db, seeded_booking):

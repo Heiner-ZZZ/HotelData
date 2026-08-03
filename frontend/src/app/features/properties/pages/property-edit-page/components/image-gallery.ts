@@ -137,6 +137,8 @@ export class ImageGalleryComponent {
       message: '¿Eliminar esta imagen de la galería?',
       confirmLabel: 'Eliminar',
       variant: 'danger',
+      mode: 'delete',
+      modeDetail: 'Imagen de galería',
     });
     if (!ok) return;
     const current = this.images();

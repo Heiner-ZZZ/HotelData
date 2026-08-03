@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { catchAndToastError } from '../../../../shared/utils/catch-and-toast';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ManualReservationApiService } from '../../services/manual-reservation-api.service';
 import type { HotelOption, RoomTypeOption } from '../../models/manual-reservation.model';
 
@@ -28,6 +29,7 @@ export class ManualReservationNewPageComponent {
   private readonly manualApi = inject(ManualReservationApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
+  private readonly operationMode = inject(OperationModeService);
 
   readonly loading = signal(true);
   readonly submitting = signal(false);
@@ -77,6 +79,10 @@ export class ManualReservationNewPageComponent {
   }, { validators: dateRangeValidator });
 
   constructor() {
+    // Página de creación → modo INSERT en el nav (ámbar)
+    this.operationMode.setMode('insert', 'Reserva manual');
+    this.destroyRef.onDestroy(() => this.operationMode.reset());
+
     this.loadHotelOptions();
     // Watch hotel changes to reset dates
     this.form.controls.propId.valueChanges

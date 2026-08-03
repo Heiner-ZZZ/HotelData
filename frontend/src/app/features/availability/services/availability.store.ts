@@ -115,6 +115,7 @@ export class AvailabilityStore {
   get selectedCells() { return this.state.selectedCells; }
   get allHotelRooms() { return this.state.allHotelRooms; }
   get hotelRoomsForType() { return this.state.hotelRoomsForType; }
+  get roomsForTypeId() { return this.state.roomsForTypeId; }
   get selectedAvailableRooms() { return this.state.selectedAvailableRooms; }
   get selectedBlockedRooms() { return this.state.selectedBlockedRooms; }
   get blackoutSelectedRooms() { return this.state.blackoutSelectedRooms; }

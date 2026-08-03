@@ -15,6 +15,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { roleLabel } from '../../../core/auth/role-labels';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { OperationModeIndicatorComponent } from '../operation-mode-indicator/operation-mode-indicator';
 import { ReservationsApiService } from '../../../features/reservations/services/reservations-api.service';
 import { NotificationsApiService } from '../../../features/system-admin/services/notifications-api.service';
 
@@ -35,7 +36,7 @@ interface TopNavGroup {
 
 @Component({
   selector: 'app-top-nav',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, OperationModeIndicatorComponent],
   templateUrl: './top-nav.html',
   styleUrl: './top-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

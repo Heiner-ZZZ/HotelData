@@ -6,6 +6,7 @@ import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { OwnershipApiService } from '../../services/ownership-api.service';
 import type { OwnershipRole, HotelSearchResult } from '../../models/ownership.model';
 
@@ -20,6 +21,7 @@ export class OwnershipCreatePageComponent {
   private readonly api = inject(OwnershipApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
+  private readonly operationMode = inject(OperationModeService);
 
   readonly roles = signal<OwnershipRole[]>([]);
   readonly submitting = signal(false);
@@ -39,6 +41,10 @@ export class OwnershipCreatePageComponent {
   });
 
   constructor() {
+    // Página de creación → modo INSERT en el nav (ámbar: registra información nueva)
+    this.operationMode.setMode('insert', 'Propietario');
+    this.destroyRef.onDestroy(() => this.operationMode.reset());
+
     this.api.getRoles().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (roles) => this.roles.set(roles),
       error: () => {

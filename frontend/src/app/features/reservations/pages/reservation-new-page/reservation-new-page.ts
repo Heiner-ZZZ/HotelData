@@ -9,6 +9,7 @@ import { distinctUntilChanged, EMPTY, switchMap, debounceTime } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ReservationsAuthService } from '../../services/reservations-auth.service';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { RnPlannerSectionComponent } from './partials/rn-planner-section';
@@ -82,6 +83,7 @@ export class ReservationNewPageComponent {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly guestAmenityService = inject(GuestAmenityService);
+  private readonly operationMode = inject(OperationModeService);
 
   // ─── Form ─── (declared BEFORE the toSignal fields that read it)
   readonly form = this.formBuilder.nonNullable.group({
@@ -307,6 +309,10 @@ export class ReservationNewPageComponent {
   readonly today = new Date().toISOString().split('T')[0];
 
   constructor() {
+    // Página de creación de reserva → modo INSERT en el nav (ámbar)
+    this.operationMode.setMode('insert', 'Reserva');
+    this.destroyRef.onDestroy(() => this.operationMode.reset());
+
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     const prefixedRoomType = this.activatedRoute.snapshot.queryParamMap.get('room_type') ?? '';
     const prefixedRoomTypeName = this.activatedRoute.snapshot.queryParamMap.get('room_type_name') ?? '';

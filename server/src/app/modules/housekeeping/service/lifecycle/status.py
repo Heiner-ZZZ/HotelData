@@ -347,6 +347,101 @@ def cleanup_orphan_room_status(prop_id: int | None = None) -> dict[str, Any]:
         },
     }
 
+def get_room_status_analytics(
+    prop_id: int | None = None,
+    status_filter: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> dict[str, Any]:
+    """Dashboard simple O1.2: matriz de estado de habitaciones (Mongo).
+
+    Lee ``room_status_log`` directamente. Devuelve resumen (totales por grupo:
+    ocupadas, vacantes, limpieza, mantenimiento, fuera de servicio + tasa de
+    ocupación), distribución por estado para el gráfico central del patrón Z
+    y una grilla paginada de habitaciones con su estado actual.
+
+    El ``summary``/``distribution`` se calculan SIEMPRE sobre toda la propiedad
+    (panorama global); el filtro ``status_filter`` + ``page`` solo afecta a la
+    grilla ``rows``, coherente con el patrón Z de los dashboards simples.
+    """
+    db = get_database()
+    query: dict[str, Any] = {}
+    if prop_id:
+        query["prop_id"] = prop_id
+
+    pipeline = [{"$match": query}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+    raw_counts = {r["_id"]: r["count"] for r in db[ROOM_STATUS_COLLECTION].aggregate(pipeline)}
+
+    # Normaliza todos los estados conocidos a 0
+    status_counts: dict[str, int] = {s: 0 for s in ROOM_STATUSES}
+    status_counts.update(raw_counts)
+    total = sum(status_counts.values())
+
+    occupied = status_counts.get("occupied_clean", 0) + status_counts.get("occupied_dirty", 0)
+    vacant = status_counts.get("vacant_clean", 0) + status_counts.get("vacant_dirty", 0)
+    cleaning = status_counts.get("cleaning_in_progress", 0) + status_counts.get("cleaning_completed", 0)
+    maintenance = status_counts.get("maintenance_requested", 0)
+    out_of_service = status_counts.get("out_of_service", 0) + status_counts.get("out_of_order", 0)
+    inspected = status_counts.get("inspected", 0)
+    pending_dirty = status_counts.get("vacant_dirty", 0) + status_counts.get("occupied_dirty", 0)
+    clean_ready = status_counts.get("vacant_clean", 0) + status_counts.get("inspected", 0)
+
+    # Distribución para el gráfico (solo estados con > 0)
+    distribution = [
+        {
+            "status": s,
+            "label": ROOM_STATUSES.get(s, s),
+            "count": c,
+            "color": ROOM_STATUS_COLORS.get(s, "#6f797d"),
+        }
+        for s, c in status_counts.items()
+        if c > 0
+    ]
+    distribution.sort(key=lambda item: item["count"], reverse=True)
+
+    # Grilla paginada + filtro de estado (solo afecta a rows, no al summary)
+    rows_query: dict[str, Any] = dict(query)
+    if status_filter:
+        rows_query["status"] = status_filter
+    rows_total = db[ROOM_STATUS_COLLECTION].count_documents(rows_query)
+    rows_cursor = (
+        db[ROOM_STATUS_COLLECTION]
+        .find(rows_query)
+        .sort("room_label", 1)
+        .skip((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = [_enrich_room_status(doc) for doc in rows_cursor]
+
+    return {
+        "available": True,
+        "source": "mongodb",
+        "prop_id": prop_id,
+        "summary": {
+            "total": total,
+            "occupied": occupied,
+            "vacant": vacant,
+            "cleaning": cleaning,
+            "inspected": inspected,
+            "maintenance": maintenance,
+            "out_of_service": out_of_service,
+            "pending_dirty": pending_dirty,
+            "clean_ready": clean_ready,
+            "occupancy_rate": round((occupied / total) * 100, 1) if total else 0.0,
+        },
+        "distribution": distribution,
+        "status_counts": status_counts,
+        "status_labels": ROOM_STATUSES,
+        "status_colors": ROOM_STATUS_COLORS,
+        "rows": rows,
+        "total": rows_total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, ceil(rows_total / page_size)) if rows_total else 1,
+        "has_next": page * page_size < rows_total,
+        "has_prev": page > 1,
+    }
+
 
 def _fmt(val):
     if hasattr(val, "isoformat"):

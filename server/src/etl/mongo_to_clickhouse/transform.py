@@ -35,7 +35,7 @@ TABLE_COLUMNS: dict[str, list[str]] = {
         "date", "prop_id", "hotel_label", "rate_plan_id", "rate_plan_label", "room_type_id", "room_type_label", "currency", "published_rate", "closed",
     ],
     "kpi_room_performance_daily": [
-        "date", "prop_id", "hotel_label", "room_type_id", "room_type_label", "currency", "rooms_sold", "room_nights", "revenue",
+        "date", "prop_id", "hotel_label", "room_type_id", "room_type_label", "currency", "booking_source", "rooms_sold", "room_nights", "revenue",
         "cancelled_rooms", "available_rooms", "blocked_rooms", "total_rooms", "published_rate", "rate_variance",
     ],
     "kpi_review_daily": [
@@ -206,7 +206,7 @@ def _kpi_rate_daily(doc: dict[str, Any]) -> list[Any]:
 
 
 def _kpi_room_performance_daily(doc: dict[str, Any]) -> list[Any]:
-    return [_as_date(doc.get("date")), _as_int(doc.get("prop_id")), _as_str(doc.get("hotel_label")), _as_str(doc.get("room_type_id")), _as_str(doc.get("room_type_label")), _as_str(doc.get("currency")), _as_int(doc.get("rooms_sold")), _as_int(doc.get("room_nights")), _as_float(doc.get("revenue")), _as_int(doc.get("cancelled_rooms")), _as_int(doc.get("available_rooms")), _as_int(doc.get("blocked_rooms")), _as_int(doc.get("total_rooms")), None if doc.get("published_rate") is None else _as_float(doc.get("published_rate")), None if doc.get("rate_variance") is None else _as_float(doc.get("rate_variance"))]
+    return [_as_date(doc.get("date")), _as_int(doc.get("prop_id")), _as_str(doc.get("hotel_label")), _as_str(doc.get("room_type_id")), _as_str(doc.get("room_type_label")), _as_str(doc.get("currency")), _as_str(doc.get("booking_source")), _as_int(doc.get("rooms_sold")), _as_int(doc.get("room_nights")), _as_float(doc.get("revenue")), _as_int(doc.get("cancelled_rooms")), _as_int(doc.get("available_rooms")), _as_int(doc.get("blocked_rooms")), _as_int(doc.get("total_rooms")), None if doc.get("published_rate") is None else _as_float(doc.get("published_rate")), None if doc.get("rate_variance") is None else _as_float(doc.get("rate_variance"))]
 
 
 def _kpi_review_daily(doc: dict[str, Any]) -> list[Any]:

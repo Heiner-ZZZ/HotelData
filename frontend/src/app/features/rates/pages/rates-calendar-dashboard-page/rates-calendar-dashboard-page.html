@@ -1,0 +1,284 @@
+<div class="rcd-page">
+  <app-page-header
+    title="Dashboard Tarifas"
+    description="Días con tarifa vs huecos por plan tarifario (calendario de tarifas)."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <nav class="rcd-nav" aria-label="Tarifas">
+    <a routerLink="/management/rates/dashboard" class="rcd-nav-link">Dashboard ADR</a>
+    <a routerLink="/management/rates/calendar" class="rcd-nav-link active">Calendario</a>
+    <a routerLink="/management/rates" class="rcd-nav-link">Tarifas</a>
+  </nav>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card rcd-filters" aria-label="Filtros del dashboard">
+      <div class="rcd-filter-row">
+        <span class="rcd-filter-label">Período</span>
+        <button type="button" class="rcd-chip" [class.active]="activeRange() === '30'" (click)="setRange(30)">30 días</button>
+        <button type="button" class="rcd-chip" [class.active]="(!dateFrom() || !dateTo()) || activeRange() === '90'" (click)="setRange(90)">90 días</button>
+      </div>
+      <div class="rcd-filter-row secondary">
+        <div class="rcd-date-group">
+          <span class="material-symbols-outlined rcd-date-icon">calendar_month</span>
+          <input type="date" class="rcd-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+          <span class="rcd-date-sep">→</span>
+          <input type="date" class="rcd-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+        </div>
+        @if (planOptions().length) {
+          <div class="rcd-select-chips">
+            <span class="rcd-filter-label">Plan</span>
+            @for (opt of planOptions(); track opt.planId) {
+              <button
+                type="button"
+                class="rcd-chip"
+                [class.active]="planFilter() === opt.planId"
+                (click)="togglePlanFilter(opt.planId)"
+              >{{ opt.name }}</button>
+            }
+          </div>
+        }
+        @if (hasFilters()) {
+          <button type="button" class="rcd-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando calendario de tarifas…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener las tarifas del calendario." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay entradas de tarifa para el rango y hotel seleccionados." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          <!-- ═══ KPIs primarios (Z — top, jerarquía tipo Power BI) ═══ -->
+          @if (summary(); as s) {
+            <section class="rcd-kpis" aria-label="Resumen del calendario">
+              <!-- Hero: la métrica principal con sparkline y rango mín–máx -->
+              <article class="rcd-kpi rcd-kpi-hero" [attr.title]="'Tarifa media en el rango: $' + s.avgRate">
+                <div class="rcd-kpi-top">
+                  <span class="material-symbols-outlined rcd-kpi-icon">trending_up</span>
+                  <small>Tarifa media</small>
+                </div>
+                <strong class="rcd-kpi-value">${{ s.avgRate | number:'1.2-2' }}</strong>
+                @if (sparkPoints()) {
+                  <svg class="rcd-hero-spark" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true">
+                    <polygon class="rcd-hero-spark-area" [attr.points]="'0,30 ' + sparkPoints() + ' 120,30'"></polygon>
+                    <polyline class="rcd-hero-spark-line" [attr.points]="sparkPoints()"></polyline>
+                  </svg>
+                }
+                <div class="rcd-kpi-context">
+                  <span>Mín <b>${{ s.minRate | number:'1.2-2' }}</b></span>
+                  <span>Máx <b>${{ s.maxRate | number:'1.2-2' }}</b></span>
+                </div>
+              </article>
+
+              <!-- Cobertura: días con tarifa vs rango + barra de progreso -->
+              <article class="rcd-kpi" [attr.title]="'Cobertura: ' + coveragePct() + '% del rango tiene tarifa publicada'">
+                <div class="rcd-kpi-top">
+                  <span class="material-symbols-outlined rcd-kpi-icon">calendar_view_day</span>
+                  <small>Días con tarifa</small>
+                </div>
+                <strong class="rcd-kpi-value">{{ s.distinctDates }}<small> de {{ s.rangeDays }}</small></strong>
+                <div class="rcd-progress" role="progressbar" [attr.aria-valuenow]="coveragePct()" [attr.aria-label]="'Cobertura ' + coveragePct() + '%'" aria-valuemin="0" aria-valuemax="100">
+                  <span class="rcd-progress-fill" [style.width.%]="coveragePct()"></span>
+                </div>
+              </article>
+
+              <!-- Huecos: señal de riesgo -->
+              <article class="rcd-kpi rcd-kpi-warn" [attr.title]="'Días del rango sin ninguna entrada en el calendario de tarifas'">
+                <div class="rcd-kpi-top">
+                  <span class="material-symbols-outlined rcd-kpi-icon">event_busy</span>
+                  <small>Días sin tarifa</small>
+                </div>
+                <strong class="rcd-kpi-value">{{ s.gapDays }}</strong>
+                <div class="rcd-kpi-context">
+                  <span>huecos en el rango</span>
+                </div>
+              </article>
+
+              <!-- Planes: contexto de catálogo -->
+              <article class="rcd-kpi" [attr.title]="'Planes tarifarios configurados para este hotel'">
+                <div class="rcd-kpi-top">
+                  <span class="material-symbols-outlined rcd-kpi-icon">sell</span>
+                  <small>Planes tarifarios</small>
+                </div>
+                <strong class="rcd-kpi-value">{{ s.activePlans }}<small> de {{ s.plans }}</small></strong>
+                <div class="rcd-kpi-context">
+                  <span>activos en el hotel</span>
+                </div>
+              </article>
+            </section>
+
+            <!-- ═══ Franja secundaria de consulta (compacta) ═══ -->
+            <section class="rcd-kpi-strip" aria-label="Métricas de consulta">
+              <span class="rcd-kpi-strip-label">
+                <span class="material-symbols-outlined">travel_explore</span>
+                Consulta
+              </span>
+              <span class="rcd-stat" title="Entradas totales del calendario en el rango"><small>Entradas en rango</small><b>{{ s.totalEntries }}</b></span>
+              <span class="rcd-stat" title="Entradas abiertas (con tarifa)"><small>Abiertas</small><b>{{ s.openDays }}</b></span>
+              <span class="rcd-stat" title="Entradas cerradas (sin venta)"><small>Cerradas</small><b>{{ s.closedDays }}</b></span>
+              <span class="rcd-stat" title="Porcentaje del rango con tarifa"><small>Cobertura</small><b>{{ coveragePct() }}%</b></span>
+              <span class="rcd-strip-range">{{ d.dateFrom }} → {{ d.dateTo }}</span>
+            </section>
+          }
+
+          <!-- ═══ Gráfico (Z — centro) ═══ -->
+          @if (summary(); as s) {
+            <section class="rcd-chart-row">
+              <app-kpi-chart
+                title="Tarifa media por día"
+                [labels]="series().labels"
+                [datasets]="chartDatasets()"
+                type="bar"
+                formatValue="currency"
+                [showLegend]="true"
+                [height]="280"
+                [showExport]="true"
+                [exportFilename]="exportChartName()"
+              />
+              <aside class="surface-card rcd-summary-card">
+                <h3>Resumen de cobertura</h3>
+                <ul class="rcd-summary-list">
+                  <li>
+                    <span class="rcd-summary-name">Días del rango</span>
+                    <strong>{{ s.rangeDays }}</strong>
+                  </li>
+                  <li>
+                    <span class="rcd-summary-name">Días con tarifa</span>
+                    <strong>{{ s.distinctDates }}</strong>
+                  </li>
+                  <li>
+                    <span class="rcd-summary-name">Huecos</span>
+                    <strong>{{ s.gapDays }}</strong>
+                  </li>
+                  <li>
+                    <span class="rcd-summary-name">Entradas abiertas</span>
+                    <strong>{{ s.openDays }}</strong>
+                  </li>
+                  <li>
+                    <span class="rcd-summary-name">Entradas cerradas</span>
+                    <strong>{{ s.closedDays }}</strong>
+                  </li>
+                </ul>
+              </aside>
+              @if (byPlan().length) {
+                <aside class="surface-card rcd-plan-card">
+                  <h3>Por plan tarifario</h3>
+                  <ul class="rcd-plan-list">
+                    @for (p of byPlan(); track p.ratePlanId) {
+                      <li [class.closed-plan]="p.entries === p.closed">
+                        <div class="rcd-plan-meta">
+                          <span class="rcd-plan-name">{{ p.planName }}</span>
+                          <small>{{ p.open }} abiertas · {{ p.closed }} cerradas · {{ p.currency }}</small>
+                        </div>
+                        <div class="rcd-plan-rates">
+                          <span class="rcd-rate-min">${{ p.minRate | number:'1.2-2' }}</span>
+                          <strong>${{ p.avgRate | number:'1.2-2' }}</strong>
+                          <span class="rcd-rate-max">${{ p.maxRate | number:'1.2-2' }}</span>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </aside>
+              }
+            </section>
+          }
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card rcd-table-card">
+            <div class="rcd-table-head">
+              <div class="rcd-table-head-left">
+                <span class="material-symbols-outlined rcd-head-icon">calendar_month</span>
+                <div>
+                  <h2>Detalle por día y plan</h2>
+                  <p class="rcd-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                    <span class="rcd-range">{{ d.dateFrom }} → {{ d.dateTo }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="rcd-actions">
+                <button type="button" class="rcd-export-btn" (click)="exportGridCsv()" [disabled]="!rows().length" title="Descargar CSV de la grilla">
+                  <span class="material-symbols-outlined">download</span>
+                  <span class="btn-label">CSV</span>
+                </button>
+                <div class="rcd-pagination">
+                  <button type="button" class="rcd-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                    <span class="btn-label">Anterior</span>
+                  </button>
+                  <button type="button" class="rcd-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                    <span class="btn-label">Siguiente</span>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rcd-table-wrap">
+              <table class="rcd-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Plan</th>
+                    <th class="th-num">Tarifa</th>
+                    <th class="th-num">Est. mín.</th>
+                    <th class="th-num">Divisa</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.date + row.ratePlanId) {
+                    <tr>
+                      <td>{{ formatDate(row.date) }}</td>
+                      <td>
+                        <span class="rcd-plan-badge">
+                          <span class="material-symbols-outlined badge-icon">sell</span>
+                          {{ row.planName }}
+                        </span>
+                      </td>
+                      <td class="td-num mono strong">${{ row.rateAmount.toFixed(2) }}</td>
+                      <td class="td-num">{{ row.minStayNights }}</td>
+                      <td class="td-num mono">{{ row.currency || '—' }}</td>
+                      <td>
+                        @if (row.isClosed) {
+                          <span class="rcd-status-badge closed">Cerrado</span>
+                        } @else {
+                          <span class="rcd-status-badge open">Abierto</span>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="6" class="rcd-empty-cell">No hay entradas para el rango seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar el calendario de tarifas por hotel."
+    />
+  }
+</div>

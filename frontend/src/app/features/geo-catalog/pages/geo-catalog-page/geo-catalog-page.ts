@@ -74,7 +74,7 @@ export class GeoCatalogPageComponent {
   readonly message = signal('');
   readonly errorMessage = signal('');
 
-  readonly activeType = signal<string>('visitor-country');
+  readonly activeType = signal<string>(this.route.snapshot.queryParamMap.get('type') || 'visitor-country');
   readonly showCreateForm = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly entryTypes = [...ENTRY_TYPES];
@@ -101,14 +101,15 @@ export class GeoCatalogPageComponent {
     const type = this.qp().get('type') || 'visitor-country';
     const q = this.qp().get('q') || '';
 
-    // Visitor dimension types — full-list endpoint, paginate client-side.
+    // NOTE: the request factory runs inside Angular's reactive computation
+    // context — calling a signal setter here throws NG0600 ("writing to
+    // signals is not allowed in a computed"). `activeType` is kept in sync
+    // with the URL by the constructor `effect()` below instead.
     if (type === 'visitor-country' || type === 'visitor-destination' || type === 'visitor-site' || type === 'visitor-hotel') {
-      this.activeType.set(type);
       return this.urlForVisitorType(type, q, page);
     }
 
     // Generic catalog (geo-catalog collection) — server-side filter/pag.
-    this.activeType.set(type);
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (page > 1) params.set('page', String(page));

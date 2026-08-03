@@ -45,10 +45,11 @@ TABLES_DDL: dict[str, tuple[str, str]] = {
     ),
     "kpi_room_performance_daily": (
         "date Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
-        "room_type_label LowCardinality(String), currency LowCardinality(String), rooms_sold UInt32, room_nights UInt32, "
-        "revenue Decimal(18, 2), cancelled_rooms UInt32, available_rooms UInt32, blocked_rooms UInt32, total_rooms UInt32, "
+        "room_type_label LowCardinality(String), currency LowCardinality(String), booking_source LowCardinality(String), "
+        "rooms_sold UInt32, room_nights UInt32, revenue Decimal(18, 2), cancelled_rooms UInt32, "
+        "available_rooms UInt32, blocked_rooms UInt32, total_rooms UInt32, "
         "published_rate Nullable(Decimal(18, 2)), rate_variance Nullable(Decimal(18, 2))",
-        "(date, prop_id, room_type_id, currency)",
+        "(date, prop_id, room_type_id, currency, booking_source)",
     ),
     "kpi_review_daily": (
         "date Date, prop_id UInt32, hotel_label LowCardinality(String), reviews UInt32, rating_sum Float64, avg_rating Float64, approved UInt32, pending UInt32, rejected UInt32, "
@@ -107,7 +108,7 @@ LABEL_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
     "kpi_booking_nights_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
     "kpi_inventory_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
     "kpi_rate_daily": (("hotel_label", "LowCardinality(String)"), ("rate_plan_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
-    "kpi_room_performance_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_room_performance_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)"), ("booking_source", "LowCardinality(String)")),
     "kpi_review_daily": (("hotel_label", "LowCardinality(String)"),),
     "kpi_funnel_daily": (("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
     "kpi_funnel_property_channel_daily": (("hotel_label", "LowCardinality(String)"), ("site_label", "LowCardinality(String)"), ("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
@@ -144,12 +145,36 @@ def _ddl_for(table_name: str) -> str:
     )
 
 
+# Claves de ordenamiento por tabla. ``kpi_room_performance_daily`` amplió su
+# ORDER BY en R1.2 (canal) y requiere recrear la tabla; el pipeline reconstruye
+# los agregados al 100% en cada corrida, así que DROP + CREATE es seguro.
+_TABLE_ORDER_BY: dict[str, str] = {
+    name: ddl_order for name, (ddl_columns, ddl_order) in TABLES_DDL.items()
+}
+
+
+def _table_create_sql(client, database: str, table_name: str) -> str | None:
+    """Devuelve el CREATE TABLE actual de la tabla o None si no existe."""
+    try:
+        rows = client.query(
+            f"SELECT create_table_query FROM system.tables "
+            f"WHERE database = '{database}' AND name = '{table_name}'"
+        ).result_rows
+    except Exception:
+        return None
+    return rows[0][0] if rows else None
+
+
 def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, str]:
     """Crea/actualiza el esquema KPI sin copiar tablas de dimensiones.
 
     Las columnas de labels son una ampliación compatible: si una tabla ya
     existía desde una corrida anterior, ``ADD COLUMN IF NOT EXISTS`` la adapta
-    sin borrar ni reescribir sus métricas históricas.
+    sin borrar ni reescribir sus métricas históricas. Cuando el ORDER BY cambió
+    (p.ej. ``kpi_room_performance_daily`` ganó ``booking_source`` en R1.2), el
+    ADD COLUMN no basta porque ReplacingMergeTree deduplicaría por la clave
+    vieja; en ese caso se recrea la tabla (DROP + CREATE) — seguro porque cada
+    corrida recompone el 100% de los agregados.
     """
     result: dict[str, str] = {}
     for table_name in tables:
@@ -157,6 +182,10 @@ def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, s
             result[table_name] = "skipped: sin esquema definido"
             continue
         client.command(f"CREATE DATABASE IF NOT EXISTS {database}")
+        expected_order = _TABLE_ORDER_BY[table_name]
+        existing_sql = _table_create_sql(client, database, table_name)
+        if existing_sql and expected_order not in existing_sql:
+            client.command(f"DROP TABLE IF EXISTS {database}.{table_name}")
         client.command(_ddl_for(table_name))
         for column_name, column_type in LABEL_COLUMNS.get(table_name, ()):
             client.command(
