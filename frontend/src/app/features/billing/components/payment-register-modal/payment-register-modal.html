@@ -1,0 +1,126 @@
+<div class="modal-overlay" (click)="close.emit()">
+  <div class="payment-modal" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <span class="material-symbols-outlined modal-head-icon">payments</span>
+      <h2>Registrar pago</h2>
+      <button type="button" class="modal-close" (click)="close.emit()" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-intro">
+        Registra un pago o un intento fallido/rechazado asociado a una reserva.
+        Solo los pagos <strong>Confirmados</strong> marcan la factura como pagada;
+        los estados Fallido / Rechazado / Declinado / Error alimentan el KPI de
+        pagos fallidos sin afectar el saldo.
+      </p>
+
+      <!-- Booking ID -->
+      <div class="form-field">
+        <label>ID de reserva *</label>
+        <input
+          type="text"
+          class="text-input"
+          placeholder="Ej. BK-XXXX o ID de Mongo"
+          [ngModel]="bookingId()"
+          (ngModelChange)="bookingId.set($event)"
+        />
+      </div>
+
+      <!-- Invoice (optional) -->
+      <div class="form-field">
+        <label>ID de factura (opcional)</label>
+        <input
+          type="text"
+          class="text-input"
+          placeholder="ID de la factura a asociar"
+          [ngModel]="invoiceId()"
+          (ngModelChange)="invoiceId.set($event)"
+        />
+      </div>
+
+      <!-- Amount -->
+      <div class="form-field">
+        <label>Monto</label>
+        <div class="amount-input-wrap">
+          <span class="amount-prefix">$</span>
+          <input
+            type="number"
+            class="amount-input"
+            placeholder="0.00"
+            min="0.01"
+            step="0.01"
+            [ngModel]="amount()"
+            (ngModelChange)="amount.set($event)"
+          />
+        </div>
+      </div>
+
+      <!-- Method -->
+      <div class="form-field">
+        <label>Método de pago</label>
+        <div class="method-grid">
+          @for (m of methods; track m.id) {
+            <button
+              type="button"
+              class="method-btn"
+              [class.active]="selectedMethod() === m.id"
+              (click)="selectMethod(m.id)"
+            >
+              <span class="material-symbols-outlined">{{ m.icon }}</span>
+              {{ m.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="form-field">
+        <label>Estado</label>
+        <div class="status-grid">
+          @for (s of statuses; track s.id) {
+            <button
+              type="button"
+              class="status-btn"
+              [class.active]="selectedStatus() === s.id"
+              [class.is-failed]="s.id !== 'confirmed'"
+              (click)="selectStatus(s.id)"
+            >
+              <span class="material-symbols-outlined">{{ s.icon }}</span>
+              {{ s.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (serverError()) {
+        <div class="form-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ serverError() }}
+        </div>
+      }
+      @if (localError()) {
+        <div class="form-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ localError() }}
+        </div>
+      }
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" (click)="close.emit()" [disabled]="submitting()">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-confirm"
+        (click)="confirm()"
+        [disabled]="submitting() || !amount()"
+      >
+        <span class="material-symbols-outlined">check</span>
+        {{ submitting() ? 'Registrando...' : 'Registrar pago' }}
+      </button>
+    </div>
+  </div>
+</div>

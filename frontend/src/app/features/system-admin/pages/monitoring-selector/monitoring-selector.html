@@ -1,0 +1,32 @@
+<div class="monitoring-selector">
+  <app-page-header
+    eyebrow="Observabilidad"
+    title="Monitoreo ETL"
+    description="Selecciona el pipeline que quieres supervisar y controlar."
+  />
+
+  <div class="pipeline-grid">
+    @for (pipeline of pipelines; track pipeline.id) {
+      <article
+        class="pipeline-card"
+        [class.mongo]="pipeline.accent === 'mongo'"
+        [class.clickhouse]="pipeline.accent === 'clickhouse'"
+        (click)="open(pipeline)"
+        role="button"
+        tabindex="0"
+        (keydown.enter)="open(pipeline)"
+      >
+        <div class="pipeline-icon">
+          <span class="material-symbols-outlined">{{ pipeline.icon }}</span>
+        </div>
+        <h2>{{ pipeline.title }}</h2>
+        <p class="pipeline-desc">{{ pipeline.description }}</p>
+        <p class="pipeline-detail">{{ pipeline.detail }}</p>
+        <span class="pipeline-cta">
+          Abrir monitoreo
+          <span class="material-symbols-outlined">arrow_forward</span>
+        </span>
+      </article>
+    }
+  </div>
+</div>

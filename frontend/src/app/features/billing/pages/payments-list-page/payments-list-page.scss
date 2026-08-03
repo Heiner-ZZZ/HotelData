@@ -52,6 +52,28 @@
   .material-symbols-outlined { font-size: 1.2rem; }
 }
 
+.pay-register-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--accent-strong);
+  }
+
+  .material-symbols-outlined { font-size: 1.2rem; }
+}
+
 /* ── Property Selector Bar ── */
 .pay-prop-bar {
   background: var(--surface);

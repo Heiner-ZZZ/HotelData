@@ -15,6 +15,11 @@ class Settings:
     project_root: Path
     mongo_uri: str
     mongo_database: str
+    clickhouse_host: str
+    clickhouse_port: int
+    clickhouse_user: str
+    clickhouse_password: str
+    clickhouse_database: str
     raw_csv_path: Path
     staging_dir: Path
     processed_dir: Path
@@ -75,6 +80,11 @@ def get_settings() -> Settings:
         project_root=root,
         mongo_uri=os.getenv("MONGO_URI", "mongodb://localhost:27018"),
         mongo_database=os.getenv("MONGO_DATABASE", "hoteldata_hub"),
+        clickhouse_host=os.getenv("CLICKHOUSE_HOST", "localhost"),
+        clickhouse_port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
+        clickhouse_user=os.getenv("CLICKHOUSE_USER", "default"),
+        clickhouse_password=os.getenv("CLICKHOUSE_PASSWORD", ""),
+        clickhouse_database=os.getenv("CLICKHOUSE_DB", "hoteldata"),
         raw_csv_path=raw_csv,
         staging_dir=root / "data" / "staging",
         processed_dir=root / "data" / "processed",

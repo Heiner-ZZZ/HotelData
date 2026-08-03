@@ -3,8 +3,18 @@ import { Routes } from '@angular/router';
 export const BILLING_ROUTES: Routes = [
   {
     path: '',
-    redirectTo: 'invoices',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./pages/billing-dashboard-page/billing-dashboard-page').then(m => m.BillingDashboardPageComponent),
+  },
+  {
+    path: 'payments-dashboard',
+    loadComponent: () =>
+      import('./pages/billing-payments-dashboard-page/billing-payments-dashboard-page').then(m => m.BillingPaymentsDashboardPageComponent),
   },
   {
     path: 'invoices',

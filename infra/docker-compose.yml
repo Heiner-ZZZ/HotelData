@@ -30,6 +30,11 @@ x-airflow-common: &airflow-common
     TASK_NUMBER: "03"
     TARGET_RECORDS: "300000"
     GA03_EXPECTED_RECORDS: "300000"
+    CLICKHOUSE_HOST: clickhouse
+    CLICKHOUSE_PORT: "8123"
+    CLICKHOUSE_DB: ${CLICKHOUSE_DB:-hoteldata}
+    CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+    CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
   volumes: &airflow-common-volumes
     - airflow_home:/opt/airflow
     - ../server/src:/opt/hoteldata/src
@@ -91,6 +96,31 @@ services:
       retries: 8
       start_period: 10s
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.7.1
+    container_name: hoteldata_clickhouse
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-hoteldata}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 20s
+
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:0.26.3
     container_name: hoteldata_pocketbase
@@ -127,6 +157,11 @@ services:
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_COLLECTION_03: hotel_reservation_events_03
       TASK_NUMBER: "03"
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-hoteldata}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4200}
       PEXELS_API_KEY: ${PEXELS_API_KEY:-}
       TZ: ${TZ:-America/Mexico_City}
@@ -266,6 +301,7 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  clickhouse_data:
   pocketbase_data:
   airflow_home:
   airflow_postgres_data:

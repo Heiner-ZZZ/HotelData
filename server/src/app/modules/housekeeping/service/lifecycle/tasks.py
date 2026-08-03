@@ -258,7 +258,11 @@ def _enrich_hk_task(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     # camelCase aliases for frontend
     doc["propId"] = doc.get("prop_id", 0)
-    doc["roomId"] = doc.get("room_id", "")
+    # ``roomId`` is the stable business key consumed by the API/UI; retain
+    # the Mongo ObjectId separately as ``room_object_id`` for diagnostics.
+    if doc.get("room_id") is not None and not doc.get("hotel_room_id"):
+        doc["room_object_id"] = str(doc["room_id"])
+    doc["roomId"] = doc.get("hotel_room_id") or doc.get("room_id", "")
     doc["roomLabel"] = doc.get("room_label", "")
     doc["roomTypeId"] = doc.get("room_type_id", "")
     doc["roomNumber"] = doc.get("room_label", "")

@@ -245,7 +245,10 @@ def create_invoice_api(
 
     result = create_invoice(payload)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear la factura (booking inválido)")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo crear la factura (reserva inválida o sin importe que facturar)",
+        )
     diff = {
         k: {"old": None, "new": v}
         for k, v in result.items()
@@ -301,6 +304,103 @@ def list_invoices_api(
         },
     )
     return InvoiceListResponse.model_validate(to_json_safe(result))
+
+
+@api_router.get("/analytics/invoices")
+def invoice_dashboard_api(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
+    current_user: dict = Depends(require_permission("billing.read")),
+):
+    """Dashboard táctico F1.4: monto facturado por período (ClickHouse).
+
+    Lee exclusivamente ``kpi_invoice_daily`` (agregado por día × hotel ×
+    estado). Devuelve resumen, evolución diaria y filas paginadas.
+    """
+    from src.app.modules.billing.service.lifecycle.analytics import get_invoice_dashboard
+
+    try:
+        result = get_invoice_dashboard(
+            prop_id=prop_id,
+            date_from=date_from,
+            date_to=date_to,
+            days=days,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_invoice",
+        entity_id="analytics",
+        action="read",
+        summary="Consulta del dashboard táctico de facturación (F1.4)",
+        changed_by=current_user.get("username", "system"),
+        metadata={
+            "prop_id": prop_id, "date_from": date_from, "date_to": date_to,
+            "days": days, "status": status, "page": page, "page_size": page_size,
+            "url": str(request.url),
+        },
+    )
+    return result
+
+
+@api_router.get("/analytics/payments")
+def payments_dashboard_api(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    method: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_BILLING_PAGE_SIZE, ge=1, le=100),
+    current_user: dict = Depends(require_permission("billing.read")),
+):
+    """Dashboard táctico F1.5: pagos por método/estado y saldo pendiente.
+
+    Lee ``kpi_payment_daily`` (agregado por día × hotel × método × estado) que
+    ya incluye el cruce facturado/cobrado. El saldo pendiente nunca se calcula
+    solo con pagos: ``invoiced_amount`` proviene de las facturas no anuladas.
+    """
+    from src.app.modules.billing.service.lifecycle.analytics import get_payments_dashboard
+
+    try:
+        result = get_payments_dashboard(
+            prop_id=prop_id,
+            date_from=date_from,
+            date_to=date_to,
+            days=days,
+            method=method,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="billing_payment",
+        entity_id="analytics",
+        action="read",
+        summary="Consulta del dashboard táctico de pagos (F1.5)",
+        changed_by=current_user.get("username", "system"),
+        metadata={
+            "prop_id": prop_id, "date_from": date_from, "date_to": date_to,
+            "days": days, "method": method, "status": status,
+            "page": page, "page_size": page_size, "url": str(request.url),
+        },
+    )
+    return result
 
 
 @api_router.get("/invoices/stats", response_model=InvoiceStatsResponse)
@@ -587,7 +687,10 @@ def create_payment_api(
 ):
     result = create_payment(payload)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el pago (booking inválido)")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se encontró la reserva indicada (booking_id inválido). Verifica el ID de la reserva.",
+        )
     diff = {
         k: {"old": None, "new": v}
         for k, v in result.items()

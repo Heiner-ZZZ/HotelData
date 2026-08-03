@@ -36,6 +36,10 @@ class PaymentCreate(BaseModel):
     invoice_id: str = ""
     amount: float
     method: str = "simulated"
+    # Estado inicial del pago. "confirmed" es el flujo normal; un gateway puede
+    # registrar "failed"/"rejected"/"declined"/"error" sin marcar la factura
+    # como pagada (F1.5 mide pagos fallidos).
+    status: str = "confirmed"
 
 
 class PaymentResponse(BaseModel):

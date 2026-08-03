@@ -1,0 +1,72 @@
+<div class="ops-page">
+  <app-housekeeping-sub-nav />
+
+  <header class="ops-header">
+    <div>
+      <p class="eyebrow">Operaciones hoteleras · ClickHouse táctico</p>
+      <h1>Rendimiento de housekeeping</h1>
+      <p class="subtitle">Cumplimiento, rotación observable, inventario y cargos agregados por fecha.</p>
+    </div>
+    <app-property-selector
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </header>
+
+  @if (selectedPropId()) {
+    <section class="ops-filters" aria-label="Filtros de operaciones">
+      <label>Desde <input type="date" [value]="dateFrom()" (change)="dateFrom.set($any($event.target).value)" /></label>
+      <label>Hasta <input type="date" [value]="dateTo()" (change)="dateTo.set($any($event.target).value)" /></label>
+      <button type="button" class="refresh-button" (click)="reload()">
+        <span class="material-symbols-outlined">refresh</span> Actualizar
+      </button>
+    </section>
+
+    @if (operationsResource.isLoading()) {
+      <div class="ops-state"><span class="material-symbols-outlined spin">progress_activity</span> Consultando KPI tácticos…</div>
+    } @else if (operationsResource.error()) {
+      <div class="ops-state ops-state-error">No se pudo consultar el agregado de operaciones.</div>
+    } @else if (data(); as report) {
+      @if (!report.available) {
+        <div class="ops-state">ClickHouse no está disponible. El panel no consulta Mongo como sustituto.</div>
+      }
+      @if (summary(); as s) {
+        <section class="ops-kpis">
+          <article><span class="material-symbols-outlined">cleaning_services</span><strong>{{ s.rooms_cleaned }}</strong><small>Habitaciones limpiadas</small></article>
+          <article><span class="material-symbols-outlined">task_alt</span><strong>{{ s.tasks_completed }}/{{ s.tasks_total }}</strong><small>Tareas completadas</small></article>
+          <article><span class="material-symbols-outlined">build</span><strong>{{ s.maintenance_completed }}/{{ s.maintenance_total }}</strong><small>Mantenimiento completado</small></article>
+          <article><span class="material-symbols-outlined">schedule</span><strong>{{ formatMinutes(s.avg_cleaning_minutes) }}</strong><small>Tiempo medio de limpieza</small></article>
+          <article><span class="material-symbols-outlined">sync</span><strong>{{ formatMinutes(s.avg_checkout_to_available_minutes) }}</strong><small>Checkout → disponible</small><em>{{ s.rotation_observed }} casos observados</em></article>
+          <article><span class="material-symbols-outlined">payments</span><strong>{{ s.charges_amount | number:'1.2-2' }}</strong><small>Total cargos</small></article>
+        </section>
+      }
+
+      <section class="ops-table-card">
+        <div class="section-heading"><div><h2>Detalle diario</h2><p>{{ report.date_from }} → {{ report.date_to }}</p></div><span>{{ rows().length }} días con datos</span></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Fecha</th><th>Tareas</th><th>Mtto.</th><th>Habitaciones</th><th>Inventario disponible</th><th>Bloqueadas</th><th>Rotación observable</th></tr></thead>
+            <tbody>
+              @for (row of rows(); track row.date + row.prop_id) {
+                <tr>
+                  <td>{{ row.date }}</td>
+                  <td>{{ row.tasks_completed }}/{{ row.tasks_total }}</td>
+                  <td>{{ row.maintenance_completed }}/{{ row.maintenance_total }}</td>
+                  <td>{{ row.rooms_cleaned }}</td>
+                  <td>{{ row.inventory_available_rooms }}/{{ row.inventory_total_rooms }}</td>
+                  <td>{{ row.inventory_blocked_rooms }}</td>
+                  <td>{{ formatMinutes(row.avg_checkout_to_available_minutes) }} <small>({{ row.rotation_observed }})</small></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="empty-cell">No hay datos agregados para el rango seleccionado.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  } @else {
+    <div class="ops-empty"><span class="material-symbols-outlined">analytics</span><p>Selecciona una propiedad para consultar sus operaciones.</p></div>
+  }
+</div>

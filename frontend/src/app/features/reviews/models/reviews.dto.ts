@@ -1,3 +1,62 @@
+export interface ReviewAnalyticsRowDto {
+  date: string;
+  prop_id: number;
+  reviews: number;
+  avg_rating: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+  responded: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  moderated_count: number;
+  avg_moderation_minutes: number | null;
+  responded_count: number;
+  avg_response_minutes: number | null;
+}
+
+export interface DepartmentalSentimentDto {
+  key: string;
+  label: string;
+  icon: string;
+  score: number;
+  positive_pct?: number;
+  neutral_pct?: number;
+  negative_pct?: number;
+  total_ratings?: number;
+}
+
+export interface RecentFeedbackDto {
+  id: string;
+  user_name?: string;
+  rating?: number;
+  comment?: string;
+  created_at?: string;
+}
+
+export interface DailyCountDto {
+  date: string;
+  count?: number;
+}
+
+export interface ReputationDashboardDto {
+  gri?: number;
+  gri_target?: number;
+  gri_change?: number;
+  total_reviews?: number;
+  departmental?: DepartmentalSentimentDto[];
+  recent_feedback?: RecentFeedbackDto[];
+  daily_counts?: DailyCountDto[];
+}
+
+export interface ReviewAnalyticsDto {
+  available: boolean;
+  days: number;
+  rows: ReviewAnalyticsRowDto[];
+  message?: string;
+}
+
 export interface ReviewsListDto {
   items: ReviewItemDto[];
   page: number;

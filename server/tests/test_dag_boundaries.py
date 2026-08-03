@@ -50,6 +50,7 @@ def _imports_from(path: Path) -> list[str]:
 def _dag_paths() -> list[Path]:
     candidates = [
         _ACTIVE_GA03_PATH,
+        _ACTIVE_DAGS_ROOT / "hoteldata_mongo_to_clickhouse_etl.py",
         _BACKUP_DAGS_ROOT / "hoteldata_taf01_etl_dag.py",
         _BACKUP_DAGS_ROOT / "hoteldata_ta02_reservations_dag.py",
         _BACKUP_DAGS_ROOT / "hoteldata_reservas_03_pipeline.py",
@@ -78,6 +79,26 @@ def test_airflow_dag_has_core_tasks():
     for task_id in ["validate_environment", "create_indexes", "save_execution_report"]:
         assert task_id in dag_text
     assert ("load_mongodb" in dag_text) or ("to_mongodb" in dag_text)
+
+
+def test_m2c_dag_has_own_pipeline_tasks():
+    """The MongoDB→ClickHouse DAG defines its own task graph (not GA03's)."""
+    m2c_path = _ACTIVE_DAGS_ROOT / "hoteldata_mongo_to_clickhouse_etl.py"
+    if not m2c_path.exists():
+        return
+    dag_text = m2c_path.read_text(encoding="utf-8")
+    assert 'dag_id="hoteldata_mongo_to_clickhouse_etl"' in dag_text
+    for task_id in [
+        "validate_config",
+        "extract_mongo",
+        "transform",
+        "create_tables",
+        "load_clickhouse",
+        "quality_report",
+        "execution_report",
+    ]:
+        assert task_id in dag_text
+    assert "ClickHouse" in dag_text  # este DAG SÍ toca ClickHouse por diseño
 
 
 def test_active_ga03_dag_preserves_end_to_end_source_preparation():

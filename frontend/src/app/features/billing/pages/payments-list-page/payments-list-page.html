@@ -12,8 +12,16 @@
   </app-page-header>
 
   <div class="pay-sub-nav">
+    <a routerLink="/management/billing/dashboard" class="pay-sub-link">Dashboard</a>
+    <a routerLink="/management/billing/payments-dashboard" class="pay-sub-link">Pagos Dashboard</a>
     <a routerLink="/management/billing/invoices" class="pay-sub-link">Facturas</a>
     <a routerLink="/management/billing/payments" class="pay-sub-link active">Pagos</a>
+    @if (canManagePayments()) {
+      <button type="button" class="pay-register-btn" (click)="openRegister()">
+        <span class="material-symbols-outlined btn-icon">add_card</span>
+        Registrar pago
+      </button>
+    }
     <button type="button" class="pay-print-btn" (click)="printPage()">
       <span class="material-symbols-outlined btn-icon">print</span>
       Imprimir reporte
@@ -84,8 +92,8 @@
                       </td>
                       <td>
                         <app-status-badge
-                          [tone]="item.status === 'confirmed' ? 'success' : item.status === 'refunded' ? 'warning' : 'neutral'"
-                          [label]="item.status === 'confirmed' ? 'Confirmado' : item.status === 'refunded' ? 'Reembolsado' : item.status"
+                          [tone]="getStatusInfo(item.status).tone"
+                          [label]="getStatusInfo(item.status).label"
                         />
                       </td>
                       <td><code>{{ item.reference || '—' }}</code></td>
@@ -125,6 +133,15 @@
     <app-empty-state
       title="Selecciona un hotel"
       description="Usa el selector de propiedad arriba para filtrar los pagos por hotel."
+    />
+  }
+
+  @if (registerOpen()) {
+    <app-payment-register-modal
+      [serverError]="registerError()"
+      [submitting]="registerSubmitting()"
+      (close)="closeRegister()"
+      (confirmed)="registerPayment($event)"
     />
   }
 </div>

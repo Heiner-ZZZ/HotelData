@@ -56,7 +56,7 @@ docker compose --env-file .env -f infra/docker-compose.yml up -d airflow-postgre
 | Frontend | Angular 22, TypeScript 6.x, SCSS | Signals + OnPush, esbuild builder |
 | Backend | FastAPI, Python 3.12 | Pydantic v2, async, uvicorn |
 | Database | MongoDB 8.0 (replica set) | Port 27018, RS `rs0` |
-| Analytics | ClickHouse | *Coming soon* |
+| Analytics | ClickHouse 26.7.1 (Docker) | Servicio `clickhouse` en compose · HTTP 8123 · BD `hoteldata` |
 | ETL | Airflow 3.2.2, PocketBase (legacy source) | GA03 pipeline, CeleryExecutor, incremental mode |
 | Auth | JWT (python-jose) + bcrypt | |
 | Cache | Redis 7.4 | |

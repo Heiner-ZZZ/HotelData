@@ -868,6 +868,34 @@ def cleaning_approve_api(
 # ═══════════════════════════════════════════════
 
 
+@api_router.get("/operations/analytics")
+def housekeeping_operations_analytics_api(
+    request: Request,
+    prop_id: int | None = Query(default=None, ge=1),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    current_user: dict = Depends(require_permission("housekeeping.read")),
+):
+    """Read the compact ClickHouse operations KPI for the tactical dashboard."""
+    try:
+        result = get_operations_analytics(
+            prop_id=prop_id, date_from=date_from, date_to=date_to, days=days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    register_action(
+        prop_id=prop_id or 0,
+        entity_type="housekeeping_operations_analytics",
+        entity_id="daily",
+        action="read",
+        summary="Consulta de KPIs tácticos de operaciones hoteleras",
+        changed_by=current_user.get("username", "system"),
+        metadata={"prop_id": prop_id, "date_from": date_from, "date_to": date_to, "days": days, "url": str(request.url)},
+    )
+    return result
+
+
 @api_router.get("/dashboard")
 def housekeeping_dashboard_api(
     request: Request,

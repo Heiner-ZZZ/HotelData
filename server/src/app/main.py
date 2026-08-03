@@ -60,6 +60,7 @@ from src.app.features.catalogs.service import ensure_default_catalogs
 from src.app.features.dashboard.routes import api_router as dashboard_api_router
 from src.app.ai.routes import api_router as ai_api_router
 from src.app.features.etl_status.routes import JSON_API as etl_status_json_router
+from src.app.features.etl_status_m2c.routes import JSON_API as etl_status_m2c_json_router
 from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.modules.account.routes import api_router as account_api_router
 from src.app.modules.audit.routes import router as audit_router
@@ -108,6 +109,7 @@ from src.app.modules.instay.routes import staff_router as instay_staff_router
 from src.app.modules.payments.routes import router as payments_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
+from src.app.modules.analytics.routes import router as analytics_router
 from src.app.security.middleware import role_access_middleware
 from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
 from src.app.modules.partner.services.audit import ensure_audit_indexes
@@ -171,6 +173,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_api_router)
     app.include_router(ai_api_router)
     app.include_router(etl_status_json_router)
+    app.include_router(etl_status_m2c_json_router)
     app.include_router(audit_router)
     app.include_router(admin_api_router)
     app.include_router(auth_module_router)
@@ -196,6 +199,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_api_router)
     app.include_router(account_api_router)
     app.include_router(system_router)
+    app.include_router(analytics_router)
     app.include_router(housekeeping_api_router)
     app.include_router(housekeeping_module_router)
     app.include_router(tracking_api_router)

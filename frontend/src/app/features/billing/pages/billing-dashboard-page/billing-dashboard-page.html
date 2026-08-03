@@ -1,0 +1,221 @@
+<div class="bdb-page">
+  <app-page-header
+    title="Dashboard de facturación"
+    description="Monto facturado por período: emisión, cobro, pendiente y anulación por hotel."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <nav class="bdb-nav" aria-label="Facturación">
+    <a routerLink="/management/billing/dashboard" class="bdb-nav-link active">Dashboard</a>
+    <a routerLink="/management/billing/payments-dashboard" class="bdb-nav-link">Pagos Dashboard</a>
+    <a routerLink="/management/billing/invoices" class="bdb-nav-link">Facturas</a>
+    <a routerLink="/management/billing/payments" class="bdb-nav-link">Pagos</a>
+  </nav>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card bdb-filters" aria-label="Filtros del dashboard">
+      <div class="bdb-filter-row">
+        <span class="bdb-filter-label">Período</span>
+        <button type="button" class="bdb-chip" [class.active]="(!dateFrom() || !dateTo()) || activeRange() === '30'" (click)="setRange(30)">30 días</button>
+        <button type="button" class="bdb-chip" [class.active]="activeRange() === '7'" (click)="setRange(7)">7 días</button>
+        <button type="button" class="bdb-chip" [class.active]="activeRange() === '90'" (click)="setRange(90)">90 días</button>
+      </div>
+      <div class="bdb-filter-row secondary">
+        <div class="bdb-date-group">
+          <span class="material-symbols-outlined bdb-date-icon">calendar_month</span>
+          <input type="date" class="bdb-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+          <span class="bdb-date-sep">→</span>
+          <input type="date" class="bdb-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+        </div>
+        <div class="bdb-status-chips">
+          <span class="bdb-filter-label">Estado</span>
+          @for (opt of statusOptions; track opt.value) {
+            <button
+              type="button"
+              class="bdb-chip"
+              [class.active]="statusFilter() === opt.value"
+              (click)="setStatusFilter(opt.value)"
+            >
+              <span class="material-symbols-outlined chip-icon">{{ opt.icon }}</span> {{ opt.label }}
+            </button>
+          }
+        </div>
+        @if (dateFrom() || dateTo() || statusFilter()) {
+          <button type="button" class="bdb-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando KPI de facturación…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener los agregados de facturación." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay KPIs de facturación para el rango y hotel seleccionados. Verifica que el ETL horario haya cargado kpi_invoice_daily." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          @if (!d.available) {
+            <div class="bdb-unavailable">
+              <span class="material-symbols-outlined">cloud_off</span>
+              ClickHouse no está disponible. El panel no consulta Mongo como sustituto.
+            </div>
+          }
+
+          <!-- ═══ KPIs (Z — top) ═══ -->
+          @if (summary(); as s) {
+            <section class="bdb-kpis" aria-label="Resumen de facturación">
+              <article class="bdb-kpi total">
+                <span class="material-symbols-outlined">payments</span>
+                <strong>{{ s.totalAmount | number:'1.2-2' }}</strong>
+                <small>Total facturado</small>
+                <em>{{ s.invoiceCount }} factura(s)</em>
+              </article>
+              <article class="bdb-kpi issued">
+                <span class="material-symbols-outlined">receipt_long</span>
+                <strong>{{ s.pendingTotal | number:'1.2-2' }}</strong>
+                <small>Emitido pendiente</small>
+                <em>{{ s.byStatus['issued']?.count ?? 0 }} factura(s)</em>
+              </article>
+              <article class="bdb-kpi paid">
+                <span class="material-symbols-outlined">check_circle</span>
+                <strong>{{ s.paidTotal | number:'1.2-2' }}</strong>
+                <small>Cobrado</small>
+                <em>{{ s.byStatus['paid']?.count ?? 0 }} factura(s)</em>
+              </article>
+              <article class="bdb-kpi cancelled">
+                <span class="material-symbols-outlined">cancel</span>
+                <strong>{{ s.cancelledTotal | number:'1.2-2' }}</strong>
+                <small>Anulado</small>
+                <em>{{ s.byStatus['cancelled']?.count ?? 0 }} factura(s)</em>
+              </article>
+              <article class="bdb-kpi taxes">
+                <span class="material-symbols-outlined">percent</span>
+                <strong>{{ s.taxes | number:'1.2-2' }}</strong>
+                <small>Impuestos</small>
+                <em>Subtotal {{ s.subtotal | number:'1.2-2' }}</em>
+              </article>
+            </section>
+          }
+
+          <!-- ═══ Gráfico (Z — centro) ═══ -->
+          <section class="bdb-chart-row">
+            <app-kpi-chart
+              title="Evolución del monto facturado"
+              [labels]="series().labels"
+              [datasets]="chartDatasets()"
+              type="line"
+              formatValue="currency"
+              [showLegend]="true"
+              [height]="280"
+            />
+            @if (summary()?.byHotel?.length) {
+              <aside class="surface-card bdb-hotels">
+                <h3>Por hotel</h3>
+                <ul class="bdb-hotel-list">
+                  @for (h of summary()!.byHotel; track h.propId) {
+                    <li>
+                      <div class="bdb-hotel-meta">
+                        <span class="bdb-hotel-name">{{ h.hotelLabel || ('Hotel #' + h.propId) }}</span>
+                        <small>{{ h.invoiceCount }} factura(s)</small>
+                      </div>
+                      <strong>{{ h.total | number:'1.2-2' }}</strong>
+                    </li>
+                  } @empty {
+                    <li class="bdb-muted">Sin hoteles en el rango.</li>
+                  }
+                </ul>
+              </aside>
+            }
+          </section>
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card bdb-table-card">
+            <div class="bdb-table-head">
+              <div class="bdb-table-head-left">
+                <span class="material-symbols-outlined bdb-head-icon">receipt_long</span>
+                <div>
+                  <h2>Detalle diario por estado</h2>
+                  <p class="bdb-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                    <span class="bdb-range">{{ d.dateFrom }} → {{ d.dateTo }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="bdb-pagination">
+                <button type="button" class="bdb-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                  <span class="btn-label">Anterior</span>
+                </button>
+                <button type="button" class="bdb-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                  <span class="btn-label">Siguiente</span>
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="bdb-table-wrap">
+              <table class="bdb-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Hotel</th>
+                    <th>Estado</th>
+                    <th class="th-num">Facturas</th>
+                    <th class="th-num">Subtotal</th>
+                    <th class="th-num">Impuestos</th>
+                    <th class="th-num">Total</th>
+                    <th class="th-num">Cobrado</th>
+                    <th class="th-num">Pendiente</th>
+                    <th class="th-num">Anulado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.date + row.propId + row.status) {
+                    <tr>
+                      <td>{{ formatDate(row.date) }}</td>
+                      <td>{{ row.hotelLabel || ('Hotel #' + row.propId) }}</td>
+                      <td>
+                        <span class="bdb-status-badge" [class]="'tone-' + statusTone(row.status)">
+                          <span class="material-symbols-outlined badge-icon">{{ statusIcon(row.status) }}</span>
+                          {{ statusLabel(row.status) }}
+                        </span>
+                      </td>
+                      <td class="td-num">{{ row.invoiceCount }}</td>
+                      <td class="td-num mono">${{ row.subtotal.toFixed(2) }}</td>
+                      <td class="td-num mono">${{ row.taxes.toFixed(2) }}</td>
+                      <td class="td-num mono strong">${{ row.total.toFixed(2) }}</td>
+                      <td class="td-num mono paid">${{ row.paidTotal.toFixed(2) }}</td>
+                      <td class="td-num mono pending">${{ row.pendingTotal.toFixed(2) }}</td>
+                      <td class="td-num mono cancelled">${{ row.cancelledTotal.toFixed(2) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="10" class="bdb-empty-cell">No hay filas agregadas para el rango seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar el dashboard por hotel."
+    />
+  }
+</div>

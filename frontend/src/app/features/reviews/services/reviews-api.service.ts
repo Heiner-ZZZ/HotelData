@@ -4,7 +4,8 @@ import { map } from 'rxjs';
 
 import { API_CONFIG } from '../../../core/api/api.config';
 import { mapReviewDetail, mapReviewsList, mapReputationDashboard } from '../mappers/reviews.mapper';
-import type { ReviewDetailDto, ReviewsListDto } from '../models/reviews.dto';
+import type { ReputationDashboardDto, ReviewAnalyticsDto, ReviewDetailDto, ReviewsListDto } from '../models/reviews.dto';
+import { mapReviewAnalytics } from '../mappers/reviews.mapper';
 
 @Injectable({ providedIn: 'root' })
 export class ReviewsApiService {
@@ -82,11 +83,20 @@ export class ReviewsApiService {
     );
   }
 
+  getReputationAnalytics(propId?: number, days = 30) {
+    let params = new HttpParams().set('days', String(days));
+    if (propId) params = params.set('prop_id', String(propId));
+    return this.http.get<ReviewAnalyticsDto>(
+      `${this.apiConfig.baseUrl}/reviews/reputation/analytics`,
+      { params, withCredentials: true },
+    ).pipe(map(dto => mapReviewAnalytics(dto)));
+  }
+
   // Get reputation dashboard data
   getReputationDashboard(propId?: number, days = 30) {
     let params = new HttpParams().set('days', String(days));
     if (propId) params = params.set('prop_id', String(propId));
-    return this.http.get<any>(
+    return this.http.get<ReputationDashboardDto>(
       `${this.apiConfig.baseUrl}/reviews/reputation/dashboard`,
       { params, withCredentials: true },
     ).pipe(map(dto => mapReputationDashboard(dto)));

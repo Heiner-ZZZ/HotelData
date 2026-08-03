@@ -1,5 +1,6 @@
 import { formatDateTime } from '../../../shared/utils/date-format.util';
-import type { ReviewDetailDto, ReviewItemDto, ReviewsListDto, ServiceRatingsDto } from '../models/reviews.dto';
+import type { DepartmentalSentimentDto, ReputationDashboardDto, ReviewAnalyticsDto, ReviewDetailDto, ReviewItemDto, ReviewsListDto, ServiceRatingsDto } from '../models/reviews.dto';
+import type { ReviewAnalytics, ReviewAnalyticsRow } from '../models/reviews.model';
 import type { ReviewDetailViewModel, ReviewListItem, ReviewsListViewModel, ServiceRatings, ReputationDashboard } from '../models/reviews.model';
 
 function mapServiceRatings(sr?: ServiceRatingsDto | null): ServiceRatings | null {
@@ -65,13 +66,28 @@ export function mapReviewDetail(dto: ReviewDetailDto): ReviewDetailViewModel {
 }
 
 /** Map reputation dashboard from API snake_case to camelCase. */
-export function mapReputationDashboard(dto: any): ReputationDashboard {
+export function mapReviewAnalytics(dto: ReviewAnalyticsDto): ReviewAnalytics {
+  return {
+    available: dto.available,
+    days: dto.days,
+    message: dto.message,
+    rows: (dto.rows ?? []).map((row): ReviewAnalyticsRow => ({
+      date: row.date, propId: row.prop_id, reviews: row.reviews, avgRating: row.avg_rating,
+      approved: row.approved, pending: row.pending, rejected: row.rejected, responded: row.responded,
+      positive: row.positive, neutral: row.neutral, negative: row.negative,
+      moderatedCount: row.moderated_count, avgModerationMinutes: row.avg_moderation_minutes,
+      respondedCount: row.responded_count, avgResponseMinutes: row.avg_response_minutes,
+    })),
+  };
+}
+
+export function mapReputationDashboard(dto: ReputationDashboardDto): ReputationDashboard {
   return {
     gri: dto.gri ?? 0,
     griTarget: dto.gri_target ?? 90,
     griChange: dto.gri_change ?? 0,
     totalReviews: dto.total_reviews ?? 0,
-    departmental: (dto.departmental ?? []).map((dept: any) => ({
+    departmental: (dto.departmental ?? []).map((dept: DepartmentalSentimentDto) => ({
       key: dept.key,
       label: dept.label,
       icon: dept.icon,
@@ -81,14 +97,14 @@ export function mapReputationDashboard(dto: any): ReputationDashboard {
       negativePct: dept.negative_pct ?? 0,
       totalRatings: dept.total_ratings ?? 0,
     })),
-    recentFeedback: (dto.recent_feedback ?? []).map((fb: any) => ({
+    recentFeedback: (dto.recent_feedback ?? []).map((fb) => ({
       id: fb.id,
       userName: fb.user_name ?? 'Huésped',
       rating: fb.rating ?? 0,
       comment: fb.comment ?? '',
       createdAt: fb.created_at ?? '',
     })),
-    dailyCounts: (dto.daily_counts ?? []).map((dc: any) => ({
+    dailyCounts: (dto.daily_counts ?? []).map((dc) => ({
       date: dc.date,
       count: dc.count ?? 0,
     })),

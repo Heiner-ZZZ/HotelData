@@ -1,0 +1,240 @@
+<div class="pdb-page">
+  <app-page-header
+    title="Dashboard de pagos"
+    description="Total de pagos por método y saldo pendiente por hotel y período."
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
+
+  <nav class="pdb-nav" aria-label="Facturación">
+    <a routerLink="/management/billing/dashboard" class="pdb-nav-link">Dashboard</a>
+    <a routerLink="/management/billing/payments-dashboard" class="pdb-nav-link active">Pagos Dashboard</a>
+    <a routerLink="/management/billing/invoices" class="pdb-nav-link">Facturas</a>
+    <a routerLink="/management/billing/payments" class="pdb-nav-link">Pagos</a>
+  </nav>
+
+  @if (selectedPropId()) {
+    <!-- ═══ Filter bar ═══ -->
+    <section class="surface-card pdb-filters" aria-label="Filtros del dashboard">
+      <div class="pdb-filter-row">
+        <span class="pdb-filter-label">Período</span>
+        <button type="button" class="pdb-chip" [class.active]="(!dateFrom() || !dateTo()) || activeRange() === '30'" (click)="setRange(30)">30 días</button>
+        <button type="button" class="pdb-chip" [class.active]="activeRange() === '7'" (click)="setRange(7)">7 días</button>
+        <button type="button" class="pdb-chip" [class.active]="activeRange() === '90'" (click)="setRange(90)">90 días</button>
+      </div>
+      <div class="pdb-filter-row secondary">
+        <div class="pdb-date-group">
+          <span class="material-symbols-outlined pdb-date-icon">calendar_month</span>
+          <input type="date" class="pdb-date-input" [value]="dateFrom()" (change)="onDateFromChange(($any($event.target)?.value ?? ''))" placeholder="Desde" />
+          <span class="pdb-date-sep">→</span>
+          <input type="date" class="pdb-date-input" [value]="dateTo()" (change)="onDateToChange(($any($event.target)?.value ?? ''))" placeholder="Hasta" />
+        </div>
+        <div class="pdb-chip-group">
+          <span class="pdb-filter-label">Método</span>
+          @for (opt of methodOptions; track opt.value) {
+            <button
+              type="button"
+              class="pdb-chip"
+              [class.active]="methodFilter() === opt.value"
+              (click)="toggleFilter('method', opt.value, methodFilter())"
+            >
+              <span class="material-symbols-outlined chip-icon">{{ opt.icon }}</span> {{ opt.label }}
+            </button>
+          }
+        </div>
+        <div class="pdb-chip-group">
+          <span class="pdb-filter-label">Estado</span>
+          @for (opt of statusOptions; track opt.value) {
+            <button
+              type="button"
+              class="pdb-chip"
+              [class.active]="statusFilter() === opt.value"
+              (click)="toggleFilter('status', opt.value, statusFilter())"
+            >
+              <span class="material-symbols-outlined chip-icon">{{ opt.icon }}</span> {{ opt.label }}
+            </button>
+          }
+        </div>
+        @if (hasFilters()) {
+          <button type="button" class="pdb-clear-btn" (click)="clearAllFilters()">
+            <span class="material-symbols-outlined">filter_alt_off</span>
+            Limpiar
+          </button>
+        }
+      </div>
+    </section>
+
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Consultando KPI de pagos…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al consultar" description="No se pudieron obtener los agregados de pagos." />
+      }
+      @case ('empty') {
+        <app-empty-state title="Sin datos" description="No hay KPIs de pagos para el rango y hotel seleccionados. Verifica que el ETL horario haya cargado kpi_payment_daily." />
+      }
+      @case ('success') {
+        @if (data(); as d) {
+          @if (!d.available) {
+            <div class="pdb-unavailable">
+              <span class="material-symbols-outlined">cloud_off</span>
+              ClickHouse no está disponible. El panel no consulta Mongo como sustituto.
+            </div>
+          }
+
+          <!-- ═══ KPIs (Z — top) ═══ -->
+          @if (summary(); as s) {
+            <section class="pdb-kpis" aria-label="Resumen de pagos">
+              <article class="pdb-kpi paid">
+                <span class="material-symbols-outlined">check_circle</span>
+                <strong>{{ s.paidAmount | number:'1.2-2' }}</strong>
+                <small>Total cobrado</small>
+                <em>{{ s.paymentCount }} pago(s)</em>
+              </article>
+              <article class="pdb-kpi invoiced">
+                <span class="material-symbols-outlined">receipt_long</span>
+                <strong>{{ s.invoicedAmount | number:'1.2-2' }}</strong>
+                <small>Facturado</small>
+                <em>Emitido no anulado</em>
+              </article>
+              <article class="pdb-kpi outstanding">
+                <span class="material-symbols-outlined">hourglass_empty</span>
+                <strong>{{ s.outstandingAmount | number:'1.2-2' }}</strong>
+                <small>Saldo pendiente</small>
+                <em>Facturado − cobrado</em>
+              </article>
+              <article class="pdb-kpi refunded">
+                <span class="material-symbols-outlined">currency_exchange</span>
+                <strong>{{ s.refundedAmount | number:'1.2-2' }}</strong>
+                <small>Reembolsado</small>
+                <em>Pagos revertidos</em>
+              </article>
+              <article class="pdb-kpi failed">
+                <span class="material-symbols-outlined">error</span>
+                <strong>{{ s.failedAmount | number:'1.2-2' }}</strong>
+                <small>Fallidos</small>
+                <em>Rechazados o con error</em>
+              </article>
+            </section>
+          }
+
+          <!-- ═══ Gráfico (Z — centro) ═══ -->
+          <section class="pdb-chart-row">
+            <app-kpi-chart
+              title="Evolución de cobro vs facturación"
+              [labels]="series().labels"
+              [datasets]="chartDatasets()"
+              type="line"
+              formatValue="currency"
+              [showLegend]="true"
+              [height]="280"
+            />
+            @if (summary()?.byMethod?.length) {
+              <aside class="surface-card pdb-methods">
+                <h3>Por método</h3>
+                <ul class="pdb-method-list">
+                  @for (m of summary()!.byMethod; track m.method) {
+                    <li>
+                      <div class="pdb-method-meta">
+                        <span class="material-symbols-outlined pdb-method-icon">{{ methodIcon(m.method) }}</span>
+                        <span class="pdb-method-name">{{ m.label || 'Sin método' }}</span>
+                        <small>{{ m.count }} pago(s)</small>
+                      </div>
+                      <strong>{{ m.amount | number:'1.2-2' }}</strong>
+                    </li>
+                  } @empty {
+                    <li class="pdb-muted">Sin métodos en el rango.</li>
+                  }
+                </ul>
+              </aside>
+            }
+          </section>
+
+          <!-- ═══ Grilla (Z — abajo) ═══ -->
+          <section class="surface-card pdb-table-card">
+            <div class="pdb-table-head">
+              <div class="pdb-table-head-left">
+                <span class="material-symbols-outlined pdb-head-icon">payments</span>
+                <div>
+                  <h2>Detalle diario por método y estado</h2>
+                  <p class="pdb-meta">
+                    {{ d.total }} fila(s) · Pág. {{ d.page }} de {{ d.totalPages || 1 }}
+                    <span class="pdb-range">{{ d.dateFrom }} → {{ d.dateTo }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="pdb-pagination">
+                <button type="button" class="pdb-page-btn" (click)="goToPage(d.page - 1)" [disabled]="!d.hasPrev">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                  <span class="btn-label">Anterior</span>
+                </button>
+                <button type="button" class="pdb-page-btn" (click)="goToPage(d.page + 1)" [disabled]="!d.hasNext">
+                  <span class="btn-label">Siguiente</span>
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="pdb-table-wrap">
+              <table class="pdb-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Hotel</th>
+                    <th>Método</th>
+                    <th>Estado</th>
+                    <th class="th-num">Pagos</th>
+                    <th class="th-num">Cobrado</th>
+                    <th class="th-num">Reembolsado</th>
+                    <th class="th-num">Fallido</th>
+                    <th class="th-num">Facturado día</th>
+                    <th class="th-num">Pendiente día</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows(); track row.date + row.propId + row.method + row.status) {
+                    <tr>
+                      <td>{{ formatDate(row.date) }}</td>
+                      <td>{{ row.hotelLabel || ('Hotel #' + row.propId) }}</td>
+                      <td>
+                        <span class="pdb-method-pill">
+                          <span class="material-symbols-outlined">{{ methodIcon(row.method) }}</span>
+                          {{ methodLabel(row.method) }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="pdb-status-badge" [class]="'tone-' + statusTone(row.status)">
+                          <span class="material-symbols-outlined badge-icon">{{ statusIcon(row.status) }}</span>
+                          {{ statusLabel(row.status) }}
+                        </span>
+                      </td>
+                      <td class="td-num">{{ row.paymentCount }}</td>
+                      <td class="td-num mono paid">${{ row.paidAmount.toFixed(2) }}</td>
+                      <td class="td-num mono refunded">${{ row.refundedAmount.toFixed(2) }}</td>
+                      <td class="td-num mono failed">${{ row.failedAmount.toFixed(2) }}</td>
+                      <td class="td-num mono">${{ row.invoicedAmount.toFixed(2) }}</td>
+                      <td class="td-num mono outstanding">${{ row.outstandingAmount.toFixed(2) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="10" class="pdb-empty-cell">No hay filas agregadas para el rango seleccionado.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  } @else {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Usa el selector de propiedad arriba para filtrar el dashboard por hotel."
+    />
+  }
+</div>

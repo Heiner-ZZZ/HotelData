@@ -85,6 +85,19 @@ class TestCreateInvoice:
         result = create_invoice(payload)
         assert result is None
 
+    def test_create_invoice_rejects_zero_without_line_items(self, db, seeded_booking):
+        """Guard: never emit $0 invoices for bookings without a price (reservas sin tarifa)."""
+        payload = InvoiceCreate(
+            booking_id=seeded_booking,
+            subtotal=0.0,
+            taxes=0.0,
+        )
+        result = create_invoice(payload)
+        assert result is None
+        # Nothing persisted to either collection.
+        assert db.reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
+        assert db.fact_reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
+
     def test_invoice_stored_with_string_booking_id(self, db, seeded_booking):
         """Verify the DB stores string booking_id, not ObjectId (GAP-042)."""
         payload = InvoiceCreate(booking_id=seeded_booking, subtotal=200.0, taxes=20.0)
@@ -176,6 +189,35 @@ class TestCreatePayment:
         # Check invoice status updated
         updated_inv = get_invoice(inv["id"])
         assert updated_inv["status"] == "paid"
+
+    def test_create_failed_payment_keeps_invoice_issued(self, db, seeded_booking):
+        """A failed/rejected attempt must NOT mark the invoice as paid (F1.5)."""
+        inv = create_invoice(InvoiceCreate(
+            booking_id=seeded_booking, subtotal=100.0, taxes=10.0,
+        ))
+        pay = create_payment(PaymentCreate(
+            booking_id=seeded_booking,
+            invoice_id=inv["id"],
+            amount=110.0,
+            status="failed",
+        ))
+        assert pay is not None
+        assert pay["status"] == "failed"
+        updated_inv = get_invoice(inv["id"])
+        assert updated_inv["status"] == "issued"
+
+    def test_create_rejected_payment_status_roundtrip(self, db, seeded_booking):
+        """Rejected attempts keep their status for the failed KPI aggregation."""
+        pay = create_payment(PaymentCreate(
+            booking_id=seeded_booking,
+            amount=75.0,
+            method="card",
+            status="rejected",
+        ))
+        assert pay is not None
+        assert pay["status"] == "rejected"
+        fetched = get_payment(pay["id"])
+        assert fetched["status"] == "rejected"
 
 
 class TestListGetPayment:

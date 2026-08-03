@@ -38,6 +38,12 @@ def create_payment(payload: PaymentCreate) -> dict | None:
         if inv:
             invoice_id = ObjectId(payload.invoice_id)
 
+    # Un gateway puede registrar intentos fallidos/rechazados; esos pagos NO
+    # marcan la factura como pagada (solo ``confirmed`` lo hace).
+    status = (payload.status or "confirmed").strip().lower()
+    if status not in {"confirmed", "failed", "rejected", "declined", "error"}:
+        status = "confirmed"
+
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
@@ -45,20 +51,21 @@ def create_payment(payload: PaymentCreate) -> dict | None:
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
         "method": payload.method,
-        "status": "confirmed",
+        "status": status,
         "reference": f"PAY-{secrets.token_hex(6).upper()}",
         "paid_at": _now(),
     }
     _write_both(PAYMENTS, FACT_PAYMENTS, doc)
 
-    # Generate double-entry ledger entries for this payment
-    try:
-        from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_payment
-        generate_ledger_from_payment(doc)
-    except Exception:
-        logger.exception("Failed to generate ledger entries for payment %s", doc.get("reference", ""))
+    # Generate double-entry ledger entries for this payment (only when confirmed)
+    if status == "confirmed":
+        try:
+            from src.app.modules.expenses.service.ledger_hooks import generate_ledger_from_payment
+            generate_ledger_from_payment(doc)
+        except Exception:
+            logger.exception("Failed to generate ledger entries for payment %s", doc.get("reference", ""))
 
-    if invoice_id:
+    if invoice_id and status == "confirmed":
         upd = {"$set": {"status": "paid", "paid_at": _now()}}
         _update_both(INVOICES, FACT_INVOICES, invoice_id, upd)
 

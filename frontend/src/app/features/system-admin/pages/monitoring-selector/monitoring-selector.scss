@@ -1,0 +1,111 @@
+// ═══════════════════════════════════════════════
+// Monitoring Selector — pipeline picker
+// ═══════════════════════════════════════════════
+
+.monitoring-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  &.mongo:hover,
+  &.mongo:focus-visible {
+    border-color: color-mix(in srgb, var(--success) 55%, transparent);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--success) 18%, transparent);
+  }
+
+  &.clickhouse:hover,
+  &.clickhouse:focus-visible {
+    border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--warning) 18%, transparent);
+  }
+}
+
+.pipeline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+
+  .pipeline-card.mongo & {
+    background: color-mix(in srgb, var(--success) 16%, transparent);
+    color: var(--success);
+  }
+
+  .pipeline-card.clickhouse & {
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+    color: var(--warning);
+  }
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--app-text);
+}
+
+.pipeline-desc {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pipeline-detail {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.pipeline-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: auto;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--accent);
+
+  .material-symbols-outlined {
+    font-size: 16px;
+    transition: transform 0.15s ease;
+  }
+
+  .pipeline-card:hover & .material-symbols-outlined {
+    transform: translateX(3px);
+  }
+}

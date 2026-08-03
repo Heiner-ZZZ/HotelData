@@ -37,7 +37,7 @@ Además incluye módulos corporativos: RRHH, gastos y ledger contable, gestión 
 
 HotelData vive hoy en su **capa operativa** — los 27 módulos backend y 34 módulos frontend corren contra MongoDB como fuente de verdad transaccional.
 
-**Próximamente**: capa táctica y estratégica sobre **ClickHouse** (base de datos columnar) para:
+La **base columnar ClickHouse 26.7.1 ya está instalada** como servicio Docker (HTTP 8123, BD `hoteldata`); la **capa táctica y estratégica** sobre ella (API analítica + dashboards) es lo que viene a continuación:
 - Revenue analytics y KPIs históricos
 - Dashboards ejecutivos y Balanced Scorecard
 - Reportería ETL-based sobre grandes volúmenes
@@ -61,7 +61,7 @@ La arquitectura planeada es:
 | **Frontend** | Angular 22 · TypeScript 6.x · Signals · SCSS · OnPush |
 | **Backend** | FastAPI · Python 3.12 · Pydantic v2 · Async · slowapi (rate limiting) |
 | **Base de datos transaccional** | MongoDB 8.0 (réplica set, motor transaccional) |
-| **Base de datos analítica** | ClickHouse *(próximamente)* |
+| **Base de datos analítica** | ClickHouse 26.7.1 (Docker) |
 | **Infraestructura** | Docker Compose · Nginx · Node 24 Alpine |
 | **ETL / Data pipeline** | Airflow 3.2.2 · PocketBase (origen legacy) |
 | **Calidad** | Ruff · MyPy · pytest |

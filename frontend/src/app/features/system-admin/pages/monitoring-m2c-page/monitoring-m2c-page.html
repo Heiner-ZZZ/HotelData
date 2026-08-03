@@ -1,0 +1,302 @@
+<div class="m2c-page">
+  <app-page-header
+    eyebrow="ETL táctico"
+    title="MongoDB → ClickHouse"
+    description="KPIs y agregaciones diarias para los informes compuestos de TA12."
+  />
+
+  <div class="actions-bar">
+    @if (actionMessage()) {
+      <section class="surface-card message success">{{ actionMessage() }}</section>
+    }
+    @if (actionError()) {
+      <section class="surface-card message error">{{ actionError() }}</section>
+    }
+    <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="viewState() === 'loading'">
+      Actualizar
+    </button>
+  </div>
+
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Cargando estado del pipeline táctico..." />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No fue posible cargar el monitoreo M2C"
+        [description]="loadErrorMessage() || 'Revisa la conexión con la API o vuelve a intentar en unos segundos.'"
+      />
+    }
+    @default {
+      @if (viewModel(); as vm) {
+        <!-- Horario del DAG -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('schedule')">
+            <div>
+              <h2>Horario del DAG</h2>
+              <p>Elige cuándo debe actualizar los KPIs. Airflow usará la zona horaria configurada: <strong>{{ scheduleSummary() }}</strong></p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'schedule' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'schedule') {
+            <div class="accordion-body">
+              <div class="schedule-row">
+                <div class="schedule-field schedule-frequency">
+                  <label for="m2cFrequency">Frecuencia</label>
+                  <select
+                    id="m2cFrequency"
+                    [value]="scheduleFrequency()"
+                    (change)="setScheduleFrequency($any($event.target).value)"
+                  >
+                    <option value="hourly">Cada hora</option>
+                    <option value="daily">Una vez al día</option>
+                  </select>
+                </div>
+                @if (scheduleFrequency() === 'hourly') {
+                  <div class="schedule-field">
+                    <label for="m2cMinute">Minuto de ejecución</label>
+                    <select
+                      id="m2cMinute"
+                      [value]="scheduleMinute()"
+                      (change)="scheduleMinute.set($any($event.target).value)"
+                    >
+                      <option value="0">00 — al inicio de la hora</option>
+                      <option value="15">15 — cuarto de hora</option>
+                      <option value="30">30 — media hora</option>
+                      <option value="45">45 — tres cuartos</option>
+                    </select>
+                  </div>
+                } @else {
+                  <div class="schedule-field">
+                    <label for="m2cTime">Hora de ejecución</label>
+                    <input
+                      id="m2cTime"
+                      type="time"
+                      [value]="scheduleTime()"
+                      (input)="scheduleTime.set($any($event.target).value)"
+                    />
+                  </div>
+                }
+                <div class="schedule-field">
+                  <label>Estado</label>
+                  <button
+                    type="button"
+                    class="mode-toggle"
+                    [class.active]="scheduleEnabled()"
+                    (click)="scheduleEnabled.set(!scheduleEnabled())"
+                  >
+                    <span class="mode-toggle-track">
+                      <span class="mode-toggle-thumb"></span>
+                    </span>
+                    <span class="mode-toggle-text">{{ scheduleEnabled() ? 'Activo' : 'Pausado' }}</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="action-btn"
+                  (click)="saveSchedule()"
+                  [disabled]="actionBusy()"
+                >
+                  Guardar horario
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Estado de servicios -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('services')">
+            <div>
+              <h2>Estado de servicios</h2>
+              <p>ClickHouse — base: <code>{{ vm.services.clickhouse.database }}</code></p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'services' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'services') {
+            <div class="accordion-body">
+              <div class="service-card">
+                <div class="service-card-head">
+                  <span class="label">ClickHouse</span>
+                  <app-status-badge
+                    [tone]="vm.services.clickhouse.available ? 'success' : 'danger'"
+                    [label]="vm.services.clickhouse.available ? 'Disponible' : 'No disponible'"
+                  />
+                </div>
+                @if (vm.services.clickhouse.technical_detail) {
+                  <p class="service-desc">{{ vm.services.clickhouse.technical_detail }}</p>
+                }
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tabla</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (table of vm.services.clickhouse.tables; track table.name) {
+                        <tr>
+                          <td><code>{{ table.name }}</code></td>
+                          <td>
+                            <app-status-badge
+                              [tone]="table.exists ? 'success' : 'warning'"
+                              [label]="table.exists ? 'Creada' : 'Pendiente'"
+                            />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Progreso y control -->
+        <section class="surface-card accordion-section">
+          <div class="accordion-header" (click)="toggleSection('progress')">
+            <div>
+              <h2>ETL pipeline progress</h2>
+              <p>{{ vm.progress.message }} ({{ vm.progress.percent }}%)</p>
+            </div>
+            <span class="accordion-chevron">{{ openSection() === 'progress' ? '▼' : '▶' }}</span>
+          </div>
+          @if (openSection() === 'progress') {
+            <div class="accordion-body">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="vm.progress.percent"></div>
+              </div>
+              <div class="progress-meta">
+                <span>{{ vm.progress.percent }}% — {{ vm.progress.elapsed_ms }} ms</span>
+                <app-status-badge
+                  [tone]="statusTone(vm.progress.status)"
+                  [label]="vm.progress.status"
+                />
+              </div>
+
+              <div class="step-list">
+                @for (key of stepOrder; track key) {
+                  @if (vm.progress.sections[key]; as section) {
+                    <div class="step-item">
+                      @if (section.complete) {
+                        <span class="material-symbols-outlined step-done">check_circle</span>
+                      } @else {
+                        <span class="material-symbols-outlined step-pending">radio_button_unchecked</span>
+                      }
+                      <span>{{ section.label }}</span>
+                      <small>{{ section.complete ? 'completed' : 'pending' }}</small>
+                    </div>
+                  }
+                }
+              </div>
+
+              <div class="action-row">
+                <button
+                  type="button"
+                  class="action-btn"
+                  (click)="triggerRun()"
+                  [disabled]="actionBusy() || vm.progress.is_running"
+                >
+                  Run pipeline
+                </button>
+                @if (vm.progress.is_running) {
+                  <button type="button" class="action-btn stop-btn" (click)="triggerStop()" [disabled]="actionBusy()">
+                    Stop
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- Última ejecución -->
+        @if (vm.execution.exists) {
+          <section class="surface-card accordion-section">
+            <div class="accordion-header" (click)="toggleSection('execution')">
+              <div>
+                <h2>Última ejecución</h2>
+                <p>Resumen legible de la corrida más reciente.</p>
+              </div>
+              <span class="accordion-chevron">{{ openSection() === 'execution' ? '▼' : '▶' }}</span>
+            </div>
+            @if (openSection() === 'execution') {
+              <div class="accordion-body execution-summary">
+                <div class="execution-overview">
+                  <div class="execution-status-card">
+                    <span class="execution-label">Estado</span>
+                    <app-status-badge
+                      [tone]="statusTone(executionStatus(vm.execution.payload))"
+                      [label]="executionStatus(vm.execution.payload)"
+                    />
+                  </div>
+                  <div class="execution-metric">
+                    <span class="execution-label">Inicio</span>
+                    <strong>{{ executionDate(vm.execution.payload['started_at']) }}</strong>
+                  </div>
+                  <div class="execution-metric">
+                    <span class="execution-label">Finalización</span>
+                    <strong>{{ executionDate(vm.execution.payload['finished_at']) }}</strong>
+                  </div>
+                  <div class="execution-metric">
+                    <span class="execution-label">Duración</span>
+                    <strong>{{ executionDuration(vm.execution.payload['elapsed_ms']) }}</strong>
+                  </div>
+                  <div class="execution-metric">
+                    <span class="execution-label">Filas procesadas</span>
+                    <strong>{{ executionTotalRows(vm.execution.payload) | number }}</strong>
+                  </div>
+                </div>
+
+                <div class="execution-table-wrap">
+                  <div class="execution-section-heading">
+                    <h3>Filas por tabla</h3>
+                    <span>{{ executionRows(vm.execution.payload).length }} tablas</span>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tabla</th>
+                        <th>Filas</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of executionRows(vm.execution.payload); track row.name) {
+                        <tr>
+                          <td><code>{{ row.name }}</code></td>
+                          <td>{{ row.loaded | number }}</td>
+                          <td><span class="execution-state" [class.ok]="row.state === 'ok'">{{ row.state }}</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="execution-footer">
+                  <span>Base de datos: <strong>{{ vm.execution.payload['clickhouse_database'] || '—' }}</strong></span>
+                  <span>Modo: <strong>{{ executionRefreshMode(vm.execution.payload) }}</strong></span>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      }
+    }
+  }
+
+  <!-- Confirmation Modal -->
+  @if (confirmAction(); as confirm) {
+    <div class="modal-backdrop" (click)="confirmCancel()">
+      <article class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>{{ confirm.title }}</h2>
+        <p>{{ confirm.message }}</p>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn modal-btn-secondary" (click)="confirmCancel()">Cancelar</button>
+          <button type="button" class="modal-btn modal-btn-primary" (click)="confirmAccept()">Continuar</button>
+        </div>
+      </article>
+    </div>
+  }
+</div>

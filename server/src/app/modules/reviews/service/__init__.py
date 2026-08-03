@@ -13,6 +13,7 @@ from src.app.modules.reviews.service.lifecycle import (
     create_review_report,
     list_review_reports,
     get_reputation_dashboard,
+    get_reputation_analytics,
 )
 from src.app.modules.reviews.service.notifications import notify_review_created, notify_review_moderated
 
@@ -29,6 +30,7 @@ __all__ = [
     "create_review_report",
     "list_review_reports",
     "get_reputation_dashboard",
+    "get_reputation_analytics",
     "ensure_reviews_collections",
     "module_status",
     "notify_review_created",

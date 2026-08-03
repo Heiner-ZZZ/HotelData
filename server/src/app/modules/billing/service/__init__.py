@@ -8,12 +8,14 @@ from src.app.modules.billing.service.lifecycle import (
     get_invoice,
     get_invoice_stats,
     get_payment,
+    get_payments_dashboard,
     list_invoices,
     list_payments,
     refund_payment,
     remove_line_item,
     update_invoice_additional_charges,
     create_split_charges_invoice,
+    get_invoice_dashboard,
 )
 from src.app.modules.billing.service.folio import (
     cleanup_expired_folios,
@@ -40,6 +42,8 @@ __all__ = [
     "remove_line_item",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
+    "get_invoice_dashboard",
+    "get_payments_dashboard",
     "create_folio",
     "get_folio",
     "get_folio_by_id",

@@ -107,6 +107,107 @@ export interface PaymentItemDto {
   paid_at: string;
 }
 
+/** Row of the tactical F1.4 invoice dashboard (day × hotel × status). */
+export interface InvoiceDashboardRowDto {
+  date: string;
+  prop_id: number;
+  hotel_label: string;
+  status: string;
+  invoice_count: number;
+  subtotal: number;
+  taxes: number;
+  total: number;
+  paid_total: number;
+  pending_total: number;
+  cancelled_total: number;
+}
+
+/** Response from GET /api/billing/analytics/invoices — F1.4 dashboard. */
+export interface InvoiceDashboardDto {
+  available: boolean;
+  source: string;
+  date_from: string;
+  date_to: string;
+  prop_id: number | null;
+  summary: {
+    invoice_count: number;
+    subtotal: number;
+    taxes: number;
+    total_amount: number;
+    paid_total: number;
+    pending_total: number;
+    cancelled_total: number;
+    by_status: Record<string, { count: number; total: number; label: string } | undefined>;
+    by_hotel: {
+      prop_id: number;
+      hotel_label: string;
+      invoice_count: number;
+      total: number;
+    }[];
+  };
+  series: {
+    labels: string[];
+    datasets: { label: string; data: number[] }[];
+  };
+  rows: InvoiceDashboardRowDto[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+  message?: string;
+}
+
+/** Row of the tactical F1.5 payments dashboard (day × hotel × method × status). */
+export interface PaymentDashboardRowDto {
+  date: string;
+  prop_id: number;
+  hotel_label: string;
+  method: string;
+  status: string;
+  payment_count: number;
+  paid_amount: number;
+  refunded_amount: number;
+  failed_amount: number;
+  invoiced_amount: number;
+  collected_amount: number;
+  outstanding_amount: number;
+}
+
+/** Response from GET /api/billing/analytics/payments — F1.5 dashboard. */
+export interface PaymentDashboardDto {
+  available: boolean;
+  source: string;
+  date_from: string;
+  date_to: string;
+  prop_id: number | null;
+  summary: {
+    payment_count: number;
+    paid_amount: number;
+    refunded_amount: number;
+    failed_amount: number;
+    invoiced_amount: number;
+    collected_amount: number;
+    outstanding_amount: number;
+    by_method: { method: string; label: string; count: number; amount: number }[];
+    by_status: Record<string, { count: number; amount: number; label: string } | undefined>;
+    by_hotel: { prop_id: number; hotel_label: string; payment_count: number; collected_amount: number }[];
+  };
+  series: {
+    labels: string[];
+    datasets: { label: string; data: number[] }[];
+  };
+  rows: PaymentDashboardRowDto[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+  message?: string;
+}
+
 /** Response from GET /api/billing/services — billable amenities for the invoice page. */
 export interface BillableServicesDto {
   categories: {

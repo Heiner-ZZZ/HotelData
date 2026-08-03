@@ -1,0 +1,203 @@
+"""Carga a ClickHouse: CREATE TABLE (ReplacingMergeTree) + rebuild por corrida.
+
+Cada tabla KPI usa ``ReplacingMergeTree`` con ``ORDER BY`` = clave natural
+completa. El refresh horario **recalcula el 100% de los agregados**, así que
+``load_all`` hace ``TRUNCATE`` + INSERT por tabla: ClickHouse refleja siempre el
+estado actual de Mongo. Sin el truncate, ``ReplacingMergeTree`` deja huérfanas
+las claves que desaparecieron del origen (p.ej. una factura que pasó de
+``issued`` a ``cancelled``, o una reserva que cambió de estado) porque la
+corrida ya no emite la clave antigua y su fila obsoleta sigue visible.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from config.settings import get_settings
+from src.etl.mongo_to_clickhouse.config import INSERT_BATCH_SIZE
+from src.etl.mongo_to_clickhouse.transform import TABLE_COLUMNS
+
+# Esquemas DDL: (columnas tipadas, ORDER BY). Contrato con transform.TABLE_COLUMNS.
+TABLES_DDL: dict[str, tuple[str, str]] = {
+    "kpi_booking_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
+        "room_type_label LowCardinality(String), booking_source LowCardinality(String), "
+        "status LowCardinality(String), bookings UInt32, nights UInt32, revenue_usd Decimal(18, 2), "
+        "adults UInt32, children UInt32, cancelled UInt32",
+        "(date, prop_id, room_type_id, booking_source, status)",
+    ),
+    "kpi_booking_nights_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
+        "room_type_label LowCardinality(String), currency LowCardinality(String), rooms_sold UInt32, room_nights UInt32, "
+        "revenue Decimal(18, 2), cancelled_rooms UInt32, adults UInt32, children UInt32",
+        "(date, prop_id, room_type_id, currency)",
+    ),
+    "kpi_inventory_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
+        "room_type_label LowCardinality(String), available_rooms UInt32, blocked_rooms UInt32, total_rooms UInt32",
+        "(date, prop_id, room_type_id)",
+    ),
+    "kpi_rate_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), rate_plan_id String, "
+        "rate_plan_label LowCardinality(String), room_type_id String, room_type_label LowCardinality(String), "
+        "currency LowCardinality(String), published_rate Decimal(18, 2), closed UInt8",
+        "(date, prop_id, rate_plan_id, room_type_id, currency)",
+    ),
+    "kpi_room_performance_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), room_type_id String, "
+        "room_type_label LowCardinality(String), currency LowCardinality(String), rooms_sold UInt32, room_nights UInt32, "
+        "revenue Decimal(18, 2), cancelled_rooms UInt32, available_rooms UInt32, blocked_rooms UInt32, total_rooms UInt32, "
+        "published_rate Nullable(Decimal(18, 2)), rate_variance Nullable(Decimal(18, 2))",
+        "(date, prop_id, room_type_id, currency)",
+    ),
+    "kpi_review_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), reviews UInt32, rating_sum Float64, avg_rating Float64, approved UInt32, pending UInt32, rejected UInt32, "
+        "responded UInt32, positive UInt32, neutral UInt32, negative UInt32, moderated_count UInt32, "
+        "avg_moderation_minutes Nullable(Float64), responded_count UInt32, avg_response_minutes Nullable(Float64)",
+        "(date, prop_id)",
+    ),
+    "kpi_funnel_daily": (
+        "date Date, visitor_location_country_id UInt32, visitor_country_label LowCardinality(String), "
+        "srch_destination_id UInt32, destination_label LowCardinality(String), "
+        "searches UInt64, clicks UInt64, reservations UInt64, revenue_usd Decimal(18, 2), "
+        "avg_booking_window Float64",
+        "(date, visitor_location_country_id, srch_destination_id)",
+    ),
+    "kpi_funnel_property_channel_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), site_id UInt32, "
+        "site_label LowCardinality(String), visitor_location_country_id UInt32, "
+        "visitor_country_label LowCardinality(String), srch_destination_id UInt32, "
+        "destination_label LowCardinality(String), "
+        "searches UInt64, clicks UInt64, reservations UInt64, "
+        "revenue_usd Decimal(18, 2), avg_booking_window Float64, "
+        "avg_length_of_stay Float64, adults UInt64, children UInt64, rooms UInt64",
+        "(date, prop_id, site_id, visitor_location_country_id, srch_destination_id)",
+    ),
+    "kpi_housekeeping_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), tasks_total UInt64, "
+        "tasks_completed UInt64, tasks_completed_on_time UInt64, tasks_with_completed_at UInt64, "
+        "maintenance_total UInt64, maintenance_completed UInt64, maintenance_completed_on_time UInt64, "
+        "rooms_status_events UInt64, rooms_to_clean UInt64, rooms_cleaned UInt64, "
+        "rooms_available_after_cleaning UInt64, avg_cleaning_minutes Nullable(Float64), "
+        "avg_checkout_to_available_minutes Nullable(Float64), rotation_observed UInt64, "
+        "inventory_available_rooms UInt64, inventory_blocked_rooms UInt64, inventory_total_rooms UInt64, "
+        "charges_total UInt64, charges_amount Decimal(18, 2), supplier_country_coverage UInt64",
+        "(date, prop_id)",
+    ),
+    "kpi_invoice_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), status LowCardinality(String), "
+        "invoice_count UInt32, subtotal Decimal(18, 2), taxes Decimal(18, 2), total Decimal(18, 2), "
+        "paid_total Decimal(18, 2), pending_total Decimal(18, 2), cancelled_total Decimal(18, 2)",
+        "(date, prop_id, status)",
+    ),
+    "kpi_payment_daily": (
+        "date Date, prop_id UInt32, hotel_label LowCardinality(String), method LowCardinality(String), "
+        "status LowCardinality(String), payment_count UInt32, paid_amount Decimal(18, 2), "
+        "refunded_amount Decimal(18, 2), failed_amount Decimal(18, 2), invoiced_amount Decimal(18, 2), "
+        "collected_amount Decimal(18, 2), outstanding_amount Decimal(18, 2)",
+        "(date, prop_id, method, status)",
+    ),
+}
+
+
+# Columnas del contrato desnormalizado. Se aplican también a tablas KPI
+# creadas por la versión anterior sin eliminar sus datos.
+LABEL_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
+    "kpi_booking_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_booking_nights_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_inventory_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_rate_daily": (("hotel_label", "LowCardinality(String)"), ("rate_plan_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_room_performance_daily": (("hotel_label", "LowCardinality(String)"), ("room_type_label", "LowCardinality(String)")),
+    "kpi_review_daily": (("hotel_label", "LowCardinality(String)"),),
+    "kpi_funnel_daily": (("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
+    "kpi_funnel_property_channel_daily": (("hotel_label", "LowCardinality(String)"), ("site_label", "LowCardinality(String)"), ("visitor_country_label", "LowCardinality(String)"), ("destination_label", "LowCardinality(String)")),
+    "kpi_housekeeping_daily": (("hotel_label", "LowCardinality(String)"),),
+    "kpi_invoice_daily": (("hotel_label", "LowCardinality(String)"),),
+    "kpi_payment_daily": (("hotel_label", "LowCardinality(String)"),),
+}
+
+
+def clickhouse_client(settings=None):
+    """Devuelve un cliente clickhouse-connect usando ``settings`` (o get_settings())."""
+    import clickhouse_connect  # type: ignore
+
+    settings = settings or get_settings()
+    return clickhouse_connect.get_client(
+        host=settings.clickhouse_host,
+        port=settings.clickhouse_port,
+        username=settings.clickhouse_user,
+        password=settings.clickhouse_password,
+        database=settings.clickhouse_database,
+    )
+
+
+def _ddl_for(table_name: str) -> str:
+    columns_sql, order_by = TABLES_DDL[table_name]
+    partition_sql = ""
+    if table_name in LABEL_COLUMNS:
+        partition_sql = " PARTITION BY toYYYYMM(date)"
+    return (
+        f"CREATE TABLE IF NOT EXISTS {table_name} "
+        f"({columns_sql}, _etl_run_at DateTime DEFAULT now()) "
+        f"ENGINE = ReplacingMergeTree(_etl_run_at){partition_sql} "
+        f"ORDER BY {order_by}"
+    )
+
+
+def create_tables(client, database: str, tables: tuple[str, ...]) -> dict[str, str]:
+    """Crea/actualiza el esquema KPI sin copiar tablas de dimensiones.
+
+    Las columnas de labels son una ampliación compatible: si una tabla ya
+    existía desde una corrida anterior, ``ADD COLUMN IF NOT EXISTS`` la adapta
+    sin borrar ni reescribir sus métricas históricas.
+    """
+    result: dict[str, str] = {}
+    for table_name in tables:
+        if table_name not in TABLES_DDL:
+            result[table_name] = "skipped: sin esquema definido"
+            continue
+        client.command(f"CREATE DATABASE IF NOT EXISTS {database}")
+        client.command(_ddl_for(table_name))
+        for column_name, column_type in LABEL_COLUMNS.get(table_name, ()):
+            client.command(
+                f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS "
+                f"{column_name} {column_type} DEFAULT ''"
+            )
+        result[table_name] = "created"
+    return result
+
+
+def load_table(client, database: str, table_name: str, columns: list[str], rows: list[list[Any]]) -> int:
+    """Inserta filas transformadas en la tabla (batch). Devuelve el número de filas."""
+    if not rows:
+        return 0
+    inserted = 0
+    for start in range(0, len(rows), INSERT_BATCH_SIZE):
+        batch = rows[start : start + INSERT_BATCH_SIZE]
+        client.insert(
+            table=table_name,
+            data=batch,
+            column_names=columns,
+            database=database,
+        )
+        inserted += len(batch)
+    return inserted
+
+
+def load_all(client, database: str, payload: dict[str, list[list[Any]]]) -> dict[str, int]:
+    """Carga todas las tablas del payload ``{tabla: filas}`` y reporta conteos.
+
+    Rebuild por tabla: se hace ``TRUNCATE`` antes del INSERT porque los KPI son
+    agregados 100% recalculados. Esto elimina filas huérfanas de claves que ya
+    no existen en el origen (cambios de estado, anulaciones, bajas) que un
+    upsert puro de ``ReplacingMergeTree`` jamás reemplaza.
+    """
+    counts: dict[str, int] = {}
+    for table_name, rows in payload.items():
+        columns = TABLE_COLUMNS.get(table_name)
+        if columns is None:
+            counts[table_name] = -1
+            continue
+        client.command(f"TRUNCATE TABLE {database}.{table_name}")
+        counts[table_name] = load_table(client, database, table_name, columns, rows)
+    return counts

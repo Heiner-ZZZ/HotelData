@@ -6,3 +6,6 @@ pyarrow>=24,<25
 pymongo>=4.17,<5.0
 python-dotenv>=1.2,<2.0
 requests>=2.34,<3.0
+# ClickHouse analytics (futuro DAG MongoDB -> ClickHouse). Paquete oficial
+# renombrado; sin rango que contradiga el constraints de Airflow 3.2.2.
+apache-airflow-providers-clickhousedb>=1.0,<2.0

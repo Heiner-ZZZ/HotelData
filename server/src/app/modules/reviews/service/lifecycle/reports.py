@@ -206,6 +206,56 @@ def get_reputation_dashboard(
     }
 
 
+def get_reputation_analytics(prop_id: int | None = None, days: int = 30) -> dict:
+    """Read the hourly ClickHouse review KPI without replacing live review data."""
+    from datetime import timedelta
+
+    from src.app.core.timezone import local_today
+    from config.settings import get_settings
+
+    settings = get_settings()
+    try:
+        import clickhouse_connect  # type: ignore
+
+        client = clickhouse_connect.get_client(
+            host=settings.clickhouse_host,
+            port=settings.clickhouse_port,
+            username=settings.clickhouse_user,
+            password=settings.clickhouse_password,
+            database=settings.clickhouse_database,
+        )
+        try:
+            where = ["date >= {since:Date}"]
+            params: dict[str, Any] = {"since": local_today() - timedelta(days=days - 1)}
+            if prop_id is not None:
+                where.append("prop_id = {prop_id:UInt32}")
+                params["prop_id"] = prop_id
+            query = (
+                "SELECT date, prop_id, reviews, avg_rating, approved, pending, rejected, "
+                "responded, positive, neutral, negative, moderated_count, avg_moderation_minutes, "
+                "responded_count, avg_response_minutes FROM kpi_review_daily FINAL WHERE "
+                + " AND ".join(where) + " ORDER BY date ASC"
+            )
+            result = client.query(query, parameters=params)
+            rows = []
+            for row in result.result_rows:
+                rows.append({
+                    "date": row[0].isoformat() if hasattr(row[0], "isoformat") else str(row[0]),
+                    "prop_id": int(row[1]), "reviews": int(row[2]), "avg_rating": float(row[3]),
+                    "approved": int(row[4]), "pending": int(row[5]), "rejected": int(row[6]),
+                    "responded": int(row[7]), "positive": int(row[8]), "neutral": int(row[9]),
+                    "negative": int(row[10]), "moderated_count": int(row[11]),
+                    "avg_moderation_minutes": None if row[12] is None else float(row[12]),
+                    "responded_count": int(row[13]),
+                    "avg_response_minutes": None if row[14] is None else float(row[14]),
+                })
+            return {"available": True, "days": days, "rows": rows}
+        finally:
+            client.close()
+    except Exception as exc:  # pragma: no cover - depende de ClickHouse
+        return {"available": False, "days": days, "rows": [], "message": str(exc)}
+
+
 def list_review_reports(
     status: str | None = None,
     page: int = 1,

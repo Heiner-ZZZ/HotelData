@@ -17,6 +17,7 @@ from src.app.modules.reviews.service import (
     delete_review,
     get_hotel_reviews,
     get_reputation_dashboard,
+    get_reputation_analytics,
     get_review,
     list_review_reports,
     list_reviews,
@@ -105,14 +106,6 @@ def list_reviews_api(
         page=page,
         page_size=page_size,
     ))
-
-
-@api_router.get("/{review_id}")
-def get_review_api(review_id: str, current_user: dict = Depends(require_login)):
-    result = get_review(review_id)
-    if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
-    return result
 
 
 @api_router.patch("/{review_id}/moderate")
@@ -217,6 +210,16 @@ def list_review_reports_api(
     return list_review_reports(status=status, page=page, page_size=page_size)
 
 
+@api_router.get("/reputation/analytics")
+def reputation_analytics_api(
+    prop_id: int | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    current_user: dict = Depends(require_login),
+):
+    """Return the hourly ClickHouse reputation aggregate when available."""
+    return get_reputation_analytics(prop_id=prop_id, days=days)
+
+
 @api_router.get("/reputation/dashboard")
 def reputation_dashboard_api(
     prop_id: int | None = Query(default=None),
@@ -225,6 +228,14 @@ def reputation_dashboard_api(
 ):
     """Return reputation dashboard data: GRI, departmental sentiment, recent feedback."""
     return get_reputation_dashboard(prop_id=prop_id, days=days)
+
+
+@api_router.get("/{review_id}")
+def get_review_api(review_id: str, current_user: dict = Depends(require_login)):
+    result = get_review(review_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reseña no encontrada")
+    return result
 
 
 @api_router.delete("/{review_id}", status_code=204)

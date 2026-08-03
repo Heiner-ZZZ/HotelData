@@ -192,6 +192,55 @@ export interface WeeklyCalendarData {
   };
 }
 
+export interface HousekeepingOperationsRow {
+  date: string;
+  prop_id: number;
+  hotel_label: string;
+  tasks_total: number;
+  tasks_completed: number;
+  tasks_completed_on_time: number;
+  tasks_with_completed_at: number;
+  maintenance_total: number;
+  maintenance_completed: number;
+  maintenance_completed_on_time: number;
+  rooms_status_events: number;
+  rooms_to_clean: number;
+  rooms_cleaned: number;
+  rooms_available_after_cleaning: number;
+  avg_cleaning_minutes: number | null;
+  avg_checkout_to_available_minutes: number | null;
+  rotation_observed: number;
+  inventory_available_rooms: number;
+  inventory_blocked_rooms: number;
+  inventory_total_rooms: number;
+  charges_total: number;
+  charges_amount: number;
+  supplier_country_coverage: number;
+}
+
+export interface HousekeepingOperationsAnalytics {
+  available: boolean;
+  source: 'clickhouse' | string;
+  date_from: string;
+  date_to: string;
+  prop_id: number | null;
+  rows: HousekeepingOperationsRow[];
+  summary: {
+    tasks_total: number;
+    tasks_completed: number;
+    maintenance_total: number;
+    maintenance_completed: number;
+    rooms_cleaned: number;
+    inventory_available_rooms: number;
+    inventory_blocked_rooms: number;
+    charges_amount: number;
+    rotation_observed: number;
+    avg_cleaning_minutes: number | null;
+    avg_checkout_to_available_minutes: number | null;
+  };
+  message?: string;
+}
+
 export interface HousekeepingDashboard {
   totalRooms: number;
   occupied: number;
@@ -351,6 +400,14 @@ export class HousekeepingApiService {
   }
 
   // ── Dashboard ──
+
+  getOperationsAnalytics(propId?: number, dateFrom?: string, dateTo?: string, days = 30) {
+    let params = new HttpParams().set('days', String(days));
+    if (propId) params = params.set('prop_id', String(propId));
+    if (dateFrom) params = params.set('date_from', dateFrom);
+    if (dateTo) params = params.set('date_to', dateTo);
+    return this.http.get<HousekeepingOperationsAnalytics>('/housekeeping/operations/analytics', { params });
+  }
 
   getDashboard(propId?: number) {
     const params = propId ? new HttpParams().set('prop_id', String(propId)) : undefined;

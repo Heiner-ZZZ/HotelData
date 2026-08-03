@@ -14,14 +14,18 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import { ToastService } from '../../../../shared/services/toast.service';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { type PermissionCode } from '../../../../core/auth/permission.constants';
 import { BillingApiService } from '../../services/billing-api.service';
+import { PaymentRegisterModalComponent } from '../../components/payment-register-modal/payment-register-modal';
+import type { PaymentRegisterPayload } from '../../components/payment-register-modal/payment-register-modal';
 
 @Component({
   selector: 'app-payments-list-page',
   imports: [
     CurrencyPipe, EmptyStateComponent, ErrorStateComponent, LoadingStateComponent,
     PageHeaderComponent, StatusBadgeComponent, RouterLink, FormsModule,
-    PropertySelectorComponent,
+    PropertySelectorComponent, PaymentRegisterModalComponent,
   ],
   templateUrl: './payments-list-page.html',
   styleUrl: './payments-list-page.scss',
@@ -33,6 +37,7 @@ export class PaymentsListPageComponent {
   private readonly router = inject(Router);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
 
   // ── URL-driven state ──
   private readonly qp = toSignal(this.activatedRoute.queryParamMap, { initialValue: this.activatedRoute.snapshot.queryParamMap });
@@ -43,8 +48,49 @@ export class PaymentsListPageComponent {
 
   readonly refundingId = signal<string | null>(null);
 
+  readonly canManagePayments = computed(() => this.auth.hasPermission('payments.manage' as PermissionCode));
+
+  // ── Register-payment modal state ──
+  readonly registerOpen = signal(false);
+  readonly registerSubmitting = signal(false);
+  readonly registerError = signal<string | null>(null);
+
+  openRegister(): void {
+    this.registerError.set(null);
+    this.registerOpen.set(true);
+  }
+
+  closeRegister(): void {
+    if (this.registerSubmitting()) return;
+    this.registerOpen.set(false);
+  }
+
+  registerPayment(payload: PaymentRegisterPayload): void {
+    this.registerError.set(null);
+    this.registerSubmitting.set(true);
+    this.billingApi.createPayment({
+      booking_id: payload.booking_id,
+      invoice_id: payload.invoice_id || '',
+      amount: payload.amount,
+      method: payload.method,
+      status: payload.status,
+    }).subscribe({
+      next: () => {
+        this.toast.show('Pago registrado correctamente.', 'info', 4000);
+        this.registerSubmitting.set(false);
+        this.registerOpen.set(false);
+        this.paymentsResource.reload();
+      },
+      error: (err: ApiError) => {
+        this.registerSubmitting.set(false);
+        this.registerError.set(err.message || 'No se pudo registrar el pago.');
+      },
+    });
+  }
+
   readonly methodLabels: Record<string, { label: string; icon: string }> = {
     cash: { label: 'Efectivo', icon: 'payments' },
+    card: { label: 'Tarjeta', icon: 'credit_card' },
     credit_card: { label: 'Tarjeta crédito', icon: 'credit_card' },
     bank_transfer: { label: 'Transferencia', icon: 'account_balance' },
     simulated: { label: 'Tarjeta de crédito', icon: 'credit_card' },
@@ -114,6 +160,19 @@ export class PaymentsListPageComponent {
 
   getMethodInfo(method: string) {
     return this.methodLabels[method] ?? { label: method, icon: 'receipt' };
+  }
+
+  readonly statusLabels: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }> = {
+    confirmed: { label: 'Confirmado', tone: 'success' },
+    refunded: { label: 'Reembolsado', tone: 'warning' },
+    failed: { label: 'Fallido', tone: 'danger' },
+    rejected: { label: 'Rechazado', tone: 'danger' },
+    declined: { label: 'Declinado', tone: 'danger' },
+    error: { label: 'Error', tone: 'danger' },
+  };
+
+  getStatusInfo(status: string) {
+    return this.statusLabels[status] ?? { label: status, tone: 'neutral' as const };
   }
 
   printPage() {

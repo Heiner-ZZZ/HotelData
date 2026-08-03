@@ -1,3 +1,28 @@
+export interface ReviewAnalyticsRow {
+  date: string;
+  propId: number;
+  reviews: number;
+  avgRating: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+  responded: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  moderatedCount: number;
+  avgModerationMinutes: number | null;
+  respondedCount: number;
+  avgResponseMinutes: number | null;
+}
+
+export interface ReviewAnalytics {
+  available: boolean;
+  days: number;
+  rows: ReviewAnalyticsRow[];
+  message?: string;
+}
+
 export interface ReviewsListViewModel {
   items: ReviewListItem[];
   page: number;

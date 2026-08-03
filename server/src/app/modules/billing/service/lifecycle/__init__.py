@@ -35,6 +35,10 @@ from src.app.modules.billing.service.lifecycle.payments import (
     list_payments,
     refund_payment,
 )
+from src.app.modules.billing.service.lifecycle.analytics import (
+    get_invoice_dashboard,
+    get_payments_dashboard,
+)
 
 __all__ = [
     "add_line_item",
@@ -51,4 +55,6 @@ __all__ = [
     "remove_line_item",
     "update_invoice_additional_charges",
     "create_split_charges_invoice",
+    "get_invoice_dashboard",
+    "get_payments_dashboard",
 ]

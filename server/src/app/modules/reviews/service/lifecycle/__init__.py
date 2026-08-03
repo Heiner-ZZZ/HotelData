@@ -6,7 +6,7 @@ from .moderation import moderate_review, respond_to_review
 from .queries import list_reviews, get_review, get_hotel_reviews, delete_review
 from .create import create_review, create_review_staff, create_review_guest
 from .edit import update_review
-from .reports import create_review_report, list_review_reports, get_reputation_dashboard
+from .reports import create_review_report, list_review_reports, get_reputation_dashboard, get_reputation_analytics
 
 __all__ = [
     "create_review",
@@ -22,4 +22,5 @@ __all__ = [
     "create_review_report",
     "list_review_reports",
     "get_reputation_dashboard",
+    "get_reputation_analytics",
 ]

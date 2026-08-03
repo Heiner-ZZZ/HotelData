@@ -1,5 +1,5 @@
-import type { BillableServicesDto, InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
-import type { BillableServices, InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
+import type { BillableServicesDto, InvoiceDashboardDto, InvoiceDetailDto, InvoiceItemDto, InvoicesListDto, LineItemDto, PaymentDashboardDto, PaymentDto, PaymentItemDto, PaymentsListDto } from '../models/billing.dto';
+import type { BillableServices, InvoiceDashboard, InvoiceDetailViewModel, InvoiceListItem, InvoicesListViewModel, LineItem, PaymentDashboard, PaymentItem, PaymentListItem, PaymentsListViewModel } from '../models/billing.model';
 
 function mapLineItem(dto: LineItemDto): LineItem {
   return {
@@ -113,6 +113,107 @@ export function mapPaymentsList(dto: PaymentsListDto): PaymentsListViewModel {
     totalPages: dto.total_pages,
     hasPrev: dto.has_prev,
     hasNext: dto.has_next,
+  };
+}
+
+export function mapInvoiceDashboard(dto: InvoiceDashboardDto): InvoiceDashboard {
+  return {
+    available: dto.available,
+    source: dto.source,
+    dateFrom: dto.date_from,
+    dateTo: dto.date_to,
+    propId: dto.prop_id,
+    summary: {
+      invoiceCount: dto.summary?.invoice_count ?? 0,
+      subtotal: dto.summary?.subtotal ?? 0,
+      taxes: dto.summary?.taxes ?? 0,
+      totalAmount: dto.summary?.total_amount ?? 0,
+      paidTotal: dto.summary?.paid_total ?? 0,
+      pendingTotal: dto.summary?.pending_total ?? 0,
+      cancelledTotal: dto.summary?.cancelled_total ?? 0,
+      byStatus: dto.summary?.by_status ?? {},
+      byHotel: (dto.summary?.by_hotel ?? []).map(h => ({
+        propId: h.prop_id,
+        hotelLabel: h.hotel_label,
+        invoiceCount: h.invoice_count,
+        total: h.total,
+      })),
+    },
+    series: dto.series ?? { labels: [], datasets: [] },
+    rows: (dto.rows ?? []).map(row => ({
+      date: row.date,
+      propId: row.prop_id,
+      hotelLabel: row.hotel_label,
+      status: row.status,
+      invoiceCount: row.invoice_count,
+      subtotal: row.subtotal,
+      taxes: row.taxes,
+      total: row.total,
+      paidTotal: row.paid_total,
+      pendingTotal: row.pending_total,
+      cancelledTotal: row.cancelled_total,
+    })),
+    total: dto.total ?? 0,
+    page: dto.page ?? 1,
+    pageSize: dto.page_size ?? 20,
+    totalPages: dto.total_pages ?? 1,
+    hasNext: dto.has_next ?? false,
+    hasPrev: dto.has_prev ?? false,
+    message: dto.message,
+  };
+}
+
+export function mapPaymentDashboard(dto: PaymentDashboardDto): PaymentDashboard {
+  return {
+    available: dto.available,
+    source: dto.source,
+    dateFrom: dto.date_from,
+    dateTo: dto.date_to,
+    propId: dto.prop_id,
+    summary: {
+      paymentCount: dto.summary?.payment_count ?? 0,
+      paidAmount: dto.summary?.paid_amount ?? 0,
+      refundedAmount: dto.summary?.refunded_amount ?? 0,
+      failedAmount: dto.summary?.failed_amount ?? 0,
+      invoicedAmount: dto.summary?.invoiced_amount ?? 0,
+      collectedAmount: dto.summary?.collected_amount ?? 0,
+      outstandingAmount: dto.summary?.outstanding_amount ?? 0,
+      byMethod: (dto.summary?.by_method ?? []).map(m => ({
+        method: m.method,
+        label: m.label,
+        count: m.count,
+        amount: m.amount,
+      })),
+      byStatus: dto.summary?.by_status ?? {},
+      byHotel: (dto.summary?.by_hotel ?? []).map(h => ({
+        propId: h.prop_id,
+        hotelLabel: h.hotel_label,
+        paymentCount: h.payment_count,
+        collectedAmount: h.collected_amount,
+      })),
+    },
+    series: dto.series ?? { labels: [], datasets: [] },
+    rows: (dto.rows ?? []).map(row => ({
+      date: row.date,
+      propId: row.prop_id,
+      hotelLabel: row.hotel_label,
+      method: row.method,
+      status: row.status,
+      paymentCount: row.payment_count,
+      paidAmount: row.paid_amount,
+      refundedAmount: row.refunded_amount,
+      failedAmount: row.failed_amount,
+      invoicedAmount: row.invoiced_amount,
+      collectedAmount: row.collected_amount,
+      outstandingAmount: row.outstanding_amount,
+    })),
+    total: dto.total ?? 0,
+    page: dto.page ?? 1,
+    pageSize: dto.page_size ?? 20,
+    totalPages: dto.total_pages ?? 1,
+    hasNext: dto.has_next ?? false,
+    hasPrev: dto.has_prev ?? false,
+    message: dto.message,
   };
 }
 

@@ -89,6 +89,16 @@ def create_invoice(payload: InvoiceCreate) -> dict | None:
     total_subtotal = round(room_subtotal + extras_total, 2)
     total = round(total_subtotal + payload.taxes, 2)
 
+    # Guard: nunca emitir facturas en $0 sin conceptos (reservas sin tarifa).
+    # Una factura vacía no tiene valor fiscal y contamina los KPIs tácticos
+    # (F1.4/F1.5) y las estadísticas de facturación.
+    if total <= 0 and not line_items:
+        logger.warning(
+            "Creación de factura rechazada para %s: total en $0 sin line items (reserva sin precio)",
+            payload.booking_id,
+        )
+        return None
+
     doc = {
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
