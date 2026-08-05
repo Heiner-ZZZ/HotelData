@@ -9,7 +9,8 @@ export const RESERVATIONS_ROUTES: Routes = [
   {
     path: 'new',
     loadComponent: () =>
-      import('./pages/reservation-new-page/reservation-new-page').then((m) => m.ReservationNewPageComponent)
+      import('./pages/reservation-new-page/reservation-new-page').then((m) => m.ReservationNewPageComponent),
+    data: { operationMode: 'insert', operationDetail: 'Reserva' }
   },
   {
     path: 'confirmed/:bookingId',

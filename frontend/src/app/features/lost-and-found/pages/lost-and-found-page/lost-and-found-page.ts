@@ -1,11 +1,13 @@
 import { DatePipe, SlicePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import type { ApiError } from '../../../../core/api/api-error.model';
+import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
+import { PropertyContextService } from '../../../../shared/services/property-context.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
@@ -19,16 +21,26 @@ import { LostAndFoundApiService } from '../../services/lost-and-found-api.servic
 @Component({
   selector: 'app-lost-and-found-page',
   imports: [DatePipe, SlicePipe, FormsModule, EmptyStateComponent, ErrorStateComponent,
-    LoadingStateComponent, PageHeaderComponent, StatusBadgeComponent],
+    LoadingStateComponent, PageHeaderComponent, PropertySelectorComponent, StatusBadgeComponent],
   templateUrl: './lost-and-found-page.html',
   styleUrl: './lost-and-found-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LostAndFoundPageComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly propertyCtx = inject(PropertyContextService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly api = inject(LostAndFoundApiService);
+
+  // ── URL-driven property selection (global selector, works for super_admin) ──
+  private readonly qp = toSignal(this.activatedRoute.queryParamMap, {
+    initialValue: this.activatedRoute.snapshot.queryParamMap,
+  });
+
+  readonly selectedPropId = computed(() => Number(this.qp()?.get('prop_id') ?? '0'));
+  readonly selectedLabel = signal(this.activatedRoute.snapshot.queryParamMap.get('prop_label') ?? '');
 
   readonly viewState = signal<ViewState>('loading');
   readonly data = signal<PaginatedResponse<LostItemResponseDto> | null>(null);
@@ -88,13 +100,31 @@ export class LostAndFoundPageComponent {
   };
 
   constructor() {
-    // Pre-fill hotel from query param
-    const prefilledPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
-    if (prefilledPropId) {
-      this.form.update(f => ({ ...f, prop_id: prefilledPropId }));
-    }
+    // Auto-load in single-hotel mode (context injects prop_id into the URL;
+    // the query-param signal below reacts to it).
+    effect(() => {
+      if (this.propertyCtx.ready() && this.propertyCtx.singleHotelMode()) {
+        const propId = this.propertyCtx.currentPropId();
+        if (propId && this.selectedPropId() !== propId) {
+          void this.router.navigate([], {
+            relativeTo: this.activatedRoute,
+            queryParams: { prop_id: propId, prop_label: this.propertyCtx.currentPropLabel() || null },
+            queryParamsHandling: 'merge',
+          });
+        }
+      }
+    });
 
-    this._loadList();
+    // Reload the list whenever the selected property changes (URL-driven).
+    // The read is tracked; the writes/load run untracked so the effect only
+    // re-fires on prop_id changes (not on status filter / search / page).
+    effect(() => {
+      const propId = this.selectedPropId();
+      untracked(() => {
+        this.currentPage.set(1);
+        this._loadList(propId);
+      });
+    });
 
     // Debounced search — replaces the Subject<string> legacy pattern.
     toObservable(this.searchTrigger)
@@ -102,14 +132,30 @@ export class LostAndFoundPageComponent {
       .subscribe((query) => {
         this.searchQuery.set(query);
         this.currentPage.set(1);
-        this._loadList();
+        this._loadList(this.selectedPropId());
       });
   }
 
-  private _loadList() {
+  /** Global property selector handler — mirrors the canonical page pattern. */
+  onPropSelected(event: { propId: number; label: string }): void {
+    const label = event.label || `Propiedad #${event.propId}`;
+    this.selectedLabel.set(label);
+    if (event.propId) {
+      this.propertyCtx.setProperty(event.propId, label);
+    } else {
+      this.propertyCtx.clear();
+    }
+    void this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams: { prop_id: event.propId || null, prop_label: label || null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private _loadList(propId: number = this.selectedPropId()) {
     this.viewState.set('loading');
     this.api.listItems({
-      propId: this.form().prop_id || undefined,
+      propId: propId || undefined,
       status: this.statusFilter() || undefined,
       search: this.searchQuery() || undefined,
       page: this.currentPage(),
@@ -142,7 +188,7 @@ export class LostAndFoundPageComponent {
 
   openCreateModal() {
     this.form.set({
-      prop_id: this.form().prop_id || 0,
+      prop_id: this.selectedPropId() || 0,
       booking_id: '',
       guest_name: '',
       guest_contact: '',

@@ -366,7 +366,7 @@ class TestTotalPrice:
 
     def test_calculate_total_price_no_rates(self):
         """Hotel without rate records returns None."""
-        total, currency, nights = _calculate_total_price(
+        total, currency, nights, tax_rate, tax_amount, tax_included = _calculate_total_price(
             99999, "RT-99999-none", "2026-08-10", "2026-08-13", 1,
         )
         assert total is None

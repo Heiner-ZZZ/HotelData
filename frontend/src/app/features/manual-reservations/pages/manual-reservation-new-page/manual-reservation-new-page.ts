@@ -79,10 +79,6 @@ export class ManualReservationNewPageComponent {
   }, { validators: dateRangeValidator });
 
   constructor() {
-    // Página de creación → modo INSERT en el nav (ámbar)
-    this.operationMode.setMode('insert', 'Reserva manual');
-    this.destroyRef.onDestroy(() => this.operationMode.reset());
-
     this.loadHotelOptions();
     // Watch hotel changes to reset dates
     this.form.controls.propId.valueChanges

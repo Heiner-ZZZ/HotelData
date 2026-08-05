@@ -30,10 +30,13 @@ async def test_static_files_are_public(client):
 
 
 async def test_unauth_api_returns_401_json(client):
-    response = await client.get("/api/auth/me")
+    # /api/auth/me es público (guest payload 200); usar una ruta protegida real.
+    response = await client.get("/api/admin/users")
     assert response.status_code == 401
-    body = response.json()["detail"]
+    body = response.json()
     assert body["authenticated"] is False
+    assert body["detail"] == "Authentication required"
+    assert body["login_url"].startswith("/login")
 
 
 async def test_unauth_web_route_redirects_to_login(client):
@@ -57,8 +60,7 @@ async def test_cliente_blocked_from_admin_api_returns_403(client, cliente_user):
     response = await client.get("/api/admin/users")
     assert response.status_code == 403
     body = response.json()
-    assert body["authenticated"] is True
-    assert body["detail"] == "Forbidden"
+    assert body["detail"] == "Permiso requerido: users.manage"
 
 
 async def test_admin_can_access_admin_api(client, admin_user):

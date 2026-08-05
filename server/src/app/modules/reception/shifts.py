@@ -647,6 +647,29 @@ def get_active_shift(prop_id: int) -> dict[str, Any] | None:
     return _enrich_shift(doc)
 
 
+def get_active_shift_id(prop_id: int) -> str | None:
+    """Return the ``_id`` (as string) of the active (open) shift for a property.
+
+    Front-desk operations (check-in/check-out, cash payments, walk-ins) use
+    this to (a) gate the operation with a 409 when no shift is open and
+    (b) stamp the ``shift_id`` FK on the documents they create/update at write
+    time — replacing the fragile time-window backfill in ``_collect_related_ids``,
+    which guesses relationships at close time and can miss/over-capture records
+    when timestamps drift across shift boundaries.
+
+    Web-channel bookings (``booking_source`` not front-desk) never go through
+    this helper, so they keep ``shift_id`` null.
+    """
+    db = get_database()
+    doc = db[RECEPTION_SHIFTS_COLLECTION].find_one(
+        {"prop_id": prop_id, "status": "open"},
+        {"_id": 1},
+    )
+    if not doc:
+        return None
+    return str(doc["_id"])
+
+
 def get_shift(shift_id: str) -> dict[str, Any] | None:
     """Get a shift by its ID."""
     db = get_database()

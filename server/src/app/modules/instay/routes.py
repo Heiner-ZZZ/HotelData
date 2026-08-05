@@ -78,7 +78,7 @@ _TOKEN_BYTES = 32
 @staff_router.post("/my-session", response_model=StaySessionResponse)
 def get_my_stay_session(
     payload: dict = Body(...),
-    current_user: dict = Depends(require_permission("account.read")),
+    current_user: dict = Depends(require_permission("reservations.read")),
 ):
     booking_id = (payload.get("booking_id") or "").strip()
     if not booking_id:

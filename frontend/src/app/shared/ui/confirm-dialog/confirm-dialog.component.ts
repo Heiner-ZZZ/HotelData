@@ -9,7 +9,7 @@ import { ConfirmDialogService } from './confirm-dialog.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (service.isOpen()) {
-      <div class="cd-backdrop" (click)="service.cancel()">
+      <div class="cd-backdrop" [class.cd-backdrop-delete]="service.config().mode === 'delete'" (click)="service.cancel()">
         <div class="cd-dialog" role="dialog" aria-modal="true" aria-labelledby="cd-title" (click)="$event.stopPropagation()">
           <div class="cd-header">
             <span class="cd-icon"

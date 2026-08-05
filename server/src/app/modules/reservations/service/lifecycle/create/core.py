@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 
 from src.database.connection import get_database
@@ -39,7 +40,12 @@ def _get_cancellation_policy_text(prop_id: int) -> str | None:
     return None
 
 
-def create_booking(payload: ReservationInput, *, manual_reservation: bool = False) -> dict[str, Any]:
+def create_booking(
+    payload: ReservationInput,
+    *,
+    manual_reservation: bool = False,
+    shift_id: str | None = None,
+) -> dict[str, Any]:
     ensure_reservation_collections()
     errors = validate_reservation_input(payload)
     if errors:
@@ -123,6 +129,9 @@ def create_booking(payload: ReservationInput, *, manual_reservation: bool = Fals
     booking_document = {
         "booking_id": booking_id, "user_id": payload.user_id,
         "prop_id": payload.prop_id, "hotel_id": resolve_hotel_id(payload.prop_id),
+        # Front-desk/walk-in bookings are stamped with the active cash shift
+        # at creation time; web-channel bookings stay null.
+        "shift_id": ObjectId(shift_id) if shift_id else None,
         "status": booking_status,
         "booking_source": payload.source, "guest_name": payload.guest_name,
         "guest_email": payload.guest_email, "guest_phone": payload.guest_phone,

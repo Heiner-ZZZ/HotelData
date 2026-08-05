@@ -222,6 +222,20 @@ export class ReservationsApiService {
     );
   }
 
+  /**
+   * Marca una reserva confirmada sin check-in como no-show (penalización de
+   * la primera noche). El backend valida status=confirmed + stay_status=pend
+   * + fecha de check-in ya vencida (``POST /management/bookings/{id}/no-show``).
+   */
+  markNoShow(bookingId: string) {
+    return this.http.post<{
+      ok: boolean;
+      booking_id: string;
+      penalty_amount: number;
+      check_in_date: string;
+    }>(`/management/bookings/${bookingId}/no-show`, {});
+  }
+
   modifyBooking(bookingId: string, payload: Record<string, unknown>) {
     return this.http.patch<ReservationConfirmRejectDto>(
       `/reservations/${bookingId}`,

@@ -49,6 +49,13 @@ TEST_COLLECTIONS = [
     "user_activity_logs",
     "roles",
     "permissions",
+    "hotel_roles",
+    "role_assignments",
+    # --- HR ---------------------------------------------------------------
+    "employees",
+    "employee_departments",
+    "employee_documents",
+    "employee_shifts",
     # --- Control ETL ------------------------------------------------------
     "etl_executions",
     "data_quality_reports",
@@ -193,12 +200,14 @@ def _clean_collections(db):
         ensure_rate_collections,
     )
     from src.app.modules.revenue.service import ensure_revenue_collections
+    from src.app.security.collections import ensure_hotel_permission_collections
 
     ensure_hotel_content_collections()
     ensure_hotel_profile_collections()
     ensure_inventory_collections()
     ensure_rate_collections()
     ensure_revenue_collections()
+    ensure_hotel_permission_collections()
     yield
 
 

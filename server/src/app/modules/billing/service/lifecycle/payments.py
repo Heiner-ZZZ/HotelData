@@ -27,7 +27,7 @@ from src.app.modules.billing.service.lifecycle._helpers import (
 )
 
 
-def create_payment(payload: PaymentCreate) -> dict | None:
+def create_payment(payload: PaymentCreate, *, shift_id: str | None = None) -> dict | None:
     db = get_database()
     booking = _find_booking(payload.booking_id)
     if not booking:
@@ -54,6 +54,7 @@ def create_payment(payload: PaymentCreate) -> dict | None:
         "booking_id": booking.get("booking_id") or payload.booking_id,
         "prop_id": booking.get("prop_id", 0),
         "hotel_id": resolve_hotel_id(booking.get("prop_id", 0)),
+        "shift_id": ObjectId(shift_id) if shift_id else None,
         "invoice_id": invoice_id,
         "amount": round(payload.amount, 2),
         "method": payload.method,

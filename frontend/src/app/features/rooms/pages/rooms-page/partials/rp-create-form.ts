@@ -8,9 +8,9 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
   imports: [ReactiveFormsModule, AiSuggestDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="surface-card form-panel">
+    <section class="surface-card form-panel create-form-panel">
       <div class="panel-head">
-        <span class="material-symbols-outlined panel-head-icon icon-create-green">king_bed</span>
+        <span class="material-symbols-outlined panel-head-icon create-entry-icon">add_business</span>
         <div>
           <h2>Nuevo tipo de habitación</h2>
           <p>Crea un tipo de habitación operativo para inventario y disponibilidad.</p>
@@ -173,6 +173,10 @@ import { AiSuggestDirective } from '../../../../../core/directives/ai-suggest.di
           <input type="checkbox" formControlName="isActive">
         </label>
         <div class="form-actions">
+          <button type="button" class="btn-outline" (click)="cancel.emit()">
+            <span class="material-symbols-outlined btn-icon">close</span>
+            Cancelar
+          </button>
           <button type="submit" class="btn-primary">
             <span class="material-symbols-outlined btn-icon">add</span>
             Crear tipo
@@ -194,6 +198,7 @@ export class RpCreateFormComponent {
   readonly setMode = output<'existing' | 'new'>();
   readonly selectExisting = output<string>();
   readonly createRoomType = output<void>();
+  readonly cancel = output<void>();
   readonly imageUrlChange = output<string>();
   readonly fileSelected = output<File>();
 

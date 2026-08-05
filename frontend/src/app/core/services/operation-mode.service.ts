@@ -1,35 +1,26 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { NavigationStart, Router } from '@angular/router';
+import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 
-/**
- * Modo CRUD actual de la interfaz. Cada página/componente lo declara
- * explícitamente (patrón manual por página) y el nav superior lo muestra
- * como un chip de color con la gravedad correspondiente.
- *
- * Escala de gravedad (de menor a mayor):
- *   read   → verde  (solo lectura, seguro)
- *   insert → ámbar  (registra información NUEVA)
- *   update → naranja (sobrescribe información EXISTENTE — más grave que
- *            insertar porque el estado anterior solo queda en el log)
- *   delete → rojo   (borrado, aunque sea lógico)
- */
+/** Modo CRUD actual mostrado en el nav superior. */
 export type OperationMode = 'read' | 'insert' | 'update' | 'delete';
 
 export interface OperationModeInfo {
   mode: OperationMode;
-  /** Label corto mostrado en el chip del nav. */
   label: string;
-  /** Texto completo para el tooltip. */
   description: string;
-  /** Token CSS del color del chip. */
   color: string;
-  /** Orden de gravedad (para estilos/animaciones). */
   severity: number;
+  detail?: string;
 }
 
-const MODE_INFO: Record<OperationMode, Omit<OperationModeInfo, 'mode'>> = {
+export interface OperationModeRouteData {
+  operationMode?: OperationMode;
+  operationDetail?: string;
+}
+
+const MODE_INFO: Record<OperationMode, Omit<OperationModeInfo, 'mode' | 'detail'>> = {
   read: {
     label: 'Solo lectura',
     description: 'Estás viendo información sin modificar nada.',
@@ -56,52 +47,99 @@ const MODE_INFO: Record<OperationMode, Omit<OperationModeInfo, 'mode'>> = {
   },
 };
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class OperationModeService {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly modeSignal = signal<OperationMode>('read');
-  private readonly detailSignal = signal('');
-
-  /** Modo CRUD actual (por defecto `read`). */
-  readonly mode = this.modeSignal.asReadonly();
-  /** Detalle opcional (ej. "Tarifa X" / "Reserva #BK-…") para el tooltip. */
-  readonly detail = this.detailSignal.asReadonly();
-
-  /** Metadatos completos (label, color, gravedad) del modo actual. */
-  readonly info = computed<OperationModeInfo>(() => {
-    const base = MODE_INFO[this.modeSignal()];
-    return { mode: this.modeSignal(), ...base };
+  /** Stable mode owned by the active route. */
+  private readonly pageModeSignal = signal<OperationModeInfo>({
+    mode: 'read',
+    label: MODE_INFO.read.label,
+    description: MODE_INFO.read.description,
+    color: MODE_INFO.read.color,
+    severity: MODE_INFO.read.severity,
+    detail: '',
   });
+  /** Temporary mode owned by a modal or an inline action. */
+  private readonly transientModeSignal = signal<OperationModeInfo | null>(null);
+  private transientToken = 0;
+
+  private readonly activeMode = computed(() => this.transientModeSignal() ?? this.pageModeSignal());
+
+  readonly mode = computed(() => this.activeMode().mode);
+  readonly detail = computed(() => this.activeMode().detail ?? '');
+  readonly info = computed<OperationModeInfo>(() => this.activeMode());
 
   constructor() {
-    // Al INICIAR la navegación se vuelve al modo lectura por defecto. El
-    // reset en NavigationStart (y no NavigationEnd) garantiza que el
-    // constructor de la página nueva —que corre durante el change detection,
-    // después de los eventos del router— gane siempre con su setMode().
     this.router.events
       .pipe(
-        filter((e): e is NavigationStart => e instanceof NavigationStart),
+        filter((event): event is NavigationStart => event instanceof NavigationStart),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe(() => {
-        this.modeSignal.set('read');
-        this.detailSignal.set('');
+      .subscribe((event) => {
+        const currentPath = this.router.url.split('?')[0];
+        const targetPath = event.url.split('?')[0];
+        // A query-param-only navigation (for example the single-hotel
+        // prop_id injection) does not leave the page, so it must not close an
+        // edit/delete/create overlay that belongs to that page.
+        if (currentPath === targetPath) return;
+        this.clearTransientMode();
       });
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.syncPageModeFromRoute());
+
+    // Covers the initial URL, before the first NavigationEnd is emitted.
+    this.syncPageModeFromRoute();
   }
 
-  /** Declara el modo CRUD actual de la página. */
-  setMode(mode: OperationMode, detail = ''): void {
-    this.modeSignal.set(mode);
-    this.detailSignal.set(detail);
+  /** Publish a temporary mode for a modal or inline operation. */
+  setTransientMode(mode: OperationMode, detail = ''): () => void {
+    const token = ++this.transientToken;
+    this.transientModeSignal.set(this.toInfo(mode, detail));
+
+    return () => {
+      // A newer owner has taken over the single transient slot. Its cleanup
+      // owns the slot now; an older effect must never restore stale UI state.
+      if (this.transientToken !== token) return;
+      this.transientModeSignal.set(null);
+      this.transientToken += 1;
+    };
   }
 
-  /** Vuelve al modo lectura (por defecto). Llamar al desmontar la página. */
+  /**
+   * Backward-compatible alias for existing inline actions while they migrate
+   * to the more explicit transient API.
+   */
+  setMode(mode: OperationMode, detail = ''): () => void {
+    return this.setTransientMode(mode, detail);
+  }
+
+  /** Clear only the active transient mode; route metadata remains authoritative. */
   reset(): void {
-    this.modeSignal.set('read');
-    this.detailSignal.set('');
+    this.clearTransientMode();
+  }
+
+  private clearTransientMode(): void {
+    this.transientToken += 1;
+    this.transientModeSignal.set(null);
+  }
+
+  private syncPageModeFromRoute(): void {
+    const routerState = this.router.routerState;
+    if (!routerState?.snapshot?.root) return;
+    let route = routerState.snapshot.root;
+    while (route.firstChild) route = route.firstChild;
+    const data = route.data as OperationModeRouteData;
+    this.pageModeSignal.set(this.toInfo(data.operationMode ?? 'read', data.operationDetail ?? ''));
+  }
+
+  private toInfo(mode: OperationMode, detail: string): OperationModeInfo {
+    return { mode, ...MODE_INFO[mode], detail };
   }
 }

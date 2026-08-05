@@ -110,6 +110,7 @@ from src.app.modules.payments.routes import router as payments_api_router
 from src.app.modules.users.routes import router as users_module_router
 from src.app.routes.system import router as system_router
 from src.app.modules.analytics.routes import router as analytics_router
+from src.app.security.collections import ensure_hotel_permission_collections
 from src.app.security.middleware import role_access_middleware
 from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
 from src.app.modules.partner.services.audit import ensure_audit_indexes
@@ -131,6 +132,7 @@ from src.app.modules.geo_catalog.service import ensure_geo_collections
 from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
 from src.app.modules.hr.service.collections import ensure_hr_collections
 from src.app.modules.hr.routes import api_router as hr_api_router
+from src.app.modules.hotel_permissions.routes import api_router as hotel_permissions_api_router
 from src.app.modules.hr.routes import router as hr_module_router
 from src.app.modules.expenses.service.collections import ensure_expenses_collections
 from src.app.modules.expenses.routes import api_router as expenses_api_router
@@ -226,6 +228,7 @@ def create_app() -> FastAPI:
     app.include_router(payments_api_router)
     app.include_router(crud_router)
     app.include_router(reports_router)
+    app.include_router(hotel_permissions_api_router)
     return app
 
 
@@ -254,6 +257,7 @@ async def lifespan(app: FastAPI):
     ensure_expenses_collections()
     from src.app.modules.instay.routes import ensure_stay_collections
     ensure_stay_collections()
+    ensure_hotel_permission_collections()
     ensure_audit_indexes()
     ensure_outbox_collection()
     process_pending_outbox(get_database())

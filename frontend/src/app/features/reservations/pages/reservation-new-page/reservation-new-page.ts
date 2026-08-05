@@ -309,10 +309,6 @@ export class ReservationNewPageComponent {
   readonly today = new Date().toISOString().split('T')[0];
 
   constructor() {
-    // Página de creación de reserva → modo INSERT en el nav (ámbar)
-    this.operationMode.setMode('insert', 'Reserva');
-    this.destroyRef.onDestroy(() => this.operationMode.reset());
-
     const prefixedPropId = Number(this.activatedRoute.snapshot.queryParamMap.get('prop_id') ?? '0');
     const prefixedRoomType = this.activatedRoute.snapshot.queryParamMap.get('room_type') ?? '';
     const prefixedRoomTypeName = this.activatedRoute.snapshot.queryParamMap.get('room_type_name') ?? '';

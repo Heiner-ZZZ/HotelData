@@ -30,6 +30,7 @@ from src.app.modules.billing.service import (
 from src.app.modules.billing.service.services import get_billable_services
 from src.app.core.types import ObjectIdStr, to_json_safe
 from src.app.modules.partner.services.audit import register_action
+from src.app.modules.reception import get_active_shift_id
 from src.app.security.dependencies import require_any_permission, require_permission
 from src.database.connection import get_database
 
@@ -686,7 +687,29 @@ def create_payment_api(
     payload: PaymentCreate = Body(...),
     current_user: dict = Depends(require_permission("payments.manage")),
 ):
-    result = create_payment(payload)
+    # Cashier payments (cash at the front desk) require an open cash shift for
+    # the property; the shift id is stamped on the payment at write time so the
+    # close-of-shift reconciliation is FK-driven, not window-guessed. Card /
+    # transfer / gateway payments are NOT gated — only the cash drawer is.
+    shift_id: str | None = None
+    method = (payload.method or "").strip().lower()
+    if method in ("cash", "efectivo"):
+        booking_doc = get_database().booking_orders.find_one(
+            {"booking_id": payload.booking_id},
+            {"prop_id": 1},
+        )
+        prop_id = int((booking_doc or {}).get("prop_id", 0))
+        shift_id = get_active_shift_id(prop_id)
+        if shift_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No hay un turno de caja activo para esta propiedad. "
+                    "Abre un turno primero en Cajas y Turnos para registrar pagos en efectivo."
+                ),
+            )
+
+    result = create_payment(payload, shift_id=shift_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

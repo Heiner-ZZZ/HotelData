@@ -81,11 +81,14 @@ def _enrich_folio(doc: dict) -> dict:
 # ── Core Operations ──
 
 
-def create_folio(booking_id: str) -> dict | None:
+def create_folio(booking_id: str, *, shift_id: str | None = None) -> dict | None:
     """Create a new folio for a booking at check-in.
 
     Automatically posts the initial room charge from the booking.
     Returns the folio dict, or None if booking not found.
+
+    ``shift_id`` (optional) ties the folio to the active cash shift when the
+    check-in was a front-desk operation; web-channel stays keep it null.
     """
     booking = _find_booking(booking_id)
     if not booking:
@@ -148,6 +151,7 @@ def create_folio(booking_id: str) -> dict | None:
         "booking_id": booking.get("booking_id") or booking_id,
         "prop_id": prop_id,
         "hotel_id": resolve_hotel_id(prop_id),
+        "shift_id": ObjectId(shift_id) if shift_id else None,
         "guest_name": booking.get("guest_name", ""),
         "guest_email": booking.get("guest_email", ""),
         "room_label": room_label,

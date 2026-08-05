@@ -21,7 +21,7 @@
 /* Header */
 .sidebar-header {
   position: relative;
-  padding: 0.25rem 2.6rem 0.25rem .25rem;
+  padding: 0.15rem 2.6rem 0.15rem .25rem;
   border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
@@ -74,7 +74,7 @@
 }
 
 .sidebar-logo {
-  width: 140px;
+  width: 104px;
   height: auto;
   display: block;
   object-fit: contain;
@@ -303,7 +303,7 @@
 
 .is-collapsed .sidebar-header {
   min-height: 48px;
-  padding: 0.25rem 2.4rem 0.25rem .25rem;
+  padding: 0.15rem 2.4rem 0.15rem .25rem;
   justify-content: center;
 }
 

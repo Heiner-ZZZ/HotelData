@@ -668,9 +668,13 @@
   border-radius: 50%;
 }
 
-.status-active { background: var(--success); }
+/* Los puntos de leyenda usan el MISMO color que las barras del timeline:
+   activa=azul primario de la app, cancelada=rojo natural de la línea de
+   tiempo. upcoming/past conservan su token; past se oscurece para que el
+   texto blanco contraste en ambos temas. */
+.status-active { background: var(--accent); }
 .status-upcoming { background: var(--warning); }
-.status-past { background: var(--muted-text); }
+.status-past { background: color-mix(in srgb, var(--muted-text) 74%, #000); }
 .status-cancelled { background: var(--danger); }
 
 .hotel-timeline-schedule {
@@ -721,33 +725,79 @@
 .hotel-timeline-schedule .e-work-cells:hover { background: var(--surface-hover); }
 
 .hotel-timeline-schedule .e-appointment {
+  position: relative;
   border: 0;
   border-radius: 2px;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
   font-weight: 700;
 }
 
+/* Chip resumen de la reserva (personas · noches), flotante a la derecha de
+   la barra cuando hay espacio. Sin fondo ni borde: solo icono + número, para
+   no añadir sombreado sobre el color intenso de la barra. */
+:host ::ng-deep .timeline-app-meta {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 2;
+  pointer-events: none;
+
+  &.timeline-app-meta--hidden {
+    display: none;
+  }
+}
+
+/* Los ítems se crean en runtime (document.createElement), sin el atributo de
+   encapsulación de Angular — por eso también necesitan ::ng-deep. */
+:host ::ng-deep .timeline-app-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14rem;
+
+  .material-symbols-outlined {
+    font-size: 0.66rem;
+    --icon-wght: 500;
+    --icon-opsz: 18;
+  }
+
+  &.timeline-app-meta-item--hidden {
+    display: none;
+  }
+}
+
 /* Syncfusion renders appointments inside its child component; ::ng-deep is
    required so semantic status colors reach the actual appointment nodes. */
+/* Estados con color INTENSO + texto blanco: activo/rechazada(cancelled)/vencida
+   (past)/próxima (upcoming) se distinguen de un vistazo. El token se oscurece
+   con negro (color-mix 74%) para garantizar contraste de la letra blanca en
+   ambos temas (light y dark usan tokens claros/oscuros distintos). */
 :host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-active {
-  background: color-mix(in srgb, var(--accent) 23%, var(--surface)) !important;
-  color: var(--accent-strong) !important;
+  background: var(--accent) !important;
+  color: var(--on-accent) !important;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-upcoming {
-  background: color-mix(in srgb, var(--warning) 23%, var(--surface)) !important;
-  color: var(--warning-strong) !important;
+  background: var(--warning) !important;
+  color: var(--on-warning) !important;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-past {
-  background: color-mix(in srgb, var(--muted-text) 18%, var(--surface)) !important;
-  color: var(--muted-text) !important;
+  background: color-mix(in srgb, var(--muted-text) 74%, #000) !important;
+  color: #fff !important;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .e-appointment.hotel-event-cancelled {
-  background: color-mix(in srgb, var(--danger) 17%, var(--surface)) !important;
-  color: var(--danger-strong) !important;
-  opacity: 0.82;
+  background: var(--danger) !important;
+  color: var(--on-danger) !important;
+  opacity: 0.9;
 }
 
 :host ::ng-deep .hotel-timeline-schedule .e-resource-cells {

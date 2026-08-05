@@ -68,11 +68,30 @@
           </div>
         }
 
+        @if (reservation().visualStatus === 'active' && stayAlert(); as alert) {
+          <div class="reservation-detail-stay-alert" [class]="'is-' + alert.kind" role="status">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ alert.icon }}</span>
+            <span>{{ alert.message }}</span>
+          </div>
+        }
+
         <div class="reservation-detail-actions">
           <a [routerLink]="['/management/check-ins', reservation().bookingId]" class="reservation-detail-action reservation-detail-primary">
             <span class="material-symbols-outlined">login</span>
             Ir a Check-in
           </a>
+          @if (reservation().visualStatus === 'active') {
+            <button
+              type="button"
+              class="reservation-detail-action reservation-detail-stay"
+              (click)="goToStay()"
+              [disabled]="!canGoToStay()"
+              [attr.title]="canGoToStay() ? 'Abrir Mi Estancia' : 'Requiere check-in previo'"
+            >
+              <span class="material-symbols-outlined">night_shelter</span>
+              Ir a stay
+            </button>
+          }
           <a [routerLink]="['/management/check-outs', reservation().bookingId]" class="reservation-detail-action reservation-detail-secondary">
             <span class="material-symbols-outlined">logout</span>
             Ir a Check-out

@@ -2,7 +2,14 @@
   <app-page-header
     title="Objetos perdidos"
     description="Registro de objetos olvidados por huéspedes en habitaciones y áreas comunes."
-  />
+  >
+    <app-property-selector
+      slot="actions"
+      [selectedPropId]="selectedPropId()"
+      [selectedLabel]="selectedLabel()"
+      (propIdChange)="onPropSelected($event)"
+    />
+  </app-page-header>
 
   @if (errorMessage()) {
     <div class="toast toast-error">

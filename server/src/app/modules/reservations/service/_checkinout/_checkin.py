@@ -7,6 +7,8 @@ import threading
 from datetime import date
 from typing import Any
 
+from bson import ObjectId
+
 from src.database.connection import get_database
 from .._helpers import utc_now
 from src.app.core.timezone import local_today
@@ -71,6 +73,7 @@ def complete_check_in(
     payment_method: str = "",
     ip_address: str = "",
     observations: str = "",
+    shift_id: str | None = None,
 ) -> dict[str, Any]:
     db = get_database()
 
@@ -138,19 +141,24 @@ def complete_check_in(
     changed_at = utc_now()
     folio = _generate_folio(int(booking.get("prop_id", 0)))
 
+    check_in_set: dict[str, Any] = {
+        "stay_status": "checked_in",
+        "updated_at": changed_at,
+        "folio": folio,
+        "check_in_date_actual": changed_at.strftime("%Y-%m-%d"),
+        "check_in_time_actual": changed_at.strftime("%H:%M"),
+        "check_in_by": changed_by,
+        "payment_method": payment_method or booking.get("payment_method", ""),
+    }
+    if shift_id:
+        # Front-desk check-ins are tied to the open cash shift at write time.
+        # Service-level/test callers that pass no shift_id leave any shift
+        # already stamped at booking creation untouched.
+        check_in_set["shift_id"] = ObjectId(shift_id)
+
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": {"$ne": "checked_in"}},
-        {
-            "$set": {
-                "stay_status": "checked_in",
-                "updated_at": changed_at,
-                "folio": folio,
-                "check_in_date_actual": changed_at.strftime("%Y-%m-%d"),
-                "check_in_time_actual": changed_at.strftime("%H:%M"),
-                "check_in_by": changed_by,
-                "payment_method": payment_method or booking.get("payment_method", ""),
-            }
-        },
+        {"$set": check_in_set},
         projection={"_id": 0, "is_test": 1},
     )
     if result is None:
@@ -278,7 +286,7 @@ def complete_check_in(
     if booking and not booking.get("is_test"):
         try:
             from src.app.modules.billing.service import create_folio
-            folio_doc = create_folio(booking_id)
+            folio_doc = create_folio(booking_id, shift_id=shift_id)
             if folio_doc:
                 folio_id = folio_doc.get("folio_number")
                 logger.info("Folio %s created for booking %s at check-in", folio_id, booking_id)

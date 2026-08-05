@@ -146,6 +146,8 @@ PERMISSION_CATALOG = [
     ("etl.manage", "Administrar ETL — acceso total"),
     ("etl.read", "Ver estado y logs de ETL"),
     ("etl.execute", "Ejecutar pipelines ETL"),
+    # Hotel-scoped permissions (Fase 2 — RBAC por hotel)
+    ("hotel.manage_roles", "Gestionar roles y permisos del equipo en un hotel"),
     # Guest-facing
     ("account.manage", "Administrar cuenta — acceso total"),
     ("account.read", "Ver perfil y datos de cuenta"),
@@ -183,6 +185,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "reservations.manage",
         "revenue.read",
         "promotions.read", "promotions.manage",
+        "hotel.manage_roles",
     ],
     "gerente_hotel": [
         "dashboard.read",
@@ -195,6 +198,7 @@ ROLE_PERMISSION_CODES: dict[str, list[str]] = {
         "promotions.read", "promotions.manage",
         "shifts.manage", "shifts.read",
         "hr.manage",
+        "hotel.manage_roles",
     ],
     "revenue_manager": [
         "dashboard.read",
@@ -382,6 +386,7 @@ NAVIGATION_CATALOG: list[dict[str, Any]] = [
     {"label": "Reseñas",        "href": "/management/reviews",    "icon": "reviews",         "required_permission": "properties.read", "section": "PMS","sort_order": 216},
     {"label": "Auditoría Oper.","href": "/management/audit-log",  "icon": "receipt_long",    "required_permission": "audit.read",      "section": "PMS","sort_order": 217},
     {"label": "Perfil",         "href": "/management/profile",    "icon": "account_circle",  "required_permission": "account.read",    "section": "PMS","sort_order": 218},
+    {"label": "Equipo y permisos","href": "/management/team-permissions","icon": "admin_panel_settings","required_permission": "hotel.manage_roles","section": "PMS","sort_order": 219},
     {"label": "Housekeeping",   "href": "/management/housekeeping","icon": "cleaning_services","required_permission": "housekeeping.read","section": "Housekeeping","is_section_header": True,"sort_order": 301},
     {"label": "Mantenimiento",  "href": "/management/housekeeping/maintenance","icon": "build","required_permission": "maintenance.read","section": "Housekeeping","sort_order": 302},
     {"label": "Cargos",         "href": "/management/housekeeping/charges","icon": "attach_money","required_permission": "charges.read","section": "Housekeeping","sort_order": 303},

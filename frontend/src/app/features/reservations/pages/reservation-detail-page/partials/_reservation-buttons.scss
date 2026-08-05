@@ -69,6 +69,19 @@ button:disabled {
   }
 }
 
+/* No-show: acción terminal con penalización — borde/fondo rojo oscuro para
+   distinguirla de la cancelación (mismo token danger, sin competir). */
+.btn-noshow {
+  border: 1px solid color-mix(in srgb, var(--danger) 78%, black);
+  background: color-mix(in srgb, var(--danger) 78%, black);
+  color: var(--on-accent);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 90%, black);
+    border-color: color-mix(in srgb, var(--danger) 90%, black);
+  }
+}
+
 .btn-icon {
   font-size: 1rem;
   --icon-opsz: 18;

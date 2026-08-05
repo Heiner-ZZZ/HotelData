@@ -39,6 +39,7 @@ from src.app.modules.reservations.routes.reservations_impl import (
 from src.app.security.dependencies import require_permission
 from src.app.security.role_helpers import get_role_name
 from src.app.core.types import to_json_safe
+from src.app.modules.reception import get_active_shift_id
 
 from src.database.connection import get_database
 
@@ -131,7 +132,21 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
             raise ValueError("; ".join(form_errors))
         if reservation_input.rate_plan_id:
             payload["rate_plan_id"] = reservation_input.rate_plan_id
-        return ReservationCreatedResponse.model_validate(to_json_safe(create_booking(reservation_input)))
+        # Staff-created reservations (front desk / walk-in) require an open
+        # cash shift for the property; web-channel bookings never reach this
+        # staff-only endpoint and keep shift_id null.
+        prop_id = int(payload.get("prop_id") or 0)
+        shift_id = get_active_shift_id(prop_id)
+        if shift_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No hay un turno de caja activo para esta propiedad. "
+                    "Abre un turno primero en Cajas y Turnos antes de registrar "
+                    "una reserva en recepción."
+                ),
+            )
+        return ReservationCreatedResponse.model_validate(to_json_safe(create_booking(reservation_input, shift_id=shift_id)))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

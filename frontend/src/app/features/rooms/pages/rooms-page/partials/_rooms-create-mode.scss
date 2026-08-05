@@ -1,3 +1,76 @@
+/* ═══ Creation entry choices ═══ */
+.create-entry-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--app-border));
+}
+
+.create-entry-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.create-entry-icon {
+  color: var(--warning);
+  font-size: 1.65rem;
+  flex-shrink: 0;
+}
+
+/* El formulario de creación mantiene el mismo acento ámbar que la caja de
+   entrada para que el cambio a la pantalla de alta no se sienta drástico. */
+.create-form-panel {
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--app-border));
+}
+
+.create-entry-copy h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.create-entry-copy p {
+  margin: 0.2rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+}
+
+.create-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.create-entry-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.75rem;
+}
+
+.create-entry-hint .material-symbols-outlined {
+  color: var(--warning);
+  font-size: 1rem;
+}
+
+.create-entry-actions button,
+.form-actions button {
+  min-height: 2.35rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
 /* ═══ Create mode toggle (existing vs new) ═══ */
 .create-mode-toggle {
   display: flex;
@@ -48,6 +121,69 @@
 
   & + .toggle-mode-btn {
     border-left: 1px solid var(--app-border);
+  }
+}
+
+/* Outline button inside the entry panel — same scale as the primary action
+   so both creation choices read as one design system. */
+.create-entry-actions .btn-outline {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease,
+              box-shadow 140ms ease, transform 120ms ease;
+
+  .material-symbols-outlined {
+    font-size: 1.05rem;
+    --icon-wght: 400;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.create-entry-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--app-border);
+  color: var(--muted-text);
+  background: var(--surface-soft);
+}
+
+@media (max-width: 720px) {
+  .create-entry-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .create-entry-actions {
+    justify-content: stretch;
+  }
+
+  .create-entry-hint {
+    margin-top: 0;
+  }
+
+  .create-entry-actions button {
+    flex: 1 1 100%;
   }
 }
 

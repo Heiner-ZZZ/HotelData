@@ -120,6 +120,19 @@ def create_ownership_user(
     if len(password) < 6:
         return {"ok": False, "message": "La contraseña debe tener al menos 6 caracteres."}
 
+    # Security: los roles de hotel SIEMPRE requieren assigned_hotels. Escribir
+    # [] deja al usuario con alcance ilimitado (hotel_filter trata vacío como
+    # sin restricción → vería todos los hoteles del sistema).
+    try:
+        hotels = [int(h) for h in (assigned_hotels or [])]
+    except (TypeError, ValueError):
+        hotels = []
+    if not hotels:
+        return {
+            "ok": False,
+            "message": "Debe asignar al menos un hotel al crear un usuario con rol de hotel.",
+        }
+
     now = utc_now()
     user_doc: dict[str, Any] = {
         "username": username,
@@ -128,7 +141,7 @@ def create_ownership_user(
         "display_name": display_name or username,
         "primary_role_id": resolve_role_id(primary_role),
         "is_active": True,
-        "assigned_hotels": assigned_hotels or [],
+        "assigned_hotels": hotels,
         "failed_login_attempts": 0,
         "locked_until": None,
         "created_at": now,
@@ -167,9 +180,23 @@ def update_assigned_hotels(user_id: str, assigned_hotels: list[int]) -> dict[str
     if not user:
         return {"ok": False, "message": "Usuario no encontrado."}
 
+    # Security: vaciar assigned_hotels en un rol con filtro NO revoca acceso —
+    # hotel_filter trata la lista vacía como "sin restricción" (vería todos
+    # los hoteles). Para revocar el acceso se desactiva/elimina el usuario.
+    try:
+        hotels = [int(h) for h in (assigned_hotels or [])]
+    except (TypeError, ValueError):
+        hotels = []
+    if not hotels:
+        return {
+            "ok": False,
+            "message": "No puede dejar a un usuario de hotel sin hoteles asignados. "
+            "Para revocar su acceso, desactívelo o elimínelo.",
+        }
+
     db.users.update_one(
         {"_id": oid},
-        {"$set": {"assigned_hotels": assigned_hotels, "updated_at": utc_now()}},
+        {"$set": {"assigned_hotels": hotels, "updated_at": utc_now()}},
     )
 
     hotel_names = _resolve_hotel_names(assigned_hotels)

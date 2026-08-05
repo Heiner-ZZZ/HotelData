@@ -75,7 +75,9 @@ export class ReservationDetailPageComponent {
   readonly cancelPending = signal(false);
   readonly confirmPending = signal(false);
   readonly rejectPending = signal(false);
+  readonly noShowPending = signal(false);
   readonly successMessage = signal('');
+  readonly errorMessage = signal('');
 
   // ─── Reactive route param ───
   private readonly paramMap = toSignal(this.activatedRoute.paramMap, {
@@ -207,6 +209,19 @@ export class ReservationDetailPageComponent {
   });
 
   readonly canReject = computed(() => this.canConfirm());
+
+  /**
+   * No-show manual: solo aplica a reservas confirmadas cuyo check-in sigue
+   * pendiente (stay_status pending) Y cuya fecha de check-in ya pasó — el
+   * backend valida exactamente eso y devolvería 400 antes de tiempo.
+   */
+  readonly canMarkNoShow = computed(() => {
+    const vm = this.detailResource.value();
+    if (!vm || !this.isStaff()) return false;
+    return vm.status === 'confirmed'
+      && (vm.stayStatus ?? '') === 'pending'
+      && vm.checkInDate <= this.todayStr();
+  });
 
   readonly todayStr = computed(() => {
     const d = new Date();
@@ -531,6 +546,54 @@ export class ReservationDetailPageComponent {
         setTimeout(() => this.successMessage.set(''), 4000);
       },
       error: () => { this.rejectPending.set(false); }
+    });
+  }
+
+  /**
+   * Marca la reserva como no-show (penalización de la primera noche). El
+   * huésped no llegó al check-in: se restaura inventario, se crea el folio
+   * con la penalización y se notifica por email. Confirmación previa con
+   * modo delete en el nav (acción terminal).
+   */
+  async markNoShow() {
+    const current = this.detailResource.value();
+    if (!current || !this.canMarkNoShow() || this.noShowPending()) return;
+
+    const ok = await this.confirmDialog.open({
+      title: 'Marcar no-show',
+      message: `¿Confirmar que ${current.guestName} no se presentó al check-in? Se cobrará la penalización de la primera noche.`,
+      confirmLabel: 'Marcar no-show',
+      variant: 'danger',
+      mode: 'delete',
+      modeDetail: `Reserva ${current.bookingId}`,
+    });
+    if (!ok) return;
+
+    this.noShowPending.set(true);
+    this.successMessage.set('');
+    this.operationMode.setMode('delete', current.bookingId);
+    this.reservationsApi.markNoShow(current.bookingId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (result) => {
+        this.detailResource.reload();
+        this.noShowPending.set(false);
+        this.operationMode.reset();
+        const penalty = result.penalty_amount > 0
+          ? ` Se cobró $${result.penalty_amount.toFixed(2)} como penalización.`
+          : '';
+        this.successMessage.set(`No-show registrado.${penalty}`);
+        setTimeout(() => this.successMessage.set(''), 5000);
+      },
+      error: (err: unknown) => {
+        this.noShowPending.set(false);
+        this.operationMode.reset();
+        const message = err instanceof HttpErrorResponse
+          ? (err.error?.detail ?? err.message)
+          : (err as { message?: string }).message;
+        this.errorMessage.set(message || 'No fue posible marcar el no-show.');
+        setTimeout(() => this.errorMessage.set(''), 6000);
+      },
     });
   }
 

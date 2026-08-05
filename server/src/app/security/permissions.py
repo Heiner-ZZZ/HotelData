@@ -85,15 +85,59 @@ def _normalize_role_ids(user: dict[str, Any]) -> list[ObjectId]:
     return role_ids
 
 
-def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
+def _get_hotel_scoped_codes(
+    db: Database,
+    user: dict[str, Any],
+    prop_id: int,
+) -> set[str]:
+    """Resolve hotel-scoped permission codes for ``user`` in ``prop_id``.
+
+    Fase 1 RBAC por hotel (``docs/PERMISOS_POR_HOTEL.md``). Deny-by-default:
+
+    1. Look up the user's ``role_assignments`` row for the hotel.
+    2. No assignment → empty set (deny). The global role is NEVER used as a
+       fallback here — doing so would let a restricted hotel-1 employee gain
+       the global role's permissions on hotel-2 routes (cross-hotel escalation).
+    3. Assignment found → the ``hotel_roles`` doc is authoritative: an
+       inactive or missing hotel role also denies (empty set).
+    """
+    assignment = db.role_assignments.find_one(
+        {"user_id": user["_id"], "prop_id": int(prop_id)}
+    )
+    if not assignment:
+        return set()
+    role = db.hotel_roles.find_one(
+        {"_id": assignment.get("role_id"), "is_active": True}
+    )
+    if not role:
+        return set()
+    return expand_permissions(set(role.get("permissions", [])))
+
+
+def get_user_permission_codes(
+    db: Database,
+    user: dict[str, Any],
+    prop_id: int | None = None,
+) -> set[str]:
     """Return the expanded set of permission codes for a user.
 
-    Reads from the ``roles.permissions`` embedded array (canonical source).
+    Reads from the ``roles.permissions`` embedded array (canonical source)
+    when no hotel context is given.
+
+    When ``prop_id`` is provided (Fase 1 hotel-scoped RBAC), permissions are
+    resolved STRICTLY from ``role_assignments`` → ``hotel_roles`` for that
+    hotel: no assignment for the hotel means no permissions (deny-by-default,
+    per ``docs/PERMISOS_POR_HOTEL.md``). The global role resolution below is
+    only used when no hotel context is given (legacy ``require_permission``
+    paths and system roles).
     """
     if not user:
         return set()
     if is_super_admin(user):
         return {"*.*"}
+
+    if prop_id is not None:
+        return _get_hotel_scoped_codes(db, user, prop_id)
 
     role_ids = _normalize_role_ids(user)
     primary_role = get_role_name(user)
@@ -118,17 +162,26 @@ def get_user_permission_codes(db: Database, user: dict[str, Any]) -> set[str]:
     return expand_permissions(explicit)
 
 
-def user_has_permission(db: Database, user: dict[str, Any] | None, permission_code: str) -> bool:
+def user_has_permission(
+    db: Database,
+    user: dict[str, Any] | None,
+    permission_code: str,
+    prop_id: int | None = None,
+) -> bool:
     """Check whether a user has a specific permission.
 
     ``super_admin`` always returns ``True``.
     Inactive users always return ``False``.
+
+    When ``prop_id`` is provided (Fase 1 hotel-scoped RBAC), permissions are
+    resolved strictly from the user's ``role_assignments`` → ``hotel_roles``
+    for that hotel — no assignment means deny (no global fallback).
     """
     if not user or not user.get("is_active", True):
         return False
     if is_super_admin(user):
         return True
-    codes = get_user_permission_codes(db, user)
+    codes = get_user_permission_codes(db, user, prop_id=prop_id)
     if "*.*" in codes:
         return True
     return permission_code in codes

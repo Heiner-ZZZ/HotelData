@@ -30,6 +30,7 @@ import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-sta
 import { ReservationDetailModalComponent } from '../reservation-detail-modal/reservation-detail-modal';
 import { ThemeService } from '../../../../core/theme/theme.service';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { statusColor } from '../../../../shared/utils/semantic-color.helper';
 import type {
   ReceptionCalendarData,
@@ -153,6 +154,7 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly toast = inject(ToastService);
+  private readonly operationMode = inject(OperationModeService);
   readonly isDark = this.themeService.isDark;
 
   private readonly dayFormatter = new Intl.DateTimeFormat('es-MX', {
@@ -416,6 +418,11 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
       this.positionSelectionPopover(this.selectedAnchor);
     }
     this.scheduleNowLine();
+    // El ancho de las barras cambia con el viewport: re-evalúa la disclosure
+    // progresiva de los chips resumen (persona · grupo · noches).
+    this.hotelSchedule?.element
+      .querySelectorAll<HTMLElement>('.e-appointment')
+      .forEach((appointment) => this.applyMetaDisclosure(appointment));
   }
 
   /**
@@ -982,11 +989,18 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     this.selectionPopoverPosition.set({ top: 0, left: 0 });
   }
 
-  openPhysicalReservation(): void {
+  async openPhysicalReservation(): Promise<void> {
     const selection = this.selectedSlot();
     if (!selection) return;
-    void this.router.navigate(['/management/recepcion/new'], {
-      queryParams: {
+
+    // NavigationStart clears the mode owned by the current page. Re-claim it
+    // only after the SPA navigation succeeds: at that point the destination
+    // component and the shared OnPush nav are both alive, so the signal update
+    // cannot be lost to the router's navigation lifecycle.
+    let navigated = false;
+    try {
+      navigated = await this.router.navigate(['/management/recepcion/new'], {
+        queryParams: {
         prop_id: this.propId(),
         room_type: selection.roomTypeId,
         room_type_name: selection.roomTypeName,
@@ -997,7 +1011,17 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
         check_in_time: selection.checkInTime,
         check_out_time: selection.checkOutTime,
       },
-    });
+      });
+    } catch {
+      // A cancelled/rejected navigation must not leave the old page marked as
+      // creating. The router owns the visible error/reporting path.
+      return;
+    }
+    const currentPath = this.router.url.split('?')[0];
+    if (!navigated || currentPath !== '/management/recepcion/new') return;
+    // The destination route owns the page mode through its route metadata.
+    // This component only performs navigation; it must not leave a transient
+    // overlay alive after it is destroyed.
   }
 
   /**
@@ -1125,26 +1149,108 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
     if (!event) return;
     if (!event.VisualStatus) return;
 
+    // Mismo criterio que el SCSS .hotel-event-*: colores naturales de la app
+    // (activa=azul primario, cancelada=rojo de la línea de tiempo) con su
+    // texto semántico --on-* (blanco en light, oscuro en dark). past conserva
+    // el gris oscurecido + blanco para contraste en ambos temas.
     const statusStyles: Record<ReceptionCalendarReservation['visualStatus'], {
       color: string;
       foreground: string;
     }> = {
-      active: { color: 'var(--accent)', foreground: 'var(--accent-strong)' },
-      upcoming: { color: 'var(--warning)', foreground: 'var(--warning-strong)' },
+      active: { color: 'var(--accent)', foreground: 'var(--on-accent)' },
+      upcoming: { color: 'var(--warning)', foreground: 'var(--on-warning)' },
       past: { color: 'var(--muted-text)', foreground: 'var(--muted-text)' },
-      cancelled: { color: 'var(--danger)', foreground: 'var(--danger-strong)' },
+      cancelled: { color: 'var(--danger)', foreground: 'var(--on-danger)' },
     };
     const style = statusStyles[event.VisualStatus];
     if (!style) return;
 
     args.element.classList.add(`hotel-event-${event.VisualStatus}`);
+    const isPast = event.VisualStatus === 'past';
     args.element.style.setProperty(
       'background-color',
-      `color-mix(in srgb, ${style.color} 23%, var(--surface))`,
+      isPast ? `color-mix(in srgb, ${style.color} 74%, #000)` : style.color,
     );
-    args.element.style.setProperty('color', style.foreground);
-    if (event.VisualStatus === 'cancelled') args.element.style.opacity = '0.82';
-    args.element.setAttribute('title', `${event.GuestName} · ${event.StatusLabel}`);
+    args.element.style.setProperty('color', isPast ? '#fff' : style.foreground);
+    if (event.VisualStatus === 'cancelled') args.element.style.opacity = '0.9';
+
+    this.appendAppointmentMeta(args.element, event);
+  }
+
+  /**
+   * Añade a la barra un chip resumen compacto con los ocupantes y noches:
+   * noches = total de noches (solo si es más de un día). Los ítems se ocultan
+   * progresivamente según el ancho disponible de la barra.
+   *
+   * Validación anti-ambigüedad: NUNCA se muestran juntos el icono de persona
+   * sola y el de grupo con el mismo número (dos iconos distintos diciendo
+   * "2" se leerían como 4 personas). Regla: si hay niños o el total es >2
+   * personas, se muestra solo el icono de grupo (adultos + niños); en caso
+   * contrario (1-2 adultos sin niños) solo el de persona sola.
+   */
+  private appendAppointmentMeta(element: HTMLElement, event: TimelineEvent): void {
+    if (element.querySelector('.timeline-app-meta')) return;
+    const adults = Number(event.Adults) || 0;
+    const children = Number(event.Children) || 0;
+    const nights = Number(event.TotalNights) || 0;
+    const total = adults + children;
+    if (total <= 0 && nights <= 0) return;
+
+    const meta = document.createElement('span');
+    meta.className = 'timeline-app-meta';
+    meta.setAttribute('aria-label', `${adults} adulto(s) · ${total} persona(s) · ${nights} noche(s)`);
+
+    const item = (icon: string, count: number): HTMLSpanElement => {
+      const span = document.createElement('span');
+      span.className = 'timeline-app-meta-item';
+      const iconEl = document.createElement('span');
+      iconEl.className = 'material-symbols-outlined';
+      iconEl.setAttribute('aria-hidden', 'true');
+      iconEl.textContent = icon;
+      span.append(iconEl);
+      span.append(document.createTextNode(String(count)));
+      return span;
+    };
+
+    const isGroup = total > 2 || children > 0;
+    const personItem = isGroup ? null : item('person', adults);
+    const groupItem = isGroup ? item('group', total) : null;
+    if (personItem) meta.append(personItem);
+    if (groupItem) meta.append(groupItem);
+    let nightsItem: HTMLSpanElement | null = null;
+    if (nights > 1) {
+      nightsItem = item('nights_stay', nights);
+      meta.append(nightsItem);
+    }
+
+    element.appendChild(meta);
+
+    // La medición se difiere dos frames: onEventRendered dispara antes de que
+    // Syncfusion posicione/estire el elemento (ancho inicial 0), así que
+    // esconder con un ancho a medias dejaría todos los chips ocultos o
+    // visibles por error.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.applyMetaDisclosure(element));
+    });
+    element.setAttribute('title', `${event.GuestName} · ${event.StatusLabel}`);
+  }
+
+  /**
+   * Progressive disclosure del chip resumen según el ancho real de la barra
+   * (prioridad: persona → grupo → noches). Idempotente; también lo llama
+   * `onWindowResize` para que la visibilidad siga al viewport. Nota: asume
+   * que Syncfusion crea nodos frescos por render — si reusara el elemento de
+   * una reserva con datos cambiados, el guard de `appendAppointmentMeta`
+   * conservaría el chip anterior.
+   */
+  private applyMetaDisclosure(element: HTMLElement): void {
+    const meta = element.querySelector<HTMLElement>('.timeline-app-meta');
+    if (!meta) return;
+    const items = Array.from(meta.querySelectorAll<HTMLElement>('.timeline-app-meta-item'));
+    const width = element.getBoundingClientRect().width;
+    meta.classList.toggle('timeline-app-meta--hidden', width > 0 && width < 70);
+    items[0]?.classList.toggle('timeline-app-meta-item--hidden', width > 0 && width < 110);
+    items[1]?.classList.toggle('timeline-app-meta-item--hidden', width > 0 && width < 200);
   }
 
   private scheduleSelectionPopoverPosition(element: HTMLElement | HTMLElement[]): void {

@@ -14,7 +14,8 @@ export const PROPERTIES_ROUTES: Routes = [
   {
     path: ':propertyId/edit',
     loadComponent: () =>
-      import('./pages/property-edit-page/property-edit-page').then((m) => m.PropertyEditPageComponent)
+      import('./pages/property-edit-page/property-edit-page').then((m) => m.PropertyEditPageComponent),
+    data: { operationMode: 'update', operationDetail: 'Perfil del hotel' }
   },
   {
     path: ':propertyId',

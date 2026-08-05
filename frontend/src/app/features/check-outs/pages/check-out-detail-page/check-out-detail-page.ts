@@ -113,12 +113,6 @@ export class CheckOutDetailPageComponent {
       : { mode: 'read', detail: '' };
   });
 
-  /** Escribe el modo calculado al servicio global del nav. */
-  private applyMode(): void {
-    const m = this._opMode();
-    this.opMode.setMode(m.mode, m.detail);
-  }
-
   // ── Charge creation form ──
   readonly chargeFormVisible = signal(false);
   readonly chargeConcept = signal('');
@@ -267,8 +261,12 @@ export class CheckOutDetailPageComponent {
     }, { allowSignalWrites: true });
 
     // Modo CRUD reactivo: editar campos del wizard → UPDATE en el nav.
-    effect(() => {
-      this.applyMode();
+    // El cleanup libera el overlay anterior al cambiar un campo y al destruir
+    // la página; así no queda un modo de check-out en la siguiente ruta.
+    effect((onCleanup) => {
+      const m = this._opMode();
+      if (m.mode === 'read') return;
+      onCleanup(this.opMode.setTransientMode(m.mode, m.detail));
     }, { allowSignalWrites: true });
   }
 

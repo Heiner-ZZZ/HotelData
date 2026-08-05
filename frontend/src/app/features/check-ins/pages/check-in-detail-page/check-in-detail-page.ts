@@ -103,12 +103,6 @@ export class CheckInDetailPageComponent {
       : { mode: 'read', detail: '' };
   });
 
-  /** Escribe el modo calculado al servicio global del nav. */
-  private applyMode(): void {
-    const m = this._opMode();
-    this.opMode.setMode(m.mode, m.detail);
-  }
-
   // ── Past-date validation ──
   readonly isPastDate = computed(() => {
     const d = this.data();
@@ -206,8 +200,12 @@ export class CheckInDetailPageComponent {
     }, { allowSignalWrites: true });
 
     // Modo CRUD reactivo: editar campos del wizard → UPDATE en el nav.
-    effect(() => {
-      this.applyMode();
+    // El cleanup es importante: el efecto se re-ejecuta con cada cambio de
+    // campo y también debe liberar el overlay cuando la página se destruye.
+    effect((onCleanup) => {
+      const m = this._opMode();
+      if (m.mode === 'read') return;
+      onCleanup(this.opMode.setTransientMode(m.mode, m.detail));
     }, { allowSignalWrites: true });
 
     // Persist wizard fields to localStorage on every change

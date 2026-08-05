@@ -60,11 +60,13 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "dashboard.read", "hotels.manage", "properties.read", "rooms.read",
         "reservations.manage", "revenue.read",
         "promotions.read", "promotions.manage",
+        "hotel.manage_roles",
     ],
     "gerente_hotel": [
         "dashboard.read", "hotels.manage", "properties.read", "rooms.read",
         "reservations.manage", "revenue.read", "rates.read",
         "inventory.read", "promotions.read", "promotions.manage",
+        "hotel.manage_roles",
     ],
     "revenue_manager": [
         "dashboard.read", "revenue.manage", "rates.manage",

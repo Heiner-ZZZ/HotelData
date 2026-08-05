@@ -5,9 +5,24 @@ from fastapi.responses import JSONResponse
 
 from src.app.modules.partner.routes import api_router, web_router
 from src.app.modules.partner.services import list_partner_hotels
+from src.app.modules.reception import get_active_shift_id
 from src.app.modules.reservations.service.lifecycle import create_booking
 from src.app.modules.reservations.service.queries import list_bookings
 from src.app.modules.reservations.service.validation import build_reservation_input
+
+
+NO_ACTIVE_SHIFT_MSG = (
+    "No hay un turno de caja activo para esta propiedad. "
+    "Abre un turno primero en Cajas y Turnos antes de registrar una reserva manual."
+)
+
+
+def _require_active_shift(prop_id: int) -> str:
+    """Return the active cash-shift id for ``prop_id`` or raise HTTP 409."""
+    shift_id = get_active_shift_id(prop_id)
+    if shift_id is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=NO_ACTIVE_SHIFT_MSG)
+    return shift_id
 
 
 @web_router.get("/manual-reservations")
@@ -70,7 +85,10 @@ def manual_reservation_create(
         source="partner_manual",
     )
     try:
-        result = create_booking(payload, manual_reservation=True)
+        shift_id = _require_active_shift(prop_id)
+        result = create_booking(payload, manual_reservation=True, shift_id=shift_id)
+    except HTTPException as exc:
+        return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
     return JSONResponse({"ok": True, "booking_id": result.get("booking_id")}, status_code=status.HTTP_201_CREATED)
@@ -98,7 +116,8 @@ def manual_reservations_list_api(
 @api_router.post("/manual-reservations", status_code=status.HTTP_201_CREATED)
 def manual_reservation_create_api(payload: dict = Body(...)):
     try:
+        shift_id = _require_active_shift(int(payload.get("prop_id") or 0))
         reservation_input = build_reservation_input(payload, source="partner_api")
-        return create_booking(reservation_input, manual_reservation=True)
+        return create_booking(reservation_input, manual_reservation=True, shift_id=shift_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

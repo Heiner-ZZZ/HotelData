@@ -40,9 +40,15 @@ def _json_safe(obj: Any) -> Any:
 def hotel_booking_context(prop_id: int) -> dict[str, Any]:
     detail = hotel_detail(prop_id)
     if detail:
+        # get_hotel_detail_view() returns the enriched view with the hotel doc
+        # nested under ``detail["hotel"]`` (display_name/hotel_name live there),
+        # NOT at the top level. Reading the top level silently fell back to
+        # ``f"Hotel {prop_id}"`` (e.g. "Hotel 1") even when dim_hotels had a
+        # real name. Read the nested doc for the label; metrics stay top-level.
+        hotel_doc = detail.get("hotel") or {}
         return {
             "prop_id": prop_id,
-            "hotel_label": detail.get("display_name") or detail.get("hotel_name") or f"Hotel {prop_id}",
+            "hotel_label": hotel_doc.get("display_name") or hotel_doc.get("hotel_name") or f"Hotel {prop_id}",
             "country": detail.get("prop_country_id"),
             "review_label": detail.get("review_label"),
             "avg_price_label": detail.get("avg_price_label"),

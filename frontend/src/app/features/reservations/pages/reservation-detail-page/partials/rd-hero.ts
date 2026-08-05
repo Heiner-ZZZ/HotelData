@@ -37,6 +37,12 @@ import {
           Modificar
         </button>
       }
+      @if (canMarkNoShow()) {
+        <button type="button" class="btn-action btn-noshow" (click)="markNoShow.emit()" [disabled]="noShowPending()">
+          <span class="material-symbols-outlined btn-icon">person_off</span>
+          {{ noShowPending() ? 'Marcando...' : 'Marcar no-show' }}
+        </button>
+      }
       @if (isStaff() && vm() && canAssignRooms(vm()!.status)) {
         <button type="button" class="btn-action btn-rooms" (click)="openRoomModal.emit()">
           <span class="material-symbols-outlined btn-icon">meeting_room</span>
@@ -146,10 +152,13 @@ export class RdHeroComponent {
   readonly cancelPending = input<boolean>(false);
   readonly confirmPending = input<boolean>(false);
   readonly rejectPending = input<boolean>(false);
+  readonly canMarkNoShow = input<boolean>(false);
+  readonly noShowPending = input<boolean>(false);
 
   readonly confirm = output<void>();
   readonly reject = output<void>();
   readonly cancel = output<void>();
+  readonly markNoShow = output<void>();
   readonly toggleEdit = output<void>();
   readonly openRoomModal = output<void>();
   readonly goToInStay = output<string>();

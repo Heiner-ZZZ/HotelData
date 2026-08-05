@@ -368,6 +368,10 @@ def confirm_property_registration_code(
         "failed_login_attempts": 0,
         "locked_until": None,
         "assigned_prop_id": prop_id,
+        # Security: assigned_hotels DEBE quedar con el prop_id del dueño.
+        # Sin esto, hotel_filter (que filtra por assigned_hotels) trataría una
+        # lista vacía como "sin restricción" y el dueño vería TODOS los hoteles.
+        "assigned_hotels": [prop_id],
         "created_at": now,
         "updated_at": now,
     }

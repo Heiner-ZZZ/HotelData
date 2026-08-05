@@ -30,8 +30,7 @@ export class ConfirmDialogService {
 
   private resolveFn: ((result: boolean) => void) | null = null;
   /** Modo previo capturado al abrir un diálogo con `config.mode` — se restaura al cerrar. */
-  private savedMode: OperationMode | null = null;
-  private savedDetail = '';
+  private savedTransientRelease: (() => void) | null = null;
 
   /** Open the confirmation dialog. Returns a Promise that resolves to true (confirmed) or false (cancelled).
    * If a dialog is already open, it is cleanly dismissed first. */
@@ -42,12 +41,9 @@ export class ConfirmDialogService {
     // Si el diálogo declara un modo, mostrarlo en el nav mientras esté abierto.
     // Se captura el modo previo para restaurarlo al cerrar (ej. una página de
     // edición que abre un confirm de borrado vuelve a 'update' al terminar).
-    this.savedMode = null;
-    this.savedDetail = '';
+    this.savedTransientRelease = null;
     if (config.mode) {
-      this.savedMode = this.opMode.mode();
-      this.savedDetail = this.opMode.detail();
-      this.opMode.setMode(config.mode, config.modeDetail ?? '');
+      this.savedTransientRelease = this.opMode.setTransientMode(config.mode, config.modeDetail ?? '');
     }
 
     return new Promise<boolean>((resolve) => {
@@ -71,12 +67,9 @@ export class ConfirmDialogService {
   }
 
   private _close(result: boolean): void {
-    // Restaurar el modo CRUD previo que quedó capturado al abrir (si aplica).
-    if (this.savedMode !== null) {
-      this.opMode.setMode(this.savedMode, this.savedDetail);
-      this.savedMode = null;
-      this.savedDetail = '';
-    }
+    // Quitar el overlay; el modo de la página vuelve automáticamente.
+    this.savedTransientRelease?.();
+    this.savedTransientRelease = null;
     this.isOpen.set(false);
     this.resolveFn?.(result);
     this.resolveFn = null;

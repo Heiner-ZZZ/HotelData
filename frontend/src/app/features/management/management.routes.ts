@@ -133,6 +133,11 @@ export const MANAGEMENT_ROUTES: Routes = [
       import('../shifts/shifts.routes').then((m) => m.SHIFTS_ROUTES)
   },
   {
+    path: 'team-permissions',
+    loadChildren: () =>
+      import('../hotel-permissions/hotel-permissions.routes').then((m) => m.HOTEL_PERMISSIONS_ROUTES)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./pages/settings-page/settings-page').then((m) => m.SettingsPageComponent)

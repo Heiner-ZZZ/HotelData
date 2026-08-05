@@ -9,6 +9,7 @@ export const MANUAL_RESERVATIONS_ROUTES: Routes = [
   {
     path: 'new',
     loadComponent: () =>
-      import('./pages/manual-reservation-new-page/manual-reservation-new-page').then((m) => m.ManualReservationNewPageComponent)
+      import('./pages/manual-reservation-new-page/manual-reservation-new-page').then((m) => m.ManualReservationNewPageComponent),
+    data: { operationMode: 'insert', operationDetail: 'Reserva manual' }
   }
 ];

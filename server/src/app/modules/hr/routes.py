@@ -96,6 +96,12 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
     """Auto-generate a user account for an employee if none exists.
 
     Returns dict with username and (first-time only) generated password.
+
+    Deny-by-default: si el empleado no tiene ``prop_id`` (campo opcional en
+    ``EmployeeCreate``) NO se crea cuenta. Como ``hotel_filter`` trata
+    ``assigned_hotels`` vacío como "sin restricción", una cuenta sin hotel
+    vería TODOS los hoteles del sistema — por eso retornamos credenciales
+    vacías y no insertamos nada.
     """
     user_id = employee_doc.get("user_id")
     if user_id:
@@ -139,7 +145,13 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
     now = datetime.now(timezone.utc)
 
     emp_prop_id = employee_doc.get("prop_id")
-    assigned_hotels: list[int] = [emp_prop_id] if emp_prop_id is not None else []
+    if emp_prop_id is None:
+        # Security (deny-by-default): sin prop_id no hay hotel al que acotar
+        # la cuenta. Escribir assigned_hotels=[] la dejaría con alcance
+        # ilimitado (hotel_filter trata vacío como sin restricción → vería
+        # todos los hoteles del sistema). Sin hotel, sin cuenta.
+        return {"username": "", "password": None}
+    assigned_hotels: list[int] = [emp_prop_id]
 
     user_doc = {
         "username": username,

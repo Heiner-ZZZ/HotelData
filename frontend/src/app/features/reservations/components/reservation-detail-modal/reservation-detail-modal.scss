@@ -71,10 +71,13 @@
   text-transform: uppercase;
 }
 
-.reservation-detail-badge.status-active { background: var(--success-light); color: var(--success-strong); }
-.reservation-detail-badge.status-upcoming { background: var(--warning-light); color: var(--warning-strong); }
-.reservation-detail-badge.status-past { background: color-mix(in srgb, var(--muted-text) 15%, transparent); color: var(--muted-text); }
-.reservation-detail-badge.status-cancelled { background: var(--danger-light); color: var(--danger-strong); }
+/* Badge de estado con el mismo criterio que las barras del timeline:
+   colores naturales de la app + texto semántico --on-* (blanco en light,
+   oscuro en dark). past conserva el gris oscurecido + blanco. */
+.reservation-detail-badge.status-active { background: var(--accent); color: var(--on-accent); }
+.reservation-detail-badge.status-upcoming { background: var(--warning); color: var(--on-warning); }
+.reservation-detail-badge.status-past { background: color-mix(in srgb, var(--muted-text) 74%, #000); color: #fff; }
+.reservation-detail-badge.status-cancelled { background: var(--danger); color: var(--on-danger); }
 
 .reservation-detail-close {
   display: grid;
@@ -168,7 +171,58 @@
 .reservation-detail-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
 .reservation-detail-secondary { background: var(--surface-soft); }
 .reservation-detail-ghost { background: transparent; color: var(--muted-text); }
+.reservation-detail-stay {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  color: var(--success-strong);
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: none;
+    border-color: var(--app-border);
+    background: var(--surface-soft);
+    color: var(--muted-text);
+  }
+}
 .reservation-detail-action:hover { filter: brightness(0.96); }
+
+/* Aviso inline del estado de la estancia (check-in/check-out) para reservas
+   vigentes — evita navegar a otra página para saber si falta el check-in. */
+.reservation-detail-stay-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.35;
+
+  .material-symbols-outlined {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+  }
+
+  &.is-warning {
+    border-color: color-mix(in srgb, var(--warning) 45%, var(--app-border));
+    background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+    color: var(--warning-strong);
+  }
+
+  &.is-success {
+    border-color: color-mix(in srgb, var(--success) 45%, var(--app-border));
+    background: color-mix(in srgb, var(--success) 12%, var(--surface));
+    color: var(--success-strong);
+  }
+
+  &.is-info {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--app-border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    color: var(--accent-strong);
+  }
+}
 
 @media (max-width: 600px) {
   .reservation-detail-backdrop.is-side-panel .reservation-detail-dialog {

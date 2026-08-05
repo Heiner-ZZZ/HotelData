@@ -21,6 +21,18 @@
   }
 }
 
+.toast-error {
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    --icon-FILL: 1;
+    --icon-opsz: 20;
+  }
+}
+
 @keyframes toast-slide-in {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }

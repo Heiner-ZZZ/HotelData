@@ -1,6 +1,6 @@
 /* ─── Operation mode indicator (CRUD chip) ───
- * Cuadrito de color en el nav que indica el modo actual.
- * read=verde, insert=ámbar, update=naranja, delete=rojo. */
+ * Círculo de estado vivo en el nav: read=verde, insert=ámbar,
+ * update=naranja, delete=rojo. */
 
 .op-chip-wrap {
   display: inline-flex;
@@ -15,8 +15,10 @@
   gap: 0.35rem;
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--op-color) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--op-color) 45%, transparent);
   background: color-mix(in srgb, var(--op-color) 10%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--op-color) 8%, transparent),
+              0 4px 14px color-mix(in srgb, var(--op-color) 12%, transparent);
   color: var(--op-color);
   font-size: 0.68rem;
   font-weight: 700;
@@ -27,41 +29,60 @@
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 
   .op-dot {
-    width: 0.55rem;
-    height: 0.55rem;
+    position: relative;
+    width: 0.58rem;
+    height: 0.58rem;
+    border: 2px solid color-mix(in srgb, var(--op-color) 78%, transparent);
     border-radius: 50%;
     background: var(--op-color);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--op-color) 55%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--op-color) 18%, transparent),
+                0 0 9px color-mix(in srgb, var(--op-color) 65%, transparent);
     flex-shrink: 0;
   }
 }
 
-/* Modo lectura: discreto, sin animación */
-.op-chip--read {
-  .op-dot {
-    box-shadow: none;
-  }
-}
-
-/* Modos de escritura: leve pulso en el punto para llamar la atención */
+/* Lectura: estable. Los modos de escritura respiran para comunicar actividad. */
 .op-chip--insert,
 .op-chip--update,
 .op-chip--delete {
   .op-dot {
-    animation: op-dot-pulse 2s ease-in-out infinite;
+    animation: op-dot-pulse 1.8s ease-in-out infinite;
   }
 }
 
 @keyframes op-dot-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--op-color) 40%, transparent);
+    transform: scale(1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--op-color) 18%, transparent),
+                0 0 8px color-mix(in srgb, var(--op-color) 52%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--op-color) 0%, transparent);
+    transform: scale(1.16);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--op-color) 0%, transparent),
+                0 0 14px color-mix(in srgb, var(--op-color) 82%, transparent);
   }
 }
 
-/* El modo delete es el más grave: fondo un poco más intenso */
+/* Delete: contraste persistente y pulso más evidente bajo un backdrop oscuro. */
 .op-chip--delete {
-  background: color-mix(in srgb, var(--op-color) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--op-color) 78%, transparent);
+  background: color-mix(in srgb, var(--op-color) 22%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--op-color) 25%, transparent),
+              0 5px 18px color-mix(in srgb, var(--op-color) 24%, transparent);
+
+  .op-dot {
+    width: 0.68rem;
+    height: 0.68rem;
+    animation-duration: 1.15s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-chip--insert,
+  .op-chip--update,
+  .op-chip--delete {
+    .op-dot {
+      animation: none;
+    }
+  }
 }

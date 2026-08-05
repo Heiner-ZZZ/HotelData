@@ -59,10 +59,6 @@ export class PropertyEditPageComponent {
   readonly propId = signal(0);
 
   constructor() {
-    // Página de edición → modo UPDATE en el nav (naranja: sobrescribe estado existente)
-    this.operationMode.setMode('update', 'Perfil del hotel');
-    this.destroyRef.onDestroy(() => this.operationMode.reset());
-
     this.currenciesApi.list(true).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({

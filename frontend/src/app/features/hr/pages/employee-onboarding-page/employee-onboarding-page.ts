@@ -596,6 +596,16 @@ export class EmployeeOnboardingPageComponent {
       return;
     }
 
+    // Security: los roles de hotel REQUIEREN assigned_hotels — el backend
+    // rechaza [] (alcance ilimitado). El usuario se crea acotado al hotel
+    // actual del empleado; sin hotel, no se puede crear la cuenta.
+    const hotelId = this.form.propId || this.propCtx.currentPropId() || null;
+    if (!hotelId) {
+      this.createUserSaving.set(false);
+      this.createUserError.set('Selecciona un hotel antes de crear el usuario: los usuarios de hotel deben estar asignados a al menos un hotel.');
+      return;
+    }
+
     this.createUserSaving.set(true);
     this.createUserError.set('');
 
@@ -605,7 +615,7 @@ export class EmployeeOnboardingPageComponent {
       password: password,
       primary_role: role,
       display_name: displayName.trim() || username.trim(),
-      assigned_hotels: [],
+      assigned_hotels: [hotelId],
     }, { withCredentials: true }).subscribe({
       next: (result) => {
         this.createUserSaving.set(false);

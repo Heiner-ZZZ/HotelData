@@ -94,13 +94,78 @@ export class RoomsPageComponent {
 
   readonly errorMessage = signal('');
 
+  /** El formulario permanece oculto hasta que el usuario elige qué quiere crear. */
+  readonly showCreateForm = signal(false);
   /** 'existing' = seleccionar tipo existente, 'new' = escribir nuevo */
   readonly createMode = signal<'existing' | 'new'>('new');
   readonly selectedExistingRoomTypeId = signal('');
 
+  startCreate(mode: 'existing' | 'new'): void {
+    this.createMode.set(mode);
+    this.showCreateForm.set(true);
+    this.opMode.setTransientMode(
+      'insert',
+      mode === 'new' ? 'Nueva habitación' : 'Habitación con tipo existente',
+    );
+
+    if (mode === 'new') {
+      this.setCreateMode('new');
+    }
+  }
+
+  cancelCreate(): void {
+    this.showCreateForm.set(false);
+    this.selectedExistingRoomTypeId.set('');
+    this.createForm.reset({
+      name: '',
+      description: '',
+      maxAdults: 2,
+      maxChildren: 0,
+      baseCapacity: 2,
+      baseRate: 0,
+      isActive: true,
+      roomNumber: '',
+      floor: '',
+      view: '',
+      smoking: false,
+      accessible: false,
+      imageUrl: '',
+    });
+    this.createImagePreviewUrl.set('');
+    this.createSelectedFile.set(null);
+    this.opMode.reset();
+  }
+
+  private resetCreateForm(): void {
+    this.createForm.reset({
+      name: '',
+      description: '',
+      maxAdults: 2,
+      maxChildren: 0,
+      baseCapacity: 2,
+      baseRate: 0,
+      isActive: true,
+      roomNumber: '',
+      floor: '',
+      view: '',
+      smoking: false,
+      accessible: false,
+      imageUrl: '',
+    });
+    this.createImagePreviewUrl.set('');
+    this.createSelectedFile.set(null);
+  }
+
+  private closeCreateForm(): void {
+    this.showCreateForm.set(false);
+    this.resetCreateForm();
+    this.opMode.reset();
+  }
+
   readonly existingRoomTypes = computed(() => {
     return this.roomsResource.value()?.roomTypes ?? [];
   });
+  readonly hasExistingRoomTypes = computed(() => this.existingRoomTypes().length > 0);
 
   readonly createForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required]],
@@ -140,6 +205,12 @@ export class RoomsPageComponent {
 
   setCreateMode(mode: 'existing' | 'new') {
     this.createMode.set(mode);
+    if (this.showCreateForm()) {
+      this.opMode.setMode(
+        'insert',
+        mode === 'new' ? 'Nueva habitación' : 'Habitación con tipo existente',
+      );
+    }
     if (mode === 'new') {
       this.selectedExistingRoomTypeId.set('');
       this.createForm.patchValue({
@@ -281,7 +352,7 @@ export class RoomsPageComponent {
 
   startEdit(roomType: RoomTypeItem) {
     // Editar tipo de habitación existente → modo update en el nav.
-    this.opMode.setMode('update', roomType.name);
+    this.opMode.setTransientMode('update', roomType.name);
     // Defer form manipulation to next VM turn to avoid NG01002
     this.ngZone.runOutsideAngular(() => {
       setTimeout(() => {
@@ -390,7 +461,7 @@ export class RoomsPageComponent {
 
   requestDelete(roomTypeId: string, name: string) {
     // Modo delete mientras el modal de confirmación está abierto.
-    this.opMode.setMode('delete', name);
+    this.opMode.setTransientMode('delete', name);
     this.deleteTargetId.set(roomTypeId);
     this.deleteTargetName.set(name);
     this.showDeleteConfirm.set(true);
@@ -542,23 +613,7 @@ export class RoomsPageComponent {
         this.roomsResource.reload();
         const msg = mode === 'existing' ? 'Habitación física registrada' : 'Tipo de habitación registrado';
         this.toast.success(msg);
-        this.createForm.reset({
-          name: '',
-          description: '',
-          maxAdults: 2,
-          maxChildren: 0,
-          baseCapacity: 2,
-          baseRate: 0,
-          isActive: true,
-          roomNumber: '',
-          floor: '',
-          view: '',
-          smoking: false,
-          accessible: false,
-          imageUrl: '',
-        });
-        this.createImagePreviewUrl.set('');
-        this.createSelectedFile.set(null);
+        this.closeCreateForm();
       },
       error: (error: ApiError) => {
         this.toast.error(error.message || 'No fue posible registrar.');

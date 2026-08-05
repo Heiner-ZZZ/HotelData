@@ -20,7 +20,7 @@ export const OWNERSHIP_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/ownership-create-page/ownership-create-page').then((m) => m.OwnershipCreatePageComponent),
     canActivate: [roleGuard],
-    data: { requiredPermission: 'users.manage', allowedRoles: ['super_admin'] }
+    data: { operationMode: 'insert', operationDetail: 'Propietario', requiredPermission: 'users.manage', allowedRoles: ['super_admin'] }
   },
   {
     path: 'users/:userId',

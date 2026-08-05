@@ -52,7 +52,7 @@ def _operational_item(
     return {
         "booking_id": booking["booking_id"],
         "prop_id": int(booking["prop_id"]),
-        "hotel_label": hotel.get("display_name") or hotel.get("hotel_name") or f"Hotel {booking['prop_id']}",
+        "hotel_label": hotel.get("hotel_label") or f"Hotel {booking['prop_id']}",
         "guest_name": (guest or {}).get("guest_name") or booking.get("guest_name") or "Huesped principal",
         "guest_email": (guest or {}).get("guest_email") or booking.get("guest_email") or "",
         "date": booking.get("check_in_date") if flow == "check_in" else booking.get("check_out_date"),

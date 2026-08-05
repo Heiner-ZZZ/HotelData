@@ -90,6 +90,16 @@
   position: relative;
 }
 
+/* Divider sutil entre secciones del nav (breadcrumb|modo, notif|perfil).
+   --gray-400 es más oscuro que --app-border en modo claro (visible sin
+   ser pesado) y queda bien en modo oscuro. */
+.topbar-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: color-mix(in srgb, var(--gray-400) 80%, transparent);
+  flex-shrink: 0;
+}
+
 .notif-btn {
   position: relative;
   display: flex;

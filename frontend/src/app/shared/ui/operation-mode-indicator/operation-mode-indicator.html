@@ -1,5 +1,5 @@
 <span class="op-chip-wrap" [attr.title]="tooltip()" role="status" aria-live="polite">
-  <span class="op-chip" [class]="chipClass()" [style.--op-color]="info().color">
+  <span class="op-chip" [class]="chipClass()" [style.--op-color]="info().color" [attr.aria-label]="tooltip()">
     <span class="op-dot" aria-hidden="true"></span>
     <span class="op-label">{{ info().label }}</span>
   </span>

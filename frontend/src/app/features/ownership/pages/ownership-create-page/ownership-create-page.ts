@@ -41,10 +41,6 @@ export class OwnershipCreatePageComponent {
   });
 
   constructor() {
-    // Página de creación → modo INSERT en el nav (ámbar: registra información nueva)
-    this.operationMode.setMode('insert', 'Propietario');
-    this.destroyRef.onDestroy(() => this.operationMode.reset());
-
     this.api.getRoles().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (roles) => this.roles.set(roles),
       error: () => {
@@ -86,8 +82,16 @@ export class OwnershipCreatePageComponent {
 
   onSubmit() {
     if (this.form.invalid || this.submitting()) return;
-    this.submitting.set(true);
     this.errorMessage.set('');
+
+    // Security: los roles de hotel REQUIEREN assigned_hotels — el backend
+    // rechaza [] (alcance ilimitado). Validamos aquí para mejor UX.
+    if (this.selectedHotels().length === 0) {
+      this.errorMessage.set('Debe seleccionar al menos un hotel: los usuarios de hotel deben estar asignados a un hotel.');
+      return;
+    }
+
+    this.submitting.set(true);
 
     const { username, email, displayName, password, primaryRole } = this.form.getRawValue();
 

@@ -61,12 +61,16 @@ async def test_login_api_missing_fields_returns_400(client):
     assert response.status_code == 400
 
 
-async def test_me_unauthenticated_returns_401(client):
+async def test_me_unauthenticated_returns_guest_payload(client):
+    """/api/auth/me es un endpoint público: sin sesión responde 200 con un
+    payload de huésped (authenticated=False), no 401.
+    """
     response = await client.get("/api/auth/me")
-    assert response.status_code == 401
-    body = response.json()["detail"]
+    assert response.status_code == 200
+    body = response.json()
     assert body["authenticated"] is False
-    assert body["login_url"] == "/login"
+    assert body["user"] is None
+    assert body["session"] is None
 
 
 async def test_me_authenticated_returns_user(client, cliente_user):

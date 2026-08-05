@@ -14,6 +14,7 @@ from src.app.modules.reservations.service import (
 from src.app.modules.reservations.service._checkinout import update_check_in_datetime
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.dependencies import require_permission
+from src.app.modules.reception import get_active_shift_id
 from src.database.connection import get_database
 
 from src.app.modules.reservations.routes.management_impl import (
@@ -28,6 +29,27 @@ from src.app.modules.reservations.routes.management_impl import (
 _logger = logging.getLogger(__name__)
 
 management_api_router = APIRouter(prefix="/api/management", tags=["management-operations-api"])
+
+
+def _require_active_shift(prop_id: int) -> str:
+    """Return the active cash-shift id for ``prop_id`` or raise 409.
+
+    Front-desk operations (check-in/check-out) are cashier actions in the
+    OPERA-style model: they require an open shift for the property, and the
+    shift id is stamped on the booking at write time so the close-of-shift
+    report can reconcile by FK instead of a time-window guess.
+    """
+    shift_id = get_active_shift_id(prop_id)
+    if shift_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No hay un turno de caja activo para esta propiedad. "
+                "Abre un turno primero en Cajas y Turnos antes de realizar "
+                "operaciones de front desk."
+            ),
+        )
+    return shift_id
 
 
 @management_api_router.get("/check-ins/dates")
@@ -211,12 +233,15 @@ def check_in_complete_api(
 
         ip_address = extract_ip_address(request)
 
+        shift_id = _require_active_shift((before.get("prop_id") or 0) if before else 0)
+
         result = complete_check_in(
             booking_id,
             changed_by=str(payload.get("changed_by") or current_user.get("username", "web")),
             payment_method=str(payload.get("payment_method", "")),
             ip_address=ip_address,
             observations=observations,
+            shift_id=shift_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -371,6 +396,8 @@ def check_out_complete_api(
     if before and before.get("stay_status") == "checked_out":
         return {"booking_id": booking_id, "stay_status": "checked_out"}
 
+    shift_id = _require_active_shift((before.get("prop_id") or 0) if before else 0)
+
     try:
         observations = str(payload.get("check_out_observations") or "")
         save_check_out_detail(
@@ -402,6 +429,7 @@ def check_out_complete_api(
             discount_reason=str(payload.get("check_out_discount_reason", "") or ""),
             damages_found=bool(payload.get("check_out_damages_found", False)),
             keys_returned=bool(payload.get("check_out_keys_returned", False)),
+            shift_id=shift_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

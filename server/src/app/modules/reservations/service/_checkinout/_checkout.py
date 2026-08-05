@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from bson import ObjectId
+
 from src.database.connection import get_database
 from .._helpers import utc_now
 from src.app.modules.reservations.service._checkinout._helpers import (
@@ -31,6 +33,7 @@ def complete_check_out(
     discount_reason: str = "",
     damages_found: bool = False,
     keys_returned: bool = False,
+    shift_id: str | None = None,
 ) -> dict[str, Any]:
     # ── Validate keys_returned BEFORE any database writes ──
     if not keys_returned:
@@ -90,6 +93,9 @@ def complete_check_out(
         checkout_set["check_out_damages_found"] = True
     if observations:
         checkout_set["check_out_observations"] = observations
+    if shift_id:
+        # Front-desk check-outs are tied to the open cash shift at write time.
+        checkout_set["shift_id"] = ObjectId(shift_id)
 
     result = db.booking_orders.find_one_and_update(
         {"booking_id": booking_id, "status": {"$nin": ["cancelled", "rejected"]}, "stay_status": "checked_in"},

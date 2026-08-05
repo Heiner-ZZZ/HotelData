@@ -5,12 +5,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.45);
+  background: color-mix(in srgb, var(--app-bg) 72%, transparent);
+  backdrop-filter: blur(2px) saturate(80%);
   animation: cd-fade-in 0.15s ease;
 }
 
+/* Destructive confirmations stay dark enough to focus attention without
+   completely erasing the live delete state in the top navigation. */
+.cd-backdrop-delete {
+  background: color-mix(in srgb, var(--app-bg) 62%, transparent);
+}
+
 .cd-dialog {
-  background: var(--surface, #fff);
+  background: var(--surface);
   border-radius: 12px;
   padding: 28px 32px 24px;
   max-width: 420px;

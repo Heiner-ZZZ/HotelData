@@ -1,8 +1,15 @@
 <div class="reservation-detail-page">
   @if (successMessage()) {
-    <div class="toast toast-success">
+    <div class="toast toast-success" role="status">
       <span class="material-symbols-outlined">check_circle</span>
       {{ successMessage() }}
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="toast toast-error" role="alert">
+      <span class="material-symbols-outlined">error</span>
+      {{ errorMessage() }}
     </div>
   }
 
@@ -34,9 +41,12 @@
           [cancelPending]="cancelPending()"
           [confirmPending]="confirmPending()"
           [rejectPending]="rejectPending()"
+          [canMarkNoShow]="canMarkNoShow()"
+          [noShowPending]="noShowPending()"
           (confirm)="confirmReservation()"
           (reject)="rejectReservation()"
           (cancel)="cancelReservation()"
+          (markNoShow)="markNoShow()"
           (toggleEdit)="toggleEdit()"
           (openRoomModal)="openRoomModal()"
           (goToInStay)="goToInStay($event)"
