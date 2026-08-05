@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architect"
+  short_description: "Stress-test designs and plan implementations"
+  default_prompt: "Use $architect to stress-test a technical design and produce an implementation-ready plan."
