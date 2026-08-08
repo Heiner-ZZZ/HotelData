@@ -50,6 +50,9 @@
                   <span class="notif-card-title">{{ item.typeLabel }}</span>
                   <span class="notif-card-time">{{ item.createdAt | date:'d MMM yyyy, HH:mm' }}</span>
                 </div>
+                @if (item.message) {
+                  <p class="notif-card-msg">{{ item.message }}</p>
+                }
                 @if (item.bookingId) {
                   <a [routerLink]="['/account/bookings', item.bookingId]" class="notif-card-booking">
                     <span class="material-symbols-outlined">book_online</span>

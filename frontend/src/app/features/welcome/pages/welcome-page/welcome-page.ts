@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker';
 import { API_CONFIG } from '../../../../core/api/api.config';
 
 import {
@@ -24,7 +25,7 @@ import { currencyFlag, mapFeaturedHotels } from '../../mappers/welcome.mapper';
 
 @Component({
   selector: 'app-welcome-page',
-  imports: [RouterLink, ReactiveFormsModule],
+  imports: [RouterLink, ReactiveFormsModule, DateRangePickerComponent],
   templateUrl: './welcome-page.html',
   styleUrls: [
     '../../../../../styles/_auth-shell.scss',
@@ -58,21 +59,14 @@ export class WelcomePageComponent {
   readonly childRange = [0, 1, 2, 3, 4, 5, 6];
   readonly roomRange = [1, 2, 3, 4, 5];
 
-  readonly minCheckOut = signal(this.today);
+  /** Fecha de entrada desde el date-range-picker compartido (mismo widget
+   *  que /account/bookings/new): un solo calendario, clic o arrastre. */
+  onStartDateChange(date: string): void {
+    this.searchForm.controls.checkIn.setValue(date);
+  }
 
-  onCheckInChange(): void {
-    const ci = this.searchForm.controls.checkIn.value;
-    if (ci) {
-      const next = new Date(ci);
-      next.setDate(next.getDate() + 1);
-      this.minCheckOut.set(next.toISOString().split('T')[0]);
-      const co = this.searchForm.controls.checkOut.value;
-      if (co && co <= ci) {
-        this.searchForm.controls.checkOut.setValue('');
-      }
-    } else {
-      this.minCheckOut.set(this.today);
-    }
+  onEndDateChange(date: string): void {
+    this.searchForm.controls.checkOut.setValue(date);
   }
 
   navigateToSearch(): void {

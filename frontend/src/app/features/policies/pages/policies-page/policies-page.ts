@@ -8,6 +8,7 @@ import { distinctUntilChanged, map } from 'rxjs';
 import type { ApiError } from '../../../../core/api/api-error.model';
 import { PropertySelectorComponent } from '../../../../shared/ui/property-selector/property-selector';
 import { PropertyContextService } from '../../../../shared/services/property-context.service';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
@@ -49,6 +50,7 @@ export class PoliciesPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
 
   // ── KPI: Operational stats ──
   readonly opStats = signal<OperationalStatsResponse | null>(null);
@@ -93,6 +95,70 @@ export class PoliciesPageComponent {
   /** Hotel-level check-in/check-out — never overridden by room-type policies. */
   private hotelCheckInTime = '';
   private hotelCheckOutTime = '';
+
+  // ═══ Explicit editing mode (mode-aware UI) ═══
+  /** True while the user is actively editing policies. */
+  readonly editing = signal(false);
+  /** Snapshot of the persisted form values when the edit session began. */
+  private baseFormValue: Record<string, string | number | boolean> | null = null;
+  /** Last vm applied to the form — guards against re-applying a stale resource
+      value while a post-save reload is still in flight. */
+  private lastAppliedVm: PoliciesViewModel | null = null;
+
+  /** Any pending change vs. the snapshot taken when editing began. */
+  readonly dirty = computed(() => {
+    if (!this.editing() || !this.baseFormValue) return false;
+    const base = this.baseFormValue;
+    const cur = this.policyForm.getRawValue() as unknown as Record<string, string | number | boolean>;
+    return Object.keys(base).some((key) => base[key] !== cur[key]);
+  });
+
+  /** Start an edit session: snapshot current values and switch the nav chip to "update". */
+  startEditing(): void {
+    if (this.editing()) return;
+    this.baseFormValue = { ...this.policyForm.getRawValue() } as Record<string, string | number | boolean>;
+    this.editing.set(true);
+    this.policyForm.enable();
+    this.applyScheduleDisabled();
+    this.opMode.setMode('update', 'Políticas');
+  }
+
+  /** Discard pending changes and return to read mode. */
+  cancelEditing(): void {
+    if (!this.editing()) {
+      this.opMode.reset();
+      return;
+    }
+    if (this.baseFormValue) {
+      this.policyForm.setValue(this.baseFormValue as unknown as ReturnType<typeof this.policyForm.getRawValue>);
+    }
+    this.editing.set(false);
+    this.baseFormValue = null;
+    this.policyForm.disable();
+    this.opMode.reset();
+  }
+
+  /** Close the edit session after a successful save. */
+  private endEditSession(): void {
+    this.editing.set(false);
+    this.baseFormValue = null;
+    this.policyForm.disable();
+    this.opMode.reset();
+  }
+
+  /** Check-in/check-out are hotel-global; lock them while scoped to a room type. */
+  private applyScheduleDisabled(): void {
+    const locked = !!this.selectedRoomTypeId();
+    const checkIn = this.policyForm.controls.checkInTime;
+    const checkOut = this.policyForm.controls.checkOutTime;
+    if (locked) {
+      checkIn.disable();
+      checkOut.disable();
+    } else {
+      checkIn.enable();
+      checkOut.enable();
+    }
+  }
 
   readonly policyForm = this.formBuilder.nonNullable.group({
     checkInTime: [''],
@@ -159,7 +225,8 @@ export class PoliciesPageComponent {
 
     effect(() => {
       const vm = this.policiesResource.value();
-      if (!vm) return;
+      if (!vm || this.editing() || vm === this.lastAppliedVm) return;
+      this.lastAppliedVm = vm;
       this.propertyCtx.setProperty(vm.propId, vm.hotelName);
 
       // Save hotel-level check-in/check-out (always take first non-empty value)
@@ -188,9 +255,17 @@ export class PoliciesPageComponent {
         houseRules: vm.houseRules,
       });
     });
+
+    // Read-only by default: the form only becomes editable inside an explicit
+    // edit session (mode-aware UI). setValue keeps working while disabled, so
+    // the httpResource effect above still populates fresh values.
+    this.policyForm.disable();
+    this.destroyRef.onDestroy(() => this.opMode.reset());
   }
 
   onPropSelected(event: { propId: number; label: string }) {
+    // Changing the property reloads a different policy set — leave any edit session.
+    this.cancelEditing();
     this.message.set('');
     if (!event.propId) this.propertyCtx.clear();
     else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
@@ -202,6 +277,7 @@ export class PoliciesPageComponent {
 
   switchRoomType(roomTypeId: string) {
     if (roomTypeId === this.selectedRoomTypeId()) return;
+    this.cancelEditing();
     this.message.set('');
     this.selectedRoomTypeId.set(roomTypeId);
     // Clear rate plan when switching room type (mutually exclusive scoping)
@@ -210,6 +286,7 @@ export class PoliciesPageComponent {
 
   switchRatePlan(ratePlanId: string) {
     if (ratePlanId === this.selectedRatePlanId()) return;
+    this.cancelEditing();
     this.message.set('');
     this.selectedRatePlanId.set(ratePlanId);
     // Clear room type when switching rate plan (mutually exclusive scoping)
@@ -259,6 +336,7 @@ export class PoliciesPageComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.endEditSession();
           this.policiesResource.reload();
           this.message.set('Políticas actualizadas');
         },

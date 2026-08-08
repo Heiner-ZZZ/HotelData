@@ -95,6 +95,16 @@ export class ProductsListPageComponent {
       supplierSku: dto.supplier_sku ?? null,
       parLevel: dto.par_level ?? null,
       lastPurchaseInvoiceRef: dto.last_purchase_invoice_ref ?? null,
+      lastPurchaseInvoice: dto.last_purchase_invoice
+        ? {
+            id: dto.last_purchase_invoice.id,
+            vendorName: dto.last_purchase_invoice.vendor_name,
+            invoiceDate: dto.last_purchase_invoice.invoice_date,
+            dueDate: dto.last_purchase_invoice.due_date,
+            total: dto.last_purchase_invoice.total,
+            status: dto.last_purchase_invoice.status,
+          }
+        : null,
       lastPurchaseQty: dto.last_purchase_qty ?? null,
       lastPurchaseAt: dto.last_purchase_at ?? null,
       isActive: dto.is_active ?? true,

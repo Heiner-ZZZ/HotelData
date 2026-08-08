@@ -12,6 +12,18 @@ export interface InvoiceListItem {
   createdAt: string;
 }
 
+export interface InvoiceProductLine {
+  productId: string;
+  name: string;
+  qty: number;
+  unitCost: number;
+  lineTotal: number;
+  restocked: boolean;
+  /** Live inventory context resolved at read time (null if product deleted). */
+  stockNow: number | null;
+  costNow: number | null;
+}
+
 export interface InvoiceDetail {
   id: string;
   vendorName: string;
@@ -27,6 +39,7 @@ export interface InvoiceDetail {
   approvedAt: string | null;
   notes: string;
   propId: number | null;
+  productLines: InvoiceProductLine[];
   createdAt: string;
   updatedAt: string;
 }

@@ -32,6 +32,9 @@
   flex-direction: column;
   background: var(--surface-raised);
   color: var(--app-text);
+  // Safety net: ningún descendiente (abspos, pseudo-elementos, grids con
+  // min-content amplio) debe poder estirar el documento horizontalmente.
+  overflow-x: hidden;
 }
 
 // Distribute the leftover height into <main>, not after it. The footer
@@ -85,6 +88,17 @@ main {
     border-right: 0;
   }
 
+  /* Esquinas: fila 1 = field1 (izq) + field2 fechas (der); fila 2 = CTA full */
+  .booking-bar > .booking-bar__field:nth-child(1) {
+    border-radius: 10px 0 0 0;
+  }
+  .booking-bar > .booking-bar__field:nth-child(2) {
+    border-radius: 0 10px 0 0;
+  }
+  .booking-bar > .booking-bar__cta {
+    border-radius: 0 0 10px 10px;
+  }
+
   .welcome-featured__grid { grid-template-columns: 1fr 1fr; }
 }
 
@@ -98,6 +112,15 @@ main {
     border-top: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
   }
   .booking-bar__field:nth-child(1) { border-top: 0; }
+
+  /* Esquinas: columna única — field1 arriba, CTA abajo */
+  .booking-bar > .booking-bar__field:nth-child(1) {
+    border-radius: 10px 10px 0 0;
+  }
+  .booking-bar > .booking-bar__cta {
+    border-radius: 0 0 10px 10px;
+  }
+
   .welcome-tab {
     padding: 12px 14px;
   }

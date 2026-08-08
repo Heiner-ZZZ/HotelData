@@ -50,11 +50,58 @@
         </div>
 
         <div class="field field-wide">
-          <label for="restock-invoice-ref">
-            Referencia factura
-            <span class="hint">opcional — para trazabilidad</span>
+          <label for="restock-invoice-id">
+            Factura de compra
+            <span class="hint">opcional — vincula el restock a una factura de Expenses</span>
           </label>
-          <input id="restock-invoice-ref" type="text" formControlName="invoice_ref" placeholder="ej. INV-2026-001" />
+          @if (invoicesLoading()) {
+            <div class="invoice-select-state">Cargando facturas…</div>
+          } @else if (invoicesError(); as err) {
+            <div class="invoice-select-state invoice-select-state--error">
+              <span class="material-symbols-outlined">error</span>
+              {{ err }}
+              <button type="button" class="invoice-retry-btn" (click)="loadInvoices()">Reintentar</button>
+            </div>
+          } @else {
+            <select id="restock-invoice-id" formControlName="invoice_id">
+              <option value="">Sin factura (restock manual)</option>
+              @for (inv of invoices(); track inv.id) {
+                <option [value]="inv.id">
+                  {{ inv.vendorName }} · {{ inv.invoiceDate || 'sin fecha' }} · ${{ inv.total.toFixed(2) }}
+                  @if (suggestedInvoice()?.id === inv.id) { · sugerida }
+                </option>
+              }
+            </select>
+            @if (suggestionHint(); as hint) {
+              <span class="suggestion-hint">
+                <span class="material-symbols-outlined">auto_awesome</span>
+                {{ hint }}
+              </span>
+            }
+            @if (invoiceRejected()) {
+              <span class="field-error">La factura fue rechazada y no puede usarse como compra — elige otra o guarda sin factura.</span>
+            } @else if (invoiceMissing()) {
+              <span class="field-error">La factura ya no existe — elige otra o guarda sin factura.</span>
+            }
+            @if (invoiceDetailLoading()) {
+              <span class="invoice-detail-loading">Consultando vínculo con la factura…</span>
+            } @else if (alreadyRestockedLine(); as line) {
+              <a
+                class="already-restocked"
+                [href]="invoiceDetailHref()"
+                (click)="openInvoiceDetail($event)"
+                [attr.title]="'Ver el detalle de la factura que ya repuso este producto'"
+              >
+                <span class="material-symbols-outlined">inventory_2</span>
+                <span class="already-restocked__copy">
+                  Ya fue repuesto por esta factura
+                  <strong>{{ line.qty }} uds · {{ invoiceDetail()?.invoiceDate || 'sin fecha' }}</strong>
+                  <span class="already-restocked__link">Ver factura</span>
+                </span>
+                <span class="material-symbols-outlined already-restocked__arrow">arrow_forward</span>
+              </a>
+            }
+          }
         </div>
       </div>
 

@@ -94,12 +94,14 @@
             }
           </div>
 
-          <button class="btn btn-primary btn-checkin" (click)="doCheckIn()" [disabled]="shiftLoading()">
-            <span class="material-symbols-outlined">
-              {{ shift.status === 'active' ? 'logout' : 'how_to_reg' }}
-            </span>
-            {{ shift.status === 'active' ? 'Finalizar Turno (Check-out)' : 'Confirmar Asistencia (Check-in)' }}
-          </button>
+          @if (hrAuth.canRegisterAttendance()) {
+            <button class="btn btn-primary btn-checkin" (click)="doCheckIn()" [disabled]="shiftLoading()">
+              <span class="material-symbols-outlined">
+                {{ shift.status === 'active' ? 'logout' : 'how_to_reg' }}
+              </span>
+              {{ shift.status === 'active' ? 'Finalizar Turno (Check-out)' : 'Confirmar Asistencia (Check-in)' }}
+            </button>
+          }
         } @else {
           <div class="shift-empty">
             <span class="material-symbols-outlined shift-empty-icon">event_busy</span>

@@ -17,6 +17,15 @@ export interface HotelProductDto {
   supplier_sku?: string | null;
   par_level?: number | null;
   last_purchase_invoice_ref?: string | null;
+  /** Resolved expense invoice (server-enriched) — null for legacy refs. */
+  last_purchase_invoice?: {
+    id: string;
+    vendor_name: string;
+    invoice_date: string;
+    due_date: string;
+    total: number;
+    status: string;
+  } | null;
   last_purchase_qty?: number | null;
   last_purchase_at?: string | null;
   is_active: boolean;
@@ -88,6 +97,9 @@ export interface RestockPayload {
   qty: number;
   unit_cost: number;
   supplier_name?: string;
+  /** Real FK: expense invoice ObjectId — preferred over the legacy free text. */
+  invoice_id?: string;
+  /** Legacy free-text reference (backend keeps supporting direct API callers). */
   invoice_ref?: string;
 }
 

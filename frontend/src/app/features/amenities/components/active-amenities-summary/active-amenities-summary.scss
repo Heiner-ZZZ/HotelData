@@ -14,9 +14,36 @@
   }
 }
 
-.panel-head p,
-.empty-copy {
-  color: var(--muted-text);
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  p,
+  .empty-copy {
+    color: var(--muted-text);
+  }
+
+  .edit-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+
+    .material-symbols-outlined {
+      font-size: 0.9rem;
+    }
+  }
 }
 
 .pill-wrap {
@@ -35,7 +62,8 @@
   color: var(--app-text);
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background 150ms ease;
+  transition: background 150ms ease, border-color 150ms ease;
+  border: 1px solid transparent;
 
   &:hover {
     background: color-mix(in srgb, var(--accent) 18%, transparent);
@@ -47,6 +75,55 @@
     --icon-wght: 350;
     --icon-opsz: 20;
     flex-shrink: 0;
+  }
+
+  .pill-label {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pill-price {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+
+    &--included {
+      color: var(--success);
+      background: color-mix(in srgb, var(--success) 12%, transparent);
+    }
+  }
+
+  .pill-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.1rem;
+    flex-shrink: 0;
+    transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+
+    .material-symbols-outlined {
+      font-size: 0.8rem;
+    }
+
+    &:hover {
+      background: var(--danger);
+      color: var(--on-accent, #fff);
+      transform: scale(1.12);
+    }
   }
 }
 

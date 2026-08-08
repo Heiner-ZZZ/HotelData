@@ -1,16 +1,38 @@
-<section class="surface-card summary-card">
+<section class="surface-card summary-card" [class.is-removable]="removable()">
   <div class="panel-head">
     <div>
       <h2>Servicios activos</h2>
       <p>{{ items().length }} seleccionados actualmente.</p>
     </div>
+    @if (removable()) {
+      <span class="edit-flag">
+        <span class="material-symbols-outlined">edit</span>
+        Editando
+      </span>
+    }
   </div>
   @if (items().length) {
     <div class="pill-wrap">
       @for (item of items(); track item) {
         <span class="pill">
           <span class="material-symbols-outlined pill-icon">{{ getIcon(item) }}</span>
-          <span>{{ item }}</span>
+          <span class="pill-label">{{ item }}</span>
+          @if (getPrice(item) > 0) {
+            <span class="pill-price">+${{ getPrice(item) }}</span>
+          } @else {
+            <span class="pill-price pill-price--included">Incl.</span>
+          }
+          @if (removable()) {
+            <button
+              type="button"
+              class="pill-remove"
+              (click)="onRemove(item)"
+              [attr.aria-label]="'Quitar servicio ' + item"
+              title="Quitar servicio"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          }
         </span>
       }
     </div>

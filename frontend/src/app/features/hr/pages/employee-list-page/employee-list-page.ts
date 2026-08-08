@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-head
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state';
 import { HrApiService } from '../../services/hr-api.service';
+import { HrAuthService } from '../../services/hr-auth.service';
 import type { EmployeeListItem } from '../../models/hr.model';
 
 @Component({
@@ -53,11 +54,13 @@ import type { EmployeeListItem } from '../../models/hr.model';
           style="padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; font-size: 12px; font-family: inherit; color: var(--muted-text); background: var(--surface); cursor: pointer;">
           <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">filter_list_off</span>
         </button>
-        <button type="button" (click)="createEmployee()"
-          style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
-          <span class="material-symbols-outlined" style="font-size: 16px;">person_add</span>
-          Nuevo Empleado
-        </button>
+        @if (hrAuth.canOnboard()) {
+          <button type="button" (click)="createEmployee()"
+            style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">person_add</span>
+            Nuevo Empleado
+          </button>
+        }
       </div>
 
       @switch (viewState()) {
@@ -127,6 +130,7 @@ export class EmployeeListPageComponent implements OnInit {
   private readonly hrApi = inject(HrApiService);
   private readonly router = inject(Router);
   readonly propertyCtx = inject(PropertyContextService);
+  readonly hrAuth = inject(HrAuthService);
   private searchTimeout: ReturnType<typeof setTimeout> | undefined;
 
   readonly viewState = signal<'loading' | 'success' | 'empty' | 'error'>('loading');

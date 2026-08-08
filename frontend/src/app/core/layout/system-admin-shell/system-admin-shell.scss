@@ -1,7 +1,8 @@
 .system-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--app-bg);
+  overflow-x: hidden;
 }
 
 .system-right {
@@ -11,8 +12,15 @@
   flex-direction: column;
 }
 
-.system-main {
+/* Contenedor de scroll propio debajo del nav (mismo patrón que
+   management-shell): el body no scrollea, así el nav superior queda
+   estático aunque la página sea larga. */
+.system-scroll {
   flex: 1;
+  overflow-y: auto;
+}
+
+.system-main {
   max-width: 1280px;
   width: 100%;
   padding: 1.5rem 1.5rem 2rem;

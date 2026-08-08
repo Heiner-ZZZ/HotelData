@@ -102,6 +102,43 @@
       (filterPending)="filterPending()"
     />
 
+    <!-- Banner 'reservas sin precio' (admin: maintenance pricing) -->
+    @if (isStaff() && unpricedCount() > 0) {
+      <section class="unpriced-banner" role="region" aria-label="Reservas sin precio">
+        <div class="unpriced-banner-head">
+          <span class="material-symbols-outlined unpriced-icon" aria-hidden="true">payments</span>
+          <div class="unpriced-banner-text">
+            <strong>{{ unpricedCount() }} reserva{{ unpricedCount() === 1 ? '' : 's' }} sin precio</strong>
+            <span>Recalcula con la tarifa canónica del hotel (fallback a base_rate).</span>
+          </div>
+        </div>
+        <ul class="unpriced-list">
+          @for (item of unpricedResource.value()?.slice(0, 3); track item.bookingId) {
+            <li class="unpriced-item">
+              <div class="unpriced-item-info">
+                <span class="unpriced-guest">{{ item.guestName || 'Huésped sin nombre' }}</span>
+                <span class="unpriced-meta">{{ item.bookingId }} · {{ item.checkInDate }} → {{ item.checkOutDate }}</span>
+              </div>
+              <button
+                type="button"
+                class="unpriced-btn"
+                (click)="onRecalculatePrice(item.bookingId)"
+                [disabled]="recalculatingId() !== null"
+              >
+                <span class="material-symbols-outlined" [class.spin]="recalculatingId() === item.bookingId" aria-hidden="true">
+                  {{ recalculatingId() === item.bookingId ? 'progress_activity' : 'sell' }}
+                </span>
+                {{ recalculatingId() === item.bookingId ? 'Recalculando…' : 'Recalcular precio' }}
+              </button>
+            </li>
+          }
+        </ul>
+        @if (unpricedCount() > 3) {
+          <p class="unpriced-more">+{{ unpricedCount() - 3 }} más · recalcula el resto con el script de mantenimiento.</p>
+        }
+      </section>
+    }
+
     <!-- Filters -->
     <app-reservations-filters-bar
       [dateForm]="dateForm"

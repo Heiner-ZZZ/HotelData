@@ -138,6 +138,12 @@
 }
 .btn--lg { padding: 10px 20px; font-size: 13px; }
 .btn--sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+.btn--outline {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.btn--outline:hover { background: var(--surface-hover); border-color: var(--accent); }
 .btn .icon     { font-size: 16px; }
 .btn--sm .icon { font-size: 14px; }
 
@@ -398,6 +404,22 @@
   color: var(--app-text);
   margin: 0;
 }
+/* Header row inside a tile — title left, contextual action right. The
+   `.meta-tile__heading` margin is zeroed here so the row height stays tight. */
+.meta-tile__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.meta-tile__head-row .meta-tile__heading { margin: 0; }
+.meta-tile__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
 .meta-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -407,6 +429,81 @@
 .meta-row__label  { color: var(--muted-text); }
 .meta-row__value  { color: var(--app-text); }
 .meta-row--full   { grid-column: 1 / -1; }
+
+/* ─── Linked restocks (invoice detail reverse view) ──────────────────── */
+.restock-line {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  transition: border-color 0.15s, background 0.15s;
+}
+.restock-line:last-child { margin-bottom: 0; }
+.restock-line:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--surface-hover);
+}
+.restock-line__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.restock-line__name:hover { color: var(--accent-hover); text-decoration: underline; }
+.restock-line__icon { font-size: 17px; color: var(--muted-text); flex-shrink: 0; }
+.restock-line__qty {
+  font-size: 12px;
+  color: var(--muted-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.restock-line__stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success-strong);
+  background: var(--success-light);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.restock-line__stock .material-symbols-outlined { font-size: 13px; }
+.restock-line__stock--muted {
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border-color: var(--app-border);
+}
+.restock-line__fail {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger-strong);
+  background: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  padding: 2px 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.restock-line__fail .material-symbols-outlined { font-size: 12px; }
+@media (max-width: 640px) {
+  .restock-line { flex-wrap: wrap; }
+  .restock-line__qty { white-space: normal; }
+}
 
 /* Action row inside the meta-grid — replaces the previous inline-style
    `<div class="meta-tile meta-tile--full" style="display: flex; …">`.

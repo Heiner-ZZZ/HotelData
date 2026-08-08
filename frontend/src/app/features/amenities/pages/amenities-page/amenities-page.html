@@ -111,15 +111,62 @@
         }
 
         <!-- Active Amenities Summary Cards component -->
-        <app-active-amenities-summary [items]="selectedAmenities()" />
+        <app-active-amenities-summary
+          [items]="selectedAmenities()"
+          [prices]="amenityPrices()"
+          [removable]="editing()"
+          (remove)="removeActiveAmenity($event)"
+        />
+
+        <!-- ═══ Mode chrome: read vs editing ═══ -->
+        @if (!editing()) {
+          <section class="surface-card mode-chrome mode-chrome--read">
+            <div class="mode-chrome-copy">
+              <span class="material-symbols-outlined mode-chrome-icon">visibility</span>
+              <div>
+                <h3>Modo lectura</h3>
+                <p>Estás viendo la oferta actual del hotel. Entra en modo edición para cambiar servicios o precios.</p>
+              </div>
+            </div>
+            <button type="button" class="btn-primary" (click)="startEditing()">
+              <span class="material-symbols-outlined">edit</span>
+              Editar servicios
+            </button>
+          </section>
+        } @else {
+          <section class="surface-card mode-chrome mode-chrome--edit">
+            <div class="mode-chrome-copy">
+              <span class="material-symbols-outlined mode-chrome-icon">edit</span>
+              <div>
+                <h3>Editando servicios</h3>
+                <p>
+                  Marca el precio 0 para incluirlo en la tarifa. Los cambios se guardan al confirmar.
+                  @if (dirty()) {
+                    <strong class="dirty-hint">· Cambios sin guardar</strong>
+                  }
+                </p>
+              </div>
+            </div>
+            <div class="mode-chrome-actions">
+              <button type="button" class="btn-secondary" (click)="cancelEditing()">
+                <span class="material-symbols-outlined">close</span>
+                Descartar
+              </button>
+              <button type="button" class="btn-primary" [disabled]="!dirty()" (click)="saveAmenities()">
+                <span class="material-symbols-outlined">save</span>
+                Guardar cambios
+              </button>
+            </div>
+          </section>
+        }
 
         <!-- Search & Manual Tool Panel -->
         <section class="surface-card search-utility-panel">
           <div class="panel-header">
             <span class="material-symbols-outlined icon-blue">search</span>
             <div>
-              <h3>Buscador y herramientas</h3>
-              <p>Filtra el catálogo o agrega un servicio personalizado manualmente.</p>
+              <h3>Buscador de catálogo</h3>
+              <p>Filtra los servicios disponibles para la propiedad.</p>
             </div>
           </div>
           <div class="utility-grid">
@@ -135,20 +182,55 @@
                 }
               </div>
             </div>
-            <div class="field">
-              <span class="field-label">Agregar servicio personalizado</span>
-              <div class="inline-entry">
-                <div class="input-wrap">
-                  <span class="material-symbols-outlined input-prefix">add_circle</span>
-                  <input [value]="manualAmenity()" (input)="manualAmenity.set($any($event.target).value)" placeholder="Ej: Shuttle gratis, Late check-out..." />
+            @if (editing()) {
+              <div class="field">
+                <span class="field-label">Agregar servicio personalizado</span>
+                <div class="inline-entry">
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined input-prefix">add_circle</span>
+                    <input [value]="manualAmenity()" (input)="manualAmenity.set($any($event.target).value)" placeholder="Ej: Shuttle gratis, Late check-out..." />
+                  </div>
+                  <button type="button" class="btn-secondary add-btn" (click)="openComposer()">
+                    <span class="material-symbols-outlined">add</span>
+                    Agregar
+                  </button>
                 </div>
-                <button type="button" class="btn-secondary add-btn" (click)="addManualAmenity()">
-                  <span class="material-symbols-outlined">add</span>
-                  Agregar
-                </button>
+              </div>
+            }
+          </div>
+
+          @if (composerOpen()) {
+            <div class="composer-card">
+              <div class="composer-head">
+                <span class="material-symbols-outlined composer-icon">add_circle</span>
+                <div>
+                  <strong>Nuevo servicio</strong>
+                  <p>Escribe un nombre y opcionalmente un precio extra. Precio 0 = incluido en tarifa.</p>
+                </div>
+              </div>
+              <div class="composer-body">
+                <div class="field composer-name">
+                  <span class="field-label">Nombre del servicio</span>
+                  <div class="input-wrap">
+                    <input [value]="manualAmenity()" (input)="manualAmenity.set($any($event.target).value)" placeholder="Ej: Shuttle gratis" />
+                  </div>
+                </div>
+                <div class="field composer-price">
+                  <span class="field-label">Precio extra ($)</span>
+                  <div class="input-wrap">
+                    <input type="number" min="0" step="0.5" [value]="manualPrice()" (input)="manualPrice.set($any($event.target).value)" placeholder="0 = incluido" />
+                  </div>
+                </div>
+                <div class="composer-actions">
+                  <button type="button" class="btn-secondary" (click)="closeComposer()">Cancelar</button>
+                  <button type="button" class="btn-primary" [disabled]="!manualAmenity().trim()" (click)="addManualAmenity()">
+                    <span class="material-symbols-outlined">add</span>
+                    Crear servicio
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          }
         </section>
 
         <!-- Search results counter -->
@@ -168,13 +250,14 @@
 
         <!-- Categories Selection Grid -->
         @if (filteredCategories().length) {
-          <section class="category-grid">
+          <section class="category-grid" [class.is-editing]="editing()">
             @for (category of filteredCategories(); track category.category) {
               <app-amenity-category-panel
                 [category]="category"
                 [selectedLabels]="selectedLookup()"
                 [searchTerm]="search()"
                 [amenityPrices]="amenityPrices()"
+                [editable]="editing()"
                 (toggleAmenity)="toggleAmenity($event)"
                 (updatePrice)="updateAmenityPrice($event.label, $event.value)"
               />
@@ -314,17 +397,7 @@
           </section>
         }
 
-        <!-- Expedia style Action Panel -->
-        <section class="form-actions-panel">
-          <div class="info-text">
-            <span class="material-symbols-outlined">info</span>
-            <span>Tienes <strong>{{ selectedAmenities().length }}</strong> servicio(s) activo(s) para este ámbito.</span>
-          </div>
-          <button type="button" class="btn-primary btn-save" (click)="saveAmenities()">
-            <span class="material-symbols-outlined">save</span>
-            Guardar servicios
-          </button>
-        </section>
+
       }
     }
   }

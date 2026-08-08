@@ -220,6 +220,56 @@
   --icon-wght: 350;
 }
 
+.panel-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Edit-session chrome (mode-aware UI) ── */
+.form-panel {
+  transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.form-panel--editing {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--warning) 3%, var(--surface));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--warning) 22%, transparent),
+    0 8px 28px color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.dirty-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+
+  &--on {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  }
+}
+
 /* ── Autocomplete ── */
 .autocomplete-wrapper {
   position: relative;

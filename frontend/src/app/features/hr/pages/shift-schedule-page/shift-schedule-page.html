@@ -58,7 +58,9 @@
       </div>
       <div class="ss-cal-body">
         @for (day of weekDays(); track day.date) {
-          <div class="ss-cal-cell" [class.ss-today]="day.isToday" (click)="editShift(undefined, day.date)">
+          <div class="ss-cal-cell" [class.ss-today]="day.isToday"
+               [class.ss-cell-readonly]="!hrAuth.canManageShifts()"
+               (click)="hrAuth.canManageShifts() && editShift(undefined, day.date)">
             @if (shiftsByDate().get(day.date); as shift) {
               <div class="ss-shift-card" [class.ss-shift-pending]="shift.status === 'pending'"
                    [class.ss-shift-active]="shift.status === 'active'"
@@ -67,16 +69,18 @@
                 @if (shift.area) {
                   <div class="ss-shift-area">{{ shift.area }}</div>
                 }
-                <div class="ss-shift-actions">
-                  <button class="ss-shift-btn ss-shift-edit" (click)="editShift(shift); $event.stopPropagation()" title="Editar">
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
-                  <button class="ss-shift-btn ss-shift-del" (click)="deleteShift(shift); $event.stopPropagation()" title="Eliminar">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
+                @if (hrAuth.canManageShifts()) {
+                  <div class="ss-shift-actions">
+                    <button class="ss-shift-btn ss-shift-edit" (click)="editShift(shift); $event.stopPropagation()" title="Editar">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="ss-shift-btn ss-shift-del" (click)="deleteShift(shift); $event.stopPropagation()" title="Eliminar">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                }
               </div>
-            } @else {
+            } @else if (hrAuth.canManageShifts()) {
               <div class="ss-add-hint">
                 <span class="material-symbols-outlined">add_circle</span>
                 <span class="ss-add-text">Asignar</span>
@@ -87,8 +91,9 @@
       </div>
     </div>
 
-    <!-- ── Shift Form ── -->
-    <div class="ss-form-card">
+    <!-- ── Shift Form (solo gestión: hr.shifts.manage) ── -->
+    @if (hrAuth.canManageShifts()) {
+      <div class="ss-form-card">
       <h3 class="ss-form-title">
         <span class="material-symbols-outlined">{{ editingShiftId() ? 'edit_calendar' : 'add' }}</span>
         {{ editingShiftId() ? 'Editar Turno' : 'Nuevo Turno' }}
@@ -130,9 +135,10 @@
         <button class="btn btn-primary btn-sm" (click)="saveShift()" [disabled]="saving()">
           <span class="material-symbols-outlined">{{ saving() ? 'hourglass_top' : 'save' }}</span>
           {{ saving() ? 'Guardando...' : editingShiftId() ? 'Actualizar Turno' : 'Crear Turno' }}
-        </button>
+          </button>
+        </div>
       </div>
-    </div>
+    }
   } @else {
     <div class="ss-empty">
       <span class="material-symbols-outlined">calendar_month</span>

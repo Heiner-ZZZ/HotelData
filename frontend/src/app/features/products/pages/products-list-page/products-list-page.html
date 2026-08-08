@@ -100,6 +100,9 @@
               }
               <th class="numeric">Retail</th>
               <th class="numeric">Stock</th>
+              @if (canSeeCost()) {
+                <th>Última compra</th>
+              }
               <th>Estado</th>
               <th class="actions-col">Acciones</th>
             </tr>
@@ -145,6 +148,24 @@
                     </span>
                   }
                 </td>
+                @if (canSeeCost()) {
+                  <td>
+                    @if (p.lastPurchaseInvoice; as inv) {
+                      <a
+                        class="invoice-link"
+                        [routerLink]="['/management/expenses/invoices', inv.id]"
+                        title="Ver factura en Expenses"
+                      >
+                        <span class="invoice-vendor">{{ inv.vendorName }}</span>
+                        <span class="invoice-meta">{{ inv.invoiceDate || '—' }} · ${{ inv.total.toFixed(2) }}</span>
+                      </a>
+                    } @else if (p.lastPurchaseInvoiceRef) {
+                      <span class="invoice-legacy" title="Referencia sin factura vinculada">{{ p.lastPurchaseInvoiceRef }}</span>
+                    } @else {
+                      <span class="invoice-empty">—</span>
+                    }
+                  </td>
+                }
                 <td>
                   <span class="status-badge" [class]="statusClass(p)">{{ statusLabel(p) }}</span>
                 </td>

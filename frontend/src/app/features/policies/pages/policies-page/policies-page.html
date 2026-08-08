@@ -86,12 +86,25 @@
           </article>
         </section>
 
-        <section class="surface-card form-panel">
+        <section class="surface-card form-panel" [class.form-panel--editing]="editing()">
           <div class="panel-head">
             <span class="material-symbols-outlined panel-head-icon icon-policy-amber">gavel</span>
-            <div>
+            <div class="panel-head-copy">
               <h2>Politicas operativas</h2>
               <p>Check-in, cancelacion, pagos y reglas de la propiedad.</p>
+            </div>
+            <div class="panel-head-actions">
+              @if (editing()) {
+                <span class="dirty-chip" [class.dirty-chip--on]="dirty()">
+                  <span class="material-symbols-outlined">edit_note</span>
+                  {{ dirty() ? 'Cambios sin guardar' : 'Sin cambios' }}
+                </span>
+              } @else {
+                <button type="button" class="btn-primary" (click)="startEditing()">
+                  <span class="material-symbols-outlined">edit</span>
+                  Editar políticas
+                </button>
+              }
             </div>
           </div>
 
@@ -165,7 +178,7 @@
                       <span class="field-hint">global</span>
                     }
                   </span>
-                  <input type="time" formControlName="checkInTime" [disabled]="!!selectedRoomTypeId()" />
+                  <input type="time" formControlName="checkInTime" />
                 </label>
                 <label class="field" [class.field--disabled]="!!selectedRoomTypeId()">
                   <span class="field-label">
@@ -175,7 +188,7 @@
                       <span class="field-hint">global</span>
                     }
                   </span>
-                  <input type="time" formControlName="checkOutTime" [disabled]="!!selectedRoomTypeId()" />
+                  <input type="time" formControlName="checkOutTime" />
                 </label>
               </div>
             </div>
@@ -332,12 +345,18 @@
               </div>
             </div>
 
-            <div class="form-actions field-span">
-              <button type="submit" class="btn-primary" [disabled]="policyForm.invalid">
-                <span class="btn-icon material-symbols-outlined">save</span>
-                Guardar cambios
-              </button>
-            </div>
+            @if (editing()) {
+              <div class="form-actions field-span">
+                <button type="button" class="btn-secondary" (click)="cancelEditing()">
+                  <span class="material-symbols-outlined">close</span>
+                  Descartar
+                </button>
+                <button type="submit" class="btn-primary" [disabled]="policyForm.invalid || !dirty()">
+                  <span class="btn-icon material-symbols-outlined">save</span>
+                  Guardar cambios
+                </button>
+              </div>
+            }
           </form>
         </section>
       }

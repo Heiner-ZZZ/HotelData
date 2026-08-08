@@ -1,12 +1,16 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, input, OnDestroy, output, signal, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { L10n, loadCldr, setCulture } from '@syncfusion/ej2-base';
-import * as numberingSystems from 'cldr-data/supplemental/numberingSystems.json';
-import * as likelySubtags from 'cldr-data/supplemental/likelySubtags.json';
-import * as weekData from 'cldr-data/supplemental/weekData.json';
-import * as gregorian from 'cldr-data/main/es/ca-gregorian.json';
-import * as numbers from 'cldr-data/main/es/numbers.json';
-import * as timeZoneNames from 'cldr-data/main/es/timeZoneNames.json';
+// Datos CLDR vendidos localmente (src/cldr/) en lugar del paquete cldr-data,
+// cuyo postinstall descarga ~300 MB de GitHub en cada `npm ci` y rompía los
+// builds con redes lentas (TLS timeout en cldr-data-downloader). Solo se
+// usaban estos 6 JSON (~164 KB) para `loadCldr` + locale es de Syncfusion.
+import * as numberingSystems from '../../../../../cldr/supplemental/numberingSystems.json';
+import * as likelySubtags from '../../../../../cldr/supplemental/likelySubtags.json';
+import * as weekData from '../../../../../cldr/supplemental/weekData.json';
+import * as gregorian from '../../../../../cldr/main/es/ca-gregorian.json';
+import * as numbers from '../../../../../cldr/main/es/numbers.json';
+import * as timeZoneNames from '../../../../../cldr/main/es/timeZoneNames.json';
 import { httpResource } from '@angular/common/http';
 import {
   ScheduleComponent,
@@ -165,8 +169,9 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   readonly propId = input.required<number>();
   readonly reservationClick = output<ReceptionCalendarReservation>();
 
-  readonly currentView = signal<TimelineView>('TimelineWeek');
-  readonly viewStartDate = signal(this.toIsoDate(this.weekStart(new Date())));
+  /** Vista principal del timeline: por defecto mensual (operación a golpe de vista). */
+  readonly currentView = signal<TimelineView>('TimelineMonth');
+  readonly viewStartDate = signal(this.toIsoDate(this.monthStart(new Date())));
   /** El backend consulta el rango visible de la vista activa. */
   readonly viewEndDate = computed(() => this.addDays(this.viewStartDate(), 6));
   readonly dataStartDate = computed(() => this.currentView() === 'TimelineMonth'
@@ -188,7 +193,16 @@ export class ReceptionTimelineComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly roomStatuses = computed(() => {
-    const statuses = this.housekeepingResource.value()?.items ?? [];
+    const resource = this.housekeepingResource;
+    // El estado operativo es decorativo: si housekeeping no está disponible
+    // (403 por permisos o error de red) el timeline debe seguir funcionando.
+    // `resource.value()` LANZA `ResourceValueError` cuando el recurso quedó
+    // en estado error (ver _resource-chunk.mjs), y este computed alimenta
+    // `resources`, que el Schedule re-lee en CADA render — el throw rompía
+    // la cuadrícula al navegar (botones ◀ ▶ y Hoy). Guardar por `error()`
+    // evita leer `.value()` en ese estado; la leyenda ya avisa al usuario.
+    if (resource.error()) return new Map();
+    const statuses = resource.value()?.items ?? [];
     return new Map(statuses.map((item) => [item.hotelRoomId, item]));
   });
 

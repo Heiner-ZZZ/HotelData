@@ -1,56 +1,81 @@
-<section class="surface-card category-panel" [class.is-collapsed]="!expanded()">
+<section class="surface-card category-panel" [class.is-collapsed]="!expanded()" [class.is-readonly]="!editable()">
   <button type="button" class="panel-head" (click)="toggleCollapse()" [attr.aria-expanded]="expanded()">
     <span class="material-symbols-outlined category-icon">{{ getCategoryIcon(category().category) }}</span>
     <h2>{{ category().category }}</h2>
     <span class="collapse-spacer"></span>
+    @if (!editable()) {
+      <span class="readonly-tag">Solo lectura</span>
+    }
     <span class="material-symbols-outlined chevron-icon">expand_more</span>
   </button>
   <div class="collapse-body">
     <div class="item-grid">
       @for (item of category().items; track item.label) {
-        <label class="amenity-item" [class.is-checked]="selectedLabels().has(item.label.toLowerCase())">
-          <span class="material-symbols-outlined amenity-item-icon">{{ getAmenityIcon(item.label) }}</span>
-          <input
-            type="checkbox"
-            [checked]="selectedLabels().has(item.label.toLowerCase())"
-            (change)="onToggle(item.label)"
-          >
-          <span class="amenity-label">
-            @for (seg of highlightLabel(item.label); track $index) {
-              @if (seg.highlighted) {
-                <mark class="search-highlight">{{ seg.text }}</mark>
-              } @else {
-                {{ seg.text }}
+        @if (editable()) {
+          <label class="amenity-item" [class.is-checked]="selectedLabels().has(item.label.toLowerCase())">
+            <span class="material-symbols-outlined amenity-item-icon">{{ getAmenityIcon(item.label) }}</span>
+            <input
+              type="checkbox"
+              [checked]="selectedLabels().has(item.label.toLowerCase())"
+              (change)="onToggle(item.label)"
+            >
+            <span class="amenity-label">
+              @for (seg of highlightLabel(item.label); track $index) {
+                @if (seg.highlighted) {
+                  <mark class="search-highlight">{{ seg.text }}</mark>
+                } @else {
+                  {{ seg.text }}
+                }
               }
-            }
-          </span>
-          @if (selectedLabels().has(item.label.toLowerCase())) {
-            <div class="amenity-pricing">
-              @if (getPrice(item.label) > 0) {
-                <span class="amenity-price-badge paid" title="Extra pagado">Extra</span>
-              } @else {
-                <span class="amenity-price-badge included" title="Incluido en tarifa">Incl.</span>
-              }
-              <div class="amenity-price-input-wrap">
-                <span class="amenity-price-symbol">$</span>
-                <input
-                  class="amenity-price-input"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  [value]="getPrice(item.label)"
-                  (input)="onPriceInput(item.label, $event)"
-                  (click)="$event.stopPropagation()"
-                  placeholder="0"
-                />
+            </span>
+            @if (selectedLabels().has(item.label.toLowerCase())) {
+              <div class="amenity-pricing">
+                @if (getPrice(item.label) > 0) {
+                  <span class="amenity-price-badge paid" title="Extra pagado">Extra</span>
+                } @else {
+                  <span class="amenity-price-badge included" title="Incluido en tarifa">Incl.</span>
+                }
+                <div class="amenity-price-input-wrap">
+                  <span class="amenity-price-symbol">$</span>
+                  <input
+                    class="amenity-price-input"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    [value]="getPrice(item.label)"
+                    (input)="onPriceInput(item.label, $event)"
+                    (click)="$event.stopPropagation()"
+                    placeholder="0"
+                  />
+                </div>
               </div>
-            </div>
-          } @else {
-            @if (getPrice(item.label) > 0) {
-              <span class="amenity-price-badge paid-off">+${{ getPrice(item.label) }}</span>
+            } @else {
+              @if (getPrice(item.label) > 0) {
+                <span class="amenity-price-badge paid-off">+${{ getPrice(item.label) }}</span>
+              }
             }
-          }
-        </label>
+          </label>
+        } @else {
+          <div class="amenity-item amenity-item--view" [class.is-checked]="selectedLabels().has(item.label.toLowerCase())">
+            <span class="material-symbols-outlined amenity-item-icon">{{ getAmenityIcon(item.label) }}</span>
+            <span class="amenity-label">
+              @for (seg of highlightLabel(item.label); track $index) {
+                @if (seg.highlighted) {
+                  <mark class="search-highlight">{{ seg.text }}</mark>
+                } @else {
+                  {{ seg.text }}
+                }
+              }
+            </span>
+            @if (selectedLabels().has(item.label.toLowerCase())) {
+              @if (getPrice(item.label) > 0) {
+                <span class="amenity-price-badge paid-view">+${{ getPrice(item.label) }}</span>
+              } @else {
+                <span class="amenity-price-badge included-view">Incl.</span>
+              }
+            }
+          </div>
+        }
       }
     </div>
   </div>

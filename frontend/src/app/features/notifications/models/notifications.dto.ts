@@ -8,6 +8,7 @@ export interface ClientNotificationDto {
   status: string;
   status_label: string;
   status_tone: string;
+  message: string;
   is_unread?: boolean;
   error_message: string;
   created_at_iso: string;

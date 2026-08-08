@@ -22,6 +22,18 @@ export interface InvoiceItemDto {
   created_at: string;
 }
 
+export interface InvoiceProductLineDto {
+  product_id: string;
+  name: string;
+  qty: number;
+  unit_cost: number;
+  line_total: number;
+  restocked: boolean;
+  /** Live inventory context resolved at read time (null if product deleted). */
+  stock_now: number | null;
+  cost_now: number | null;
+}
+
 export interface InvoiceDetailDto {
   id: string;
   vendor_name: string;
@@ -37,6 +49,7 @@ export interface InvoiceDetailDto {
   approved_at: string | null;
   notes: string;
   prop_id: number | null;
+  product_lines?: InvoiceProductLineDto[];
   created_at: string;
   updated_at: string;
 }

@@ -56,6 +56,7 @@ export class NotificationsPageComponent {
     if (type.includes('invoice')) return 'receipt_long';
     if (type.includes('amenity')) return 'spa';
     if (type.includes('review')) return 'star';
+    if (type.includes('permissions')) return 'manage_accounts';
     return 'notifications';
   }
 

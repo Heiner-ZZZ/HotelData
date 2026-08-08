@@ -574,3 +574,134 @@
   border-color: color-mix(in srgb, var(--accent, #2563eb) 35%, var(--app-border));
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   BANNER 'RESERVAS SIN PRECIO' (mantenimiento del admin)
+   Aviso cuando hay bookings con total_price faltante + botón
+   'Recalcular precio' por reserva (POST /reservations/{id}/recalculate-price).
+   ═══════════════════════════════════════════════════════════════ */
+.unpriced-banner {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+  animation: toast-in 220ms ease;
+}
+
+.unpriced-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.unpriced-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+  font-size: 1.25rem;
+  --icon-wght: 500;
+}
+
+.unpriced-banner-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+
+  strong {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--app-text);
+  }
+
+  span {
+    font-size: 0.76rem;
+    color: var(--muted-text);
+  }
+}
+
+.unpriced-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unpriced-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--surface);
+  transition: border-color 120ms ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--app-border));
+  }
+}
+
+.unpriced-item-info {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.unpriced-guest {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.unpriced-meta {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.unpriced-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.15rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, transform 80ms;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    --icon-wght: 500;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.unpriced-more {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted-text);
+}
+

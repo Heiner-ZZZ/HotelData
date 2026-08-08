@@ -18,6 +18,9 @@ import type { AmenitiesViewModel } from '../../models/amenities.model';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 import { ActiveAmenitiesSummaryComponent } from '../../components/active-amenities-summary/active-amenities-summary';
 import { AmenityCategoryPanelComponent } from '../../components/amenity-category-panel/amenity-category-panel';
+import { OperationModeService } from '../../../../core/services/operation-mode.service';
+import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
+import { DestroyRef } from '@angular/core';
 
 @Component({
   selector: 'app-amenities-page',
@@ -40,6 +43,9 @@ export class AmenitiesPageComponent {
   private readonly api = inject(AmenitiesApiService);
   private readonly http = inject(HttpClient);
   private readonly propertyCtx = inject(PropertyContextService);
+  private readonly opMode = inject(OperationModeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // ── Route params as signals ──
   readonly selectedPropId = toSignal(
@@ -79,6 +85,29 @@ export class AmenitiesPageComponent {
   readonly amenityPrices = signal<Map<string, number>>(new Map());
   readonly message = signal('');
   readonly errorMessage = signal('');
+
+  // ═══ Explicit editing mode (mode-aware UI) ═══
+  /** True while the user is actively editing services/prices. */
+  readonly editing = signal(false);
+  /** True while the "Nuevo servicio" composer is open (insert mode). */
+  readonly composerOpen = signal(false);
+  readonly manualPrice = signal('');
+  /** Snapshot of the persisted state when the edit session began — used for dirty tracking and cancel. */
+  private baseAmenities = signal<string[]>([]);
+  private basePrices = signal<Map<string, number>>(new Map());
+
+  /** Any pending change vs. the snapshot taken when editing began. */
+  readonly dirty = computed(() => {
+    const cur = new Set(this.selectedAmenities().map((s) => s.toLowerCase()));
+    const base = new Set(this.baseAmenities().map((s) => s.toLowerCase()));
+    if (cur.size !== base.size) return true;
+    for (const s of base) if (!cur.has(s)) return true;
+    const curPrices = this.amenityPrices();
+    const basePrices = this.basePrices();
+    if (curPrices.size !== basePrices.size) return true;
+    for (const [k, v] of basePrices) if (curPrices.get(k) !== v) return true;
+    return false;
+  });
 
   /** Initialize prices map from catalog when amenities data loads. */
   private _initPricesFromCatalog() {
@@ -140,7 +169,7 @@ export class AmenitiesPageComponent {
     // Sync active amenities when fresh data arrives from httpResource
     effect(() => {
       const vm = this.amenitiesResource.value();
-      if (vm) {
+      if (vm && !this.editing()) {
         this.selectedAmenities.set(vm.activeAmenities ?? []);
         this.message.set('');
         this.errorMessage.set('');
@@ -152,6 +181,8 @@ export class AmenitiesPageComponent {
     effect(() => {
       if (!this.selectedPropId()) this.propertyCtx.clear();
     });
+    // Clean up the transient mode if the page is destroyed mid-edit.
+    this.destroyRef.onDestroy(() => this.opMode.reset());
     // Sync httpResource → writable photoList signal (needed for optimistic delete)
     effect(() => {
       const data = this.photoListRes.value();
@@ -175,6 +206,7 @@ export class AmenitiesPageComponent {
   }
 
   onPropSelected(event: { propId: number; label: string }) {
+    this.cancelEditing();
     if (!event.propId) this.propertyCtx.clear();
     else this.propertyCtx.setProperty(event.propId, event.label || `Propiedad #${event.propId}`);
     void this.router.navigate([], {
@@ -184,28 +216,129 @@ export class AmenitiesPageComponent {
   }
 
   onRoomTypeChange(event: Event): void {
+    this.cancelEditing();
     this.selectedRoomTypeId.set((event.target as HTMLSelectElement).value);
   }
 
-  toggleAmenity(label: string) {
-    const normalized = label.trim();
-    if (!normalized) {
-      return;
-    }
-    const current = this.selectedAmenities();
-    const lookup = new Set(current.map((item) => item.toLowerCase()));
-    if (lookup.has(normalized.toLowerCase())) {
-      this.selectedAmenities.set(current.filter((item) => item.toLowerCase() !== normalized.toLowerCase()));
-    } else {
-      this.selectedAmenities.set([...current, normalized]);
-    }
+  // ═══ Mode-aware interactions ═══
+
+  /** Start an edit session: snapshot current state and switch the nav chip to "update". */
+  startEditing(): void {
+    if (this.editing()) return;
+    this.baseAmenities.set([...this.selectedAmenities()]);
+    this.basePrices.set(new Map(this.amenityPrices()));
+    this.editing.set(true);
+    this.opMode.setMode('update', 'Servicios');
   }
 
+  /** Discard pending changes and return to read mode. */
+  cancelEditing(): void {
+    if (!this.editing()) {
+      this.composerOpen.set(false);
+      this.opMode.reset();
+      return;
+    }
+    this.selectedAmenities.set([...this.baseAmenities()]);
+    this.amenityPrices.set(new Map(this.basePrices()));
+    this.editing.set(false);
+    this.composerOpen.set(false);
+    this.manualAmenity.set('');
+    this.manualPrice.set('');
+    this.opMode.reset();
+  }
+
+  /** Open the composer for a brand-new custom service → insert mode (ámbar). */
+  openComposer(): void {
+    this.composerOpen.set(true);
+    this.manualPrice.set('');
+    this.opMode.setMode('insert', 'Nuevo servicio');
+  }
+
+  /** Close the composer without adding → back to update (or read). */
+  closeComposer(): void {
+    this.composerOpen.set(false);
+    this.manualPrice.set('');
+    if (this.editing()) this.opMode.setMode('update', 'Servicios');
+    else this.opMode.reset();
+  }
+
+  /**
+   * Toggle a catalog service on/off. Removing a previously-persisted service
+   * asks for confirmation and flips the chip to "delete" while the dialog is
+   * open; newly-added (unsaved) services remove silently.
+   */
+  async toggleAmenity(label: string): Promise<void> {
+    const normalized = label.trim();
+    if (!normalized) return;
+
+    const current = this.selectedAmenities();
+    const lookup = new Set(current.map((item) => item.toLowerCase()));
+    const wasSelected = lookup.has(normalized.toLowerCase());
+
+    if (!wasSelected) {
+      this.selectedAmenities.set([...current, normalized]);
+      if (this.editing()) this.opMode.setMode('update', 'Servicios');
+      return;
+    }
+
+    // Removing a service that exists in the persisted snapshot → confirm.
+    const isPersisted = new Set(this.baseAmenities().map((s) => s.toLowerCase())).has(normalized.toLowerCase());
+    if (isPersisted && this.editing()) {
+      const ok = await this.confirmDialog.open({
+        title: 'Quitar servicio',
+        message: `¿Quitar «${normalized}» de los servicios activos?`,
+        details: isPersisted
+          ? ['Se eliminará de la oferta del hotel una vez guardes los cambios.', 'Puedes volver a seleccionarlo en cualquier momento.']
+          : undefined,
+        confirmLabel: 'Quitar',
+        cancelLabel: 'Cancelar',
+        variant: 'danger',
+        mode: 'delete',
+        modeDetail: normalized,
+      });
+      // The dialog clears its own transient mode on close (falling back to
+      // route mode = read), so always re-assert the edit session mode — even
+      // when the user cancels — or the chip would mismatch the UI state.
+      if (this.editing()) this.opMode.setMode('update', 'Servicios');
+      if (!ok) return;
+    }
+
+    this.selectedAmenities.set(current.filter((item) => item.toLowerCase() !== normalized.toLowerCase()));
+    if (this.editing()) this.opMode.setMode('update', 'Servicios');
+  }
+
+  /** Add the typed custom service (insert mode) then return to update. */
   addManualAmenity(): void {
     const value = this.manualAmenity().trim();
     if (!value) return;
+    const price = parseFloat(this.manualPrice());
+    if (!Number.isNaN(price) && price > 0) {
+      this.updateAmenityPrice(value, String(price));
+    }
     this.toggleAmenity(value);
     this.manualAmenity.set('');
+    this.manualPrice.set('');
+    this.composerOpen.set(false);
+    if (this.editing()) this.opMode.setMode('update', 'Servicios');
+  }
+
+  /** Remove an active service from the summary pill (delete confirm). */
+  async removeActiveAmenity(label: string): Promise<void> {
+    const ok = await this.confirmDialog.open({
+      title: 'Quitar servicio',
+      message: `¿Quitar «${label}» de los servicios activos?`,
+      details: ['Se eliminará de la oferta del hotel una vez guardes los cambios.', 'Puedes volver a seleccionarlo en cualquier momento.'],
+      confirmLabel: 'Quitar',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+      mode: 'delete',
+      modeDetail: label,
+    });
+    // Same re-assert as toggleAmenity: the dialog clears the transient slot on
+    // close, so restore the edit-session mode regardless of the result.
+    if (this.editing()) this.opMode.setMode('update', 'Servicios');
+    if (!ok) return;
+    this.selectedAmenities.set(this.selectedAmenities().filter((item) => item.toLowerCase() !== label.toLowerCase()));
   }
 
   saveAmenities(): void {
@@ -224,6 +357,13 @@ export class AmenitiesPageComponent {
           this.selectedRoomTypeId.set('');
           this.message.set('Servicios actualizados');
           this.errorMessage.set('');
+          // End the edit session: snapshot becomes the new persisted state.
+          this.baseAmenities.set([...fresh.activeAmenities]);
+          this.basePrices.set(new Map(this.amenityPrices()));
+          this.editing.set(false);
+          this.composerOpen.set(false);
+          this.manualPrice.set('');
+          this.opMode.reset();
         },
         error: (error: ApiError) => {
           this.errorMessage.set(error.message || 'No fue posible guardar los servicios.');

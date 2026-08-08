@@ -16,27 +16,83 @@ interface BreadcrumbItem {
 }
 
 const SEGMENT_LABELS: Record<string, string> = {
+  // ── Raíces ──
   management: 'Gestión',
   system: 'Sistema',
   ownership: 'Propietario',
-  properties: 'Propiedades',
-  rooms: 'Habitaciones',
+  admin: 'Administración',
+  account: 'Mi Cuenta',
+  // ── Gestión ──
   recepcion: 'Recepción',
   reservations: 'Reservas',
+  'manual-reservations': 'Reservas Manuales',
   availability: 'Disponibilidad',
-  'check-ins': 'Check-ins',
-  'check-outs': 'Check-outs',
+  rooms: 'Habitaciones',
+  guests: 'Huéspedes',
   rates: 'Tarifas',
   policies: 'Políticas',
-  amenities: 'Amenidades',
+  amenities: 'Amenities',
+  products: 'Productos',
+  'check-ins': 'Check-ins',
+  'check-outs': 'Check-outs',
+  reviews: 'Reseñas',
+  billing: 'Facturación',
+  housekeeping: 'Housekeeping',
+  hr: 'RRHH',
+  expenses: 'Finanzas',
+  revenue: 'Ingresos',
   reports: 'Reportes',
-  settings: 'Configuración',
+  'audit-log': 'Auditoría Oper.',
+  'lost-and-found': 'Lost & Found',
+  'stay-inbox': 'Estancias Activas',
+  'service-requests': 'Solicitudes',
+  shifts: 'Cajas y Turnos',
+  'team-permissions': 'Equipo y Permisos',
+  profile: 'Perfil',
+  // ── Sub-rutas ──
+  dashboard: 'Dashboard',
+  new: 'Nuevo',
+  confirmed: 'Confirmada',
+  invoices: 'Facturas',
+  payments: 'Pagos',
+  folios: 'Folios',
+  maintenance: 'Mantenimiento',
+  charges: 'Cargos',
+  calendar: 'Calendario',
+  directory: 'Directorio',
+  onboarding: 'Onboarding',
+  'my-portal': 'Mi Portal',
+  portal: 'Portal',
+  attendance: 'Asistencia',
+  // ── Sistema ──
   users: 'Usuarios',
   permissions: 'Permisos',
   monitoring: 'Monitoreo',
   audit: 'Auditoría',
-  edit: 'Editar Contenido',
+  notifications: 'Notificaciones',
+  currencies: 'Monedas',
+  bsc: 'BSC',
+  // ── Admin / cuenta ──
+  'global-settings': 'Configuración',
+  earnings: 'Ganancias',
+  'geo-catalog': 'Geo-Catálogo',
+  bookings: 'Mis Reservas',
+  edit: 'Editar',
 };
+
+/** Segmento de ruta que es un ID dinámico (reserva, factura, folio, empleado…). */
+const DYNAMIC_ID_PATTERN = /^(BK-[\w-]+|[0-9a-f]{24}|\d+)$/i;
+
+function segmentLabel(segment: string): string | null {
+  const normalized = segment.trim();
+  if (!normalized) return null;
+  const known = SEGMENT_LABELS[normalized];
+  if (known) return known;
+  if (DYNAMIC_ID_PATTERN.test(normalized)) return 'Detalle';
+  return normalized
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
 
 @Component({
   selector: 'app-management-top-nav',
@@ -91,9 +147,7 @@ export class ManagementTopNavComponent implements OnInit {
     const rootIdx = segments.findIndex(s => s === 'management' || s === 'system' || s === 'ownership');
     if (rootIdx === -1) return [{ label: 'Gestión', path: '/management', queryParams: propQp }];
     const crumbs = segments.slice(rootIdx).map((seg, i) => {
-      const normalizedSegment = seg.trim();
-      const label = SEGMENT_LABELS[normalizedSegment]
-        || (normalizedSegment ? normalizedSegment.charAt(0).toUpperCase() + normalizedSegment.slice(1).replace(/-/g, ' ') : 'Gestión');
+      const label = segmentLabel(seg) || 'Gestión';
       return { label, path: '/' + segments.slice(rootIdx, rootIdx + i + 1).join('/'), queryParams: propQp };
     });
     // En modo single, el hotel se muestra como badge aparte, no en el breadcrumb

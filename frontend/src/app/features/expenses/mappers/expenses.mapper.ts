@@ -47,6 +47,17 @@ export function mapInvoiceDetail(dto: InvoiceDetailDto): InvoiceDetail {
     approvedAt: dto.approved_at,
     notes: dto.notes,
     propId: dto.prop_id,
+    productLines: (dto.product_lines ?? []).map((l) => ({
+      productId: l.product_id,
+      name: l.name ?? l.product_id,
+      qty: l.qty,
+      unitCost: l.unit_cost,
+      lineTotal: l.line_total,
+      restocked: l.restocked !== false,
+      stockNow: l.stock_now ?? null,
+      costNow: l.cost_now ?? null,
+      // KEEP IN SYNC with the mirror mapping in invoice-detail-page.ts `inv()`.
+    })),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };

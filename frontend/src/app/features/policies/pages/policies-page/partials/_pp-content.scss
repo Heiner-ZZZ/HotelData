@@ -118,10 +118,12 @@ input[type="time"] {
   padding: 0.4rem 0.6rem;
 
   &:disabled {
-    opacity: 0.5;
     cursor: not-allowed;
-    background: color-mix(in srgb, var(--surface) 70%, var(--gray-400));
+    background: color-mix(in srgb, var(--surface) 90%, var(--gray-400));
     border-style: dashed;
+    border-color: color-mix(in srgb, var(--app-border) 80%, transparent);
+    color: var(--app-text);
+    -webkit-text-fill-color: var(--app-text);
   }
 }
 
@@ -162,6 +164,50 @@ textarea {
     opacity: 0.5;
     cursor: not-allowed;
   }
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 120ms ease, border-color 180ms ease, background 180ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: color-mix(in srgb, var(--app-border) 70%, #000);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Read-only surface: controls locked outside an edit session. The values
+   must stay fully legible (light mode included) — the dashed border + subtle
+   tint communicate that the field is locked without dimming the text. ── */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--surface) 90%, var(--gray-400));
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--app-border) 80%, transparent);
+  color: var(--app-text);
+  -webkit-text-fill-color: var(--app-text);
 }
 
 .btn-icon {

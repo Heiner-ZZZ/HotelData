@@ -98,11 +98,15 @@
         <span class="material-symbols-outlined booking-bar__icon" aria-hidden="true">calendar_month</span>
         <div class="booking-bar__body">
           <span class="booking-bar__label">Entrada — Salida</span>
-          <div class="booking-bar__dates">
-            <input type="date" formControlName="checkIn" [min]="today" class="booking-bar__date" (change)="onCheckInChange()" />
-            <span class="booking-bar__dates-sep" aria-hidden="true">→</span>
-            <input type="date" formControlName="checkOut" [min]="minCheckOut()" class="booking-bar__date" />
-          </div>
+          <!-- Un solo calendario para ambas fechas (mismo widget que
+               /account/bookings/new): clic en dos fechas o arrastre. -->
+          <app-date-range-picker
+            [minDate]="today"
+            [startDate]="searchForm.controls.checkIn.value"
+            [endDate]="searchForm.controls.checkOut.value"
+            (startChange)="onStartDateChange($event)"
+            (endChange)="onEndDateChange($event)"
+          />
         </div>
       </div>
       <div class="booking-bar__field booking-bar__field--guests">

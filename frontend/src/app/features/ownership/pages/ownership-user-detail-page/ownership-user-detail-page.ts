@@ -12,7 +12,8 @@ import type { ApiError } from '../../../../core/api/api-error.model';
 import type { ViewState } from '../../../../shared/types/ui-state.type';
 import { OwnershipApiService } from '../../services/ownership-api.service';
 import type { OwnershipUserDetail, HotelSearchResult } from '../../models/ownership.model';
-import { mapHotelSearchResponse } from '../../mappers/ownership.mapper';
+import type { OwnershipUserDetailResponseDto } from '../../models/ownership.dto';
+import { mapHotelSearchResponse, mapOwnershipUserDetailResponse } from '../../mappers/ownership.mapper';
 import { roleLabel } from '../../../../core/auth/role-labels';
 
 interface HotelSearchResponse {
@@ -66,6 +67,11 @@ export class OwnershipUserDetailPageComponent {
   readonly detailResource = httpResource<OwnershipUserDetail>(() => {
     const id = this.userId();
     return id ? `/api/admin/ownership/users/${id}` : undefined;
+  }, {
+    // El API envuelve el detalle en `{ user: ... }` con snake_case. Sin este
+    // parse, `user()` quedaba en el wrapper crudo (sin `hotels`) y el template
+    // reventaba con `Cannot read properties of undefined (reading 'length')`.
+    parse: (dto) => mapOwnershipUserDetailResponse(dto as OwnershipUserDetailResponseDto),
   });
 
   /** Debounced search term (mirrors `searchControl.valueChanges` after 350ms idle). */

@@ -5,7 +5,6 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
   const checkIn = dto.policies.check_in_time || 'Pendiente';
   const checkOut = dto.policies.check_out_time || 'Pendiente';
   const cancellation = dto.policies.cancellation_policy || 'Sin politica registrada';
-  const payments = dto.policies.payment_policy || 'Sin politica de pagos';
   const cancelHours = dto.policies.cancellation_hours ?? 0;
   const cancelPenaltyPct = dto.policies.cancellation_penalty_percent ?? 100;
   const minStay = dto.policies.min_stay ?? 0;
@@ -48,8 +47,7 @@ export function mapPolicies(dto: PoliciesDto): PoliciesViewModel {
       { label: 'Check-out', value: checkOut, detail: 'Horario de salida' },
       { label: 'Cancelacion', value: cancelHours > 0 ? `${cancelHours}h antes` : cancellation, detail: 'Politica comercial' },
       { label: 'Estancia', value: minStay > 0 ? `${minStay}-${maxStay || '∞'} noches` : 'Flexible', detail: 'Min/Max estancia' },
-      { label: 'Mascotas', value: dto.policies.pets_allowed ? 'Sí' : 'No', detail: dto.policies.pet_fee ? `$${dto.policies.pet_fee} cargo` : 'Sin cargo' },
-      { label: 'Pagos', value: payments, detail: 'Cobros y garantias' }
+      { label: 'Mascotas', value: dto.policies.pets_allowed ? 'Sí' : 'No', detail: dto.policies.pet_fee ? `$${dto.policies.pet_fee} cargo` : 'Sin cargo' }
     ]
   };
 }

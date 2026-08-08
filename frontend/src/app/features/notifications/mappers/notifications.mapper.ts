@@ -13,6 +13,7 @@ function mapNotification(dto: ClientNotificationDto): ClientNotification {
     statusLabel: dto.status_label || dto.status,
     statusTone: (dto.status_tone as ClientNotification['statusTone']) || 'neutral',
     errorMessage: dto.error_message || '',
+    message: dto.message || '',
     createdAt: dto.created_at_iso || '',
     isUnread: dto.is_unread ?? false,
   };

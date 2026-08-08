@@ -27,11 +27,12 @@ export class ExpensesApiService {
       .pipe(map(dto => mapExpenseDashboard(dto)));
   }
 
-  getInvoices(status?: string, category?: string, vendor?: string, page = 1) {
+  getInvoices(status?: string, category?: string, vendor?: string, page = 1, propId?: number) {
     let params = new HttpParams().set('page', String(page));
     if (status) params = params.set('status', status);
     if (category) params = params.set('category', category);
     if (vendor) params = params.set('vendor', vendor);
+    if (propId) params = params.set('prop_id', String(propId));
     return this.http.get<InvoiceListDto>(`${this.apiConfig.baseUrl}/expenses/invoices`, { params, withCredentials: true })
       .pipe(map(dto => mapInvoiceList(dto)));
   }

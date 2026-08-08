@@ -2,9 +2,11 @@
   <app-sidebar-nav />
   <div class="system-right">
     <app-management-top-nav />
-    <main class="system-main">
-      <router-outlet />
-    </main>
-    <app-scroll-to-top />
+    <div class="system-scroll">
+      <main class="system-main">
+        <router-outlet />
+      </main>
+      <app-scroll-to-top />
+    </div>
   </div>
 </div>

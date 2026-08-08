@@ -24,6 +24,8 @@ export interface HotelProduct {
   supplierSku: string | null;
   parLevel: number | null;
   lastPurchaseInvoiceRef: string | null;
+  /** Resolved expense invoice (real FK) — null for legacy free-text refs. */
+  lastPurchaseInvoice: LastPurchaseInvoice | null;
   lastPurchaseQty: number | null;
   lastPurchaseAt: string | null;
   isActive: boolean;
@@ -31,6 +33,15 @@ export interface HotelProduct {
   archivedBy: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface LastPurchaseInvoice {
+  id: string;
+  vendorName: string;
+  invoiceDate: string;
+  dueDate: string;
+  total: number;
+  status: string;
 }
 
 export interface BookingLineItem {

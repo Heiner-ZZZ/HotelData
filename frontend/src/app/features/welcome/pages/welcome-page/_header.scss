@@ -39,6 +39,15 @@
     display: flex;
     align-items: center;
     gap: 24px;
+    /* La fila de acciones (chip moneda + enlaces + botones) tiene un
+       min-content ~730px. Sin wrap, en viewports < ~880px desborda el
+       documento y produce scroll horizontal con espacio vacío. Con wrap
+       los ítems pasan a una segunda fila en vez de estirar la página. */
+    flex-wrap: wrap;
+    row-gap: 8px;
+    height: auto;
+    min-height: 64px;
+    padding-block: 10px;
   }
 
   &__brand {
@@ -74,6 +83,12 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    /* Misma lógica que __inner: en viewports estrechos los botones/enlaces
+       pasan a segunda fila dentro del nav en lugar de desbordar la página. */
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 8px;
+    min-width: 0;
   }
 }
 

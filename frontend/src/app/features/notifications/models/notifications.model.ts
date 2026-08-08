@@ -10,6 +10,7 @@ export interface ClientNotification {
   statusTone: string;
   isUnread: boolean;
   errorMessage: string;
+  message: string;
   createdAt: string;
 }
 

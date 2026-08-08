@@ -32,7 +32,12 @@ import type {
   ReservationStats,
   ReservationsListViewModel,
 } from '../../models/reservations.model';
-import type { DateHistoryEntry } from '../../services/reservations-api.service';
+import { mapUnpriced, ReservationsApiService } from '../../services/reservations-api.service';
+import type {
+  DateHistoryEntry,
+  UnpricedBooking,
+  UnpricedBookingRaw,
+} from '../../services/reservations-api.service';
 import type { ReceptionCalendarReservation } from '../../models/reception-calendar.model';
 import { ReceptionTimelineComponent } from '../../components/reception-timeline/reception-timeline';
 
@@ -76,6 +81,7 @@ export class ReservationsListPageComponent {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly propertyCtx = inject(PropertyContextService);
   private readonly actionService = inject(ReservationActionService);
+  private readonly apiService = inject(ReservationsApiService);
 
   // ─── Reactive query params ───
   // Migrated from `pipe(map, distinctUntilChanged)` to Angular's signal graph.
@@ -362,6 +368,45 @@ export class ReservationsListPageComponent {
   readonly statsResource = httpResource<ReservationStats>(() => '/reservations/stats', {
     parse: (dto) => mapReservationStats(dto as ReservationStatsDto),
   });
+
+  // ─── Banner 'reservas sin precio' (admin) ───
+  // Solo staff (``reservations.update`` en el backend). Se recarga al
+  // recalcular o cuando cambia la lista.
+  readonly unpricedResource = httpResource<UnpricedBooking[]>(() => {
+    if (!this.isStaff()) return undefined;
+    return '/reservations/unpriced';
+  }, {
+    parse: (dto) => (dto as { items: UnpricedBookingRaw[] }).items.map(mapUnpriced),
+  });
+
+  readonly unpricedCount = computed(() => this.unpricedResource.value()?.length ?? 0);
+  /** Booking_id cuyo precio se está recalculando ahora mismo. */
+  readonly recalculatingId = signal<string | null>(null);
+
+  async onRecalculatePrice(bookingId: string): Promise<void> {
+    if (this.recalculatingId()) return;
+    this.recalculatingId.set(bookingId);
+    this.successMessage.set('');
+    this.warningMessage.set('');
+    try {
+      const result = await firstValueFrom(this.apiService.recalculatePrice(bookingId));
+      const price =
+        result.total_price != null
+          ? `${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(result.total_price)} ${result.currency || 'USD'}`
+          : 'sin tarifa calculable';
+      this.successMessage.set(`Precio recalculado · ${bookingId} → ${price}`);
+      this.reservationsResource.reload();
+      this.statsResource.reload();
+      this.unpricedResource.reload();
+    } catch (err: unknown) {
+      if (isDevMode()) console.error('[reservations-list] recalculate price failed', bookingId, err);
+      this.warningMessage.set(`No se pudo recalcular ${bookingId}. Intenta nuevamente.`);
+    } finally {
+      this.recalculatingId.set(null);
+      setTimeout(() => this.successMessage.set(''), 5000);
+      setTimeout(() => this.warningMessage.set(''), 8000);
+    }
+  }
 
   readonly historyDatesResource = httpResource<DateHistoryEntry[]>(() => {
     if (!this.showHistory()) return undefined;

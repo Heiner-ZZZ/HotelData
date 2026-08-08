@@ -172,6 +172,16 @@
   &.ss-today {
     background: color-mix(in srgb, var(--accent) 4%, transparent);
   }
+
+  /* Modo solo lectura (hr.shifts.read sin hr.shifts.manage): la celda se
+     ve, pero no sugiere clic para asignar/editar turnos. */
+  &.ss-cell-readonly {
+    cursor: default;
+
+    &:hover {
+      background: transparent;
+    }
+  }
 }
 
 /* ── Shift Card inside cell ── */

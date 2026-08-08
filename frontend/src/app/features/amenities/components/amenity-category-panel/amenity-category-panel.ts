@@ -16,6 +16,8 @@ export class AmenityCategoryPanelComponent {
   readonly searchTerm = input<string>('');
   readonly amenityPrices = input<Map<string, number>>(new Map());
   readonly updatePrice = output<{ label: string; value: string }>();
+  /** When false the panel renders read-only (no checkboxes / price inputs). */
+  readonly editable = input(false);
 
   readonly expanded = signal(true);
 

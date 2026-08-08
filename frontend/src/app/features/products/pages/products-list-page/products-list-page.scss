@@ -301,6 +301,43 @@
   .material-symbols-outlined { font-size: 18px; }
 }
 
+.invoice-link {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--accent-primary, #4f46e5);
+  text-decoration: none;
+  max-width: 220px;
+
+  .invoice-vendor {
+    font-weight: 600;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .invoice-meta {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-muted, #6b7280);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &:hover {
+    .invoice-vendor { text-decoration: underline; }
+    .invoice-meta { color: var(--accent-primary, #4f46e5); }
+  }
+}
+
+.invoice-legacy {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+}
+.invoice-empty {
+  color: var(--text-muted, #6b7280);
+}
+
 .no-results {
   padding: var(--space-6, 1.5rem);
   text-align: center;

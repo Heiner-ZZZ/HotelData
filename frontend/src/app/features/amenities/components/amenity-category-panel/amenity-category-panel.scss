@@ -4,12 +4,51 @@
   background: var(--surface);
   border: 1px solid var(--app-border);
   box-shadow: var(--shadow-sm);
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms ease;
   animation: amenities-panel-enter 380ms cubic-bezier(0.21, 0.69, 0.43, 1) backwards;
 
   &:hover {
     box-shadow: var(--shadow-md);
   }
+
+  /* Edit mode: subtle amber ring so the whole panel reads as editable. */
+  :host-context(.category-grid.is-editing) & {
+    border-color: color-mix(in srgb, var(--warning) 38%, var(--app-border));
+  }
+}
+
+/* Read-only mode: quieter surface, no interactive cues. */
+.category-panel.is-readonly {
+  .item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .amenity-item--view {
+    cursor: default;
+    user-select: none;
+
+    &:hover {
+      transform: none;
+    }
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.readonly-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-text);
+  background: var(--surface-soft);
+  border: 1px solid var(--app-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+  flex-shrink: 0;
 }
 
 .panel-head {
@@ -222,6 +261,42 @@
     font-weight: 700;
     color: var(--muted-text);
     line-height: 1;
+  }
+
+  &.amenity-item--view {
+    .amenity-item-icon {
+      color: var(--muted-text);
+    }
+
+    &.is-checked .amenity-item-icon {
+      color: var(--accent);
+    }
+  }
+
+  .amenity-price-badge {
+    &.paid-view {
+      background: rgba(251, 191, 36, 0.14);
+      color: var(--warning);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    &.included-view {
+      background: rgba(74, 222, 128, 0.12);
+      color: var(--success);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
   }
 
   .amenity-price-input {

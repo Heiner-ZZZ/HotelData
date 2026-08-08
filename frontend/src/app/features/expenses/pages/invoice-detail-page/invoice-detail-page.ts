@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state';
 import { ExpensesApiService } from '../../services/expenses-api.service';
+import type { InvoiceProductLine } from '../../models/expenses.model';
 
 @Component({
   selector: 'app-invoice-detail-page',
@@ -64,6 +65,45 @@ import { ExpensesApiService } from '../../services/expenses-api.service';
                 </div>
               </div>
 
+              <!-- Linked restocks (reverse view) -->
+              @if (i.productLines?.length) {
+                <div class="meta-tile meta-tile--full">
+                  <div class="meta-tile__head-row">
+                    <h4 class="meta-tile__heading">Restocks vinculados</h4>
+                    <button
+                      class="btn btn--sm btn--outline"
+                      type="button"
+                      (click)="goToInventory()"
+                      [title]="i.prop_id ? ('Ver el inventario de la propiedad ' + i.prop_id) : 'Ver el inventario'"
+                    >
+                      <span class="material-symbols-outlined icon">inventory_2</span>
+                      Ir al inventario
+                    </button>
+                  </div>
+                  <p class="meta-tile__hint">
+                    Productos repuestos con esta factura — el stock y costo son los actuales.
+                  </p>
+                  @for (line of i.productLines; track line.productId) {
+                  <div class="restock-line">
+                    <a class="restock-line__name" [href]="productHref(line)" (click)="openProduct($event, line)">
+                      <span class="material-symbols-outlined restock-line__icon">inventory_2</span>
+                      {{ line.name }}
+                      @if (!line.restocked) {
+                        <span class="restock-line__fail">
+                          <span class="material-symbols-outlined">warning</span> falló
+                        </span>
+                      }
+                    </a>
+                    <span class="restock-line__qty">{{ line.qty }} uds × {{ line.unitCost | currency:'MXN':'symbol-narrow' }} = {{ line.lineTotal | currency:'MXN':'symbol-narrow' }}</span>
+                    <span class="restock-line__stock" [class.restock-line__stock--muted]="line.stockNow == null">
+                      <span class="material-symbols-outlined">inventory</span>
+                      Stock actual: {{ line.stockNow == null ? '—' : line.stockNow }}
+                    </span>
+                  </div>
+                  }
+                </div>
+              }
+
               <!-- Actions -->
               @if (i.status === 'pending') {
                 <div class="meta-actions">
@@ -100,7 +140,29 @@ export class InvoiceDetailPageComponent {
     return id ? `/api/expenses/invoices/${id}` : undefined;
   });
 
-  readonly inv = computed(() => this.detailResource.value() ?? null);
+  readonly inv = computed(() => {
+    const raw = this.detailResource.value();
+    if (!raw) return null;
+    return {
+      ...raw,
+      // camelCase mirror so the template can render the reverse view; the
+      // API (InvoiceResponse, extra="allow") sends snake_case product_lines.
+      // KEEP IN SYNC with the line mapping in mapInvoiceDetail (expenses.mapper.ts).
+      productLines: (raw.product_lines ?? []).map((l: any) => ({
+        productId: l.product_id,
+        name: l.name ?? l.product_id,
+        qty: l.qty ?? 0,
+        unitCost: l.unit_cost ?? 0,
+        lineTotal: l.line_total ?? 0,
+        restocked: l.restocked !== false,
+        stockNow: l.stock_now ?? null,
+        costNow: l.cost_now ?? null,
+      })),
+    };
+  });
+
+  /** Reverse view: the products restocked by this invoice, with live stock. */
+  readonly productLines = computed<InvoiceProductLine[]>(() => this.inv()?.productLines ?? []);
 
   readonly viewState = computed<'loading' | 'success' | 'error' | 'empty'>(() => {
     const v = this.detailResource.value();
@@ -114,6 +176,30 @@ export class InvoiceDetailPageComponent {
   });
 
   goBack() { this.router.navigate(['/management/expenses/invoices']); }
+
+  productHref(line: InvoiceProductLine): string {
+    const pid = this.inv()?.prop_id;
+    return `/management/products/${line.productId}/edit${pid ? `?prop_id=${pid}` : ''}`;
+  }
+
+  /**
+   * Jump to the product list filtered by THIS invoice's hotel, keeping the
+   * property context (the products list page reads prop_id from the query
+   * param via PropertyContextService).
+   */
+  goToInventory(): void {
+    const pid = this.inv()?.prop_id;
+    void this.router.navigate(['/management/products'], {
+      queryParams: pid ? { prop_id: pid } : {},
+    });
+  }
+
+  openProduct(event: Event, line: InvoiceProductLine): void {
+    event.preventDefault();
+    void this.router.navigate(['/management/products', line.productId, 'edit'], {
+      queryParams: this.inv()?.prop_id ? { prop_id: this.inv()?.prop_id } : {},
+    });
+  }
 
   updateStatus(id: string, status: string) {
     // Server-side update; httpResource reload picks up the new value and

@@ -1,0 +1,55 @@
+<div class="guests-picker-wrapper" (mouseup)="close()">
+  <!-- Trigger button -->
+  <button type="button" class="gp-trigger" (click)="toggleOpen()" aria-haspopup="dialog" [attr.aria-expanded]="isOpen()">
+    <span class="material-symbols-outlined gp-trigger-icon">group</span>
+    <span class="gp-trigger-label">{{ summaryLabel() }}</span>
+    <span class="material-symbols-outlined gp-chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</span>
+  </button>
+
+  <!-- Popover overlay -->
+  @if (isOpen()) {
+    <div class="gp-backdrop" (click)="close()"></div>
+
+    <div class="gp-popover" role="dialog" aria-label="Huéspedes y habitaciones">
+      <div class="gp-popover-header">
+        <span class="gp-popover-title">Huéspedes y habitaciones</span>
+        <button type="button" class="gp-close" (click)="close()" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="gp-rows">
+        @for (row of rows(); track row.key) {
+          <div class="gp-row">
+            <span class="gp-row-label">{{ row.label }}</span>
+            <div class="stepper">
+              <button
+                type="button"
+                class="stepper-btn"
+                [disabled]="row.value <= row.min"
+                (click)="adjust(row.key, -1)"
+                [attr.aria-label]="'Quitar ' + row.label"
+              >
+                <span class="material-symbols-outlined">remove</span>
+              </button>
+              <span class="stepper-value">{{ row.value }}</span>
+              <button
+                type="button"
+                class="stepper-btn"
+                [disabled]="row.value >= row.max"
+                (click)="adjust(row.key, 1)"
+                [attr.aria-label]="'Agregar ' + row.label"
+              >
+                <span class="material-symbols-outlined">add</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="gp-footer">
+        <button type="button" class="gp-done-btn" (click)="close()">Hecho</button>
+      </div>
+    </div>
+  }
+</div>

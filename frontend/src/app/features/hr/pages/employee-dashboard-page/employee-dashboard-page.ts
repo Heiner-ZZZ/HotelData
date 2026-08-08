@@ -5,6 +5,7 @@ import { DatePipe } from '@angular/common';
 import { switchMap, timer, map } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
+import { HrAuthService } from '../../services/hr-auth.service';
 import type { EmployeePortal, PortalTasksData, PortalTask } from '../../models/hr.model';
 import { toast } from '../../../../core/toast/toast.service';
 
@@ -21,6 +22,7 @@ export class EmployeeDashboardPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  readonly hrAuth = inject(HrAuthService);
 
   /**
    * Bump signal that triggers a re-fetch of the portal stream when its value

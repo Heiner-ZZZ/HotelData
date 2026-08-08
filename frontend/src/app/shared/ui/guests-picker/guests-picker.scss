@@ -1,0 +1,230 @@
+/* ── Wrapper ── */
+.guests-picker-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* ── Trigger button ── */
+.gp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover { border-color: var(--accent); }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.gp-trigger-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  --icon-wght: 300;
+  --icon-opsz: 20;
+}
+
+.gp-trigger-label {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-chevron {
+  font-size: 1rem;
+  color: var(--muted-text);
+  --icon-wght: 300;
+  --icon-opsz: 20;
+  transition: transform 0.2s;
+}
+
+/* ── Backdrop (captures click-outside) ── */
+.gp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: transparent;
+}
+
+/* ── Popover overlay ── */
+.gp-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  animation: gp-fade-in 0.15s ease-out;
+}
+
+@keyframes gp-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.gp-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.gp-popover-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.gp-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+
+  &:hover { background: var(--surface-soft); color: var(--app-text); }
+
+  .material-symbols-outlined { font-size: 1.1rem; }
+}
+
+/* ── Stepper rows ── */
+.gp-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.gp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gp-row-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.stepper-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted-text);
+  transition: background 120ms ease, color 120ms ease;
+
+  &:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); }
+  &:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  }
+}
+
+.stepper-value {
+  min-width: 36px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--app-text);
+  text-align: center;
+}
+
+/* ── Footer ── */
+.gp-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--app-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gp-done-btn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.12s;
+
+  &:hover { opacity: 0.88; }
+}
+
+/* ── Welcome booking-bar integration ──────────────────────────────────
+   Mismo patrón que date-range-picker: cuando el picker vive dentro del
+   campo Huéspedes del booking-bar, el trigger se funde con el field
+   (sin borde ni icono propio — el field ya muestra su icono verde). */
+:host-context(.booking-bar__field--guests) {
+  display: block;
+  width: 100%;
+
+  .gp-trigger {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    min-height: 0;
+    border-radius: 0;
+    gap: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--app-text);
+
+    &:hover { border-color: transparent; }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+  }
+
+  .gp-trigger-icon { display: none; }
+
+  .gp-chevron {
+    font-size: 1rem;
+    color: var(--muted-text);
+    --icon-wght: 300;
+  }
+}

@@ -4,6 +4,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 
 import { HrApiService } from '../../services/hr-api.service';
+import { HrAuthService } from '../../services/hr-auth.service';
 import { OperationModeService } from '../../../../core/services/operation-mode.service';
 import { ConfirmDialogService } from '../../../../shared/ui/confirm-dialog/confirm-dialog.service';
 import { ConfirmDialogComponent } from '../../../../shared/ui/confirm-dialog/confirm-dialog.component';
@@ -23,6 +24,7 @@ export class ShiftSchedulePageComponent {
   private readonly api = inject(HrApiService);
   private readonly router = inject(Router);
   private readonly propCtx = inject(PropertyContextService);
+  readonly hrAuth = inject(HrAuthService);
   private readonly opMode = inject(OperationModeService);
   private readonly confirmDialog = inject(ConfirmDialogService);
 

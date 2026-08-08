@@ -7,6 +7,55 @@ export interface DateHistoryEntry {
   count: number;
 }
 
+/** Fila cruda (snake_case) de una reserva sin precio (banner del admin). */
+export interface UnpricedBookingRaw {
+  booking_id: string;
+  prop_id: number;
+  status: string;
+  guest_name?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  total_nights?: number;
+  currency?: string;
+  created_at?: string;
+}
+
+export interface UnpricedBooking {
+  bookingId: string;
+  propId: number;
+  status: string;
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  totalNights: number;
+  currency: string;
+}
+
+/** Resultado de POST /reservations/{booking_id}/recalculate-price. */
+export interface RecalculatePriceResult {
+  booking_id: string;
+  total_price: number | null;
+  status: string;
+  currency?: string;
+  already_priced?: boolean;
+  skipped?: string | null;
+  penalty_recomputed?: boolean;
+  folio_recomputed?: boolean;
+}
+
+export function mapUnpriced(raw: UnpricedBookingRaw): UnpricedBooking {
+  return {
+    bookingId: raw.booking_id,
+    propId: raw.prop_id,
+    status: raw.status,
+    guestName: raw.guest_name || '',
+    checkInDate: raw.check_in_date || '',
+    checkOutDate: raw.check_out_date || '',
+    totalNights: raw.total_nights || 0,
+    currency: raw.currency || 'USD',
+  };
+}
+
 /** Raw rate-plan row returned by `GET /reservations/rate-plans`. */
 interface RatePlanRaw {
   rate_plan_id: string;
@@ -200,6 +249,25 @@ export class ReservationsApiService {
     return this.http
       .get<ReservationStatsDto>('/reservations/stats')
       .pipe(map((dto) => mapReservationStats(dto)));
+  }
+
+  /** Bookings sin ``total_price`` (banner 'Recalcular precio' — solo staff). */
+  getUnpricedReservations() {
+    return this.http
+      .get<{ items: UnpricedBookingRaw[]; total: number }>('/reservations/unpriced')
+      .pipe(map((dto) => dto.items.map(mapUnpriced)));
+  }
+
+  /**
+   * Recalcula el precio de una reserva sin precio — MISMO path canónico que
+   * el script ``migrate_backfill_booking_prices.py`` (fallback a
+   * ``rate_plans.base_rate`` + penalizaciones + folio).
+   */
+  recalculatePrice(bookingId: string) {
+    return this.http.post<RecalculatePriceResult>(
+      `/reservations/${bookingId}/recalculate-price`,
+      {},
+    );
   }
 
   exportCsv() {

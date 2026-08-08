@@ -523,42 +523,132 @@
   margin: 0;
 }
 
-/* ── Save Action Panel Footer ── */
-.form-actions-panel {
+/* ── Mode chrome (read / editing) ── */
+.mode-chrome {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--app-border);
+  padding: 1.1rem 1.5rem;
   border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  margin-top: 1rem;
+  border: 1px solid var(--app-border);
 
-  .info-text {
+  .mode-chrome-copy {
     display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    font-size: 0.88rem;
-    color: var(--muted-text);
+    align-items: flex-start;
+    gap: 0.85rem;
+    min-width: 0;
 
-    span {
-      line-height: 1.4;
-    }
-
-    .material-symbols-outlined {
-      color: var(--accent);
-      font-size: 1.25rem;
-    }
-
-    strong {
+    h3 {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 700;
       color: var(--app-text);
+    }
+
+    p {
+      margin: 0.15rem 0 0;
+      font-size: 0.82rem;
+      color: var(--muted-text);
+      line-height: 1.45;
     }
   }
 
-  .btn-save {
-    min-width: 180px;
+  .mode-chrome-icon {
+    font-size: 1.5rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .mode-chrome-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+  }
+
+  .dirty-hint {
+    color: var(--warning);
+    font-weight: 700;
+  }
+}
+
+.mode-chrome--read {
+  background: var(--surface);
+
+  .mode-chrome-icon {
+    color: var(--accent);
+  }
+}
+
+.mode-chrome--edit {
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--app-border));
+
+  .mode-chrome-icon {
+    color: var(--warning);
+  }
+
+  h3 {
+    color: var(--warning);
+  }
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+
+  &:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* ── Composer (nuevo servicio) ── */
+.composer-card {
+  margin-top: 1rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--warning) 5%, var(--surface));
+  border-radius: 12px;
+  display: grid;
+  gap: 1rem;
+
+  .composer-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+
+    .composer-icon {
+      color: var(--warning);
+      font-size: 1.35rem;
+    }
+
+    strong {
+      font-size: 0.95rem;
+      color: var(--app-text);
+    }
+
+    p {
+      margin: 0.1rem 0 0;
+      font-size: 0.78rem;
+      color: var(--muted-text);
+    }
+  }
+
+  .composer-body {
+    display: grid;
+    grid-template-columns: 1fr 160px auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .composer-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
   }
 }
 
@@ -570,32 +660,43 @@
   }
 }
 
+@media (max-width: 860px) {
+  .composer-card .composer-body {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 720px) {
   .hero-grid {
     grid-template-columns: 1fr 1fr;
   }
+
+  .mode-chrome {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+
+    .mode-chrome-actions {
+      justify-content: flex-end;
+    }
+  }
 }
 
 @media (max-width: 600px) {
-  .form-actions-panel {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-
-    .info-text {
-      justify-content: center;
-    }
-
-    .btn-save {
-      width: 100%;
-    }
-  }
-
   .inline-entry {
     flex-direction: column;
     align-items: stretch;
 
     .add-btn {
+      width: 100%;
+    }
+  }
+
+  .mode-chrome-actions {
+    flex-direction: column;
+
+    button {
       width: 100%;
     }
   }

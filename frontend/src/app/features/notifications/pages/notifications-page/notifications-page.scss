@@ -109,6 +109,13 @@
   white-space: nowrap;
 }
 
+.notif-card-msg {
+  font-size: 0.8rem;
+  color: var(--muted-text, var(--gray-500));
+  line-height: 1.45;
+  margin: 0;
+}
+
 .notif-card-booking {
   display: inline-flex;
   align-items: center;
