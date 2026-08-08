@@ -1,0 +1,40 @@
+# ─── Override de DESARROLLO (NO usar en producción) ─────────────────────────
+# Monta el dist del build de host sobre el html servido por nginx, de modo que
+# un `npm run build` en el host se sirva sin reconstruir la imagen. La imagen
+# de producción (frontend/Dockerfile) queda intacta.
+#
+# ⚠️ CONTRATO DE ACTIVACIÓN (verificado empíricamente):
+# Compose solo auto-carga docker-compose.override.yml cuando el archivo base
+# se llama EXACTAMENTE `docker-compose.yml` (sin -f). Como el base de este
+# proyecto se invoca con `-f infra/docker-compose.yml` (nombre custom), el
+# override NO se carga solo — hay que pasarlo explícitamente:
+#
+#   docker compose --env-file .env -f infra/docker-compose.yml \
+#     -f infra/docker-compose.override.yml up -d frontend
+#
+# Con el `-f` único, el contenedor usa la imagen y este override se ignora
+# (comportamiento silencioso: nada se rompe, solo no hay mount).
+#
+# ⚠️ RUNTIME-CONFIG.JS: el entrypoint escribe /usr/share/nginx/html/runtime-
+# config.js (clave de licencia Syncfusion) DENTRO del mount, o sea en el dist
+# del host. Como `npm run build` BORRA dist/ (esbuild limpia el outputPath),
+# el post-build (frontend/scripts/post-build.mjs, encadenado al build) lo
+# re-copia al dist con esta prioridad: (a) SYNCFUSION_LICENSE_KEY env del
+# host → genera el archivo, (b) el runtime-config.js del dist previo (la
+# clave que el entrypoint inyectó en el último arranque) → lo conserva,
+# (c) public/runtime-config.js placeholder → lo copia. Así la licencia y el
+# toast de versión sobreviven al rebuild SIN `docker compose restart
+# frontend`. El primer build de un clone fresco usa (c) hasta que el
+# contenedor arranque una vez e inyecte la clave (a partir de ahí aplica (b)).
+#
+# ⚠️ DIST VACÍO: si el contenedor arranca sin `frontend/dist/` previo (clone
+# fresco), el mount sombrea el dist horneado de la imagen y nginx sirve nada.
+# Requisito: correr `cd frontend && npm run build` una vez antes del primer up.
+#
+# ⚠️ PROD: si alguien corre compose DESDE infra/ con el nombre por defecto
+# (`cd infra && docker compose up -d`), este override SÍ se auto-carga y
+# sirve el dist del host en vez de la imagen. Excluirlo de despliegues prod.
+services:
+  frontend:
+    volumes:
+      - ../frontend/dist/frontend/browser:/usr/share/nginx/html

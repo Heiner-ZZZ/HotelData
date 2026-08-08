@@ -5,7 +5,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve --proxy-config proxy.conf.json",
-    "build": "ng build",
+    "prebuild": "node scripts/post-build.mjs --capture",
+    "build": "ng build && node scripts/post-build.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
     "lint": "ng lint"
@@ -23,7 +24,6 @@
     "ag-grid-angular": "^36.0.0",
     "ag-grid-community": "^36.0.0",
     "chart.js": "^4.5.1",
-    "cldr-data": "^36.0.5",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",

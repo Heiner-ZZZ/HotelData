@@ -266,3 +266,10 @@ frontend/src/assets/fonts/playa_nav_reserva2.png
 docs/library/LOL.md
 docs/library/TA11_condensed.md
 dashboardsTacticos/
+.freebuff/
+.freebuff/desktop-v2.db
+.freebuff/desktop-v2.db-shm
+.freebuff/desktop-v2.db-wal
+.freebuff/preview-db026961-5e72-4cbe-b640-8d799b5b942f.log
+.freebuff/run.md
+.freebuff/settings.json
