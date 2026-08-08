@@ -22,6 +22,8 @@ from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from src.app.security.permissions import user_has_permission
+
 logger = logging.getLogger(__name__)
 
 from src.app.modules.instay.schemas import (
@@ -85,16 +87,41 @@ def get_my_stay_session(
         raise HTTPException(status_code=400, detail="booking_id requerido.")
 
     db = get_database()
-    user_email = current_user.get("email", "")
     booking = db.booking_orders.find_one({"booking_id": booking_id})
     if not booking:
         raise HTTPException(status_code=404, detail="Reserva no encontrada.")
 
-    guest_email = booking.get("guest_email", "") or booking.get("email", "")
-    is_owner = guest_email.lower() == user_email.lower() or booking.get("booking_id", "") == booking_id
+    # ── Ownership (fix 2026-08) ────────────────────────────────────────────
+    # Canonical check: the booking's ``user_id`` FK (BSON ObjectId) must equal
+    # the current user's ``_id``. The previous code OR'ed with
+    # ``booking.get("booking_id") == booking_id`` — always True because the
+    # doc was found by that key — so ANY authenticated user holding
+    # ``reservations.read`` (cliente included) could mint a guest-portal token
+    # for ANY checked-in booking (guest PII + portal hijack). Hardening:
+    # normalize legacy hex-string _ids on both sides so the ObjectId
+    # comparison still matches (same pattern as queries.py / billing).
+    user_id = current_user.get("_id")
+    if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+        user_id = ObjectId(user_id)
+    booking_user_id = booking.get("user_id")
+    if isinstance(booking_user_id, str) and ObjectId.is_valid(booking_user_id):
+        booking_user_id = ObjectId(booking_user_id)
+    is_owner = user_id is not None and booking_user_id == user_id
     if not is_owner:
-        role = current_user.get("primaryRole", "")
-        if role not in ("super_admin", "admin_sistema", "hotel_partner", "gerente_hotel"):
+        # Legacy bookings created before the user_id FK migration may lack the
+        # FK; fall back to email ownership (still scoped to the real owner —
+        # never a self-confirming comparison).
+        guest_email = booking.get("guest_email", "") or booking.get("email", "")
+        user_email = current_user.get("email", "")
+        is_owner = bool(guest_email) and guest_email.lower() == (user_email or "").lower()
+    if not is_owner:
+        # Staff override: any user holding ``reservations.manage`` may open a
+        # guest's stay session (front-desk flow — recepcionista opens the
+        # guest portal from the reservation modal; same capability the staff
+        # ``create_stay_session`` endpoint requires). Permission-based (PBAC)
+        # instead of a hardcoded role list so new front-desk roles never
+        # regress. super_admin resolves ``*.*`` → always allowed.
+        if not user_has_permission(db, current_user, "reservations.manage"):
             raise HTTPException(status_code=403, detail="No tienes acceso a esta reserva.")
 
     if booking.get("stay_status") != "checked_in":

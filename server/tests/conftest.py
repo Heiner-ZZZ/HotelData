@@ -18,9 +18,13 @@ the demo seeding script.
 """
 from __future__ import annotations
 
+import atexit
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # IMPORTANT: set MONGO_DATABASE BEFORE any `src.app.*` import so the
 # frozen Settings dataclass picks it up via `get_settings()`.
@@ -33,7 +37,6 @@ from passlib.context import CryptContext
 
 from src.app.main import create_app
 from src.database.connection import get_database
-
 
 # Collections that the web app and middleware touch. Cleaned before each
 # test. Adding a new collection to the app means adding it here.
@@ -51,10 +54,13 @@ TEST_COLLECTIONS = [
     "permissions",
     "hotel_roles",
     "role_assignments",
+    "navigation",  # seed_navigation() de los tests de invariante (catálogo vs BD)
+    "email_verification_tokens",  # register-property verify codes (auth)
     # --- HR ---------------------------------------------------------------
     "employees",
     "employee_departments",
     "employee_documents",
+    "employee_positions",
     "employee_shifts",
     # --- Control ETL ------------------------------------------------------
     "etl_executions",
@@ -62,6 +68,8 @@ TEST_COLLECTIONS = [
     "rejected_records",
     "search_logs",
     "system_catalogs",
+    "system_currencies",  # catálogo de monedas (onboarding / pricing)
+    "system_counters",    # contadores de secuencia (folios, etc.)
     # --- Hechos -----------------------------------------------------------
     "fact_hotel_reservations",
     "fact_hotel_events",
@@ -105,6 +113,9 @@ TEST_COLLECTIONS = [
     # --- Housekeeping -----------------------------------------------------
     "housekeeping_tasks",
     "maintenance_tasks",
+    "room_status_history",
+    "room_status_log",
+    "additional_charges",
     # --- Tarifas y revenue ----------------------------------------------
     "rate_plans",
     "hotel_rate_calendar",
@@ -115,19 +126,46 @@ TEST_COLLECTIONS = [
     "booking_orders",
     "booking_status_history",
     "booking_guests",
+    "booking_room_guests",
     "manual_reservations",
     # --- Billing and invoices -------------------------------------------
     "reservation_invoices",
     "reservation_payments",
     "fact_reservation_invoices",
     "fact_reservation_payments",
+    "guest_folios",  # create_folio/post_to_folio/close_folio/list_folios (billing.service.folio)
+    "platform_earnings",
     # --- Reviews --------------------------------------------------------
     "reviews",
+    "fact_reviews",
     # --- Hotel products + inventory (Fase 4 + Fase 6) ------------------
     "hotel_products",
     "fact_inventory",
     "chart_of_accounts",
     "journal_entries",
+    # --- Expenses / ledger (Fase 5 + Fase 6) ----------------------------
+    "expense_invoices",
+    "expense_categories",
+    "expense_budget",
+    "ledger_transactions",
+    # --- Auditoría (audit trail universal + transactional outbox) -------
+    "audit_log",
+    "outbox",
+    # --- Log de notificaciones de email (reservations/notifications) ----
+    "notification_log",
+    # --- Pricing por bandas (APROBACION_HOTELES_Y_PRICING.md §6/§8) ----
+    "pricing_plans",
+    # --- Instay / guest portal -----------------------------------------
+    "stay_sessions",
+    "stay_service_requests",
+    "stay_messages",
+    "lost_and_found",
+    # --- Reception (turnos de caja) ------------------------------------
+    "reception_shifts",
+    # --- Account / notificaciones / tracking ----------------------------
+    "user_favorites",
+    "notification_log",
+    "click_events",
 ]
 
 
@@ -183,16 +221,26 @@ def db():
     return get_database()
 
 
-@pytest.fixture(autouse=True)
-def _clean_collections(db):
-    """Drop all test collections before each test for isolation, then
-    re-create partner module indexes so test writes see the same schema
-    that production has at startup (the `lifespan` in `src/app/main.py`
-    runs the partner bootstrap once per process; per-test isolation here
-    drops the collections and therefore the indexes).
+_ENSURES_RUN = False
+
+
+def _run_module_ensures_once() -> None:
+    """Run the module ensures exactly ONCE per pytest process.
+
+    The ensures create collections + indexes (idempotent). After the first
+    test they are pure no-ops in intent — but NOT in reality: some of them
+    (e.g. ``ensure_hotel_profile_collections``) do an unconditional
+    ``drop_index_safe("dim_hotels", "prop_id_1")`` + recreate on EVERY call.
+    Running all 7 ensures per test turns into an index drop/create war
+    (~hundreds of ``dropIndexes`` per minute) that adds lock contention to
+    the shared mongo and delays/interrupts in-flight operations. Memoizing
+    to once-per-process keeps the schema guarantee with zero churn.
     """
-    for collection_name in TEST_COLLECTIONS:
-        db.drop_collection(collection_name)
+    global _ENSURES_RUN
+    if _ENSURES_RUN:
+        return
+    _ENSURES_RUN = True
+    from src.app.modules.hotels.collections import ensure_hotels_collections
     from src.app.modules.partner.services.bootstrap import (
         ensure_hotel_content_collections,
         ensure_hotel_profile_collections,
@@ -206,8 +254,115 @@ def _clean_collections(db):
     ensure_hotel_profile_collections()
     ensure_inventory_collections()
     ensure_rate_collections()
+    ensure_hotels_collections()
     ensure_revenue_collections()
     ensure_hotel_permission_collections()
+
+
+def _acquire_test_db_lock() -> None:
+    """Fail fast if another pytest process shares the test DB.
+
+    Two pytest processes running concurrently against ``hoteldata_hub_test``
+    silently corrupt each other: each test's ``delete_many`` cleanup wipes the
+    OTHER process's seeded users/sessions/roles mid-flight, producing
+    intermittent 401/403/duplicate-key failures that are impossible to
+    reproduce in isolation. The lock turns that silent corruption into an
+    explicit, actionable error. Tests only run inside the Linux server
+    container, so ``fcntl`` is always available there.
+
+    Alcance: el flock vive en ``/tmp`` del contenedor — protege a los procesos
+    del MISMO contenedor (el caso real de este repo). No protege contra pytest
+    desde otro contenedor/host.
+    """
+    try:
+        import fcntl
+        import time
+    except ImportError:  # pragma: no cover - pytest desde host Windows sin fcntl
+        logger.warning(
+            "fcntl no disponible: sin lock de exclusión para la BD de test. "
+            "No corras dos pytest a la vez contra hoteldata_hub_test."
+        )
+        return
+    lock_path = "/tmp/hoteldata_test_db.lock"
+    # Modo append (NO "w"): truncar el archivo destruiría el marcador de PID del
+    # holder y rompería el chequeo de doble importación de abajo.
+
+    # (``_release``), así que NO puede vivir en un context manager.
+    lock_file = open(lock_path, "a+")  # noqa: SIM115
+    # Breve reintento antes de fallar: un `docker compose exec` secuencial puede
+    # arrancar el siguiente pytest mientras el anterior aún está cerrando su
+    # event loop (pytest-asyncio) — solapamiento de fracciones de segundo que NO
+    # es corrupción real. Una suite concurrente de verdad (minutos) agota la
+    # ventana y recibe el error explícito.
+    deadline = time.monotonic() + 15.0
+    while True:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Estampar el PID del holder: permite detectar la RE-importación del
+            # mismo archivo dentro del MISMO proceso (``from tests.conftest
+            # import login`` carga conftest.py por segunda vez como módulo
+            # distinto, y su segundo ``flock`` chocaría con el primero dando un
+            # falso "lock en uso" — auto-deadlock). El segundo import lee su
+            # propio PID y sigue sin re-adquirir.
+            lock_file.seek(0)
+            lock_file.truncate()
+            lock_file.write(str(os.getpid()))
+            lock_file.flush()
+            break
+        except OSError:
+            try:
+                lock_file.seek(0)
+                raw = lock_file.read().strip()
+                owner = int(raw) if raw else 0
+            except (ValueError, OSError):
+                # El archivo puede estar truncándose a la vez (otro import
+                # compitiendo) — tratar como sin owner conocido.
+                owner = 0
+            if owner == os.getpid():
+                # Ya lo tiene ESTE proceso vía una importación duplicada del
+                # módulo conftest (conftest vs tests.conftest). No es contención
+                # real: el primer flock sigue vivo hasta el exit del proceso.
+                break
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    "Otro proceso pytest está corriendo contra la BD de test compartida "
+                    f"({lock_path} en uso). Dos suites simultáneas se pisan los datos "
+                    "(401/403/duplicate-key intermitentes). Espera a que el otro proceso "
+                    "termine (o mátalo) y reintenta."
+                ) from None
+            time.sleep(0.25)
+
+    def _release() -> None:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+        finally:
+            lock_file.close()
+
+    atexit.register(_release)
+
+
+_acquire_test_db_lock()
+
+
+@pytest.fixture(autouse=True)
+def _clean_collections(db):
+    """Empty all test collections before each test for isolation.
+
+    Uses `delete_many` instead of `drop_collection` (see comment below). The
+    module ensures run once per process (``_run_module_ensures_once``), not
+    per test: per-test runs turned into an index drop/create war.
+    """
+    # Limpieza por `delete_many` en vez de `drop_collection`: en un replica set,
+    # el drop + recreación de ~30 índices por test (las ensures de abajo) genera
+    # un backlog de idents "drop-pending" (WiredTiger ObjectIsBusy 314) que
+    # hace que la PRIMERA escritura de la siguiente prueba caiga en una
+    # colección aún en estado de dropping → inserts perdidos → 400/401
+    # intermitentes (ej. "El país seleccionado no existe"). delete_many deja la
+    # colección vacía (misma semántica de aislamiento) sin tocar el ciclo de
+    # vida del ident ni los índices → las ensures pasan a ser no-ops reales.
+    for collection_name in TEST_COLLECTIONS:
+        db[collection_name].delete_many({})
+    _run_module_ensures_once()
     yield
 
 

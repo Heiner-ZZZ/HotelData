@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from bson import ObjectId
+
 from src.app.core.state_machine import booking_sm
 
 
@@ -50,7 +52,10 @@ class ReservationInput:
     special_requests: list[str] | None = None
     season_id: str = ""
     source: str = "web_request"
-    user_id: str | None = None
+    # FK to users._id. Canonical storage is a BSON ObjectId; the field also
+    # accepts a 24-hex string from legacy callers (``build_reservation_input``
+    # normalizes it) and None for guest/anonymous bookings.
+    user_id: str | ObjectId | None = None
     created_by: str | None = None
     is_test: bool = False
     # Payment / transaction fields (Phase 1)

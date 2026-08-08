@@ -14,6 +14,7 @@ Flujo:
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -29,6 +30,21 @@ FOLIO_COLLECTION = "guest_folios"
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _to_object_id_ref(value: Any) -> Any:
+    """Normalize a Mongo ``_id`` reference to its canonical BSON type.
+
+    Hex strings (the wire format the frontend and ``str()`` callers produce)
+    become ``ObjectId``; ``None`` and already-``ObjectId`` values pass
+    through untouched. Non-hex strings (garbage) pass through as-is so
+    readers that compare against business keys are unaffected.
+    """
+    if value is None or isinstance(value, ObjectId):
+        return value
+    if isinstance(value, str) and ObjectId.is_valid(value.strip()):
+        return ObjectId(value.strip())
+    return value
 
 
 def _generate_folio_number() -> str:
@@ -64,7 +80,7 @@ def _find_booking(booking_id: str) -> dict | None:
 def _enrich_folio(doc: dict) -> dict:
     """Convert _id to id and format datetimes."""
     doc["id"] = str(doc.pop("_id"))
-    for f in ("created_at", "closed_at"):
+    for f in ("created_at", "updated_at", "closed_at"):
         if doc.get(f):
             if isinstance(doc[f], datetime):
                 doc[f] = doc[f].isoformat()
@@ -315,7 +331,7 @@ def post_to_folio(
 
 def close_folio(
     booking_id: str,
-    invoice_id: str | None = None,
+    invoice_id: str | ObjectId | None = None,
     closed_by: str = "system",
 ) -> dict | None:
     """Close a folio at check-out after invoice and payment are settled.
@@ -326,6 +342,13 @@ def close_folio(
     db = get_database()
     now = _now()
 
+    # Canonical FK type: ``guest_folios.invoice_id`` references
+    # ``reservation_invoices._id`` and must be stored as ObjectId (same
+    # reference in ``reservation_payments.invoice_id`` is already ObjectId).
+    # The checkout + API callers pass the hex string from ``str(inv["_id"])``;
+    # normalize here so the DB never sees a mixed type (audit 2026-08).
+    invoice_oid = _to_object_id_ref(invoice_id)
+
     result = db[FOLIO_COLLECTION].find_one_and_update(
         {"booking_id": booking_id, "status": "open"},
         {
@@ -333,7 +356,7 @@ def close_folio(
                 "status": "closed",
                 "closed_at": now,
                 "closed_by": closed_by,
-                "invoice_id": invoice_id,
+                "invoice_id": invoice_oid,
                 "updated_at": now,
             }
         },

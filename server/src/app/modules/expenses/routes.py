@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from math import ceil
 from typing import Any
@@ -42,8 +43,11 @@ from src.app.modules.expenses.service.collections import (
     ensure_expenses_collections, module_status,
 )
 from src.app.modules.partner.services.audit import register_action
+from src.app.modules.partner.services.hotel_products import restock_product
 from src.app.security.dependencies import require_permission
 from src.app.core.types import to_json_safe
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/modules/expenses", tags=["modules-expenses"])
 api_router = APIRouter(prefix="/api/expenses", tags=["expenses-api"])
@@ -86,6 +90,7 @@ def _resolve_category_id(category_name: str) -> ObjectId | None:
 def _enrich_invoice(doc: dict) -> dict:
     """Strip _id conversion (Pydantic ObjectIdStr handles it); keep totals and datetime ISO."""
     doc["total"] = (doc.get("amount") or 0) + (doc.get("tax_amount") or 0)
+    _enrich_product_lines(doc)
     pid = doc.get("prop_id")
     if pid is not None and not isinstance(pid, (ObjectId, str)):
         try:
@@ -98,6 +103,37 @@ def _enrich_invoice(doc: dict) -> dict:
             doc[f] = doc[f].isoformat()
         elif doc.get(f) is None:
             doc[f] = None
+    return doc
+
+
+def _enrich_product_lines(doc: dict) -> dict:
+    """Attach live inventory context to each restock line (reverse view).
+
+    Each ``product_lines`` entry already stores the purchase snapshot (name,
+    qty, unit_cost, line_total, restocked). This adds the product's CURRENT
+    stock and cost so the invoice detail can show "stock now" without a
+    second request. Product deleted meanwhile → ``stock_now``/``cost_now``
+    are None (the historical line stays visible).
+    """
+    lines = doc.get("product_lines")
+    if not lines:
+        return doc
+    db = get_database()
+    prop_id = doc.get("prop_id")
+    for line in lines:
+        line["stock_now"] = None
+        line["cost_now"] = None
+        pid = line.get("product_id")
+        if not pid or prop_id is None:
+            continue
+        product = db.hotel_products.find_one(
+            {"prop_id": prop_id, "product_id": pid},
+            {"quantity_available": 1, "cost_price": 1},
+        )
+        if not product:
+            continue
+        line["stock_now"] = round(float(product.get("quantity_available") or 0), 2)
+        line["cost_now"] = round(float(product.get("cost_price") or 0.0), 2)
     return doc
 
 
@@ -257,20 +293,99 @@ def create_invoice(
 ):
     db = get_database()
     now_dt = datetime.now(timezone.utc)
-    total_amount = payload.amount + payload.tax_amount
+
+    # Resolve + validate product lines BEFORE any write. Each line must point
+    # to a real product of the target hotel; when lines are present the
+    # invoice amount is recomputed as their sum (the invoice is the purchase
+    # document backing the goods received) so there is no double entry.
+    product_lines: list[dict[str, Any]] = []
+    amount = payload.amount
+    if payload.product_lines:
+        if not payload.prop_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Selecciona una propiedad para registrar líneas de producto.",
+            )
+        resolved: list[dict[str, Any]] = []
+        for line in payload.product_lines:
+            product = db.hotel_products.find_one(
+                {"prop_id": payload.prop_id, "product_id": line.product_id},
+                {"_id": 0, "name": 1},
+            )
+            if not product:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Producto {line.product_id} no encontrado en esta propiedad",
+                )
+            line_total = round(float(line.qty) * float(line.unit_cost), 2)
+            resolved.append({
+                "product_id": line.product_id,
+                "name": product.get("name") or line.product_id,
+                "qty": round(float(line.qty), 2),
+                "unit_cost": round(float(line.unit_cost), 2),
+                "line_total": line_total,
+            })
+        product_lines = resolved
+        amount = round(sum(l["line_total"] for l in resolved), 2)
+
+    total_amount = amount + payload.tax_amount
     category_id = _resolve_category_id(payload.category)
     doc = {
         "vendor_name": payload.vendor_name, "category": payload.category,
         "category_id": category_id,
-        "description": payload.description, "amount": payload.amount,
+        "description": payload.description, "amount": amount,
         "tax_amount": payload.tax_amount, "total": total_amount,
         "status": "pending", "invoice_date": payload.invoice_date,
         "due_date": payload.due_date, "approved_by": None, "approved_at": None,
         "notes": payload.notes, "prop_id": payload.prop_id,
+        "product_lines": product_lines,
         "created_at": now_dt, "updated_at": now_dt,
     }
     result = db[INVOICES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    # Auto-restock each line in one step: stock increment + cost_price update
+    # + fact_inventory layer + DR 1050 / CR 2010 ledger entry, all linked to
+    # THIS invoice id (real FK).
+    #
+    # Accounting invariant: these restock postings are the SOLE ledger event
+    # for product-backed invoices — expense invoices never carry an
+    # ``invoice_number``, which is what keeps ``ledger_hooks`` from also
+    # posting AP (it returns early when ``invoice_number`` is empty). If a
+    # future change starts generating invoice numbers on expense invoices,
+    # this coupling must be revisited to avoid double-posting CR 2010.
+    #
+    # Lines were pre-validated, so a failure here is a DB hiccup; the invoice
+    # remains the document of truth (best-effort, the same rule restock_product
+    # itself follows for ledger/audit). Each line is stamped ``restocked`` so
+    # a failure is observable on the wire and persisted, not just logged.
+    if product_lines:
+        final_lines: list[dict[str, Any]] = []
+        for line in product_lines:
+            try:
+                restock_product(
+                    payload.prop_id,
+                    line["product_id"],
+                    qty=line["qty"],
+                    unit_cost=line["unit_cost"],
+                    supplier_name=payload.vendor_name,
+                    invoice_id=str(result.inserted_id),
+                    changed_by=current_user.get("username", "system"),
+                )
+                final_lines.append({**line, "restocked": True})
+            except Exception:
+                logger.exception(
+                    "Auto-restock failed for line %s of invoice %s",
+                    line["product_id"], result.inserted_id,
+                )
+                final_lines.append({**line, "restocked": False})
+        db[INVOICES_COLLECTION].update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"product_lines": final_lines}},
+        )
+        product_lines = final_lines
+        doc["product_lines"] = final_lines
+
     enriched = _enrich_invoice(doc)
     diff = {
         k: {"old": None, "new": v}
@@ -303,7 +418,17 @@ def list_invoices(
     db = get_database()
     query: dict = {}
     if status_filter:
-        query["status"] = status_filter
+        # Comma-separated CSV (e.g. ``pending,approved,paid``) → $in, so invoice
+        # pickers (restock modal, etc.) can exclude rejected invoices as purchase
+        # sources in ONE round trip. A plain single status keeps working.
+        statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
+        # Guard: an empty/whitespace-only CSV (e.g. ``status=,"``) means "no
+        # filter", not ``$in: []`` (which would silently match nothing).
+        if statuses:
+            if len(statuses) == 1:
+                query["status"] = statuses[0]
+            else:
+                query["status"] = {"$in": statuses}
     if category:
         query["category"] = category
     if category_id:

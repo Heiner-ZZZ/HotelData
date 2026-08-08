@@ -98,6 +98,26 @@ class TestCreateInvoice:
         assert db.reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
         assert db.fact_reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
 
+    def test_create_invoice_rejects_zero_with_zero_value_line_items(self, db, seeded_booking):
+        """Guard ampliado: una reserva con line_items pero SIN valor real no
+        puede producir una factura en $0.
+
+        La guarda anterior solo rechazaba el caso de ``line_items`` vacíos
+        (``not line_items``), así que una reserva con line_items cuyos totales
+        suman $0 se colaba y persistía una factura en $0 — contaminando los
+        KPIs tácticos (F1.4/F1.5) exactamente igual que el caso sin conceptos.
+        """
+        db.booking_orders.update_one(
+            {"booking_id": seeded_booking},
+            {"$set": {"line_items": [{"item_id": "x1", "name": "Extra $0", "total": 0.0}]}},
+        )
+        payload = InvoiceCreate(booking_id=seeded_booking, subtotal=0.0, taxes=0.0)
+        result = create_invoice(payload)
+        assert result is None
+        # Nada persistido en ninguna de las dos colecciones.
+        assert db.reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
+        assert db.fact_reservation_invoices.count_documents({"booking_id": seeded_booking}) == 0
+
     def test_invoice_stored_with_string_booking_id(self, db, seeded_booking):
         """Verify the DB stores string booking_id, not ObjectId (GAP-042)."""
         payload = InvoiceCreate(booking_id=seeded_booking, subtotal=200.0, taxes=20.0)
@@ -281,3 +301,96 @@ class TestRefundPayment:
         refund_payment(pay["id"])
         result = refund_payment(pay["id"])
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Client-facing "Mis facturas" (billing/routes.py)
+# ---------------------------------------------------------------------------
+
+class TestMyInvoicesClientFacing:
+    """Client-facing "Mis facturas" endpoints must resolve bookings by the
+    BUSINESS ``booking_id`` (``BK-…`` = fecha + ticket), NOT by the Mongo
+    ``_id``. ``reservation_invoices.booking_id`` stores the string business
+    key (GAP-042 pinned the write side), so joining with ``_id`` (ObjectId)
+    silently returns nothing: an empty "Mis facturas" list and a permanent
+    403 on pay — even though the invoice exists in the DB.
+    """
+
+    @pytest.fixture
+    def cliente_role(self, db):
+        """Seed the global ``cliente`` role with the account.* permissions
+        the my-invoices routes gate on (``require_permission`` reads
+        ``roles.permissions``)."""
+        db.roles.insert_one({
+            "role_name": "cliente",
+            "display_name": "Cliente",
+            "permissions": ["account.read", "account.update", "reservations.read"],
+            "is_system": True,
+        })
+
+    def _owned_booking(self, db, user_id: str) -> str:
+        """Insert a booking owned by ``user_id`` (ObjectId FK) and return
+        its business ``booking_id`` (BK-…)."""
+        from src.app.modules.reservations.service._helpers import generate_prefixed_id, utc_now
+        # dim_hotels row so create_invoice's resolve_hotel_id doesn't warn.
+        if not db.dim_hotels.find_one({"prop_id": 999}, {"_id": 1}):
+            db.dim_hotels.insert_one({"prop_id": 999, "hotel_name": "Test Hotel", "display_name": "Test Hotel"})
+        bid = generate_prefixed_id("BK")
+        db.booking_orders.insert_one({
+            "booking_id": bid,
+            "user_id": ObjectId(user_id),
+            "prop_id": 999,
+            "status": "confirmed",
+            "guest_name": "Cliente Facturas",
+            "guest_email": "cliente_test@example.com",
+            "check_in_date": "2026-09-01",
+            "check_out_date": "2026-09-04",
+            "adults": 2,
+            "children": 0,
+            "rooms": 1,
+            "total_price": 450.0,
+            "created_at": utc_now(),
+        })
+        return bid
+
+    @pytest.mark.asyncio
+    async def test_my_invoices_finds_invoice_by_business_booking_id(
+        self, client, db, cliente_user, cliente_role
+    ):
+        """GET /api/billing/my-invoices must return the invoice of a booking
+        owned by the client, joined by business ``booking_id``."""
+        bid = self._owned_booking(db, cliente_user["user_id"])
+        create_invoice(InvoiceCreate(booking_id=bid, subtotal=100.0, taxes=10.0))
+
+        lr = await client.post(
+            "/api/auth/login",
+            json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
+        )
+        assert lr.status_code == 200, lr.text
+
+        resp = await client.get("/api/billing/my-invoices")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["total"] == 1, (
+            f"El cliente debe ver su factura via booking_id de negocio, vio: {body}"
+        )
+        assert body["items"][0]["booking_id"] == bid
+
+    @pytest.mark.asyncio
+    async def test_my_invoice_pay_accepts_own_invoice(
+        self, client, db, cliente_user, cliente_role
+    ):
+        """POST /api/billing/my-invoices/{id}/pay must accept a client paying
+        their OWN invoice (ownership check by business booking_id)."""
+        bid = self._owned_booking(db, cliente_user["user_id"])
+        inv = create_invoice(InvoiceCreate(booking_id=bid, subtotal=100.0, taxes=10.0))
+
+        lr = await client.post(
+            "/api/auth/login",
+            json={"identifier": cliente_user["username"], "password": cliente_user["password"]},
+        )
+        assert lr.status_code == 200, lr.text
+
+        resp = await client.post(f"/api/billing/my-invoices/{inv['id']}/pay")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["ok"] is True

@@ -3,8 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 
 from src.app.security.dependencies import require_login, require_permission
-from src.app.security.hotel_filter import hotel_filter_from_user
+from src.app.security.hotel_filter import hotel_filter_from_user, user_can_access_hotel
+from src.app.security.permissions import user_has_permission
 from src.app.security.role_helpers import get_role_name
+from src.database.connection import get_database
 from src.app.modules.reviews.schemas import (
     ModuleStatus, ReviewCreate, ReviewListResponse, ReviewModeration,
     ReviewReportCreate, ReviewResponse, ReviewStaffResponse, ReviewUpdate,
@@ -93,11 +95,32 @@ def list_reviews_api(
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(require_login),
 ):
-    # Apply RBAC hotel filter: hotel_partner/gerente_hotel only see their hotels
+    # Endurecimiento de aislamiento (auditoría my-*): los filtros de staff
+    # (user_id ajeno / estado de moderación) exigen reviews.read. Sin él, un
+    # cliente podía enumerar reseñas de cualquier usuario y ver estados de
+    # moderación que la vista pública no expone.
+    db = get_database()
+    is_staff = user_has_permission(db, current_user, "reviews.read")
+    if (user_id is not None or moderation_status is not None) and not is_staff:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permiso requerido: reviews.read",
+        )
+    # RBAC hotel filter: hotel_partner/gerente_hotel solo ven sus hoteles.
+    # El prop_id explícito NUNCA reemplaza el alcance: se valida contra él y
+    # 403 fuera de alcance (antes el override saltaba el RBAC cross-hotel).
     hotel_filter = hotel_filter_from_user(current_user)
-    # If the user explicitly passed a prop_id that doesn't match their filter, override
     if prop_id is not None:
+        if not user_can_access_hotel(current_user, prop_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Sin acceso al hotel {prop_id}.",
+            )
         hotel_filter = {"prop_id": prop_id}
+    # Sin permiso staff y sin filtro de moderación: solo reseñas aprobadas
+    # (paridad con GET /api/hotels/{prop_id}/reviews).
+    if not is_staff and moderation_status is None:
+        moderation_status = "approved"
     return ReviewListResponse.model_validate(list_reviews(
         hotel_filter=hotel_filter,
         prop_id=prop_id,

@@ -23,6 +23,19 @@ class ExpenseCategoryCreate(BaseModel):
     budget: float = 0
 
 
+class InvoiceProductLine(BaseModel):
+    """One product line on a purchase invoice → auto-restock on save.
+
+    ``qty`` and ``unit_cost`` mirror the restock endpoint contract; the
+    line total is computed server-side (``qty * unit_cost``) and stored on
+    the invoice doc for traceability.
+    """
+
+    product_id: str
+    qty: float = Field(gt=0)
+    unit_cost: float = Field(ge=0)
+
+
 class InvoiceCreate(BaseModel):
     vendor_name: str
     category: str
@@ -33,6 +46,9 @@ class InvoiceCreate(BaseModel):
     due_date: str = ""
     notes: str = ""
     prop_id: int | None = None
+    # When present, the invoice amount is recomputed as the sum of the lines
+    # and each line triggers an inventory restock linked to this invoice.
+    product_lines: list[InvoiceProductLine] = Field(default_factory=list)
 
 
 class InvoiceUpdate(BaseModel):

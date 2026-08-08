@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
@@ -821,12 +822,19 @@ def my_invoices_api(
     user_id = current_user.get("_id")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no identificado")
-    # Find all bookings for this user
+    # Auth middleware hands a BSON ObjectId; harden against a legacy hex-string
+    # _id so the ObjectId filter still matches (same pattern as queries.py).
+    if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+        user_id = ObjectId(user_id)
+    # Find all bookings for this user. The join key is the BUSINESS
+    # ``booking_id`` (``BK-…``, fecha + ticket) — ``reservation_invoices``
+    # stores that string, NOT the Mongo ``_id``. Joining with ``_id``
+    # (ObjectId) silently returns zero invoices.
     booking_ids = [
-        b["_id"]
+        b["booking_id"]
         for b in db.booking_orders.find(
             {"user_id": user_id},
-            {"_id": 1},
+            {"booking_id": 1, "_id": 0},
         )
     ]
     if not booking_ids:
@@ -845,7 +853,10 @@ def my_invoices_api(
         .skip((page - 1) * page_size)
         .limit(page_size)
     )
-    items = [_enrich_invoice(doc) for doc in cursor]
+    # Belt-and-suspenders: ``_enrich_invoice`` formats issued_at/paid_at but
+    # leaves created_at/updated_at as raw datetimes; ``to_json_safe`` handles
+    # the rest (datetime → ISO, nested ObjectId → str) before the wire model.
+    items = [to_json_safe(_enrich_invoice(doc)) for doc in cursor]
     import math
     register_action(
         prop_id=0,
@@ -990,6 +1001,10 @@ def post_to_folio_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
+    # Belt-and-suspenders (same rationale as close_folio_api): post_to_folio
+    # returns the raw Mongo doc; _enrich_folio ISO-formats the top-level
+    # timestamps but nested postings still carry raw datetimes/ObjectIds.
+    result = to_json_safe(result)
     diff = {
         "total_due": {"old": before.get("total_due") if before else None, "new": result.get("total_due")},
         "posting_count": {"old": before.get("posting_count") if before else None, "new": result.get("posting_count")},
@@ -1022,6 +1037,10 @@ def close_folio_api(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo cerrar el folio")
+    # Belt-and-suspenders: defensive JSON-safe wrap (ObjectId → str, datetime →
+    # ISO) before the wire model — close_folio returns the raw Mongo doc whose
+    # updated_at/closed_at are native datetimes and invoice_id is an ObjectId.
+    result = to_json_safe(result)
     diff = {
         "status": {"old": before.get("status") if before else None, "new": "closed"},
         "total_due": {"old": before.get("total_due") if before else None, "new": result.get("total_due")},
@@ -1100,9 +1119,16 @@ def my_invoice_pay_api(
     if not inv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
 
-    # Verify the invoice belongs to a booking owned by this user
+    # Verify the invoice belongs to a booking owned by this user. The
+    # ownership check joins by the BUSINESS ``booking_id`` (``BK-…``, fecha +
+    # ticket), which is what ``reservation_invoices.booking_id`` stores —
+    # not the Mongo ``_id``.
     user_id = current_user.get("_id")
-    booking = db.booking_orders.find_one({"_id": inv["booking_id"], "user_id": user_id})
+    # Same defensive hex-string normalization as ``my_invoices_api`` (auth
+    # middleware hands ObjectId; legacy _id strings are normalized to match).
+    if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+        user_id = ObjectId(user_id)
+    booking = db.booking_orders.find_one({"booking_id": inv["booking_id"], "user_id": user_id})
     if not booking:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Esta factura no pertenece al usuario actual")
 

@@ -24,6 +24,33 @@ def _destination_ids(destination: str) -> list[int]:
     return [int(item["srch_destination_id"]) for item in docs if item.get("srch_destination_id") is not None]
 
 
+def suggest_destinations(query: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Public destination suggestions for the welcome booking-bar autocomplete.
+
+    Case-insensitive substring match over ``dim_destinations.destination_name``.
+    Returns up to ``limit`` suggestions with ``id`` (srch_destination_id) and
+    ``name`` (destination_name). No auth required — same surface as
+    ``/api/hotels/availability``.
+    """
+    q = (query or "").strip()
+    if not q:
+        return []
+    db = get_database()
+    limit = min(max(int(limit), 1), 20)
+    docs = db.dim_destinations.find(
+        {"destination_name": {"$regex": q, "$options": "i"}},
+        {"_id": 0, "srch_destination_id": 1, "destination_name": 1},
+    ).sort("destination_name", 1).limit(limit)
+    return [
+        {
+            "id": int(doc["srch_destination_id"]),
+            "name": doc.get("destination_name") or f"Destino {doc['srch_destination_id']}",
+        }
+        for doc in docs
+        if doc.get("srch_destination_id") is not None
+    ]
+
+
 def _hotel_lookup(prop_ids: list[int]) -> dict[int, dict[str, Any]]:
     if not prop_ids:
         return {}

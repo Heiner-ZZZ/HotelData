@@ -10,6 +10,7 @@ from src.app.modules.hotels.service import (
 )
 from src.app.modules.hotels.service.availability import search_available_hotels
 from src.app.modules.hotels.service.compare import compare_hotels_with_availability
+from src.app.modules.hotels.service.lookups import suggest_destinations
 from src.app.modules.hotels.service.similar import similar_hotels
 
 
@@ -91,6 +92,19 @@ def compare_api(
         adults=adults,
         children=children,
     )
+
+
+@api_router.get("/destinations/suggest")
+def destinations_suggest_api(
+    q: str = Query(default="", max_length=120),
+    limit: int = Query(default=8, ge=1, le=20),
+):
+    """Public destination suggestions for the welcome booking-bar autocomplete.
+
+    Case-insensitive match over ``dim_destinations``; no auth required.
+    Returns ``{"items": [{"id", "name"}]}``.
+    """
+    return {"items": suggest_destinations(q, limit=limit)}
 
 
 @api_router.get("/search")

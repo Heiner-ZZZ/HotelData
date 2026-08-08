@@ -157,6 +157,12 @@ def properties_context_api(
 
     assigned = assigned_hotels_for_user(current_user)
 
+    # Escudo defensivo: si por algún camino el scope resultara None (sin
+    # restricción), NO clasificarlo como "none" — solo [] (rol restringido
+    # sin hoteles) significa "no puede ver nada".
+    if assigned is None:
+        return {"mode": "all", "assigned_properties": [], "default_prop_id": 0}
+
     if not assigned:
         # Tiene rol restringido pero sin assigned_hotels → no puede ver nada
         return {"mode": "none", "assigned_properties": [], "default_prop_id": 0}

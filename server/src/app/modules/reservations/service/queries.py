@@ -86,11 +86,18 @@ def list_bookings(
     user_filter = hotel_filter_from_user(user)
     if user_filter:
         filters.update(user_filter)
-    # Client role: filter by user_id so they only see their own bookings
+    # Client role: filter by user_id so they only see their own bookings.
+    # ``user_id`` is stored as a BSON ObjectId FK (canonical since the
+    # 2026-Q3 migration), so the filter must use the raw ObjectId — a string
+    # comparison would silently hide every booking from its owner.
     if user and get_role_name(user) == "cliente":
         uid = user.get("_id")
         if uid:
-            filters["user_id"] = str(uid)
+            # Auth middleware always hands a BSON ObjectId; harden against a
+            # legacy hex-string _id so the ObjectId filter still matches.
+            if isinstance(uid, str) and ObjectId.is_valid(uid):
+                uid = ObjectId(uid)
+            filters["user_id"] = uid
     # Optional filters
     if status:
         filters["status"] = status

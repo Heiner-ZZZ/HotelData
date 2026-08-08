@@ -26,11 +26,18 @@ def management_property_options(limit: int = 100, user: dict[str, Any] | None = 
 
 
 def _reports_hotel_match(user: dict[str, Any] | None) -> dict[str, Any]:
-    """Build a $match stage for aggregation pipelines that filters by assigned hotels."""
+    """Build a $match stage for aggregation pipelines that filters by assigned hotels.
+
+    ``None`` scope (unrestricted) → ``{}`` (no filter). A restricted role
+    without hotels → a match-nothing stage (deny-by-default; previously
+    ``{}`` meant "all hotels" and leaked the whole system to empty-scope users).
+    """
     ids = assigned_hotels_for_user(user)
-    if ids:
-        return {"$match": {"prop_id": {"$in": ids}}}
-    return {}
+    if ids is None:
+        return {}
+    if not ids:
+        return {"$match": {"prop_id": {"$in": []}}}
+    return {"$match": {"prop_id": {"$in": ids}}}
 
 
 def management_reports_summary(user: dict[str, Any] | None = None) -> dict[str, Any]:

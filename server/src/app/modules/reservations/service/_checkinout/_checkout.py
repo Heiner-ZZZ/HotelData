@@ -253,7 +253,10 @@ def complete_check_out(
         try:
             from src.app.modules.billing.service import close_folio
             inv_doc = db.reservation_invoices.find_one({"booking_id": booking_id}, {"_id": 1})
-            inv_id = str(inv_doc["_id"]) if inv_doc else None
+            # Pass the ObjectId directly (canonical FK type): close_folio
+            # also normalizes hex strings, but the source should not stringify
+            # (audit 2026-08 — guest_folios.invoice_id was stored as str).
+            inv_id = inv_doc["_id"] if inv_doc else None
             close_folio(booking_id, invoice_id=inv_id, closed_by=changed_by)
             logger.info("Folio closed for booking %s on check-out", booking_id)
         except Exception:

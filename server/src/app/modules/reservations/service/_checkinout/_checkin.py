@@ -222,6 +222,13 @@ def complete_check_in(
     invoice_id: str | None = None
     if result and not result.get("is_test"):
         existing_inv = db.reservation_invoices.find_one({"booking_id": booking_id})
+        # Decisión documentada: la rama de recuperación vincula CUALQUIER factura
+        # existente (incluida una legacy en $0) en vez de crear una nueva — crear
+        # una segunda factura junto a la $0 produciría un documento fiscal
+        # duplicado. El invariante anti-$0 rige la CREACIÓN (guarda de
+        # create_invoice + post-check abajo); las facturas legacy en $0 son un
+        # problema de datos corregible por el backfill de facturas / auditoría
+        # (``invoice_zero``), no por el check-in.
         if existing_inv:
             invoice_id = str(existing_inv["_id"])
         else:
@@ -236,7 +243,10 @@ def complete_check_in(
                         booking_id=booking_id, subtotal=subtotal, taxes=taxes,
                         notes=f"Auto-generated invoice for booking {booking_id} at check-in",
                     ))
-                    if inv:
+                    # Guard extendido: el check-in nunca vincula una factura en
+                    # $0/negativa, aunque create_invoice llegara a devolver una
+                    # (defensa en profundidad del invariante anti-$0).
+                    if inv and (inv.get("total") or 0) > 0:
                         invoice_id = inv.get("id")
                 except Exception:
                     logger.exception("Failed to auto-create invoice at check-in for booking %s", booking_id)

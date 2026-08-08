@@ -48,6 +48,8 @@ def my_notifications_api(
         item["status_label"] = _status_label(item.get("status", ""))
         item["status_tone"] = _status_tone(item.get("status", ""))
         item["is_unread"] = item.get("status") == "sent"
+        # Mensaje específico del evento (p.ej. "Tus permisos en X cambiaron…")
+        item["message"] = item.get("message", "")
         # Format created_at for frontend
         created = item.get("created_at")
         item["created_at_iso"] = created.isoformat() if hasattr(created, "isoformat") else str(created)
@@ -75,6 +77,7 @@ def _type_label(nt: str) -> str:
         "guest_review_approved": "Reseña publicada",
         "guest_review_rejected": "Reseña rechazada",
         "guest_other": "Notificación",
+        "role_permissions_changed": "Permisos del rol actualizados",
     }
     return labels.get(nt, nt.replace("guest_", "").replace("_", " ").title())
 

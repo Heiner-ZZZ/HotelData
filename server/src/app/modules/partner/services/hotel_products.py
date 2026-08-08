@@ -11,6 +11,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from bson import ObjectId
+from bson.errors import InvalidId
+
 from src.app.core.resolvers import resolve_hotel_id
 from src.app.modules.partner.services._common import clean_text, now_utc
 from src.app.modules.partner.services.audit import register_action
@@ -20,7 +23,19 @@ logger = logging.getLogger(__name__)
 
 
 def list_hotel_products(prop_id: int) -> list[dict[str, Any]]:
-    """List all billable products for a hotel."""
+    """List all billable products for a hotel.
+
+    Each product is enriched with ``last_purchase_invoice`` — the resolved
+    expense invoice (id, vendor_name, invoice_date, total, status) when
+    ``last_purchase_invoice_ref`` is a real invoice FK, or ``None`` for
+    legacy free-text refs / dangling ids. The raw ref field is left intact.
+
+    The enrichment runs as ONE batched ``find`` over the valid ObjectId refs
+    (``$in`` + ``prop_id``) instead of an N+1 of per-product ``find_one``
+    calls. Legacy free-text refs (e.g. ``INV-001``) are skipped in Python —
+    the same way ``ObjectId()`` rejects them — so they resolve to ``None``
+    without ever hitting the invoices collection.
+    """
     db = get_database()
     items = list(
         db.hotel_products.find({"prop_id": prop_id}, {"_id": 0})
@@ -30,6 +45,47 @@ def list_hotel_products(prop_id: int) -> list[dict[str, Any]]:
         item.setdefault("unit_price", 0.0)
         item.setdefault("quantity_available", 0)
         item.setdefault("is_active", True)
+        item["last_purchase_invoice"] = None  # default; enriched below
+
+    # Collect the ObjectId refs to resolve in one round trip.
+    ref_to_oids: dict[str, ObjectId] = {}
+    for item in items:
+        ref = item.get("last_purchase_invoice_ref")
+        if not ref:
+            continue
+        try:
+            oid = ObjectId(ref)
+        except (InvalidId, TypeError):
+            # Legacy free-text ref ("INV-001") or a corrupt non-string value →
+            # stays None. ``if not ref`` above already excluded None/empty;
+            # TypeError covers unexpected non-string truthy data.
+            continue
+        ref_to_oids[ref] = oid
+    if not ref_to_oids:
+        return items
+
+    invoices = {
+        str(doc["_id"]): doc
+        for doc in db.expense_invoices.find(
+            {"_id": {"$in": list(ref_to_oids.values())}, "prop_id": prop_id},
+            {"vendor_name": 1, "invoice_date": 1, "due_date": 1, "total": 1, "status": 1},
+        )
+    }
+    for item in items:
+        oid = ref_to_oids.get(item.get("last_purchase_invoice_ref"))
+        if oid is None:
+            continue
+        inv = invoices.get(str(oid))
+        if not inv:
+            continue  # dangling id / cross-prop → stays None
+        item["last_purchase_invoice"] = {
+            "id": str(oid),
+            "vendor_name": inv.get("vendor_name") or "",
+            "invoice_date": inv.get("invoice_date") or "",
+            "due_date": inv.get("due_date") or "",
+            "total": round(float(inv.get("total") or 0.0), 2),
+            "status": inv.get("status") or "",
+        }
     return items
 
 
@@ -120,12 +176,21 @@ def restock_product(
     unit_cost: float,
     supplier_name: str = "",
     invoice_ref: str = "",
+    invoice_id: str = "",
     changed_by: str = "system",
 ) -> dict[str, Any] | None:
     """Manual restock for a hotel product.
 
     Updates quantity_available += qty and cost_price = unit_cost (last-purchase
     model) on the matching hotel_products doc. Best-effort:
+
+    ``invoice_id`` (preferred over ``invoice_ref``) links the restock to a real
+    expense invoice: it resolves ``expense_invoices`` by ``_id`` for the same
+    ``prop_id`` and stores the invoice ``_id`` string as ``invoice_ref``,
+    turning ``last_purchase_invoice_ref`` into a real FK instead of free text.
+    An unknown or cross-property invoice id raises ``ValueError`` (→ 400).
+    When ``invoice_id`` is empty, ``invoice_ref`` free text is kept as-is for
+    backward compatibility with direct API/script callers.
 
     - Posts a balanced DR 1050 (Inventario) / CR 2010 (Ctas por Pagar Proveedores)
       journal entry via ``post_journal_entry``.
@@ -159,6 +224,28 @@ def restock_product(
     )
     if not product:
         return None
+
+    # Resolve the expense invoice link (real FK) when an id is provided.
+    if invoice_id:
+        try:
+            oid = ObjectId(invoice_id)
+        except InvalidId:
+            raise ValueError("Factura de gasto no encontrada") from None
+        linked = db.expense_invoices.find_one(
+            {"_id": oid, "prop_id": prop_id},
+            {"_id": 1, "status": 1},
+        )
+        if not linked:
+            raise ValueError("Factura de gasto no encontrada para esta propiedad")
+        # Defense-in-depth: a rejected invoice is not a valid purchase source.
+        # The restock modal filters rejected invoices out of the selector, but
+        # the backend must refuse a stale/forged link so a rejected expense can
+        # never back a stock increase.
+        if str(linked.get("status") or "").lower() == "rejected":
+            raise ValueError(
+                "La factura está rechazada y no puede usarse como fuente de compra"
+            )
+        invoice_ref = str(linked["_id"])
 
     old_qty = float(product.get("quantity_available", 0) or 0)
     old_cost = float(product.get("cost_price", 0.0) or 0.0)

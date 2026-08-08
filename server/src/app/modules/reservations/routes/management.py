@@ -215,6 +215,8 @@ def check_in_complete_api(
         {"booking_id": booking_id},
         {"prop_id": 1, "status": 1, "stay_status": 1, "check_in_by": 1},
     )
+    if before is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
     try:
         observations = str(payload.get("check_in_observations") or "")
         save_check_in_detail(
@@ -393,10 +395,12 @@ def check_out_complete_api(
     # Check-out is a terminal transition. A stale tab, double click, or retry
     # after a successful request must be safe and must not repeat side effects
     # such as inventory restoration, housekeeping tasks, or audit entries.
-    if before and before.get("stay_status") == "checked_out":
+    if before is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada")
+    if before.get("stay_status") == "checked_out":
         return {"booking_id": booking_id, "stay_status": "checked_out"}
 
-    shift_id = _require_active_shift((before.get("prop_id") or 0) if before else 0)
+    shift_id = _require_active_shift(before.get("prop_id") or 0)
 
     try:
         observations = str(payload.get("check_out_observations") or "")

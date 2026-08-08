@@ -4,6 +4,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from bson import ObjectId
+
 from ._helpers import ReservationInput, _clean_text, _safe_int
 
 
@@ -118,6 +120,26 @@ def _validate_policy_times(prop_id: int, check_in_time: str, check_out_time: str
     return errors
 
 
+def _normalize_user_id(value: Any) -> str | ObjectId | None:
+    """Canonicalize ``user_id`` to a BSON ObjectId (FK to ``users._id``).
+
+    - ``None`` / empty → ``None`` (guest/anonymous booking)
+    - ``ObjectId`` → kept as-is (canonical write path)
+    - 24-hex string → wrapped in ``ObjectId`` (legacy callers, partner API,
+      client-sent hex)
+    - anything else → passed through untouched (never silently dropped)
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, ObjectId):
+        return value
+    text = str(value).strip()
+    # Canonical hex check (same as ``queries.py`` client-filter hardening).
+    if ObjectId.is_valid(text):
+        return ObjectId(text)
+    return text
+
+
 def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: bool = False) -> ReservationInput:
     return ReservationInput(
         prop_id=_safe_int(form_data.get("prop_id")),
@@ -142,7 +164,7 @@ def build_reservation_input(form_data: dict[str, Any], *, source: str, is_test: 
         special_requests=form_data.get("special_requests", []),
         season_id=_clean_text(form_data.get("season_id")),
         source=source,
-        user_id=_clean_text(form_data.get("user_id")) or None,
+        user_id=_normalize_user_id(form_data.get("user_id")),
         created_by=_clean_text(form_data.get("created_by")) or None,
         is_test=is_test,
     )

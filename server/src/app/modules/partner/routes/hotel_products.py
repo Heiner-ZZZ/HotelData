@@ -304,8 +304,14 @@ def restock(
       qty (float, required)           — units to add; must be > 0.
       unit_cost (float, required)     — wholesale cost per unit; must be >= 0.
       supplier_name (str, optional)   — overrides hotel_products.default_supplier.
-      invoice_ref (str, optional)     — bill/receipt number for traceability.
-                                      If omitted, a manual marker is generated.
+      invoice_ref (str, optional)     — free-text bill/receipt number (legacy).
+      invoice_id (str, optional)      — expense invoice ObjectId; resolves the
+                                        invoice for this prop and stores its
+                                        ``_id`` as the reference (real FK).
+                                        Preferred over invoice_ref. Unknown or
+                                        cross-property ids → 400.
+                                      If neither is provided, a manual marker
+                                      is generated.
 
     Side effects:
       1. Increments hotel_products.quantity_available by qty.
@@ -325,6 +331,7 @@ def restock(
             unit_cost=float(payload.get("unit_cost", 0)),
             supplier_name=str(payload.get("supplier_name", "")),
             invoice_ref=str(payload.get("invoice_ref", "")),
+            invoice_id=str(payload.get("invoice_id", "")),
             changed_by=current_user.get("username", "system"),
         )
     except ValueError as exc:
