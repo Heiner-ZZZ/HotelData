@@ -31,6 +31,10 @@ _now = utc_now
 
 def _auth_payload(user: dict, session: dict | None, home_href: str, permission_codes: set[str] | None = None) -> dict:
     codes_list = sorted(list(permission_codes)) if permission_codes else []
+    # UX-1: el estado de aprobación del onboarding viaja en el payload de /me
+    # y el frontend redirige al dueño pendiente a su pantalla de estado.
+    approval_status = user.get("approval_status") or "approved"
+    final_home_href = "/alojamiento-en-revision" if approval_status != "approved" else home_href
     return {
         "authenticated": True,
         "user": {
@@ -41,6 +45,7 @@ def _auth_payload(user: dict, session: dict | None, home_href: str, permission_c
             "primary_role_id": str(user.get("primary_role_id", "")),
             "primary_role": get_role_name(user),
             "is_active": bool(user.get("is_active", True)),
+            "approval_status": approval_status,
             "avatar_url": user.get("avatar_url") or "",
         },
         "session": {
@@ -48,7 +53,7 @@ def _auth_payload(user: dict, session: dict | None, home_href: str, permission_c
             "expires_at": session.get("expires_at").isoformat() if session and hasattr(session.get("expires_at"), "isoformat") else (session.get("expires_at") if session else None),  # type: ignore[union-attr]
             "created_at": session.get("created_at").isoformat() if session and hasattr(session.get("created_at"), "isoformat") else (session.get("created_at") if session else None),  # type: ignore[union-attr]
         },
-        "home_href": home_href,
+        "home_href": final_home_href,
         "login_url": "/login",
         "permission_codes": codes_list,
     }

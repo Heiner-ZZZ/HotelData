@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.app.modules.partner.services._common import _resolve_country_label
+from src.database.connection import get_database
+
 from ._helpers import (
     _active_fact_collection,
     _country_display_name,
@@ -13,8 +16,6 @@ from ._helpers import (
 )
 from .lookups import _country_lookup, _destination_lookup, _site_lookup
 from .search import _enrich_hotel_metrics
-from src.app.modules.partner.services._common import _resolve_country_label
-from src.database.connection import get_database
 
 
 def top_destinations_for_hotel(prop_id: int, limit: int = 8) -> list[dict[str, Any]]:
@@ -161,6 +162,11 @@ def get_hotel_detail_view(prop_id: int) -> dict[str, Any] | None:
     collection, source_collection = _active_fact_collection()
     db = get_database()
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0}) or {}
+    # Gate operativo (Fase A): un hotel pendiente de aprobación (published=false)
+    # no es consultable públicamente — se comporta como inexistente (404) para
+    # no filtrar su existencia.
+    if hotel.get("published") is False:
+        return None
     resolved_country = _resolve_country_label(hotel)
     hotel = {**hotel, "country_display_name": resolved_country}
     pipeline = [

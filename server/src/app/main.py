@@ -4,12 +4,12 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from bson import ObjectId
-from pydantic import BaseModel
-
 # ── Global ObjectId → str serialization — patched BEFORE FastAPI routing ──
 import fastapi.encoders as _encoders_module
 import fastapi.routing as _routing_module
+from bson import ObjectId
+from pydantic import BaseModel
+
 _original_je = _encoders_module.jsonable_encoder
 
 def _patched_jsonable_encoder(obj, **kwargs):
@@ -45,7 +45,7 @@ _encoders_module.jsonable_encoder = _patched_jsonable_encoder
 _routing_module.jsonable_encoder = _patched_jsonable_encoder
 # ──────────────────────────────────────────────────────────
 
-from src.app.features.dashboard.kpi_service import refresh_kpis_background
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,65 +54,77 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from src.app.security.rate_limit import limiter
-
-from src.app.features.catalogs.service import ensure_default_catalogs
-from src.app.features.dashboard.routes import api_router as dashboard_api_router
+from config.settings import get_settings
 from src.app.ai.routes import api_router as ai_api_router
+from src.app.core.outbox import (
+    ensure_outbox_collection,
+    process_pending_outbox,
+    process_pending_outbox_forever,
+)
+from src.app.features.catalogs.service import ensure_default_catalogs
+from src.app.features.dashboard.kpi_service import refresh_kpis_background
+from src.app.features.dashboard.routes import api_router as dashboard_api_router
 from src.app.features.etl_status.routes import JSON_API as etl_status_json_router
-from src.app.features.etl_status_m2c.routes import JSON_API as etl_status_m2c_json_router
+from src.app.features.etl_status_m2c.routes import (
+    JSON_API as etl_status_m2c_json_router,
+)
 from src.app.features.ta02_crud.routes import router as crud_router
 from src.app.modules.account.routes import api_router as account_api_router
-from src.app.modules.audit.routes import router as audit_router
 from src.app.modules.admin.routes import api_router as admin_api_router
 from src.app.modules.admin.service import ensure_user_status_field
+from src.app.modules.amenities.routes import admin_router as amenities_admin_router
+from src.app.modules.amenities.routes import guest_router as amenities_guest_router
+from src.app.modules.amenities.routes import photos_router as amenities_photos_router
+from src.app.modules.analytics.routes import router as analytics_router
+from src.app.modules.audit.routes import router as audit_router
 from src.app.modules.auth.collections import ensure_auth_collections
 from src.app.modules.auth.routes import api_router as auth_api_router
 from src.app.modules.auth.routes import router as auth_module_router
 from src.app.modules.auth.routes import web_router as auth_web_router
-from src.app.modules.hotels.routes import api_router as hotels_api_router
-from src.app.modules.hotels.routes import router as hotels_module_router
-from src.app.modules.partner.routes import api_router as partner_api_router
-from src.app.modules.partner.routes import legacy_admin_api_router as partner_legacy_admin_api_router
-from src.app.modules.partner.routes import public_router as partner_public_router
-from src.app.modules.partner.routes import router as partner_module_router
-from src.app.modules.settings.routes import api_router as settings_api_router
-from src.app.modules.reservations.routes import api_router as reservations_api_router
-from src.app.modules.reservations.routes import management_api_router as reservations_management_api_router
-from src.app.modules.reservations.routes import router as reservations_module_router
-from src.app.modules.reservations.routes.reception_calendar import reception_calendar_router
-from src.app.modules.reservations.routes.self_checkin import public_router as self_checkin_public_router
-from src.app.modules.revenue.routes import api_router as revenue_api_router
-from src.app.modules.revenue.routes import router as revenue_module_router
-from src.app.modules.reviews.routes import api_router as reviews_api_router
-from src.app.modules.reviews.routes import public_router as reviews_public_router
-from src.app.modules.reviews.routes import router as reviews_module_router
 from src.app.modules.billing.routes import api_router as billing_api_router
 from src.app.modules.billing.routes import router as billing_module_router
+from src.app.modules.billing.service import ensure_billing_collections
+from src.app.modules.expenses.routes import api_router as expenses_api_router
+from src.app.modules.expenses.routes import router as expenses_module_router
+from src.app.modules.expenses.service.collections import ensure_expenses_collections
+from src.app.modules.financial_reconciliation.routes import (
+    api_router as financial_reconciliation_api_router,
+)
+from src.app.modules.geo_catalog.routes import api_router as geo_catalog_api_router
+from src.app.modules.geo_catalog.service import ensure_geo_collections
+from src.app.modules.global_settings.routes import (
+    api_router as global_settings_api_router,
+)
+from src.app.modules.global_settings.service import ensure_global_settings_collections
+from src.app.modules.hotel_permissions.routes import (
+    api_router as hotel_permissions_api_router,
+)
+from src.app.modules.hotels.collections import ensure_hotels_collections
+from src.app.modules.hotels.routes import api_router as hotels_api_router
+from src.app.modules.hotels.routes import router as hotels_module_router
 from src.app.modules.housekeeping.routes import api_router as housekeeping_api_router
 from src.app.modules.housekeeping.routes import router as housekeeping_module_router
-from src.app.modules.tracking.routes import tracking_api_router
-from src.app.modules.global_settings.routes import api_router as global_settings_api_router
-from src.app.modules.geo_catalog.routes import api_router as geo_catalog_api_router
-from src.app.modules.partner.routes.hotel_products import router as products_api_router
-from src.app.modules.kpi.routes import router as kpi_api_router
-from src.app.modules.map.routes import router as map_api_router
-from src.app.modules.amenities.routes import admin_router as amenities_admin_router
-from src.app.modules.amenities.routes import guest_router as amenities_guest_router
-from src.app.modules.amenities.routes import photos_router as amenities_photos_router
-from src.app.modules.lost_and_found.routes import api_router as lost_and_found_api_router
-from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
-from src.app.modules.notifications.routes import router as notifications_router
-from src.app.modules.reception.routes import api_router as reception_api_router
+from src.app.modules.housekeeping.service import ensure_housekeeping_collections
+from src.app.modules.hr.routes import api_router as hr_api_router
+from src.app.modules.hr.routes import router as hr_module_router
+from src.app.modules.hr.service.collections import ensure_hr_collections
 from src.app.modules.instay.routes import guest_router as instay_guest_router
 from src.app.modules.instay.routes import staff_router as instay_staff_router
-from src.app.modules.payments.routes import router as payments_api_router
-from src.app.modules.users.routes import router as users_module_router
-from src.app.routes.system import router as system_router
-from src.app.modules.analytics.routes import router as analytics_router
-from src.app.security.collections import ensure_hotel_permission_collections
-from src.app.security.middleware import role_access_middleware
-from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
+from src.app.modules.kpi.routes import router as kpi_api_router
+from src.app.modules.lost_and_found.routes import (
+    api_router as lost_and_found_api_router,
+)
+from src.app.modules.lost_and_found.routes import router as lost_and_found_module_router
+from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
+from src.app.modules.map.routes import router as map_api_router
+from src.app.modules.notifications.routes import router as notifications_router
+from src.app.modules.partner.routes import api_router as partner_api_router
+from src.app.modules.partner.routes import (
+    legacy_admin_api_router as partner_legacy_admin_api_router,
+)
+from src.app.modules.partner.routes import public_router as partner_public_router
+from src.app.modules.partner.routes import router as partner_module_router
+from src.app.modules.partner.routes.hotel_products import router as products_api_router
 from src.app.modules.partner.services.audit import ensure_audit_indexes
 from src.app.modules.partner.services.bootstrap import (
     ensure_hotel_content_collections,
@@ -121,33 +133,41 @@ from src.app.modules.partner.services.bootstrap import (
     ensure_rate_collections,
     ensure_room_features_collections,
 )
-from src.app.modules.revenue.services import ensure_revenue_collections
-from src.app.modules.reviews.service import ensure_reviews_collections
-from src.app.modules.billing.service import ensure_billing_collections
-from src.app.modules.housekeeping.service import ensure_housekeeping_collections
-from src.app.modules.reservations.service import ensure_reservation_collections
-from src.app.modules.reception import ensure_reception_collections
-from src.app.modules.global_settings.service import ensure_global_settings_collections
-from src.app.modules.geo_catalog.service import ensure_geo_collections
-from src.app.modules.lost_and_found.service import ensure_lost_and_found_collections
-from src.app.modules.hr.service.collections import ensure_hr_collections
-from src.app.modules.hr.routes import api_router as hr_api_router
-from src.app.modules.hotel_permissions.routes import api_router as hotel_permissions_api_router
-from src.app.modules.hr.routes import router as hr_module_router
-from src.app.modules.expenses.service.collections import ensure_expenses_collections
-from src.app.modules.expenses.routes import api_router as expenses_api_router
-from src.app.modules.expenses.routes import router as expenses_module_router
-from src.app.modules.reports.routes import router as reports_router
-from src.app.core.outbox import (
-    ensure_outbox_collection,
-    process_pending_outbox,
-    process_pending_outbox_forever,
+from src.app.modules.payments.routes import router as payments_api_router
+from src.app.modules.property_approval.routes import (
+    api_router as property_approval_api_router,
 )
-import logging
-
-from config.settings import get_settings
+from src.app.modules.reception import ensure_reception_collections
+from src.app.modules.reception.routes import api_router as reception_api_router
+from src.app.modules.reports.routes import router as reports_router
+from src.app.modules.reservations.routes import api_router as reservations_api_router
+from src.app.modules.reservations.routes import (
+    management_api_router as reservations_management_api_router,
+)
+from src.app.modules.reservations.routes import router as reservations_module_router
+from src.app.modules.reservations.routes.reception_calendar import (
+    reception_calendar_router,
+)
+from src.app.modules.reservations.routes.self_checkin import (
+    public_router as self_checkin_public_router,
+)
+from src.app.modules.reservations.service import ensure_reservation_collections
+from src.app.modules.revenue.routes import api_router as revenue_api_router
+from src.app.modules.revenue.routes import router as revenue_module_router
+from src.app.modules.revenue.services import ensure_revenue_collections
+from src.app.modules.reviews.routes import api_router as reviews_api_router
+from src.app.modules.reviews.routes import public_router as reviews_public_router
+from src.app.modules.reviews.routes import router as reviews_module_router
+from src.app.modules.reviews.service import ensure_reviews_collections
+from src.app.modules.settings.routes import api_router as settings_api_router
+from src.app.modules.tracking.routes import tracking_api_router
+from src.app.modules.users.routes import router as users_module_router
+from src.app.routes.system import router as system_router
+from src.app.security.collections import ensure_hotel_permission_collections
+from src.app.security.middleware import role_access_middleware
+from src.app.security.rate_limit import limiter
+from src.app.security.session import ensure_user_sessions_indexes, ensure_users_indexes
 from src.database.connection import get_database
-
 
 logger = logging.getLogger(__name__)
 
@@ -223,12 +243,14 @@ def create_app() -> FastAPI:
     app.include_router(hr_module_router)
     app.include_router(expenses_api_router)
     app.include_router(expenses_module_router)
+    app.include_router(financial_reconciliation_api_router)
     app.include_router(instay_guest_router)
     app.include_router(instay_staff_router)
     app.include_router(payments_api_router)
     app.include_router(crud_router)
     app.include_router(reports_router)
     app.include_router(hotel_permissions_api_router)
+    app.include_router(property_approval_api_router)
     return app
 
 
@@ -258,6 +280,7 @@ async def lifespan(app: FastAPI):
     from src.app.modules.instay.routes import ensure_stay_collections
     ensure_stay_collections()
     ensure_hotel_permission_collections()
+    ensure_hotels_collections()
     ensure_audit_indexes()
     ensure_outbox_collection()
     process_pending_outbox(get_database())

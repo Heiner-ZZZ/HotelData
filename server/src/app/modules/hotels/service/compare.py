@@ -6,7 +6,12 @@ from typing import Any
 
 from src.database.connection import get_database
 
-from ._helpers import _active_fact_collection, _format_number, _hotel_display_name, _metric_projection
+from ._helpers import (
+    _active_fact_collection,
+    _format_number,
+    _hotel_display_name,
+    _metric_projection,
+)
 from .detail import get_hotel_detail_view
 from .lookups import _hotel_lookup
 from .search import _enrich_hotel_metrics
@@ -69,6 +74,10 @@ def compare_hotels_with_availability(
 
     for prop_id in unique_ids:
         hotel = hotel_lookup.get(prop_id, {})
+        # Gate operativo (Fase A): los hoteles pendientes de aprobación
+        # (published=false) no participan en la comparación pública.
+        if hotel.get("published") is False:
+            continue
         prop_id_int = int(prop_id)
 
         image_url = None

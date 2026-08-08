@@ -179,6 +179,16 @@ def require_prop_permission(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Contexto de hotel requerido (prop_id).",
             )
+        # Gate operativo (Fase A): el hotel existe pero NO está publicado
+        # (onboarding pendiente de aprobación) → 403 con mensaje claro para
+        # el frontend. Si la fila no existe se conserva el comportamiento
+        # actual (los chequeos de alcance/permiso siguientes siguen gateando).
+        hotel = db.dim_hotels.find_one({"prop_id": pid}, {"published": 1})
+        if hotel is not None and hotel.get("published") is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"El hotel {pid} no está operativo.",
+            )
         # Junta los dos ejes del RBAC: alcance (user_can_access_hotel) + capacidad
         # (user_has_permission con prop_id). Sin esto, un empleado del hotel A
         # podría operar en rutas del hotel B si tuviera asignación en otro lado.

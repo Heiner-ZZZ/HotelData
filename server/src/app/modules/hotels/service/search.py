@@ -3,6 +3,8 @@ from __future__ import annotations
 from math import ceil
 from typing import Any
 
+from src.database.connection import get_database
+
 from ._helpers import (
     _active_fact_collection,
     _country_display_name,
@@ -20,6 +22,7 @@ from .lookups import (
     _geo_country_lookup,
     _hotel_lookup,
 )
+from .operational import published_prop_ids
 
 
 def _enrich_hotel_metrics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -103,6 +106,14 @@ def get_hotel_search_cards(filters: dict[str, Any], page: int = 1, page_size: in
     match = _build_match(filters)
     if match is None:
         return _empty_search(filters, page_size, source_collection)
+
+    # Gate operativo (Fase A): excluir hoteles pendientes de aprobación
+    # (published=false) de la búsqueda pública. Los legados sin el campo
+    # quedan incluidos (published_prop_ids usa `$ne: False`).
+    published_ids = published_prop_ids(get_database())
+    if not published_ids:
+        return _empty_search(filters, page_size, source_collection)
+    match["prop_id"] = {"$in": published_ids}
 
     pipeline: list[dict[str, Any]] = [
         {"$match": match},

@@ -1,0 +1,337 @@
+<main class="status-page">
+  @switch (viewState()) {
+    @case ('loading') {
+      <app-loading-state label="Consultando el estado de tu registro…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No pudimos consultar el estado de tu registro"
+        description="Intenta nuevamente en unos segundos."
+        (retry)="statusResource.reload()"
+      />
+    }
+    @case ('success') {
+      @if (status(); as st) {
+        <!-- ── Hero por estado ───────────────────────────────────────── -->
+        <header
+          class="status-hero"
+          [class.hero--pending]="isPending()"
+          [class.hero--changes]="isChangesRequested()"
+          [class.hero--rejected]="isRejected()"
+        >
+          <span class="hero-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">
+              {{ isPending() ? 'hourglass_top' : isChangesRequested() ? 'rate_review' : 'gpp_maybe' }}
+            </span>
+          </span>
+          <p class="eyebrow">Registro de alojamiento</p>
+          <h1>
+            {{ isPending() ? 'Tu alojamiento está en revisión' : isChangesRequested() ? 'Necesitamos ajustar tu registro' : 'Tu registro no fue aprobado' }}
+          </h1>
+          <p class="hero-lead">
+            @if (isPending()) {
+              Tu registro fue recibido y está siendo revisado por nuestro equipo.
+              Te avisaremos por correo en cuanto tengamos una respuesta.
+            } @else if (isChangesRequested()) {
+              El administrador revisó tus datos y pidió unos ajustes antes de aprobar.
+              Edita la información y reenvía tu registro.
+            } @else {
+              Lamentablemente el administrador no aprobó tu registro. Puedes ver el
+              motivo y volver a intentarlo con un registro nuevo.
+            }
+          </p>
+        </header>
+
+        <!-- ── Banner de estado ──────────────────────────────────────── -->
+        @if (isPending()) {
+          <div class="notice notice--info">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            <p>Suele tomar hasta <strong>48 h hábiles</strong>. Te avisaremos por correo electrónico.</p>
+          </div>
+        }
+        @if (isChangesRequested() && st.feedback) {
+          <div class="notice notice--warning">
+            <span class="material-symbols-outlined" aria-hidden="true">feedback</span>
+            <div>
+              <p class="notice-title">El administrador pidió estos cambios:</p>
+              <p class="notice-text">{{ st.feedback }}</p>
+            </div>
+          </div>
+        }
+        @if (isRejected() && st.rejectedReason) {
+          <div class="notice notice--danger">
+            <span class="material-symbols-outlined" aria-hidden="true">gpp_maybe</span>
+            <div>
+              <p class="notice-title">Motivo del rechazo:</p>
+              <p class="notice-text">{{ st.rejectedReason }}</p>
+            </div>
+          </div>
+        }
+
+        <!-- ── Datos enviados + plan sugerido ────────────────────────── -->
+        <section class="cards-grid">
+          <article class="card data-card">
+            <header class="card-header">
+              <div class="card-header-text">
+                <h2>Datos enviados</h2>
+                <p>
+                  Tal como lo enviaste
+                  @if (formatDate(st.submittedAt)) {
+                    · {{ formatDate(st.submittedAt) }}
+                  }
+                </p>
+              </div>
+            </header>
+            <dl class="data-list">
+              <div class="data-row">
+                <dt>Alojamiento</dt>
+                <dd>{{ st.property.name }}</dd>
+              </div>
+              <div class="data-row">
+                <dt>Tipo</dt>
+                <dd>{{ propertyTypeLabel(st.property.type) }}</dd>
+              </div>
+              <div class="data-row">
+                <dt>Ciudad</dt>
+                <dd>{{ st.property.city }}</dd>
+              </div>
+              <div class="data-row">
+                <dt>País</dt>
+                <dd>{{ st.property.country }}</dd>
+              </div>
+              <div class="data-row">
+                <dt>Teléfono</dt>
+                <dd>{{ st.property.contactPhone }}</dd>
+              </div>
+              <div class="data-row">
+                <dt>Moneda</dt>
+                <dd>{{ st.property.currency }}</dd>
+              </div>
+              <div class="data-row data-row--rooms">
+                <dt>Habitaciones</dt>
+                <dd class="rooms-value">{{ st.property.totalRooms }}</dd>
+              </div>
+            </dl>
+            @if (isEditable()) {
+              <div class="card-action">
+                <button type="button" class="btn-ghost" (click)="openEdit()">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                  Editar datos
+                </button>
+              </div>
+            }
+          </article>
+
+          @if (st.suggestedBand; as band) {
+            <article class="card band-card">
+              <header class="card-header">
+                <div class="card-header-text">
+                  <h2>Plan sugerido</h2>
+                  <p>Transparencia de precios</p>
+                </div>
+                <span class="band-chip">{{ band.label }}</span>
+              </header>
+              <div class="band-price">
+                <span class="band-amount">${{ band.monthlyUsd }}</span>
+                <span class="band-period">/mes</span>
+                @if (bandAnnualDiscountPct() > 0) {
+                  <span class="band-badge" title="Precio anual por adelantado">
+                    <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                    −{{ bandAnnualDiscountPct() }}% anual
+                  </span>
+                }
+              </div>
+              <p class="band-range">
+                Bandas de {{ band.minRooms }}–{{ band.maxRooms }} habitaciones
+              </p>
+              @if (band.annualMonthlyUsd != null) {
+                <div class="band-annual">
+                  <span class="material-symbols-outlined" aria-hidden="true">savings</span>
+                  <span>
+                    Pagando el año por adelantado:
+                    <strong>${{ band.annualMonthlyUsd }}/mes</strong>
+                    · ahorras <strong>${{ bandAnnualSavings() }}/año</strong>
+                  </span>
+                </div>
+              }
+              <p class="band-note">
+                Con <strong>{{ st.property.totalRooms }} habitaciones</strong> tu plan
+                sugerido es <strong>{{ band.label }} — ${{ band.monthlyUsd }}/mes</strong>
+                @if (band.annualMonthlyUsd != null) {
+                  (o <strong>${{ band.annualMonthlyUsd }}/mes</strong> pagando el año)
+                }
+                El precio final lo confirma el administrador al aprobar tu alojamiento.
+              </p>
+            </article>
+          }
+        </section>
+
+        <!-- ── Timeline ──────────────────────────────────────────────── -->
+        <section class="card timeline-card">
+          <header class="card-header">
+            <div class="card-header-text">
+              <h2>Historial de tu registro</h2>
+              <p>Cada movimiento queda registrado para tu seguimiento.</p>
+            </div>
+          </header>
+          @if (st.timeline.length === 0) {
+            <p class="timeline-empty">Aún no hay movimientos en tu registro.</p>
+          } @else {
+            <ol class="timeline">
+              @for (event of st.timeline; track $index) {
+                <li class="timeline-item">
+                  <span class="timeline-dot" aria-hidden="true">
+                    <span class="material-symbols-outlined">{{ timelineIcon(event.event) }}</span>
+                  </span>
+                  <div class="timeline-body">
+                    <p class="timeline-label">{{ timelineLabel(event.event, event.detail) }}</p>
+                    <p class="timeline-meta">
+                      {{ formatDate(event.at) }}
+                      @if (event.detail && timelineLabel(event.event, event.detail) !== event.detail) {
+                        <span class="timeline-detail">· {{ event.detail }}</span>
+                      }
+                    </p>
+                  </div>
+                </li>
+              }
+            </ol>
+          }
+        </section>
+
+        <!-- ── Acciones ──────────────────────────────────────────────── -->
+        <footer class="status-actions">
+          @if (isPending()) {
+            <button type="button" class="btn-primary" (click)="openEdit()">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+              Editar datos
+            </button>
+          }
+          @if (isChangesRequested()) {
+            <button type="button" class="btn-primary" (click)="openEdit()">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>
+              Editar datos y reenviar
+            </button>
+          }
+          @if (isRejected()) {
+            <a class="btn-primary" routerLink="/onboarding/alojamiento">
+              <span class="material-symbols-outlined" aria-hidden="true">add_business</span>
+              Reintentar registro
+            </a>
+            <button type="button" class="btn-secondary" (click)="logout()">
+              <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+              Cerrar sesión
+            </button>
+          }
+        </footer>
+
+        <!-- ── Formulario de edición (PATCH) ─────────────────────────── -->
+        @if (editOpen()) {
+          <section class="card edit-card">
+            <header class="card-header">
+              <div class="card-header-text">
+                <h2>{{ isChangesRequested() ? 'Editar y reenviar registro' : 'Editar datos declarados' }}</h2>
+                <p>
+                  @if (isChangesRequested()) {
+                    Al reenviar, tu registro vuelve a la cola de revisión.
+                  } @else {
+                    Corrige un typo antes de la revisión; el administrador verá los datos actualizados.
+                  }
+                </p>
+              </div>
+            </header>
+
+            <form class="edit-form" [formGroup]="editForm" (submit)="submitEdit()" novalidate>
+              <div class="edit-grid">
+                <label class="edit-field">
+                  <span class="edit-label">Nombre del alojamiento</span>
+                  <input
+                    type="text"
+                    formControlName="property_name"
+                    placeholder="ej: Hostal Sol de los Andes"
+                    maxlength="120"
+                  >
+                  @if (editForm.controls.property_name.touched && editForm.controls.property_name.invalid) {
+                    <span class="field-error">Indica el nombre visible del alojamiento.</span>
+                  }
+                </label>
+
+                <fieldset class="edit-field edit-field--type">
+                  <span class="edit-label">Tipo de propiedad</span>
+                  <div class="edit-type-grid">
+                    @for (opt of propertyTypes; track opt.value) {
+                      <label class="type-chip">
+                        <input type="radio" formControlName="property_type" [value]="opt.value">
+                        <span class="type-chip__body">
+                          <span class="material-symbols-outlined" aria-hidden="true">{{ opt.icon }}</span>
+                          <span>{{ opt.label }}</span>
+                        </span>
+                      </label>
+                    }
+                  </div>
+                  @if (editForm.controls.property_type.touched && editForm.controls.property_type.invalid) {
+                    <span class="field-error">Selecciona el tipo de propiedad.</span>
+                  }
+                </fieldset>
+
+                <label class="edit-field">
+                  <span class="edit-label">Ciudad</span>
+                  <input type="text" formControlName="city" placeholder="ej: Cusco" autocomplete="address-level2">
+                  @if (editForm.controls.city.touched && editForm.controls.city.invalid) {
+                    <span class="field-error">Indica la ciudad.</span>
+                  }
+                </label>
+
+                <label class="edit-field">
+                  <span class="edit-label">Teléfono de contacto</span>
+                  <input type="tel" formControlName="contact_phone" placeholder="ej: +51987654321" autocomplete="tel">
+                  @if (editForm.controls.contact_phone.touched && editForm.controls.contact_phone.invalid) {
+                    <span class="field-error">Usa formato internacional (ej. +5215512345678).</span>
+                  }
+                </label>
+
+                <label class="edit-field">
+                  <span class="edit-label">Cantidad de habitaciones</span>
+                  <input type="number" formControlName="total_rooms" min="1" max="10000" step="1">
+                  @if (editForm.controls.total_rooms.touched && editForm.controls.total_rooms.invalid) {
+                    <span class="field-error">La cantidad debe ser mayor a 0.</span>
+                  }
+                </label>
+
+                <label class="edit-field edit-field--full">
+                  <span class="edit-label">Descripción <span class="optional">(opcional · 500 caracteres)</span></span>
+                  <textarea
+                    class="textarea-field"
+                    formControlName="description"
+                    rows="3"
+                    placeholder="Cuenta brevemente qué hace especial a tu alojamiento."
+                    maxlength="500"
+                  ></textarea>
+                </label>
+              </div>
+
+              @if (editError()) {
+                <div class="edit-error">
+                  <span class="material-symbols-outlined" aria-hidden="true">error</span>
+                  {{ editError() }}
+                </div>
+              }
+
+              <div class="edit-actions">
+                <button type="button" class="btn-secondary" (click)="closeEdit()">Cancelar</button>
+                <button type="submit" class="btn-primary" [disabled]="editSaving()">
+                  @if (editSaving()) {
+                    <span class="material-symbols-outlined btn-spin" aria-hidden="true">sync</span>
+                    Guardando…
+                  } @else {
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ isChangesRequested() ? 'send' : 'save' }}</span>
+                    {{ isChangesRequested() ? 'Reenviar registro' : 'Guardar cambios' }}
+                  }
+                </button>
+              </div>
+            </form>
+          </section>
+        }
+      }
+    }
+  }
+</main>

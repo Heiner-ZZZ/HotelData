@@ -268,3 +268,112 @@ def onboarding_property_verification(
         ),
         logo_url=base_url,
     )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Hotel-approval emails (UX-2 — docs/EXPERIENCIA_DUENO_PENDIENTE.md §4)
+# ─────────────────────────────────────────────────────────────────
+
+
+def registration_approved(
+    hotel_name: str,
+    plan_label: str,
+    monthly_usd: float,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner-approval email.
+
+    Subject (set by the caller): 'Tu alojamiento fue aprobado — HotelData'.
+    """
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'¡Buenas noticias!</p>\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  El alojamiento <strong>{hotel_name}</strong> fue aprobado. Ya puedes '
+        f'iniciar sesión y gestionar tu hotel desde el panel de HotelData.\n'
+        f'</p>\n'
+        f'{detail_table("Plan asignado", detail_row("Plan", plan_label) + detail_row("Mensualidad", f"${monthly_usd:,.0f} USD"))}\n'
+        f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Accedes como gerente del hotel con todos los permisos de administración.'
+        f'</p>\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/login", "Ir a mi panel")}'
+    )
+    return base_layout(
+        headline="¡Tu alojamiento fue aprobado!",
+        body_content=body_content,
+        footer_note="El precio final puede ser ajustado por el administrador al aprobar.",
+        logo_url=base_url,
+    )
+
+
+def registration_rejected(
+    hotel_name: str,
+    reason: str,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the owner-rejection email.
+
+    Subject (set by the caller): 'Tu registro de alojamiento no fue aprobado —
+    HotelData'. The admin's reason is never generic — always rendered.
+    """
+    reason_box = (
+        f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px">\n'
+        f'  <tr><td style="padding:14px 16px;border:1px solid #e0e3e5;background:#fbf7f5;'
+        f'font-size:13px;color:#8a4b2d;line-height:1.5">{reason}</td></tr>\n'
+        f'</table>'
+    )
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  El alojamiento <strong>{hotel_name}</strong> no fue aprobado. '
+        f'Motivo del administrador:\n'
+        f'</p>\n'
+        f'{reason_box}\n'
+        f'<p style="margin:0;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Puedes volver a intentarlo con un nuevo registro en cualquier momento.'
+        f'</p>'
+    )
+    return base_layout(
+        headline="Actualización sobre tu registro",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )
+
+
+def registration_changes_requested(
+    hotel_name: str,
+    feedback: str,
+    base_url: str = "",
+) -> str:
+    """Full HTML for the 'changes requested' email.
+
+    Subject (set by the caller): 'Revisa tu registro de alojamiento —
+    HotelData'. Links to the edit screen of the pending-owner experience.
+    """
+    feedback_box = (
+        f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px">\n'
+        f'  <tr><td style="padding:14px 16px;border:1px solid #e0e3e5;background:#fbf8ef;'
+        f'font-size:13px;color:#6b5418;line-height:1.5">{feedback}</td></tr>\n'
+        f'</table>'
+    )
+    body_content = (
+        f'<p style="margin:0 0 16px;font-size:14px;color:#3f484c">'
+        f'Hola,</p>\n'
+        f'<p style="margin:0 0 16px;font-size:13px;color:#6f797d;line-height:1.5">\n'
+        f'  Para aprobar tu alojamiento <strong>{hotel_name}</strong> necesitamos '
+        f'ajustar los siguientes datos:\n'
+        f'</p>\n'
+        f'{feedback_box}\n'
+        f'<p style="margin:0 0 20px;font-size:13px;color:#6f797d;line-height:1.5">'
+        f'Edita tu registro y vuelve a enviarlo; lo revisaremos de nuevo.'
+        f'</p>\n'
+        f'{cta_button(f"{base_url.rstrip('/')}/alojamiento-en-revision", "Editar mi registro")}'
+    )
+    return base_layout(
+        headline="Revisa tu registro",
+        body_content=body_content,
+        footer_note="Este es un mensaje automático de HotelData.",
+        logo_url=base_url,
+    )

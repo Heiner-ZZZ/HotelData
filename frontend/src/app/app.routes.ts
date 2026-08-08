@@ -67,6 +67,17 @@ export const routes: Routes = [
         path: 'reservations',
         pathMatch: 'full',
         redirectTo: '/account/bookings'
+      },
+      {
+        // Pantalla del dueño pendiente de aprobación (UX-3): sin chrome de
+        // gestión — public-shell. El middleware restringe la sesión no-aprobada
+        // a /api/auth/*; esta ruta es la única pantalla que ve el dueño.
+        path: 'alojamiento-en-revision',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/hotel-registration-status/pages/registration-status-page/registration-status-page').then(
+            (m) => m.RegistrationStatusPageComponent
+          )
       }
     ]
   },

@@ -11,6 +11,7 @@ from src.app.modules.hotels.service.lookups import (
     _destination_lookup,
     _suggest_alternative_destinations,
 )
+from src.app.modules.hotels.service.operational import PUBLISHED_QUERY
 from src.database.connection import get_database
 
 from .helpers import (
@@ -64,7 +65,10 @@ def search_available_hotels(
     destination_ids = _destination_ids(destination) if destination else []
     destination_lookup = _destination_lookup(destination_ids) if destination_ids else {}
 
-    hotel_filter: dict[str, Any] = {}
+    # Gate operativo (Fase A): la búsqueda pública nunca incluye hoteles
+    # pendientes de aprobación (published=false). Se aplica SIEMPRE, también
+    # cuando vienen prop_ids explícitos (página de favoritos).
+    hotel_filter: dict[str, Any] = {**PUBLISHED_QUERY}
 
     # When explicit IDs are provided, use them directly (bypass destination/amenity lookups)
     if explicit_ids:

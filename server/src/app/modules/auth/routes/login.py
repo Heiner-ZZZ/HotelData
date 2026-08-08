@@ -160,9 +160,20 @@ def login_submit(
     next: str = Form(default=""),
 ):
     db = get_database()
+    from src.app.security.approval import maybe_apply_rejection_grace
     from src.app.security.session import find_user_by_identifier, verify_password, create_user_session
     user = find_user_by_identifier(db, identifier)
     if user:
+        # Gracia perezosa de rechazo (mismo comportamiento que login_api).
+        if maybe_apply_rejection_grace(db, user):
+            log_user_activity(
+                db, action="auth.login_blocked_rejected", request=request,
+                details={"identifier": identifier.strip()},
+            )
+            return JSONResponse(
+                {"detail": "Tu registro de alojamiento fue rechazado y la cuenta ya no está activa."},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
         _check_account_locked(db, user)
     if not user or not user.get("is_active", True) or not verify_password(password, user.get("password_hash", "")):
         _record_failed_attempt(db, identifier)
@@ -200,9 +211,21 @@ def login_api(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ingrese usuario/correo y contraseña.")
 
     db = get_database()
+    from src.app.security.approval import maybe_apply_rejection_grace
     from src.app.security.session import find_user_by_identifier, verify_password, create_user_session
     user = find_user_by_identifier(db, identifier)
     if user:
+        # Gracia perezosa de rechazo: si el registro fue rechazado hace más de
+        # REJECTION_GRACE_DAYS, la cuenta se desactiva en este login.
+        if maybe_apply_rejection_grace(db, user):
+            log_user_activity(
+                db, action="auth.login_blocked_rejected", request=request,
+                details={"identifier": identifier},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Tu registro de alojamiento fue rechazado y la cuenta ya no está activa.",
+            )
         _check_account_locked(db, user)
     if not user or not user.get("is_active", True) or not verify_password(password, user.get("password_hash", "")):
         _record_failed_attempt(db, identifier)

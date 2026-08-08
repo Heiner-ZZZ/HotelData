@@ -30,6 +30,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
+from src.app.core.outbox import enqueue_audit_log
 from src.app.modules.auth.routes._helpers import (
     PENDING_TTL_MINUTES,
     _is_email_available,
@@ -153,6 +154,57 @@ def _validate_property_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "total_rooms": total_rooms_int,
             "description": description,
         },
+    }
+
+
+def _validate_property_edit_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate ONLY the owner-editable property fields (UX-1 PATCH).
+
+    Reuses the same rules as the onboarding wizard (name, type, phone, city,
+    total_rooms 1..10000, description) but skips the account-level fields —
+    the owner never edits email/username/password via this endpoint.
+    """
+    property_name = str(payload.get("property_name") or "").strip()
+    property_type = str(payload.get("property_type") or "").strip().lower()
+    phone = str(payload.get("contact_phone") or "").strip()
+    city = str(payload.get("city") or "").strip()
+    total_rooms = payload.get("total_rooms")
+    description = str(payload.get("description") or "").strip()
+
+    if len(property_name) < 2:
+        raise HTTPException(status_code=400, detail="El nombre del alojamiento es requerido.")
+    if len(property_name) > 120:
+        raise HTTPException(status_code=400, detail="El nombre del alojamiento debe tener máximo 120 caracteres.")
+    if property_type not in _PROPERTY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo de alojamiento inválido. Valores permitidos: {', '.join(_PROPERTY_TYPES)}.",
+        )
+    if not _PHONE_REGEX.match(phone):
+        raise HTTPException(
+            status_code=400,
+            detail="Número de teléfono inválido. Usa formato internacional (ej. +5215512345678).",
+        )
+    if len(city) < 2:
+        raise HTTPException(status_code=400, detail="La ciudad es requerida.")
+    try:
+        total_rooms_int = int(total_rooms)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="La cantidad de habitaciones debe ser un número entero.")
+    if total_rooms_int <= 0:
+        raise HTTPException(status_code=400, detail="La cantidad de habitaciones debe ser mayor a 0.")
+    if total_rooms_int > 10000:
+        raise HTTPException(status_code=400, detail="La cantidad de habitaciones parece demasiado alta.")
+    if len(description) > 500:
+        raise HTTPException(status_code=400, detail="La descripción no puede superar los 500 caracteres.")
+
+    return {
+        "property_name": property_name,
+        "property_type": property_type,
+        "contact_phone": phone,
+        "city": city,
+        "total_rooms": total_rooms_int,
+        "description": description,
     }
 
 
@@ -372,6 +424,11 @@ def confirm_property_registration_code(
         # Sin esto, hotel_filter (que filtra por assigned_hotels) trataría una
         # lista vacía como "sin restricción" y el dueño vería TODOS los hoteles.
         "assigned_hotels": [prop_id],
+        # Fase 1 gate de aprobación: la cuenta nace pendiente de aprobación del
+        # admin. is_active se mantiene True (el dueño puede loguearse para ver
+        # su estado); la activación operativa ocurre en el approve de la cola.
+        "approval_status": "pending_approval",
+        "approval_status_changed_at": now,
         "created_at": now,
         "updated_at": now,
     }
@@ -399,6 +456,13 @@ def confirm_property_registration_code(
         "accepted_currencies": [pending_property["currency"]],
         "manual_override": True,
         "verified_at": now,
+        # Fase 1 gate de aprobación: el hotel nace NO operativo (pendiente de
+        # aprobación del admin). El approve de la cola lo activa
+        # (is_operational/published/approval_status) y clona el rol del gerente.
+        "approval_status": "pending_approval",
+        "approval_status_changed_at": now,
+        "is_operational": False,
+        "published": False,
         "contact_phone": pending_property["phone"],
         "property_type": pending_property["type"],
         "city": pending_property["city"],
@@ -445,6 +509,22 @@ def confirm_property_registration_code(
         "source": "register_property_wizard",
     })
 
+    # Trazabilidad del registro (UX-1 timeline): evento inicial "submitted"
+    # en audit_log — el resto de transiciones las escriben approve/reject/
+    # request-changes/PATCH (entity_type="hotel_registration").
+    enqueue_audit_log(
+        db,
+        {
+            "timestamp": now,
+            "prop_id": prop_id,
+            "entity_type": "hotel_registration",
+            "entity_id": str(prop_id),
+            "action": "submitted",
+            "summary": f"Registro recibido para «{pending_property['name']}» (onboarding público).",
+            "changed_by": pending["username"],
+        },
+    )
+
     db.pending_registrations.delete_one({"email": email})
 
     log_user_activity(
@@ -465,8 +545,10 @@ def confirm_property_registration_code(
         "requires_login": True,
         "prop_id": prop_id,
         "email": email,
+        "approval_status": "pending_approval",
         "message": (
-            f"Tu alojamiento «{pending_property['name']}» fue registrado correctamente. "
-            "Inicia sesión para acceder a tu panel de gestión."
+            f"Tu alojamiento «{pending_property['name']}» fue registrado y está "
+            "pendiente de aprobación. Te avisaremos por correo cuando el "
+            "administrador lo active."
         ),
     }

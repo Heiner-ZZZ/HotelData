@@ -58,6 +58,10 @@ def _fetch_hotel(prop_id: int) -> dict[str, Any] | None:
     hotel = db.dim_hotels.find_one({"prop_id": prop_id}, {"_id": 0})
     if not hotel:
         return None
+    # Gate operativo (Fase A): un hotel pendiente de aprobación no genera
+    # recomendaciones públicas.
+    if hotel.get("published") is False:
+        return None
     content = db.hotel_content_pages.find_one(
         {"prop_id": prop_id},
         {"_id": 0, "description": 1, "amenities_text": 1},
