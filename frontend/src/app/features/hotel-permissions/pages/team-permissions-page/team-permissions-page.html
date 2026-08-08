@@ -1,0 +1,390 @@
+<div class="team-permissions-page">
+  <app-page-header
+    eyebrow="Administración del hotel"
+    [title]="hotelLabel() ? 'Equipo y permisos — ' + hotelLabel() : 'Equipo y permisos del hotel'"
+    description="Roles por hotel y asignación del equipo: clona plantillas, ajusta permisos y gestiona el acceso del personal."
+    icon="admin_panel_settings"
+  >
+    <button type="button" class="btn-primary" (click)="openCreateRole()" [disabled]="noHotel()">
+      <span class="material-symbols-outlined">add</span>
+      <span>Nuevo rol</span>
+    </button>
+  </app-page-header>
+
+  @if (noHotel()) {
+    <app-empty-state
+      title="Selecciona un hotel"
+      description="Elige un hotel para administrar su equipo y permisos."
+      icon="apartment"
+    />
+  } @else {
+    @switch (viewState()) {
+      @case ('loading') {
+        <app-loading-state label="Cargando equipo y permisos…" />
+      }
+      @case ('error') {
+        <app-error-state title="Error al cargar el equipo y permisos" (retry)="reload()" />
+      }
+      @case ('success') {
+        <!-- ── Roles del hotel ───────────────────────────────────── -->
+        <section class="card">
+          <header class="card-header">
+            <div class="card-header-text">
+              <h2>Roles del hotel</h2>
+              <p>{{ roles().length }} rol(es) · {{ templates().length }} plantilla(s) para clonar</p>
+            </div>
+            <button type="button" class="btn-primary" (click)="openCreateRole()">
+              <span class="material-symbols-outlined">add</span>
+              <span>Nuevo rol</span>
+            </button>
+          </header>
+
+          <!-- Toolbar: búsqueda + filtro de estado (patrón products) -->
+          @if (roles().length > 0) {
+            <div class="toolbar">
+              <div class="search-input">
+                <span class="material-symbols-outlined">search</span>
+                <input
+                  type="text"
+                  [ngModel]="roleSearchTerm()"
+                  (ngModelChange)="onRoleSearchInput($event)"
+                  placeholder="Buscar por rol o plantilla…"
+                  aria-label="Buscar roles"
+                />
+                @if (roleSearchTerm()) {
+                  <button type="button" class="clear-btn" (click)="onRoleSearchInput('')" aria-label="Limpiar búsqueda">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                }
+              </div>
+
+              <div class="filter-chips">
+                @for (filter of roleStatusFilters(); track filter.key) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.is-active]="roleStatusFilter() === filter.key"
+                    (click)="onRoleStatusChange(filter.key)"
+                  >
+                    {{ filter.label }}
+                    <span class="chip-count">{{ filter.count }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (roles().length === 0) {
+            <app-empty-state
+              title="Sin roles en este hotel"
+              description="Crea un rol nuevo o clónalo desde una plantilla para empezar."
+              icon="admin_panel_settings"
+            />
+          } @else {
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rol</th>
+                    <th>Permisos</th>
+                    <th class="numeric">Miembros</th>
+                    <th>Estado</th>
+                    <th class="actions-col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @if (filteredRoles().length === 0) {
+                    <tr>
+                      <td colspan="5">
+                        <div class="no-results">
+                          <span class="material-symbols-outlined">search_off</span>
+                          <p>Ningún rol coincide con la búsqueda o el filtro.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                  @for (role of filteredRoles(); track role.id) {
+                    <tr [class.is-inactive]="!role.isActive">
+                      <td>
+                        <button
+                          type="button"
+                          class="cell-role audit-trigger"
+                          (click)="openAudit(role)"
+                          title="Ver auditoría del rol: creador, fechas y cambios de permisos"
+                        >
+                          <span class="role-name">{{ role.displayName || role.name }}</span>
+                          <span class="role-code">{{ role.name }}</span>
+                          <span class="role-meta">
+                            @if (isOwnRole(role.id)) {
+                              <span class="own-badge">Tu rol</span>
+                            }
+                            @if (role.basedOn) {
+                              <span class="based-on" title="Clonado de la plantilla {{ role.basedOn }}">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                {{ role.basedOn }}
+                              </span>
+                            }
+                            <span class="audit-hint" title="Ver auditoría del rol">
+                              <span class="material-symbols-outlined">receipt_long</span>
+                              Auditoría
+                            </span>
+                          </span>
+                        </button>
+                      </td>
+                      <td>
+                        <div class="perm-chips">
+                          @for (chip of permissionChips(role); track chip.code) {
+                            <span class="perm-chip" [title]="chip.code">{{ chip.label }}</span>
+                          }
+                          @if (role.permissions.length > 3) {
+                            <span class="perm-more" [title]="role.permissions.join('\n')">
+                              +{{ role.permissions.length - 3 }}
+                            </span>
+                          }
+                          @if (role.permissions.length === 0) {
+                            <span class="perm-none">Sin permisos</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="numeric">
+                        <span class="member-count" [class.is-zero]="role.assignmentCount === 0">
+                          {{ role.assignmentCount }}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          class="status-badge"
+                          [class.status-active]="role.isActive"
+                          [class.status-inactive]="!role.isActive"
+                        >
+                          {{ role.isActive ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      <td class="actions-col">
+                        <div class="action-buttons">
+                          <button type="button" class="btn-icon" title="Ver auditoría" aria-label="Ver auditoría" (click)="openAudit(role)">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                          </button>
+                          @if (!isOwnRole(role.id)) {
+                            <button type="button" class="btn-icon" title="Editar rol" aria-label="Editar rol" (click)="openEditRole(role)">
+                              <span class="material-symbols-outlined">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="btn-icon"
+                              [attr.title]="role.isActive ? 'Desactivar rol' : 'Activar rol'"
+                              [attr.aria-label]="role.isActive ? 'Desactivar rol' : 'Activar rol'"
+                              (click)="toggleRoleActive(role)"
+                            >
+                              <span class="material-symbols-outlined">{{ role.isActive ? 'visibility_off' : 'visibility' }}</span>
+                            </button>
+                            <button type="button" class="btn-icon btn-danger" title="Eliminar rol" aria-label="Eliminar rol" (click)="deleteRole(role)">
+                              <span class="material-symbols-outlined">delete</span>
+                            </button>
+                          } @else {
+                            <span
+                              class="locked-hint"
+                              title="No puedes modificar tu propio rol (anti self-lockout). Designa a otro admin o hazlo desde super_admin."
+                            >
+                              <span class="material-symbols-outlined">lock</span>
+                            </span>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
+        <!-- ── Equipo del hotel ──────────────────────────────────── -->
+        <section class="card">
+          <header class="card-header">
+            <div class="card-header-text">
+              <h2>Equipo del hotel</h2>
+              <p>{{ assignedCount() }} con rol · {{ unassignedCount() }} sin asignar</p>
+            </div>
+          </header>
+
+          <!-- Toolbar: búsqueda + filtro de estado -->
+          @if (assigned().length > 0 || unassignedStaff().length > 0) {
+            <div class="toolbar">
+              <div class="search-input">
+                <span class="material-symbols-outlined">search</span>
+                <input
+                  type="text"
+                  [ngModel]="memberSearchTerm()"
+                  (ngModelChange)="onMemberSearchInput($event)"
+                  placeholder="Buscar por miembro o rol…"
+                  aria-label="Buscar miembros"
+                />
+                @if (memberSearchTerm()) {
+                  <button type="button" class="clear-btn" (click)="onMemberSearchInput('')" aria-label="Limpiar búsqueda">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                }
+              </div>
+
+              <div class="filter-chips">
+                @for (filter of memberStatusFilters(); track filter.key) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.is-active]="memberStatusFilter() === filter.key"
+                    (click)="onMemberStatusChange(filter.key)"
+                  >
+                    {{ filter.label }}
+                    <span class="chip-count">{{ filter.count }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (assigned().length === 0 && unassignedStaff().length === 0) {
+            <app-empty-state
+              title="Sin personal"
+              description="Cuando exista personal asignado a este hotel aparecerá aquí."
+              icon="group"
+            />
+          } @else {
+            @if (memberStatusFilter() !== 'unassigned') {
+              @if (assigned().length === 0) {
+                <div class="no-results compact">
+                  <span class="material-symbols-outlined">person_off</span>
+                  <p>Nadie tiene un rol asignado en este hotel.</p>
+                </div>
+              } @else {
+              <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Miembro</th>
+                    <th>Rol</th>
+                    <th class="actions-col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @if (filteredAssigned().length === 0 && assigned().length > 0) {
+                    <tr>
+                      <td colspan="3">
+                        <div class="no-results">
+                          <span class="material-symbols-outlined">search_off</span>
+                          <p>Ningún miembro con rol coincide con la búsqueda.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                  @for (assignment of filteredAssigned(); track assignment.id) {
+                    <tr>
+                      <td>
+                        <div class="cell-member">
+                          <span class="member-avatar">{{ initial(assignment.displayName || assignment.username) }}</span>
+                          <div class="member-text">
+                            <span class="member-name">{{ assignment.displayName || assignment.username }}</span>
+                            <span class="member-user">@{{ assignment.username }}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="role-tag">{{ assignment.roleDisplayName || assignment.roleName }}</span>
+                      </td>
+                      <td class="actions-col">
+                        <div class="action-buttons">
+                          @if (!isOwnRole(assignment.roleId)) {
+                            <button type="button" class="btn-icon" title="Cambiar rol" aria-label="Cambiar rol" (click)="openChangeRole(assignment)">
+                              <span class="material-symbols-outlined">swap_horiz</span>
+                            </button>
+                            <button type="button" class="btn-icon btn-danger" title="Desasignar" aria-label="Desasignar" (click)="unassign(assignment)">
+                              <span class="material-symbols-outlined">person_remove</span>
+                            </button>
+                          } @else {
+                            <span
+                              class="locked-hint"
+                              title="No puedes modificar tu propia asignación (anti self-lockout)."
+                            >
+                              <span class="material-symbols-outlined">lock</span>
+                            </span>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              </div>
+              }
+            }
+
+            @if (memberStatusFilter() === 'unassigned' && unassignedStaff().length === 0) {
+              <div class="no-results compact">
+                <span class="material-symbols-outlined">person_off</span>
+                <p>Nadie sin rol en este hotel.</p>
+              </div>
+            }
+
+            @if (memberStatusFilter() !== 'assigned' && unassignedStaff().length > 0) {
+              <div class="unassigned">
+                <h3>Personal sin rol</h3>
+                <div class="unassigned-list">
+                  @if (filteredUnassigned().length === 0 && unassignedStaff().length > 0) {
+                    <div class="no-results compact">
+                      <span class="material-symbols-outlined">search_off</span>
+                      <p>Ningún miembro sin rol coincide con la búsqueda.</p>
+                    </div>
+                  }
+                  @for (member of filteredUnassigned(); track member.userId) {
+                    <div class="unassigned-item">
+                      <div class="cell-member">
+                        <span class="member-avatar">{{ initial(member.displayName || member.username) }}</span>
+                        <div class="member-text">
+                          <span class="member-name">{{ member.displayName || member.username }}</span>
+                          <span class="member-user">@{{ member.username }}</span>
+                        </div>
+                      </div>
+                      <button type="button" class="btn-secondary btn-sm" (click)="openAssign(member)">
+                        <span class="material-symbols-outlined">assignment_ind</span>
+                        <span>Asignar rol</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </section>
+      }
+    }
+  }
+</div>
+
+@if (roleModalOpen() && !noHotel()) {
+  <app-role-form-modal
+    [templates]="templates()"
+    [permissionGroups]="permissionGroups()"
+    [editing]="editingRole()"
+    (close)="closeRoleModal()"
+    (saved)="onRoleSaved()"
+  />
+}
+
+@if (assignModalOpen() && assignContext(); as ctx) {
+  <app-assign-role-modal
+    [roles]="roles()"
+    [assignment]="ctx.assignment"
+    [member]="ctx.member"
+    (close)="closeAssignModal()"
+    (saved)="onAssignSaved()"
+  />
+}
+
+@if (auditRole(); as role) {
+  <app-role-audit-modal
+    [role]="role"
+    [propId]="currentPropId()"
+    [templates]="templates()"
+    (close)="closeAudit()"
+  />
+}

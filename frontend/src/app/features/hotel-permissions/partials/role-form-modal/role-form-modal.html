@@ -1,0 +1,137 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="modal-container" role="dialog" aria-modal="true" [attr.aria-label]="isEditing() ? 'Editar rol' : 'Nuevo rol'">
+    <header class="modal-header">
+      <div class="modal-title">
+        <span class="material-symbols-outlined">admin_panel_settings</span>
+        <div>
+          <h2>{{ isEditing() ? 'Editar rol' : 'Nuevo rol del hotel' }}</h2>
+          @if (isEditing() && editing(); as role) {
+            <p class="role-info">
+              <span class="role-name">{{ role.displayName || role.name }}</span>
+              <span class="role-code">{{ role.name }}</span>
+            </p>
+          } @else {
+            <p class="role-info">Clona una plantilla o define un rol desde cero.</p>
+          }
+        </div>
+      </div>
+      <button type="button" class="close-btn" (click)="cancel()" aria-label="Cerrar" [disabled]="saving()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="modal-body">
+      <div class="form-grid">
+        @if (!isEditing()) {
+          <div class="field">
+            <label for="role-name">
+              Nombre del rol <span class="req">*</span>
+              <span class="hint">identificador único del hotel (ej. recepcionista)</span>
+            </label>
+            <input id="role-name" type="text" formControlName="name" placeholder="ej. recepcionista" />
+            @if (fieldError('name'); as err) {
+              <span class="field-error">{{ err }}</span>
+            }
+          </div>
+        }
+
+        <div class="field">
+          <label for="role-display-name">Nombre visible</label>
+          <input id="role-display-name" type="text" formControlName="display_name" placeholder="ej. Recepcionista — Hotel Plaza" />
+        </div>
+
+        @if (!isEditing() && templates().length > 0) {
+          <div class="field field-wide">
+            <label for="role-template">
+              Clonar desde plantilla
+              <span class="hint">carga los permisos de la plantilla; puedes ajustarlos después</span>
+            </label>
+            <select id="role-template" formControlName="based_on_role_id" (change)="onTemplateChange($event)">
+              <option value="">— Sin plantilla —</option>
+              @for (template of templates(); track template.id) {
+                <option [value]="template.id">{{ template.displayName }} ({{ template.roleName }})</option>
+              }
+            </select>
+          </div>
+        }
+      </div>
+
+      <!-- Permisos agrupados por módulo -->
+      <div class="permissions-section">
+        <div class="permissions-head">
+          <span class="permissions-title">Permisos</span>
+          <span class="permissions-count">{{ selectedCount() }} seleccionados</span>
+        </div>
+
+        @for (group of permissionGroups(); track group.resource) {
+          <div class="perm-group">
+            <label class="perm-group-head">
+              <input
+                type="checkbox"
+                class="group-check"
+                [checked]="groupAllSelected(group)"
+                [indeterminate]="groupPartialSelected(group)"
+                (change)="toggleGroup(group, $event)"
+              />
+              <span class="material-symbols-outlined group-icon">{{ group.icon }}</span>
+              <span class="group-label">{{ group.label }}</span>
+              <span class="group-count">
+                {{ group.permissions.filter((p) => isSelected(p.code)).length }}/{{ group.permissions.length }}
+              </span>
+            </label>
+            <div class="perm-grid">
+              @for (perm of group.permissions; track perm.code) {
+                <label class="perm-item">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(perm.code)"
+                    (change)="togglePermission(perm.code, $event)"
+                  />
+                  <span class="perm-label">{{ perm.label }}</span>
+                  <span class="perm-code">{{ perm.code }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+
+        @if (manageRemovedWarning()) {
+          <div class="warning-banner">
+            <span class="material-symbols-outlined">warning</span>
+            <span>
+              Este rol otorga la administración del hotel (hotel.manage_roles). Si lo quitas y es el
+              último rol admin, el sistema rechazará el cambio (anti-lockout).
+            </span>
+          </div>
+        }
+
+        @if (templateInheritHint()) {
+          <div class="warning-banner">
+            <span class="material-symbols-outlined">info</span>
+            <span>
+              Con una plantilla seleccionada y 0 permisos, el rol heredará los permisos de la
+              plantilla. Deselecciona la plantilla para crear un rol sin permisos.
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (submitError(); as err) {
+        <div class="submit-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ err }}
+        </div>
+      }
+    </form>
+
+    <footer class="modal-footer">
+      <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving()">
+        Cancelar
+      </button>
+      <button type="submit" class="btn-primary" (click)="submit()" [disabled]="saving() || (!isEditing() && form.controls.name.invalid)">
+        <span class="material-symbols-outlined">{{ saving() ? 'hourglass_top' : 'save' }}</span>
+        <span>{{ saving() ? 'Guardando…' : (isEditing() ? 'Guardar cambios' : 'Crear rol') }}</span>
+      </button>
+    </footer>
+  </div>
+</div>

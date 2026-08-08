@@ -1,34 +1,51 @@
+"""Seed de usuarios demo (GA03) sobre el modelo de seguridad CANÓNICO.
+
+ESTE SCRIPT YA NO ES UNA FUENTE DIVERGENTE de roles/permisos.
+
+Antes (legacy): definía listas propias diminutas (``ROLES``/``PERMISSIONS``/
+``ROLE_PERMISSIONS``) y las escribía con ``$set`` sobre
+``roles.permissions``, pisando el catálogo canónico cada vez que se
+re-ejecutaba después de ``init_security_model_ga03.py``.
+
+Desde la migración (2026-08): importa ``BASE_ROLES``, ``PERMISSION_CATALOG``
+y ``ROLE_PERMISSION_CODES`` (y las funciones de upsert) desde
+``init_security_model_ga03.py`` — la fuente única de verdad. Su ÚNICO aporte
+propio son los ``USERS`` demo.
+
+Consecuencia práctica: correr este script es CONVERGENTE con el canónico.
+Si el init canónico corrió antes, solo asegura usuarios demo; si no, deja
+roles + permisos + mapeos en estado canónico de todos modos. Nunca degrada
+permisos que el init canónico ya otorgó.
+"""
 from __future__ import annotations
 
+import importlib.util
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 
 from passlib.context import CryptContext
 from pymongo import MongoClient
 
 ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-ROLES = [
-    "super_admin", "admin_sistema", "operador_datos", "auditor_datos",
-    "hotel_partner", "gerente_hotel", "revenue_manager", "marketing_hotelero",
-    "cliente",
-]
+# ── Catálogo canónico: fuente única de verdad ──────────────────────────────
+# Carga init_security_model_ga03.py por ruta (main() está guardado por
+# `if __name__ == "__main__":`, así que importarlo no ejecuta side effects).
+_INIT_PATH = Path(__file__).resolve().parent / "init_security_model_ga03.py"
+_spec = importlib.util.spec_from_file_location(
+    "init_security_model_ga03_canonical", _INIT_PATH
+)
+assert _spec and _spec.loader, f"no se pudo cargar {_INIT_PATH}"
+_canonical = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_canonical)
 
-PERMISSIONS = [
-    "users.manage", "dashboard.read", "crud.read", "crud.write",
-    "etl.read", "etl.execute", "reservations.manage", "hotels.manage",
-    "revenue.read", "revenue.manage", "audit.read",
-]
-
-ROLE_PERMISSIONS = {
-    "super_admin": PERMISSIONS,
-    "admin_sistema": ["users.manage", "dashboard.read", "etl.read", "audit.read"],
-    "operador_datos": ["etl.read", "dashboard.read", "audit.read"],
-    "auditor_datos": ["audit.read", "etl.read"],
-    "hotel_partner": ["hotels.manage", "reservations.manage", "dashboard.read"],
-    "gerente_hotel": ["hotels.manage", "reservations.manage", "revenue.read", "dashboard.read"],
-    "revenue_manager": ["revenue.read", "revenue.manage", "dashboard.read"],
-    "marketing_hotelero": ["hotels.manage", "revenue.read", "dashboard.read"],
-    "cliente": [],
-}
+BASE_ROLES = _canonical.BASE_ROLES
+PERMISSION_CATALOG = _canonical.PERMISSION_CATALOG
+ROLE_PERMISSION_CODES = _canonical.ROLE_PERMISSION_CODES
+upsert_roles = _canonical.upsert_roles
+upsert_permissions = _canonical.upsert_permissions
+embed_role_permissions = _canonical.embed_role_permissions
 
 USERS = [
     {"username": "admin", "email": "admin@hoteldata.local", "password": "Admin12345*", "primary_role": "super_admin", "display_name": "Administrador"},
@@ -42,72 +59,70 @@ USERS = [
 
 def seed(uri: str = "mongodb://localhost:27018", db_name: str = "hoteldata_hub"):
     client = MongoClient(uri)
-    db = client[db_name]
+    try:
+        db = client[db_name]
 
-    for role_name in ROLES:
-        db.roles.update_one(
-            {"role_name": role_name},
-            {"$set": {"role_name": role_name, "description": f"Rol {role_name}", "updated_at": None}},
-            upsert=True,
+        # Roles + permisos + mapeos: CANÓNICOS (convergentes, nunca divergentes).
+        role_docs = upsert_roles(db["roles"])
+        upsert_permissions(db["permissions"])
+        embed_role_permissions(db["roles"], role_docs)
+        print(
+            f"Roles/permisos alineados al catálogo canónico "
+            f"({len(BASE_ROLES)} roles, {len(PERMISSION_CATALOG)} códigos)"
         )
-    print(f"Seeded {len(ROLES)} roles")
 
-    for perm in PERMISSIONS:
-        desc = perm.replace(".", " ").title()
-        db.permissions.update_one(
-            {"permission_code": perm},
-            {"$set": {"permission_code": perm, "description": desc}},
-            upsert=True,
-        )
-    print(f"Seeded {len(PERMISSIONS)} permissions")
+        # FK: role_name → roles._id so seeded users get ``primary_role_id``
+        # (canonical user shape — see auth register + admin ownership).
+        role_ids = {
+            doc["role_name"]: doc["_id"]
+            for doc in db.roles.find({}, {"role_name": 1, "_id": 1})
+            if doc.get("role_name")
+        }
 
-    for role_name, perms in ROLE_PERMISSIONS.items():
-        db.roles.update_one(
-            {"role_name": role_name},
-            {"$set": {"permissions": perms, "updated_at": None}},
-            upsert=True,
-        )
-    print("Seeded role-permission mappings (embedded in roles)")
-
-    for u in USERS:
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc)
-        existing = db.users.find_one({"$or": [{"username": u["username"]}, {"email": u["email"]}]})
-        if existing:
-            db.users.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {
+        for u in USERS:
+            now = datetime.now(timezone.utc)
+            existing = db.users.find_one({"$or": [{"username": u["username"]}, {"email": u["email"]}]})
+            primary_role_id = role_ids.get(u["primary_role"])
+            if existing:
+                update = {
                     "password_hash": ctx.hash(u["password"]),
                     "display_name": u["display_name"],
                     "primary_role": u["primary_role"],
+                    # Fijar SIEMPRE (incluso None) para no dejar un FK stale de
+                    # una corrida previa cuando el rol cambió/desapareció.
+                    "primary_role_id": primary_role_id,
                     "is_active": True,
+                    "email_verified": True,
                     "updated_at": now,
-                }},
-            )
-            print(f"User {u['username']} updated OK")
-        else:
-            db.users.insert_one({
-                "username": u["username"],
-                "email": u["email"],
-                "password_hash": ctx.hash(u["password"]),
-                "display_name": u["display_name"],
-                "primary_role": u["primary_role"],
-                "is_active": True,
-                "email_verified": True,
-                "failed_login_attempts": 0,
-                "locked_until": None,
-                "created_at": now,
-                "updated_at": now,
-            })
-            print(f"User {u['username']} ({u['primary_role']}) seeded OK")
+                }
+                db.users.update_one({"_id": existing["_id"]}, {"$set": update})
+                print(f"User {u['username']} updated OK")
+            else:
+                user_doc = {
+                    "username": u["username"],
+                    "email": u["email"],
+                    "password_hash": ctx.hash(u["password"]),
+                    "display_name": u["display_name"],
+                    "primary_role": u["primary_role"],
+                    "primary_role_id": primary_role_id,
+                    "is_active": True,
+                    "email_verified": True,
+                    "failed_login_attempts": 0,
+                    "locked_until": None,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                db.users.insert_one(user_doc)
+                print(f"User {u['username']} ({u['primary_role']}) seeded OK")
 
-    print("\nDone! Users created:")
-    for u in USERS:
-        print(f"  {u['username']:15s} / {u['password']:20s} -> {u['primary_role']}")
+        print("\nDone! Users created:")
+        for u in USERS:
+            print(f"  {u['username']:15s} / {u['password']:20s} -> {u['primary_role']}")
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
-    import os
     uri = os.getenv("MONGO_URI", "mongodb://localhost:27018")
     db_name = os.getenv("MONGO_DATABASE", "hoteldata_hub")
     seed(uri, db_name)

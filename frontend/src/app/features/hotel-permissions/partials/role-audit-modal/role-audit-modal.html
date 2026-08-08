@@ -1,0 +1,193 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="modal-container" role="dialog" aria-modal="true" [attr.aria-label]="'Auditoría del rol ' + role().displayName">
+    <header class="modal-header">
+      <div class="modal-title">
+        <span class="material-symbols-outlined">receipt_long</span>
+        <div>
+          <h2>Auditoría del rol</h2>
+          <p class="role-info">
+            <span class="role-name">{{ role().displayName || role().name }}</span>
+            <span class="role-code">{{ role().name }}</span>
+            <span class="status-badge" [class.status-active]="role().isActive" [class.status-inactive]="!role().isActive">
+              {{ role().isActive ? 'Activo' : 'Inactivo' }}
+            </span>
+          </p>
+        </div>
+      </div>
+      <button type="button" class="close-btn" (click)="close.emit()" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    @if (isLoading()) {
+      <div class="modal-body">
+        <app-loading-state label="Cargando auditoría…" />
+      </div>
+    } @else if (hasError()) {
+      <div class="modal-body">
+        <app-empty-state
+          title="No se pudo cargar la auditoría"
+          description="Verifica tu conexión e inténtalo de nuevo."
+          icon="error"
+        />
+        <button type="button" class="btn-secondary retry-btn" (click)="auditResource.reload()">
+          <span class="material-symbols-outlined">refresh</span>
+          <span>Reintentar</span>
+        </button>
+      </div>
+    } @else {
+      @if (audit(); as audit) {
+        <div class="modal-body">
+          <!-- Resumen del rol -->
+          <section class="meta-grid" aria-label="Resumen del rol">
+            <div class="meta-item">
+              <span class="material-symbols-outlined">person</span>
+              <div>
+                <span class="meta-label">Creado por</span>
+                <span class="meta-value">{{ audit.createdBy || '—' }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="material-symbols-outlined">calendar_today</span>
+              <div>
+                <span class="meta-label">Fecha de creación</span>
+                <span class="meta-value">{{ formatDate(audit.createdAt) }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="material-symbols-outlined">update</span>
+              <div>
+                <span class="meta-label">Última actualización</span>
+                <span class="meta-value">{{ formatDate(audit.updatedAt) }}</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="material-symbols-outlined">content_copy</span>
+              <div>
+                <span class="meta-label">Plantilla base</span>
+                <span class="meta-value">{{ audit.basedOn || 'Sin plantilla' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Historial de cambios -->
+          <section class="history-section">
+            <header class="section-head">
+              <span class="section-title">Historial de cambios</span>
+              <span class="section-count">{{ audit.permissionCount }} permiso(s) actuales</span>
+            </header>
+
+            @if (audit.entries.length > 0) {
+              <ol class="timeline">
+                @for (entry of audit.entries; track $index) {
+                  <li class="timeline-item">
+                    <span class="timeline-icon" [class.is-delete]="entry.action === 'delete'">
+                      <span class="material-symbols-outlined">{{ actionIcon(entry.action) }}</span>
+                    </span>
+                    <div class="timeline-content">
+                      <div class="timeline-head">
+                        <span class="timeline-action">{{ actionLabel(entry.action) }}</span>
+                        <span class="timeline-meta">
+                          {{ entry.changedBy || '—' }} · {{ formatDate(entry.timestamp) }}
+                        </span>
+                      </div>
+                      @if (entry.summary) {
+                        <p class="timeline-summary">{{ entry.summary }}</p>
+                      }
+                      @if (permissionDiff(entry); as diff) {
+                        <div class="perm-diff">
+                          @if (diff.added.length > 0) {
+                            <div class="diff-row">
+                              <span class="diff-tag added">
+                                <span class="material-symbols-outlined">add</span>
+                                <span class="diff-label">Añadidos</span>
+                              </span>
+                              <div class="diff-codes">
+                                @for (code of diff.added; track code) {
+                                  <span class="diff-code added">{{ code }}</span>
+                                }
+                              </div>
+                            </div>
+                          }
+                          @if (diff.removed.length > 0) {
+                            <div class="diff-row">
+                              <span class="diff-tag removed">
+                                <span class="material-symbols-outlined">remove</span>
+                                <span class="diff-label">Quitados</span>
+                              </span>
+                              <div class="diff-codes">
+                                @for (code of diff.removed; track code) {
+                                  <span class="diff-code removed">{{ code }}</span>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                      @for (fd of fieldDiffs(entry); track $index) {
+                        <p class="field-diff">
+                          <span class="field-name">{{ fd.field }}:</span>
+                          <span class="field-old">{{ fd.old }}</span>
+                          <span class="material-symbols-outlined arrow">arrow_forward</span>
+                          <span class="field-new">{{ fd.new }}</span>
+                        </p>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <div class="no-history">
+                <span class="material-symbols-outlined">history_toggle_off</span>
+                <p>
+                  Este rol fue creado antes de que se registrara el historial de cambios.
+                  Solo se muestran los metadatos del documento.
+                </p>
+                @if (templateDiff(); as tdiff) {
+                  <div class="template-diff">
+                    <span class="template-diff-title">
+                      Diferencia con la plantilla «{{ audit.basedOn }}»
+                    </span>
+                    @if (tdiff.added.length === 0 && tdiff.removed.length === 0) {
+                      <span class="template-diff-none">Coincide con la plantilla.</span>
+                    }
+                    @if (tdiff.added.length > 0) {
+                      <div class="diff-row">
+                        <span class="diff-tag added">
+                          <span class="material-symbols-outlined">add</span>
+                          <span class="diff-label">Respecto a la plantilla</span>
+                        </span>
+                        <div class="diff-codes">
+                          @for (code of tdiff.added; track code) {
+                            <span class="diff-code added">{{ code }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                    @if (tdiff.removed.length > 0) {
+                      <div class="diff-row">
+                        <span class="diff-tag removed">
+                          <span class="material-symbols-outlined">remove</span>
+                          <span class="diff-label">Quitados de la plantilla</span>
+                        </span>
+                        <div class="diff-codes">
+                          @for (code of tdiff.removed; track code) {
+                            <span class="diff-code removed">{{ code }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+    }
+
+    <footer class="modal-footer">
+      <button type="button" class="btn-secondary" (click)="close.emit()">Cerrar</button>
+    </footer>
+  </div>
+</div>

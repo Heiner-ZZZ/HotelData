@@ -35,10 +35,11 @@ def main():
     print("=" * 60)
     print(f"EMPLEADOS CON USER_ID: {len(employees)}")
     for emp in employees:
-        uid = emp.get("user_id", "")
+        uid = emp.get("user_id")
         try:
+            uid_oid = uid if isinstance(uid, ObjectId) else ObjectId(uid)
             user = db.users.find_one(
-                {"_id": ObjectId(uid)},
+                {"_id": uid_oid},
                 {"username": 1, "assigned_hotels": 1},
             )
         except Exception:

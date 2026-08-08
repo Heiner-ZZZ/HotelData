@@ -1,0 +1,63 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="modal-container" role="dialog" aria-modal="true" [attr.aria-label]="isChanging() ? 'Cambiar rol' : 'Asignar rol'">
+    <header class="modal-header">
+      <div class="modal-title">
+        <span class="material-symbols-outlined">assignment_ind</span>
+        <div>
+          <h2>{{ isChanging() ? 'Cambiar rol' : 'Asignar rol' }}</h2>
+          <p class="member-info">
+            <span class="member-avatar">{{ (userLabel() || '?').charAt(0).toUpperCase() }}</span>
+            <span class="member-name">{{ userLabel() }}</span>
+            <span class="member-handle">@{{ userHandle() }}</span>
+          </p>
+        </div>
+      </div>
+      <button type="button" class="close-btn" (click)="cancel()" aria-label="Cerrar" [disabled]="saving()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="modal-body">
+      <div class="field">
+        <label for="assign-role">
+          Rol en este hotel <span class="req">*</span>
+          <span class="hint">
+            {{ isChanging() ? 'el acceso del miembro cambiará de inmediato' : 'el miembro obtiene acceso al hotel con estos permisos' }}
+          </span>
+        </label>
+        <select id="assign-role" formControlName="role_id">
+          @for (role of roleOptions(); track role.id) {
+            <option [value]="role.id">
+              {{ role.displayName || role.name }} ({{ role.assignmentCount }} miembro{{ role.assignmentCount === 1 ? '' : 's' }}){{ role.isActive ? '' : ' — inactivo' }}
+            </option>
+          }
+        </select>
+        @if (roleOptions().length === 0) {
+          <span class="field-hint">No hay roles activos. Crea un rol primero.</span>
+        }
+      </div>
+
+      @if (submitError(); as err) {
+        <div class="submit-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ err }}
+        </div>
+      }
+    </form>
+
+    <footer class="modal-footer">
+      <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving()">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="btn-primary"
+        (click)="submit()"
+        [disabled]="saving() || form.controls.role_id.invalid || roleOptions().length === 0"
+      >
+        <span class="material-symbols-outlined">{{ saving() ? 'hourglass_top' : 'check' }}</span>
+        <span>{{ saving() ? 'Guardando…' : (isChanging() ? 'Guardar cambio' : 'Asignar rol') }}</span>
+      </button>
+    </footer>
+  </div>
+</div>

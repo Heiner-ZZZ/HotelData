@@ -1,21 +1,18 @@
-"""Update navigation to expose the simple (Mongo) tactical dashboards.
+"""⚠ DEPRECADO (2026-08): los ítems ``/management/rates/calendar`` (Calendario
+Tarifas, ``rates.read``, CRS, 204.6) y ``/management/service-requests``
+(Dashboard Solicitudes, ``reservations.read``, CRS, 210.5) ya viven en el
+``NAVIGATION_CATALOG`` canónico de ``scripts/init_security_model_ga03.py``.
 
-Agrega los ítems de menú de los informes simples TA12 que consultan Mongo
-directamente (sin ETL):
+Este script era la fuente paralela que los insertó directo en la BD. Ahora solo
+converge al catálogo canónico vía ``seed_navigation()`` (no-op si la BD ya está
+alineada). La fuente única es el catálogo. Acepta ``--dry-run``.
 
-- R2.2  ``/management/rates/calendar``   → Dashboard Tarifas (calendario)
-- I1.1  ``/management/service-requests`` → Dashboard Solicitudes
-
-O1.2 (matriz de estado de habitaciones) vive en ``/management/housekeeping/rooms``
-y se mejora dentro de esa misma página, por lo que no requiere ítem nuevo.
-
-Idempotente; acepta ``--dry-run``.
+Run: python scripts/update_simple_dashboards_navigation.py [--dry-run]
 """
 
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
@@ -25,31 +22,6 @@ if str(SERVER_ROOT) not in sys.path:
 from config.settings import get_settings
 from pymongo import MongoClient
 
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _upsert(db, href: str, patch: dict, label: str) -> None:
-    """Aplica (o simula con --dry-run) un upsert idempotente de navegación."""
-    existing = db.navigation.find_one({"href": href}, {"_id": 1})
-    action = "would upsert" if DRY_RUN else "upserting"
-    if existing:
-        action = "would update" if DRY_RUN else "updating"
-    print(f"[{action}] {label} ({href})")
-    if DRY_RUN:
-        return
-    result = db.navigation.update_one(
-        {"href": href},
-        {
-            "$set": {**patch, "updated_at": utc_now()},
-            "$setOnInsert": {"created_at": utc_now()},
-        },
-        upsert=True,
-    )
-    print(f"  matched={result.matched_count}, upserted={result.upserted_id is not None}")
-
-
 DRY_RUN = "--dry-run" in sys.argv
 
 
@@ -57,28 +29,20 @@ def main() -> None:
     settings = get_settings()
     client = MongoClient(settings.mongo_uri)
     db = client[settings.mongo_database]
+    try:
+        from scripts.init_security_model_ga03 import NAVIGATION_CATALOG, seed_navigation
 
-    # R2.2 — Calendario de tarifas (debajo de "Dashboard ADR" 204.5, sección CRS).
-    _upsert(db, "/management/rates/calendar", {
-        "label": "Calendario Tarifas",
-        "icon": "calendar_month",
-        "required_permission": "rates.read",
-        "section": "CRS",
-        "sort_order": 204.6,
-        "is_system": True,
-    }, "Calendario Tarifas")
-
-    # I1.1 — Dashboard de solicitudes de servicio (cerca de "Estancias Activas" 210, sección CRS).
-    _upsert(db, "/management/service-requests", {
-        "label": "Dashboard Solicitudes",
-        "icon": "room_service",
-        "required_permission": "reservations.read",
-        "section": "CRS",
-        "sort_order": 210.5,
-        "is_system": True,
-    }, "Dashboard Solicitudes")
-
-    client.close()
+        print("⚠ DEPRECADO — Calendario Tarifas y Dashboard Solicitudes ya viven en NAVIGATION_CATALOG.")
+        if DRY_RUN:
+            existing = {item["href"] for item in db.navigation.find({}, {"href": 1})}
+            missing = [item["href"] for item in NAVIGATION_CATALOG if item["href"] not in existing]
+            print(f"  [dry-run] canónico={len(NAVIGATION_CATALOG)} ítems · en BD={len(existing)} · "
+                  f"faltantes={missing or 'ninguno'}")
+        else:
+            seeded = seed_navigation(db["navigation"])
+            print(f"  Converged al catálogo canónico: {seeded} ítems nuevos (0 = ya alineado).")
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":

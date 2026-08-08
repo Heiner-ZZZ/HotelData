@@ -109,7 +109,7 @@ class EmployeeResponse(BaseModel):
     emergency_phone: str | None = None
     notes: str | None = None
     prop_id: int | None = None
-    user_id: str | None = None
+    user_id: ObjectIdStr | None = None
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None
@@ -147,7 +147,7 @@ class DepartmentListResponse(BaseModel):
 class EmployeeShiftResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
     id: ObjectIdStr = Field(validation_alias=AliasChoices("_id", "id"), serialization_alias="id")
-    employee_id: str | None = None
+    employee_id: ObjectIdStr | None = None
     date: str | None = None
     scheduled_start: str | None = None
     scheduled_end: str | None = None

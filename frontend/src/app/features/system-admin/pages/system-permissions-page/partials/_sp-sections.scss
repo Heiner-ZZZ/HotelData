@@ -1,0 +1,407 @@
+/* ═══════════════════════════════════════════════
+   Role Editor — Permission sections (Matriz CRUD)
+   ═══════════════════════════════════════════════ */
+
+$radius: 10px;
+$transition: 0.18s ease;
+
+/* El preview global del costado desaparece: las secciones ocupan el ancho. */
+.editor-body--stacked {
+  grid-template-columns: 1fr;
+}
+
+.perm-section {
+  background: var(--surface);
+  border: 1px solid var(--app-border);
+  border-radius: $radius;
+  overflow: hidden;
+  transition: border-color $transition;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  &.is-collapsed .perm-section-body {
+    display: none;
+  }
+}
+
+.perm-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: color-mix(in srgb, var(--surface) 97%, var(--app-text));
+  border: none;
+  border-bottom: 1px solid var(--app-border);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background $transition;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: -2px;
+  }
+}
+
+.perm-section-icon {
+  font-size: 1.15rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.perm-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.perm-section-counts {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.perm-section-codes {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--accent) 72%, var(--app-text));
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+/* ─── Buscador de la matriz ─── */
+
+.matrix-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  min-width: 0;
+  padding: 0 0.55rem;
+  height: 32px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: border-color $transition, box-shadow $transition;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  &.has-value {
+    border-color: var(--accent);
+  }
+}
+
+.matrix-search-icon {
+  font-size: 1rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.matrix-search-input {
+  min-width: 0;
+  width: 190px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.78rem;
+
+  &::placeholder {
+    color: var(--muted-text);
+  }
+}
+
+.matrix-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--app-text) 10%, transparent);
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: background $transition, color $transition;
+  flex-shrink: 0;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+  }
+
+  .material-symbols-outlined {
+    font-size: 0.8rem;
+  }
+}
+
+/* ─── Estado vacío de la matriz al filtrar ─── */
+
+.matrix-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.1rem 0.9rem;
+  border: 1px dashed var(--app-border);
+  border-radius: $radius;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+
+  .material-symbols-outlined {
+    color: var(--muted-text);
+    font-size: 1.2rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.perm-chevron {
+  font-size: 1.1rem;
+  color: var(--muted-text);
+  transition: transform $transition;
+  flex-shrink: 0;
+}
+
+.is-open .perm-chevron,
+.perm-section:not(.is-collapsed) > .perm-section-head .perm-chevron {
+  transform: rotate(180deg);
+}
+
+.perm-section-body {
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+/* Tablas por sección: pequeñas, sin scroll interno propio. */
+.crud-matrix-wrap--section {
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* ─── Layout split (laptop+) ──────────────────────────────────────────
+   En pantallas amplias la vista previa de navegación va AL LADO de la
+   matriz (se ve más concentrado) dentro de la misma cajita colapsable.
+   Por debajo de 1280px se conserva el diseño apilado actual: la preview
+   queda debajo de la tabla. */
+@media (min-width: 1280px) {
+  .perm-section-body--split {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    align-items: start;
+
+    .crud-matrix-wrap--section {
+      min-width: 0;
+    }
+
+    .section-preview {
+      min-width: 0;
+      align-self: start;
+    }
+
+    .section-preview .nav-preview-list {
+      max-height: 55vh;
+      overflow-y: auto;
+    }
+  }
+}
+
+/* ─── Resumen matriz: visibles + compuestos ─── */
+
+.matrix-summary-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+  color: var(--muted-text);
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Códigos compuestos (fuera de la matriz CRUD) ─── */
+
+.hidden-codes {
+  margin-top: 0.6rem;
+  border: 1px dashed var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.hidden-codes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  background: color-mix(in srgb, var(--surface) 96%, var(--app-text));
+  border: none;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-text);
+  cursor: pointer;
+  transition: background $transition;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: -2px;
+  }
+}
+
+.hidden-codes-icon {
+  font-size: 0.95rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.hidden-codes-count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hidden-codes .perm-chevron {
+  transform: none;
+}
+
+.hidden-codes.is-open .perm-chevron {
+  transform: rotate(180deg);
+}
+
+.hidden-codes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.hidden-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.6rem;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.72rem;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  cursor: pointer;
+  transition: border-color $transition, background $transition, color $transition;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  &.is-selected {
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent-strong);
+  }
+}
+
+.hidden-chip-icon {
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.hidden-chip.is-selected .hidden-chip-icon {
+  color: var(--accent);
+}
+
+/* ─── Vista previa de navegación por sección ─── */
+
+.section-preview {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.section-preview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: color-mix(in srgb, var(--surface) 96%, var(--app-text));
+  border: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--app-text);
+  cursor: pointer;
+  transition: background $transition;
+
+  &:hover {
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: -2px;
+  }
+}
+
+.section-preview-icon {
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.section-preview-count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+
+.section-preview .nav-preview-list {
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--app-border);
+}
+
+/* Header de sección (Dashboard/Reservas/Housekeeping/…) dentro del preview. */
+.nav-item.is-header {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+
+  .nav-label {
+    font-weight: 700;
+  }
+
+  .nav-icon {
+    color: var(--accent);
+  }
+}

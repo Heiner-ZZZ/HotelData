@@ -14,6 +14,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from bson import ObjectId
+
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
@@ -51,21 +53,23 @@ def main() -> None:
     errors = []
 
     for emp in employees:
-        user_id = emp.get("user_id", "").strip()
+        raw_uid = emp.get("user_id")
+        if isinstance(raw_uid, str):
+            raw_uid = raw_uid.strip()
         prop_id = emp.get("prop_id")
         name = emp.get("full_name", "desconocido")
 
-        if not user_id or prop_id is None:
+        if not raw_uid or prop_id is None:
             skipped_count += 1
             continue
 
-        from bson import ObjectId
-
         try:
+            # employees.user_id is canonical ObjectId; legacy hex strings still supported
+            user_oid = raw_uid if isinstance(raw_uid, ObjectId) else ObjectId(raw_uid)
             # Check if user exists
-            user = db.users.find_one({"_id": ObjectId(user_id)}, {"_id": 1, "assigned_hotels": 1})
+            user = db.users.find_one({"_id": user_oid}, {"_id": 1, "assigned_hotels": 1})
             if not user:
-                print(f"  ⚠ Usuario no encontrado para {name} (user_id={user_id}), saltando.")
+                print(f"  ⚠ Usuario no encontrado para {name} (user_id={raw_uid}), saltando.")
                 skipped_count += 1
                 continue
 
@@ -77,7 +81,7 @@ def main() -> None:
 
             # Add prop_id to assigned_hotels
             db.users.update_one(
-                {"_id": ObjectId(user_id)},
+                {"_id": user_oid},
                 {
                     "$addToSet": {"assigned_hotels": prop_id},
                     "$set": {"updated_at": datetime.now(timezone.utc)},
@@ -87,8 +91,8 @@ def main() -> None:
             updated_count += 1
 
         except Exception as exc:
-            print(f"  ❌ Error con {name} (user_id={user_id}): {exc}")
-            errors.append({"name": name, "user_id": user_id, "error": str(exc)})
+            print(f"  ❌ Error con {name} (user_id={raw_uid}): {exc}")
+            errors.append({"name": name, "user_id": raw_uid, "error": str(exc)})
 
     print(f"\n{'='*50}")
     print(f"📊 Resumen:")

@@ -22,13 +22,24 @@ export interface SystemPermissionsViewModel {
   permissions: SystemPermissionItem[];
 }
 
+export interface NavigationItem {
+  label: string;
+  href: string;
+  icon: string;
+  visible: boolean;
+  section?: string | null;
+  isSectionHeader?: boolean;
+  requiredPermission?: string | null;
+  permissionId?: string | null;
+}
+
 export interface RoleDetailModel {
   role: {
     roleName: string;
     description: string;
     permissionCodes: string[];
     accessButtons: { label: string; href: string; icon: string }[];
-    navigationCatalog: { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null }[];
+    navigationCatalog: NavigationItem[];
   };
   permissions: SystemPermissionItem[];
 }

@@ -40,6 +40,41 @@ from src.app.security.role_helpers import get_role_name
 router = APIRouter(prefix="/admin", tags=["admin"])
 api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 
+# Actions whose grant implies the resource's ``read`` permission. Any other
+# action (e.g. the compound ``hotel.manage_roles``) is a standalone code that
+# must pass through the preview unchanged.
+_PREVIEW_READ_DEP_ACTIONS = {"create", "update", "delete", "manage", "execute"}
+
+
+def _filter_preview_codes(codes: set[str], available_codes: set[str]) -> set[str]:
+    """Keep only grantable codes for the navigation preview.
+
+    A code survives when it is the super-admin wildcard, a ``read`` permission,
+    a compound action that does not require a sibling ``<resource>.read``
+    (e.g. ``hotel.manage_roles`` — the only code behind the "Equipo y
+    permisos" nav item), or a CRUD action whose ``<resource>.read`` exists in
+    the catalog.
+
+    Regression: the previous inline filter dropped ``hotel.manage_roles``
+    (``hotel.read`` does not exist) so the nav preview flipped "Equipo y
+    permisos" to Oculto after any edit, even for roles that legitimately hold
+    the code.
+    """
+    return {
+        code
+        for code in codes
+        if code == "*.*"
+        or (
+            code in available_codes
+            and (
+                "." not in code
+                or code.split(".", 1)[1] == "read"
+                or code.split(".", 1)[1] not in _PREVIEW_READ_DEP_ACTIONS
+                or f"{code.split('.', 1)[0]}.read" in available_codes
+            )
+        )
+    }
+
 
 def _serialize_users_overview(current_user: dict) -> dict:
     overview = users_overview()
@@ -164,19 +199,7 @@ def permissions_permissions_preview_api(
         if item.get("permission_code")
     }
     normalized_codes = ensure_read_dependencies(permission_codes, available_codes)
-    normalized_codes = {
-        code
-        for code in normalized_codes
-        if code == "*.*"
-        or (
-            code in available_codes
-            and (
-                "." not in code
-                or code.split(".", 1)[1] == "read"
-                or f"{code.split('.', 1)[0]}.read" in available_codes
-            )
-        )
-    }
+    normalized_codes = _filter_preview_codes(normalized_codes, available_codes)
     expanded_codes = expand_permissions(normalized_codes)
     return {"navigation_catalog": get_all_navigation_items(expanded_codes)}
 

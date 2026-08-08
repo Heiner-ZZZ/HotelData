@@ -134,6 +134,7 @@ def get_all_navigation_items(permission_codes: set[str] | None = None) -> list[d
                 "section": doc.get("section"),
                 "is_section_header": doc.get("is_section_header", False),
                 "permissionId": str(pid) if pid else None,
+                "requiredPermission": doc.get("required_permission"),
             })
         return items
     except Exception:

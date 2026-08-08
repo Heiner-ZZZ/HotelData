@@ -1,5 +1,6 @@
-import type { RoleDetailResponseDto, SystemPermissionsResponseDto } from '../models/system-permissions.dto';
+import type { NavigationItemDto, RoleDetailResponseDto, SystemPermissionsResponseDto } from '../models/system-permissions.dto';
 import type {
+  NavigationItem,
   RoleDetailModel,
   SystemPermissionItem,
   SystemPermissionsViewModel,
@@ -23,12 +24,15 @@ function mapAccessButton(b: { label: string; href: string; icon: string }): { la
   return { label: b.label, href: b.href, icon: ICON_MAP[b.icon] || b.icon || 'arrow_right' };
 }
 
-export function mapNavigationItem(b: { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null }): { label: string; href: string; icon: string; visible: boolean; permissionId?: string | null } {
+export function mapNavigationItem(b: NavigationItemDto): NavigationItem {
   return {
     label: b.label,
     href: b.href,
     icon: ICON_MAP[b.icon] || b.icon || 'arrow_right',
     visible: b.visible,
+    section: b.section ?? null,
+    isSectionHeader: b.is_section_header ?? false,
+    requiredPermission: b.requiredPermission ?? b.required_permission ?? null,
     permissionId: b.permissionId ?? null,
   };
 }

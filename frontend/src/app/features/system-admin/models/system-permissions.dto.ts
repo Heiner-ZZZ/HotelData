@@ -18,6 +18,20 @@ export interface SystemPermissionsResponseDto {
   }[];
 }
 
+export interface NavigationItemDto {
+  label: string;
+  href: string;
+  icon: string;
+  visible: boolean;
+  section?: string | null;
+  is_section_header?: boolean;
+  /** El server emite camelCase (``requiredPermission``), igual que ``permissionId``. */
+  requiredPermission?: string | null;
+  /** Defensa: acepta también snake_case si algún endpoint legacy lo emite. */
+  required_permission?: string | null;
+  permissionId?: string | null;
+}
+
 export interface RoleDetailResponseDto {
   role: {
     _id: string;
@@ -25,7 +39,7 @@ export interface RoleDetailResponseDto {
     description: string;
     permission_codes: string[];
     access_buttons: { label: string; href: string; icon: string }[];
-    navigation_catalog: { label: string; href: string; icon: string; visible: boolean }[];
+    navigation_catalog: NavigationItemDto[];
     created_at?: string;
     updated_at?: string;
   };
@@ -40,15 +54,7 @@ export interface RoleUpdateRequestDto {
   permission_codes: string[];
 }
 
-export interface NavigationPreviewItemDto {
-  label: string;
-  href: string;
-  icon: string;
-  visible: boolean;
-  section?: string | null;
-  is_section_header?: boolean;
-  permissionId?: string | null;
-}
+export interface NavigationPreviewItemDto extends NavigationItemDto {}
 
 export interface NavigationPreviewResponseDto {
   navigation_catalog: NavigationPreviewItemDto[];

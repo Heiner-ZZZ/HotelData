@@ -46,7 +46,7 @@ from src.app.modules.hr.service.collections import (
 )
 from src.app.modules.partner.services.audit import register_action
 from src.app.security.role_helpers import resolve_role_id
-from src.app.security.dependencies import require_permission
+from src.app.security.dependencies import require_any_permission, require_permission
 
 _password_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -64,6 +64,35 @@ def _serialize_hr_doc(doc: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, datetime):
             serialized[field] = value.isoformat()
     return serialized
+
+
+def _to_object_id_ref(value: Any) -> Any:
+    """Normalize an FK reference to canonical ObjectId.
+
+    Accepts ObjectId (canonical write/read path), a 24-hex string (legacy
+    rows / API payloads), or None (unlinked reference). Non-hex values
+    pass through so an invalid reference surfaces as a query miss instead
+    of a crash.
+    """
+    if value is None or isinstance(value, ObjectId):
+        return value
+    if isinstance(value, str) and ObjectId.is_valid(value.strip()):
+        return ObjectId(value.strip())
+    return value
+
+
+def _serialize_shift(doc: dict[str, Any]) -> dict[str, Any]:
+    """Surface shift datetimes as ISO strings before Pydantic sees them.
+
+    ``EmployeeShiftResponse`` declares its timestamp fields as ``str``;
+    without this the endpoints 500 with a Pydantic ``string_type`` error
+    whenever a row carries a native BSON ``datetime``.
+    """
+    for key in ("created_at", "updated_at", "actual_check_in", "actual_check_out"):
+        value = doc.get(key)
+        if isinstance(value, datetime):
+            doc[key] = value.isoformat()
+    return doc
 
 
 def _resolve_position_id(position: str) -> object | None:
@@ -105,12 +134,11 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
     """
     user_id = employee_doc.get("user_id")
     if user_id:
-        try:
-            user = db.users.find_one({"_id": ObjectId(user_id)})
+        user_oid = _to_object_id_ref(user_id)
+        if user_oid is not None:
+            user = db.users.find_one({"_id": user_oid})
             if user:
                 return {"username": user.get("username", ""), "password": None}
-        except InvalidId:
-            pass
 
     import secrets
     email = (employee_doc.get("email") or "").strip().lower()
@@ -166,11 +194,10 @@ def _ensure_user_account(db, employee_doc: dict) -> dict:
         "updated_at": now,
     }
     result = db.users.insert_one(user_doc)
-    user_id_str = str(result.inserted_id)
 
     db[EMPLOYEES_COLLECTION].update_one(
         {"_id": employee_doc["_id"]},
-        {"$set": {"user_id": user_id_str, "updated_at": now}},
+        {"$set": {"user_id": result.inserted_id, "updated_at": now}},
     )
 
     return {"username": username, "password": password}
@@ -293,7 +320,7 @@ def hr_dashboard(
 def list_departments(
     request: Request,
     prop_id: int | None = Query(default=None, ge=1),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     db = get_database()
     cursor = db[DEPARTMENTS_COLLECTION].find().sort("name", 1)
@@ -316,7 +343,7 @@ def list_departments(
 @api_router.post("/departments", status_code=201, response_model=DepartmentResponse)
 def create_department(
     payload: DepartmentCreate = Body(...),
-    current_user: dict = Depends(require_permission("hr.create")),
+    current_user: dict = Depends(require_permission("hr.directory.manage")),
 ):
     db = get_database()
     existing = db[DEPARTMENTS_COLLECTION].find_one({"name": payload.name})
@@ -354,9 +381,12 @@ def create_department(
 def shift_check_in(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckIn = Body(...),
-    current_user: dict = Depends(require_permission("hr.update")),
+    current_user: dict = Depends(require_any_permission("hr.shifts.manage", "hr.portal.read")),
 ):
-    """Record an employee check-in for a shift."""
+    """Record an employee check-in for a shift.
+
+    Any-of: el gerente registra la asistencia (hr.shifts.manage) O el
+    empleado auto-registra la suya desde Mi Portal (hr.portal.read)."""
     db = get_database()
     try:
         shift_oid = ObjectId(shift_id)
@@ -408,9 +438,12 @@ def shift_check_in(
 def shift_check_out(
     shift_id: str = Path(...),
     payload: EmployeeShiftCheckOut = Body(...),
-    current_user: dict = Depends(require_permission("hr.update")),
+    current_user: dict = Depends(require_any_permission("hr.shifts.manage", "hr.portal.read")),
 ):
-    """Record an employee check-out for a shift."""
+    """Record an employee check-out for a shift.
+
+    Any-of: el gerente registra la salida (hr.shifts.manage) O el empleado
+    desde Mi Portal (hr.portal.read)."""
     db = get_database()
     try:
         shift_oid = ObjectId(shift_id)
@@ -468,7 +501,7 @@ def employee_portal(
     employee_id: str = Path(...),
     prop_id: int | None = Query(default=None, ge=1),
     week_start: str | None = Query(default=None, description="YYYY-MM-DD of the Monday of the week to show. Defaults to current week."),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.portal.read")),
 ):
     """Return the full portal payload for an employee dashboard."""
     db = get_database()
@@ -489,7 +522,7 @@ def employee_portal(
     # ── Current Shift ──
     current_shift: dict | None = None
     shift_doc = db[SHIFTS_COLLECTION].find_one({
-        "employee_id": employee_id,
+        "employee_id": emp_oid,
         "date": today_str,
         "status": {"$in": ["pending", "active"]},
     })
@@ -549,7 +582,7 @@ def employee_portal(
         day_dt = monday_dt + timedelta(days=i)
         date_str = day_dt.strftime("%Y-%m-%d")
         shift = db[SHIFTS_COLLECTION].find_one({
-            "employee_id": employee_id,
+            "employee_id": emp_oid,
             "date": date_str,
         })
         # Surface datetimes as ISO strings before Pydantic sees them.
@@ -577,7 +610,7 @@ def employee_portal(
     today_dt = now.date()
     month_start_str = today_dt.replace(day=1).strftime("%Y-%m-%d")
     month_shifts = list(db[SHIFTS_COLLECTION].find({
-        "employee_id": employee_id,
+        "employee_id": emp_oid,
         "date": {"$gte": month_start_str, "$lte": today_str},
         "status": {"$in": ["active", "completed"]},
     }, {"scheduled_start": 1, "scheduled_end": 1}))
@@ -607,7 +640,7 @@ def employee_portal(
     # ── Recent Events (Timeline) ──
     recent_events: list[dict] = []
     shift_events = list(db[SHIFTS_COLLECTION].find(
-        {"employee_id": employee_id, "status": "completed"},
+        {"employee_id": emp_oid, "status": "completed"},
         {"_id": 0, "date": 1, "actual_check_out": 1, "area": 1},
     ).sort("date", -1).limit(3))
 
@@ -624,7 +657,7 @@ def employee_portal(
         })
 
     checkin_shift = db[SHIFTS_COLLECTION].find_one(
-        {"employee_id": employee_id, "actual_check_in": {"$ne": None}},
+        {"employee_id": emp_oid, "actual_check_in": {"$ne": None}},
         {"_id": 0, "actual_check_in": 1, "date": 1},
         sort=[("actual_check_in", -1)],
     )
@@ -669,7 +702,7 @@ def employee_portal(
 @api_router.get("/portal/{employee_id}/tasks", response_model=PortalTasksResponse)
 def employee_portal_tasks(
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.portal.read")),
 ):
     """Return the employee's assigned tasks, dirty rooms, and daily duties."""
     db = get_database()
@@ -779,11 +812,15 @@ def employee_portal_tasks(
 # ═══════════════════════════════════════════════════════════
 
 @api_router.get("/my-portal", response_model=MyPortalResponse)
-def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
+def my_portal(current_user: dict = Depends(require_permission("hr.portal.read"))):
     """Return the employee portal URL for the currently logged-in user."""
     db = get_database()
-    user_id = str(current_user.get("_id", ""))
-    emp = db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1, "prop_id": 1})
+    user_id = _to_object_id_ref(current_user.get("_id"))
+    emp = (
+        db[EMPLOYEES_COLLECTION].find_one({"user_id": user_id, "is_active": True}, {"_id": 1, "full_name": 1, "prop_id": 1})
+        if user_id is not None
+        else None
+    )
     if not emp:
         # Administrators can see the HR module but are not employees. Keep the
         # navigation action successful and send them to the directory instead
@@ -799,7 +836,7 @@ def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
         user_assigned = current_user.get("assigned_hotels", [])
         if not user_assigned or emp_prop_id not in user_assigned:
             db.users.update_one(
-                {"_id": ObjectId(user_id)},
+                {"_id": user_id},
                 {"$addToSet": {"assigned_hotels": emp_prop_id}, "$set": {"updated_at": datetime.now(timezone.utc)}},
             )
 
@@ -818,7 +855,7 @@ def my_portal(current_user: dict = Depends(require_permission("hr.read"))):
 @api_router.get("/replacement-candidates")
 def list_replacement_candidates(
     prop_id: int = Query(..., ge=1),
-    current_user: dict = Depends(require_permission("hr.create")),
+    current_user: dict = Depends(require_permission("hr.onboarding.create")),
 ):
     """Return active employees in one hotel with transferable work counts."""
     db = get_database()
@@ -830,16 +867,17 @@ def list_replacement_candidates(
         {"full_name": 1, "department": 1, "department_name": 1, "position": 1, "daily_duties": 1},
     ).sort("full_name", 1):
         employee_id = str(employee["_id"])
+        employee_oid = employee["_id"]
         employee_name = employee.get("full_name", "")
         shift_count = db[SHIFTS_COLLECTION].count_documents({
-            "employee_id": employee_id,
+            "employee_id": employee_oid,
             "$or": [
                 {"date": {"$gte": today}, "status": {"$nin": ["completed", "cancelled"]}},
                 {"status": "active"},
             ],
         })
         permission_count = db["employee_permissions"].count_documents({
-            "employee_id": employee_id,
+            "employee_id": employee_oid,
         })
         task_query = {
             "prop_id": prop_id,
@@ -872,7 +910,7 @@ def list_replacement_candidates(
 def employee_attendance(
     employee_id: str = Path(...),
     month: str | None = Query(default=None, description="YYYY-MM format, defaults to current month"),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     """Return attendance records for an employee in a given month."""
     db = get_database()
@@ -906,7 +944,7 @@ def employee_attendance(
     day_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
     shifts = list(db[SHIFTS_COLLECTION].find({
-        "employee_id": employee_id,
+        "employee_id": emp_oid,
         "date": {"$gte": month_start_str, "$lte": month_end_str},
     }).sort("date", 1))
 
@@ -1032,7 +1070,7 @@ def employee_attendance(
 @api_router.post("/shifts", status_code=201, response_model=EmployeeShiftResponse)
 def create_shift(
     payload: EmployeeShiftCreate = Body(...),
-    current_user: dict = Depends(require_permission("hr.create")),
+    current_user: dict = Depends(require_permission("hr.shifts.manage")),
 ):
     """Create a new shift for an employee."""
     db = get_database()
@@ -1047,7 +1085,7 @@ def create_shift(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID de empleado inválido")
 
     doc = {
-        "employee_id": payload.employee_id,
+        "employee_id": emp_oid,
         "date": payload.date,
         "scheduled_start": payload.scheduled_start,
         "scheduled_end": payload.scheduled_end,
@@ -1071,7 +1109,7 @@ def create_shift(
         changed_by=current_user.get("username", "system"),
         metadata={"employee_id": payload.employee_id, "date": payload.date},
     )
-    return EmployeeShiftResponse.model_validate(doc)
+    return EmployeeShiftResponse.model_validate(_serialize_shift(doc))
 
 
 @api_router.get("/shifts", response_model=ShiftListResponse)
@@ -1084,13 +1122,13 @@ def list_shifts(
     status_filter: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    current_user: dict = Depends(require_permission("hr.manage")),
+    current_user: dict = Depends(require_permission("hr.shifts.read")),
 ):
     """List shifts with optional filters."""
     db = get_database()
     query: dict = {}
     if employee_id:
-        query["employee_id"] = employee_id
+        query["employee_id"] = _to_object_id_ref(employee_id)
     if date:
         query["date"] = date
     if date_from or date_to:
@@ -1112,7 +1150,7 @@ def list_shifts(
         .skip((page - 1) * page_size)
         .limit(page_size)
     )
-    items = [EmployeeShiftResponse.model_validate(doc) for doc in cursor]
+    items = [EmployeeShiftResponse.model_validate(_serialize_shift(doc)) for doc in cursor]
 
     register_action(
         prop_id=0,
@@ -1139,7 +1177,7 @@ def list_shifts(
 def update_shift(
     shift_id: str = Path(...),
     payload: EmployeeShiftCreate = Body(...),
-    current_user: dict = Depends(require_permission("hr.update")),
+    current_user: dict = Depends(require_permission("hr.shifts.manage")),
 ):
     """Update a shift."""
     db = get_database()
@@ -1154,7 +1192,7 @@ def update_shift(
 
     now = datetime.now(timezone.utc)
     update = {
-        "employee_id": payload.employee_id,
+        "employee_id": _to_object_id_ref(payload.employee_id),
         "date": payload.date,
         "scheduled_start": payload.scheduled_start,
         "scheduled_end": payload.scheduled_end,
@@ -1178,13 +1216,13 @@ def update_shift(
         diff=diff if diff else None,
     )
     after = db[SHIFTS_COLLECTION].find_one({"_id": oid})
-    return EmployeeShiftResponse.model_validate(after)
+    return EmployeeShiftResponse.model_validate(_serialize_shift(after))
 
 
 @api_router.delete("/shifts/{shift_id}", status_code=204)
 def delete_shift(
     shift_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.delete")),
+    current_user: dict = Depends(require_permission("hr.shifts.manage")),
 ):
     """Delete a shift."""
     db = get_database()
@@ -1213,7 +1251,7 @@ def delete_shift(
 def list_employee_documents(
     employee_id: str | None = Query(default=None),
     doc_type: str | None = Query(default=None),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     """List documents for a specific employee, optionally filtered by type."""
     db = get_database()
@@ -1234,7 +1272,7 @@ def list_employee_documents(
 @api_router.post("/documents", status_code=201, response_model=DocumentResponse)
 def create_employee_document(
     payload: dict = Body(default={}),
-    current_user: dict = Depends(require_permission("hr.create")),
+    current_user: dict = Depends(require_permission("hr.directory.manage")),
 ):
     """Upload/register a document for an employee.
 
@@ -1299,7 +1337,7 @@ def create_employee_document(
 @api_router.get("/documents/{document_id}", response_model=DocumentResponse)
 def get_employee_document(
     document_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     """Get a single employee document by ID."""
     db = get_database()
@@ -1317,7 +1355,7 @@ def get_employee_document(
 @api_router.delete("/documents/{document_id}", status_code=204)
 def delete_employee_document(
     document_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.delete")),
+    current_user: dict = Depends(require_permission("hr.directory.manage")),
 ):
     """Delete an employee document permanently."""
     db = get_database()
@@ -1351,7 +1389,7 @@ def delete_employee_document(
 @api_router.post("", status_code=201, response_model=EmployeeResponse)
 def create_employee(
     payload: EmployeeCreate = Body(...),
-    current_user: dict = Depends(require_permission("hr.create")),
+    current_user: dict = Depends(require_permission("hr.onboarding.create")),
 ):
     """Create a new employee with optional replacement logic."""
     db = get_database()
@@ -1403,7 +1441,7 @@ def create_employee(
         "emergency_phone": payload.emergency_phone,
         "notes": payload.notes,
         "prop_id": payload.prop_id,
-        "user_id": payload.user_id,
+        "user_id": _to_object_id_ref(payload.user_id),
         "daily_duties": payload.daily_duties if payload.daily_duties is not None else _default_duties_for_dept(payload.department),
         "is_active": True,
         "created_at": now,
@@ -1433,6 +1471,7 @@ def create_employee(
         old_id = replacement_id
         old = replacement_employee
         new_id = str(result.inserted_id)
+        new_oid = result.inserted_id
         old_id_str = str(old_id)
         old_name = old.get("full_name", "")
         new_name = payload.full_name
@@ -1441,20 +1480,20 @@ def create_employee(
         if payload.transfer_shifts:
             shift_result = db[SHIFTS_COLLECTION].update_many(
                 {
-                    "employee_id": old_id_str,
+                    "employee_id": old_id,
                     "$or": [
                         {"date": {"$gte": datetime.now(timezone.utc).strftime("%Y-%m-%d")}, "status": {"$nin": ["completed", "cancelled"]}},
                         {"status": "active"},
                     ],
                 },
-                {"$set": {"employee_id": new_id, "transferred_from": old_id_str, "updated_at": now}},
+                {"$set": {"employee_id": new_oid, "transferred_from": old_id, "updated_at": now}},
             )
             transfer_summary["shifts"] = int(shift_result.modified_count)
 
         if payload.transfer_permissions:
             permission_result = db["employee_permissions"].update_many(
-                {"employee_id": old_id_str},
-                {"$set": {"employee_id": new_id, "transferred_from": old_id_str, "updated_at": now}},
+                {"employee_id": old_id},
+                {"$set": {"employee_id": new_oid, "transferred_from": old_id, "updated_at": now}},
             )
             transfer_summary["permissions"] = int(permission_result.modified_count)
 
@@ -1480,7 +1519,7 @@ def create_employee(
 
         db[EMPLOYEES_COLLECTION].update_one(
             {"_id": old_id},
-            {"$set": {"is_active": False, "replaced_by": new_id, "updated_at": now}},
+            {"$set": {"is_active": False, "replaced_by": new_oid, "updated_at": now}},
         )
         register_action(
             prop_id=old.get("prop_id", payload.prop_id or 0),
@@ -1508,7 +1547,7 @@ def list_employees(
     prop_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: dict = Depends(require_permission("hr.manage")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     db = get_database()
     query: dict = {}
@@ -1571,7 +1610,7 @@ def list_employees(
 def get_employee(
     request: Request,
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.read")),
+    current_user: dict = Depends(require_permission("hr.directory.read")),
 ):
     db = get_database()
     try:
@@ -1605,7 +1644,7 @@ def get_employee(
 def update_employee(
     employee_id: str = Path(...),
     payload: EmployeeUpdate = Body(...),
-    current_user: dict = Depends(require_permission("hr.update")),
+    current_user: dict = Depends(require_permission("hr.directory.manage")),
 ):
     db = get_database()
     try:
@@ -1620,6 +1659,8 @@ def update_employee(
     update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
     if not update:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay campos para actualizar")
+    if "user_id" in update:
+        update["user_id"] = _to_object_id_ref(update["user_id"])
 
     update["updated_at"] = datetime.now(timezone.utc)
     db[EMPLOYEES_COLLECTION].update_one({"_id": oid}, {"$set": update})
@@ -1660,7 +1701,7 @@ def update_employee(
 @api_router.delete("/{employee_id}", status_code=204)
 def delete_employee(
     employee_id: str = Path(...),
-    current_user: dict = Depends(require_permission("hr.delete")),
+    current_user: dict = Depends(require_permission("hr.directory.manage")),
 ):
     db = get_database()
     try:

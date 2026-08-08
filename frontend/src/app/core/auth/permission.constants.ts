@@ -27,6 +27,36 @@ export const SHIFTS_CREATE = 'shifts.create';
 /** Cerrar turno + realizar depósito / arqueo de caja. */
 export const SHIFTS_UPDATE = 'shifts.update';
 
+// ── Lost & Found (server: server/src/app/modules/lost_and_found/routes.py) ──
+/** Administrar objetos perdidos — acceso total. */
+export const LOST_FOUND_MANAGE = 'lost-found.manage';
+/** Registrar objeto perdido/encontrado. */
+export const LOST_FOUND_CREATE = 'lost-found.create';
+/** Ver registros de lost & found (gate del nav item y del listado). */
+export const LOST_FOUND_READ = 'lost-found.read';
+/** Editar / reclamar / desechar registros. */
+export const LOST_FOUND_UPDATE = 'lost-found.update';
+/** Eliminar registros de lost & found. */
+export const LOST_FOUND_DELETE = 'lost-found.delete';
+
+// ── Equipo y permisos del hotel (server: server/src/app/modules/hotel_permissions/) ──
+/** Gestionar roles y permisos del equipo en un hotel (gate del nav item). */
+export const HOTEL_MANAGE_ROLES = 'hotel.manage_roles';
+
+// ── RRHH granular por interfaz (server: server/src/app/modules/hr/routes.py) ──
+/** Mi Portal — auto-servicio del empleado. */
+export const HR_PORTAL_READ = 'hr.portal.read';
+/** Directorio: ver empleados, departamentos, documentos. */
+export const HR_DIRECTORY_READ = 'hr.directory.read';
+/** Directorio: crear/editar/eliminar empleados, departamentos, documentos. */
+export const HR_DIRECTORY_MANAGE = 'hr.directory.manage';
+/** Onboarding: crear empleados + transferir permisos. */
+export const HR_ONBOARDING_CREATE = 'hr.onboarding.create';
+/** Turnos: ver horarios. */
+export const HR_SHIFTS_READ = 'hr.shifts.read';
+/** Turnos: crear/editar/eliminar y registrar check-in/check-out. */
+export const HR_SHIFTS_MANAGE = 'hr.shifts.manage';
+
 /**
  * Permission-code marker. Use everywhere a permission check happens:
  *
@@ -39,4 +69,16 @@ export type PermissionCode =
   | typeof SHIFTS_MANAGE
   | typeof SHIFTS_CREATE
   | typeof SHIFTS_UPDATE
+  | typeof LOST_FOUND_MANAGE
+  | typeof LOST_FOUND_CREATE
+  | typeof LOST_FOUND_READ
+  | typeof LOST_FOUND_UPDATE
+  | typeof LOST_FOUND_DELETE
+  | typeof HOTEL_MANAGE_ROLES
+  | typeof HR_PORTAL_READ
+  | typeof HR_DIRECTORY_READ
+  | typeof HR_DIRECTORY_MANAGE
+  | typeof HR_ONBOARDING_CREATE
+  | typeof HR_SHIFTS_READ
+  | typeof HR_SHIFTS_MANAGE
   | (string & {});

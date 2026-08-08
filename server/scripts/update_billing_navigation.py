@@ -1,14 +1,22 @@
-"""Update the Billing navigation section to add the F1.4 Dashboard item.
+"""⚠ DEPRECADO (2026-08): los ítems de la sección Billing (Dashboard, Dashboard
+Pagos) ya viven en el ``NAVIGATION_CATALOG`` canónico de
+``scripts/init_security_model_ga03.py`` con sus ``sort_order`` fraccionales
+(503 Facturación · 504 Pagos · 504.5 Dashboard · 505 Dashboard Pagos · 505.5
+Finanzas).
 
-Histórico: este script eliminó el ítem redundante "Facturas" (duplicado del
-header) y creó "Pagos". Ahora además garantiza el ítem ``/management/billing/dashboard``
-para el informe táctico F1.4. Es idempotente; acepta ``--dry-run``.
+Este script era la fuente paralela que los insertó directo en la BD con un
+esquema de ``sort_order`` propio (Dashboard=504, Dashboard Pagos=505, Pagos=506)
+que colisionaba con el canónico. Re-ejecutarlo ya NO escribe ese esquema:
+ahora solo converge al catálogo canónico vía ``seed_navigation()`` (no-op si
+la BD ya está alineada). Mantener en sync ya no aplica: la fuente única es el
+catálogo. Acepta ``--dry-run``.
+
+Run: python scripts/update_billing_navigation.py [--dry-run]
 """
 
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
@@ -18,31 +26,6 @@ if str(SERVER_ROOT) not in sys.path:
 from config.settings import get_settings
 from pymongo import MongoClient
 
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _upsert(db, href: str, patch: dict, label: str) -> None:
-    """Aplica (o simula con --dry-run) un upsert idempotente de navegación."""
-    existing = db.navigation.find_one({"href": href}, {"_id": 1})
-    action = "would upsert" if DRY_RUN else "upserting"
-    if existing:
-        action = "would update" if DRY_RUN else "updating"
-    print(f"[{action}] {label} ({href})")
-    if DRY_RUN:
-        return
-    result = db.navigation.update_one(
-        {"href": href},
-        {
-            "$set": {**patch, "updated_at": utc_now()},
-            "$setOnInsert": {"created_at": utc_now()},
-        },
-        upsert=True,
-    )
-    print(f"  matched={result.matched_count}, upserted={result.upserted_id is not None}")
-
-
 DRY_RUN = "--dry-run" in sys.argv
 
 
@@ -50,51 +33,20 @@ def main() -> None:
     settings = get_settings()
     client = MongoClient(settings.mongo_uri)
     db = client[settings.mongo_database]
+    try:
+        from scripts.init_security_model_ga03 import NAVIGATION_CATALOG, seed_navigation
 
-    # Ensure the "Facturación" header still exists.
-    _upsert(db, "/management/billing", {
-        "label": "Facturación",
-        "icon": "receipt",
-        "required_permission": "billing.read",
-        "section": "Billing",
-        "is_section_header": True,
-        "sort_order": 503,
-        "is_system": True,
-    }, "Facturación header")
-
-    # Dashboard táctico F1.4 (debajo del header, antes de Pagos).
-    # El backend ordena por ``sort_order`` numérico ascendente, así que
-    # Dashboard=504, Dashboard Pagos=505 y Pagos=506 mantienen el orden deseado.
-    _upsert(db, "/management/billing/dashboard", {
-        "label": "Dashboard",
-        "icon": "monitoring",
-        "required_permission": "billing.read",
-        "section": "Billing",
-        "sort_order": 504,
-        "is_system": True,
-    }, "Dashboard")
-
-    # Dashboard táctico F1.5 (pagos por método y saldo pendiente).
-    _upsert(db, "/management/billing/payments-dashboard", {
-        "label": "Dashboard Pagos",
-        "icon": "payments",
-        "required_permission": "payments.read",
-        "section": "Billing",
-        "sort_order": 505,
-        "is_system": True,
-    }, "Dashboard Pagos")
-
-    # Upsert the "Pagos" item under the Billing section.
-    _upsert(db, "/management/billing/payments", {
-        "label": "Pagos",
-        "icon": "payments",
-        "required_permission": "payments.read",
-        "section": "Billing",
-        "sort_order": 506,
-        "is_system": True,
-    }, "Pagos")
-
-    client.close()
+        print("⚠ DEPRECADO — los ítems de Billing viven en NAVIGATION_CATALOG (init_security_model_ga03.py).")
+        if DRY_RUN:
+            existing = {item["href"] for item in db.navigation.find({}, {"href": 1})}
+            missing = [item["href"] for item in NAVIGATION_CATALOG if item["href"] not in existing]
+            print(f"  [dry-run] canónico={len(NAVIGATION_CATALOG)} ítems · en BD={len(existing)} · "
+                  f"faltantes={missing or 'ninguno'}")
+        else:
+            seeded = seed_navigation(db["navigation"])
+            print(f"  Converged al catálogo canónico: {seeded} ítems nuevos (0 = ya alineado).")
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
