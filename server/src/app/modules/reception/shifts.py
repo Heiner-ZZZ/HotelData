@@ -34,6 +34,21 @@ DEFAULT_SHIFT_HOURS = {
 # literally named "system" and trick attribution.
 SYSTEM_ACTOR_IDS: frozenset[str] = frozenset({"system", "cron", "etl"})
 
+# Booking channels that are NEVER tied to a cash shift. Web reservations are
+# not front-desk cashier operations — the close-of-shift snapshot and the
+# per-document ``shift_id`` FK must agree on this rule.
+WEB_CHANNEL_SOURCES: frozenset[str] = frozenset({
+    "web_request",
+    "web",
+    "booking_engine",
+    "direct",
+    "direct_website",
+    "ota",
+    "booking.com",
+    "expedia",
+    "cliente",
+})
+
 
 def _resolve_actor_id(actor: str) -> "ObjectId | None":
     """Resolve a `users` actor name to ``users._id``, except for system actors.
@@ -187,10 +202,10 @@ def resolve_expected_shift_type(opened_by: str, at_dt: datetime) -> tuple[str, s
     try:
         user = db.users.find_one({"username": opened_by}, {"_id": 1})
         if user:
-            user_id = str(user["_id"])
+            user_id = user["_id"]
             emp = db.employees.find_one({"user_id": user_id}, {"_id": 1})
             if emp:
-                emp_id = str(emp["_id"])
+                emp_id = emp["_id"]
                 today_str = at_dt.date().strftime("%Y-%m-%d")
                 today_shift = db.employee_shifts.find_one(
                     {
@@ -286,7 +301,14 @@ def _collect_related_ids(prop_id: int, start: datetime, end: datetime) -> dict[s
     booking_ids = [
         doc["_id"]
         for doc in db.booking_orders.find(
-            {"prop_id": prop_id, "created_at": {"$gte": start, "$lte": end}},
+            {
+                "prop_id": prop_id,
+                "created_at": {"$gte": start, "$lte": end},
+                # Web-channel reservations are not cashier operations — they
+                # must not appear in the shift's booking snapshot (same rule
+                # as the live ``shift_id`` FK stamping).
+                "booking_source": {"$nin": list(WEB_CHANNEL_SOURCES)},
+            },
             {"_id": 1},
         )
     ]

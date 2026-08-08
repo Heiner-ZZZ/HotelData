@@ -14,15 +14,20 @@ a front-desk operation passes the shift id, and the document must carry it.
 
 from __future__ import annotations
 
+import secrets
+
 from bson import ObjectId
 
-from src.app.modules.reception import get_active_shift_id
-from src.app.modules.billing.service import create_folio, create_payment
 from src.app.modules.billing.schemas import PaymentCreate
+from src.app.modules.billing.service import create_folio, create_payment
+from src.app.modules.reception import get_active_shift_id
 from src.app.modules.reservations.service._helpers import utc_now
 
 
 def _open_shift(db, prop_id: int = 999) -> ObjectId:
+    # ``reception_shifts`` is never cleaned by conftest — clear any stale open
+    # shifts for the prop first so the assertion is hermetic across runs.
+    db.reception_shifts.delete_many({"prop_id": prop_id})
     result = db.reception_shifts.insert_one(
         {
             "prop_id": prop_id,
@@ -33,6 +38,13 @@ def _open_shift(db, prop_id: int = 999) -> ObjectId:
         }
     )
     return result.inserted_id
+
+
+def _unique_booking_id(prefix: str) -> str:
+    # ``guest_folios`` joined TEST_COLLECTIONS (2026-08); the unique id stays
+    # as cheap defense-in-depth so create_folio's existing-check can never
+    # match a folio from an aborted/parallel run.
+    return f"{prefix}-{secrets.token_hex(4).upper()}"
 
 
 def _seed_booking(db, booking_id: str, prop_id: int = 999) -> None:
@@ -79,7 +91,7 @@ def test_get_active_shift_id_none_after_shift_closed(db):
 
 
 def test_create_folio_stamps_shift_id(db):
-    booking_id = "BK-SHIFT-FOLIO-TEST"
+    booking_id = _unique_booking_id("BK-SHIFT-FOLIO-TEST")
     _seed_booking(db, booking_id)
     shift_id = _open_shift(db, prop_id=994)
 
@@ -92,7 +104,7 @@ def test_create_folio_stamps_shift_id(db):
 
 
 def test_create_folio_keeps_shift_id_null_for_web_channel(db):
-    booking_id = "BK-SHIFT-FOLIO-WEB"
+    booking_id = _unique_booking_id("BK-SHIFT-FOLIO-WEB")
     _seed_booking(db, booking_id)
 
     folio = create_folio(booking_id)  # no shift_id — web-channel stay
@@ -104,7 +116,7 @@ def test_create_folio_keeps_shift_id_null_for_web_channel(db):
 
 
 def test_create_payment_stamps_shift_id(db):
-    booking_id = "BK-SHIFT-PAYMENT-TEST"
+    booking_id = _unique_booking_id("BK-SHIFT-PAYMENT-TEST")
     _seed_booking(db, booking_id)
     shift_id = _open_shift(db, prop_id=993)
 
