@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import logging
 
+from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
+from src.app.core.types import to_json_safe
+from src.app.modules.reception import get_active_shift_id
+from src.app.modules.reservations.routes.reservations_impl import (
+    check_hotel_availability,
+    export_reservations_csv,
+    list_rate_plans_with_rates,
+    preview_reservation,
+    validate_rate_plan_eligibility,
+)
 from src.app.modules.reservations.schemas import (
     BookingListResponse,
     BookingResponse,
@@ -16,31 +26,26 @@ from src.app.modules.reservations.schemas import (
 from src.app.modules.reservations.service import (
     build_reservation_input,
     cancel_booking,
+    confirm_booking,
     create_booking,
     get_booking_detail,
     get_check_in_status,
+    get_reservation_stats,
     get_room_guests,
     list_reservation_dates,
     modify_booking,
+    reject_booking,
     reservation_hotel_options,
     save_room_guests,
-    confirm_booking,
-    reject_booking,
-    get_reservation_stats,
 )
 from src.app.modules.reservations.service.lifecycle.create import validate_coupon_code
-from src.app.modules.reservations.routes.reservations_impl import (
-    check_hotel_availability,
-    list_rate_plans_with_rates,
-    validate_rate_plan_eligibility,
-    export_reservations_csv,
-    preview_reservation,
+from src.app.modules.reservations.service.pricing_backfill import (
+    backfill_single_booking,
+    list_unpriced_bookings,
 )
 from src.app.security.dependencies import require_permission
+from src.app.security.hotel_filter import user_can_access_hotel
 from src.app.security.role_helpers import get_role_name
-from src.app.core.types import to_json_safe
-from src.app.modules.reception import get_active_shift_id
-
 from src.database.connection import get_database
 
 _router_logger = logging.getLogger(__name__)
@@ -124,9 +129,13 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
         if not payload.get("created_by"):
             payload["created_by"] = current_user.get("username", "web")
         if not payload.get("user_id"):
-            payload["user_id"] = str(current_user.get("_id", ""))
+            # FK to users._id — store the raw ObjectId (canonical format).
+            # ``build_reservation_input`` normalizes any hex string later.
+            payload["user_id"] = current_user.get("_id")
         reservation_input = build_reservation_input(payload, source=get_role_name(current_user))
-        from src.app.modules.reservations.service.validation import validate_booking_form_requirements
+        from src.app.modules.reservations.service.validation import (
+            validate_booking_form_requirements,
+        )
         form_errors = validate_booking_form_requirements(reservation_input)
         if form_errors:
             raise ValueError("; ".join(form_errors))
@@ -136,6 +145,11 @@ def reservations_create_api(payload: dict = Body(...), current_user: dict = Depe
         # cash shift for the property; web-channel bookings never reach this
         # staff-only endpoint and keep shift_id null.
         prop_id = int(payload.get("prop_id") or 0)
+        if prop_id <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Se requiere un prop_id válido para registrar la reserva.",
+            )
         shift_id = get_active_shift_id(prop_id)
         if shift_id is None:
             raise HTTPException(
@@ -183,14 +197,44 @@ def reservation_export_api(
     )
 
 
+@api_router.get("/unpriced")
+def reservations_unpriced_api(
+    current_user: dict = Depends(require_permission("reservations.update")),
+):
+    """Bookings sin ``total_price`` para el banner 'Recalcular precio' del admin.
+
+    Vista de mantenimiento (staff): lista las reservas sin precio del hotel
+    (o de todos, si super_admin), respetando ``hotel_filter_from_user``.
+    Requiere ``reservations.update`` porque alimenta una acción de escritura.
+    Registrada ANTES de ``/{booking_id}`` para que el literal ``unpriced``
+    no lo capture la ruta de detalle.
+    """
+    db = get_database()
+    return list_unpriced_bookings(db, user=current_user, limit=50)
+
+
 @api_router.get("/{booking_id}", response_model=BookingResponse)
 def reservation_detail_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     """Booking detail with embedded reservation history (``history: list[BookingHistoryResponse]``).
 
     The history is surfaced by ``get_booking_detail``
     (queries.py:401) and validated under the BookingResponse's nested
-    ``BookingHistoryResponse`` items.
+    ``BookingHistoryResponse`` items. Client reads are scoped to their
+    canonical ``booking_orders.user_id`` ObjectId; staff keeps the existing
+    reservation-read behavior.
     """
+    if get_role_name(current_user) == "cliente":
+        db = get_database()
+        booking = db.booking_orders.find_one({"booking_id": booking_id}, {"user_id": 1})
+        user_id = current_user.get("_id")
+        if isinstance(user_id, str) and ObjectId.is_valid(user_id):
+            user_id = ObjectId(user_id)
+        booking_user_id = (booking or {}).get("user_id")
+        if isinstance(booking_user_id, str) and ObjectId.is_valid(booking_user_id):
+            booking_user_id = ObjectId(booking_user_id)
+        if booking is None or user_id is None or booking_user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes acceso a esta reserva.")
+
     detail = get_booking_detail(booking_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -204,7 +248,9 @@ def reservation_detail_api(booking_id: str, current_user: dict = Depends(require
 def reservation_cancel_preview_api(booking_id: str, current_user: dict = Depends(require_permission("reservations.read"))):
     """Preview cancellation penalty without actually cancelling."""
     from src.app.core.timezone import local_today
-    from src.app.modules.reservations.service.cleanup import _calculate_cancellation_penalty
+    from src.app.modules.reservations.service.cleanup import (
+        _calculate_cancellation_penalty,
+    )
 
     db = get_database()
     booking = db.booking_orders.find_one({"booking_id": booking_id})
@@ -275,6 +321,43 @@ def reservation_reject_api(booking_id: str, payload: dict = Body(default={}), cu
             changed_by=str(payload.get("changed_by") or current_user.get("username", "staff")))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.post("/{booking_id}/recalculate-price")
+def reservation_recalculate_price_api(
+    booking_id: str,
+    current_user: dict = Depends(require_permission("reservations.update")),
+):
+    """Recalcula el precio de una reserva sin ``total_price`` (botón del admin).
+
+    Reutiliza ``backfill_single_booking`` — el MISMO path que el script
+    ``migrate_backfill_booking_prices.py`` — así el botón de la UI y la
+    migración masiva producen resultados idénticos (precio canónico,
+    penalizaciones y folio).
+
+    - 200 con ``already_priced`` → la reserva ya tenía precio (no-op).
+    - 200 con ``skipped=unpricable`` → sin tarifa calculable (no escribe).
+    - 404 → la reserva no existe.
+    - 403 → la reserva pertenece a un hotel fuera del alcance del usuario
+      (``user_can_access_hotel``) — mismo hardening que el GET /unpriced.
+    """
+    db = get_database()
+    booking = db.booking_orders.find_one(
+        {"booking_id": booking_id},
+        {"_id": 0, "prop_id": 1},
+    )
+    if booking is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+    prop_id = int(booking.get("prop_id", 0) or 0)
+    if not user_can_access_hotel(current_user, prop_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a las reservas de este hotel.",
+        )
+    result = backfill_single_booking(db, booking_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+    return result
 
 
 @api_router.patch("/{booking_id}", response_model=BookingResponse)

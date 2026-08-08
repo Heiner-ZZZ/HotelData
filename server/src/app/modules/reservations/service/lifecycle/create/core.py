@@ -86,6 +86,27 @@ def create_booking(
         rate_plan_id=payload.rate_plan_id or None,
     )
 
+    # ── Regla anti-sin-precio ──
+    # Una reserva NUNCA se guarda sin total_price. ``_calculate_total_price``
+    # devuelve ``None`` solo cuando el hotel no tiene NINGUNA tarifa (ni
+    # calendario ni rate plans). Antes la reserva se creaba igual sin precio —
+    # lo que rompía los emails con Total "—", las penalizaciones $0 y las
+    # facturas en $0 (ver el backfill de precios). Ahora la creación falla
+    # con un error claro y NO persiste nada.
+    #
+    # Nota intencional: un ``total_price`` de $0 (promoción de noche gratis
+    # con ``rate_amount=0``) SÍ se guarda — la regla bloquea solo la ausencia
+    # (``None``), no el cero. Los guards aguas abajo (check-in ``float(total)
+    # > 0`` y ``create_invoice total <= 0``) lo tratan coherentemente como
+    # sin cargo. No "corregir" esto a bloquear $0: rompería promos legítimas.
+    if total_price is None:
+        raise ValueError(
+            "No se pudo calcular el precio de la reserva: el hotel no tiene "
+            "tarifas configuradas (calendario de tarifas ni rate plans) para "
+            "las fechas solicitadas. Configura una tarifa antes de registrar "
+            "la reserva."
+        )
+
     # ── Corporate contract pricing ──
     contract_id = ""
     pricing_source = ""
@@ -331,6 +352,15 @@ def modify_booking(
             int(booking.get("prop_id", 0)), new_room_type, new_check_in, new_check_out, new_rooms,
             adults=int(booking.get("adults", 2)), children=int(booking.get("children", 0)),
         )
+        # Misma regla anti-sin-precio que la creación: modificar a fechas sin
+        # tarifas no puede dejar la reserva sin total_price. La reserva se
+        # mantiene intacta (el update no llegó a ejecutarse).
+        if total_price is None:
+            raise ValueError(
+                "No se pudo recalcular el precio de la reserva: el hotel no "
+                "tiene tarifas configuradas para las nuevas fechas. La reserva "
+                "se mantiene con su precio anterior."
+            )
         update_fields.update({
             "total_price": total_price,
             "currency": currency or booking.get("currency", "USD"),

@@ -6,12 +6,66 @@ import logging
 from datetime import datetime, timezone
 
 from config.settings import get_settings
-from src.database.connection import get_database
 from src.app.email.service import send_email
 from src.app.email.templates import status_badge
+from src.database.connection import get_database
+
 from ..email_templates import guest_invoice_html, guest_status_change_html
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_booking_total(db, booking_id: str, passed_total: float | None) -> float | None:
+    """Best-effort resolution of a booking's total for email display.
+
+    A booking can reach notification with ``total_price=None`` — typically
+    when it was created while ``hotel_rate_calendar`` had no rows for its
+    dates (``_calculate_total_price`` returns ``None`` in that case). The
+    email's "Total" row must never show "—" when the price is derivable.
+
+    Priority (sources autoritativas, nunca se inventa un precio):
+      1. el total ya pasado por el llamador (si es un número válido > 0),
+      2. ``booking_orders.total_price``,
+      3. ``booking_orders.original_total_price`` (pre-descuento),
+      4. el ``base_rate`` del rate plan que la reserva referencia
+         explícitamente (``rate_plan_id``) × noches × habitaciones,
+      5. ``None`` → el email renderiza "—".
+    """
+    if passed_total is not None:
+        try:
+            if float(passed_total) > 0:
+                return float(passed_total)
+        except (TypeError, ValueError):
+            pass
+
+    booking = db.booking_orders.find_one({"booking_id": booking_id})
+    if not booking:
+        return None
+    for key in ("total_price", "original_total_price"):
+        val = booking.get(key)
+        if val is not None:
+            try:
+                fval = float(val)
+                if fval > 0:
+                    return fval
+            except (TypeError, ValueError):
+                continue
+
+    # Fallback solo con el rate plan que la reserva referencia explícitamente.
+    rate_plan_id = (booking.get("rate_plan_id") or "").strip()
+    if rate_plan_id:
+        plan = db.rate_plans.find_one(
+            {"rate_plan_id": rate_plan_id}, {"_id": 0, "base_rate": 1}
+        )
+        base_rate = plan.get("base_rate") if plan else None
+        if base_rate:
+            try:
+                nights = max(1, int(booking.get("total_nights", 0) or 1))
+                rooms = max(1, int(booking.get("rooms", 1) or 1))
+                return round(float(base_rate) * nights * rooms, 2)
+            except (TypeError, ValueError):
+                pass
+    return None
 
 
 def _log_notification(
@@ -122,7 +176,11 @@ def notify_guest_status_change(
         or f"Propiedad #{prop_id}"
     )
 
-    price_line = f"<strong>{total_price:.2f} {currency}</strong>" if total_price is not None else "—"
+    # El llamador puede pasar ``total_price=None`` (reserva creada sin tarifa
+    # disponible). El resolver recupera el total desde fuentes autoritativas
+    # para que el email nunca muestre "—" cuando el dato es derivable.
+    resolved_total = _resolve_booking_total(db, booking_id, total_price)
+    price_line = f"<strong>{resolved_total:.2f} {currency}</strong>" if resolved_total is not None else "—"
     nights_label = f"{total_nights} {'noche' if total_nights == 1 else 'noches'}"
 
     html = guest_status_change_html(
